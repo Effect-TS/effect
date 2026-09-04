@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema"
 import * as SchemaParser from "effect/SchemaParser"
 // oxlint-disable-next-line no-unassigned-import
-import "effect/unstable/schema/SchemaCompiler"
+import "effect/unstable/schema/SchemaJITCompiler/enable"
 import assert from "node:assert/strict"
 import { invalidData, validData, validDataWithExtras } from "./data.ts"
 

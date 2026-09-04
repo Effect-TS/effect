@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser, SchemaTransformation } from "effect"
 // oxlint-disable-next-line no-unassigned-import
-import "effect/unstable/schema/SchemaCompiler"
+import "effect/unstable/schema/SchemaJITCompiler/enable"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
@@ -14,7 +14,7 @@ const schema = Schema.Struct({
 const decode = SchemaParser.decodeUnknownSync(schema)
 const is = SchemaParser.is(schema)
 
-describe("SchemaCompiler", () => {
+describe("SchemaJITCompiler", () => {
   it("compiles a decoder lazily after import", () => {
     const input = {
       name: "a",

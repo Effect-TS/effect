@@ -26,8 +26,8 @@
     "observability"
   ],
   "sideEffects": [
-    "./src/unstable/schema/SchemaCompiler.ts",
-    "./dist/unstable/schema/SchemaCompiler.js"
+    "./src/unstable/schema/SchemaJITCompiler/enable.ts",
+    "./dist/unstable/schema/SchemaJITCompiler/enable.js"
   ],
   "exports": {
     "./package.json": "./package.json",

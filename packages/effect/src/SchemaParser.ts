@@ -16,7 +16,8 @@ import * as Exit from "./Exit.ts"
 import { memoize } from "./Function.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
-import * as CompilerHook from "./internal/schema/compilerHook.ts"
+import * as CompilerRegistry from "./internal/schema/compilerRegistry.ts"
+import * as Interpreter from "./internal/schema/interpreter.ts"
 import * as InternalParser from "./internal/schema/parser.ts"
 import * as Option from "./Option.ts"
 import * as Result from "./Result.ts"
@@ -177,8 +178,8 @@ export function _is<T>(ast: SchemaAST.AST, options: SchemaAST.ParseOptions = Sch
         const validate = compiled?.validate
         if (validate !== undefined) {
           compiledGuard = options === SchemaAST.defaultParseOptions
-            ? (input) => validate.default(input) !== CompilerHook.invalid
-            : (input) => validate(input, options) !== CompilerHook.invalid
+            ? (input) => validate.default(input) !== CompilerRegistry.invalid
+            : (input) => validate(input, options) !== CompilerRegistry.invalid
         }
       }
       initialized = true
@@ -569,18 +570,19 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
   const decode = asSync(decodeUnknownEffect(schema, options))
   if (options !== undefined) return decode
   let parser: Parser | undefined
-  let compiled: CompilerHook.CompiledParser | undefined
-  let validate: CompilerHook.Validate["default"] | undefined
+  let compiled: CompilerRegistry.OptimizedCompiledDecoder | undefined
+  let validate: ((input: unknown) => unknown | typeof CompilerRegistry.invalid) | undefined
   return (input, overrideOptions) => {
     if (overrideOptions !== undefined) return decode(input, overrideOptions)
     if (parser === undefined) {
       parser = normalCompiler(schema.ast)
       compiled = getCompiledParser(parser)
       validate = compiled?.validate?.default
+      if (compiled !== undefined && validate === undefined) parser = compiled.decode
     }
     if (compiled === undefined) return runParserSync<S["Type"]>(parser, input, SchemaAST.defaultParseOptions)
     if (validate === undefined) {
-      const result = compiled.decode(input, SchemaAST.defaultParseOptions)
+      const result = parser(input, SchemaAST.defaultParseOptions)
       if (effectIsExit(result)) {
         if (Exit.isFailure(result)) return throwSyncCause(result.cause)
         if (result === InternalParser.sameExit) return input as S["Type"]
@@ -597,7 +599,7 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
     } catch (error) {
       return throwSyncDefect(error)
     }
-    return output === CompilerHook.invalid
+    return output === CompilerRegistry.invalid
       ? runParserSync<S["Type"]>(compiled.decode, input, SchemaAST.defaultParseOptions)
       : output as S["Type"]
   }
@@ -1127,224 +1129,18 @@ export interface Compiler {
   (ast: SchemaAST.AST): Parser
 }
 
-const parserCache = new WeakMap<SchemaAST.AST, Parser>()
+const getCompiledParser = (parser: Parser): CompilerRegistry.OptimizedCompiledDecoder | undefined =>
+  CompilerRegistry.getCompiledDecoder(parser)
 
-type CompiledParser = Parser & {
-  readonly [CompilerHook.CompiledParserTypeId]: CompilerHook.CompiledParser
-}
+const normalCompiler: Compiler = CompilerRegistry.resolve
 
-const getCompiledParser = (parser: Parser): CompilerHook.CompiledParser | undefined =>
-  CompilerHook.getCompiledParser(parser)
-
-const makeCompiledParser = (compiled: CompilerHook.CompiledParser): CompiledParser => {
-  if (compiled.kind === "Decode") {
-    return Object.assign(compiled.parser, { [CompilerHook.CompiledParserTypeId]: compiled })
-  }
-  let run: Parser | undefined
-  const parser: Parser = (input, options) => {
-    return (run ??= compiled.parser)(input, options)
-  }
-  return Object.assign(parser, { [CompilerHook.CompiledParserTypeId]: compiled })
-}
-
-const normalCompiler: Compiler = (ast) => {
-  let parser = parserCache.get(ast)
-  if (parser !== undefined) return parser
-  const compiled = CompilerHook.get()?.(ast, normalCompiler)
-  parser = compiled === undefined ? makeParser(ast, normalCompiler) : makeCompiledParser(compiled)
-  parserCache.set(ast, parser)
-  return parser
-}
-
-const constructorCompiler: Compiler = memoize((ast) => makeParser(ast, constructorCompiler, compileConstructorDefault))
+const constructorCompiler: Compiler = memoize((ast) =>
+  Interpreter.compile(ast, constructorCompiler, compileConstructorDefault)
+)
 const compileDefaulted = memoize((ast: SchemaAST.AST) =>
-  makeParser(ast, constructorCompiler, compileConstructorDefault, ast.context?.constructorDefault)
+  Interpreter.compile(ast, constructorCompiler, compileConstructorDefault, ast.context?.constructorDefault)
 )
 
 function compileConstructorDefault(ast: SchemaAST.AST): Parser {
   return ast.context?.constructorDefault ? compileDefaulted(ast) : constructorCompiler(ast)
-}
-
-function applyTransformation(
-  result: Effect.Effect<unknown, SchemaIssue.Issue, unknown>,
-  current: unknown,
-  transformation: SchemaAST.Link["transformation"],
-  options: SchemaAST.ParseOptions
-): Effect.Effect<unknown, SchemaIssue.Issue, unknown> {
-  let transformed: Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue, unknown>
-  if (effectIsExit(result) && result._tag === "Success") {
-    const optional = InternalParser.toOption(
-      result === InternalParser.sameExit
-        ? current
-        : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    )
-    transformed = transformation._tag === "Transformation"
-      ? transformation.decode.run(optional, options)
-      : transformation.decode(InternalParser.succeed(optional), options)
-  } else if (transformation._tag === "Transformation") {
-    transformed = Effect.flatMapEager(
-      result,
-      (value) => transformation.decode.run(InternalParser.toOption(value), options)
-    )
-  } else {
-    transformed = transformation.decode(
-      Effect.mapEager(result, InternalParser.toOption),
-      options
-    )
-  }
-  return effectIsExit(transformed) && transformed._tag === "Success"
-    ? InternalParser.fromOptionExit(
-      (transformed as InternalParser.Success<Option.Option<unknown>, SchemaIssue.Issue>)[InternalParser.args]
-    )
-    : Effect.flatMapEager(transformed, InternalParser.fromOptionExit)
-}
-
-function makeConstructorParser(descriptor: SchemaAST.ConstructorDescriptor, compile: Compiler): Parser {
-  let sourceParser: Parser
-  return (input, options) => {
-    if (input === InternalParser.missing) return InternalParser.missingExit
-    if (descriptor.isConstructed(input)) return InternalParser.sameExit
-    const result = (sourceParser ??= compile(descriptor.link.to))(input, options)
-    return applyTransformation(result, input, descriptor.link.transformation, options)
-  }
-}
-
-function makeParser(
-  ast: SchemaAST.AST,
-  compile: Compiler,
-  compileConstructorDefault?: Compiler,
-  constructorDefault?: SchemaAST.Link
-): Parser {
-  const descriptor = compileConstructorDefault ? SchemaAST.getConstructorDescriptor(ast) : undefined
-  const parser = descriptor
-    ? makeConstructorParser(descriptor, compile)
-    : ast.getParser(compile, compileConstructorDefault)
-  const checks = ast.checks
-  const links = constructorDefault
-    ? ast.encoding ? [...ast.encoding, constructorDefault] : [constructorDefault]
-    : ast.encoding
-  const encodingChecks = (ast as any).encodingChecks
-  const astOptions = (checks ? checks[checks.length - 1].annotations : ast.annotations)
-    ?.["parseOptions"]
-  if (!links && !checks && !encodingChecks) {
-    if (!astOptions) {
-      return parser
-    }
-    return (input, options) => parser(input, mergeParseOptions(options, astOptions))
-  }
-  let encodingParsers: ReadonlyArray<Parser> | undefined
-  const parseLocal = (
-    input: unknown,
-    options: SchemaAST.ParseOptions
-  ) => {
-    let result = parser(input, options)
-    if (encodingChecks && !options.disableChecks) {
-      if (effectIsExit(result)) {
-        if (result._tag === "Success") {
-          const output = result === InternalParser.sameExit
-            ? input
-            : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          if (input !== InternalParser.missing && output !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
-            if (issues) {
-              result = Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
-            }
-          }
-        }
-      } else {
-        result = Effect.flatMap(result, (value) => {
-          if (input !== InternalParser.missing && value !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
-            }
-          }
-          return Effect.succeed(value)
-        })
-      }
-    }
-
-    if (checks && !options.disableChecks) {
-      if (effectIsExit(result)) {
-        if (result._tag === "Success") {
-          const value = result === InternalParser.sameExit
-            ? input
-            : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          if (value === InternalParser.missing) return result
-          const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
-          if (issues) {
-            result = Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
-          }
-        }
-      } else {
-        result = Effect.flatMap(result, (value) => {
-          if (value !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
-            }
-          }
-          return Effect.succeed(value)
-        })
-      }
-    }
-
-    return result
-  }
-  if (!links) {
-    return astOptions
-      ? (input, options) => parseLocal(input, mergeParseOptions(options, astOptions))
-      : parseLocal
-  }
-  return (
-    input: unknown,
-    options: SchemaAST.ParseOptions
-  ) => {
-    if (astOptions) {
-      options = mergeParseOptions(options, astOptions)
-    }
-    const parsers = encodingParsers ??= links.map((link) => compile(link.to))
-    let current = input
-    let result = parsers[parsers.length - 1](input, options)
-    for (let i = links.length - 1; i >= 0; i--) {
-      result = applyTransformation(result, current, links[i].transformation, options)
-      if (i !== 0) {
-        const next = parsers[i - 1]
-        if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
-          current = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          result = next(current, options)
-        } else {
-          result = Effect.flatMapEager(result, (value) => {
-            const nextResult = next(value, options)
-            return nextResult === InternalParser.sameExit ? InternalParser.succeed(value) : nextResult
-          })
-        }
-      }
-    }
-    if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
-      const value = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-      const local = parseLocal(value, options)
-      return local === InternalParser.sameExit ? result : local
-    }
-    result = Effect.catchCause(
-      result,
-      (cause) =>
-        Effect.failCauseSync(() =>
-          Cause.map(
-            cause,
-            (issue) =>
-              new SchemaIssue.Encoding(
-                ast,
-                issue,
-                input,
-                options
-              )
-          )
-        )
-    )
-    return Effect.flatMapEager(result, (value) => {
-      const local = parseLocal(value, options)
-      return local === InternalParser.sameExit ? InternalParser.succeed(value) : local
-    })
-  }
 }

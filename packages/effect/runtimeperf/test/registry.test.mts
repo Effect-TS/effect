@@ -217,7 +217,7 @@ describe("runtimeperf registry", () => {
     const compiledSource = await readFile(compiled.fixturePath, "utf8")
     assert.match(interpretedSource, /SchemaParser\.decodeUnknownSync\(/)
     assert.doesNotMatch(interpretedSource, /SchemaCompiler/)
-    assert.match(compiledSource, /import "effect\/unstable\/schema\/SchemaCompiler"/)
+    assert.match(compiledSource, /import "effect\/unstable\/schema\/SchemaJITCompiler\/enable"/)
     assert.doesNotMatch(compiledSource, /internal\/schema/)
   })
 

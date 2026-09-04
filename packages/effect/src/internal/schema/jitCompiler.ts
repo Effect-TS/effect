@@ -7,14 +7,14 @@ import * as SchemaIssue from "../../SchemaIssue.ts"
 import { effectIsExit } from "../effect.ts"
 import * as InternalSchemaCause from "./cause.ts"
 import {
-  type CompiledParser,
-  getCompiledParser,
+  getDirectParser,
   invalid,
-  type Is,
+  type OptimizedCompiledDecoder,
+  type OptimizedIs,
+  type OptimizedValidate,
   type Parser,
-  type ResolveParser,
-  type Validate
-} from "./compilerHook.ts"
+  type ResolveParser
+} from "./compilerRegistry.ts"
 import * as InternalParser from "./parser.ts"
 
 const hasParseOptions = (ast: SchemaAST.AST): boolean => {
@@ -934,7 +934,7 @@ function compileDetailedUnion(ast: SchemaAST.Union): DetailedDecoder {
   }
 }
 
-const makeDetailed = (decode: DetailedDecoder): CompiledParser["decode"] => {
+const makeDetailed = (decode: DetailedDecoder): OptimizedCompiledDecoder["decode"] => {
   return (input, options) => {
     try {
       const output = decode(input, options)
@@ -963,8 +963,7 @@ type ComposedObjectState = {
 }
 
 const resolveDirect = (resolve: ResolveParser, ast: SchemaAST.AST): Parser => {
-  const parser = resolve(ast)
-  return getCompiledParser(parser)?.parser ?? parser
+  return getDirectParser(resolve(ast))
 }
 
 const wrapComposedObjectFailure = (
@@ -1231,6 +1230,13 @@ const makeComposedObjectDecode = (
   return makeComposedObjectDefault(ast, properties, fallback)
 }
 
+const canCompileComposedObject = (ast: SchemaAST.Objects): boolean =>
+  ast.encoding === undefined &&
+  ast.indexSignatures.length === 0 &&
+  ast.checks === undefined &&
+  ast.encodingChecks === undefined &&
+  !hasParseOptions(ast)
+
 function applyTransformation(
   result: Effect.Effect<unknown, SchemaIssue.Issue, unknown>,
   current: unknown,
@@ -1268,7 +1274,7 @@ function applyTransformation(
 const makeEncodingDetailed = (
   ast: SchemaAST.AST,
   resolve: ResolveParser
-): CompiledParser["decode"] => {
+): OptimizedCompiledDecoder["decode"] => {
   const links = ast.encoding!
   const parsers = links.map((link) => resolveDirect(resolve, link.to))
   const local = resolveDirect(resolve, SchemaAST.replaceEncoding(ast, undefined))
@@ -1361,8 +1367,7 @@ const usesDefaultOutputOptions = (options: SchemaAST.ParseOptions): boolean =>
   (options.onExcessProperty !== "error" && options.onExcessProperty !== "preserve" &&
     options.propertyOrder !== "original")
 
-class CompiledParserImpl implements CompiledParser {
-  readonly kind = "Type"
+class CompiledDecoderImpl {
   readonly ast: SchemaAST.AST
   readonly emitIs: boolean
 
@@ -1377,10 +1382,10 @@ class CompiledParserImpl implements CompiledParser {
     return detailed
   }
 
-  get is(): Is | undefined {
+  get is(): OptimizedIs | undefined {
     const defaultValidate = this.emitIs ? makeValidate(this.ast, false, true) : undefined
     let withOptions: GeneratedValidate | undefined
-    const is: Is | undefined = defaultValidate === undefined
+    const is: OptimizedIs | undefined = defaultValidate === undefined
       ? undefined
       : Object.assign(
         (input: unknown, options: SchemaAST.ParseOptions) => {
@@ -1397,10 +1402,10 @@ class CompiledParserImpl implements CompiledParser {
     return is
   }
 
-  get validate(): Validate | undefined {
+  get validate(): OptimizedValidate | undefined {
     const defaultValidate = makeValidate(this.ast, true, true)
     let withOptions: GeneratedValidate | undefined
-    const validate: Validate | undefined = defaultValidate === undefined
+    const validate: OptimizedValidate | undefined = defaultValidate === undefined
       ? undefined
       : Object.assign(
         (input: unknown, options: SchemaAST.ParseOptions) => {
@@ -1418,56 +1423,31 @@ class CompiledParserImpl implements CompiledParser {
     return validate
   }
 
-  get decode(): CompiledParser["decode"] {
+  get decode(): OptimizedCompiledDecoder["decode"] {
     const decode = makeDetailed(this.detailed)
     Object.defineProperty(this, "decode", { value: decode })
     return decode
   }
-
-  get parser(): Parser {
-    const validate = this.validate
-    if (validate === undefined) return this.decode
-    const validateDefault = validate.default
-    let decode: CompiledParser["decode"] | undefined
-    const parser: Parser = (input, options) => {
-      if (input !== InternalParser.missing) {
-        try {
-          const output = options === SchemaAST.defaultParseOptions
-            ? validateDefault(input)
-            : validate(input, options)
-          if (output !== invalid) {
-            return output === input ? InternalParser.sameExit : InternalParser.succeed(output)
-          }
-        } catch (error) {
-          return Effect.die(error)
-        }
-      }
-      return (decode ??= this.decode)(input, options)
-    }
-    Object.defineProperty(this, "parser", { value: parser })
-    return parser
-  }
 }
 
-const fromDecode = (decode: CompiledParser["decode"]): CompiledParser => ({
-  kind: "Decode",
-  is: undefined,
-  validate: undefined,
-  parser: decode,
-  decode
+const fromDecode = (makeDecode: () => OptimizedCompiledDecoder["decode"]): OptimizedCompiledDecoder => ({
+  get decode() {
+    const decode = makeDecode()
+    Object.defineProperty(this, "decode", { value: decode })
+    return decode
+  }
 })
 
 /** @internal */
-export const compile = (ast: SchemaAST.AST, resolve: ResolveParser): CompiledParser | undefined => {
-  if (!shouldCompileParser(ast)) return undefined
+export const compile = (ast: SchemaAST.AST, resolve: ResolveParser): OptimizedCompiledDecoder | undefined => {
+  if (!shouldCompileParser(ast) || !supportsDynamicFunction()) return undefined
   const emission = getEmission(ast)
   if (emission !== 0) {
-    return supportsDynamicFunction() ? new CompiledParserImpl(ast, emission === 2) : undefined
+    return new CompiledDecoderImpl(ast, emission === 2) as OptimizedCompiledDecoder
   }
-  if (ast.encoding !== undefined) return fromDecode(makeEncodingDetailed(ast, resolve))
-  if (ast._tag === "Objects") {
-    const decode = makeComposedObjectDecode(ast, resolve)
-    if (decode !== undefined) return fromDecode(decode)
+  if (ast.encoding !== undefined) return fromDecode(() => makeEncodingDetailed(ast, resolve))
+  if (ast._tag === "Objects" && canCompileComposedObject(ast)) {
+    return fromDecode(() => makeComposedObjectDecode(ast, resolve) ?? makeComposedObjectFallback(ast, resolve))
   }
   return undefined
 }

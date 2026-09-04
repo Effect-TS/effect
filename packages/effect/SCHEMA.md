@@ -72,16 +72,16 @@ means that the library does not provide that benchmark.
 
 ### Runtime compilation
 
-`SchemaCompiler` is an experimental, opt-in runtime compiler for Schema decoders, encoders, and type guards. Import it for its side effect during application startup, before the first execution of the parsers that should use it:
+`SchemaJITCompiler` is an experimental, opt-in runtime compiler for Schema decoders, encoders, and type guards. Import its `enable` entrypoint for a side effect during application startup:
 
 ```ts
-import "effect/unstable/schema/SchemaCompiler"
+import "effect/unstable/schema/SchemaJITCompiler/enable"
 ```
 
 The import installs the compiler globally, but it does not compile schemas immediately. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
 
 ```ts
-import "effect/unstable/schema/SchemaCompiler"
+import "effect/unstable/schema/SchemaJITCompiler/enable"
 import { Schema, SchemaParser } from "effect"
 
 const User = Schema.Struct({
@@ -96,9 +96,13 @@ decodeUser({ id: 1, name: "Ada" })
 
 #### One cache, interchangeable parsers
 
-For ordinary decoding and encoding, `SchemaParser` owns a single cache keyed by AST. Encoding uses the same mechanism with the encoded-side AST. The compiler does not introduce a parallel cache, a compiled schema type, or an alternative parsing API.
+`SchemaCompiler` owns a single registry keyed by AST. `SchemaParser`, the
+interpreter, the JIT compiler, and future AOT compilers all use this registry.
+Encoding uses the same mechanism with the encoded-side AST. A compiler does
+not introduce a parallel cache, a compiled schema type, or an alternative
+parsing API.
 
-On the first execution of a parser, `SchemaParser`:
+On the first execution of a parser, the registry:
 
 1. looks up the AST in its central cache;
 2. asks the installed compiler for an optimized implementation when no parser is cached;
@@ -108,16 +112,39 @@ On the first execution of a parser, `SchemaParser`:
 SchemaParser API
        |
        v
-WeakMap<AST, Parser>
+SchemaCompiler: WeakMap<AST, Parser>
        |
        +-- interpreted parser
        |
        `-- compiled parser
              |
              +-- is?(input, options) -> boolean
-             +-- validate(input, options) -> decoded value or INVALID
+             +-- validate?(input, options) -> decoded value or INVALID
              `-- decode(input, options) -> decoded value or SchemaIssue
 ```
+
+There are three ways to populate the same registry:
+
+- Import `effect/unstable/schema/SchemaJITCompiler/enable` to enable lazy JIT
+  compilation for every subsequently resolved AST. Existing registry entries
+  are not replaced.
+- Call `SchemaJITCompiler.enable(ast)` to enable JIT compilation for one exact
+  AST and the dependencies reached while building its decoder. The root is
+  installed immediately, but its operations and lazy descendants remain lazy.
+- Call `SchemaCompiler.set(ast, decoder)` to install a trusted decoder directly.
+  This is the integration point for generated AOT decoders. A later call for the
+  same AST replaces the registry entry.
+
+The selective APIs accept an AST rather than a Schema. Decoding uses
+`schema.ast`; encoding uses `SchemaAST.flip(schema.ast)`. Parser closures that
+already resolved an older registry entry keep it, so late installation is safe
+but may not accelerate those existing closures.
+
+`SchemaCompiler.set` is a trusted low-level API. Every operation receives the
+active `ParseOptions`; `validate` reports failure with
+`SchemaCompiler.invalid`, and `decode` receives `SchemaCompiler.missing` when an
+optional input is absent. The registry does not verify that an installed
+decoder implements the supplied AST.
 
 This replacement is transparent to every `SchemaParser` API that resolves the
 AST. A supported type-side AST has up to three independently lazy operations:
@@ -130,9 +157,10 @@ AST. A supported type-side AST has up to three independently lazy operations:
 - `decode` materializes the same value and constructs the normal `SchemaIssue`
   on failure.
 
-Successful decoding stops after `validate`. When it returns `INVALID`, `decode`
-performs one detailed compiled pass. All `ParseOptions` are supported; options
-that affect the decoded output or issue collection may select a more detailed
+When `validate` is available, successful decoding stops there. When it returns
+`INVALID`, `decode` performs one detailed compiled pass. Without `validate`,
+decoding calls `decode` directly. All `ParseOptions` are supported; options that
+affect the decoded output or issue collection may select a more detailed
 generated path.
 
 An AST containing an encoding has no root `is` phase. Its compiled `decode`
@@ -159,15 +187,16 @@ explicitly unsafe optimization: the caller takes responsibility for the type
 narrowing. There is no second parser cache or separately exposed compiled
 schema.
 
-Unsupported or unprofitable AST roots use the interpreter. Generated paths also
-fall back when the environment disallows dynamic code generation. On an invalid
+Unsupported or unprofitable AST roots use the interpreter. If the environment
+disallows dynamic code generation, JIT installation leaves the interpreted
+entry in place; manually installed AOT decoders continue to work. On an invalid
 type-side decode, `validate` and `decode` can read input properties and execute
 checks twice. Checks must therefore be free of observable side effects, and
 input property getters reached by a compiled parser must be deterministic and
 safe to repeat. Declaration parsers have the same replay constraint and must
 also complete synchronously. Transformations and middleware are executed only
-by `decode` and remain outside the replay region. Importing the compiler changes
-the execution strategy, not the results of the `SchemaParser` APIs.
+by `decode` and remain outside the replay region. Enabling the JIT compiler
+changes the execution strategy, not the results of the `SchemaParser` APIs.
 
 #### Performance snapshot
 
@@ -191,16 +220,16 @@ pnpm runtimeperf moltar-assert-loose --rounds 9 --time 500 --warmup-time 150
 
 | Scenario                           | Effect interpreted (ns/op) | Effect compiled (ns/op) | Zod compile (ns/op) |
 | ---------------------------------- | -------------------------: | ----------------------: | ------------------: |
-| `parseSafe`, valid                 |                      266.9 |                     5.5 |                 5.3 |
-| `parseSafe`, extra property        |                      267.9 |                     5.5 |                 5.4 |
-| `parseSafe`, invalid               |                     2960.0 |                  3010.0 |              3960.0 |
-| `assertLoose`, valid               |                      264.3 |                     5.5 |                 3.3 |
-| `assertLoose`, extra property      |                      265.7 |                     5.6 |                 3.3 |
-| `assertLoose`, invalid             |                      120.3 |                     3.0 |               211.7 |
-| Effect initialization, parseSafe   |                     6580.0 |                  8010.0 |                   — |
-| Zod initialization, parseSafe      |                          — |                       — |             34250.0 |
-| Effect initialization, assertLoose |                     6620.0 |                  7990.0 |                   — |
-| Zod initialization, assertLoose    |                          — |                       — |             46570.0 |
+| `parseSafe`, valid                 |                      265.4 |                     5.4 |                 5.2 |
+| `parseSafe`, extra property        |                      266.8 |                     5.1 |                 5.3 |
+| `parseSafe`, invalid               |                     3000.0 |                  3070.0 |              3940.0 |
+| `assertLoose`, valid               |                      264.0 |                     3.6 |                 3.3 |
+| `assertLoose`, extra property      |                      266.1 |                     3.6 |                 3.3 |
+| `assertLoose`, invalid             |                      120.2 |                     3.1 |               211.0 |
+| Effect initialization, parseSafe   |                     6710.0 |                  8360.0 |                   — |
+| Zod initialization, parseSafe      |                          — |                       — |             34460.0 |
+| Effect initialization, assertLoose |                     6820.0 |                  8400.0 |                   — |
+| Zod initialization, assertLoose    |                          — |                       — |             46890.0 |
 
 The broader snapshot tracks encoding orchestration and local fallback paths.
 Run each row by passing its scenario name to `pnpm runtimeperf` with the same
@@ -208,11 +237,11 @@ round, measurement, and warmup settings.
 
 | Runtimeperf scenario                           | Interpreted (ns/op) | Compiled (ns/op) | Compiled / interpreted |
 | ---------------------------------------------- | ------------------: | ---------------: | ---------------------: |
-| `schema-compiler-transformation-struct-valid`  |              1900.0 |           1200.0 |                  0.632 |
-| `schema-compiler-middleware-struct-valid`      |              1810.0 |            403.8 |                  0.223 |
-| `schema-compiler-recursive-node-valid`         |             14660.0 |           9590.0 |                  0.654 |
-| `schema-compiler-transformed-key-record-valid` |              3580.0 |           3490.0 |                  0.975 |
-| `schema-compiler-transformation-root-invalid`  |              3390.0 |           3520.0 |                  1.038 |
+| `schema-compiler-transformation-struct-valid`  |              1950.0 |           1200.0 |                  0.617 |
+| `schema-compiler-middleware-struct-valid`      |              1900.0 |            411.4 |                  0.216 |
+| `schema-compiler-recursive-node-valid`         |             14750.0 |           9510.0 |                  0.653 |
+| `schema-compiler-transformed-key-record-valid` |              3600.0 |           3500.0 |                  0.962 |
+| `schema-compiler-transformation-root-invalid`  |              3440.0 |           3570.0 |                  1.024 |
 
 Bundle sizes use the stable `schema-compiler.ts` and
 `schema-compiler-off.ts` fixtures in `packages/tools/bundle/fixtures`. Values
@@ -221,22 +250,22 @@ after a compiler commit to compare both fixtures with the preceding commit.
 
 | Bundle fixture        | Size (KB) |
 | --------------------- | --------: |
-| Compiler not imported |     18.15 |
-| Compiler imported     |     23.00 |
-| Compiler increment    |      4.85 |
+| Compiler not imported |     18.17 |
+| Compiler imported     |     23.59 |
+| Compiler increment    |      5.42 |
 
 The retained-memory probe creates 1,000 distinct four-field Structs, retains
 their public sync decoders, then forces two garbage collections after the first
-valid decode. Cold CPU is process-wide and can exceed wall time when V8 uses
-concurrent work.
+valid decode. Values are medians of seven fresh processes. Cold CPU is
+process-wide and can exceed wall time when V8 uses concurrent work.
 
 | Compiler cost after first valid decode | Per schema |
 | -------------------------------------- | ---------: |
-| Retained JavaScript heap               |     2072 B |
-| V8 code and metadata                   |      164 B |
-| V8 bytecode and metadata               |       21 B |
-| Cold compile and decode wall time      |    6.02 µs |
-| Cold compile and decode process CPU    |    9.77 µs |
+| Retained JavaScript heap               |      907 B |
+| V8 code and metadata                   |      103 B |
+| V8 bytecode and metadata               |       17 B |
+| Cold compile and decode wall time      |    4.98 µs |
+| Cold compile and decode process CPU    |    7.90 µs |
 
 # Defining Elementary Schemas
 

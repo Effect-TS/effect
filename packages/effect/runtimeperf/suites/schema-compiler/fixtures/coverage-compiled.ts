@@ -1,5 +1,5 @@
 // oxlint-disable-next-line no-unassigned-import
-import "effect/unstable/schema/SchemaCompiler"
+import "effect/unstable/schema/SchemaJITCompiler/enable"
 
 export {
   array100InvalidLast as array100InvalidLastCompiled,
