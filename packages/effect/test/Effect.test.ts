@@ -7,6 +7,7 @@ import {
   Deferred,
   Duration,
   Effect,
+  Effectable,
   Exit,
   Fiber,
   type Filter,
@@ -53,6 +54,35 @@ describe("Effect", () => {
   it("isEffect", () => {
     assert.isTrue(Effect.isEffect(Effect.succeed(0)))
     assert.isFalse(Effect.isEffect([0]))
+  })
+
+  describe("Effectable.Class", () => {
+    it.effect("runs using asEffect", () =>
+      Effect.gen(function*() {
+        class Answer extends Effectable.Class<number> {
+          asEffect() {
+            return Effect.succeed(42)
+          }
+        }
+
+        assert.strictEqual(yield* new Answer(), 42)
+      }))
+
+    it.effect("evaluates asEffect on every execution", () =>
+      Effect.gen(function*() {
+        class Answer extends Effectable.Class<number> {
+          value = 1
+
+          asEffect() {
+            return Effect.succeed(this.value)
+          }
+        }
+
+        const answer = new Answer()
+        assert.strictEqual(yield* answer, 1)
+        answer.value = 2
+        assert.strictEqual(yield* answer, 2)
+      }))
   })
 
   describe("structural compare", () => {
