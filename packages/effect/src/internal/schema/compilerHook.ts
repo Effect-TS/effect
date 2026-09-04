@@ -1,4 +1,4 @@
-import type * as Cause from "../../Cause.ts"
+import type * as Effect from "../../Effect.ts"
 import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaIssue from "../../SchemaIssue.ts"
 
@@ -6,22 +6,35 @@ import type * as SchemaIssue from "../../SchemaIssue.ts"
 export const invalid = Symbol()
 
 /** @internal */
-export interface Decoder {
+export interface Is {
   (input: unknown): unknown | typeof invalid
 }
 
 /** @internal */
-export class DecoderFailure {
-  readonly cause: Cause.Cause<SchemaIssue.Issue>
-  constructor(cause: Cause.Cause<SchemaIssue.Issue>) {
-    this.cause = cause
-  }
+export interface Parser {
+  (
+    input: unknown,
+    options: SchemaAST.ParseOptions
+  ): Effect.Effect<unknown, SchemaIssue.Issue, any>
+}
+
+/** @internal */
+export interface CompiledParser {
+  readonly is: Is | undefined
+  readonly decode: (
+    input: unknown,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<unknown, SchemaIssue.Issue, any>
+}
+
+/** @internal */
+export interface ResolveParser {
+  (ast: SchemaAST.AST): Parser
 }
 
 /** @internal */
 export interface Compiler {
-  readonly decode: (ast: SchemaAST.AST) => Decoder | undefined
-  readonly is: (ast: SchemaAST.AST) => Decoder | undefined
+  (ast: SchemaAST.AST, resolve: ResolveParser): CompiledParser | undefined
 }
 
 let current: Compiler | undefined

@@ -72,13 +72,13 @@ means that the library does not provide that benchmark.
 
 ### Runtime compilation
 
-`SchemaCompiler` is an experimental, opt-in runtime compiler for synchronous Schema decoders and type guards. Import it for its side effect during application startup, before the first execution of the parsers that should use it:
+`SchemaCompiler` is an experimental, opt-in runtime compiler for Schema decoders, encoders, and type guards. Import it for its side effect during application startup, before the first execution of the parsers that should use it:
 
 ```ts
 import "effect/unstable/schema/SchemaCompiler"
 ```
 
-The import installs the compiler globally, but it does not compile schemas immediately. The first execution of a supported parser compiles and caches an optimized implementation for its AST. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
+The import installs the compiler globally, but it does not compile schemas immediately. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
 
 ```ts
 import "effect/unstable/schema/SchemaCompiler"
@@ -94,9 +94,134 @@ const decodeUser = SchemaParser.decodeUnknownSync(User)
 decodeUser({ id: 1, name: "Ada" })
 ```
 
-`SchemaParser.is` compiles a validation-only implementation. It skips constructing decoded arrays and objects unless a check needs their decoded value.
+#### One cache, interchangeable parsers
 
-Unsupported schemas, calls with explicit parse options, and environments that disallow dynamic code generation use the interpreter instead. This fallback preserves the behavior of `SchemaParser`; importing the compiler changes the execution strategy, not the parsing API or its results.
+For ordinary decoding and encoding, `SchemaParser` owns a single cache keyed by AST. Encoding uses the same mechanism with the encoded-side AST. The compiler does not introduce a parallel cache, a compiled schema type, or an alternative parsing API.
+
+On the first execution of a parser, `SchemaParser`:
+
+1. looks up the AST in its central cache;
+2. asks the installed compiler for an optimized implementation when no parser is cached;
+3. stores exactly one parser for the AST: either interpreted or compiled.
+
+```text
+SchemaParser API
+       |
+       v
+WeakMap<AST, Parser>
+       |
+       +-- interpreted parser
+       |
+       `-- compiled parser
+             |
+             +-- is?(input) -> decoded value or INVALID
+             `-- decode(input, options) -> decoded value or SchemaIssue
+```
+
+This replacement is transparent to every `SchemaParser` API that resolves the
+AST. For an encoding-free AST, the compiled parser contains two lazily used
+phases. `is` is the minimal generated fast path: it returns the decoded value or
+the private `INVALID` sentinel and does not construct issues. When it returns
+`INVALID`, `decode` performs a second compiled pass that produces the same
+decoded value or `SchemaIssue` as the interpreter. The diagnostic phase is
+created only on its first use. Calls with non-default parse options go directly
+to `decode`, which honors those options without first running `is`.
+
+An AST containing an encoding has no root `is` phase. Its compiled `decode`
+orchestrates transformations and middleware directly, executing each operation
+exactly once. The schemas before, between, and after those operations are
+resolved through the same central cache, so every checkpoint independently uses
+its compiled or interpreted parser:
+
+```text
+cached checkpoint -> compiled decode operation -> cached checkpoint
+```
+
+Interpreted parsers also resolve their children through this cache. Unsupported
+or unprofitable structural roots can therefore remain interpreted while their
+supported descendants compile. This local fallback does not create a second
+parser role or retain a private interpreted copy of a compiled parser.
+
+`SchemaParser.is` uses the same generated `is` phase and reduces its result to a
+boolean. There is no second parser cache or separately exposed compiled schema.
+
+Unsupported or unprofitable AST roots use the interpreter. Generated paths also
+fall back when the environment disallows dynamic code generation. On an invalid
+default decode, the two phases of an encoding-free compiled parser can read
+input properties and execute checks twice. Checks must therefore be free of
+observable side effects, and property getters reached by a compiled parser must
+be deterministic and safe to repeat. Transformations and middleware are outside
+that replay region. Importing the compiler changes the execution strategy, not
+the `SchemaParser` API or its results.
+
+#### Performance snapshot
+
+This snapshot is checked in so compiler regressions appear as numeric changes in
+the Git diff. Keep scenario names, units, environment, and measurement settings
+unchanged when updating it. Lower values are better.
+
+- Date: 2026-09-04
+- Environment: Node 24.12.0, V8 13.6, Apple M3
+- Libraries: Effect 4.0.0-rc.112, Zod 4.5.4
+- Runtime settings: 9 fresh processes, 500 ms measurement, 150 ms warmup;
+  Moltar scenarios use a shared batch of 256
+- Effect API: public `SchemaParser` functions only
+
+Run the Moltar snapshot with:
+
+```sh
+pnpm runtimeperf moltar-parse-safe --rounds 9 --time 500 --warmup-time 150
+pnpm runtimeperf moltar-assert-loose --rounds 9 --time 500 --warmup-time 150
+```
+
+| Scenario                           | Effect interpreted (ns/op) | Effect compiled (ns/op) | Zod compile (ns/op) |
+| ---------------------------------- | -------------------------: | ----------------------: | ------------------: |
+| `parseSafe`, valid                 |                      266.9 |                     5.5 |                 5.3 |
+| `parseSafe`, extra property        |                      267.9 |                     5.5 |                 5.4 |
+| `parseSafe`, invalid               |                     2960.0 |                  3010.0 |              3960.0 |
+| `assertLoose`, valid               |                      264.3 |                     5.5 |                 3.3 |
+| `assertLoose`, extra property      |                      265.7 |                     5.6 |                 3.3 |
+| `assertLoose`, invalid             |                      120.3 |                     3.0 |               211.7 |
+| Effect initialization, parseSafe   |                     6580.0 |                  8010.0 |                   — |
+| Zod initialization, parseSafe      |                          — |                       — |             34250.0 |
+| Effect initialization, assertLoose |                     6620.0 |                  7990.0 |                   — |
+| Zod initialization, assertLoose    |                          — |                       — |             46570.0 |
+
+The broader snapshot tracks encoding orchestration and local fallback paths.
+Run each row by passing its scenario name to `pnpm runtimeperf` with the same
+round, measurement, and warmup settings.
+
+| Runtimeperf scenario                           | Interpreted (ns/op) | Compiled (ns/op) | Compiled / interpreted |
+| ---------------------------------------------- | ------------------: | ---------------: | ---------------------: |
+| `schema-compiler-transformation-struct-valid`  |              1900.0 |           1200.0 |                  0.632 |
+| `schema-compiler-middleware-struct-valid`      |              1810.0 |            403.8 |                  0.223 |
+| `schema-compiler-recursive-node-valid`         |             14660.0 |           9590.0 |                  0.654 |
+| `schema-compiler-transformed-key-record-valid` |              3580.0 |           3490.0 |                  0.975 |
+| `schema-compiler-transformation-root-invalid`  |              3390.0 |           3520.0 |                  1.038 |
+
+Bundle sizes use the stable `schema-compiler.ts` and
+`schema-compiler-off.ts` fixtures in `packages/tools/bundle/fixtures`. Values
+are minified and gzipped decimal kilobytes. Run `pnpm bundle-compare HEAD~1`
+after a compiler commit to compare both fixtures with the preceding commit.
+
+| Bundle fixture        | Size (KB) |
+| --------------------- | --------: |
+| Compiler not imported |     18.15 |
+| Compiler imported     |     23.00 |
+| Compiler increment    |      4.85 |
+
+The retained-memory probe creates 1,000 distinct four-field Structs, retains
+their public sync decoders, then forces two garbage collections after the first
+valid decode. Cold CPU is process-wide and can exceed wall time when V8 uses
+concurrent work.
+
+| Compiler cost after first valid decode | Per schema |
+| -------------------------------------- | ---------: |
+| Retained JavaScript heap               |     2072 B |
+| V8 code and metadata                   |      164 B |
+| V8 bytecode and metadata               |       21 B |
+| Cold compile and decode wall time      |    6.02 µs |
+| Cold compile and decode process CPU    |    9.77 µs |
 
 # Defining Elementary Schemas
 

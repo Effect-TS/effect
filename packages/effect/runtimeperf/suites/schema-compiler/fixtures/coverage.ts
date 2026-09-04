@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as SchemaParser from "effect/SchemaParser"
 import * as SchemaTransformation from "effect/SchemaTransformation"
@@ -178,6 +179,34 @@ export const transformationStructValid = validCase(
 
 export const transformationRootValid = validCase(Schema.FiniteFromString, "123", 123)
 export const transformationRootInvalid = invalidCase(Schema.FiniteFromString, "invalid")
+export const transformationUpperCaseValid = validCase(
+  Schema.String.pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toUpperCase())),
+  "value",
+  "VALUE"
+)
+
+const transformationOutputInvalidSchema = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.String.check(Schema.isMinLength(2)),
+    SchemaTransformation.transform({
+      decode: () => "",
+      encode: (value) => value
+    })
+  )
+)
+
+export const transformationOutputInvalid = invalidCase(transformationOutputInvalidSchema, "valid input")
+
+const middlewareStruct = Schema.Struct(
+  Object.fromEntries(Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.String]))
+).pipe(
+  Schema.middlewareDecoding((effect) => Effect.map(effect, (value) => value))
+)
+const middlewareStructInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, `value${index}`])
+)
+
+export const middlewareStructValid = validCase(middlewareStruct, middlewareStructInput)
 
 interface RecursiveNode {
   readonly value: string

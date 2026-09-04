@@ -2343,6 +2343,25 @@
               "size": 1
             },
             {
+              "name": "transformation-uppercase-valid-effect",
+              "export": "transformationUpperCaseValid",
+              "scenario": "schema-compiler-transformation-uppercase-valid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-uppercase-valid-effect-compiled",
+              "export": "transformationUpperCaseValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-uppercase-valid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
               "name": "transformation-root-invalid-effect-compiled",
               "export": "transformationRootInvalidCompiled",
               "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
@@ -2351,6 +2370,44 @@
               "family": "transformations",
               "path": "invalid",
               "size": 1
+            },
+            {
+              "name": "transformation-output-invalid-effect",
+              "export": "transformationOutputInvalid",
+              "scenario": "schema-compiler-transformation-output-invalid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "transformation-output-invalid-effect-compiled",
+              "export": "transformationOutputInvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-output-invalid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "middleware-struct-valid-effect",
+              "export": "middlewareStructValid",
+              "scenario": "schema-compiler-middleware-struct-valid",
+              "implementation": "effect",
+              "family": "middleware",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "middleware-struct-valid-effect-compiled",
+              "export": "middlewareStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-middleware-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "middleware",
+              "path": "valid",
+              "size": 32
             },
             {
               "name": "recursive-node-valid-effect",

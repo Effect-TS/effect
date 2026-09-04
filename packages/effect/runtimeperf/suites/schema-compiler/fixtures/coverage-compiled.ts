@@ -8,6 +8,7 @@ export {
   encodingCheckedStructValid as encodingCheckedStructValidCompiled,
   literal100Invalid as literal100InvalidCompiled,
   literal100ValidLast as literal100ValidLastCompiled,
+  middlewareStructValid as middlewareStructValidCompiled,
   numberRecordValid as numberRecordValidCompiled,
   optionalStructValid as optionalStructValidCompiled,
   recordValid as recordValidCompiled,
@@ -17,9 +18,11 @@ export {
   taggedUnion100ValidLast as taggedUnion100ValidLastCompiled,
   templateLiteralValid as templateLiteralValidCompiled,
   templateRecordValid as templateRecordValidCompiled,
+  transformationOutputInvalid as transformationOutputInvalidCompiled,
   transformationRootInvalid as transformationRootInvalidCompiled,
   transformationRootValid as transformationRootValidCompiled,
   transformationStructValid as transformationStructValidCompiled,
+  transformationUpperCaseValid as transformationUpperCaseValidCompiled,
   transformedKeyRecordValid as transformedKeyRecordValidCompiled,
   tupleRestValid as tupleRestValidCompiled
 } from "./coverage.ts"

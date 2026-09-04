@@ -74,7 +74,7 @@ describe("SchemaCompiler", () => {
     strictEqual(reads, 1)
   })
 
-  it("replays the interpreter to construct an issue", () => {
+  it("runs the diagnostic phase after fast validation fails", () => {
     let reads = 0
     const input = {
       get name() {
@@ -90,6 +90,159 @@ describe("SchemaCompiler", () => {
       assertSchemaIssueError(error, `Expected string\n  at ["name"]`)
     })
     strictEqual(reads, 2)
+  })
+
+  it("runs one diagnostic pass for a nested failure", () => {
+    let checks = 0
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
+      nested: Schema.Struct({
+        value: Schema.String.check(Schema.makeFilter(() => {
+          checks++
+          return false
+        }))
+      })
+    }))
+
+    throws(() => decode({ nested: { value: "invalid" } }), (error) => {
+      assertSchemaIssueError(
+        error,
+        `Expected <filter>
+  at ["nested"]["value"]`
+      )
+    })
+    strictEqual(checks, 2)
+  })
+
+  it("does not construct the interpreter for a compiled parser", () => {
+    const schema = Schema.Struct({ value: Schema.String })
+    Object.defineProperty(schema.ast, "getParser", {
+      configurable: true,
+      value() {
+        throw new Error("interpreted parser constructed")
+      }
+    })
+    const decode = SchemaParser.decodeUnknownSync(schema)
+
+    deepStrictEqual(decode({ value: "a", extra: true }), { value: "a" })
+    throws(() => decode({ value: 1 }), (error) => {
+      assertSchemaIssueError(
+        error,
+        `Expected string
+  at ["value"]`
+      )
+    })
+    deepStrictEqual(
+      decode({ value: "a", extra: true }, { onExcessProperty: "preserve" }),
+      { value: "a", extra: true } as any
+    )
+  })
+
+  it("does not construct the interpreter for transformations or middleware", () => {
+    let transformations = 0
+    const transformed = Schema.String.pipe(
+      Schema.decodeTo(
+        Schema.String.check(Schema.isMinLength(2)),
+        SchemaTransformation.transform({
+          decode: (value) => {
+            transformations++
+            return value.trim()
+          },
+          encode: (value) => value
+        })
+      )
+    )
+    Object.defineProperty(transformed.ast, "getParser", {
+      configurable: true,
+      value() {
+        throw new Error("interpreted transformation parser constructed")
+      }
+    })
+    const decodeTransformed = SchemaParser.decodeUnknownSync(transformed)
+
+    strictEqual(decodeTransformed("  valid  "), "valid")
+    strictEqual(transformations, 1)
+    throws(() => decodeTransformed(" x "))
+    strictEqual(transformations, 2)
+
+    let middlewareRuns = 0
+    const middleware = Schema.Struct({ value: Schema.String }).pipe(
+      Schema.middlewareDecoding((effect) => {
+        middlewareRuns++
+        return effect
+      })
+    )
+    Object.defineProperty(middleware.ast, "getParser", {
+      configurable: true,
+      value() {
+        throw new Error("interpreted middleware parser constructed")
+      }
+    })
+
+    deepStrictEqual(SchemaParser.decodeUnknownSync(middleware)({ value: "valid" }), { value: "valid" })
+    strictEqual(middlewareRuns, 1)
+  })
+
+  it("does not construct the interpreter for Structs with transformed properties", () => {
+    const schema = Schema.Struct({
+      first: Schema.FiniteFromString,
+      second: Schema.FiniteFromString
+    })
+    Object.defineProperty(schema.ast, "getParser", {
+      configurable: true,
+      value() {
+        throw new Error("interpreted Struct parser constructed")
+      }
+    })
+
+    deepStrictEqual(
+      SchemaParser.decodeUnknownSync(schema)({ first: "1", second: "2" }),
+      { first: 1, second: 2 }
+    )
+  })
+
+  it("constructs the diagnostic phase lazily and once", () => {
+    const schema = Schema.TemplateLiteral(["a"])
+    const ast = schema.ast
+    if (ast._tag !== "TemplateLiteral") throw new Error("Expected TemplateLiteral")
+    const asTemplateLiteralParser = ast.asTemplateLiteralParser.bind(ast)
+    let compilations = 0
+    Object.defineProperty(ast, "asTemplateLiteralParser", {
+      configurable: true,
+      value() {
+        compilations++
+        return asTemplateLiteralParser()
+      }
+    })
+    const decode = SchemaParser.decodeUnknownSync(schema)
+
+    strictEqual(decode("a"), "a")
+    strictEqual(compilations, 0)
+    throws(() => decode("b"))
+    strictEqual(compilations, 1)
+    throws(() => decode("b"))
+    strictEqual(compilations, 1)
+  })
+
+  it("replaces the parser used by the other decoding adapters", () => {
+    let checks = 0
+    const schema = Schema.String.check(Schema.makeFilter(() => {
+      checks++
+      return false
+    }))
+
+    assert(Result.isFailure(SchemaParser.decodeUnknownResult(schema)("value")))
+    strictEqual(checks, 2)
+  })
+
+  it("replaces the parser used by encoding adapters", () => {
+    let checks = 0
+    const schema = Schema.String.check(Schema.makeFilter(() => {
+      checks++
+      return false
+    }))
+
+    assert(Result.isFailure(SchemaParser.encodeUnknownResult(schema)("value")))
+    strictEqual(checks, 2)
   })
 
   it("does not replay defects", () => {
@@ -113,7 +266,7 @@ describe("SchemaCompiler", () => {
     strictEqual(reads, 1)
   })
 
-  it("uses the interpreter for explicit ParseOptions", () => {
+  it("honors explicit ParseOptions in the compiled diagnostic phase", () => {
     assert.deepStrictEqual(
       decode(
         {
@@ -154,6 +307,27 @@ describe("SchemaCompiler", () => {
     strictEqual(decode(date), date)
   })
 
+  it("uses the interpreter when dynamic function generation is unavailable", () => {
+    const Function = globalThis.Function
+    try {
+      globalThis.Function = (() => {
+        throw new Error("dynamic function generation unavailable")
+      }) as any
+      const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ value: Schema.String }))
+
+      deepStrictEqual(decode({ value: "a" }), { value: "a" })
+      throws(() => decode({ value: 1 }), (error) => {
+        assertSchemaIssueError(
+          error,
+          `Expected string
+  at ["value"]`
+        )
+      })
+    } finally {
+      globalThis.Function = Function
+    }
+  })
+
   it("compiles primitive leaves without confusing undefined with a missing key", () => {
     const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
       undefined: Schema.Undefined,
@@ -184,6 +358,31 @@ describe("SchemaCompiler", () => {
     throws(() => decodeTuple(["a", 1, 2]), (error) => {
       assertSchemaIssueError(error, `Expected boolean\n  at [2]`)
     })
+  })
+
+  it("compiles optional tuple elements", () => {
+    const schema = Schema.Tuple([Schema.optionalKey(Schema.String)])
+    const decode = SchemaParser.decodeUnknownSync(schema)
+    const is = SchemaParser.is(schema)
+
+    deepStrictEqual(decode([]), [])
+    deepStrictEqual(decode(["a"]), ["a"])
+    strictEqual(is([]), true)
+    strictEqual(is(["a"]), true)
+    strictEqual(is([1]), false)
+  })
+
+  it("returns the canonical signed-zero literal", () => {
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
+      negative: Schema.Literal(-0),
+      positive: Schema.Union([Schema.Literal(0), Schema.Literal(1)]),
+      union: Schema.Union([Schema.Literal(-0), Schema.Literal(1)])
+    }))
+    const output = decode({ negative: 0, positive: -0, union: 0 })
+
+    strictEqual(Object.is(output.negative, -0), true)
+    strictEqual(Object.is(output.positive, 0), true)
+    strictEqual(Object.is(output.union, -0), true)
   })
 
   it("compiles primitive anyOf and oneOf unions", () => {
@@ -338,7 +537,7 @@ describe("SchemaCompiler", () => {
     strictEqual(isNested({ nested: { value: 1 } }), false)
   })
 
-  it("embeds synchronous Declaration and transformation runtime islands", () => {
+  it("uses compiled checkpoints around interpreted declarations and transformations", () => {
     const date = new Date(0)
     const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
       date: Schema.instanceOf(Date),
@@ -351,7 +550,7 @@ describe("SchemaCompiler", () => {
     deepStrictEqual(Reflect.ownKeys(output), ["date", "count"])
   })
 
-  it("compiles root encoding chains", () => {
+  it("uses compiled checkpoints inside root encoding chains", () => {
     const decodeNumber = SchemaParser.decodeUnknownSync(Schema.FiniteFromString)
     strictEqual(decodeNumber("1"), 1)
     throws(() => decodeNumber("invalid"), (error) => {
@@ -364,7 +563,56 @@ describe("SchemaCompiler", () => {
     deepStrictEqual(decodeJson("{\"value\":1,\"extra\":true}"), { value: 1 })
   })
 
-  it("preserves mixed causes from compiled encoding chains", () => {
+  it("does not replay transformations when a compiled checkpoint fails", () => {
+    let sourceChecks = 0
+    let firstTransformations = 0
+    let secondTransformations = 0
+    let checks = 0
+    const schema = Schema.Struct({
+      value: Schema.String.check(Schema.makeFilter((value) => {
+        sourceChecks++
+        return value !== "blocked"
+      })).pipe(
+        Schema.decodeTo(
+          Schema.Number.check(Schema.makeFilter((value) => {
+            checks++
+            return value > 0
+          })),
+          SchemaTransformation.transform({
+            decode: (value) => {
+              firstTransformations++
+              return Number(value)
+            },
+            encode: String
+          })
+        ),
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (value) => {
+              secondTransformations++
+              return String(value)
+            },
+            encode: Number
+          })
+        )
+      )
+    })
+
+    throws(() => SchemaParser.decodeUnknownSync(schema)({ value: "blocked" }))
+    strictEqual(sourceChecks, 2)
+    strictEqual(firstTransformations, 0)
+    strictEqual(secondTransformations, 0)
+
+    sourceChecks = 0
+    throws(() => SchemaParser.decodeUnknownSync(schema)({ value: "-1" }))
+    strictEqual(sourceChecks, 1)
+    strictEqual(firstTransformations, 1)
+    strictEqual(secondTransformations, 0)
+    strictEqual(checks, 2)
+  })
+
+  it("preserves mixed causes from interpreted encoding chains", () => {
     const cause = Cause.combine(
       Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
       Cause.die(new Error("defect"))
@@ -384,7 +632,7 @@ describe("SchemaCompiler", () => {
     })
   })
 
-  it("keeps Suspend runtime islands lazy", () => {
+  it("keeps Suspend parsers lazy", () => {
     interface Category {
       readonly value: string
       readonly children: ReadonlyArray<Category>
@@ -408,7 +656,7 @@ describe("SchemaCompiler", () => {
     strictEqual(evaluations, 1)
   })
 
-  it("does not replay defects from runtime islands", () => {
+  it("does not replay declaration defects", () => {
     const defect = new Error("declaration defect")
     let runs = 0
     const declaration = Schema.declareConstructor<unknown>()([], () => () => {

@@ -153,26 +153,23 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
 /** @internal */
 export function _is<T>(ast: SchemaAST.AST) {
   const typeAST = SchemaAST.toType(ast)
-  const parser = asExit(run<T, never>(typeAST))
-  let decoder: CompilerHook.Decoder | null | undefined
+  let parser: Parser | undefined
   return <I>(input: I): input is I & T => {
-    if (decoder === undefined) {
-      const compiler = CompilerHook.get()
-      decoder = compiler?.is(typeAST) ?? null
-    }
-    if (decoder !== null) {
+    parser ??= normalCompiler(typeAST)
+    const compiled = getCompiledParser(parser)
+    const compiledIs = compiled?.is
+    if (compiledIs !== undefined) {
       try {
-        return decoder(input) !== CompilerHook.invalid
+        return compiledIs(input) !== CompilerHook.invalid
       } catch (error) {
-        const cause = error instanceof CompilerHook.DecoderFailure ? error.cause : Cause.die(error)
         InternalSchemaCause.getSchemaIssueOrThrow(
-          cause,
+          Cause.die(error),
           "Type guard adapter can only return false for schema issues"
         )
         return false
       }
     }
-    const exit = parser(input, SchemaAST.defaultParseOptions)
+    const exit = Effect.runSyncExit(runParser<T, never>(parser, input, SchemaAST.defaultParseOptions))
     if (Exit.isSuccess(exit)) {
       return true
     }
@@ -544,26 +541,39 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => S["Type"] {
-  const fallback = asSync(decodeUnknownEffect(schema, options))
-  if (options !== undefined) return fallback
-  let decoder: CompilerHook.Decoder | null | undefined
+  const decode = asSync(decodeUnknownEffect(schema, options))
+  if (options !== undefined) return decode
+  let parser: Parser | undefined
+  let compiled: CompilerHook.CompiledParser | undefined
   return (input, overrideOptions) => {
-    if (overrideOptions !== undefined) return fallback(input, overrideOptions)
-    if (decoder === undefined) {
-      const compiler = CompilerHook.get()
-      decoder = compiler?.decode(schema.ast) ?? null
+    if (overrideOptions !== undefined) return decode(input, overrideOptions)
+    if (parser === undefined) {
+      parser = normalCompiler(schema.ast)
+      compiled = getCompiledParser(parser)
     }
-    if (decoder === null) return fallback(input)
+    if (compiled === undefined) return runParserSync<S["Type"]>(parser, input, SchemaAST.defaultParseOptions)
+    const compiledIs = compiled.is
+    if (compiledIs === undefined) {
+      const result = compiled.decode(input, SchemaAST.defaultParseOptions)
+      if (effectIsExit(result)) {
+        if (Exit.isFailure(result)) return throwSyncCause(result.cause)
+        if (result === InternalParser.sameExit) return input as S["Type"]
+        const value = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+        return value === InternalParser.missing
+          ? throwSyncCause(Cause.fail(new SchemaIssue.InvalidValue()))
+          : value as S["Type"]
+      }
+      return runParserSync<S["Type"]>(() => result, input, SchemaAST.defaultParseOptions)
+    }
     let output: unknown
     try {
-      output = decoder(input)
+      output = compiledIs(input)
     } catch (error) {
-      if (error instanceof CompilerHook.DecoderFailure) {
-        return throwSyncCause(error.cause)
-      }
       return throwSyncDefect(error)
     }
-    return output === CompilerHook.invalid ? fallback(input) : output as S["Type"]
+    return output === CompilerHook.invalid
+      ? runParserSync<S["Type"]>(compiled.decode, input, SchemaAST.defaultParseOptions)
+      : output as S["Type"]
   }
 }
 
@@ -964,23 +974,32 @@ export function run<T, R>(ast: SchemaAST.AST) {
   return runWithCompiler<T, R>(normalCompiler, ast)
 }
 
+function runParser<T, R>(
+  parser: Parser,
+  input: unknown,
+  options: SchemaAST.ParseOptions
+): Effect.Effect<T, SchemaIssue.Issue, R> {
+  const result = parser(input, options)
+  if (result === InternalParser.sameExit) {
+    return Effect.succeed(input) as Effect.Effect<T, SchemaIssue.Issue, R>
+  }
+  if (!effectIsExit(result)) {
+    return Effect.flatMapEager(result, getValue)
+  }
+  return (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args] ===
+      InternalParser.missing
+    ? getValue(InternalParser.missing)
+    : result as Effect.Effect<T, SchemaIssue.Issue, R>
+}
+
 function runWithCompiler<T, R>(compiler: Compiler, ast: SchemaAST.AST) {
   let parser: Parser
   return (input: unknown, options?: SchemaAST.ParseOptions): Effect.Effect<T, SchemaIssue.Issue, R> => {
-    const result = (parser ??= compiler(ast))(
+    return runParser<T, R>(
+      parser ??= compiler(ast),
       input,
       options ?? SchemaAST.defaultParseOptions
     )
-    if (result === InternalParser.sameExit) {
-      return Effect.succeed(input) as Effect.Effect<T, SchemaIssue.Issue, R>
-    }
-    if (!effectIsExit(result)) {
-      return Effect.flatMapEager(result, getValue)
-    }
-    return (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args] ===
-        InternalParser.missing
-      ? getValue(InternalParser.missing)
-      : result as Effect.Effect<T, SchemaIssue.Issue, R>
   }
 }
 
@@ -1060,6 +1079,15 @@ const throwSyncCause = (cause: Cause.Cause<SchemaIssue.Issue>): never => {
 
 const throwSyncDefect = (defect: unknown): never => throwSyncCause(Cause.die(defect))
 
+const runParserSync = <T>(
+  parser: Parser,
+  input: unknown,
+  options: SchemaAST.ParseOptions
+): T => {
+  const exit = Effect.runSyncExit(runParser<T, never>(parser, input, options))
+  return Exit.isSuccess(exit) ? exit.value : throwSyncCause(exit.cause)
+}
+
 /** @internal */
 export interface Parser {
   (
@@ -1073,7 +1101,46 @@ export interface Compiler {
   (ast: SchemaAST.AST): Parser
 }
 
-const normalCompiler: Compiler = memoize((ast) => makeParser(ast, normalCompiler))
+const parserCache = new WeakMap<SchemaAST.AST, Parser>()
+const CompiledParserTypeId = Symbol()
+
+type CompiledParser = Parser & {
+  readonly [CompiledParserTypeId]: CompilerHook.CompiledParser
+}
+
+const getCompiledParser = (parser: Parser): CompilerHook.CompiledParser | undefined =>
+  (parser as Partial<CompiledParser>)[CompiledParserTypeId]
+
+const makeCompiledParser = (compiled: CompilerHook.CompiledParser): CompiledParser => {
+  const is = compiled.is
+  if (is === undefined) {
+    return Object.assign(compiled.decode, { [CompiledParserTypeId]: compiled })
+  }
+  const parser: Parser = (input, options) => {
+    if (input !== InternalParser.missing && options === SchemaAST.defaultParseOptions) {
+      try {
+        const output = is(input)
+        if (output !== CompilerHook.invalid) {
+          return output === input ? InternalParser.sameExit : InternalParser.succeed(output)
+        }
+      } catch (error) {
+        return Effect.die(error)
+      }
+    }
+    return compiled.decode(input, options)
+  }
+  return Object.assign(parser, { [CompiledParserTypeId]: compiled })
+}
+
+const normalCompiler: Compiler = (ast) => {
+  let parser = parserCache.get(ast)
+  if (parser !== undefined) return parser
+  const compiled = CompilerHook.get()?.(ast, normalCompiler)
+  parser = compiled === undefined ? makeParser(ast, normalCompiler) : makeCompiledParser(compiled)
+  parserCache.set(ast, parser)
+  return parser
+}
+
 const constructorCompiler: Compiler = memoize((ast) => makeParser(ast, constructorCompiler, compileConstructorDefault))
 const compileDefaulted = memoize((ast: SchemaAST.AST) =>
   makeParser(ast, constructorCompiler, compileConstructorDefault, ast.context?.constructorDefault)
