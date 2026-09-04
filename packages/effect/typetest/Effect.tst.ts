@@ -6,6 +6,7 @@ import {
   Data,
   Effect,
   type ExecutionPlan,
+  Exit,
   Fiber,
   HashMap,
   type Layer,
@@ -1292,5 +1293,11 @@ describe("Effect.withExecutionPlan", () => {
   it("without options the requirements are unchanged", () => {
     const result = Effect.withExecutionPlan(self, plan)
     expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
+  })
+})
+
+describe("Effect.withErrorReporting", () => {
+  it("returns an Effect for an Exit input", () => {
+    expect(Effect.withErrorReporting(Exit.succeed(1))).type.toBe<Effect.Effect<number>>()
   })
 })

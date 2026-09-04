@@ -6831,7 +6831,7 @@ export const withErrorReporting: <
   options?: {
     readonly defectsOnly?: boolean | undefined
   } | undefined
-) => [Arg] extends [Effect.Effect<infer _A, infer _E, infer _R>] ? Arg
+) => [Arg] extends [Effect.Effect<infer A, infer E, infer R>] ? Effect.Effect<A, E, R>
   : <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = dual(
     (args) => isEffect(args[0]),
     <A, E, R>(

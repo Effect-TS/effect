@@ -4419,8 +4419,8 @@ export const withErrorReporting: <
 >(
   effectOrOptions: Arg,
   options?: { readonly defectsOnly?: boolean | undefined } | undefined
-) => [Arg] extends [Effect<infer _A, infer _E, infer _R>] ? Arg : <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> =
-  internal.withErrorReporting
+) => [Arg] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R>
+  : <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = internal.withErrorReporting
 
 // -----------------------------------------------------------------------------
 // Fallback
