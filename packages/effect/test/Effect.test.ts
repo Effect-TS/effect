@@ -122,6 +122,84 @@ describe("Effect", () => {
     assert.strictEqual(isAsync, 2)
   })
 
+  describe("callback arguments", () => {
+    it.effect("uses default callback parameters", () =>
+      Effect.gen(function*() {
+        const onSuccess = (value: string, uppercase = false) => Effect.succeed(uppercase ? value.toUpperCase() : value)
+        const onFailure = (_cause: Cause.Cause<string>, uppercase = false) =>
+          Effect.succeed(uppercase ? "RECOVERED" : "recovered")
+        const succeeded = Effect.succeed("hello")
+        const failed = Effect.fail("boom")
+
+        assert.strictEqual(yield* Effect.flatMap(succeeded, onSuccess), "hello")
+        assert.strictEqual(yield* Effect.catchCause(failed, onFailure), "recovered")
+        assert.strictEqual(yield* Effect.matchCauseEffect(succeeded, { onSuccess, onFailure }), "hello")
+        assert.strictEqual(yield* Effect.matchCauseEffect(failed, { onSuccess, onFailure }), "recovered")
+      }))
+
+    it.effect("does not pass internal values to rest parameters", () =>
+      Effect.gen(function*() {
+        const successArgs: Array<Array<unknown>> = []
+        const failureArgs: Array<Array<unknown>> = []
+        const onSuccess = (value: string, ...args: Array<unknown>) =>
+          Effect.sync(() => {
+            successArgs.push(args)
+            return value
+          })
+        const onFailure = (_cause: Cause.Cause<string>, ...args: Array<unknown>) =>
+          Effect.sync(() => {
+            failureArgs.push(args)
+            return "recovered"
+          })
+        const succeeded = Effect.succeed("hello")
+        const failed = Effect.fail("boom")
+
+        yield* Effect.flatMap(succeeded, onSuccess)
+        yield* Effect.catchCause(failed, onFailure)
+        yield* Effect.matchCauseEffect(succeeded, { onSuccess, onFailure })
+        yield* Effect.matchCauseEffect(failed, { onSuccess, onFailure })
+
+        assert.deepStrictEqual(successArgs, [[], []])
+        assert.deepStrictEqual(failureArgs, [[], []])
+      }))
+
+    it.effect("catchDefect passes only the defect", () =>
+      Effect.gen(function*() {
+        const defaultValues: Array<unknown> = []
+        const restArgs: Array<Array<unknown>> = []
+
+        yield* Effect.catchDefect(Effect.die("boom"), (_defect, value: unknown = "default") =>
+          Effect.sync(() => defaultValues.push(value)))
+        yield* Effect.catchDefect(Effect.die("boom"), (_defect, ...args: Array<unknown>) =>
+          Effect.sync(() =>
+            restArgs.push(args)
+          ))
+
+        assert.deepStrictEqual({ defaultValues, restArgs }, {
+          defaultValues: ["default"],
+          restArgs: [[]]
+        })
+      }))
+
+    it.effect("onError passes only the cause", () =>
+      Effect.gen(function*() {
+        const defaultValues: Array<unknown> = []
+        const restArgs: Array<Array<unknown>> = []
+
+        yield* Effect.onError(Effect.fail("boom"), (_cause, value: unknown = "default") =>
+          Effect.sync(() => defaultValues.push(value))).pipe(Effect.exit)
+        yield* Effect.onError(Effect.fail("boom"), (_cause, ...args: Array<unknown>) =>
+          Effect.sync(() =>
+            restArgs.push(args)
+          )).pipe(Effect.exit)
+
+        assert.deepStrictEqual({ defaultValues, restArgs }, {
+          defaultValues: ["default"],
+          restArgs: [[]]
+        })
+      }))
+  })
+
   it("runPromise", async () => {
     const result = await Effect.runPromise(Effect.succeed(1))
     assert.strictEqual(result, 1)
