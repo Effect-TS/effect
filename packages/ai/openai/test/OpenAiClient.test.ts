@@ -632,20 +632,33 @@ describe("OpenAiClient", () => {
           "response.content_part.done",
           "response.completed"
         ])
-        assert.deepStrictEqual(decoded.slice(2, 7), [
+        assert.deepStrictEqual(decoded[0], {
+          type: "response.created",
+          response: {
+            id: "resp_test123",
+            object: "response",
+            model: "gpt-4o-mini",
+            created_at: 1,
+            output: [],
+            error: null,
+            incomplete_details: null
+          }
+        })
+        assert.deepStrictEqual(decoded[3], {
+          type: "response.output_text.delta",
+          output_index: 0,
+          item_id: "msg_123",
+          content_index: 0,
+          delta: "hello",
+          sequence_number: 4
+        })
+        assert.deepStrictEqual([decoded[2], decoded[4], decoded[5], decoded[6]], [
           {
             type: "response.content_part.added",
             output_index: 0,
             item_id: "rs_tmp_123",
             content_index: 0,
             part: { type: "reasoning_text", text: "" }
-          },
-          {
-            type: "response.output_text.delta",
-            output_index: 0,
-            item_id: "msg_123",
-            content_index: 0,
-            delta: "hello"
           },
           {
             type: "response.reasoning_text.delta",
@@ -699,7 +712,8 @@ describe("OpenAiClient", () => {
             output_index: 0,
             item_id: "msg_123",
             content_index: 0,
-            delta: "hello"
+            delta: "hello",
+            sequence_number: 4
           },
           {
             type: "response.reasoning_text.delta",
