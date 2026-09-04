@@ -611,6 +611,124 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
+    it.effect("accepts response stream events without sequence numbers", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const [, stream] = yield* client.createResponseStream({
+          model: "gpt-4o",
+          input: "test"
+        })
+
+        const events = yield* Stream.runCollect(stream)
+        const decoded = globalThis.Array.from(events)
+
+        assert.deepStrictEqual(decoded.map((event) => event.type), [
+          "response.created",
+          "response.output_item.added",
+          "response.content_part.added",
+          "response.output_text.delta",
+          "response.reasoning_text.delta",
+          "response.reasoning_text.done",
+          "response.content_part.done",
+          "response.completed"
+        ])
+        assert.deepStrictEqual(decoded.slice(2, 7), [
+          {
+            type: "response.content_part.added",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            part: { type: "reasoning_text", text: "" }
+          },
+          {
+            type: "response.output_text.delta",
+            output_index: 0,
+            item_id: "msg_123",
+            content_index: 0,
+            delta: "hello"
+          },
+          {
+            type: "response.reasoning_text.delta",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            delta: "thinking..."
+          },
+          {
+            type: "response.reasoning_text.done",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            text: "thinking..."
+          },
+          {
+            type: "response.content_part.done",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            part: { type: "reasoning_text", text: "thinking..." }
+          }
+        ])
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [
+          {
+            type: "response.created",
+            response: makeResponseBody({ status: "in_progress" })
+          },
+          {
+            type: "response.output_item.added",
+            output_index: 0,
+            item: {
+              id: "msg_123",
+              type: "message",
+              role: "assistant",
+              status: "in_progress",
+              content: []
+            }
+          },
+          {
+            type: "response.content_part.added",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            part: { type: "reasoning_text", text: "" }
+          },
+          {
+            type: "response.output_text.delta",
+            output_index: 0,
+            item_id: "msg_123",
+            content_index: 0,
+            delta: "hello"
+          },
+          {
+            type: "response.reasoning_text.delta",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            delta: "thinking..."
+          },
+          {
+            type: "response.reasoning_text.done",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            text: "thinking..."
+          },
+          {
+            type: "response.content_part.done",
+            output_index: 0,
+            item_id: "rs_tmp_123",
+            content_index: 0,
+            part: { type: "reasoning_text", text: "thinking..." }
+          },
+          {
+            type: "response.completed",
+            response: makeResponseBody()
+          }
+        ]
+      }))))
+
     it.effect("maps HTTP error before stream starts", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
