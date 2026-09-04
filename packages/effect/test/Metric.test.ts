@@ -33,7 +33,7 @@ describe("Metric", () => {
       yield* Metric.update(second, 10)
 
       assert.strictEqual((yield* Metric.value(first)).count, 1)
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+    }))
 
   it.effect("shares a series for equal attributes in different record orders", () =>
     Effect.gen(function*() {
@@ -45,7 +45,7 @@ describe("Metric", () => {
       yield* Metric.update(second, 10)
 
       assert.strictEqual((yield* Metric.value(first)).count, 11)
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+    }))
 
   it.effect("shares a series after merging metric and contextual attributes", () =>
     Effect.gen(function*() {
@@ -53,21 +53,21 @@ describe("Metric", () => {
       const first = Metric.counter(id, { attributes: { route: "/users" } })
       const second = Metric.counter(id, { attributes: { method: "GET" } })
       const firstContext = { method: "GET" }
-      const secondContext = { route: "/users" }
 
       yield* Metric.update(first, 1).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))
-      yield* Metric.update(second, 10).pipe(Effect.provideService(Metric.CurrentMetricAttributes, secondContext))
+      yield* Metric.update(second, 10).pipe(
+        Effect.provideService(Metric.CurrentMetricAttributes, { route: "/users" })
+      )
 
       assert.strictEqual(
         (yield* Metric.value(first).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))).count,
         11
       )
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+    }))
 
   it.effect("preserves attribute order in snapshots", () =>
     Effect.gen(function*() {
-      const record = { route: "/users", method: "GET" }
-      const metric = Metric.counter(nextId(), { attributes: record })
+      const metric = Metric.counter(nextId(), { attributes: { route: "/users", method: "GET" } })
 
       yield* Metric.update(metric, 1)
       const snapshot = yield* Metric.snapshot
