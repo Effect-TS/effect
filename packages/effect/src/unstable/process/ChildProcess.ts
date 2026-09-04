@@ -252,9 +252,9 @@ export interface KillOptions {
    *
    * **Details**
    *
-   * Termination signals the child's process group and waits for the child to
-   * exit. Without a timeout, remaining members of the process group are then
-   * given one second to exit before termination completes.
+   * Whether termination also covers the child's descendants, and how long it
+   * waits for them, depends on the spawner implementation. See the platform
+   * module documentation, for example `NodeChildProcessSpawner`.
    */
   readonly forceKillAfter?: Duration.Input | undefined
 }

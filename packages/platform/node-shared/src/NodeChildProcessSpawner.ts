@@ -15,10 +15,22 @@
  * process at a time, wiring the selected source stream (`stdout`, `stderr`,
  * `all`, or `fdN`) to the destination `stdin` or `fdN`.
  *
+ * Scoped release and `kill` signal the child's process group and then wait
+ * for the leader to exit and for the rest of the group to terminate. Without
+ * `forceKillAfter` that wait is bounded to one second and `SIGKILL` is never
+ * sent. With `forceKillAfter` the group receives `SIGKILL` once the timeout
+ * elapses, followed by a final one second wait, so `kill` can take up to
+ * `forceKillAfter` plus one second. Group membership is checked with
+ * `kill(-pgid, 0)`, which also counts zombies: when descendants reparent to a
+ * PID 1 that does not reap them, every release pays the full wait. On Windows
+ * the process tree is terminated with `taskkill` and only the leader's exit is
+ * awaited.
+ *
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -66,11 +78,14 @@ const toPlatformError = (
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 
-/** How long release and `kill` wait for the rest of the process group after the leader exits. */
+/** How long release and `kill` wait for the process group after signalling it. */
 const processGroupGraceMillis = 1_000
 const processGroupPollIntervalMillis = 10
 
 const isProcessGroupAlive = (childProcess: NodeChildProcess.ChildProcess): boolean => {
+  if (globalThis.process.platform === "win32") {
+    return false
+  }
   try {
     globalThis.process.kill(-childProcess.pid!, 0)
     return true
@@ -78,6 +93,10 @@ const isProcessGroupAlive = (childProcess: NodeChildProcess.ChildProcess): boole
     return false
   }
 }
+
+/** The leader has not exited, or a member of its process group still exists. */
+const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean =>
+  !Deferred.isDoneUnsafe(exitSignal) || isProcessGroupAlive(childProcess)
 
 const taskkill = (
   childProcess: NodeChildProcess.ChildProcess,
@@ -427,24 +446,21 @@ const make = Effect.gen(function*() {
     })
 
   /**
-   * Resolves once no member of the child's process group exists, or once
-   * `timeoutMillis` has elapsed. Uses native timers so that process cleanup is
-   * not governed by the Effect clock (for example a `TestClock`).
+   * Resolves once the leader has exited and no member of its process group
+   * exists, or once `timeoutMillis` has elapsed. Uses native timers so that
+   * process cleanup is not governed by the Effect clock (for example a
+   * `TestClock`).
    */
-  const awaitProcessGroupExit = (
+  const awaitProcessExit = (
     childProcess: NodeChildProcess.ChildProcess,
-    timeoutMillis: number | undefined
-  ): Effect.Effect<void> => {
-    if (globalThis.process.platform === "win32") {
-      // taskkill terminates the whole tree synchronously
-      return Effect.void
-    }
-    return Effect.callback<void>((resume) => {
-      const deadline = Predicate.isUndefined(timeoutMillis) ? undefined : Date.now() + timeoutMillis
+    exitSignal: ExitSignal,
+    timeoutMillis: number
+  ): Effect.Effect<void> =>
+    Effect.callback<void>((resume) => {
+      const deadline = Date.now() + timeoutMillis
       let timer: NodeJS.Timeout | undefined
       const poll = () => {
-        const expired = Predicate.isNotUndefined(deadline) && Date.now() >= deadline
-        if (expired || !isProcessGroupAlive(childProcess)) {
+        if (Date.now() >= deadline || !isProcessAlive(childProcess, exitSignal)) {
           resume(Effect.void)
           return
         }
@@ -453,16 +469,15 @@ const make = Effect.gen(function*() {
       poll()
       return Effect.sync(() => clearTimeout(timer))
     })
-  }
 
   /**
-   * Signals the child's process group (falling back to the leader), waits for
-   * the leader to exit and then for the rest of the group to terminate.
+   * Signals the child's process group (falling back to the leader), then waits
+   * for the leader to exit and for the rest of the group to terminate.
    *
-   * Without `forceKillAfter` the group wait is bounded by
-   * `processGroupGraceMillis` and never escalates to `SIGKILL`. With
-   * `forceKillAfter` the group wait is unbounded until the timeout fires, at
-   * which point the group receives `SIGKILL` and gets a final bounded wait.
+   * Without `forceKillAfter` the wait is bounded by `processGroupGraceMillis`
+   * and never escalates to `SIGKILL`. With `forceKillAfter` the group receives
+   * `SIGKILL` once the timeout elapses, followed by a final bounded wait. Both
+   * deadlines use native time so escalation cannot stall under a `TestClock`.
    */
   const terminateProcessGroup = (
     command: ChildProcess.StandardCommand,
@@ -470,19 +485,28 @@ const make = Effect.gen(function*() {
     exitSignal: ExitSignal,
     options: ChildProcess.KillOptions | undefined
   ) => {
-    const terminate = (signal: NodeJS.Signals, graceMillis: number | undefined) =>
-      killProcessGroup(command, childProcess, signal).pipe(
-        Effect.catch(() => killProcess(command, childProcess, signal)),
-        Effect.andThen(Deferred.await(exitSignal)),
-        Effect.andThen(awaitProcessGroupExit(childProcess, graceMillis))
-      )
     const killSignal = options?.killSignal ?? "SIGTERM"
-    return Predicate.isUndefined(options?.forceKillAfter)
-      ? terminate(killSignal, processGroupGraceMillis)
-      : Effect.timeoutOrElse(terminate(killSignal, undefined), {
-        duration: options.forceKillAfter,
-        orElse: () => terminate("SIGKILL", processGroupGraceMillis)
-      })
+    const forceKillAfter = Predicate.isUndefined(options?.forceKillAfter)
+      ? undefined
+      : Duration.toMillis(options.forceKillAfter)
+    const signalGroup = (signal: NodeJS.Signals) =>
+      killProcessGroup(command, childProcess, signal).pipe(
+        Effect.catch(() => killProcess(command, childProcess, signal))
+      )
+    return signalGroup(killSignal).pipe(
+      Effect.andThen(awaitProcessExit(childProcess, exitSignal, forceKillAfter ?? processGroupGraceMillis)),
+      Effect.andThen(
+        Effect.suspend(() =>
+          Predicate.isUndefined(forceKillAfter) || !isProcessAlive(childProcess, exitSignal)
+            ? Effect.void
+            : signalGroup("SIGKILL").pipe(
+              Effect.andThen(awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis))
+            )
+        )
+      ),
+      Effect.andThen(Deferred.await(exitSignal)),
+      Effect.asVoid
+    )
   }
 
   /**

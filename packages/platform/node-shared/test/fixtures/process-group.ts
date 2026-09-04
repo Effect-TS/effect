@@ -12,8 +12,8 @@ import { appendFileSync, writeFileSync } from "node:fs"
 // <marker> every 10ms until it is killed. The first heartbeat lands before
 // READY so the file always exists.
 //
-// The descendant prints READY once its signal handler is installed and exits
-// on its own after 5 seconds as a safety net.
+// The descendant prints `READY <pid>` once its signal handler is installed and
+// exits on its own after 5 seconds as a safety net.
 const [role, mode, marker] = process.argv.slice(2)
 
 if (role === "leader") {
@@ -35,5 +35,5 @@ if (role === "leader") {
     setInterval(() => appendFileSync(marker, "x"), 10)
   }
   setTimeout(() => process.exit(1), 5_000)
-  process.stdout.write("READY\n")
+  process.stdout.write(`READY ${process.pid}\n`)
 }

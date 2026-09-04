@@ -110,24 +110,45 @@ const startProcessGroup = (
       [processGroupFixture, "leader", mode, marker],
       { stdin: "ignore", ...options }
     ))
-    const ready = yield* Deferred.make<void>()
+    const ready = yield* Deferred.make<number>()
     yield* handle.stdout.pipe(
       Stream.decodeText,
       Stream.splitLines,
-      Stream.runForEach((line) => line === "READY" ? Deferred.succeed(ready, undefined) : Effect.void),
+      Stream.runForEach((line) =>
+        line.startsWith("READY ") ? Deferred.succeed(ready, Number(line.slice("READY ".length))) : Effect.void
+      ),
       Effect.forkScoped
     )
-    yield* Effect.timeout(Deferred.await(ready), "5 seconds")
-    return handle
+    const descendantPid = yield* Effect.timeout(Deferred.await(ready), "5 seconds")
+    return { handle, descendantPid }
   })
+
+const killDescendant = (pid: number) =>
+  Effect.sync(() => {
+    try {
+      process.kill(pid, "SIGKILL")
+    } catch {
+      // already gone
+    }
+  })
+
+// Native sleep so the helpers behave the same under a TestClock
+const liveSleep = (millis: number) => Effect.promise(() => new Promise((resolve) => setTimeout(resolve, millis)))
 
 const assertHeartbeatStopped = (marker: string) =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const sizeAfterKill = (yield* fs.stat(marker)).size
-    yield* Effect.sleep("100 millis")
+    yield* liveSleep(100)
     const finalSize = (yield* fs.stat(marker)).size
     assert.strictEqual(finalSize, sizeAfterKill)
+  })
+
+const timed = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.gen(function*() {
+    const start = Date.now()
+    yield* effect
+    return Date.now() - start
   })
 
 describe.skipIf(process.platform === "win32")("process group cleanup", () => {
@@ -137,7 +158,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
       const directory = yield* fs.makeTempDirectoryScoped()
       const marker = `${directory}/descendant-exited`
       const scope = yield* Scope.make()
-      const handle = yield* startProcessGroup(scope, "exit-on-signal", marker)
+      const { handle } = yield* startProcessGroup(scope, "exit-on-signal", marker)
 
       yield* Scope.close(scope, Exit.void)
 
@@ -164,7 +185,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
       const directory = yield* fs.makeTempDirectoryScoped()
       const marker = `${directory}/heartbeat`
       const scope = yield* Scope.make()
-      const handle = yield* startProcessGroup(scope, "ignore-signal", marker)
+      const { handle } = yield* startProcessGroup(scope, "ignore-signal", marker)
 
       yield* handle.kill({ forceKillAfter: "200 millis" })
 
@@ -173,25 +194,47 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
       yield* Scope.close(scope, Exit.void)
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 
+  it.effect("forceKillAfter escalation does not depend on the Effect clock", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const marker = `${directory}/heartbeat`
+      const scope = yield* Scope.make()
+      yield* startProcessGroup(scope, "ignore-signal", marker, { forceKillAfter: "200 millis" })
+
+      const releaseMillis = yield* timed(Scope.close(scope, Exit.void))
+
+      assert.isBelow(releaseMillis, 2_000)
+      yield* assertHeartbeatStopped(marker)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+
   it.live("scope release returns when a descendant holds the inherited pipe without forceKillAfter", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const directory = yield* fs.makeTempDirectoryScoped()
       const marker = `${directory}/heartbeat`
       const scope = yield* Scope.make()
-      const handle = yield* startProcessGroup(scope, "ignore-signal", marker)
+      const { descendantPid, handle } = yield* startProcessGroup(scope, "ignore-signal", marker)
 
-      yield* Scope.close(scope, Exit.void)
+      yield* Effect.gen(function*() {
+        const releaseMillis = yield* timed(Scope.close(scope, Exit.void))
 
-      assert.isFalse(yield* handle.isRunning)
+        assert.isFalse(yield* handle.isRunning)
+        assert.isAtLeast(releaseMillis, 1_000)
+        assert.isBelow(releaseMillis, 3_000)
+      }).pipe(Effect.ensuring(killDescendant(descendantPid)))
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+})
 
-  it.live("scope release returns when stdout is unread and backpressured", () =>
-    Effect.scoped(Effect.gen(function*() {
+it.live("scope release returns when stdout is unread and backpressured", () =>
+  Effect.gen(function*() {
+    const releaseMillis = yield* timed(Effect.scoped(Effect.gen(function*() {
       yield* ChildProcess.make(process.execPath, [
         "-e",
         "process.stdout.write(\"x\".repeat(1024 * 1024)); setInterval(() => {}, 1000)"
       ], { stdin: "ignore" })
       yield* Effect.sleep("100 millis")
-    })).pipe(Effect.provide(NodeServices)))
-})
+    })))
+
+    assert.isBelow(releaseMillis, 2_000)
+  }).pipe(Effect.provide(NodeServices)))
