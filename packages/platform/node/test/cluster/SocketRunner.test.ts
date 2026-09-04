@@ -48,13 +48,16 @@ const SharedStorage = Layer.mergeAll(
   Layer.provide(ShardingConfig.layerDefaults)
 )
 
-const makeRunnerLayer = (
-  port: number,
+const startRunner = Effect.fnUntraced(function*(
   entities: Layer.Layer<never, never, Sharding.Sharding>,
-  socketServer: SocketServer.SocketServer["Service"],
   serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerSchemaBinary()
-) =>
-  entities.pipe(
+) {
+  const socketServer = yield* NodeSocketServer.make({ host: HOST, port: 0 })
+  if (socketServer.address._tag !== "TcpAddress") {
+    return yield* Effect.die("Expected a TCP socket server")
+  }
+  const port = socketServer.address.port
+  yield* entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provide(Layer.succeed(SocketServer.SocketServer, socketServer)),
@@ -65,19 +68,9 @@ const makeRunnerLayer = (
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(serialization)
+    Layer.provide(serialization),
+    Layer.build
   )
-
-const startRunner = Effect.fnUntraced(function*(
-  entities: Layer.Layer<never, never, Sharding.Sharding>,
-  serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerSchemaBinary()
-) {
-  const socketServer = yield* NodeSocketServer.make({ host: HOST, port: 0 })
-  if (socketServer.address._tag !== "TcpAddress") {
-    return yield* Effect.die("Expected a TCP socket server")
-  }
-  const port = socketServer.address.port
-  yield* Layer.build(makeRunnerLayer(port, entities, socketServer, serialization))
   return port
 })
 
@@ -184,9 +177,16 @@ describe("SocketRunner", () => {
       Effect.gen(function*() {
         const port = yield* startRunner(SerializationEntityLayer)
 
+        yield* Effect.gen(function*() {
+          const makeClient = yield* SerializationEntity.client
+          assert.strictEqual(yield* makeClient("serialization-limit-entity").Ping(), "pong")
+        }).pipe(
+          Effect.provide(makeConfiguredClientLayer(port)),
+          Effect.scoped
+        )
+
         const exit = yield* Effect.gen(function*() {
           const makeClient = yield* SerializationEntity.client
-          yield* Effect.sleep("3 seconds")
           return yield* makeClient("serialization-limit-entity").Ping().pipe(Effect.timeout("1 second"))
         }).pipe(
           Effect.provide(makeConfiguredClientLayer(port, undefined, 1)),
@@ -238,7 +238,12 @@ describe("SocketRunner", () => {
             { discard: true }
           ).pipe(Effect.forkChild)
 
-          yield* Deferred.await(volatileStarted)
+          yield* Deferred.await(volatileStarted).pipe(
+            Effect.timeoutOrElse({
+              duration: "5 seconds",
+              orElse: () => Effect.die("the volatile request never reached its handler")
+            })
+          )
           yield* Fiber.join(volatileFiber).pipe(
             Effect.timeoutOrElse({
               duration: "1 second",
@@ -279,7 +284,12 @@ describe("SocketRunner", () => {
 
           // a sibling request in flight on the same runner-to-runner connection
           const slowFiber = yield* makeClient("slow-entity").Slow().pipe(Effect.forkChild)
-          yield* Deferred.await(slowStarted)
+          yield* Deferred.await(slowStarted).pipe(
+            Effect.timeoutOrElse({
+              duration: "5 seconds",
+              orElse: () => Effect.die("the Slow request never reached its handler")
+            })
+          )
 
           const badExit = yield* makeClient("bad-entity").BadReply({ id: 1 }).pipe(
             Effect.exit,
