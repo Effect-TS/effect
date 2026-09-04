@@ -1488,6 +1488,10 @@ const mapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
   return succeed(internalCall(() => f(value)))
 }
+const flatMapCont = function(this: { readonly payload: any }, value: any) {
+  const f = this.payload
+  return f(value)
+}
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
   return internalCall(() => f(value))
@@ -1772,7 +1776,7 @@ export const flatMap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> => new OnSuccessImpl(self, (a: A) => f(a))
+  ): Effect.Effect<B, E | E2, R | R2> => new ContImpl(self, flatMapCont, f)
 )
 
 /** @internal */
@@ -2684,7 +2688,8 @@ export const catchDefect: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (defect: unknown) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E | E2, R | R2> => catchCauseFilter(self, findDefect as any, f as any) as any
+  ): Effect.Effect<A | B, E | E2, R | R2> =>
+    catchCauseFilter(self, findDefect as any, ((defect: any) => f(defect)) as any) as any
 )
 
 /** @internal */
@@ -4226,7 +4231,8 @@ export const onError: {
   <A, E, R, XE, XR>(
     self: Effect.Effect<A, E, R>,
     f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<void, XE, XR>
-  ): Effect.Effect<A, E | XE, R | XR> => onExitFilter(self, exitFilterCause as any, f as any) as any
+  ): Effect.Effect<A, E | XE, R | XR> =>
+    onExitFilter(self, exitFilterCause as any, ((cause: any) => f(cause)) as any) as any
 )
 
 /** @internal */
