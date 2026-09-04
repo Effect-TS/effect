@@ -13,6 +13,7 @@ import * as Toolkit from "effect/unstable/ai/Toolkit"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 
 const ServerIcon = McpSchema.Icon.make({
   src: "https://example.com/server.svg",
@@ -580,6 +581,9 @@ type JsonRpcResponse = typeof JsonRpcResponse.Type
 
 const decodeJsonRpcResponse = Schema.decodeUnknownEffect(JsonRpcResponse)
 
+const readJsonRpcResponse = (response: Response) =>
+  readMcpHttpResponse(response).pipe(Effect.flatMap(decodeJsonRpcResponse))
+
 const modernMetadata = (
   capabilities: Record<string, unknown> = {},
   clientInfo: { readonly name: string; readonly version: string } = {
@@ -636,9 +640,7 @@ const initialize = Effect.fnUntraced(function*(
       }
     }
   })
-  const body = yield* Effect.promise<unknown>(() => response.json()).pipe(
-    Effect.flatMap(decodeJsonRpcResponse)
-  )
+  const body = yield* readJsonRpcResponse(response)
   if (!("result" in body)) {
     return yield* Effect.die(`Initialization failed: ${body.error.message}`)
   }
@@ -657,9 +659,7 @@ const initialize = Effect.fnUntraced(function*(
       "Mcp-Protocol-Version": protocolVersion,
       "Mcp-Session-Id": sessionId
     })
-    return yield* Effect.promise<unknown>(() => response.json()).pipe(
-      Effect.flatMap(decodeJsonRpcResponse)
-    )
+    return yield* readJsonRpcResponse(response)
   })
 
   return { initializeResult: body.result, protocolVersion, request }
@@ -711,9 +711,7 @@ describe("McpServer protocol adapters", () => {
           clientInfo: { name: "legacy-client", version: "1.0.0" }
         }
       })
-      const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
-        Effect.flatMap(decodeJsonRpcResponse)
-      )
+      const message = yield* readJsonRpcResponse(response)
 
       assert.strictEqual(response.status, 200)
       assert.isNotNull(response.headers.get("Mcp-Session-Id"))
@@ -727,9 +725,7 @@ describe("McpServer protocol adapters", () => {
         modernRequest(19, "server/discover"),
         modernHeaders("server/discover")
       )
-      const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
-        Effect.flatMap(decodeJsonRpcResponse)
-      )
+      const message = yield* readJsonRpcResponse(response)
       const result = resultOf(message)
 
       assert.strictEqual(response.status, 200)
@@ -775,9 +771,7 @@ describe("McpServer protocol adapters", () => {
               "input-context"
           }
         )
-        const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
-          Effect.flatMap(decodeJsonRpcResponse)
-        )
+        const message = yield* readJsonRpcResponse(response)
         assert.deepStrictEqual(JSON.parse(testCase.read(resultOf(message))), continuation)
       }
     }))
@@ -904,9 +898,7 @@ describe("McpServer protocol adapters", () => {
 
       for (const testCase of cases) {
         const response = yield* fixture.post(testCase.body, testCase.headers)
-        const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
-          Effect.flatMap(decodeJsonRpcResponse)
-        )
+        const message = yield* readJsonRpcResponse(response)
         if (!("error" in message)) {
           assert.fail(`${testCase.name}: expected error, received result`)
         }
@@ -1088,9 +1080,7 @@ describe("McpServer protocol adapters", () => {
           "Mcp-Protocol-Version": protocolVersion,
           "Mcp-Session-Id": sessionId
         })
-        const body = yield* Effect.promise<unknown>(() => toolResponse.json()).pipe(
-          Effect.flatMap(decodeJsonRpcResponse)
-        )
+        const body = yield* readJsonRpcResponse(toolResponse)
         assert.strictEqual(textResult(body), JSON.stringify({ progressToken: `call-${protocolVersion}` }))
       }
     }))
@@ -1651,9 +1641,7 @@ describe("McpServer protocol adapters", () => {
         modernRequest(50, "tools/call", { name: "invalid-structured-content", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "invalid-structured-content" }
       )
-      const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
-        Effect.flatMap(decodeJsonRpcResponse)
-      )
+      const message = yield* readJsonRpcResponse(response)
 
       assert.strictEqual(response.status, 200)
       assert.strictEqual(errorOf(message).code, McpSchema.INTERNAL_ERROR_CODE)

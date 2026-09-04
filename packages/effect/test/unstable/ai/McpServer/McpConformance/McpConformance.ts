@@ -6,6 +6,7 @@ import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeFeaturesServerLayer, type Observations } from "./McpConformanceFixtures.ts"
 import { makeMcpTestPeer, type McpTestPeerOptions } from "./McpTestPeer.ts"
@@ -283,7 +284,7 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
           }
         }
         const response = yield* post(harness, initializeRequest(options))
-        const body = yield* Effect.promise<unknown>(() => response.json())
+        const body = yield* readMcpHttpResponse(response)
         return {
           response,
           message: yield* decodeInitializeResponse(body),
@@ -351,15 +352,15 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
           resourceTemplateInvocations: 0
         }),
         decodeError: (response) =>
-          Effect.promise<unknown>(() => response.json()).pipe(
+          readMcpHttpResponse(response).pipe(
             Effect.flatMap(decodeErrorResponse)
           ),
         decodeResult: (response) =>
-          Effect.promise<unknown>(() => response.json()).pipe(
+          readMcpHttpResponse(response).pipe(
             Effect.flatMap(decodeResultResponse)
           ),
         decodeBatchResponseIds: (response) =>
-          Effect.promise<unknown>(() => response.json()).pipe(
+          readMcpHttpResponse(response).pipe(
             Effect.flatMap(decodeBatchResponse),
             Effect.map((responses) => responses.map((message) => message.id))
           )

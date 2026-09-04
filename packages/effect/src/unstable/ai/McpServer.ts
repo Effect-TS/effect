@@ -14,6 +14,7 @@ import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
+import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
@@ -90,6 +91,7 @@ type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 interface QueuedServerNotification {
   readonly notification: McpCore.ServerNotification
   readonly targetClientId?: number | undefined
+  readonly delivered: Deferred.Deferred<void>
 }
 
 const internalState = new WeakMap<object, {
@@ -316,44 +318,56 @@ export class McpServer extends Context.Service<McpServer, {
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
       onFromClient: (options) =>
-        Effect.suspend((): Effect.Effect<void> => {
-          const message = options.message
-          if (message._tag !== "Request") {
-            return Effect.void
-          }
-          const notification = toInternalServerNotification(message)
-          if (notification === undefined) {
-            return Effect.void
-          }
-          if (message.tag.includes("list_changed")) {
-            if (!listChangedHandles.has(message.tag)) {
-              listChangedHandles.set(
-                message.tag,
-                dispatcher.scheduleTask(() => {
-                  Queue.offerUnsafe(notificationsQueue, { notification })
-                  listChangedHandles.delete(message.tag)
-                }, 0)
-              )
+        Deferred.make<void>().pipe(Effect.flatMap((delivered) =>
+          Effect.suspend((): Effect.Effect<void> => {
+            const message = options.message
+            if (message._tag !== "Request") {
+              return Effect.void
             }
-          } else {
-            Queue.offerUnsafe(notificationsQueue, { notification })
-          }
-          return notifications.write({
-            clientId: 0,
-            requestId: message.id,
-            _tag: "Exit",
-            exit: Exit.void
+            const notification = toInternalServerNotification(message)
+            if (notification === undefined) {
+              return Effect.void
+            }
+            const queued = { notification, delivered }
+            let enqueued = false
+            if (message.tag.includes("list_changed")) {
+              if (!listChangedHandles.has(message.tag)) {
+                enqueued = true
+                listChangedHandles.set(
+                  message.tag,
+                  dispatcher.scheduleTask(() => {
+                    Queue.offerUnsafe(notificationsQueue, queued)
+                    listChangedHandles.delete(message.tag)
+                  }, 0)
+                )
+              }
+            } else {
+              enqueued = true
+              Queue.offerUnsafe(notificationsQueue, queued)
+            }
+            const acknowledge = notifications.write({
+              clientId: 0,
+              requestId: message.id,
+              _tag: "Exit",
+              exit: Exit.void
+            })
+            return enqueued ? Effect.andThen(Deferred.await(delivered), acknowledge) : acknowledge
           })
-        })
+        ))
     })
 
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
-        Queue.offer(notificationsQueue, {
-          notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
-          targetClientId: clientId
-        }),
+        Deferred.make<void>().pipe(
+          Effect.flatMap((delivered) =>
+            Queue.offer(notificationsQueue, {
+              notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
+              targetClientId: clientId,
+              delivered
+            })
+          )
+        ),
       get tools() {
         return tools
       },
@@ -711,6 +725,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const clientProtocols = new Map<number, McpProtocol.AnyProtocolAdapter>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
+  const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   // A bounded PubSub would let one slow listener block the shared worker and
   // legacy delivery. Each request scope releases its subscription on exit.
   const serverNotifications = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
@@ -787,6 +802,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
           send(id, request, _transferables) {
             cid = id
             if (request._tag === "Request") {
+              const requestId = requestKey(request.id)
+              const waiting = reverseRequestClients.get(requestId) ?? []
+              waiting.push(key)
+              reverseRequestClients.set(requestId, waiting)
               return protocol.send(key.clientId, {
                 _tag: "Request",
                 id: request.id,
@@ -1121,18 +1140,37 @@ const runWithRuntime = Effect.fnUntraced(function*(
           case "Eof":
             if (!isHttp) {
               activeRequests.delete(clientId)
+              clientProtocols.delete(clientId)
+              clientProfiles.delete(clientId)
+              runtime.disconnect(clientId)
             }
-            clientProtocols.delete(clientId)
-            clientProfiles.delete(clientId)
-            runtime.disconnect(clientId)
             return f(clientId, request)
           case "Pong":
           case "Exit":
           case "Chunk":
           case "ClientProtocolError":
           case "Defect": {
-            const selectedProtocol = getProtocolForClient(clientProtocols, clientId, runtime.protocols[0])
-            const profile = clientProfiles.get(clientId) ?? {
+            const requestId = request._tag === "Exit"
+              ? requestKey(request.requestId)
+              : undefined
+            const session = isHttp
+              ? runtime.resolveRequest(
+                clientId,
+                Context.getUnsafe(Fiber.getCurrent()!.context, HttpServerRequest.HttpServerRequest).headers
+              )
+              : undefined
+            const waiting = requestId === undefined ? undefined : reverseRequestClients.get(requestId)
+            const reverseKey = waiting?.find((key) =>
+              session === undefined || key.profile === session.negotiatedProfile
+            )
+            if (reverseKey !== undefined && requestId !== undefined) {
+              const remaining = waiting!.filter((key) => key !== reverseKey)
+              if (remaining.length === 0) reverseRequestClients.delete(requestId)
+              else reverseRequestClients.set(requestId, remaining)
+            }
+            const targetClientId = reverseKey?.clientId ?? clientId
+            const selectedProtocol = getProtocolForClient(clientProtocols, targetClientId, runtime.protocols[0])
+            const profile = reverseKey?.profile ?? clientProfiles.get(targetClientId) ?? {
               protocolVersion: selectedProtocol.protocolVersion,
               clientCapabilities: {},
               clientInfo: { name: "unknown", version: "unknown" }
@@ -1140,7 +1178,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return RcMap.get(
               clients,
               new McpClientKey({
-                clientId,
+                clientId: targetClientId,
                 profile
               })
             ).pipe(
@@ -1153,7 +1191,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   })
 
   yield* Queue.take(internalState.get(server)!.notifications).pipe(
-    Effect.flatMap(Effect.fnUntraced(function*({ notification, targetClientId }) {
+    Effect.flatMap(Effect.fnUntraced(function*({ delivered, notification, targetClientId }) {
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
         yield* PubSub.publish(serverNotifications, { notification, targetClientId })
       }
@@ -1166,7 +1204,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
           runtime.disconnect(clientId)
         }
       }
-      for (const clientId of runtime.deliveryClientIds()) {
+      const deliveryClientIds = targetClientId === undefined
+        ? isHttp ? clientProtocols.keys() : runtime.deliveryClientIds()
+        : [targetClientId]
+      for (const clientId of deliveryClientIds) {
         if (targetClientId !== undefined && clientId !== targetClientId) {
           continue
         }
@@ -1206,6 +1247,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           })
         }).pipe(Effect.ignoreCause)
       }
+      yield* Deferred.succeed(delivered, undefined)
     })),
     Effect.ignoreCause,
     Effect.forever,
@@ -1561,9 +1603,12 @@ const layerMcpProtocolHttp = (options: {
                       error: new MethodNotFound({ message: `Method not found: ${input.method}` })
                     }, { status: 404 }))
                   }
-                  const response = Predicate.hasProperty(input, "method") && input.method === "subscriptions/listen"
-                    ? Effect.map(httpEffect, toServerSentEvents)
-                    : httpEffect
+                  const isSubscription = Predicate.hasProperty(input, "method") &&
+                    input.method === "subscriptions/listen"
+                  const response = Effect.map(httpEffect, (response) =>
+                    isSubscription || response.body._tag === "Stream"
+                      ? toServerSentEvents(response)
+                      : response)
                   return !isRequest || !hasId
                     ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
                     : response
