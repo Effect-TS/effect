@@ -220,6 +220,7 @@ const getExampleFiles = (modules: ReadonlyArray<Domain.Module>) =>
     const config = yield* Configuration.Configuration
     const path = yield* Path.Path
     let warnings: Array<string> = []
+    let fileIndex = 0
     const files = Array.flatMap(modules, (module) => {
       const prefix = module.path.join("-")
 
@@ -246,7 +247,7 @@ const getExampleFiles = (modules: ReadonlyArray<Domain.Module>) =>
                 path.join(
                   config.outDir,
                   "examples",
-                  `${prefix}-${exampleId}-${namedDoc.name}-${i}.ts`
+                  `${fileIndex++}-${prefix}-${exampleId}-${namedDoc.name}-${i}.ts`
                 ),
                 example,
                 true // make the file overwritable
