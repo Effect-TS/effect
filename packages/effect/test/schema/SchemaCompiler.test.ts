@@ -74,6 +74,22 @@ describe("SchemaCompiler", () => {
     strictEqual(reads, 1)
   })
 
+  it("honors ParseOptions in compiled type guards", () => {
+    const structural = Schema.Struct({ value: Schema.String })
+    const rejectExcess = SchemaParser.is(structural, { onExcessProperty: "error" })
+    strictEqual(rejectExcess({ value: "a" }), true)
+    strictEqual(rejectExcess({ value: "a", extra: true }), false)
+
+    const checked = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
+      Schema.makeFilter((value, _ast, options) => options.reportInput === true && Object.keys(value)[0] === "b")
+    )
+    const input = { b: "b", a: "a" }
+    strictEqual(SchemaParser.is(checked, { propertyOrder: "original", reportInput: true })(input), true)
+    strictEqual(SchemaParser.is(checked, { reportInput: true })(input), false)
+    strictEqual(SchemaParser.is(checked, { propertyOrder: "original" })(input), false)
+    strictEqual(SchemaParser.is(checked, { disableChecks: true })(input), true)
+  })
+
   it("runs the diagnostic phase after fast validation fails", () => {
     let reads = 0
     const input = {
@@ -313,9 +329,20 @@ describe("SchemaCompiler", () => {
       globalThis.Function = (() => {
         throw new Error("dynamic function generation unavailable")
       }) as any
-      const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ value: Schema.String }))
+      const schema = Schema.Struct({ value: Schema.String })
+      const getParser = schema.ast.getParser.bind(schema.ast)
+      let interpreterConstructions = 0
+      Object.defineProperty(schema.ast, "getParser", {
+        configurable: true,
+        value(...args: Parameters<typeof getParser>) {
+          interpreterConstructions++
+          return getParser(...args)
+        }
+      })
+      const decode = SchemaParser.decodeUnknownSync(schema)
 
       deepStrictEqual(decode({ value: "a" }), { value: "a" })
+      strictEqual(interpreterConstructions, 1)
       throws(() => decode({ value: 1 }), (error) => {
         assertSchemaIssueError(
           error,

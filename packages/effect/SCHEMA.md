@@ -114,18 +114,26 @@ WeakMap<AST, Parser>
        |
        `-- compiled parser
              |
-             +-- is?(input) -> decoded value or INVALID
+             +-- is?(input, options) -> boolean
+             +-- validate(input, options) -> decoded value or INVALID
              `-- decode(input, options) -> decoded value or SchemaIssue
 ```
 
 This replacement is transparent to every `SchemaParser` API that resolves the
-AST. For an encoding-free AST, the compiled parser contains two lazily used
-phases. `is` is the minimal generated fast path: it returns the decoded value or
-the private `INVALID` sentinel and does not construct issues. When it returns
-`INVALID`, `decode` performs a second compiled pass that produces the same
-decoded value or `SchemaIssue` as the interpreter. The diagnostic phase is
-created only on its first use. Calls with non-default parse options go directly
-to `decode`, which honors those options without first running `is`.
+AST. A supported type-side AST has up to three independently lazy operations:
+
+- `is` validates without constructing an output and returns a boolean. It is
+  generated only when the compiler can prove that no decoded composite value is
+  needed, for example by a check on a reconstructed struct.
+- `validate` validates, materializes the decoded value, and returns a private
+  `INVALID` sentinel instead of constructing issues.
+- `decode` materializes the same value and constructs the normal `SchemaIssue`
+  on failure.
+
+Successful decoding stops after `validate`. When it returns `INVALID`, `decode`
+performs one detailed compiled pass. All `ParseOptions` are supported; options
+that affect the decoded output or issue collection may select a more detailed
+generated path.
 
 An AST containing an encoding has no root `is` phase. Its compiled `decode`
 orchestrates transformations and middleware directly, executing each operation
@@ -142,17 +150,24 @@ or unprofitable structural roots can therefore remain interpreted while their
 supported descendants compile. This local fallback does not create a second
 parser role or retain a private interpreted copy of a compiled parser.
 
-`SchemaParser.is` uses the same generated `is` phase and reduces its result to a
-boolean. There is no second parser cache or separately exposed compiled schema.
+`SchemaParser.is(schema, options)` always checks `SchemaAST.toType(schema.ast)`.
+It uses the generated `is` operation when available, otherwise it runs
+`validate` and reduces its result to a boolean. The options are captured when
+the type guard is created. In particular, `onExcessProperty`, `propertyOrder`,
+and checks have the same meaning as in decoding. `disableChecks: true` is an
+explicitly unsafe optimization: the caller takes responsibility for the type
+narrowing. There is no second parser cache or separately exposed compiled
+schema.
 
 Unsupported or unprofitable AST roots use the interpreter. Generated paths also
 fall back when the environment disallows dynamic code generation. On an invalid
-default decode, the two phases of an encoding-free compiled parser can read
-input properties and execute checks twice. Checks must therefore be free of
-observable side effects, and property getters reached by a compiled parser must
-be deterministic and safe to repeat. Transformations and middleware are outside
-that replay region. Importing the compiler changes the execution strategy, not
-the `SchemaParser` API or its results.
+type-side decode, `validate` and `decode` can read input properties and execute
+checks twice. Checks must therefore be free of observable side effects, and
+input property getters reached by a compiled parser must be deterministic and
+safe to repeat. Declaration parsers have the same replay constraint and must
+also complete synchronously. Transformations and middleware are executed only
+by `decode` and remain outside the replay region. Importing the compiler changes
+the execution strategy, not the results of the `SchemaParser` APIs.
 
 #### Performance snapshot
 
@@ -2473,6 +2488,12 @@ While `Schema.declare` works for fixed types like `URL` or `File`, some types ar
 `Schema.declareConstructor` handles this by letting you define a **schema factory**: a function that takes schemas for the type parameters and returns a schema for the full type.
 
 > **Important:** `declareConstructor` is for types where the **container shape is the same** on both sides: only the inner type parameter changes (e.g. `Box<Encoded>` to `Box<Type>`). If you need to convert a structurally different type into your declared type (e.g. `T` to `Box<T>`), first declare `Box` with `declareConstructor`, then define a separate transformation schema to express the conversion.
+
+The declaration parser must complete synchronously, have no observable side
+effects, and be safe to evaluate again with the same input. It may reconstruct
+an equivalent container (for example, a `ReadonlySet` whose elements were
+decoded), but it must not perform a semantic encoded-to-type conversion; express
+that conversion with a schema transformation.
 
 ### How the two-step call works
 

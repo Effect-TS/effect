@@ -698,8 +698,10 @@ type DeclarationRun = (
  * - `typeParameters` — inner schemas this declaration is parameterized over
  *   (e.g. the element type for a custom collection).
  * - `run` — factory that receives `typeParameters` and returns a parser that
- *   validates or transforms raw input. The `Effect` returned by the parser must
- *   complete synchronously.
+ *   recognizes the declared representation. It may materialize an equivalent
+ *   container, but semantic encoded-to-type conversions belong in an AST link.
+ *   The parser must complete synchronously, have no observable side effects,
+ *   and be safe to evaluate again with the same input.
  *
  * @see {@link isDeclaration}
  * @category models

@@ -7,7 +7,14 @@ export const invalid = Symbol()
 
 /** @internal */
 export interface Is {
-  (input: unknown): unknown | typeof invalid
+  (input: unknown, options: SchemaAST.ParseOptions): boolean
+  readonly default: (input: unknown) => boolean
+}
+
+/** @internal */
+export interface Validate {
+  (input: unknown, options: SchemaAST.ParseOptions): unknown | typeof invalid
+  readonly default: (input: unknown) => unknown | typeof invalid
 }
 
 /** @internal */
@@ -19,13 +26,23 @@ export interface Parser {
 }
 
 /** @internal */
+export const CompiledParserTypeId = Symbol()
+
+/** @internal */
 export interface CompiledParser {
+  readonly kind: "Type" | "Decode"
   readonly is: Is | undefined
+  readonly validate: Validate | undefined
+  readonly parser: Parser
   readonly decode: (
     input: unknown,
     options: SchemaAST.ParseOptions
   ) => Effect.Effect<unknown, SchemaIssue.Issue, any>
 }
+
+/** @internal */
+export const getCompiledParser = (parser: Parser): CompiledParser | undefined =>
+  (parser as Parser & { readonly [CompiledParserTypeId]?: CompiledParser })[CompiledParserTypeId]
 
 /** @internal */
 export interface ResolveParser {

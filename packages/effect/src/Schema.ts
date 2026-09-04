@@ -446,6 +446,11 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *   returns a parsing function `(u, ast, options) => Effect<T, Issue>`
  * - `annotations` — optional metadata
  *
+ * The parser returned by `run` must complete synchronously, have no observable
+ * side effects, and be safe to evaluate again with the same input. It may
+ * materialize an equivalent container representation, but encoded-to-type
+ * conversions belong in a separate schema transformation.
+ *
  * @see {@link declare} for creating schemas for non-parametric types.
  *
  * **Example** (Schema for a parametric `Box<A>` type)
@@ -1363,6 +1368,10 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  * Only causes made entirely of schema issues are converted to `false`. Causes
  * that contain defects, interruptions, or other non-schema reasons throw
  * instead.
+ *
+ * Parse options are captured when the guard is created. Passing
+ * `disableChecks: true` skips refinement checks and is unsafe: the caller
+ * assumes responsibility for the resulting type narrowing.
  *
  * **Example** (Defining a basic type guard)
  *
@@ -6369,6 +6378,10 @@ export function link<T>() {
  *
  * When `abort` is `true`, parsing stops after this filter fails instead of
  * collecting later check failures.
+ *
+ * Filter predicates must have no observable side effects. A runtime compiler
+ * may evaluate them once during fast validation and again to construct detailed
+ * issues after validation fails.
  *
  * **Example** (Reporting failure at a nested path)
  *

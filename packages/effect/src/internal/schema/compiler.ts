@@ -6,7 +6,15 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import { effectIsExit } from "../effect.ts"
 import * as InternalSchemaCause from "./cause.ts"
-import { type CompiledParser, invalid, type Is, type Parser, type ResolveParser } from "./compilerHook.ts"
+import {
+  type CompiledParser,
+  getCompiledParser,
+  invalid,
+  type Is,
+  type Parser,
+  type ResolveParser,
+  type Validate
+} from "./compilerHook.ts"
 import * as InternalParser from "./parser.ts"
 
 const hasParseOptions = (ast: SchemaAST.AST): boolean => {
@@ -18,8 +26,25 @@ const hasParseOptions = (ast: SchemaAST.AST): boolean => {
 
 const isOptional = (ast: SchemaAST.AST): boolean => ast.context?.isOptional ?? false
 
-const canEmitLocal = (ast: SchemaAST.AST): boolean => {
-  if (hasParseOptions(ast)) return false
+const maxGeneratedDepth = 256
+let functionConstructor: FunctionConstructor | undefined
+let functionConstructorSupported = false
+
+const supportsDynamicFunction = (): boolean => {
+  if (functionConstructor === globalThis.Function) return functionConstructorSupported
+  functionConstructor = globalThis.Function
+  try {
+    functionConstructor("return true")
+    return functionConstructorSupported = true
+  } catch {
+    return functionConstructorSupported = false
+  }
+}
+
+type Emission = 0 | 1 | 2
+
+const getEmission = (ast: SchemaAST.AST, depth = 0): Emission => {
+  if (depth > maxGeneratedDepth || ast.encoding !== undefined || hasParseOptions(ast)) return 0
   switch (ast._tag) {
     case "Null":
     case "Undefined":
@@ -36,24 +61,57 @@ const canEmitLocal = (ast: SchemaAST.AST): boolean => {
     case "Boolean":
     case "Symbol":
     case "BigInt":
-      return true
-    case "TemplateLiteral":
-      return ast.parts.every(canEmit)
-    case "Arrays":
-      return ast.elements.every(canEmit) && ast.rest.every(canEmit)
-    case "Objects":
-      return ast.propertySignatures.every((property) => canEmit(property.type)) &&
-        ast.indexSignatures.every((signature) =>
-          canEmit(SchemaAST.parameterFromPropertyKey(signature.parameter)) && canEmit(signature.type)
-        )
-    case "Union":
-      return ast.types.every(canEmit)
+      return 2
+    case "TemplateLiteral": {
+      for (const part of ast.parts) {
+        if (getEmission(part, depth + 1) === 0) return 0
+      }
+      return 2
+    }
+    case "Arrays": {
+      let isOutputFree = ast.checks === undefined
+      for (const element of ast.elements) {
+        const emission = getEmission(element, depth + 1)
+        if (emission === 0) return 0
+        if (emission === 1) isOutputFree = false
+      }
+      for (const element of ast.rest) {
+        const emission = getEmission(element, depth + 1)
+        if (emission === 0) return 0
+        if (emission === 1) isOutputFree = false
+      }
+      return isOutputFree ? 2 : 1
+    }
+    case "Objects": {
+      let isOutputFree = ast.checks === undefined
+      for (const property of ast.propertySignatures) {
+        const emission = getEmission(property.type, depth + 1)
+        if (emission === 0) return 0
+        if (emission === 1) isOutputFree = false
+      }
+      for (const signature of ast.indexSignatures) {
+        const key = getEmission(SchemaAST.parameterFromPropertyKey(signature.parameter), depth + 1)
+        const value = getEmission(signature.type, depth + 1)
+        if (key === 0 || value === 0) return 0
+        if (key === 1 || value === 1) isOutputFree = false
+      }
+      return isOutputFree ? 2 : 1
+    }
+    case "Union": {
+      let isOutputFree = ast.checks === undefined
+      for (const type of ast.types) {
+        const emission = getEmission(type, depth + 1)
+        if (emission === 0) return 0
+        if (emission === 1) isOutputFree = false
+      }
+      return isOutputFree ? 2 : 1
+    }
     default:
-      return false
+      return 0
   }
 }
 
-const canEmit = (ast: SchemaAST.AST): boolean => ast.encoding === undefined && canEmitLocal(ast)
+const canEmit = (ast: SchemaAST.AST, depth = 0): boolean => getEmission(ast, depth) !== 0
 
 type Emitter = {
   readonly statements: Array<string>
@@ -63,6 +121,7 @@ type Emitter = {
   readonly unionHelpers: Map<SchemaAST.Union, string>
   readonly constants: Array<unknown>
   readonly constantIndexes: Map<unknown, number>
+  readonly options: "D" | "o"
   next: number
 }
 
@@ -136,14 +195,22 @@ const shouldCompileParser = (ast: SchemaAST.AST): boolean => {
   }
 }
 
-const failsChecks = (ast: SchemaAST.AST, value: unknown, encoded = false): boolean => {
+const failsChecks = (
+  ast: SchemaAST.AST,
+  value: unknown,
+  encoded: boolean,
+  options: SchemaAST.ParseOptions
+): boolean => {
   const checks = encoded ? getEncodingChecks(ast) : ast.checks
-  return checks !== undefined &&
-    SchemaAST.collectIssues(checks, value, undefined, ast, SchemaAST.defaultParseOptions) !== undefined
+  return !options.disableChecks && checks !== undefined &&
+    SchemaAST.collectIssues(checks, value, undefined, ast, options) !== undefined
 }
 
-const matchesTemplateLiteral = (ast: SchemaAST.TemplateLiteral, value: unknown): boolean =>
-  typeof value === "string" && ast.matchPart(value, SchemaAST.defaultParseOptions) !== undefined
+const matchesTemplateLiteral = (
+  ast: SchemaAST.TemplateLiteral,
+  value: unknown,
+  options: SchemaAST.ParseOptions
+): boolean => typeof value === "string" && ast.matchPart(value, options) !== undefined
 
 const lookupMemberValues = (ast: SchemaAST.AST): ReadonlyArray<unknown> | undefined => {
   if (ast.checks !== undefined) return undefined
@@ -167,17 +234,21 @@ function emitDecoded(
   ast: SchemaAST.AST,
   input: string,
   statements: Array<string>,
-  emitter: Emitter
+  emitter: Emitter,
+  needsValue: boolean
 ): string {
-  const output = emitBase(ast, input, statements, emitter)
+  const output = emitBase(ast, input, statements, emitter, needsValue || ast.checks !== undefined)
   const encodingChecks = getEncodingChecks(ast)
   const astConstant = ast.checks !== undefined || encodingChecks !== undefined ? constant(emitter, ast) : undefined
   if (encodingChecks !== undefined) {
-    statements.push(`if(K(${astConstant},${input},1))return I`)
+    statements.push(`if(K(${astConstant},${input},1,${emitter.options}))return I`)
   }
   if (ast.checks === undefined) return output
   const checked = variable(emitter)
-  statements.push(`const ${checked}=${output}`, `if(K(${astConstant},${checked}))return I`)
+  statements.push(
+    `const ${checked}=${output}`,
+    `if(K(${astConstant},${checked},0,${emitter.options}))return I`
+  )
   return checked
 }
 
@@ -185,28 +256,33 @@ function emit(
   ast: SchemaAST.AST,
   input: string,
   statements: Array<string>,
-  emitter: Emitter
+  emitter: Emitter,
+  needsValue: boolean
 ): string {
-  return emitDecoded(ast, input, statements, emitter)
+  return emitDecoded(ast, input, statements, emitter, needsValue)
 }
 
-const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter): string => {
+const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter, needsValue: boolean): string => {
   const cached = emitter.decoderHelpers.get(ast)
   if (cached !== undefined) return cached
   const name = `d${emitter.next++}`
   emitter.decoderHelpers.set(ast, name)
   const statements: Array<string> = []
-  const output = emit(ast, "i", statements, emitter)
-  emitter.helpers.push(`function ${name}(i){${statements.join(";")};return ${output}}`)
+  const output = emit(ast, "i", statements, emitter, needsValue)
+  emitter.helpers.push(
+    `function ${name}(i${emitter.options === "o" ? ",o" : ""}){${statements.join(";")};return ${output}}`
+  )
   return name
 }
 
-const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter): string => {
+const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter, needsValue: boolean): string => {
   const cached = emitter.unionHelpers.get(ast)
   if (cached !== undefined) return cached
   const name = `u${emitter.next++}`
   emitter.unionHelpers.set(ast, name)
-  const entries = ast.types.map((type) => `[${constant(emitter, type)},${emitDecoderHelper(type, emitter)}]`)
+  const entries = ast.types.map((type) =>
+    `[${constant(emitter, type)},${emitDecoderHelper(type, emitter, needsValue)}]`
+  )
   emitter.initializers.push(`const ${name}=new Map([${entries.join(",")}])`)
   return name
 }
@@ -214,11 +290,12 @@ const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter): string => {
 const emitIndexes = (
   ast: SchemaAST.Objects,
   input: string,
-  output: string,
+  output: string | undefined,
   statements: Array<string>,
-  emitter: Emitter
+  emitter: Emitter,
+  needsValue: boolean
 ): void => {
-  const fixedKeys = ast.propertySignatures.length === 0
+  const fixedKeys = output === undefined || ast.propertySignatures.length === 0
     ? undefined
     : constant(emitter, new Set(ast.propertySignatures.map((property) => property.name)))
   for (const signature of ast.indexSignatures) {
@@ -230,23 +307,25 @@ const emitIndexes = (
       `const ${keys}=${
         parameter._tag === "String" && parameter.checks === undefined
           ? `Object.keys(${input})`
-          : `G(${input},${constant(emitter, parameter)})`
+          : `G(${input},${constant(emitter, parameter)},${emitter.options})`
       }`
     )
     const loop: Array<string> = [`const ${key}=${keys}[${index}]`]
     const decodedKey = parameter._tag === "String" && parameter.checks === undefined && parameter.encoding === undefined
       ? key
-      : emit(SchemaAST.parameterFromPropertyKey(parameter), key, loop, emitter)
+      : emit(SchemaAST.parameterFromPropertyKey(parameter), key, loop, emitter, true)
     const value = variable(emitter)
     loop.push(`const ${value}=${input}[${key}]`)
-    const decoded = emit(signature.type, value, loop, emitter)
-    const assign =
-      `if(${decodedKey}==="__proto__")Object.defineProperty(${output},${decodedKey},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${decodedKey}]=${decoded}`
-    loop.push(
-      fixedKeys === undefined
-        ? assign
-        : `if(!${fixedKeys}.has(${key})&&!${fixedKeys}.has(${decodedKey})){${assign}}`
-    )
+    const decoded = emit(signature.type, value, loop, emitter, needsValue)
+    if (output !== undefined) {
+      const assign =
+        `if(${decodedKey}==="__proto__")Object.defineProperty(${output},${decodedKey},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${decodedKey}]=${decoded}`
+      loop.push(
+        fixedKeys === undefined
+          ? assign
+          : `if(!${fixedKeys}.has(${key})&&!${fixedKeys}.has(${decodedKey})){${assign}}`
+      )
+    }
     statements.push(`for(let ${index}=0;${index}<${keys}.length;${index}++){${loop.join(";")}}`)
   }
 }
@@ -255,7 +334,8 @@ const emitBase = (
   ast: SchemaAST.AST,
   input: string,
   statements: Array<string>,
-  emitter: Emitter
+  emitter: Emitter,
+  needsValue: boolean
 ): string => {
   switch (ast._tag) {
     case "Null":
@@ -307,7 +387,7 @@ const emitBase = (
       return input
     case "TemplateLiteral": {
       const template = constant(emitter, ast)
-      statements.push(`if(!T(${template},${input}))return I`)
+      statements.push(`if(!T(${template},${input},${emitter.options}))return I`)
       return input
     }
     case "Arrays": {
@@ -328,33 +408,33 @@ const emitBase = (
           const elements = ast.elements.map((element, index) => {
             const value = variable(emitter)
             statements.push(`const ${value}=${input}[${index}]`)
-            return emit(element, value, statements, emitter)
+            return emit(element, value, statements, emitter, needsValue)
           })
-          return `[${elements.join(",")}]`
+          return needsValue ? `[${elements.join(",")}]` : input
         }
-        const output = variable(emitter)
-        statements.push(`const ${output}=new Array(${length})`)
+        const output = needsValue ? variable(emitter) : undefined
+        if (output !== undefined) statements.push(`const ${output}=new Array(${length})`)
         for (let index = 0; index < elementLength; index++) {
           const value = variable(emitter)
           const elementStatements: Array<string> = [`const ${value}=${input}[${index}]`]
-          const decoded = emit(ast.elements[index], value, elementStatements, emitter)
-          elementStatements.push(`${output}[${index}]=${decoded}`)
+          const decoded = emit(ast.elements[index], value, elementStatements, emitter, needsValue)
+          if (output !== undefined) elementStatements.push(`${output}[${index}]=${decoded}`)
           statements.push(
             index < minimumElementLength
               ? elementStatements.join(";")
               : `if(${index}<${length}){${elementStatements.join(";")}}`
           )
         }
-        return output
+        return output ?? input
       }
       statements.push(`if(${length}<${minimumElementLength + tailLength})return I`)
-      const output = variable(emitter)
-      statements.push(`const ${output}=new Array(${length})`)
+      const output = needsValue ? variable(emitter) : undefined
+      if (output !== undefined) statements.push(`const ${output}=new Array(${length})`)
       for (let index = 0; index < elementLength; index++) {
         const value = variable(emitter)
         const elementStatements: Array<string> = [`const ${value}=${input}[${index}]`]
-        const decoded = emit(ast.elements[index], value, elementStatements, emitter)
-        elementStatements.push(`${output}[${index}]=${decoded}`)
+        const decoded = emit(ast.elements[index], value, elementStatements, emitter, needsValue)
+        if (output !== undefined) elementStatements.push(`${output}[${index}]=${decoded}`)
         statements.push(
           index < minimumElementLength
             ? elementStatements.join(";")
@@ -365,8 +445,8 @@ const emitBase = (
       const restStatements: Array<string> = []
       const value = variable(emitter)
       restStatements.push(`const ${value}=${input}[${index}]`)
-      const decoded = emit(ast.rest[0], value, restStatements, emitter)
-      restStatements.push(`${output}[${index}]=${decoded}`)
+      const decoded = emit(ast.rest[0], value, restStatements, emitter, needsValue)
+      if (output !== undefined) restStatements.push(`${output}[${index}]=${decoded}`)
       statements.push(
         `for(let ${index}=${elementLength};${index}<${length}-${tailLength};${index}++){${restStatements.join(";")}}`
       )
@@ -374,10 +454,10 @@ const emitBase = (
         const inputIndex = `${length}-${tailLength - index}`
         const value = variable(emitter)
         statements.push(`const ${value}=${input}[${inputIndex}]`)
-        const decoded = emit(ast.rest[index + 1], value, statements, emitter)
-        statements.push(`${output}[${inputIndex}]=${decoded}`)
+        const decoded = emit(ast.rest[index + 1], value, statements, emitter, needsValue)
+        if (output !== undefined) statements.push(`${output}[${inputIndex}]=${decoded}`)
       }
-      return output
+      return output ?? input
     }
     case "Objects": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
@@ -388,7 +468,7 @@ const emitBase = (
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return I`
       )
       const hasOptional = ast.propertySignatures.some((property) => isOptional(property.type))
-      if (ast.propertySignatures.length > 0 && !hasOptional) {
+      if (needsValue && ast.propertySignatures.length > 0 && !hasOptional) {
         const output = variable(emitter)
         const properties = ast.propertySignatures.map((property) => {
           const key = propertyKey(emitter, property.name)
@@ -398,20 +478,20 @@ const emitBase = (
             statements.push(`if(!(${propertyPresence(input, key, property.name)}))return I`)
           }
           statements.push(`const ${value}=${input}[${key}]`)
-          return `${outputKey}:${emit(property.type, value, statements, emitter)}`
+          return `${outputKey}:${emit(property.type, value, statements, emitter, true)}`
         })
         statements.push(`const ${output}={${properties.join(",")}}`)
-        if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter)
+        if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, true)
         return output
       }
-      const output = variable(emitter)
-      statements.push(`const ${output}={}`)
+      const output = needsValue ? variable(emitter) : undefined
+      if (output !== undefined) statements.push(`const ${output}={}`)
       for (const property of ast.propertySignatures) {
         const key = propertyKey(emitter, property.name)
         const value = variable(emitter)
         const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
-        const decoded = emit(property.type, value, propertyStatements, emitter)
-        propertyStatements.push(assignProperty(output, key, decoded, property.name))
+        const decoded = emit(property.type, value, propertyStatements, emitter, needsValue)
+        if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
         statements.push(
           isOptional(property.type)
             ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
@@ -422,8 +502,8 @@ const emitBase = (
             }${propertyStatements.join(";")}`
         )
       }
-      if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter)
-      return output
+      if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, needsValue)
+      return output ?? input
     }
     case "Union": {
       const memberValues = ast.types.map(lookupMemberValues)
@@ -448,21 +528,25 @@ const emitBase = (
       const index = variable(emitter)
       const decoder = variable(emitter)
       const types = constant(emitter, ast.types)
-      const decoders = emitUnionHelper(ast, emitter)
+      const decoders = emitUnionHelper(ast, emitter, needsValue)
       statements.push(
         `const ${candidates}=U(${input},${types})`,
         `let ${output}=I,${candidate},${decoder}`
       )
       if (ast.mode === "anyOf") {
         statements.push(
-          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input});if(${candidate}!==I){${output}=${candidate};break}}`
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input}${
+            emitter.options === "o" ? ",o" : ""
+          });if(${candidate}!==I){${output}=${candidate};break}}`
         )
         statements.push(`if(${output}===I)return I`)
       } else {
         const successes = variable(emitter)
         statements.push(`let ${successes}=0`)
         statements.push(
-          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input});if(${candidate}!==I){${successes}++;${output}=${candidate}}}`
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input}${
+            emitter.options === "o" ? ",o" : ""
+          });if(${candidate}!==I){${successes}++;${output}=${candidate}}}`
         )
         statements.push(`if(${successes}!==1)return I`)
       }
@@ -614,7 +698,7 @@ function compileDetailedBase(ast: SchemaAST.AST): DetailedDecoder {
       return (input, options) => {
         if (input === InternalParser.missing) return input
         if (typeof input !== "string") return invalidType(ast, input, options)
-        return matchesTemplateLiteral(ast, input)
+        return matchesTemplateLiteral(ast, input, options)
           ? input
           : fail(
             new SchemaIssue.Composite(
@@ -850,8 +934,7 @@ function compileDetailedUnion(ast: SchemaAST.Union): DetailedDecoder {
   }
 }
 
-const makeDetailed = (ast: SchemaAST.AST): CompiledParser["decode"] => {
-  const decode = compileDetailed(ast)
+const makeDetailed = (decode: DetailedDecoder): CompiledParser["decode"] => {
   return (input, options) => {
     try {
       const output = decode(input, options)
@@ -877,6 +960,11 @@ type ComposedObjectState = {
   readonly input: Record<PropertyKey, unknown>
   readonly options: SchemaAST.ParseOptions
   readonly output: Record<PropertyKey, unknown>
+}
+
+const resolveDirect = (resolve: ResolveParser, ast: SchemaAST.AST): Parser => {
+  const parser = resolve(ast)
+  return getCompiledParser(parser)?.parser ?? parser
 }
 
 const wrapComposedObjectFailure = (
@@ -1131,7 +1219,7 @@ const makeComposedObjectDecode = (
       name: property.name,
       optional: isOptional(property.type),
       parser(input, options) {
-        const parser = resolve(property.type)
+        const parser = resolveDirect(resolve, property.type)
         out.parser = parser
         return parser(input, options)
       },
@@ -1182,8 +1270,8 @@ const makeEncodingDetailed = (
   resolve: ResolveParser
 ): CompiledParser["decode"] => {
   const links = ast.encoding!
-  const parsers = links.map((link) => resolve(link.to))
-  const local = resolve(SchemaAST.replaceEncoding(ast, undefined))
+  const parsers = links.map((link) => resolveDirect(resolve, link.to))
+  const local = resolveDirect(resolve, SchemaAST.replaceEncoding(ast, undefined))
   const decode = (input: unknown, options: SchemaAST.ParseOptions) => {
     let current = input
     let result = parsers[parsers.length - 1](input, options)
@@ -1231,9 +1319,14 @@ const makeEncodingDetailed = (
   }
 }
 
-const makeIs = (ast: SchemaAST.AST): Is | undefined => {
+type GeneratedValidate = (input: unknown, options?: SchemaAST.ParseOptions) => unknown | typeof invalid
+
+const makeValidate = (
+  ast: SchemaAST.AST,
+  needsValue: boolean,
+  defaultOptions: boolean
+): GeneratedValidate | undefined => {
   try {
-    if (!canEmit(ast)) return undefined
     const emitter: Emitter = {
       statements: [],
       helpers: [],
@@ -1242,48 +1335,135 @@ const makeIs = (ast: SchemaAST.AST): Is | undefined => {
       unionHelpers: new Map(),
       constants: [],
       constantIndexes: new Map(),
+      options: defaultOptions ? "D" : "o",
       next: 0
     }
-    const output = emit(ast, "i", emitter.statements, emitter)
-    const source = `"use strict";${emitter.helpers.join(";")};${emitter.initializers.join(";")};return function(i){${
-      emitter.statements.join(";")
-    };return ${output}}`
-    return globalThis.Function("I", "C", "K", "T", "U", "G", source)(
+    const output = emit(ast, "i", emitter.statements, emitter, needsValue)
+    const source = `"use strict";${emitter.helpers.join(";")};${emitter.initializers.join(";")};return function(i${
+      defaultOptions ? "" : ",o"
+    }){${emitter.statements.join(";")};return ${output}}`
+    return globalThis.Function("I", "C", "K", "T", "U", "G", "D", source)(
       invalid,
       emitter.constants,
       failsChecks,
       matchesTemplateLiteral,
       SchemaAST.getCandidates,
-      SchemaAST.getIndexSignatureKeys
-    ) as Is
+      SchemaAST.getIndexSignatureKeys,
+      SchemaAST.defaultParseOptions
+    ) as GeneratedValidate
   } catch {
     return undefined
   }
 }
 
-class CompiledParserImpl implements CompiledParser {
-  readonly ast: SchemaAST.AST
-  readonly is: Is
+const usesDefaultOutputOptions = (options: SchemaAST.ParseOptions): boolean =>
+  options === SchemaAST.defaultParseOptions ||
+  (options.onExcessProperty !== "error" && options.onExcessProperty !== "preserve" &&
+    options.propertyOrder !== "original")
 
-  constructor(ast: SchemaAST.AST, is: Is) {
+class CompiledParserImpl implements CompiledParser {
+  readonly kind = "Type"
+  readonly ast: SchemaAST.AST
+  readonly emitIs: boolean
+
+  constructor(ast: SchemaAST.AST, emitIs: boolean) {
     this.ast = ast
-    this.is = is
+    this.emitIs = emitIs
+  }
+
+  get detailed(): DetailedDecoder {
+    const detailed = compileDetailed(this.ast)
+    Object.defineProperty(this, "detailed", { value: detailed })
+    return detailed
+  }
+
+  get is(): Is | undefined {
+    const defaultValidate = this.emitIs ? makeValidate(this.ast, false, true) : undefined
+    let withOptions: GeneratedValidate | undefined
+    const is: Is | undefined = defaultValidate === undefined
+      ? undefined
+      : Object.assign(
+        (input: unknown, options: SchemaAST.ParseOptions) => {
+          if (options === SchemaAST.defaultParseOptions) return defaultValidate(input) !== invalid
+          if (usesDefaultOutputOptions(options)) {
+            withOptions ??= makeValidate(this.ast, false, false)
+            if (withOptions !== undefined) return withOptions(input, options) !== invalid
+          }
+          return this.validate!(input, options) !== invalid
+        },
+        { default: (input: unknown) => defaultValidate(input) !== invalid }
+      )
+    Object.defineProperty(this, "is", { value: is })
+    return is
+  }
+
+  get validate(): Validate | undefined {
+    const defaultValidate = makeValidate(this.ast, true, true)
+    let withOptions: GeneratedValidate | undefined
+    const validate: Validate | undefined = defaultValidate === undefined
+      ? undefined
+      : Object.assign(
+        (input: unknown, options: SchemaAST.ParseOptions) => {
+          if (options === SchemaAST.defaultParseOptions) return defaultValidate(input)
+          if (usesDefaultOutputOptions(options)) {
+            withOptions ??= makeValidate(this.ast, true, false)
+            if (withOptions !== undefined) return withOptions(input, options)
+          }
+          const output = this.detailed(input, options)
+          return isFailure(output) ? invalid : output
+        },
+        { default: defaultValidate }
+      )
+    Object.defineProperty(this, "validate", { value: validate })
+    return validate
   }
 
   get decode(): CompiledParser["decode"] {
-    const decode = makeDetailed(this.ast)
+    const decode = makeDetailed(this.detailed)
     Object.defineProperty(this, "decode", { value: decode })
     return decode
   }
+
+  get parser(): Parser {
+    const validate = this.validate
+    if (validate === undefined) return this.decode
+    const validateDefault = validate.default
+    let decode: CompiledParser["decode"] | undefined
+    const parser: Parser = (input, options) => {
+      if (input !== InternalParser.missing) {
+        try {
+          const output = options === SchemaAST.defaultParseOptions
+            ? validateDefault(input)
+            : validate(input, options)
+          if (output !== invalid) {
+            return output === input ? InternalParser.sameExit : InternalParser.succeed(output)
+          }
+        } catch (error) {
+          return Effect.die(error)
+        }
+      }
+      return (decode ??= this.decode)(input, options)
+    }
+    Object.defineProperty(this, "parser", { value: parser })
+    return parser
+  }
 }
 
-const fromDecode = (decode: CompiledParser["decode"]): CompiledParser => ({ is: undefined, decode })
+const fromDecode = (decode: CompiledParser["decode"]): CompiledParser => ({
+  kind: "Decode",
+  is: undefined,
+  validate: undefined,
+  parser: decode,
+  decode
+})
 
 /** @internal */
 export const compile = (ast: SchemaAST.AST, resolve: ResolveParser): CompiledParser | undefined => {
   if (!shouldCompileParser(ast)) return undefined
-  const is = makeIs(ast)
-  if (is !== undefined) return new CompiledParserImpl(ast, is)
+  const emission = getEmission(ast)
+  if (emission !== 0) {
+    return supportsDynamicFunction() ? new CompiledParserImpl(ast, emission === 2) : undefined
+  }
   if (ast.encoding !== undefined) return fromDecode(makeEncodingDetailed(ast, resolve))
   if (ast._tag === "Objects") {
     const decode = makeComposedObjectDecode(ast, resolve)

@@ -7,10 +7,11 @@
  * cache: either the interpreter or a compiled parser. No compiled schema or
  * separate parser cache is exposed.
  *
- * For an encoding-free AST, a compiled parser has a generated `is` phase that
- * returns a decoded value or a private invalid sentinel. On invalid input, a
- * lazily created `decode` phase constructs the normal `SchemaIssue`. Explicit
- * parse options go directly through `decode`.
+ * A supported type-side AST has up to three independently lazy operations:
+ * `is` validates without materializing an output, `validate` returns a decoded
+ * value or a private invalid sentinel, and `decode` returns a decoded value or
+ * the normal `SchemaIssue`. `is` is omitted when validation requires a
+ * reconstructed value. Every operation honors explicit parse options.
  *
  * An AST containing an encoding skips the root `is` phase. Its compiled
  * `decode` orchestrates transformations and middleware once, while resolving
@@ -20,10 +21,11 @@
  *
  * Unsupported or unprofitable AST roots use the interpreter. Generated paths
  * also fall back when the runtime blocks dynamic code generation through the
- * `Function` constructor. Because an invalid default decode can evaluate
- * supported getters and checks in both phases, getters must be replay-safe and
- * checks must be free of observable side effects. Transformations and
- * middleware are outside that replay region.
+ * `Function` constructor. Because an invalid type-side decode can evaluate
+ * input property getters, checks, and declaration parsers in both `validate`
+ * and `decode`, they must be replay-safe and free of observable side effects;
+ * declaration parsers must also be synchronous. Transformations and middleware
+ * are executed only by `decode` and are outside that replay region.
  *
  * @since 4.0.0
  */

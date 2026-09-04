@@ -279,6 +279,40 @@ describe("SchemaParser", () => {
       strictEqual(is(null), false)
     })
 
+    it("should accept ParseOptions", () => {
+      const schema = Schema.Struct({ value: Schema.String })
+      const is = SchemaParser.is(schema, { onExcessProperty: "error" })
+
+      strictEqual(is({ value: "a" }), true)
+      strictEqual(is({ value: "a", extra: true }), false)
+    })
+
+    it("should pass ParseOptions to checks", () => {
+      const schema = Schema.String.check(
+        Schema.makeFilter((_input, _ast, options) => options.reportInput === true)
+      )
+
+      strictEqual(SchemaParser.is(schema)("a"), false)
+      strictEqual(SchemaParser.is(schema, { reportInput: true })("a"), true)
+    })
+
+    it("should honor disableChecks", () => {
+      const schema = Schema.String.check(Schema.isMinLength(2))
+
+      strictEqual(SchemaParser.is(schema)("a"), false)
+      strictEqual(SchemaParser.is(schema, { disableChecks: true })("a"), true)
+    })
+
+    it("should honor propertyOrder for checks that inspect decoded output", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
+        Schema.makeFilter((value) => Object.keys(value)[0] === "b")
+      )
+      const input = { b: "b", a: "a" }
+
+      strictEqual(SchemaParser.is(schema)(input), false)
+      strictEqual(SchemaParser.is(schema, { propertyOrder: "original" })(input), true)
+    })
+
     it("should throw an error when the cause is not an Issue", () => {
       const schema = Schema.declareConstructor<string>()(
         [],

@@ -135,32 +135,57 @@ export function make<S extends Schema.Constraint>(schema: S) {
  * **Details**
  *
  * The guard returns `true` on successful validation and `false` when validation
- * fails only with schema issues, without exposing issue details.
+ * fails only with schema issues, without exposing issue details. It always
+ * checks the schema's decoded type side. Parse options are captured when the
+ * guard is created and are applied with the same semantics as decoding.
  *
  * **Gotchas**
  *
  * Only causes made entirely of schema issues are converted to `false`. Causes
  * that contain defects, interruptions, or asynchronous work at this synchronous
  * boundary throw an `Error` whose cause is the underlying `Cause`.
+ * Passing `disableChecks: true` skips refinement checks. This is an unsafe
+ * optimization: the caller assumes responsibility for the resulting type
+ * narrowing.
  *
  * @category guards
  * @since 3.10.0
  */
-export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => input is I & S["Type"] {
-  return _is<S["Type"]>(schema.ast)
+export function is<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions
+): <I>(input: I) => input is I & S["Type"] {
+  return _is<S["Type"]>(schema.ast, options)
 }
 
 /** @internal */
-export function _is<T>(ast: SchemaAST.AST) {
+export function _is<T>(ast: SchemaAST.AST, options: SchemaAST.ParseOptions = SchemaAST.defaultParseOptions) {
   const typeAST = SchemaAST.toType(ast)
   let parser: Parser | undefined
+  let compiledGuard: ((input: unknown) => boolean) | undefined
+  let initialized = false
   return <I>(input: I): input is I & T => {
-    parser ??= normalCompiler(typeAST)
-    const compiled = getCompiledParser(parser)
-    const compiledIs = compiled?.is
-    if (compiledIs !== undefined) {
+    if (!initialized) {
+      parser = normalCompiler(typeAST)
+      const compiled = getCompiledParser(parser)
+      const compiledIs = compiled?.is
+      if (compiledIs !== undefined) {
+        compiledGuard = options === SchemaAST.defaultParseOptions
+          ? compiledIs.default
+          : (input) => compiledIs(input, options)
+      } else {
+        const validate = compiled?.validate
+        if (validate !== undefined) {
+          compiledGuard = options === SchemaAST.defaultParseOptions
+            ? (input) => validate.default(input) !== CompilerHook.invalid
+            : (input) => validate(input, options) !== CompilerHook.invalid
+        }
+      }
+      initialized = true
+    }
+    if (compiledGuard !== undefined) {
       try {
-        return compiledIs(input) !== CompilerHook.invalid
+        return compiledGuard(input)
       } catch (error) {
         InternalSchemaCause.getSchemaIssueOrThrow(
           Cause.die(error),
@@ -169,7 +194,7 @@ export function _is<T>(ast: SchemaAST.AST) {
         return false
       }
     }
-    const exit = Effect.runSyncExit(runParser<T, never>(parser, input, SchemaAST.defaultParseOptions))
+    const exit = Effect.runSyncExit(runParser<T, never>(parser!, input, options))
     if (Exit.isSuccess(exit)) {
       return true
     }
@@ -545,15 +570,16 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
   if (options !== undefined) return decode
   let parser: Parser | undefined
   let compiled: CompilerHook.CompiledParser | undefined
+  let validate: CompilerHook.Validate["default"] | undefined
   return (input, overrideOptions) => {
     if (overrideOptions !== undefined) return decode(input, overrideOptions)
     if (parser === undefined) {
       parser = normalCompiler(schema.ast)
       compiled = getCompiledParser(parser)
+      validate = compiled?.validate?.default
     }
     if (compiled === undefined) return runParserSync<S["Type"]>(parser, input, SchemaAST.defaultParseOptions)
-    const compiledIs = compiled.is
-    if (compiledIs === undefined) {
+    if (validate === undefined) {
       const result = compiled.decode(input, SchemaAST.defaultParseOptions)
       if (effectIsExit(result)) {
         if (Exit.isFailure(result)) return throwSyncCause(result.cause)
@@ -567,7 +593,7 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
     }
     let output: unknown
     try {
-      output = compiledIs(input)
+      output = validate(input)
     } catch (error) {
       return throwSyncDefect(error)
     }
@@ -1102,34 +1128,23 @@ export interface Compiler {
 }
 
 const parserCache = new WeakMap<SchemaAST.AST, Parser>()
-const CompiledParserTypeId = Symbol()
 
 type CompiledParser = Parser & {
-  readonly [CompiledParserTypeId]: CompilerHook.CompiledParser
+  readonly [CompilerHook.CompiledParserTypeId]: CompilerHook.CompiledParser
 }
 
 const getCompiledParser = (parser: Parser): CompilerHook.CompiledParser | undefined =>
-  (parser as Partial<CompiledParser>)[CompiledParserTypeId]
+  CompilerHook.getCompiledParser(parser)
 
 const makeCompiledParser = (compiled: CompilerHook.CompiledParser): CompiledParser => {
-  const is = compiled.is
-  if (is === undefined) {
-    return Object.assign(compiled.decode, { [CompiledParserTypeId]: compiled })
+  if (compiled.kind === "Decode") {
+    return Object.assign(compiled.parser, { [CompilerHook.CompiledParserTypeId]: compiled })
   }
+  let run: Parser | undefined
   const parser: Parser = (input, options) => {
-    if (input !== InternalParser.missing && options === SchemaAST.defaultParseOptions) {
-      try {
-        const output = is(input)
-        if (output !== CompilerHook.invalid) {
-          return output === input ? InternalParser.sameExit : InternalParser.succeed(output)
-        }
-      } catch (error) {
-        return Effect.die(error)
-      }
-    }
-    return compiled.decode(input, options)
+    return (run ??= compiled.parser)(input, options)
   }
-  return Object.assign(parser, { [CompiledParserTypeId]: compiled })
+  return Object.assign(parser, { [CompilerHook.CompiledParserTypeId]: compiled })
 }
 
 const normalCompiler: Compiler = (ast) => {
