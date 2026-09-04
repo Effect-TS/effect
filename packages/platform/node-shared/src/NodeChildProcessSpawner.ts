@@ -447,9 +447,10 @@ const make = Effect.gen(function*() {
 
   /**
    * Resolves once the leader has exited and no member of its process group
-   * exists, or once `timeoutMillis` has elapsed. Uses native timers so that
-   * process cleanup is not governed by the Effect clock (for example a
-   * `TestClock`).
+   * exists, or once `timeoutMillis` has elapsed. The leader's `exit` event
+   * wakes the check immediately so an ordinary release does not wait for the
+   * next poll. Uses native timers so that process cleanup is not governed by
+   * the Effect clock (for example a `TestClock`).
    */
   const awaitProcessExit = (
     childProcess: NodeChildProcess.ChildProcess,
@@ -459,15 +460,23 @@ const make = Effect.gen(function*() {
     Effect.callback<void>((resume) => {
       const deadline = Date.now() + timeoutMillis
       let timer: NodeJS.Timeout | undefined
+      const stop = () => {
+        clearTimeout(timer)
+        childProcess.removeListener("exit", poll)
+      }
       const poll = () => {
+        clearTimeout(timer)
         if (Date.now() >= deadline || !isProcessAlive(childProcess, exitSignal)) {
+          stop()
           resume(Effect.void)
           return
         }
         timer = setTimeout(poll, processGroupPollIntervalMillis)
       }
+      // The listener completing exitSignal was registered in spawn, so it runs first
+      childProcess.on("exit", poll)
       poll()
-      return Effect.sync(() => clearTimeout(timer))
+      return Effect.sync(stop)
     })
 
   /**

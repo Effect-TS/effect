@@ -98,6 +98,16 @@ it.live("kills every process in a pipeline", () =>
 
 const processGroupFixture = join(__dirname, "fixtures", "process-group.ts")
 
+// Native timers so the helpers behave the same under a TestClock
+const liveSleep = (millis: number) =>
+  Effect.callback<void>((resume) => {
+    const timer = setTimeout(() => resume(Effect.void), millis)
+    return Effect.sync(() => clearTimeout(timer))
+  })
+
+const liveTimeout = (millis: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.raceFirst(effect, liveSleep(millis).pipe(Effect.andThen(Effect.die(new Error("timed out")))))
+
 const startProcessGroup = (
   scope: Scope.Scope,
   mode: "exit-on-signal" | "ignore-signal",
@@ -119,7 +129,7 @@ const startProcessGroup = (
       ),
       Effect.forkScoped
     )
-    const descendantPid = yield* Effect.timeout(Deferred.await(ready), "5 seconds")
+    const descendantPid = yield* Deferred.await(ready).pipe(liveTimeout(5_000))
     return { handle, descendantPid }
   })
 
@@ -131,9 +141,6 @@ const killDescendant = (pid: number) =>
       // already gone
     }
   })
-
-// Native sleep so the helpers behave the same under a TestClock
-const liveSleep = (millis: number) => Effect.promise(() => new Promise((resolve) => setTimeout(resolve, millis)))
 
 const assertHeartbeatStopped = (marker: string) =>
   Effect.gen(function*() {
