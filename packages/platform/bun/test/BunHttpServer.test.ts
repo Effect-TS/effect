@@ -161,6 +161,31 @@ describe("BunHttpServer", () => {
       assert.strictEqual(yield* fetchText(url), "first")
     }))
 
+  it.effect("preserves configured routes while changing handlers", () =>
+    Effect.gen(function*() {
+      const ownerScope = yield* Effect.scope
+      const server = yield* BunHttpServer.make({
+        hostname: "127.0.0.1",
+        port: 0,
+        routes: { "/static": new Response("static") }
+      })
+      const firstScope = yield* Scope.fork(ownerScope)
+      const secondScope = yield* Scope.fork(ownerScope)
+      const url = HttpServer.formatAddress(server.address)
+
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("first"))).pipe(Scope.provide(firstScope))
+      assert.strictEqual(yield* fetchText(`${url}/static`), "static")
+      assert.strictEqual(yield* fetchText(`${url}/fallback`), "first")
+
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("second"))).pipe(Scope.provide(secondScope))
+      assert.strictEqual(yield* fetchText(`${url}/static`), "static")
+      assert.strictEqual(yield* fetchText(`${url}/fallback`), "second")
+
+      yield* Scope.close(secondScope, Exit.void)
+      assert.strictEqual(yield* fetchText(`${url}/static`), "static")
+      assert.strictEqual(yield* fetchText(`${url}/fallback`), "first")
+    }))
+
   it.effect("compresses outgoing WebSocket messages when per-message deflate is negotiated", () =>
     Effect.gen(function*() {
       const payload = "a".repeat(4_096)
