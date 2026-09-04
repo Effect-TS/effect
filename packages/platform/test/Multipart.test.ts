@@ -1,9 +1,63 @@
 import * as Multipart from "@effect/platform/Multipart"
 import { describe, test } from "@effect/vitest"
-import { deepStrictEqual } from "@effect/vitest/utils"
-import { Chunk, Effect, identity, pipe, Stream, Unify } from "effect"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Chunk, Effect, identity, Option, pipe, Stream, Unify } from "effect"
 
 describe("Multipart", () => {
+  test("fails when maxFileSize is exceeded, including when the terminator follows in the same chunk", () =>
+    Effect.gen(function*() {
+      const boundary = "X"
+      const body = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="big.bin"\r\n` +
+        `Content-Type: application/octet-stream\r\n\r\n` +
+        "A".repeat(100) +
+        `\r\n--${boundary}--\r\n`
+      const encoder = new TextEncoder()
+      const terminatorIndex = body.indexOf(`\r\n--${boundary}--`)
+
+      for (
+        const chunks of [
+          Chunk.of(encoder.encode(body)),
+          Chunk.make(encoder.encode(body.slice(0, terminatorIndex)), encoder.encode(body.slice(terminatorIndex)))
+        ]
+      ) {
+        const error = yield* pipe(
+          Stream.fromChunk(chunks),
+          Stream.pipeThroughChannel(
+            Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+          ),
+          Stream.runCollect,
+          Multipart.withLimits({ maxFileSize: Option.some(10) }),
+          Effect.flip
+        )
+
+        strictEqual(error.reason, "FileTooLarge")
+      }
+    }).pipe(Effect.runPromise))
+
+  test("fails when maxParts is exceeded", () =>
+    Effect.gen(function*() {
+      const boundary = "X"
+      const part = (name: string) =>
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="${name}"; filename="${name}.bin"\r\n` +
+        `Content-Type: application/octet-stream\r\n\r\n` +
+        "A\r\n"
+      const body = part("a") + part("b") + part("c") + `--${boundary}--\r\n`
+
+      const error = yield* pipe(
+        Stream.fromChunk(Chunk.of(new TextEncoder().encode(body))),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.runCollect,
+        Multipart.withLimits({ maxParts: Option.some(2) }),
+        Effect.flip
+      )
+
+      strictEqual(error.reason, "TooManyParts")
+    }).pipe(Effect.runPromise))
+
   test("it parses", () =>
     Effect.gen(function*() {
       const data = new globalThis.FormData()
