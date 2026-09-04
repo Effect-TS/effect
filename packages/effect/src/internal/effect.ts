@@ -2223,7 +2223,9 @@ export const updateServiceScoped = <I, A>(
     const updated = update(original)
     fiber.setContext(Context.add(fiber.context, service, updated))
     return scopeAddFinalizerExit(Context.getUnsafe(fiber.context, scopeTag), (_) => {
-      const current = Context.getUnsafe(fiber.context, service)
+      const currentOption = Context.getOption(fiber.context, service)
+      if (Option.isNone(currentOption)) return void_
+      const current = currentOption.value
       let next: A
       if (options?.reset === undefined) {
         if (current !== updated) return void_
