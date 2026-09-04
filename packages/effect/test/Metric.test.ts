@@ -23,6 +23,19 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.value(second)).count, 10)
     }))
 
+  it.effect("keeps equal attribute names with different values in separate series", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { attributes: { route: "/users", method: "GET" } })
+      const second = Metric.counter(id, { attributes: { route: "/users", method: "POST" } })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 1)
+      assert.strictEqual((yield* Metric.value(second)).count, 10)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect("uses attribute names instead of record insertion order for series identity", () =>
     Effect.gen(function*() {
       const id = nextId()
