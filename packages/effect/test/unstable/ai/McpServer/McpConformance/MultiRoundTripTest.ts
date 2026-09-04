@@ -118,6 +118,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           })
         }))
 
+      // Elicitation choices must survive the input-required result sent to the client.
+      // https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation#requested-schema
       it.effect("should return supported keyed input requests and resume when matching responses are supplied", () =>
         Effect.gen(function*() {
           const test = yield* McpConformance
@@ -140,7 +142,15 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 message: "Approve the operation",
                 requestedSchema: {
                   type: "object",
-                  properties: { approved: { type: "boolean" } },
+                  properties: {
+                    approved: { type: "boolean" },
+                    color: { type: "string", enum: ["red", "blue"] },
+                    titled: {
+                      type: "string",
+                      oneOf: [{ const: "red", title: "Red" }, { const: "blue", title: "Blue" }]
+                    },
+                    legacy: { type: "string", enum: ["red", "blue"], enumNames: ["Red", "Blue"] }
+                  },
                   required: ["approved"]
                 }
               }
