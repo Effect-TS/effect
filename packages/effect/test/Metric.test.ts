@@ -23,6 +23,58 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.value(second)).count, 10)
     }))
 
+  it.effect("keeps equal attribute names with different values in separate series", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { attributes: { route: "/users", method: "GET" } })
+      const second = Metric.counter(id, { attributes: { route: "/users", method: "POST" } })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 1)
+    }))
+
+  it.effect("shares a series for equal attributes in different record orders", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { attributes: { route: "/users", method: "GET" } })
+      const second = Metric.counter(id, { attributes: { method: "GET", route: "/users" } })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 11)
+    }))
+
+  it.effect("shares a series after merging metric and contextual attributes", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { attributes: { route: "/users" } })
+      const second = Metric.counter(id, { attributes: { method: "GET" } })
+      const firstContext = { method: "GET" }
+
+      yield* Metric.update(first, 1).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))
+      yield* Metric.update(second, 10).pipe(
+        Effect.provideService(Metric.CurrentMetricAttributes, { route: "/users" })
+      )
+
+      assert.strictEqual(
+        (yield* Metric.value(first).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))).count,
+        11
+      )
+    }))
+
+  it.effect("preserves attribute order in snapshots", () =>
+    Effect.gen(function*() {
+      const metric = Metric.counter(nextId(), { attributes: { route: "/users", method: "GET" } })
+
+      yield* Metric.update(metric, 1)
+      const snapshot = yield* Metric.snapshot
+
+      assert.deepStrictEqual(Object.keys(snapshot[0].attributes ?? {}), ["route", "method"])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect.each([
     { name: "counter", makeUpdate: () => Metric.update(Metric.counter(nextId()), 1) },
     {
