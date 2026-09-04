@@ -1126,6 +1126,16 @@ describe("all", () => {
     expect(Effect.all(unionRecord)).type.toBe<
       Effect.Effect<{ a: string } | { b: number }, "err-1" | "err-2", "dep-1" | "dep-2">
     >()
+    expect(Effect.all(unionRecord, { discard: true })).type.toBe<
+      Effect.Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
+    >()
+    expect(Effect.all(unionRecord, { mode: "result" })).type.toBe<
+      Effect.Effect<
+        { a: Result.Result<string, "err-1"> } | { b: Result.Result<number, "err-2"> },
+        never,
+        "dep-1" | "dep-2"
+      >
+    >()
   })
 })
 
