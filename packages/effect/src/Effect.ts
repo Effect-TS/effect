@@ -315,6 +315,8 @@ export declare namespace All {
   > extends infer X ? X
     : never
 
+  type ObjectValues<T> = T extends unknown ? T[keyof T] : never
+
   /**
    * Computes the return type for `Effect.all` when collecting a record.
    *
@@ -331,13 +333,8 @@ export declare namespace All {
           ] ? Mode extends true ? Result.Result<_A, _E> : _A
             : never
         },
-      Mode extends true ? never
-        : keyof T extends never ? never
-        : T[keyof T] extends Effect<infer _A, infer _E, infer _R> ? _E
-        : never,
-      keyof T extends never ? never
-        : T[keyof T] extends Effect<infer _A, infer _E, infer _R> ? _R
-        : never
+      Mode extends true ? never : Error<ObjectValues<T>>,
+      Services<ObjectValues<T>>
     >
     : never
 
