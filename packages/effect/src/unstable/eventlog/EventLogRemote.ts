@@ -83,7 +83,16 @@ export class EventLogRemote extends Context.Service<EventLogRemote, {
 export class EventLogRemoteError extends Data.TaggedError("EventLogRemoteError")<{
   readonly method: string
   readonly cause: unknown
-}> {}
+}> {
+  /**
+   * Returns `true` when the value is an `EventLogRemoteError`.
+   *
+   * @since 4.0.0
+   */
+  static is(u: unknown): u is EventLogRemoteError {
+    return Predicate.isTagged(u, "EventLogRemoteError")
+  }
+}
 
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
 
@@ -206,9 +215,8 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
     Effect.retry(effect, {
       while(e) {
         hello = null
-        const error = Predicate.isTagged(e, "EventLogRemoteError") &&
-            (e as any as EventLogRemoteError).method === "authenticate"
-          ? (e as any as EventLogRemoteError).cause
+        const error = EventLogRemoteError.is(e) && e.method === "authenticate"
+          ? e.cause
           : e
         const isForbidden = Predicate.isTagged(error, "EventLogProtocolError") &&
           (error as any as EventLogProtocolError).code === "Forbidden"
