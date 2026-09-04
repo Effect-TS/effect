@@ -1340,7 +1340,7 @@ export const fnUntracedEager: Effect.fn.Untraced = (
       : function(this: any) {
         let effect = fromIteratorEagerUnsafe(() => body.apply(this, arguments))
         for (const pipeable of pipeables) {
-          effect = pipeable(effect)
+          effect = pipeable(effect, ...arguments)
         }
         return effect
       }
