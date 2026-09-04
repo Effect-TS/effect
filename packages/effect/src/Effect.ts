@@ -14152,7 +14152,7 @@ export const track: {
   <Input, State, E, A>(
     metric: Metric.Metric<Input, State>,
     f: (exit: Exit.Exit<A, E>) => Input
-  ): <E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  ): <E2 extends E, R>(self: Effect<A, E2, R>) => Effect<A, E2, R>
   <State, E, A>(
     metric: Metric.Metric<Exit.Exit<NoInfer<A>, NoInfer<E>>, State>
   ): <R>(self: Effect<A, E, R>) => Effect<A, E, R>
