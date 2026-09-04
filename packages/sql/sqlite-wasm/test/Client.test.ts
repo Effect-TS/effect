@@ -25,7 +25,10 @@ vi.mock("@effect/wa-sqlite", () => ({
     open_v2: () => 1,
     row: (statement: { readonly index: number; readonly rows: ReadonlyArray<ReadonlyArray<number>> }) =>
       statement.rows[statement.index],
-    *statements() {
+    *statements(_db: number, sql: string) {
+      if (sql !== "SELECT 1 AS first; SELECT 2 AS second, 3 AS third") {
+        throw new Error(`Unexpected SQL: ${sql}`)
+      }
       yield { columns: ["first"], index: -1, rows: [[1]] }
       yield { columns: ["second", "third"], index: -1, rows: [[2, 3]] }
     },
@@ -100,6 +103,7 @@ const settled = <A, E>(effect: Effect.Effect<A, E>) =>
     yield* TestClock.adjust("100 millis")
     return yield* Fiber.join(fiber)
   })
+
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
 
@@ -109,7 +113,7 @@ describe("Client", () => {
       assert.strictEqual(state.vfsCloseCalls, 1)
     }))
 
-  it.effect("keeps each statement's columns in worker-backed query results", () =>
+  it.effect("keeps columns scoped to each statement", () =>
     Effect.gen(function*() {
       const channel = new MessageChannel()
       yield* Effect.addFinalizer(() => Effect.sync(() => channel.port2.close()))
