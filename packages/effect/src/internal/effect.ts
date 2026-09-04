@@ -1772,7 +1772,7 @@ export const flatMap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> => new OnSuccessImpl(self, f.length !== 1 ? (a: A) => f(a) : f)
+  ): Effect.Effect<B, E | E2, R | R2> => new OnSuccessImpl(self, (a: A) => f(a))
 )
 
 /** @internal */
@@ -2573,8 +2573,7 @@ export const catchCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> =>
-    new OnFailureImpl(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
+  ): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, (cause: Cause.Cause<E>) => f(cause))
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
@@ -3535,10 +3534,8 @@ export const matchCauseEffect: {
   ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> =>
     new OnSuccessAndFailureImpl(
       self,
-      options.onSuccess.length !== 1 ? (a: A) => options.onSuccess(a) : options.onSuccess,
-      options.onFailure.length !== 1
-        ? (cause: Cause.Cause<E>) => options.onFailure(cause)
-        : options.onFailure
+      (a: A) => options.onSuccess(a),
+      (cause: Cause.Cause<E>) => options.onFailure(cause)
     )
 )
 const OnSuccessAndFailureProto = makePrimitiveProto({
