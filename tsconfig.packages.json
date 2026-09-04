@@ -13,6 +13,7 @@
     { "path": "packages/atom/vue" },
     { "path": "packages/atom/solid" },
     { "path": "packages/opentelemetry" },
+    { "path": "packages/rstest" },
     { "path": "packages/platform/browser" },
     { "path": "packages/platform/bun" },
     { "path": "packages/platform/deno" },

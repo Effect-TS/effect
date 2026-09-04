@@ -1,0 +1,121 @@
+import { it, layer, type Rstest, type Vitest } from "@effect/rstest"
+import type { Rstest as CoreRstest } from "@rstest/core"
+import { Context, Effect, Layer, Schema } from "effect"
+import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
+import { describe, expect, test } from "tstyche"
+
+class Foo extends Context.Service<Foo, "foo">()("Foo") {}
+class Bar extends Context.Service<Bar, "bar">()("Bar") {}
+
+type CoreRstestReexport = Rstest extends CoreRstest ? true : false
+type EffectMethodsNamespace = Vitest.Methods
+
+const coreRstestReexport: CoreRstestReexport = true
+const effectMethodsNamespace: EffectMethodsNamespace = it
+
+describe("re-exports", () => {
+  test("re-exports the core Rstest type without shadowing it", () => {
+    expect(coreRstestReexport).type.toBe<true>()
+    expect(effectMethodsNamespace).type.toBe<EffectMethodsNamespace>()
+  })
+})
+
+describe("layer", () => {
+  test("top-level export accepts full options", () => {
+    expect(layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"), {
+      timeout: "5 seconds",
+      excludeTestServices: true,
+      memoMap: undefined as any
+    })
+  })
+
+  test("top-level export accepts no options", () => {
+    expect(layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"))
+  })
+
+  test("it.layer accepts full options", () => {
+    expect(it.layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"), {
+      timeout: "5 seconds",
+      excludeTestServices: true,
+      memoMap: undefined as any
+    })
+  })
+
+  test("it.layer accepts no options", () => {
+    expect(it.layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"))
+  })
+
+  test("nested it.layer accepts timeout", () => {
+    layer(Layer.succeed(Foo, "foo"))((it) => {
+      expect(it.layer).type.toBeCallableWith(Layer.succeed(Bar, "bar"), {
+        timeout: "3 seconds"
+      })
+    })
+  })
+
+  test("nested it.layer rejects excludeTestServices", () => {
+    layer(Layer.succeed(Foo, "foo"))((it) => {
+      expect(it.layer).type.not.toBeCallableWith(Layer.succeed(Bar, "bar"), {
+        excludeTestServices: true
+      })
+    })
+  })
+
+  test("nested it.layer rejects memoMap", () => {
+    layer(Layer.succeed(Foo, "foo"))((it) => {
+      expect(it.layer).type.not.toBeCallableWith(Layer.succeed(Bar, "bar"), {
+        memoMap: undefined as any
+      })
+    })
+  })
+})
+
+describe("property testing", () => {
+  test("infers Schema tuple values and accepts Arbitrary options", () => {
+    it.effect.prop(
+      "schema tuple",
+      [Schema.String, Schema.Int],
+      ([text, count]) => {
+        expect(text).type.toBe<string>()
+        expect(count).type.toBe<number>()
+        return Effect.void
+      },
+      { arbitrary: { runs: 10, seed: "arbitrary" } }
+    )
+  })
+
+  test("infers Schema record values for the pure property helper", () => {
+    it.prop(
+      "schema record",
+      { text: Schema.String, count: Schema.Int },
+      ({ text, count }) => {
+        expect(text).type.toBe<string>()
+        expect(count).type.toBe<number>()
+      },
+      { arbitrary: { runs: 10 } }
+    )
+  })
+
+  test("infers mixed Schema and Arbitrary values", () => {
+    const text = Arbitrary.schema(Schema.Literals(["a", "b"]))
+
+    it.effect.prop(
+      "mixed tuple",
+      [Schema.Int, text],
+      ([count, value]) => {
+        expect(count).type.toBe<number>()
+        expect(value).type.toBe<"a" | "b">()
+        return Effect.void
+      }
+    )
+
+    it.prop(
+      "mixed record",
+      { count: Schema.Int, text },
+      ({ count, text }) => {
+        expect(count).type.toBe<number>()
+        expect(text).type.toBe<"a" | "b">()
+      }
+    )
+  })
+})

@@ -31,6 +31,7 @@
       "@effect/platform-deno",
       "@effect/platform-node",
       "@effect/platform-node-shared",
+      "@effect/rstest",
       "@effect/sql-clickhouse",
       "@effect/sql-d1",
       "@effect/sql-libsql",

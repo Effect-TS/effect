@@ -9,6 +9,7 @@
     "**/*.js",
     "**/*.d.ts",
     "**/vitest.*.ts",
+    "**/rstest.*.ts",
     "**/.tsbuildinfo/",
     "**/node_modules/",
     "**/dist/",
