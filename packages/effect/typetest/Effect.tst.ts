@@ -1131,6 +1131,25 @@ describe("all", () => {
   })
 })
 
+describe("Effect.repeatOrElse", () => {
+  const source = Effect.succeed("input")
+  const schedule = null as unknown as Schedule.Schedule<number, string>
+
+  it("passes the previous schedule metadata to the direct fallback", () => {
+    Effect.repeatOrElse(source, schedule, (_error, previous) => {
+      expect(previous).type.toBe<Option.Option<Schedule.Metadata<number, string>>>()
+      return Effect.succeed(0)
+    })
+  })
+
+  it("passes the previous schedule metadata to the curried fallback", () => {
+    source.pipe(Effect.repeatOrElse(schedule, (_error, previous) => {
+      expect(previous).type.toBe<Option.Option<Schedule.Metadata<number, string>>>()
+      return Effect.succeed(0)
+    }))
+  })
+})
+
 describe("Effect.retry", () => {
   it("while refinement narrows error type without times", () => {
     const result = Effect.retry(mixedEffect, {
