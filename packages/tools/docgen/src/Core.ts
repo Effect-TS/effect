@@ -220,6 +220,7 @@ const getExampleFiles = (modules: ReadonlyArray<Domain.Module>) =>
     const config = yield* Configuration.Configuration
     const path = yield* Path.Path
     let warnings: Array<string> = []
+    // Flattened module paths can collide, so give every emitted example a unique prefix.
     let fileIndex = 0
     const files = Array.flatMap(modules, (module) => {
       const prefix = module.path.join("-")
