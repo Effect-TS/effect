@@ -23,6 +23,18 @@ describe("NetAddress", () => {
     expect(NetAddress.ipv4FromBytesUnsafe(new Uint8Array(4))).type.toBe<NetAddress.Ipv4Address>()
     expect(NetAddress.ipv6FromBytesUnsafe(new Uint8Array(16))).type.toBe<NetAddress.Ipv6Address>()
     expect(NetAddress.ipv6ToOctets(NetAddress.ipv6Loopback)).type.toBe<ReadonlyArray<number>>()
+    expect(NetAddress.withPrefix(NetAddress.ipv4Loopback, 8)).type.toBe<
+      Result.Result<NetAddress.Ipv4AddressWithPrefix, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.withPrefix(NetAddress.ipv6Loopback, 128)).type.toBe<
+      Result.Result<NetAddress.Ipv6AddressWithPrefix, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.ipWithPrefixFromString("192.0.2.1/24")).type.toBe<
+      Result.Result<NetAddress.IpAddressWithPrefix, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.ipWithPrefixFromStringUnsafe("192.0.2.1/24")).type.toBe<
+      NetAddress.IpAddressWithPrefix
+    >()
     // @ts-expect-error Property 'bytes' does not exist
     void NetAddress.ipv4Loopback.bytes
   })

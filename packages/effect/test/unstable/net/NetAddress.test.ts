@@ -12,6 +12,32 @@ const failure = (result: Result.Result<unknown, unknown>): void => {
 }
 
 describe("NetAddress", () => {
+  it("returns IP address widths", () => {
+    assert.strictEqual(NetAddress.width(success(NetAddress.ipv4FromString("1.2.3.4"))), 32)
+    assert.strictEqual(NetAddress.width(success(NetAddress.ipv6FromString("2001:db8::1"))), 128)
+  })
+
+  it("constructs and parses validated IP addresses with prefixes", () => {
+    const ipv4 = success(NetAddress.ipv4WithPrefixFromString("192.0.2.129/24"))
+    const ipv6 = success(NetAddress.ipv6WithPrefixFromString("2001:db8::1/64"))
+
+    assert.isTrue(NetAddress.isIpv4AddressWithPrefix(ipv4))
+    assert.isTrue(NetAddress.isIpv6AddressWithPrefix(ipv6))
+    assert.strictEqual(NetAddress.formatIpWithPrefix(ipv4), "192.0.2.129/24")
+    assert.strictEqual(ipv6.toString(), "2001:db8::1/64")
+    assert.strictEqual(
+      NetAddress.ipWithPrefixFromStringUnsafe("192.0.2.1", { prefix: "optional" }).prefixLength,
+      32
+    )
+    assert.isTrue(Object.isFrozen(ipv4))
+    assert.isTrue(Equal.equals(ipv4, NetAddress.withPrefixUnsafe(ipv4.address, 24)))
+    assert.strictEqual(Hash.hash(ipv4), Hash.hash(NetAddress.withPrefixUnsafe(ipv4.address, 24)))
+
+    failure(NetAddress.ipWithPrefixFromString("192.0.2.1"))
+    failure(NetAddress.ipWithPrefixFromString("192.0.2.1/+24"))
+    failure(NetAddress.ipWithPrefixFromString("192.0.2.1/33"))
+  })
+
   describe("IPv4", () => {
     it("parses strict dotted decimal", () => {
       assert.strictEqual(NetAddress.formatIp(success(NetAddress.ipv4FromString("1.2.3.4"))), "1.2.3.4")
