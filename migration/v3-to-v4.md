@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
+Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `origin/main` (`a9d1ee3d4d51e97ea33440fe6100935d5fd5aada`)
+Head: `HEAD` (`648c749e8dc9fff42b612d5d9a1c257cb9e0ee3e`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -7832,6 +7832,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `SqliteClient.asyncQuery` -> `@effect/sql-sqlite-react-native/SqliteClient#AsyncQuery`: Renamed and changed from FiberRef to Context.Reference; prefer withAsyncQuery or provide AsyncQuery as a service.
 
+### `@effect/sql-sqlite-wasm/OpfsWorker`
+
+- `OpfsWorker.OpfsWorkerConfig`: TODO: needs guidance
+
 ### `@effect/sql-sqlite-wasm/SqliteClient`
 
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service.
@@ -14809,7 +14813,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ArbitraryAnnotationId` -> `Schema.Annotations.ToArbitrary`: Symbol annotation IDs were removed. Declarations use the toCodecArbitrary annotation; filters use arbitraryConstraint.
 
-- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed; control asynchronous parsing with ParseOptions.concurrency.
+- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations.
 
 - `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation.
 
@@ -14825,9 +14829,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ComposeTransformation` -> `SchemaAST.Encoding`: The marker transformation was replaced by explicit SchemaAST.Link encoding chains.
 
-- `SchemaAST.ConcurrencyAnnotation` -> `SchemaAST.ParseOptions["concurrency"]`: Concurrency is now a parse option rather than its own annotation type.
+- `SchemaAST.ConcurrencyAnnotation` -> `none`: Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations.
 
-- `SchemaAST.ConcurrencyAnnotationId` -> `Schema.Annotations.Bottom["parseOptions"]`: Symbol annotation IDs were removed; put concurrency inside the parseOptions annotation.
+- `SchemaAST.ConcurrencyAnnotationId` -> `none`: Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations.
 
 - `SchemaAST.Declaration` -> `SchemaAST.Declaration`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
 
@@ -14905,7 +14909,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
 
-- `SchemaAST.ParseOptionsAnnotationId` -> `Schema.Annotations.Bottom["parseOptions"]`: Symbol annotation IDs were removed; use the parseOptions key.
+- `SchemaAST.ParseOptionsAnnotationId` -> `none`: Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas.
 
 - `SchemaAST.PrettyAnnotationId` -> `Schema.overrideToFormatter`: The symbol annotation was removed; attach custom formatters with Schema.overrideToFormatter.
 
@@ -14981,13 +14985,13 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getAnnotation` -> `SchemaAST.resolveAt`: Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription.
 
-- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed; read ParseOptions.concurrency when controlling asynchronous parsing.
+- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations.
 
 - `SchemaAST.getBrandAnnotation` -> `SchemaAST.resolveAt("brands")`: Resolve the string-keyed brands annotation.
 
 - `SchemaAST.getCompiler` -> `none`: The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API.
 
-- `SchemaAST.getConcurrencyAnnotation` -> `SchemaAST.resolveAt("parseOptions")`: Resolve parseOptions and read concurrency from it.
+- `SchemaAST.getConcurrencyAnnotation` -> `none`: Schema parsing concurrency and its annotations were removed. Use Effect concurrency combinators around independent parsing operations.
 
 - `SchemaAST.getDecodingFallbackAnnotation` -> `none`: Fallbacks are encoding middleware in v4, not readable annotations; attach them with Schema.catchDecoding.
 
@@ -15013,7 +15017,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getParseIssueTitleAnnotation` -> `none`: Issue-title callbacks were removed; use message or expected annotations and SchemaIssue formatters.
 
-- `SchemaAST.getParseOptionsAnnotation` -> `SchemaAST.resolveAt("parseOptions")`: Resolve the string-keyed parseOptions annotation.
+- `SchemaAST.getParseOptionsAnnotation` -> `none`: Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas.
 
 - `SchemaAST.getPropertySignatures` -> `SchemaAST.Objects.propertySignatures`: Narrow to Objects and read propertySignatures directly.
 
