@@ -505,6 +505,14 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   blksize: stat.blksize !== undefined ? Option.some(FileSystem.Size(stat.blksize)) : Option.none(),
   blocks: Option.fromNullishOr(stat.blocks)
 })
+const lstat = (() => {
+  const nodeLstat = effectify(
+    NFS.lstat,
+    handleErrnoException("FileSystem", "lstat"),
+    handleBadArgument("lstat")
+  )
+  return (path: string) => Effect.map(nodeLstat(path), makeFileInfo)
+})()
 const stat = (() => {
   const nodeStat = effectify(
     NFS.stat,
@@ -641,6 +649,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     copyFile,
     glob,
     link,
+    lstat,
     makeDirectory,
     makeTempDirectory,
     makeTempDirectoryScoped,
