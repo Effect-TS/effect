@@ -1,5 +1,6 @@
 import {
   RegistryContext,
+  RegistryProvider,
   useAtom,
   useAtomInitialValues,
   useAtomRef,
@@ -10,9 +11,52 @@ import {
 } from "@effect/atom-solid"
 import { assert, describe, it } from "@effect/vitest"
 import { AsyncResult, Atom, AtomRef, AtomRegistry } from "effect/unstable/reactivity"
-import { type Accessor, createComponent, createEffect, createRoot, type Resource } from "solid-js"
+import { type Accessor, createComponent, createEffect, createRoot, type Resource, useContext } from "solid-js"
 
 describe("atom-solid", () => {
+  describe("RegistryProvider", () => {
+    it("does not set a default idle TTL", () => {
+      const atom = Atom.make(0)
+      const scheduledTasks = new Set<() => void>()
+      const flushScheduledTasks = () => {
+        while (scheduledTasks.size > 0) {
+          const tasks = Array.from(scheduledTasks)
+          scheduledTasks.clear()
+          for (const task of tasks) {
+            task()
+          }
+        }
+      }
+      let registry: AtomRegistry.AtomRegistry | undefined
+      const CaptureRegistry = () => {
+        registry = useContext(RegistryContext)
+        return null
+      }
+      const dispose = createRoot((dispose) => {
+        createComponent(RegistryProvider, {
+          scheduleTask: (task) => {
+            scheduledTasks.add(task)
+            return () => {
+              scheduledTasks.delete(task)
+            }
+          },
+          get children() {
+            return createComponent(CaptureRegistry, {})
+          }
+        })
+        return dispose
+      })
+
+      assert.isDefined(registry)
+      registry.get(atom)
+      flushScheduledTasks()
+      const retained = registry.getNodes().has(atom)
+      dispose()
+
+      assert.isFalse(retained)
+    })
+  })
+
   describe("useAtomValue", () => {
     it("reads value from simple Atom", () => {
       const atom = Atom.make(42)
