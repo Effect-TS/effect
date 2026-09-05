@@ -23,18 +23,13 @@ describe("HttpApiSchema", () => {
         data: Schema.String
       })
       const Error = Schema.Struct({ reason: Schema.String })
-      const stream = HttpApiSchema.StreamSse({
-        events: Events,
-        error: Error,
-        decodeOptions: { maxEventSize: Infinity }
-      })
+      const stream = HttpApiSchema.StreamSse({ events: Events, error: Error })
 
       expect(stream).type.toBe<HttpApiSchema.StreamSse<typeof Events, typeof Error>>()
       expect(stream.events).type.toBe<typeof Events>()
       expect(stream.error).type.toBe<typeof Error>()
       expect(stream.mode).type.toBe<"sse">()
       expect(stream.sseMode).type.toBe<"events" | "data">()
-      expect(stream.decodeOptions).type.toBe<Sse.DecodeOptions | undefined>()
     })
 
     it("preserves the stream schema type when annotated with status", () => {
@@ -72,7 +67,7 @@ describe("HttpApiSchema", () => {
     it("creates an event schema from a JSON data schema", () => {
       const Data = Schema.Struct({ id: Schema.String })
       const Error = Schema.Struct({ reason: Schema.String })
-      const stream = HttpApiSchema.StreamSse({ data: Data, error: Error, decodeOptions: undefined })
+      const stream = HttpApiSchema.StreamSse({ data: Data, error: Error })
 
       expect(stream).type.toBe<
         HttpApiSchema.StreamSse<HttpApiSchema.SseEventFromData<typeof Data>, typeof Error, { readonly id: string }>
@@ -83,7 +78,6 @@ describe("HttpApiSchema", () => {
         readonly data: { readonly id: string }
       }>()
       expect(stream.events["Encoded"]).type.toBe<Sse.EventCodec["Encoded"]>()
-      expect(stream.decodeOptions).type.toBe<Sse.DecodeOptions | undefined>()
     })
 
     it("defaults the data stream error schema to Never", () => {

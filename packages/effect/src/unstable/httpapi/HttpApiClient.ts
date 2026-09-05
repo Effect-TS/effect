@@ -259,6 +259,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
   api: HttpApi.HttpApi<ApiId, Groups>,
   options: {
     readonly httpClient: HttpClient.HttpClient.With<E, R>
+    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly predicate?: Predicate.Predicate<{
       readonly endpoint: HttpApiEndpoint.Top
       readonly group: HttpApiGroup.Top
@@ -375,7 +376,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             successAlternatives,
             HttpApiSchema.getStatusSuccessSchema(streamSuccess),
             streamSchema.contentType,
-            streamToResponse(streamSuccess)
+            streamToResponse(streamSuccess, options.sseDecodeOptions)
           )
         }
         for (const [status, alternatives] of successAlternatives.entries()) {
@@ -481,6 +482,7 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Constrain
   api: HttpApi.HttpApi<ApiId, Groups>,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined
@@ -509,6 +511,7 @@ export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Const
   api: HttpApi.HttpApi<ApiId, Groups>,
   options: {
     readonly httpClient: HttpClient.HttpClient.With<E, R>
+    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined
@@ -554,6 +557,7 @@ export const group = <
   options: {
     readonly group: GroupIdentifier
     readonly httpClient: HttpClient.HttpClient.With<E, R>
+    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined
@@ -606,6 +610,7 @@ export const endpoint = <
     readonly group: GroupIdentifier
     readonly endpoint: EndpointIdentifier
     readonly httpClient: HttpClient.HttpClient.With<E, R>
+    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformClient?:
       | ((client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>)
       | undefined
@@ -873,14 +878,14 @@ function getStreamSuccessSchemas(endpoint: HttpApiEndpoint.Top): Array<StreamSuc
   return schemas
 }
 
-function streamToResponse(successSchema: StreamSuccessSchema) {
+function streamToResponse(successSchema: StreamSuccessSchema, sseDecodeOptions?: Sse.DecodeOptions) {
   const isWithHeaders = isWithHeadersStreamSuccess(successSchema)
   const streamSchema = isWithHeaders ? successSchema.schema : successSchema
   const sse = HttpApiSchema.isStreamUint8Array(streamSchema)
     ? undefined
     : {
       declaration: streamSchema,
-      decoder: makeSseDecoder(streamSchema)
+      decoder: makeSseDecoder(streamSchema, sseDecodeOptions)
     }
   const toStream = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.map(Effect.context<never>(), (context) =>
@@ -901,7 +906,8 @@ function streamToResponse(successSchema: StreamSuccessSchema) {
 }
 
 function makeSseDecoder(
-  declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>
+  declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
+  options?: Sse.DecodeOptions
 ) {
   const Event = Schema.Union([
     Schema.Struct({
@@ -910,7 +916,7 @@ function makeSseDecoder(
     }),
     declaration.events
   ])
-  return Sse.decodeSchema(Event, declaration.decodeOptions)
+  return Sse.decodeSchema(Event, options)
 }
 
 function decodeSseStream(

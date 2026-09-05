@@ -27,32 +27,26 @@ describe("HttpApiClient", () => {
         assert.deepStrictEqual(first, [{ event: "first", data: "one" }])
       }))
 
-    it.effect("forwards StreamSse decodeOptions to the native decoder", () =>
+    it.effect("keeps SSE decode options scoped to each client", () =>
       Effect.gen(function*() {
-        const makeClient = (maxEventSize: number) =>
-          HttpApiClient.makeWith(
-            HttpApi.make("Api").add(
-              HttpApiGroup.make("test").add(
-                HttpApiEndpoint.get("events", "/events", {
-                  success: HttpApiSchema.StreamSse({ events: Events, decodeOptions: { maxEventSize } })
-                })
-              )
-            ),
-            {
-              baseUrl: "http://test",
-              httpClient: clientFromResponse(() => new Response(textStream(["data: ", "hello\n\n"]), { status: 200 }))
-            }
-          )
+        const httpClient = clientFromResponse(() => new Response(textStream(["data: ", "hello\n\n"]), { status: 200 }))
+        const limited = yield* HttpApiClient.makeWith(StreamingApi, {
+          baseUrl: "http://test",
+          httpClient,
+          sseDecodeOptions: { maxEventSize: 4 }
+        })
+        const defaults = yield* HttpApiClient.makeWith(StreamingApi, {
+          baseUrl: "http://test",
+          httpClient
+        })
 
-        const limited = yield* makeClient(4)
         const limitedStream = yield* limited.test.events({})
         const error = yield* limitedStream.pipe(Stream.runCollect, Effect.flip)
         assert.instanceOf(error, Sse.SseError)
         assert.instanceOf(error.reason, Sse.EventTooLarge)
         assert.strictEqual(error.reason.maxEventSize, 4)
 
-        const unbounded = yield* makeClient(Infinity)
-        const events = yield* unbounded.test.events({}).pipe(Effect.flatMap(Stream.runCollect))
+        const events = yield* defaults.test.events({}).pipe(Effect.flatMap(Stream.runCollect))
         assert.deepStrictEqual(events, [{ event: "message", data: "hello" }])
       }))
 

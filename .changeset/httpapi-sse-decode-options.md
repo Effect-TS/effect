@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Forward `HttpApiSchema.StreamSse` decode options to the generated client's native SSE decoder.
+Add `sseDecodeOptions` to `HttpApiClient` constructors to configure native SSE decoding per client.
