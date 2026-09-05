@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Deliver option-looking flag values, including negative numbers, correctly to command handlers in CLI wizard mode.
+Fix CLI wizard handling of negative numbers and other flag values beginning with `-`.
