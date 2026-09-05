@@ -324,7 +324,7 @@ export const make = Effect.gen(function*() {
         respond: () => Effect.void,
         annotations: Context.empty()
       })
-    ).pipe(Effect.interruptible, Effect.forkScoped({ startImmediately: true }))
+    ).pipe(Effect.forkScoped({ startImmediately: true }))
     const reply = yield* replyForRequestId(request.requestId)
     if (Option.isSome(reply)) return
     yield* Fiber.join(waiter).pipe(

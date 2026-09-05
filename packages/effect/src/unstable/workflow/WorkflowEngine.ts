@@ -714,7 +714,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         if (!state.resumeRequested) {
           state.resumeRequested = true
           yield* Fiber.await(state.fiber).pipe(
-            Effect.andThen(() => {
+            Effect.flatMap(() => {
               state.resumeRequested = false
               return resume(executionId)
             }),
