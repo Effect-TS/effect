@@ -3542,12 +3542,18 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  it("Class preserves its identifier as a canonical reference", () => {
+  it("Class preserves its identifier and annotations on the encoded definition", () => {
     class A extends Schema.Class<A>("A")({
       a: Schema.String
+    }, {
+      title: "A title"
     }) {}
+    const schema = A.annotate({
+      description: "A description",
+      "x-custom": { hidden: true }
+    })
     assertJsonSchemaDocument(
-      A,
+      schema,
       {
         schema: {
           "$ref": "#/$defs/AEncoded"
@@ -3559,7 +3565,10 @@ describe("toJsonSchemaDocument", () => {
               "a": { "type": "string" }
             },
             "required": ["a"],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "title": "A title",
+            "description": "A description",
+            "x-custom": { "hidden": true }
           }
         }
       },
