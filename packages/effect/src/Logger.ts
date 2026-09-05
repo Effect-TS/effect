@@ -752,7 +752,9 @@ export const batched = dual<
 
 /**
  * A `Logger` which outputs logs in a "pretty" format and writes them to the
- * console.
+ * console. Chooses between tty and browser implementation. If the runtime
+ * platform is known and fixed, prefer {@link consolePrettyBrowser} or
+ * {@link consolePrettyTty}.
  *
  * **Details**
  *
@@ -770,6 +772,8 @@ export const batched = dual<
  * ```
  *
  * @category constructors
+ * @see {@link consolePrettyBrowser} for browser-specific implementation
+ * @see {@link consolePrettyTty} for the TTY-mode implementation
  * @since 4.0.0
  */
 export const consolePretty: (
@@ -780,6 +784,66 @@ export const consolePretty: (
     readonly mode?: "browser" | "tty" | "auto" | undefined
   }
 ) => Logger<unknown, void> = effect.consolePretty
+
+/**
+ * A `Logger` which outputs logs in a "pretty" format and writes them to the
+ * console. Intended to be used on platforms with a browser console.
+ *
+ * **Details**
+ *
+ * For example, pretty output can render as
+ * `[09:37:17.579] INFO (#1) label=0ms: hello` followed by an annotation line
+ * such as `key: value`.
+ *
+ * **Example** (Logging with pretty console output)
+ *
+ * ```ts import.meta.vitest
+ * import { Logger } from "effect"
+ *
+ * const prettyLogger = Logger.consolePrettyBrowser({ colors: false })
+ * Logger.isLogger(prettyLogger) // => true
+ * ```
+ *
+ * @category constructors
+ * @see {@link consolePretty} for the platform-independent implementation
+ * @since 4.0.0
+ */
+export const consolePrettyBrowser: (
+  options?: {
+    readonly colors?: boolean | undefined
+    readonly formatDate?: ((date: Date) => string) | undefined
+  }
+) => Logger<unknown, void> = effect.prettyLoggerBrowser
+
+/**
+ * A `Logger` which outputs logs in a "pretty" format and writes them to the
+ * console. Intended to be used on platforms with tty console.
+ *
+ * **Details**
+ *
+ * For example, pretty output can render as
+ * `[09:37:17.579] INFO (#1) label=0ms: hello` followed by an annotation line
+ * such as `key: value`.
+ *
+ * **Example** (Logging with pretty console output)
+ *
+ * ```ts import.meta.vitest
+ * import { Logger } from "effect"
+ *
+ * const prettyLogger = Logger.consolePrettyTty({ colors: false })
+ * Logger.isLogger(prettyLogger) // => true
+ * ```
+ *
+ * @category constructors
+ * @see {@link consolePretty} for the platform-independent implementation
+ * @since 4.0.0
+ */
+export const consolePrettyTty: (
+  options?: {
+    readonly colors?: boolean | undefined
+    readonly formatDate?: ((date: Date) => string) | undefined
+  }
+) => Logger<unknown, void> = effect.prettyLoggerTty
 
 /**
  * A `Logger` which outputs logs using the [logfmt](https://brandur.org/logfmt)
