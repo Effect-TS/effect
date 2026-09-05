@@ -6927,7 +6927,7 @@ export const bellmanFord: {
   const edges = csr.getEdges(cache)
   const edgeIds = csr.getEdgeIds(cache)
   const edgeCache = csr.getEdgeEndpoints(cache)
-  const outgoing = csr.getOutgoing(cache)
+  const outgoing = csr.getOutgoingWithEdges(cache)
   const source = csr.getNodeIndex(cache, config.source)!
   const target = csr.getNodeIndex(cache, config.target)!
   const weights = new Float64Array(edges.length)
@@ -7020,7 +7020,9 @@ export const bellmanFord: {
     while (head < tail) {
       const node = queue[head++]
       for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
-        markAffected(outgoing.columnIndices[i])
+        if (weights[outgoing.edgeIndices[i]] !== Infinity) {
+          markAffected(outgoing.columnIndices[i])
+        }
       }
     }
   }
