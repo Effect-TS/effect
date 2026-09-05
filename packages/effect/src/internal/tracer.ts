@@ -16,6 +16,10 @@ export const addSpanStackTrace = <A extends Tracer.TraceOptions>(
     return options
   }
   const limit = getStackTraceLimit()
+  // A limit of 0 cannot carry a frame, so the capture is skipped.
+  if (limit === 0) {
+    return options as A
+  }
   setStackTraceLimit(3)
   const traceError = new Error()
   setStackTraceLimit(limit)

@@ -22,6 +22,7 @@ import type { LazyArg } from "../../Function.ts"
 import { constant, constTrue, constVoid, dual, pipe } from "../../Function.ts"
 import type * as Inspectable from "../../Inspectable.ts"
 import { PipeInspectableProto } from "../../internal/core.ts"
+import { getStackTraceLimit } from "../../internal/stackTraceLimit.ts"
 import * as Layer from "../../Layer.ts"
 import * as MutableHashMap from "../../MutableHashMap.ts"
 import * as Option from "../../Option.ts"
@@ -1587,7 +1588,9 @@ export const withLabel: {
 >(2, (self, name) =>
   Object.assign(Object.create(Object.getPrototypeOf(self)), {
     ...self,
-    label: [name, new Error().stack?.split("\n")[5] ?? ""]
+    // A limit of 0 cannot carry a frame, so the capture is skipped. The Error
+    // stays inline so the frame index keeps counting from this caller.
+    label: [name, getStackTraceLimit() === 0 ? "" : (new Error().stack?.split("\n")[5] ?? "")]
   }))
 
 /**
@@ -2517,7 +2520,9 @@ export const serializable: {
   const codecJson = Schema.toCodecJson(options.schema)
   return Object.assign(Object.create(Object.getPrototypeOf(self)), {
     ...self,
-    label: self.label ?? [options.key, new Error().stack?.split("\n")[5] ?? ""],
+    // A limit of 0 cannot carry a frame, so the capture is skipped. The Error
+    // stays inline so the frame index keeps counting from this caller.
+    label: self.label ?? [options.key, getStackTraceLimit() === 0 ? "" : (new Error().stack?.split("\n")[5] ?? "")],
     [SerializableTypeId]: {
       key: options.key,
       encode: Schema.encodeSync(codecJson),
