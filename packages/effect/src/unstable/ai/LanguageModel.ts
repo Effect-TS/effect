@@ -20,6 +20,7 @@ import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as Semaphore from "../../Semaphore.ts"
@@ -29,7 +30,9 @@ import type { Span } from "../../Tracer.ts"
 import type { Concurrency, Mutable, NoExcessProperties } from "../../Types.ts"
 import * as AiError from "./AiError.ts"
 import { defaultIdGenerator, IdGenerator } from "./IdGenerator.ts"
+import { encodeAiError } from "./internal/ai-error.ts"
 import * as InternalCodecTransformer from "./internal/codec-transformer.ts"
+import { toJson } from "./internal/json.ts"
 import * as Prompt from "./Prompt.ts"
 import * as Response from "./Response.ts"
 import * as ResponseIdTracker from "./ResponseIdTracker.ts"
@@ -101,7 +104,7 @@ export interface Service {
     <Options extends NoExcessProperties<GenerateTextOptionsWithoutToolkit, Options>>(
       options: Options & GenerateTextOptionsWithoutToolkit
     ): Effect.Effect<
-      GenerateTextResponse<{}>,
+      GenerateTextResponse<{}, "decoded", ExtractUnknownToolCalls<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -115,7 +118,7 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
     ): Effect.Effect<
-      GenerateTextResponse<Tools, ExtractToolParametersMode<Options>>,
+      GenerateTextResponse<Tools, ExtractToolParametersMode<Options>, ExtractUnknownToolCalls<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -127,7 +130,11 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
     ): Effect.Effect<
-      GenerateTextResponse<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
+      GenerateTextResponse<
+        ExtractTools<Options>,
+        ExtractToolParametersMode<Options>,
+        ExtractUnknownToolCalls<Options>
+      >,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -147,7 +154,12 @@ export interface Service {
   >(
     options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
   ) => Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractToolParametersMode<Options>>,
+    GenerateObjectResponse<
+      Tools,
+      StructuredOutputSchema["Type"],
+      ExtractToolParametersMode<Options>,
+      ExtractUnknownToolCalls<Options>
+    >,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   >
@@ -160,7 +172,7 @@ export interface Service {
     <Options extends NoExcessProperties<GenerateTextOptionsWithoutToolkit, Options>>(
       options: Options & GenerateTextOptionsWithoutToolkit
     ): Stream.Stream<
-      Response.StreamPart<{}>,
+      Response.StreamPart<{}, "decoded", ExtractUnknownToolCalls<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -174,7 +186,7 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
     ): Stream.Stream<
-      Response.StreamPart<Tools, ExtractToolParametersMode<Options>>,
+      Response.StreamPart<Tools, ExtractToolParametersMode<Options>, ExtractUnknownToolCalls<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -186,7 +198,11 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
     ): Stream.Stream<
-      Response.StreamPart<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
+      Response.StreamPart<
+        ExtractTools<Options>,
+        ExtractToolParametersMode<Options>,
+        ExtractUnknownToolCalls<Options>
+      >,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -288,6 +304,30 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
    * resolver execution yourself.
    */
   readonly disableToolCallResolution?: boolean | undefined
+
+  /**
+   * How a tool call to a tool which is not in the toolkit is handled.
+   *
+   * **Details**
+   *
+   * With `"error"` (the default), such a call fails the operation with an
+   * `AiError` whose reason is `ToolNotFoundError`.
+   *
+   * With `"return"`, the call is returned as a `tool-call-error` response part
+   * carrying the original call, its JSON parameters, and that error. No
+   * handler runs for it, and `Prompt.fromResponseParts` adds it to history as
+   * a failed tool result, so the model can correct and retry the call.
+   *
+   * Use it when the toolkit changes between turns, so that a model calling a
+   * tool which has since been removed can be told to try again rather than
+   * failing the turn. An operation with no toolkit, or an empty one, treats
+   * every tool call as such a call.
+   *
+   * A call which does name a tool in the toolkit is not governed by this
+   * option: that tool's own `failureMode` decides, exactly as it does when
+   * `Toolkit` resolves the call.
+   */
+  readonly unknownToolCalls?: "error" | "return" | undefined
 }
 
 type GenerateTextOptionsWithoutToolkit = Omit<GenerateTextOptions<{}>, "toolkit"> & {
@@ -366,11 +406,12 @@ export type ToolChoice<ToolName extends string> =
  */
 export class GenerateTextResponse<
   Tools extends Record<string, Tool.Any>,
-  ParametersMode extends Response.ToolParametersMode = "decoded"
+  ParametersMode extends Response.ToolParametersMode = "decoded",
+  UnknownToolCalls extends "error" | "return" = "error"
 > {
-  readonly content: Array<Response.Part<Tools, ParametersMode>>
+  readonly content: Array<Response.Part<Tools, ParametersMode, UnknownToolCalls>>
 
-  constructor(content: Array<Response.Part<Tools, ParametersMode>>) {
+  constructor(content: Array<Response.Part<Tools, ParametersMode, UnknownToolCalls>>) {
     this.content = content
   }
 
@@ -412,6 +453,19 @@ export class GenerateTextResponse<
    */
   get toolCalls(): Array<Response.ToolCallParts<Tools, ParametersMode>> {
     return this.content.filter((part) => part.type === "tool-call")
+  }
+
+  /**
+   * Returns all tool call error parts from the response.
+   *
+   * **Details**
+   *
+   * Tool call errors are only produced when the operation was run with
+   * `unknownToolCalls: "return"` and the model called a tool which is not in
+   * the toolkit.
+   */
+  get toolCallErrors(): Array<Response.ToolCallErrorParts<UnknownToolCalls>> {
+    return this.content.filter((part) => part.type === "tool-call-error")
   }
 
   /**
@@ -476,14 +530,15 @@ export class GenerateTextResponse<
 export class GenerateObjectResponse<
   Tools extends Record<string, Tool.Any>,
   A,
-  ParametersMode extends Response.ToolParametersMode = "decoded"
-> extends GenerateTextResponse<Tools, ParametersMode> {
+  ParametersMode extends Response.ToolParametersMode = "decoded",
+  UnknownToolCalls extends "error" | "return" = "error"
+> extends GenerateTextResponse<Tools, ParametersMode, UnknownToolCalls> {
   /**
    * The parsed structured object that conforms to the provided schema.
    */
   readonly value: A
 
-  constructor(value: A, content: Array<Response.Part<Tools, ParametersMode>>) {
+  constructor(value: A, content: Array<Response.Part<Tools, ParametersMode, UnknownToolCalls>>) {
     super(content)
     this.value = value
   }
@@ -568,6 +623,20 @@ export type ExtractToolParametersMode<Options> = Options extends {
   readonly disableToolCallResolution: true
 } ? "encoded"
   : "opaque"
+
+/**
+ * Utility type that determines how the `unknownToolCalls` option of a
+ * language model operation was set. An option which is not statically known
+ * keeps both modes, so the response type admits the part the operation may
+ * produce.
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ExtractUnknownToolCalls<Options> = Options extends {
+  readonly unknownToolCalls: infer Mode
+} ? [Exclude<Mode, undefined>] extends [never] ? "error" : Extract<Mode, "error" | "return">
+  : "error"
 
 type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution extends boolean> = ToolkitValue extends
   Toolkit.WithHandler<infer Tools> ?
@@ -877,7 +946,12 @@ export const make: (params: {
   >(
     options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
   ): Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractToolParametersMode<Options>>,
+    GenerateObjectResponse<
+      Tools,
+      StructuredOutputSchema["Type"],
+      ExtractToolParametersMode<Options>,
+      ExtractUnknownToolCalls<Options>
+    >,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   > => {
@@ -1065,6 +1139,17 @@ export const make: (params: {
     )
     const hasPendingApprovals = approved.length > 0 || denied.length > 0
 
+    const unknownToolCalls = options.unknownToolCalls ?? "error"
+    // Decodes a response against `toolkit`, recovering the tool calls which
+    // can never reach a handler
+    const makeContentDecoder = (toolkit: Toolkit.Any | Toolkit.WithHandler<any>) => {
+      const decodePart = Schema.decodeUnknownEffect(Response.Part(toolkit, { unknownToolCalls })) as (
+        part: unknown
+      ) => Effect.Effect<Response.Part<Tools>, Schema.SchemaError>
+      return (parts: ReadonlyArray<Response.PartEncoded>) =>
+        decodeRecoveringToolCalls(decodePart, parts, toolkit, "generateText", unknownToolCalls)
+    }
+
     // If there is no toolkit, the generated content can be returned immediately
     if (Predicate.isUndefined(options.toolkit)) {
       // But first check if we have pending approvals that require a toolkit
@@ -1086,11 +1171,8 @@ export const make: (params: {
           providerOptions.incrementalPrompt = prepared.value.prompt
         }
       }
-      const ResponseSchema = Schema.mutable(
-        Schema.Array(Response.Part(Toolkit.empty))
-      )
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+      const content = yield* makeContentDecoder(Toolkit.empty)(rawContent)
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1124,11 +1206,8 @@ export const make: (params: {
           providerOptions.incrementalPrompt = prepared.value.prompt
         }
       }
-      const ResponseSchema = Schema.mutable(
-        Schema.Array(Response.Part(Toolkit.empty))
-      )
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+      const content = yield* makeContentDecoder(Toolkit.empty)(rawContent)
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1199,17 +1278,17 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
+    const decodeContent = makeContentDecoder(
       options.disableToolCallResolution === true
         ? makeToolkitWithEncodedParameters(toolkit)
         : makeToolkitWithOpaqueParameters(toolkit)
-    )))
+    )
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+      const content = yield* decodeContent(rawContent)
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1222,7 +1301,7 @@ export const make: (params: {
     const rawContent = yield* generateWithNonIncrementalFallback()
 
     // Validate before running tool handlers.
-    const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+    const content = yield* decodeContent(rawContent)
     yield* validateProviderExecutedToolCalls(toolkit, rawContent)
 
     // Resolve the generated tool calls. When the finish reason indicates an
@@ -1328,6 +1407,17 @@ export const make: (params: {
     })
     const hasPendingApprovals = pendingApproved.length > 0 || pendingDenied.length > 0
 
+    const unknownToolCalls = options.unknownToolCalls ?? "error"
+    // Decodes a chunk of the stream against `toolkit`, recovering the tool
+    // calls which can never reach a handler
+    const makePartsDecoder = (toolkit: Toolkit.Any | Toolkit.WithHandler<any>) => {
+      const decodePart = Schema.decodeUnknownEffect(Response.StreamPart(toolkit, { unknownToolCalls })) as (
+        part: unknown
+      ) => Effect.Effect<Response.StreamPart<Tools>, Schema.SchemaError>
+      return (parts: readonly [Response.StreamPartEncoded, ...Array<Response.StreamPartEncoded>]) =>
+        decodeRecoveringToolCalls(decodePart, parts, toolkit, "streamText", unknownToolCalls)
+    }
+
     // If there is no toolkit, return immediately
     if (Predicate.isUndefined(options.toolkit)) {
       // But first check if we have pending approvals that require a toolkit
@@ -1349,8 +1439,7 @@ export const make: (params: {
           providerOptions.incrementalPrompt = prepared.value.prompt
         }
       }
-      const schema = Schema.NonEmptyArray(Response.StreamPart(Toolkit.empty))
-      const decodeParts = Schema.decodeEffect(schema)
+      const decodeParts = makePartsDecoder(Toolkit.empty)
       return pipe(
         streamWithNonIncrementalFallback(),
         Stream.mapArrayEffect((parts) =>
@@ -1398,8 +1487,7 @@ export const make: (params: {
           providerOptions.incrementalPrompt = prepared.value.prompt
         }
       }
-      const schema = Schema.NonEmptyArray(Response.StreamPart(Toolkit.empty))
-      const decodeParts = Schema.decodeEffect(schema)
+      const decodeParts = makePartsDecoder(Toolkit.empty)
       return pipe(
         streamWithNonIncrementalFallback(),
         Stream.mapArrayEffect((parts) =>
@@ -1501,12 +1589,11 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
+    const decodeParts = makePartsDecoder(
       options.disableToolCallResolution === true
         ? makeToolkitWithEncodedParameters(toolkit)
         : makeToolkitWithOpaqueParameters(toolkit)
-    ))
-    const decodeParts = Schema.decodeEffect(ResponseSchema)
+    )
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
@@ -1772,7 +1859,7 @@ export const generateText: {
   >(
     options: Options & GenerateTextOptionsWithoutToolkit
   ): Effect.Effect<
-    GenerateTextResponse<{}>,
+    GenerateTextResponse<{}, "decoded", ExtractUnknownToolCalls<Options>>,
     ExtractError<Options>,
     LanguageModel | ExtractServices<Options>
   >
@@ -1783,7 +1870,7 @@ export const generateText: {
   >(
     options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
   ): Effect.Effect<
-    GenerateTextResponse<Tools, ExtractToolParametersMode<Options>>,
+    GenerateTextResponse<Tools, ExtractToolParametersMode<Options>, ExtractUnknownToolCalls<Options>>,
     ExtractError<Options>,
     LanguageModel | ExtractServices<Options>
   >
@@ -1795,7 +1882,11 @@ export const generateText: {
   >(
     options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
   ): Effect.Effect<
-    GenerateTextResponse<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
+    GenerateTextResponse<
+      ExtractTools<Options>,
+      ExtractToolParametersMode<Options>,
+      ExtractUnknownToolCalls<Options>
+    >,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
@@ -1864,7 +1955,8 @@ export const generateObject = <
   GenerateObjectResponse<
     ExtractTools<Options>,
     StructuredOutputSchema["Type"],
-    ExtractToolParametersMode<Options>
+    ExtractToolParametersMode<Options>,
+    ExtractUnknownToolCalls<Options>
   >,
   ExtractError<Options>,
   ExtractServices<Options> | StructuredOutputSchema["DecodingServices"] | LanguageModel
@@ -1920,7 +2012,7 @@ export const streamText: {
   >(
     options: Options & GenerateTextOptionsWithoutToolkit
   ): Stream.Stream<
-    Response.StreamPart<{}>,
+    Response.StreamPart<{}, "decoded", ExtractUnknownToolCalls<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
@@ -1931,7 +2023,7 @@ export const streamText: {
   >(
     options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
   ): Stream.Stream<
-    Response.StreamPart<Tools, ExtractToolParametersMode<Options>>,
+    Response.StreamPart<Tools, ExtractToolParametersMode<Options>, ExtractUnknownToolCalls<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
@@ -1943,7 +2035,11 @@ export const streamText: {
   >(
     options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
   ): Stream.Stream<
-    Response.StreamPart<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
+    Response.StreamPart<
+      ExtractTools<Options>,
+      ExtractToolParametersMode<Options>,
+      ExtractUnknownToolCalls<Options>
+    >,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
@@ -2377,6 +2473,122 @@ const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>
   Toolkit.make(
     ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
   )
+
+// Decodes response parts one at a time, so that a decode failure can be traced
+// to the part which caused it. A failure is recoverable only when that part is
+// a tool call which can never reach a handler: the tool is not in the toolkit,
+// or its parameters are invalid and tool call resolution is disabled, so no
+// handler boundary will validate them. A call which does reach a handler is
+// left alone - `Toolkit` is the authority for those, and routes a parameter
+// failure through the tool's own `failureMode` - so parameters are never
+// validated twice. Any other decode failure fails the operation exactly as it
+// does by default. Every part decodes to exactly one part, so a non-empty
+// chunk stays non-empty.
+function decodeRecoveringToolCalls<
+  A,
+  Part extends Response.PartEncoded | Response.StreamPartEncoded
+>(
+  decodePart: (part: unknown) => Effect.Effect<A, Schema.SchemaError>,
+  parts: readonly [Part, ...Array<Part>],
+  toolkit: Toolkit.Any | Toolkit.WithHandler<any>,
+  method: "generateText" | "streamText",
+  unknownToolCalls: "error" | "return"
+): Effect.Effect<[A, ...Array<A>], Schema.SchemaError>
+function decodeRecoveringToolCalls<
+  A,
+  Part extends Response.PartEncoded | Response.StreamPartEncoded
+>(
+  decodePart: (part: unknown) => Effect.Effect<A, Schema.SchemaError>,
+  parts: ReadonlyArray<Part>,
+  toolkit: Toolkit.Any | Toolkit.WithHandler<any>,
+  method: "generateText" | "streamText",
+  unknownToolCalls: "error" | "return"
+): Effect.Effect<Array<A>, Schema.SchemaError>
+function decodeRecoveringToolCalls<
+  A,
+  Part extends Response.PartEncoded | Response.StreamPartEncoded
+>(
+  decodePart: (part: unknown) => Effect.Effect<A, Schema.SchemaError>,
+  parts: ReadonlyArray<Part>,
+  toolkit: Toolkit.Any | Toolkit.WithHandler<any>,
+  method: "generateText" | "streamText",
+  unknownToolCalls: "error" | "return"
+): Effect.Effect<Array<A>, Schema.SchemaError> {
+  return Effect.forEach(parts, (part) =>
+    Effect.flatMap(Effect.result(decodePart(part)), (decoded) => {
+      if (Result.isSuccess(decoded)) {
+        return Effect.succeed(decoded.success)
+      }
+      // Provider-executed calls already ran, so they are validated as response
+      // output rather than returned to the model
+      if (part.type !== "tool-call" || part.providerExecuted === true) {
+        return Effect.fail(decoded.failure)
+      }
+      // A recovered call is described by its `id` and `name`, and `AiError`
+      // reasons validate their own fields. A call which does not carry both as
+      // strings is malformed rather than unresolvable, and keeps failing.
+      if (!Predicate.isString(part.name) || !Predicate.isString(part.id)) {
+        return Effect.fail(decoded.failure)
+      }
+      const tool = Object.hasOwn(toolkit.tools, part.name) ? toolkit.tools[part.name] : undefined
+
+      // A call which does name a tool in the toolkit belongs to that tool, so
+      // the tool decides: this is the same `failureMode` policy `Toolkit`
+      // applies, honoured here because tool call resolution is disabled and
+      // `Toolkit` will never see the call. The result is the failed
+      // `tool-result` `Toolkit` itself would have produced.
+      if (Predicate.isNotUndefined(tool)) {
+        if (tool.failureMode !== "return") {
+          return Effect.fail(decoded.failure)
+        }
+        const error = AiError.make({
+          module: "LanguageModel",
+          method,
+          reason: new AiError.ToolParameterValidationError({
+            toolName: part.name,
+            description: decoded.failure.message
+          })
+        })
+        return Effect.succeed(
+          Response.makePart("tool-result", {
+            id: part.id,
+            name: part.name,
+            isFailure: true,
+            result: error,
+            encodedResult: encodeAiError(error),
+            providerExecuted: false,
+            preliminary: false
+          }) as A
+        )
+      }
+
+      // Only a call which names no tool at all has no declaration to decide
+      // for it, so it is the operation which opts in.
+      if (unknownToolCalls !== "return") {
+        return Effect.fail(decoded.failure)
+      }
+      const reason = new AiError.ToolNotFoundError({
+        toolName: part.name,
+        availableTools: Object.keys(toolkit.tools)
+      })
+      // The recovered part is decoded rather than constructed: the call which
+      // failed to decode may be malformed in a way which has nothing to do
+      // with the tool - a non-string `id`, invalid metadata - and such a part
+      // must keep failing the operation instead of being returned to the model
+      // under a misleading error.
+      return Effect.catchCause(
+        decodePart({
+          type: "tool-call-error",
+          id: part.id,
+          name: part.name,
+          params: toJson(part.params),
+          error: encodeAiError(AiError.make({ module: "LanguageModel", method, reason })),
+          metadata: part.metadata
+        }),
+        () => Effect.fail(decoded.failure)
+      )
+    }))
+}
 
 // Provider-executed tools bypass Toolkit, so validate their parameters here.
 const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any>>(

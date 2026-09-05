@@ -20,7 +20,7 @@ import { redact } from "../../Redactable.ts"
 import * as Redacted from "../../Redacted.ts"
 import * as Schema from "../../Schema.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
-import { HttpRequestDetails, HttpResponseDetails } from "./Response.ts"
+import { HttpRequestDetails, HttpResponseDetails } from "./internal/http-details.ts"
 
 const ReasonTypeId = "~effect/ai/AiError/Reason" as const
 
