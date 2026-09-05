@@ -182,8 +182,7 @@ export declare namespace Client {
         Endpoint["~Query"],
         Endpoint["~Payload"],
         Endpoint["~Headers"],
-        Mode,
-        Endpoint["~Success"]
+        Mode
       >
     >
   ) => MethodReturn<Endpoint, E, R, Mode>

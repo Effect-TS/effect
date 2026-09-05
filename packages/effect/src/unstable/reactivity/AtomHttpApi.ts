@@ -78,7 +78,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
     >
   ] ? Atom.AtomResultFn<
       Simplify<
-        HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, "decoded-only", _Success> & {
+        HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, "decoded-only"> & {
           readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
         }
       >,
@@ -114,7 +114,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         infer _RE
       >
     ] ? Simplify<
-        HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, ResponseMode, _Success> & {
+        HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, ResponseMode> & {
           readonly reactivityKeys?:
             | ReadonlyArray<unknown>
             | ReadonlyRecord<string, ReadonlyArray<unknown>>
