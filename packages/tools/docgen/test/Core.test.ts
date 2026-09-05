@@ -10,6 +10,7 @@ import * as Path from "effect/Path"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
+import * as path from "node:path"
 import * as ast from "ts-morph"
 
 const assertFencedCode = (
@@ -151,6 +152,59 @@ describe("Core", () => {
         }`,
         []
       ))
+  })
+
+  describe("[internal] getModuleMarkdownFiles", () => {
+    for (const srcDir of [".", "src", "source/lib", path.resolve("source/lib"), process.cwd()]) {
+      it.effect(`generates distinct source-relative pages for ${srcDir}`, () =>
+        Effect.gen(function*() {
+          const project = new ast.Project({ useInMemoryFileSystem: true })
+          const sources = [
+            ["left/Shared.ts", "leftMarker"],
+            ["right/Shared.ts", "rightMarker"],
+            ["Flat.ts", "flatMarker"]
+          ] as const
+          const modules = yield* Effect.forEach(sources, ([relativePath, marker]) => {
+            const filePath = path.join(srcDir, relativePath)
+            const content = `/** @since 1.0.0 */\nexport const ${marker} = "${marker}"\n`
+            project.createSourceFile(filePath, content)
+            return Parser.parseFile(project)(new Domain.File(filePath, content))
+          })
+          const files = yield* Core.getModuleMarkdownFiles(modules)
+
+          assert.deepStrictEqual(files.map((file) => file.path), [
+            path.join("docs", "modules", "left", "Shared.ts.md"),
+            path.join("docs", "modules", "right", "Shared.ts.md"),
+            path.join("docs", "modules", "Flat.ts.md")
+          ])
+          for (const [index, file] of files.entries()) {
+            assert.deepStrictEqual(
+              sources.map(([, marker]) => marker).filter((marker) => file.content.includes(marker)),
+              [sources[index][1]]
+            )
+            assert.isTrue(file.isOverwriteable)
+          }
+        }).pipe(
+          Effect.provideService(Configuration.Configuration, {
+            projectName: "docgen",
+            projectHomepage: "https://example.com",
+            srcLink: "https://example.com/src",
+            srcDir,
+            outDir: "docs",
+            theme: Configuration.DEFAULT_THEME,
+            enableSearch: true,
+            enforceDescriptions: false,
+            enforceExamples: false,
+            enforceVersion: true,
+            runExamples: false,
+            tscExecutable: "tsc",
+            exclude: [],
+            parseCompilerOptions: {},
+            examplesCompilerOptions: {}
+          }),
+          Effect.provide(NodeServices.layer)
+        ))
+    }
   })
 
   it.effect("preserves a type alias name and declared type parameters", () => {

@@ -552,12 +552,13 @@ const getModuleMarkdownOutputPath = (module: Domain.Module) => {
     return path.normalize(path.join(
       config.outDir,
       "modules",
-      `${module.path.slice(1).join(path.sep)}.md`
+      `${path.relative(config.srcDir, module.path.join(path.sep))}.md`
     ))
   })
 }
 
-const getModuleMarkdownFiles = (modules: ReadonlyArray<Domain.Module>) =>
+/** @internal */
+export const getModuleMarkdownFiles = (modules: ReadonlyArray<Domain.Module>) =>
   Effect.forEach(modules, (module, i) =>
     Effect.gen(function*() {
       const outputPath = yield* getModuleMarkdownOutputPath(module)
