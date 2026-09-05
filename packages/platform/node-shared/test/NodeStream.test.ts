@@ -76,6 +76,26 @@ describe("Stream", () => {
       assert.strictEqual(result, "ABC")
     }))
 
+  it.effect("pipeThroughDuplex propagates upstream failure", () =>
+    Effect.gen(function*() {
+      const result = yield* Stream.fail("upstream error").pipe(
+        NodeStream.pipeThroughDuplex({
+          evaluate: () =>
+            new Duplex({
+              read() {},
+              write(_chunk, _encoding, callback) {
+                callback()
+              }
+            })
+        }),
+        Stream.runDrain,
+        Effect.timeout(1000),
+        Effect.flip
+      )
+
+      assert.strictEqual(result, "upstream error")
+    }))
+
   it.effect("pipeThroughDuplex write error", () =>
     Effect.gen(function*() {
       const result = yield* Stream.fromArray(["a", "b", "c"]).pipe(

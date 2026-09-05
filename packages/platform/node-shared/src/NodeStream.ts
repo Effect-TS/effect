@@ -86,6 +86,7 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
   Channel.fromTransform((upstream, scope) => {
     const duplex = options.evaluate()
     const exit = MutableRef.make<Exit.Exit<never, IE | E | Cause.Done> | undefined>(undefined)
+    const latch = Latch.makeUnsafe(false)
 
     return pullIntoWritable({
       pull: upstream,
@@ -97,6 +98,7 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
       Effect.catchCause((cause) => {
         if (Pull.isDoneCause(cause)) return Effect.void
         exit.current = Exit.failCause(cause as Cause.Cause<IE | E | Cause.Done>)
+        latch.openUnsafe()
         return Effect.void
       }),
       Effect.forkIn(scope),
@@ -104,6 +106,7 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
         readableToPullUnsafe({
           scope,
           exit,
+          latch,
           readable: duplex,
           onError: options.onError ?? defaultOnError as any,
           chunkSize: options.chunkSize
@@ -330,6 +333,7 @@ export const toUint8Array = <E = Cause.UnknownError>(
 const readableToPullUnsafe = <A, E>(options: {
   readonly scope: Scope.Scope
   readonly exit?: MutableRef.MutableRef<Exit.Exit<never, E | Cause.Done> | undefined> | undefined
+  readonly latch?: Latch.Latch | undefined
   readonly readable: Readable | NodeJS.ReadableStream
   readonly onError: (error: unknown) => E
   readonly chunkSize: number | undefined
@@ -339,7 +343,7 @@ const readableToPullUnsafe = <A, E>(options: {
 
   const closeOnDone = options.closeOnDone ?? true
   const exit = options.exit ?? MutableRef.make(undefined)
-  const latch = Latch.makeUnsafe(false)
+  const latch = options.latch ?? Latch.makeUnsafe(false)
   function onReadable() {
     latch.openUnsafe()
   }
