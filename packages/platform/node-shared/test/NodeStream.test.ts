@@ -89,7 +89,6 @@ describe("Stream", () => {
             })
         }),
         Stream.runDrain,
-        Effect.timeout(1000),
         Effect.flip
       )
 
