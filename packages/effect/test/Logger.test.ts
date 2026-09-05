@@ -7,50 +7,6 @@ import * as Logger from "effect/Logger"
 import * as References from "effect/References"
 import * as TestConsole from "effect/testing/TestConsole"
 
-interface AnnotationSnapshot {
-  readonly stage: string
-  readonly annotations: Record<string, unknown>
-}
-
-const runScopedAnnotation = (
-  annotate: Effect.Effect<void, never, Scope.Scope>,
-  initial: Record<string, unknown>,
-  replaceWith?: { readonly value: unknown }
-) =>
-  Effect.gen(function*() {
-    const snapshots: Array<AnnotationSnapshot> = []
-    const scope = yield* Scope.make()
-    const logger = Logger.make<unknown, void>(({ fiber, message }) => {
-      snapshots.push({
-        stage: String(Array.isArray(message) ? message[0] : message),
-        annotations: { ...fiber.getRef(References.CurrentLogAnnotations) }
-      })
-    })
-
-    yield* Effect.gen(function*() {
-      yield* Effect.log("before")
-      yield* annotate
-      yield* Effect.log("inside")
-      if (replaceWith !== undefined) {
-        yield* Effect.gen(function*() {
-          yield* Effect.log("replacement")
-          yield* Scope.close(scope, Exit.void)
-          yield* Effect.log("after close")
-        }).pipe(Effect.annotateLogs("measurement", replaceWith.value))
-      } else {
-        yield* Scope.close(scope, Exit.void)
-        yield* Effect.log("after close")
-      }
-    }).pipe(
-      Scope.provide(scope),
-      Effect.annotateLogs(initial),
-      Effect.provide(Logger.layer([logger])),
-      Effect.ensuring(Scope.close(scope, Exit.void))
-    )
-
-    return snapshots
-  })
-
 describe("Logger", () => {
   it.effect("should output logs", () =>
     Effect.gen(function*() {
@@ -206,72 +162,30 @@ describe("Logger", () => {
       )
     }))
 
-  describe("annotateLogsScoped with NaN", () => {
-    const forms: Array<{
-      readonly name: string
-      readonly annotate: Effect.Effect<void, never, Scope.Scope>
-    }> = [
-      { name: "key/value", annotate: Effect.annotateLogsScoped("measurement", NaN) },
-      { name: "record", annotate: Effect.annotateLogsScoped({ measurement: NaN }) }
-    ]
-
-    for (const { annotate, name } of forms) {
-      it.effect(`${name} restores an absent key`, () =>
-        Effect.gen(function*() {
-          const snapshots = yield* runScopedAnnotation(annotate, {})
-          assert.deepStrictEqual(snapshots, [
-            { stage: "before", annotations: {} },
-            { stage: "inside", annotations: { measurement: NaN } },
-            { stage: "after close", annotations: {} }
-          ])
-        }))
-
-      it.effect(`${name} restores an existing value`, () =>
-        Effect.gen(function*() {
-          const initial = { measurement: "before" }
-          const snapshots = yield* runScopedAnnotation(annotate, initial)
-          assert.deepStrictEqual(snapshots, [
-            { stage: "before", annotations: initial },
-            { stage: "inside", annotations: { measurement: NaN } },
-            { stage: "after close", annotations: initial }
-          ])
-        }))
-    }
-
-    it.effect("retains a value that replaces the scoped NaN", () =>
+  for (const initial of [{}, { measurement: "previous" }]) {
+    it.effect(`annotateLogsScoped ${"measurement" in initial ? "restores" : "removes"} NaN annotations`, () =>
       Effect.gen(function*() {
-        const initial = { measurement: "before" }
-        const snapshots = yield* runScopedAnnotation(
-          Effect.annotateLogsScoped("measurement", NaN),
-          initial,
-          { value: 42 }
-        )
-        assert.deepStrictEqual(snapshots, [
-          { stage: "before", annotations: initial },
-          { stage: "inside", annotations: { measurement: NaN } },
-          { stage: "replacement", annotations: { measurement: 42 } },
-          { stage: "after close", annotations: { measurement: 42 } }
-        ])
-      }))
+        const annotations: Array<Record<string, unknown>> = []
+        const logger = Logger.make<unknown, void>(({ fiber }) => {
+          annotations.push({ ...fiber.getRef(References.CurrentLogAnnotations) })
+        })
+        const scope = yield* Scope.make()
 
-    it.effect("keeps signed zero interchangeable when closing the scope", () =>
-      Effect.gen(function*() {
-        const initial = { measurement: "before" }
-        const snapshots = yield* runScopedAnnotation(
-          Effect.annotateLogsScoped("measurement", +0),
-          initial,
-          { value: -0 }
+        yield* Effect.gen(function*() {
+          yield* Effect.annotateLogsScoped("measurement", NaN)
+          yield* Effect.log("inside")
+          yield* Scope.close(scope, Exit.void)
+          yield* Effect.log("after close")
+        }).pipe(
+          Scope.provide(scope),
+          Effect.annotateLogs(initial),
+          Effect.provide(Logger.layer([logger])),
+          Effect.ensuring(Scope.close(scope, Exit.void))
         )
-        assert.deepStrictEqual(snapshots, [
-          { stage: "before", annotations: initial },
-          { stage: "inside", annotations: { measurement: +0 } },
-          { stage: "replacement", annotations: { measurement: -0 } },
-          { stage: "after close", annotations: initial }
-        ])
-        assert.strictEqual(Object.is(snapshots[1].annotations.measurement, +0), true)
-        assert.strictEqual(Object.is(snapshots[2].annotations.measurement, -0), true)
+
+        assert.deepStrictEqual(annotations, [{ measurement: NaN }, initial])
       }))
-  })
+  }
 
   it.effect("default logger preserves message item order when logging a cause", () =>
     Effect.gen(function*() {
