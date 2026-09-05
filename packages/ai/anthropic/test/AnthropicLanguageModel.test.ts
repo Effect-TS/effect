@@ -870,6 +870,15 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(body.output_config?.format?.type, "json_schema")
         assert.notProperty(body, "structuredOutputs")
       }))
+
+    // #8076: `strictJsonSchema` is a provider-only config key (consumed by
+    // `prepareTools`); it must never leak into the Messages request body.
+    it.effect("does not leak strictJsonSchema into the request body", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-4-6", { strictJsonSchema: false })
+
+        assert.notProperty(body, "strictJsonSchema")
+      }))
   })
 
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /

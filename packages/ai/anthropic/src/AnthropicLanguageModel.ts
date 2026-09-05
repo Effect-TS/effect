@@ -710,8 +710,13 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       if (betas.size > 0) {
         params["anthropic-beta"] = Array.from(betas).join(",")
       }
-      const { disableParallelToolCalls: _, output_config, structuredOutputs: _structuredOutputs, ...requestConfig } =
-        config
+      const {
+        disableParallelToolCalls: _disableParallelToolCalls,
+        output_config,
+        structuredOutputs: _structuredOutputs,
+        strictJsonSchema: _strictJsonSchema,
+        ...requestConfig
+      } = config
       const payload: Mutable<typeof Generated.BetaCreateMessageParams.Encoded> = {
         ...requestConfig,
         max_tokens: requestConfig.max_tokens ?? capabilities.maxOutputTokens,
