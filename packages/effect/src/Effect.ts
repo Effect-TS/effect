@@ -14085,10 +14085,10 @@ export const withLogSpan = dual<
 // -----------------------------------------------------------------------------
 
 /**
- * Updates a metric after each execution of an effect.
- * An optional mapper converts the effect's `Exit` into the metric's input.
+ * Updates a metric after each effect execution, optionally mapping its `Exit` to
+ * the metric's input.
  *
- * **Example** (Incrementing a metric for each execution)
+ * **Example** (Counting executions)
  *
  * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
@@ -14105,7 +14105,7 @@ export const withLogSpan = dual<
  * Effect.runSync(Metric.value(counter)).count // => 1
  * ```
  *
- * **Example** (Mapping exits before updating a metric)
+ * **Example** (Mapping exits)
  *
  * ```ts import.meta.vitest
  * import { Effect, Exit, Metric } from "effect"
