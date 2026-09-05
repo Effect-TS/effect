@@ -555,7 +555,8 @@ const getModuleMarkdownOutputPath = (module: Domain.Module) => {
   })
 }
 
-const getModuleMarkdownFiles = (modules: ReadonlyArray<Domain.Module>) =>
+/** @internal */
+export const getModuleMarkdownFiles = (modules: ReadonlyArray<Domain.Module>) =>
   Effect.forEach(modules, (module, i) =>
     Effect.gen(function*() {
       const outputPath = yield* getModuleMarkdownOutputPath(module)
