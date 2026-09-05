@@ -152,7 +152,7 @@ describe("migration document", () => {
     { name: "four backticks", example: "/*\n````text\nliteral\n````\n*/", fence: "`````" },
     { name: "longest run last", example: "const value = `text`\n/*\n```\n`````\n*/", fence: "``````" },
     { name: "whitespace", example: "\n  const value = 1  \n\n", fence: "```" },
-    { name: "many backtick runs", example: "// ` ".repeat(150_000), fence: "```" }
+    { name: "many backtick runs", example: "// ` ".repeat(400_000), fence: "```" }
   ])("preserves example framing: $name", ({ example, fence }) => {
     const document = renderMigrationDocument(
       diff,
@@ -165,6 +165,26 @@ describe("migration document", () => {
     )
 
     assert.strictEqual(document.split("**Example**\n\n")[1], `${fence}ts\n${example}\n${fence}\n`)
+    assert.deepStrictEqual(markdownSafetyIssues(document), [])
+  })
+
+  it.each([
+    { name: "compact", example: undefined },
+    { name: "detailed", example: "Zeta.changed()" }
+  ])("renders replacements with many backtick runs in $name entries", ({ example }) => {
+    const replacement = "// ` ".repeat(400_000)
+    const document = renderMigrationDocument(
+      diff,
+      new Map([...annotations, ["effect/Zeta#changed", {
+        replacement,
+        note: "Use the replacement.",
+        example
+      }]]),
+      "## Import Map\n"
+    )
+
+    assert(document.includes("``" + replacement + "``"))
+    assert.deepStrictEqual(markdownSafetyIssues(document), [])
   })
 
   it("escapes annotation prose while preserving inline code and fenced examples", () => {

@@ -1,5 +1,5 @@
 ---
-
+"@effect/api-diff": patch
 ---
 
-Preserve backticks in migration examples by enclosing each example in a longer code fence.
+Preserve migration example fences and avoid stack overflows when examples or replacements contain many backtick runs.
