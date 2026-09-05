@@ -6619,29 +6619,36 @@ export const consolePretty = (options?: {
 }) => {
   // evaluated lazily so the module-level bundle stays free of `process`
   // property accesses, which bundlers must retain as possible side effects
-  const process = (globalThis as {
-    readonly process?: { readonly stdout?: { readonly isTTY?: boolean } }
-  }).process
+  const process = (globalThis as { readonly process?: { readonly stdout?: unknown } }).process
   const hasProcessStdout = typeof process?.stdout === "object" && process.stdout !== null
-  const processStdoutIsTTY = hasProcessStdout &&
-    process.stdout.isTTY === true
-  const hasProcessStdoutOrDeno = hasProcessStdout || "Deno" in globalThis
-  const mode_ = options?.mode ?? "auto"
-  const mode = mode_ === "auto" ? (hasProcessStdoutOrDeno ? "tty" : "browser") : mode_
-  const isBrowser = mode === "browser"
-  const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
-  const formatDate = options?.formatDate ?? defaultDateFormat
-  return isBrowser
-    ? prettyLoggerBrowser({ colors: showColors, formatDate })
-    : prettyLoggerTty({ colors: showColors, formatDate })
+  const isDeno = "Deno" in globalThis
+  const mode = options?.mode ?? "auto"
+  const isTtyLogger = mode === "auto" ? hasProcessStdout || isDeno : mode === "tty"
+
+  return isTtyLogger ? prettyLoggerTty(options) : prettyLoggerBrowser(options)
 }
 
-const prettyLoggerTty = (options: {
-  readonly colors: boolean
-  readonly formatDate: (date: Date) => string
+/** @internal */
+export const prettyLoggerTty = (options?: {
+  readonly colors?: "auto" | boolean | undefined
+  readonly formatDate?: ((date: Date) => string) | undefined
 }) => {
-  const processIsBun = (globalThis as { readonly process?: { readonly isBun?: boolean } }).process?.isBun === true
-  const color = options.colors ? withColor : withColorNoop
+  const formatDate = options?.formatDate ?? defaultDateFormat
+  // evaluated lazily so the module-level bundle stays free of `process`
+  // property accesses, which bundlers must retain as possible side effects
+  const process = (globalThis as {
+    readonly process?: {
+      readonly stdout?: { readonly isTTY?: unknown }
+      readonly isBun?: boolean
+    }
+  }).process
+
+  const hasProcessStdout = typeof process?.stdout === "object" && process.stdout !== null
+  const processStdoutIsTTY = hasProcessStdout && process.stdout.isTTY === true
+  const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY
+  const color = showColors ? withColor : withColorNoop
+
+  const processIsBun = process?.isBun === true
   return loggerMake<unknown, void>(
     ({ cause, date, fiber, logLevel, message: message_ }) => {
       const console = fiber.getRef(ConsoleRef)
@@ -6650,7 +6657,7 @@ const prettyLoggerTty = (options: {
 
       const message = Array.isArray(message_) ? message_.slice() : [message_]
 
-      let firstLine = color(`[${options.formatDate(date)}]`, colors.white)
+      let firstLine = color(`[${formatDate(date)}]`, colors.white)
         + ` ${color(logLevel.toUpperCase(), ...logLevelColors[logLevel])}`
         + ` (#${fiber.id})`
 
@@ -6695,24 +6702,27 @@ const prettyLoggerTty = (options: {
   )
 }
 
-const prettyLoggerBrowser = (options: {
-  readonly colors: boolean
-  readonly formatDate: (date: Date) => string
+/** @internal */
+export const prettyLoggerBrowser = (options?: {
+  readonly colors?: "auto" | boolean | undefined
+  readonly formatDate?: ((date: Date) => string) | undefined
 }) => {
-  const color = options.colors ? "%c" : ""
+  const showColors = Boolean(options?.colors)
+  const color = showColors ? "%c" : ""
+  const formatDate = options?.formatDate ?? defaultDateFormat
   return loggerMake<unknown, void>(
     ({ cause, date, fiber, logLevel, message: message_ }) => {
       const console = fiber.getRef(ConsoleRef)
 
       const message = Array.isArray(message_) ? message_.slice() : [message_]
 
-      let firstLine = `${color}[${options.formatDate(date)}]`
+      let firstLine = `${color}[${formatDate(date)}]`
       const firstParams = []
-      if (options.colors) {
+      if (showColors) {
         firstParams.push("color:gray")
       }
       firstLine += ` ${color}${logLevel.toUpperCase()}${color} (#${fiber.id})`
-      if (options.colors) {
+      if (showColors) {
         firstParams.push(logLevelStyle[logLevel], "")
       }
 
@@ -6729,7 +6739,7 @@ const prettyLoggerBrowser = (options: {
         const firstMaybeString = structuredMessage(message[0])
         if (typeof firstMaybeString === "string") {
           firstLine += ` ${color}${firstMaybeString}`
-          if (options.colors) {
+          if (showColors) {
             firstParams.push("color:deepskyblue")
           }
           messageIndex++
@@ -6754,7 +6764,7 @@ const prettyLoggerBrowser = (options: {
       const annotations = fiber.getRef(CurrentLogAnnotations)
       for (const [key, value] of Object.entries(annotations)) {
         const redacted = redact(value)
-        if (options.colors) {
+        if (showColors) {
           // oxlint-disable-next-line no-console
           console.log(`%c${key}:`, "color:gray", redacted)
         } else {
