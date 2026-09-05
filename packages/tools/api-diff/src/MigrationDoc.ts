@@ -87,7 +87,7 @@ interface MigrationEntry {
 
 const importMapReplacements = (importMapSections: string): ReadonlyMap<string, ReadonlyArray<string>> => {
   const replacements = new Map<string, Array<string>>()
-  for (const line of importMapSections.split("\n")) {
+  for (const line of importMapSections.split(/\r?\n/)) {
     const match = /^(\S+) -> (\S+)(?: \(barrel: [^)]+\))?$/.exec(line)
     if (match === null) {
       continue
