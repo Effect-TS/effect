@@ -408,6 +408,10 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
     return this.source.status
   }
 
+  get url() {
+    return this.source.responseURL || this.request.url
+  }
+
   get formData(): Effect.Effect<FormData, HttpClientError.HttpClientError> {
     return Effect.flatMap(this.arrayBuffer, (body) =>
       Effect.tryPromise({

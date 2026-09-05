@@ -1102,6 +1102,10 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
     return this.response.status
   }
 
+  get url(): string {
+    return this.request.url
+  }
+
   private cachedHeaders?: Headers.Headers
   get headers(): Headers.Headers {
     return this.cachedHeaders ??= this.response.body._tag === "FormData"
