@@ -185,6 +185,34 @@ describe("Effect", () => {
     assert.isTrue(release)
   })
 
+  it.effect("acquireUseRelease runs release when use throws", () =>
+    Effect.gen(function*() {
+      const resource = { id: 1 }
+      const defect = new Error("boom")
+      let releases = 0
+      let releasedResource: typeof resource | undefined
+      let releaseExit: Exit.Exit<never> | undefined
+
+      const exit = yield* Effect.acquireUseRelease(
+        Effect.succeed(resource),
+        (): Effect.Effect<never> => {
+          throw defect
+        },
+        (resource, exit) =>
+          Effect.sync(() => {
+            releases++
+            releasedResource = resource
+            releaseExit = exit
+          })
+      ).pipe(Effect.exit)
+
+      assertExitDefect(exit, defect)
+      assert.strictEqual(releases, 1)
+      assert.strictEqual(releasedResource, resource)
+      assert.isDefined(releaseExit)
+      assertExitDefect(releaseExit, defect)
+    }))
+
   it("acquireUseRelease uninterruptible", async () => {
     let acquire = false
     let use = false
