@@ -36,16 +36,11 @@ describe("HttpApiClient", () => {
 
         const limitedStream = yield* client.test.events({}, { sseOptions: { maxEventSize: 4 } })
         const defaultStream = yield* client.test.events({})
-        const [limitedExit, events] = yield* Effect.all([
-          Effect.exit(Stream.runCollect(limitedStream)),
+        const [error, events] = yield* Effect.all([
+          limitedStream.pipe(Stream.runCollect, Effect.flip),
           Stream.runCollect(defaultStream)
         ], { concurrency: "unbounded" })
 
-        assert.strictEqual(limitedExit._tag, "Failure")
-        if (limitedExit._tag === "Success") {
-          throw new Error("Expected SSE decoding to fail")
-        }
-        const error = Cause.squash(limitedExit.cause)
         assert.instanceOf(error, Sse.SseError)
         assert.instanceOf(error.reason, Sse.EventTooLarge)
         assert.strictEqual(error.reason.maxEventSize, 4)
@@ -267,6 +262,14 @@ describe("HttpApiClient", () => {
         assert.instanceOf(error, Sse.SseError)
         assert.instanceOf(error.reason, Sse.EventTooLarge)
         assert.strictEqual(error.reason.maxEventSize, 4)
+
+        const defaultValue = yield* client.test.chat({})
+        if (!(HttpApiSchema.WithHeadersValueTypeId in defaultValue)) {
+          throw new Error("Expected WithHeaders response")
+        }
+        const events = yield* Stream.runCollect(defaultValue.body)
+        assert.deepStrictEqual(defaultValue.headers, { "x-count": 1 })
+        assert.deepStrictEqual(events, [{ text: "hello" }])
       }))
 
     it.effect("decodes StreamSse successes at the annotated status", () =>
