@@ -23,21 +23,6 @@ describe("NetAddress", () => {
     expect(NetAddress.ipv4FromBytesUnsafe(new Uint8Array(4))).type.toBe<NetAddress.Ipv4Address>()
     expect(NetAddress.ipv6FromBytesUnsafe(new Uint8Array(16))).type.toBe<NetAddress.Ipv6Address>()
     expect(NetAddress.ipv6ToOctets(NetAddress.ipv6Loopback)).type.toBe<ReadonlyArray<number>>()
-    expect(NetAddress.withPrefix(NetAddress.ipv4Loopback, 8)).type.toBe<
-      Result.Result<NetAddress.IpInterface<NetAddress.Ipv4Address>, NetAddress.NetAddressError>
-    >()
-    expect(NetAddress.withPrefix(NetAddress.ipv6Loopback, 128)).type.toBe<
-      Result.Result<NetAddress.IpInterface<NetAddress.Ipv6Address>, NetAddress.NetAddressError>
-    >()
-    expect(NetAddress.ipInterfaceFromString("192.0.2.1/24")).type.toBe<
-      Result.Result<NetAddress.IpInterface, NetAddress.NetAddressError>
-    >()
-    expect(NetAddress.ipInterfaceFromStringUnsafe("192.0.2.1/24")).type.toBe<
-      NetAddress.IpInterface
-    >()
-    expect(NetAddress.ipv4InterfaceFromString("192.0.2.1/24")).type.toBe<
-      Result.Result<NetAddress.Ipv4Interface, NetAddress.NetAddressError>
-    >()
     // @ts-expect-error Property 'bytes' does not exist
     void NetAddress.ipv4Loopback.bytes
   })
@@ -67,15 +52,6 @@ describe("NetAddress", () => {
     }
   })
 
-  it("narrows generic interface addresses", () => {
-    const value = null as unknown as NetAddress.IpInterface
-    if (NetAddress.isIpv4Interface(value)) {
-      expect(value.address).type.toBe<NetAddress.Ipv4Address>()
-    } else if (NetAddress.isIpv6Interface(value)) {
-      expect(value.address).type.toBe<NetAddress.Ipv6Address>()
-    }
-  })
-
   it("exposes string transformation schemas", () => {
     expect(Schema.MacAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.MacAddress, string>>()
     expect(Schema.IpAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.IpAddress, string>>()
@@ -83,8 +59,5 @@ describe("NetAddress", () => {
     expect(Schema.UnixPathAddressFromString).type.toBeAssignableTo<
       Schema.Codec<NetAddress.UnixPathAddress, string>
     >()
-    expect<Schema.Schema.Type<typeof Schema.Ipv4InterfaceFromString>>().type.toBe<NetAddress.Ipv4Interface>()
-    expect<Schema.Schema.Type<typeof Schema.Ipv6InterfaceFromString>>().type.toBe<NetAddress.Ipv6Interface>()
-    expect<Schema.Schema.Type<typeof Schema.IpInterfaceFromString>>().type.toBe<NetAddress.IpInterface>()
   })
 })

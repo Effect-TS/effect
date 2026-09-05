@@ -1,5 +1,5 @@
 /**
- * Pure, platform-neutral values for MAC, IP, interface, internet socket, and Unix path addresses.
+ * Pure, platform-neutral values for MAC, IP, internet socket, and Unix path addresses.
  *
  * @since 4.0.0
  */
@@ -13,7 +13,6 @@ import { hasProperty } from "../../Predicate.ts"
 import * as Result from "../../Result.ts"
 
 const TypeId = "~effect/net/NetAddress" as const
-const IpInterfaceTypeId = "~effect/net/NetAddress/IpInterface" as const
 
 /**
  * An immutable 32-bit IPv4 address.
@@ -46,54 +45,6 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  * @since 4.0.0
  */
 export type IpAddress = Ipv4Address | Ipv6Address
-
-/**
- * An IP host address and prefix length. Host bits are preserved.
- *
- * @category models
- * @since 4.0.0
- */
-export interface IpInterface<out A extends IpAddress = IpAddress> extends Equal.Equal, Hash.Hash {
-  readonly _tag: "IpInterface"
-  readonly address: A
-  readonly prefixLength: number
-  readonly [IpInterfaceTypeId]: typeof IpInterfaceTypeId
-  toString(): string
-}
-
-/**
- * An IPv4 host address and prefix length.
- *
- * @category models
- * @since 4.0.0
- */
-export type Ipv4Interface = IpInterface<Ipv4Address>
-
-/**
- * An IPv6 host address and prefix length.
- *
- * @category models
- * @since 4.0.0
- */
-export type Ipv6Interface = IpInterface<Ipv6Address>
-
-/**
- * Companion types for parsing IP addresses with prefixes.
- *
- * @since 4.0.0
- */
-export declare namespace IpInterface {
-  /**
-   * Controls whether the input must contain an explicit prefix. Prefixes are
-   * optional by default and use the address width when omitted.
-   *
-   * @category models
-   * @since 4.0.0
-   */
-  export interface ParseOptions {
-    readonly prefix?: "required" | "optional"
-  }
-}
 
 /**
  * An immutable 48-bit IEEE 802 MAC address.
@@ -237,30 +188,6 @@ export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || i
 export const width = (address: IpAddress): 32 | 128 => isIpv4Address(address) ? 32 : 128
 
 /**
- * Returns `true` when a value is an IPv4 interface address.
- *
- * @category guards
- * @since 4.0.0
- */
-export const isIpv4Interface = (u: unknown): u is Ipv4Interface => isIpInterface(u) && isIpv4Address(u.address)
-
-/**
- * Returns `true` when a value is an IPv6 interface address.
- *
- * @category guards
- * @since 4.0.0
- */
-export const isIpv6Interface = (u: unknown): u is Ipv6Interface => isIpInterface(u) && isIpv6Address(u.address)
-
-/**
- * Returns `true` when a value is an IP interface address.
- *
- * @category guards
- * @since 4.0.0
- */
-export const isIpInterface = (u: unknown): u is IpInterface => hasProperty(u, IpInterfaceTypeId)
-
-/**
  * Returns `true` when a value is a MAC address.
  *
  * @category guards
@@ -338,25 +265,6 @@ const Ipv6Proto = {
     return formatIp(this)
   },
   [NodeInspectSymbol](this: Ipv6Address): string {
-    return this.toString()
-  }
-}
-
-const IpInterfaceProto = {
-  _tag: "IpInterface",
-  [IpInterfaceTypeId]: IpInterfaceTypeId,
-  [Equal.symbol](this: IpInterface, that: Equal.Equal): boolean {
-    return isIpInterface(that) &&
-      this.prefixLength === that.prefixLength &&
-      Equal.equals(this.address, that.address)
-  },
-  [Hash.symbol](this: IpInterface): number {
-    return Hash.combine(Hash.hash(this.address), Hash.number(this.prefixLength))
-  },
-  toString(this: IpInterface): string {
-    return formatIpInterface(this)
-  },
-  [NodeInspectSymbol](this: IpInterface): string {
     return this.toString()
   }
 }
@@ -650,143 +558,6 @@ export const ipFromString = (input: string): Result.Result<IpAddress, NetAddress
     : ipv4FromString(input)
   return result
 }
-
-/**
- * Creates a validated address and prefix length while preserving host bits.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const withPrefix = <A extends IpAddress>(
-  address: A,
-  prefixLength: number
-): Result.Result<IpInterface<A>, NetAddressError> => {
-  const max = width(address)
-  if (!Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > max) {
-    return addressError(`prefix length must be an integer from 0 through ${max}`)
-  }
-  const self = Object.assign(Object.create(IpInterfaceProto), { address, prefixLength })
-  return Result.succeed(Object.freeze(self))
-}
-
-const parseAddressWithPrefix = (
-  input: string,
-  options?: IpInterface.ParseOptions
-): Result.Result<{ readonly address: string; readonly prefixLength: number | undefined }, NetAddressError> => {
-  const slash = input.indexOf("/")
-  if (slash === -1 && options?.prefix !== "required") {
-    return Result.succeed({ address: input, prefixLength: undefined })
-  }
-  if (slash <= 0 || slash !== input.lastIndexOf("/") || slash === input.length - 1) {
-    return addressError("expected an address and prefix length separated by one slash")
-  }
-  const prefix = input.slice(slash + 1)
-  if (!/^(0|[1-9][0-9]*)$/.test(prefix)) {
-    return addressError("prefix length must be an unpadded ASCII decimal integer")
-  }
-  return Result.succeed({ address: input.slice(0, slash), prefixLength: Number(prefix) })
-}
-
-/**
- * Parses an IPv4 interface address while preserving host bits.
- *
- * **Details**
- *
- * A missing prefix defaults to 32. Use `prefix: "required"` to require one.
- *
- * @category decoding
- * @since 4.0.0
- */
-export const ipv4InterfaceFromString = (
-  input: string,
-  options?: IpInterface.ParseOptions
-): Result.Result<Ipv4Interface, NetAddressError> => {
-  return Result.flatMap(
-    parseAddressWithPrefix(input, options),
-    (parts) =>
-      Result.flatMap(
-        ipv4FromString(parts.address),
-        (address) => withPrefix(address, parts.prefixLength ?? width(address))
-      )
-  )
-}
-
-/**
- * Parses an IPv6 interface address while preserving host bits.
- *
- * **Details**
- *
- * A missing prefix defaults to 128. Use `prefix: "required"` to require one.
- *
- * @category decoding
- * @since 4.0.0
- */
-export const ipv6InterfaceFromString = (
-  input: string,
-  options?: IpInterface.ParseOptions
-): Result.Result<Ipv6Interface, NetAddressError> => {
-  return Result.flatMap(
-    parseAddressWithPrefix(input, options),
-    (parts) =>
-      Result.flatMap(
-        ipv6FromString(parts.address),
-        (address) => withPrefix(address, parts.prefixLength ?? width(address))
-      )
-  )
-}
-
-/**
- * Parses an IP interface address while preserving host bits.
- *
- * **Details**
- *
- * A missing prefix defaults to the address width. Use `prefix: "required"` to
- * require one.
- *
- * @category decoding
- * @since 4.0.0
- */
-export const ipInterfaceFromString = (
-  input: string,
-  options?: IpInterface.ParseOptions
-): Result.Result<IpInterface, NetAddressError> => {
-  return Result.flatMap(
-    parseAddressWithPrefix(input, options),
-    (parts) =>
-      Result.flatMap(
-        ipFromString(parts.address),
-        (address) => withPrefix(address, parts.prefixLength ?? width(address))
-      )
-  )
-}
-
-/**
- * Parses a trusted IP interface address, throwing on failure.
- *
- * @category unsafe
- * @since 4.0.0
- */
-export const ipInterfaceFromStringUnsafe = (
-  input: string,
-  options?: IpInterface.ParseOptions
-): IpInterface => Result.getOrThrow(ipInterfaceFromString(input, options))
-
-/**
- * Creates a trusted address and prefix length, throwing when the prefix is invalid.
- *
- * @category unsafe
- * @since 4.0.0
- */
-export const withPrefixUnsafe = <A extends IpAddress>(address: A, prefixLength: number): IpInterface<A> =>
-  Result.getOrThrow(withPrefix(address, prefixLength))
-
-/**
- * Formats an IP interface address with its decimal prefix length.
- *
- * @category encoding
- * @since 4.0.0
- */
-export const formatIpInterface = (self: IpInterface): string => `${formatIp(self.address)}/${self.prefixLength}`
 
 /**
  * Parses a trusted bare numeric IPv4 or IPv6 address, throwing on failure.

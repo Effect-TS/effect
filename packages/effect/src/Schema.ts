@@ -76,6 +76,7 @@ import type { Unify } from "./Unify.ts"
 import * as Cookies_ from "./unstable/http/Cookies.ts"
 import * as Headers_ from "./unstable/http/Headers.ts"
 import * as UrlParams_ from "./unstable/http/UrlParams.ts"
+import * as IpInterface_ from "./unstable/net/IpInterface.ts"
 import * as IpNetwork_ from "./unstable/net/IpNetwork.ts"
 import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
@@ -11384,7 +11385,7 @@ export const IpAddressFromString = netAddressFromString(
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4Interface: declare<NetAddress_.Ipv4Interface> = declare(NetAddress_.isIpv4Interface, {
+export const Ipv4Interface: declare<IpInterface_.Ipv4Interface> = declare(IpInterface_.isIpv4Interface, {
   identifier: "Ipv4Interface"
 })
 
@@ -11396,8 +11397,8 @@ export const Ipv4Interface: declare<NetAddress_.Ipv4Interface> = declare(NetAddr
  */
 export const Ipv4InterfaceFromString = netAddressFromString(
   Ipv4Interface,
-  NetAddress_.ipv4InterfaceFromString,
-  NetAddress_.formatIpInterface,
+  IpInterface_.ipv4FromString,
+  IpInterface_.format,
   "Ipv4InterfaceFromString"
 )
 
@@ -11407,7 +11408,7 @@ export const Ipv4InterfaceFromString = netAddressFromString(
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6Interface: declare<NetAddress_.Ipv6Interface> = declare(NetAddress_.isIpv6Interface, {
+export const Ipv6Interface: declare<IpInterface_.Ipv6Interface> = declare(IpInterface_.isIpv6Interface, {
   identifier: "Ipv6Interface"
 })
 
@@ -11419,8 +11420,8 @@ export const Ipv6Interface: declare<NetAddress_.Ipv6Interface> = declare(NetAddr
  */
 export const Ipv6InterfaceFromString = netAddressFromString(
   Ipv6Interface,
-  NetAddress_.ipv6InterfaceFromString,
-  NetAddress_.formatIpInterface,
+  IpInterface_.ipv6FromString,
+  IpInterface_.format,
   "Ipv6InterfaceFromString"
 )
 
@@ -11430,7 +11431,7 @@ export const Ipv6InterfaceFromString = netAddressFromString(
  * @category schemas
  * @since 4.0.0
  */
-export const IpInterface: declare<NetAddress_.IpInterface> = declare(NetAddress_.isIpInterface, {
+export const IpInterface: declare<IpInterface_.IpInterface> = declare(IpInterface_.isIpInterface, {
   identifier: "IpInterface"
 })
 
@@ -11442,8 +11443,8 @@ export const IpInterface: declare<NetAddress_.IpInterface> = declare(NetAddress_
  */
 export const IpInterfaceFromString = netAddressFromString(
   IpInterface,
-  NetAddress_.ipInterfaceFromString,
-  NetAddress_.formatIpInterface,
+  IpInterface_.fromString,
+  IpInterface_.format,
   "IpInterfaceFromString"
 )
 

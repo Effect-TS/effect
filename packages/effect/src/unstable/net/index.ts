@@ -7,6 +7,11 @@
 /**
  * @since 4.0.0
  */
+export * as IpInterface from "./IpInterface.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as IpNetwork from "./IpNetwork.ts"
 
 /**

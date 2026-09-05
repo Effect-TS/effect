@@ -9,6 +9,7 @@ import * as Hash from "../../Hash.ts"
 import { NodeInspectSymbol } from "../../Inspectable.ts"
 import { hasProperty } from "../../Predicate.ts"
 import * as Result from "../../Result.ts"
+import * as IpInterface from "./IpInterface.ts"
 import * as NetAddress from "./NetAddress.ts"
 
 const TypeId = "~effect/net/IpNetwork" as const
@@ -84,7 +85,7 @@ const IpNetworkProto = {
   }
 }
 
-const fromInterfaceValue = <A extends NetAddress.IpAddress>(value: NetAddress.IpInterface<A>): IpNetwork<A> => {
+const fromInterfaceValue = <A extends NetAddress.IpAddress>(value: IpInterface.IpInterface<A>): IpNetwork<A> => {
   const self = Object.assign(Object.create(IpNetworkProto), {
     address: value.address,
     prefixLength: value.prefixLength
@@ -126,7 +127,7 @@ export const make = <A extends NetAddress.IpAddress>(
   address: A,
   prefixLength: number
 ): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> => {
-  return Result.flatMap(NetAddress.withPrefix(address, prefixLength), (value) => {
+  return Result.flatMap(IpInterface.make(address, prefixLength), (value) => {
     const bytes = toBytes(address)
     const masked = maskBytes(bytes, prefixLength)
     if (bytes.some((byte, index) => byte !== masked[index])) {
@@ -150,9 +151,9 @@ export const fromAddress = <A extends NetAddress.IpAddress>(
   address: A,
   prefixLength: number
 ): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> => {
-  return Result.map(NetAddress.withPrefix(address, prefixLength), (value) => {
+  return Result.map(IpInterface.make(address, prefixLength), (value) => {
     const masked = fromBytes(address, maskBytes(toBytes(address), prefixLength))
-    return fromInterfaceValue(NetAddress.withPrefixUnsafe(masked, value.prefixLength))
+    return fromInterfaceValue(IpInterface.makeUnsafe(masked, value.prefixLength))
   })
 }
 
@@ -162,7 +163,7 @@ export const fromAddress = <A extends NetAddress.IpAddress>(
  * @category conversions
  * @since 4.0.0
  */
-export const fromInterface = <A extends NetAddress.IpAddress>(self: NetAddress.IpInterface<A>): IpNetwork<A> =>
+export const fromInterface = <A extends NetAddress.IpAddress>(self: IpInterface.IpInterface<A>): IpNetwork<A> =>
   fromAddressUnsafe(self.address, self.prefixLength)
 
 /**
@@ -173,7 +174,7 @@ export const fromInterface = <A extends NetAddress.IpAddress>(self: NetAddress.I
  */
 export const ipv4FromString = (input: string): Result.Result<Ipv4Network, NetAddress.NetAddressError> => {
   return Result.flatMap(
-    NetAddress.ipv4InterfaceFromString(input, { prefix: "required" }),
+    IpInterface.ipv4FromString(input, { prefix: "required" }),
     (value) => make(value.address, value.prefixLength)
   )
 }
@@ -186,7 +187,7 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Network, NetAdd
  */
 export const ipv6FromString = (input: string): Result.Result<Ipv6Network, NetAddress.NetAddressError> => {
   return Result.flatMap(
-    NetAddress.ipv6InterfaceFromString(input, { prefix: "required" }),
+    IpInterface.ipv6FromString(input, { prefix: "required" }),
     (value) => make(value.address, value.prefixLength)
   )
 }
@@ -199,7 +200,7 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Network, NetAdd
  */
 export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.NetAddressError> => {
   return Result.flatMap(
-    NetAddress.ipInterfaceFromString(input, { prefix: "required" }),
+    IpInterface.fromString(input, { prefix: "required" }),
     (value) => make(value.address, value.prefixLength)
   )
 }

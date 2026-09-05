@@ -1,4 +1,5 @@
 import type { Result, Schema } from "effect"
+import * as IpInterface from "effect/unstable/net/IpInterface"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { describe, expect, it } from "tstyche"
@@ -14,10 +15,10 @@ describe("IpNetwork", () => {
     expect(IpNetwork.fromAddress(NetAddress.ipv4Unspecified, 0)).type.toBe<
       Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
     >()
-    expect(IpNetwork.fromInterface(NetAddress.withPrefixUnsafe(NetAddress.ipv4Unspecified, 0))).type.toBe<
+    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(NetAddress.ipv4Unspecified, 0))).type.toBe<
       IpNetwork.Ipv4Network
     >()
-    expect(IpNetwork.fromInterface(NetAddress.withPrefixUnsafe(NetAddress.ipv6Unspecified, 0))).type.toBe<
+    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(NetAddress.ipv6Unspecified, 0))).type.toBe<
       IpNetwork.Ipv6Network
     >()
     const ipv4Network = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)

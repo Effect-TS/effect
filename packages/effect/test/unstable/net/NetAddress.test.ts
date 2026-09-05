@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Equal, Hash, Option, Result, Schema } from "effect"
-import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
@@ -16,30 +15,6 @@ describe("NetAddress", () => {
   it("returns IP address widths", () => {
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv4FromString("1.2.3.4"))), 32)
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv6FromString("2001:db8::1"))), 128)
-  })
-
-  it("constructs and parses IP interface addresses", () => {
-    const ipv4 = success(NetAddress.ipv4InterfaceFromString("192.0.2.129/24"))
-    const ipv6 = success(NetAddress.ipv6InterfaceFromString("2001:db8::1/64"))
-
-    assert.isTrue(NetAddress.isIpv4Interface(ipv4))
-    assert.isTrue(NetAddress.isIpv6Interface(ipv6))
-    assert.isTrue(NetAddress.isIpInterface(ipv4))
-    assert.strictEqual(ipv4._tag, "IpInterface")
-    assert.strictEqual(NetAddress.formatIpInterface(ipv4), "192.0.2.129/24")
-    assert.strictEqual(ipv6.toString(), "2001:db8::1/64")
-    assert.strictEqual(
-      NetAddress.ipInterfaceFromStringUnsafe("192.0.2.1").prefixLength,
-      32
-    )
-    assert.isTrue(Object.isFrozen(ipv4))
-    assert.isTrue(Equal.equals(ipv4, NetAddress.withPrefixUnsafe(ipv4.address, 24)))
-    assert.strictEqual(Hash.hash(ipv4), Hash.hash(NetAddress.withPrefixUnsafe(ipv4.address, 24)))
-
-    failure(NetAddress.ipInterfaceFromString("192.0.2.1", { prefix: "required" }))
-    failure(NetAddress.ipInterfaceFromString("192.0.2.1/+24"))
-    failure(NetAddress.ipInterfaceFromString("192.0.2.1/33"))
-    assert.strictEqual(IpNetwork.format(IpNetwork.fromInterface(ipv4)), "192.0.2.0/24")
   })
 
   describe("IPv4", () => {
@@ -407,8 +382,6 @@ describe("NetAddress", () => {
     assert.strictEqual(Schema.encodeSync(Schema.MacAddressFromString)(mac), "02:0a:0b:0c:0d:0e")
     const ipv6 = Schema.decodeUnknownSync(Schema.Ipv6AddressFromString)("2001:0DB8:0:0:0:0:0:1")
     assert.strictEqual(Schema.encodeSync(Schema.Ipv6AddressFromString)(ipv6), "2001:db8::1")
-    const interfaceAddress = Schema.decodeUnknownSync(Schema.IpInterfaceFromString)("192.0.2.1/24")
-    assert.strictEqual(Schema.encodeSync(Schema.IpInterfaceFromString)(interfaceAddress), "192.0.2.1/24")
     const inet = Schema.decodeUnknownSync(Schema.InetAddressFromString)("[0:0:0:0:0:0:0:1]:0")
     assert.strictEqual(Schema.encodeSync(Schema.InetAddressFromString)(inet), "[::1]:0")
     const scoped = Schema.decodeUnknownSync(Schema.InetAddressFromString)("[fe80::1%3]:80")
