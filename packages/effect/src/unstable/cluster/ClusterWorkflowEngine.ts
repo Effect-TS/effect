@@ -21,6 +21,7 @@ import type * as Record from "../../Record.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import { ClientAbort } from "../rpc/RpcSchema.ts"
@@ -88,7 +89,7 @@ export const make = Effect.gen(function*() {
         >,
         Schema.declare<Workflow.Result<any, any>>
       >
-      | Rpc.Rpc<"resume", Schema.Struct<{}>>
+      | typeof ResumeRpc
     >
   >()
   const partialEntities = new Map<
@@ -101,7 +102,7 @@ export const make = Effect.gen(function*() {
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Int }>,
         Schema.declare<Workflow.Result<any, any>>
       >
-      | Rpc.Rpc<"resume">
+      | typeof ResumeRpc
     >
   >()
   const ensureEntity = (workflow: Workflow.Any) => {
@@ -293,21 +294,43 @@ export const make = Effect.gen(function*() {
   const sendResumeParent = Effect.fnUntraced(function*(options: {
     readonly workflowName: string
     readonly executionId: string
-  }) {
+  }, childExecutionId: string) {
     const requestId = yield* requestIdFor({
       workflow: workflows.get(options.workflowName)!,
       entityType: `Workflow/${options.workflowName}`,
       executionId: options.executionId,
       tag: "resume",
-      id: ""
+      id: childExecutionId
     })
     if (Option.isNone(requestId)) {
       const client = (yield* RcMap.get(clientsPartial, options.workflowName))(options.executionId)
-      return yield* client.resume({} as any, { discard: true })
+      return yield* client.resume({ childExecutionId }, { discard: true })
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
     yield* sharding.reset(requestId.value)
+  }, Effect.scoped)
+
+  // A child may complete while its parent run is still unwinding. Subscribe to
+  // the run's reply before reading storage so the wake cannot fall between the
+  // parent's last read and its suspended reply.
+  const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
+    const waiter = yield* storage.registerReplyHandler(
+      new Message.OutgoingRequest<any>({
+        envelope: request,
+        context: Context.empty() as Context.Context<any>,
+        rpc: ensureEntity(workflow).protocol.requests.get("run")!,
+        lastReceivedReply: Option.none(),
+        respond: () => Effect.void,
+        annotations: Context.empty()
+      })
+    ).pipe(Effect.forkScoped({ startImmediately: true }))
+    const reply = yield* replyForRequestId(request.requestId)
+    if (Option.isSome(reply)) return
+    yield* Fiber.join(waiter).pipe(
+      Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
+      Effect.catchCause((cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause))
+    )
   }, Effect.scoped)
 
   const interrupt = Effect.fnUntraced(
@@ -358,8 +381,13 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
+            // Latest run request for this entity; replays reuse its request id.
+            let currentRun: Entity.Request<any> | undefined
+            // Concurrent wakes share one wait for the current run to publish its reply.
+            const resumeGate = Semaphore.makeUnsafe(1)
             return {
               run: (request: Entity.Request<any>) => {
+                currentRun = request
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
@@ -379,7 +407,7 @@ export const make = Effect.gen(function*() {
                       !instance.abandoned &&
                       !(suspendOnFailure && exit._tag === "Failure")
                     ) {
-                      return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
+                      return parent ? ensureSuccess(sendResumeParent(parent, executionId)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeExit) => {
@@ -451,7 +479,16 @@ export const make = Effect.gen(function*() {
                 return payload.exit
               }),
 
-              resume: () => ensureSuccess(resume(workflow, executionId))
+              resume: () =>
+                resumeGate.withPermitsIfAvailable(1)(
+                  currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
+                ).pipe(
+                  // Release the gate before reset can start another parent run, so
+                  // later child completions can wake that replay.
+                  Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+                  ensureSuccess,
+                  Rpc.wrap({ fork: true, uninterruptible: true })
+                )
             }
           }),
           // Reserve a slot for deferred completions to wake the active run.
@@ -705,8 +742,11 @@ const DeferredRpc = Rpc.make("deferred", {
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 
 const ResumeRpc = Rpc.make("resume", {
-  payload: {},
-  primaryKey: () => ""
+  // Older persisted resume envelopes have an empty payload and use the empty key.
+  payload: { childExecutionId: Schema.optional(Schema.String) },
+  // Different children must not share an in-flight wake: the parent may have
+  // already started another run when the next child finishes.
+  primaryKey: ({ childExecutionId }) => childExecutionId ?? ""
 })
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, "server")
