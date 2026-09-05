@@ -127,22 +127,38 @@ describe("Types", () => {
 })
 
 describe("Effect.try", () => {
-  it("supports direct-thunk form", () => {
+  it("infers UnknownError for the direct-thunk form", () => {
     const result = Effect.try(() => 1)
     expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
   })
 
-  it("supports options form with typed error mapping", () => {
+  it("rejects a narrower return annotation for the direct-thunk form", () => {
+    function load(): Effect.Effect<number, SimpleError> {
+      // @ts-expect-error is not assignable to type
+      return Effect.try(() => 1)
+    }
+    expect(load).type.toBe<() => Effect.Effect<number, SimpleError>>()
+  })
+
+  it("infers the mapped error from the options form", () => {
     const result = Effect.try({
       try: () => 1,
       catch: () => new SimpleError({ code: 1 })
     })
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
   })
+
+  it("rejects a generic alias that erases UnknownError", () => {
+    expect(Effect.try).type.not.toBeAssignableTo<
+      <A, E>(
+        options: (() => A) | { readonly try: () => A; readonly catch: (error: unknown) => E }
+      ) => Effect.Effect<A, E>
+    >()
+  })
 })
 
 describe("Effect.tryPromise", () => {
-  it("supports direct-thunk form", () => {
+  it("infers UnknownError for the direct-thunk form", () => {
     const result = Effect.tryPromise((signal) => {
       expect(signal).type.toBe<AbortSignal>()
       return Promise.resolve(1)
@@ -150,7 +166,15 @@ describe("Effect.tryPromise", () => {
     expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
   })
 
-  it("supports options form with typed error mapping", () => {
+  it("rejects a narrower return annotation for the direct-thunk form", () => {
+    function load(): Effect.Effect<number, SimpleError> {
+      // @ts-expect-error is not assignable to type
+      return Effect.tryPromise(() => Promise.resolve(1))
+    }
+    expect(load).type.toBe<() => Effect.Effect<number, SimpleError>>()
+  })
+
+  it("infers the mapped error from the options form", () => {
     const result = Effect.tryPromise({
       try: (signal) => {
         expect(signal).type.toBe<AbortSignal>()
@@ -159,6 +183,16 @@ describe("Effect.tryPromise", () => {
       catch: () => new SimpleError({ code: 1 })
     })
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
+  })
+
+  it("rejects a generic alias that erases UnknownError", () => {
+    expect(Effect.tryPromise).type.not.toBeAssignableTo<
+      <A, E>(
+        options:
+          | ((signal: AbortSignal) => PromiseLike<A>)
+          | { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
+      ) => Effect.Effect<A, E>
+    >()
   })
 })
 

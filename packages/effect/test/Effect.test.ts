@@ -185,6 +185,34 @@ describe("Effect", () => {
     assert.isTrue(release)
   })
 
+  it.effect("acquireUseRelease runs release when use throws", () =>
+    Effect.gen(function*() {
+      const resource = { id: 1 }
+      const defect = new Error("boom")
+      let releases = 0
+      let releasedResource: typeof resource | undefined
+      let releaseExit: Exit.Exit<never> | undefined
+
+      const exit = yield* Effect.acquireUseRelease(
+        Effect.succeed(resource),
+        (): Effect.Effect<never> => {
+          throw defect
+        },
+        (resource, exit) =>
+          Effect.sync(() => {
+            releases++
+            releasedResource = resource
+            releaseExit = exit
+          })
+      ).pipe(Effect.exit)
+
+      assertExitDefect(exit, defect)
+      assert.strictEqual(releases, 1)
+      assert.strictEqual(releasedResource, resource)
+      assert.isDefined(releaseExit)
+      assertExitDefect(releaseExit, defect)
+    }))
+
   it("acquireUseRelease uninterruptible", async () => {
     let acquire = false
     let use = false
@@ -3783,6 +3811,17 @@ describe("Effect", () => {
     const CurrentValues = Context.Reference<ReadonlyArray<string>>("CurrentValues", {
       defaultValue: () => []
     })
+
+    it.effect("skips restoration when the provider expires before scope closure", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1)
+          return yield* CurrentNumber
+        }).pipe(Effect.provideService(CurrentNumber, 1), Effect.scoped)
+
+        assert.strictEqual(result, 2)
+        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
+      }))
 
     it.effect("updates a Context.Service until the scope closes", () =>
       Effect.gen(function*() {

@@ -2223,7 +2223,9 @@ export const updateServiceScoped = <I, A>(
     const updated = update(original)
     fiber.setContext(Context.add(fiber.context, service, updated))
     return scopeAddFinalizerExit(Context.getUnsafe(fiber.context, scopeTag), (_) => {
-      const current = Context.getUnsafe(fiber.context, service)
+      const currentOption = Context.getOption(fiber.context, service)
+      if (Option.isNone(currentOption)) return void_
+      const current = currentOption.value
       let next: A
       if (options?.reset === undefined) {
         if (current !== updated) return void_
@@ -4319,7 +4321,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   uninterruptibleMask((restore) =>
     flatMap(acquire, (a) =>
       onExitPrimitive(
-        restore(use(a)),
+        suspend(() => restore(use(a))),
         (exit) => release(a, exit),
         true
       ))
@@ -6066,7 +6068,10 @@ export const useSpan: {
     const span = makeSpanUnsafe(fiber, name, options)
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    return onExit(internalCall(() => evaluate(span)), (exit) => endSpan(span, exit, clock, timingEnabled))
+    return onExit(
+      suspend(() => internalCall(() => evaluate(span))),
+      (exit) => endSpan(span, exit, clock, timingEnabled)
+    )
   })
 }
 
