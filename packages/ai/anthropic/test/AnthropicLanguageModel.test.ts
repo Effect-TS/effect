@@ -870,6 +870,111 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(body.output_config?.format?.type, "json_schema")
         assert.notProperty(body, "structuredOutputs")
       }))
+
+    // #8075: with `structuredOutputs: false`, generateObject must still
+    // succeed by injecting a JSON response tool and forcing `tool_choice`,
+    // then resolving the structured output from the tool call.
+    describe("json fallback (structuredOutputs: false)", () => {
+      const toolUseResponse = (request: HttpClientRequest.HttpClientRequest, content: ReadonlyArray<any>) =>
+        jsonResponse(request, {
+          id: "msg_test_1",
+          type: "message",
+          role: "assistant",
+          model: "claude-sonnet-4-6",
+          content,
+          stop_reason: "tool_use",
+          stop_sequence: null,
+          usage: {
+            cache_creation: null,
+            cache_creation_input_tokens: null,
+            cache_read_input_tokens: null,
+            inference_geo: null,
+            input_tokens: 10,
+            output_tokens: 5,
+            service_tier: null
+          }
+        })
+
+      it.effect("injects the JSON tool and forces tool_choice", () =>
+        Effect.gen(function*() {
+          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                capturedRequest = request
+                return Effect.succeed(toolUseResponse(request, [
+                  { type: "tool_use", id: "toolu_1", name: "generateObject", input: { name: "John", age: 30 } }
+                ]))
+              })
+            ))
+          )
+
+          yield* LanguageModel.generateObject({
+            prompt: "Give me a person",
+            schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-6", { structuredOutputs: false })),
+            Effect.provide(layer),
+            Effect.ignore
+          )
+
+          assert.isDefined(capturedRequest)
+          const body = yield* getRequestBody(capturedRequest!)
+          const tool = body.tools?.find((tool: any) => tool.name === "generateObject")
+          assert.isDefined(tool)
+          assert.deepStrictEqual(body.tool_choice, {
+            type: "tool",
+            name: "generateObject",
+            disable_parallel_tool_use: true
+          })
+        }))
+
+      it.effect("resolves the output from the forced tool call", () =>
+        Effect.gen(function*() {
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => Effect.succeed(toolUseResponse(request, [
+                { type: "tool_use", id: "toolu_1", name: "generateObject", input: { name: "John", age: 30 } }
+              ])))
+            ))
+          )
+
+          const response = yield* LanguageModel.generateObject({
+            prompt: "Give me a person",
+            schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-6", { structuredOutputs: false })),
+            Effect.provide(layer)
+          )
+
+          assert.deepStrictEqual(response.value, { name: "John", age: 30 })
+        }))
+
+      it.effect("prefers the JSON tool call over incidental text", () =>
+        Effect.gen(function*() {
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => Effect.succeed(toolUseResponse(request, [
+                { type: "text", text: "Here is the result:" },
+                { type: "tool_use", id: "toolu_1", name: "generateObject", input: { name: "John", age: 30 } }
+              ])))
+            ))
+          )
+
+          const response = yield* LanguageModel.generateObject({
+            prompt: "Give me a person",
+            schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-6", { structuredOutputs: false })),
+            Effect.provide(layer)
+          )
+
+          assert.deepStrictEqual(response.value, { name: "John", age: 30 })
+        }))
+    })
   })
 
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
