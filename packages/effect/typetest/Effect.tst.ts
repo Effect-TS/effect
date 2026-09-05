@@ -10,6 +10,7 @@ import {
   Fiber,
   HashMap,
   type Layer,
+  Metric,
   type Option,
   pipe,
   Result,
@@ -1293,6 +1294,21 @@ describe("Effect.withExecutionPlan", () => {
   it("without options the requirements are unchanged", () => {
     const result = Effect.withExecutionPlan(self, plan)
     expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
+  })
+})
+
+describe("Effect.track", () => {
+  const observe = Effect.track(
+    Metric.gauge("track"),
+    (exit: Exit.Exit<number, string>) => Exit.isSuccess(exit) ? exit.value : 0
+  )
+
+  it("rejects incompatible source errors", () => {
+    expect(observe).type.not.toBeCallableWith(Effect.fail(1))
+  })
+
+  it("preserves compatible narrow errors", () => {
+    expect(observe(number)).type.toBe<Effect.Effect<number, "err-2", "dep-2">>()
   })
 })
 

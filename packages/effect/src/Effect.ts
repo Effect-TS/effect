@@ -14085,14 +14085,10 @@ export const withLogSpan = dual<
 // -----------------------------------------------------------------------------
 
 /**
- * Updates the `Metric` every time the `Effect` is executed.
+ * Updates a metric after each effect execution, optionally mapping its `Exit` to
+ * the metric's input.
  *
- * **Details**
- *
- * Also accepts an optional function which can be used to map the `Exit` value
- * of the `Effect` into a valid `Input` for the `Metric`.
- *
- * **Example** (Incrementing a metric for each execution)
+ * **Example** (Counting executions)
  *
  * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
@@ -14109,12 +14105,11 @@ export const withLogSpan = dual<
  * Effect.runSync(Metric.value(counter)).count // => 1
  * ```
  *
- * **Example** (Mapping exits before updating a metric)
+ * **Example** (Mapping exits)
  *
  * ```ts import.meta.vitest
  * import { Effect, Exit, Metric } from "effect"
  *
- * // Track different exit types with custom mapping
  * const exitTracker = Metric.frequency("exit_types", {
  *   description: "Tracks success/failure/defect counts"
  * })
@@ -14139,7 +14134,7 @@ export const track: {
   <Input, State, E, A>(
     metric: Metric.Metric<Input, State>,
     f: (exit: Exit.Exit<A, E>) => Input
-  ): <E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  ): <E2 extends E, R>(self: Effect<A, E2, R>) => Effect<A, E2, R>
   <State, E, A>(
     metric: Metric.Metric<Exit.Exit<NoInfer<A>, NoInfer<E>>, State>
   ): <R>(self: Effect<A, E, R>) => Effect<A, E, R>
