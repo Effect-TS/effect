@@ -315,8 +315,6 @@ export declare namespace All {
   > extends infer X ? X
     : never
 
-  type ObjectValues<T> = T extends unknown ? T[keyof T] : never
-
   /**
    * Computes the return type for `Effect.all` when collecting a record.
    *
@@ -374,6 +372,8 @@ export declare namespace All {
     : [Arg] extends [Iterable<EffectAny>] ? ReturnIterable<Arg, IsDiscard<O>, IsResult<O>>
     : [Arg] extends [Record<string, EffectAny>] ? ReturnObject<Arg, IsDiscard<O>, IsResult<O>>
     : never
+
+  type ObjectValues<T> = T extends unknown ? T[keyof T] : never
 }
 
 /**
