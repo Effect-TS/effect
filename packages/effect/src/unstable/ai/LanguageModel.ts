@@ -929,7 +929,7 @@ export const make: (params: {
               })
           })
 
-          const value = yield* resolveStructuredOutput(content as any, codec)
+          const value = yield* resolveStructuredOutput(content as any, codec, objectName)
 
           return new GenerateObjectResponse(value, content)
         },
@@ -2427,15 +2427,43 @@ export const getObjectName = <StructuredOutputSchema extends Schema.Constraint>(
 
 const resolveStructuredOutput = Effect.fnUntraced(function*<
   StructuredOutputSchema extends Schema.Constraint
->(response: ReadonlyArray<Response.AllParts<any>>, schema: StructuredOutputSchema) {
+>(
+  response: ReadonlyArray<Response.AllParts<any>>,
+  schema: StructuredOutputSchema,
+  objectName: string
+) {
   const texts: Array<string> = []
+  let toolCallJson: string | undefined = undefined
+  // Some providers return the structured output as a tool call for the forced
+  // JSON response tool instead of text content (#8075). Such a tool call (or a
+  // text part carrying JSON) takes precedence over incidental prose emitted
+  // alongside it.
   for (const part of response) {
     if (part.type === "text") {
       texts.push(part.text)
+    } else if (part.type === "tool-call" && part.name === objectName) {
+      toolCallJson = typeof part.params === "string" ? part.params : JSON.stringify(part.params)
     }
   }
 
-  const text = texts.join("")
+  let text = toolCallJson ?? texts.join("")
+
+  // A provider may emit prose alongside the forced JSON tool call, which the
+  // provider layer flattens into concatenated text (#8075). Prefer a segment
+  // that parses as JSON over the concatenation.
+  if (toolCallJson === undefined && texts.length > 1) {
+    const jsonSegment = texts.find((segment) => {
+      try {
+        JSON.parse(segment)
+        return true
+      } catch {
+        return false
+      }
+    })
+    if (jsonSegment !== undefined) {
+      text = jsonSegment
+    }
+  }
 
   if (text.length === 0) {
     return yield* AiError.make({

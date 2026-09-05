@@ -1293,31 +1293,43 @@ const prepareTools = Effect.fnUntraced(
     readonly tools: ReadonlyArray<AnthropicUserDefinedTool | AnthropicProviderDefinedTool> | undefined
     readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
   }, AiError.AiError> {
-    if (options.tools.length === 0 || options.toolChoice === "none") {
-      return { tools: undefined, toolChoice: undefined }
-    }
+    const userTools: Array<AnthropicUserDefinedTool> = []
+    const providerTools: Array<AnthropicProviderDefinedTool> = []
 
-    // Return a JSON response tool when using non-native structured outputs
+    // Return a JSON response tool when using non-native structured outputs.
+    // The tool is appended to any user tools, and the tool choice is forced so
+    // the model must answer with the structured JSON object (#8075). This must
+    // take precedence over `toolChoice: "none"`, which `generateObject` sets.
+    let jsonToolName: string | undefined = undefined
     if (options.responseFormat.type === "json" && !capabilities.supportsStructuredOutput) {
+      jsonToolName = options.responseFormat.objectName
       const input_schema = yield* tryJsonSchema(options.responseFormat.schema, "prepareTools")
       const userDescription = SchemaAST.resolveDescription(options.responseFormat.schema.ast)
       const description = Predicate.isNotUndefined(userDescription) ? `${userDescription} - ` : ""
+      userTools.push({
+        name: jsonToolName,
+        description: `${description}You MUST respond with a JSON object.`,
+        input_schema: input_schema as any
+      })
+    }
+
+    if (options.toolChoice === "none" && jsonToolName === undefined) {
+      return { tools: undefined, toolChoice: undefined }
+    }
+
+    if (options.tools.length === 0) {
+      if (jsonToolName === undefined) {
+        return { tools: undefined, toolChoice: undefined }
+      }
       return {
-        tools: [{
-          name: options.responseFormat.objectName,
-          description: `${description}You MUST respond with a JSON object.`,
-          input_schema: input_schema as any
-        }],
+        tools: userTools,
         toolChoice: {
           type: "tool",
-          name: options.responseFormat.objectName,
+          name: jsonToolName,
           disable_parallel_tool_use: true
         }
       }
     }
-
-    const userTools: Array<AnthropicUserDefinedTool> = []
-    const providerTools: Array<AnthropicProviderDefinedTool> = []
 
     for (const tool of options.tools) {
       if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
@@ -1498,6 +1510,13 @@ const prepareTools = Effect.fnUntraced(
     let tools = [...userTools, ...providerTools]
     let toolChoice: Mutable<typeof Generated.BetaToolChoice.Encoded> | undefined = undefined
 
+    if (options.toolChoice === "none") {
+      return {
+        tools,
+        toolChoice: { type: "none" as const }
+      }
+    }
+
     if (options.toolChoice === "auto") {
       toolChoice = { type: "auto" }
     } else if (options.toolChoice === "required") {
@@ -1508,6 +1527,16 @@ const prepareTools = Effect.fnUntraced(
       const allowedTools = new Set(options.toolChoice.oneOf)
       tools = tools.filter((tool) => allowedTools.has(tool.name))
       toolChoice = { type: options.toolChoice.mode === "required" ? "any" : "auto" }
+    }
+
+    // When the JSON response tool is injected, the model must be forced to
+    // call it, otherwise the structured output cannot be resolved (#8075)
+    if (jsonToolName !== undefined) {
+      toolChoice = {
+        type: "tool",
+        name: jsonToolName,
+        disable_parallel_tool_use: true
+      }
     }
 
     if (
