@@ -1319,6 +1319,50 @@ describe("Arbitrary", () => {
         assert.isTrue(values.every(Schema.is(schema)))
       }))
 
+    it.effect("encodes transformed template literal segments and their shrinks", () =>
+      Effect.gen(function*() {
+        const schema = Schema.TemplateLiteral([Schema.BooleanFromBit])
+        const seen: Array<string> = []
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+          seen.push(value)
+          return false
+        }, {
+          runs: 1,
+          maxDiscards: 0,
+          maxShrinks: 20,
+          seed: 0,
+          size: 0
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        assert.deepStrictEqual(seen, ["1", "0"])
+        assert.isTrue(seen.every(Schema.is(schema)))
+      }))
+
+    it.effect("discards invalid transformed template literal encodings", () =>
+      Effect.gen(function*() {
+        const part = Schema.Literals([0, 1]).pipe(Schema.decodeTo(
+          Schema.Boolean.check(Schema.makeFilter((value) => value)),
+          SchemaTransformation.transform<boolean, 0 | 1>({
+            decode: (value) => value === 1,
+            encode: () => 0
+          })
+        ))
+        const result = yield* Effect.result(
+          Arbitrary.sampleEffect(Arbitrary.schema(Schema.TemplateLiteral([part])), {
+            count: 1,
+            maxDiscards: 1,
+            seed: 0,
+            size: 0
+          })
+        )
+
+        assert.isTrue(Result.isFailure(result))
+        if (Result.isFailure(result)) {
+          assert.deepStrictEqual(result.failure, { _tag: "SampleError", generated: 0, discards: 2, seed: 0 })
+        }
+      }))
+
     it.effect("validates overlapping oneOf Union members", () =>
       Effect.gen(function*() {
         const schema = Schema.Union([Schema.String, Schema.Literal("a")], { mode: "oneOf" })
