@@ -166,8 +166,8 @@ export const group = <
  * **Details**
  *
  * Returns the supplied callback unchanged, with its request, success, and error
- * types inferred from the endpoint. Pass the result to `handlers.handle` when
- * implementing the group.
+ * types inferred from the endpoint, preserving the callback's service
+ * requirements. Pass the result to `handlers.handle` when implementing the group.
  *
  * @category handlers
  * @since 4.0.0

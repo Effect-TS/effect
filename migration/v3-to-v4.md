@@ -6570,7 +6570,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiBuilder.group` -> `effect/unstable/httpapi/HttpApiBuilder#group`: The group layer remains; names are now identifiers and API/group global error channels are gone.
 
-- `HttpApiBuilder.handler` -> `effect/unstable/httpapi/HttpApiBuilder#endpoint`: Use endpoint for a standalone typed endpoint implementation; inside a group pass callbacks to handlers.handle.
+- `HttpApiBuilder.handler` -> `effect/unstable/httpapi/HttpApiBuilder#handler`: The typed callback helper remains; names are now identifiers and API/group global error channels are gone. Pass the returned callback to handlers.handle.
 
 - `HttpApiBuilder.httpApp` -> `effect/unstable/http/HttpRouter#toHttpEffect`: Build the application from the assembled API route layer; HTTP apps are Effects in v4.
 
