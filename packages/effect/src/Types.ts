@@ -1167,14 +1167,22 @@ export type ExcludeReason<E, K extends string> = E extends { readonly reason: in
   ? Exclude<R, { readonly _tag: K }>
   : never
 
+type RequiredKeysFrom_<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T]
+
+type IsIndexKey_<K> = string extends K ? true : number extends K ? true : symbol extends K ? true : false
+
+type WithoutIndexSignature_<T> = {
+  [K in keyof T as IsIndexKey_<K> extends true ? never : K]: T[K]
+}
+
 /**
- * Extracts the required keys from a type.
- *
- * **When to use**
- *
- * Use to derive the keys whose properties must be present on an object type.
+ * Extracts the keys of required properties from a type.
  *
  * @category utility types
  * @since 4.0.0
  */
-export type RequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T]
+export type RequiredKeys<T> = RequiredKeysFrom_<
+  [T] extends [ReadonlyArray<unknown>] ? T
+    : IsIndexKey_<keyof T> extends true ? WithoutIndexSignature_<T>
+    : T
+>
