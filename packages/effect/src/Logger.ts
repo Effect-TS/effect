@@ -769,13 +769,28 @@ export const batched = dual<
  * Logger.isLogger(prettyLogger) // => true
  * ```
  *
+ * **Example** (Logging with console.error)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Logger } from "effect"
+ *
+ * const prettyLoggerLayer = Layer.merge(
+ *   Logger.layer([Logger.consolePretty()]),
+ *   Layer.succeed(Logger.LogToStderr, true)
+ * )
+ *
+ * Effect.log('hello').pipe(
+ *   Effect.provide(prettyLoggerLayer),
+ *   Effect.runSync
+ * )
+ * ```
+ *
  * @category constructors
  * @since 4.0.0
  */
 export const consolePretty: (
   options?: {
     readonly colors?: "auto" | boolean | undefined
-    readonly stderr?: boolean | undefined
     readonly formatDate?: ((date: Date) => string) | undefined
     readonly mode?: "browser" | "tty" | "auto" | undefined
   }
