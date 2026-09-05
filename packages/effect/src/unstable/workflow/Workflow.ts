@@ -347,7 +347,7 @@ const Proto = {
   ) {
     return Effect.suspend(() => {
       const payload = this.payloadSchema.make(fields)
-      return Effect.flatMap(
+      const run = Effect.flatMap(
         EngineTag,
         (engine) =>
           Effect.flatMap(makeExecutionIdFromPayload(this, payload), (executionId) =>
@@ -361,6 +361,9 @@ const Proto = {
               })
             ))
       )
+      // Register with the parent before the execution id is computed, so a
+      // sibling that suspends first waits for this child to be dispatched.
+      return opts?.discard ? run : withPendingActivity(run)
     }).pipe(
       Effect.withSpan(
         `${this._tag}.execute`,
@@ -734,11 +737,9 @@ export const wrapActivityResult = <A, E, R>(
 ): Effect.Effect<A, E, R | WorkflowInstance> =>
   Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
-    const state = instance.activityState
-    if (state.count === 0) state.latch.closeUnsafe()
-    state.count++
+    const registration = adoptActivityUnsafe(context, instance) ?? registerActivityUnsafe(instance)
     return Effect.onExit(effect, (exit) => {
-      state.count--
+      releaseActivityUnsafe(registration)
       const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
       if (
         Exit.isSuccess(exit) &&
@@ -750,12 +751,66 @@ export const wrapActivityResult = <A, E, R>(
           ? Cause.combine(instance.cause, exit.value.cause)
           : exit.value.cause
       }
-      return state.count === 0
-        ? state.latch.open
-        : isSuspended
+      return isSuspended && instance.activityState.count > 0
         ? waitForZero(instance)
         : Effect.void
     })
+  })
+
+interface ActivityRegistration {
+  readonly instance: WorkflowInstance["Service"]
+  adopted: boolean
+  released: boolean
+}
+
+const PendingActivityRegistration = Context.Service<ActivityRegistration>(
+  "effect/workflow/Workflow/PendingActivityRegistration"
+)
+
+const registerActivityUnsafe = (instance: WorkflowInstance["Service"]): ActivityRegistration => {
+  const state = instance.activityState
+  if (state.count === 0) state.latch.closeUnsafe()
+  state.count++
+  return { instance, adopted: false, released: false }
+}
+
+const adoptActivityUnsafe = (
+  context: Context.Context<never>,
+  instance: WorkflowInstance["Service"]
+): ActivityRegistration | undefined => {
+  const pending = Context.getOrElse(context, PendingActivityRegistration, () => undefined)
+  if (!pending || pending.instance !== instance || pending.adopted || pending.released) {
+    return undefined
+  }
+  pending.adopted = true
+  return pending
+}
+
+const releaseActivityUnsafe = (registration: ActivityRegistration) => {
+  if (registration.released) return
+  registration.released = true
+  const state = registration.instance.activityState
+  state.count--
+  if (state.count === 0) state.latch.openUnsafe()
+}
+
+/**
+ * Registers a pending child workflow execution with the current workflow
+ * instance before any asynchronous work runs. `wrapActivityResult` adopts the
+ * registration once the execution is dispatched.
+ */
+const withPendingActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.contextWith((context: Context.Context<never>) => {
+    const instance = Context.getOrElse(context, InstanceTag, () => undefined)
+    if (!instance) return effect
+    return Effect.acquireUseRelease(
+      Effect.sync(() => registerActivityUnsafe(instance)),
+      (registration) => Effect.provideService(effect, PendingActivityRegistration, registration),
+      (registration) =>
+        Effect.sync(() => {
+          releaseActivityUnsafe(registration)
+        })
+    )
   })
 
 const waitForZero = Effect.fnUntraced(function*(instance: WorkflowInstance["Service"]) {
