@@ -662,6 +662,40 @@ Expected no excess property
       })
     })
 
+    it("Struct({}): empty struct strips excess properties", async () => {
+      const schema = Schema.Struct({})
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.succeed({}, {})
+      await decoding.succeed({ a: 1 }, {})
+      await decoding.fail(null, `Expected object | array`)
+
+      const decodingError = asserts.decoding({ parseOptions: { onExcessProperty: "error" } })
+      await decodingError.succeed({}, {})
+      await decodingError.fail(
+        { a: 1 },
+        `Expected no excess property
+  at ["a"]`
+      )
+      await asserts
+        .decoding({ parseOptions: { onExcessProperty: "error", errors: "all" } })
+        .fail(
+          { a: 1, b: 2 },
+          `Expected no excess property
+  at ["a"]
+Expected no excess property
+  at ["b"]`
+        )
+
+      const decodingPreserve = asserts.decoding({ parseOptions: { onExcessProperty: "preserve" } })
+      await decodingPreserve.succeed({ a: 1 }, { a: 1 })
+
+      const encoding = asserts.encoding()
+      await encoding.succeed({}, {})
+      await encoding.succeed({ a: 1 }, {})
+    })
+
     it("should corectly handle __proto__", async () => {
       const schema = Schema.Struct({
         ["__proto__"]: Schema.String
