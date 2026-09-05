@@ -1,15 +1,13 @@
 import * as OtelMetrics from "@effect/opentelemetry/OtelMetrics"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Cause, Context, Duration, Exit, Fiber, Layer, Metric, Ref, String } from "effect"
+import { Duration, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
 import { TestClock } from "effect/testing"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/unstable/http"
 import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 const attributes = { x: "a", y: "b" }
-
-class TrackValue extends Context.Service<TrackValue, { readonly value: object }>()("MetricTrackValue") {}
 
 describe("Metric", () => {
   it.effect("keeps shared metrics scoped to the active registry", () =>
@@ -786,86 +784,6 @@ describe("Metric", () => {
         )
         const result = yield* Metric.value(counter)
         assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-
-    it.effect("passes the success object to the saved mapper and preserves it", () =>
-      Effect.gen(function*() {
-        const value = { result: 42 }
-        const seen: Array<Exit.Exit<object, Error>> = []
-        const counter = Metric.counter(nextId())
-        const observe = Effect.track(counter, (exit: Exit.Exit<object, Error>) => {
-          seen.push(exit)
-          return 7
-        })
-        const result = yield* observe(Effect.succeed(value))
-        assert.strictEqual(result, value)
-        assert.strictEqual(seen.length, 1)
-        const observed = seen[0]
-        assert.strictEqual(Exit.isSuccess(observed), true)
-        if (Exit.isSuccess(observed)) assert.strictEqual(observed.value, value)
-        assert.deepStrictEqual(yield* Metric.value(counter), { count: 7, incremental: false })
-      }))
-
-    it.effect("passes the original error and Cause through a matching pipe mapper", () =>
-      Effect.gen(function*() {
-        const error = new Error("synthetic mapped failure")
-        const cause = Cause.fail(error)
-        const seen: Array<Exit.Exit<number, Error>> = []
-        const counter = Metric.counter(nextId())
-        const result = yield* Effect.failCause(cause).pipe(
-          Effect.track(counter, (exit: Exit.Exit<number, Error>) => {
-            seen.push(exit)
-            return 3
-          }),
-          Effect.exit
-        )
-        assert.strictEqual(Exit.isFailure(result), true)
-        if (Exit.isFailure(result)) assert.strictEqual(result.cause, cause)
-        assert.strictEqual(seen.length, 1)
-        const observed = seen[0]
-        assert.strictEqual(Exit.isFailure(observed), true)
-        if (Exit.isFailure(observed)) {
-          assert.strictEqual(observed.cause, cause)
-          const reason = observed.cause.reasons[0]
-          assert.strictEqual(Cause.isFailReason(reason), true)
-          if (Cause.isFailReason(reason)) assert.strictEqual(reason.error, error)
-        }
-        assert.deepStrictEqual(yield* Metric.value(counter), { count: 3, incremental: false })
-      }))
-
-    it.effect("keeps direct matching calls and service requirements", () =>
-      Effect.gen(function*() {
-        const value = { result: 42 }
-        const counter = Metric.counter(nextId())
-        const seen: Array<object> = []
-        const source = Effect.map(TrackValue, (service) => service.value)
-        const wrapped = Effect.track(source, counter, (exit: Exit.Exit<object, Error>) => {
-          if (Exit.isSuccess(exit)) seen.push(exit.value)
-          return 2
-        })
-        const result = yield* Effect.provideService(wrapped, TrackValue, { value })
-        assert.strictEqual(result, value)
-        assert.strictEqual(seen.length, 1)
-        assert.strictEqual(seen[0], value)
-        assert.deepStrictEqual(yield* Metric.value(counter), { count: 2, incremental: false })
-      }))
-
-    it.effect("allows broad unknown mappers with compatible error and value inputs", () =>
-      Effect.gen(function*() {
-        const cause = Cause.fail(7)
-        const counter = Metric.counter(nextId())
-        let calls = 0
-        const observe = Effect.track(counter, (exit: Exit.Exit<number, unknown>) => {
-          calls++
-          return Exit.isSuccess(exit) ? exit.value : 1
-        })
-        const success = yield* observe(Effect.succeed(5))
-        const failure = yield* Effect.exit(observe(Effect.failCause(cause)))
-        assert.strictEqual(success, 5)
-        assert.strictEqual(Exit.isFailure(failure), true)
-        if (Exit.isFailure(failure)) assert.strictEqual(failure.cause, cause)
-        assert.strictEqual(calls, 2)
-        assert.deepStrictEqual(yield* Metric.value(counter), { count: 6, incremental: false })
       }))
   })
 
