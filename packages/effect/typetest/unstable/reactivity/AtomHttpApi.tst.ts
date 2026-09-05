@@ -53,66 +53,6 @@ type InnerError = HttpClientError.HttpClientError | Schema.SchemaError | Sse.Ret
 type SseStream = Stream.Stream<string, InnerError>
 
 describe("AtomHttpApi", () => {
-  it("exposes SSE options only when a success variant is SSE", () => {
-    const sse = HttpApiSchema.StreamSse({ data: Schema.String })
-    const StreamingClient = AtomHttpApi.Service()("StreamingClient", {
-      api: HttpApi.make("StreamingApi").add(
-        HttpApiGroup.make("group").add(
-          HttpApiEndpoint.get("withHeaders", "/with-headers", {
-            success: HttpApiSchema.WithHeaders(sse, { "x-count": Schema.Int })
-          }),
-          HttpApiEndpoint.get("mixed", "/mixed", { success: [Schema.String, sse] }),
-          HttpApiEndpoint.get("mixedWithHeaders", "/mixed-with-headers", {
-            params: { id: Schema.String },
-            success: [Schema.String, HttpApiSchema.WithHeaders(sse, { "x-count": Schema.Int })]
-          }),
-          HttpApiEndpoint.get("json", "/json", { success: Schema.String }),
-          HttpApiEndpoint.get("jsonWithHeaders", "/json-with-headers", {
-            success: HttpApiSchema.WithHeaders(Schema.String, { "x-count": Schema.Int })
-          }),
-          HttpApiEndpoint.get("bytes", "/bytes", { success: HttpApiSchema.StreamUint8Array() }),
-          HttpApiEndpoint.get("bytesWithHeaders", "/bytes-with-headers", {
-            success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), { "x-count": Schema.Int })
-          })
-        )
-      ),
-      httpClient: Layer.succeed(HttpClient.HttpClient, HttpClient.make(() => Effect.die("not used")))
-    })
-    const sseOptions = { maxEventSize: 4 }
-    expect(StreamingClient.query).type.toBeCallableWith("group", "withHeaders", { sseOptions })
-    expect(StreamingClient.query).type.toBeCallableWith("group", "mixed", { sseOptions })
-    expect(StreamingClient.query).type.toBeCallableWith("group", "mixedWithHeaders", {
-      params: { id: "1" },
-      sseOptions
-    })
-    expect(StreamingClient.query).type.not.toBeCallableWith("group", "mixedWithHeaders", { sseOptions })
-    expect(StreamingClient.query).type.not.toBeCallableWith("group", "json", { sseOptions })
-    expect(StreamingClient.query).type.not.toBeCallableWith("group", "jsonWithHeaders", { sseOptions })
-    expect(StreamingClient.query).type.not.toBeCallableWith("group", "bytes", { sseOptions })
-    expect(StreamingClient.query).type.not.toBeCallableWith("group", "bytesWithHeaders", { sseOptions })
-
-    const withHeaders = StreamingClient.mutation("group", "withHeaders")
-    const mixed = StreamingClient.mutation("group", "mixed")
-    const mixedWithHeaders = StreamingClient.mutation("group", "mixedWithHeaders")
-    const registry = AtomRegistry.make()
-    expect(registry.set(withHeaders, { sseOptions })).type.toBe<void>()
-    expect(registry.set(mixed, { sseOptions })).type.toBe<void>()
-    expect(registry.set(mixedWithHeaders, { params: { id: "1" }, sseOptions })).type.toBe<void>()
-
-    const json = StreamingClient.mutation("group", "json")
-    const jsonWithHeaders = StreamingClient.mutation("group", "jsonWithHeaders")
-    const bytes = StreamingClient.mutation("group", "bytes")
-    const bytesWithHeaders = StreamingClient.mutation("group", "bytesWithHeaders")
-    expect<Extract<Parameters<typeof json.write>[1], object>>().type.not.toHaveProperty("sseOptions")
-    expect<Extract<Parameters<typeof jsonWithHeaders.write>[1], object>>().type.not.toHaveProperty("sseOptions")
-    expect<Extract<Parameters<typeof bytes.write>[1], object>>().type.not.toHaveProperty("sseOptions")
-    expect<Extract<Parameters<typeof bytesWithHeaders.write>[1], object>>().type.not.toHaveProperty("sseOptions")
-    expect(registry.set).type.not.toBeCallableWith(json, { sseOptions })
-    expect(registry.set).type.not.toBeCallableWith(jsonWithHeaders, { sseOptions })
-    expect(registry.set).type.not.toBeCallableWith(bytes, { sseOptions })
-    expect(registry.set).type.not.toBeCallableWith(bytesWithHeaders, { sseOptions })
-  })
-
   it("accepts SSE decode options in query and mutation requests", () => {
     const StreamingClient = AtomHttpApi.Service()("StreamingClient", {
       api: HttpApi.make("StreamingApi").add(
