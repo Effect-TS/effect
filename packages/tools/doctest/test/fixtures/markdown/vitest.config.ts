@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     watch: false,
     include: [],
-    includeSource: ["docs/typed.md", "src/typed.ts"],
+    includeSource: ["docs/typed.md", "docs/typed.mdx", "src/typed.ts"],
     passWithNoTests: false,
     fileParallelism: false,
     maxWorkers: 1,

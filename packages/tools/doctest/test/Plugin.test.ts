@@ -11,7 +11,7 @@ import { compileFunction } from "node:vm"
 import type { JsonTestResults } from "vitest/reporters"
 
 describe("Plugin", () => {
-  it("executes Markdown and JSDoc snippets through Vitest", () => {
+  it("executes Markdown, MDX and JSDoc snippets through Vitest", () => {
     const result = spawnSync("node", [
       join(dirname(createRequire(import.meta.url).resolve("vitest/package.json")), "vitest.mjs"),
       "run",
@@ -25,15 +25,15 @@ describe("Plugin", () => {
     })
     assert.strictEqual(result.status, 0, `${result.error ?? ""}\n${result.stdout}\n${result.stderr}`)
     const report: JsonTestResults = JSON.parse(result.stdout)
-    assert.isTrue(report.success)
-    assert.strictEqual(report.numTotalTests, 4)
     assert.deepStrictEqual(
       report.testResults.flatMap((file) => file.assertionResults.map((test) => [test.fullName, test.status])).sort(),
       [
+        ["assertion-comments", "passed"],
         ["dynamic-import", "passed"],
         ["javascript", "passed"],
         ["static-import", "passed"],
-        ["typed-jsdoc", "passed"]
+        ["typed-jsdoc", "passed"],
+        ["typed-mdx", "passed"]
       ]
     )
   }, 40_000)

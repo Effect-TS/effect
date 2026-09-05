@@ -27,3 +27,17 @@ const local = 42
 expect.assertions(1)
 expect(local).toBe(42)
 ```
+
+```ts import.meta.vitest name=assertion-comments
+import { expect } from "vitest"
+import { answer } from "./helper.ts"
+let evaluations = 0
+const expected = (value: number): number => {
+  evaluations++
+  return value
+}
+const local: number = answer // => expected(42)
+local + 1 // => expected(43)
+expect.assertions(1)
+expect(evaluations).toBe(2)
+```
