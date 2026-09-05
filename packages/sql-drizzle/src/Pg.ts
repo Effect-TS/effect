@@ -5,13 +5,14 @@ import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import type { DrizzleConfig } from "drizzle-orm"
 import { PgSelectBase } from "drizzle-orm/pg-core"
+import { PgCountBuilder } from "drizzle-orm/pg-core/query-builders/count"
 import type { PgRemoteDatabase } from "drizzle-orm/pg-proxy"
 import { drizzle } from "drizzle-orm/pg-proxy"
 import { QueryPromise } from "drizzle-orm/query-promise"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { makeRemoteCallback, patch } from "./internal/patch.js"
+import { makeRemoteCallback, patch, patchCount } from "./internal/patch.js"
 
 /**
  * @since 1.0.0
@@ -64,5 +65,12 @@ export const layerWithConfig: (config: DrizzleConfig) => Layer.Layer<PgDrizzle, 
 declare module "drizzle-orm" {
   export interface QueryPromise<T> extends Effect.Effect<T, SqlError> {}
 }
+
+declare module "drizzle-orm/pg-core/query-builders/count" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export interface PgCountBuilder<TSession = any> extends Effect.Effect<number, SqlError> {}
+}
+
 patch(QueryPromise.prototype)
 patch(PgSelectBase.prototype)
+patchCount(PgCountBuilder.prototype)
