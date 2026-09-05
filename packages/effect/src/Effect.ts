@@ -968,7 +968,7 @@ export const promise: <A>(
  */
 export const tryPromise: {
   <A>(options: (signal: AbortSignal) => PromiseLike<A>): Effect<A, Cause.UnknownError>
-  <A, E = Cause.UnknownError>(
+  <A, E>(
     options: { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
   ): Effect<A, E>
 } = internal.tryPromise
@@ -1638,7 +1638,7 @@ export const die: (defect: unknown) => Effect<never> = internal.die
 
 const try_: {
   <A>(options: LazyArg<A>): Effect<A, Cause.UnknownError>
-  <A, E = Cause.UnknownError>(options: {
+  <A, E>(options: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
   }): Effect<A, E>
