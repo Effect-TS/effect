@@ -1,6 +1,7 @@
 // <reference types="@testing-library/jest-dom" />
+import { assert } from "@effect/vitest"
 import { act, render, screen, waitFor } from "@testing-library/react"
-import { Cause, Context, Effect, Latch, Layer } from "effect"
+import { Cause, Context, Effect, Latch, Layer, Option } from "effect"
 import * as Schema from "effect/Schema"
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
@@ -127,6 +128,78 @@ describe("atom-react", () => {
       expect(screen.getByTestId("value")).toHaveTextContent("20")
     })
 
+    it("isolates renders with an inline selector and equality", async () => {
+      const atom = Atom.make({ count: 1, ignored: 0 })
+      const renders = vi.fn()
+
+      function TestComponent() {
+        renders()
+        const value = useAtomValue(
+          atom,
+          (value) => ({ count: value.count }),
+          (previous, next) => previous.count === next.count
+        )
+        return <div data-testid="selected-value">{value.count}</div>
+      }
+
+      const view = render(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(renders.mock.calls.length, 1)
+
+      view.rerender(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(renders.mock.calls.length, 2)
+
+      act(() => {
+        registry.set(atom, { count: 1, ignored: 1 })
+      })
+      assert.strictEqual(renders.mock.calls.length, 2)
+
+      act(() => {
+        registry.set(atom, { count: 2, ignored: 1 })
+      })
+      await waitFor(() => {
+        assert.strictEqual(screen.getByTestId("selected-value").textContent, "2")
+      })
+      assert.strictEqual(renders.mock.calls.length, 3)
+    })
+
+    it("cleans up a selected subscription in Strict Mode", () => {
+      const atom = Atom.make(1)
+      const select = vi.fn((value: number) => value)
+
+      function TestComponent() {
+        return <div>{useAtomValue(atom, select)}</div>
+      }
+
+      const view = render(
+        <React.StrictMode>
+          <RegistryContext.Provider value={registry}>
+            <TestComponent />
+          </RegistryContext.Provider>
+        </React.StrictMode>
+      )
+      const node = registry.getNodes().get(atom)!
+      assert.strictEqual(node.listeners.size, 1)
+
+      const callsBeforeUnmount = select.mock.calls.length
+      view.unmount()
+      assert.strictEqual(node.listeners.size, 0)
+
+      act(() => {
+        registry.set(atom, 2)
+      })
+      assert.strictEqual(select.mock.calls.length, callsBeforeUnmount)
+    })
+  })
+
+  describe("useAtomSuspense", () => {
     test("suspense success", () => {
       const atom = Atom.make(Effect.never)
 
@@ -144,13 +217,41 @@ describe("atom-react", () => {
       expect(screen.getByTestId("loading")).toBeInTheDocument()
     })
 
+    test("suspense error", () => {
+      const atom = Atom.make(Effect.fail(new Error("test")))
+      function TestComponent() {
+        const value = useAtomSuspense(atom).value
+        return <div data-testid="value">{value}</div>
+      }
+
+      render(
+        <ErrorBoundary fallback={<div data-testid="error">Error</div>}>
+          <Suspense fallback={<div data-testid="loading">Loading...</div>}>
+            <TestComponent />
+          </Suspense>
+        </ErrorBoundary>,
+        {
+          onCaughtError: ((error: unknown) => {
+            if (error instanceof Error && error.message === "test") {
+              return
+            }
+            // eslint-disable-next-line no-console
+            console.error(error)
+          }) as unknown as undefined // todo: fix idk why the types are weird
+        }
+      )
+
+      expect(screen.getByTestId("error")).toBeInTheDocument()
+    })
+
     test("suspense subscriptions are isolated per registry", async () => {
-      const atom = Atom.make(AsyncResult.initial<string>())
+      const atom = Atom.make(AsyncResult.initial<{ readonly value: string }>())
       const firstRegistry = AtomRegistry.make()
       const secondRegistry = AtomRegistry.make()
+      const select = vi.fn((value: { readonly value: string }) => value.value)
 
       function TestComponent({ id }: { readonly id: string }) {
-        const value = useAtomSuspense(atom).value
+        const value = useAtomSuspense(atom, { select }).value
         return <div data-testid={`${id}-value`}>{value}</div>
       }
 
@@ -168,9 +269,10 @@ describe("atom-react", () => {
           </Suspense>
         </RegistryContext.Provider>
       )
+      assert.strictEqual(select.mock.calls.length, 0)
 
       act(() => {
-        secondRegistry.set(atom, AsyncResult.success("second"))
+        secondRegistry.set(atom, AsyncResult.success({ value: "second" }))
       })
 
       await waitFor(() => {
@@ -179,12 +281,242 @@ describe("atom-react", () => {
       expect(screen.getByTestId("first-loading")).toBeInTheDocument()
 
       act(() => {
-        firstRegistry.set(atom, AsyncResult.success("first"))
+        firstRegistry.set(atom, AsyncResult.success({ value: "first" }))
       })
 
       await waitFor(() => {
         expect(screen.getByTestId("first-value")).toHaveTextContent("first")
       })
+    })
+
+    it("isolates renders with an inline selector and equality", async () => {
+      const atom = Atom.make(AsyncResult.success({ count: 1, ignored: 0 }))
+      const renders = vi.fn()
+
+      function TestComponent() {
+        renders()
+        const result = useAtomSuspense(atom, {
+          select: (value) => ({ count: value.count }),
+          equals: (previous, next) => previous.count === next.count
+        })
+        return <div data-testid="selected-result">{result.value.count}</div>
+      }
+
+      const view = render(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(renders.mock.calls.length, 1)
+
+      view.rerender(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(renders.mock.calls.length, 2)
+
+      act(() => {
+        registry.set(atom, AsyncResult.success({ count: 1, ignored: 1 }))
+      })
+      assert.strictEqual(renders.mock.calls.length, 2)
+
+      act(() => {
+        registry.set(atom, AsyncResult.success({ count: 2, ignored: 1 }))
+      })
+      await waitFor(() => {
+        assert.strictEqual(screen.getByTestId("selected-result").textContent, "2")
+      })
+      assert.strictEqual(renders.mock.calls.length, 3)
+    })
+
+    it("observes unselected Success timestamp updates", async () => {
+      const value = { count: 1 }
+      const atom = Atom.make(AsyncResult.success(value, { timestamp: 1 }))
+
+      function TestComponent() {
+        const result = useAtomSuspense(atom)
+        return <div data-testid="success-timestamp">{result.timestamp}</div>
+      }
+
+      render(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(screen.getByTestId("success-timestamp").textContent, "1")
+
+      act(() => {
+        registry.set(atom, AsyncResult.success(value, { timestamp: 2 }))
+      })
+      await waitFor(() => {
+        assert.strictEqual(screen.getByTestId("success-timestamp").textContent, "2")
+      })
+    })
+
+    it("preserves waiting transitions", async () => {
+      const atom = Atom.make(AsyncResult.success({ count: 1 }, { waiting: true }))
+
+      function Current() {
+        const result = useAtomSuspense(atom, { select: (value) => value.count })
+        return <div data-testid="current-result">{`${result.value}:${result.waiting}`}</div>
+      }
+
+      function Waiting() {
+        const result = useAtomSuspense(atom, {
+          select: (value) => value.count,
+          suspendOnWaiting: true
+        })
+        return <div data-testid="waiting-result">{result.value}</div>
+      }
+
+      render(
+        <RegistryContext.Provider value={registry}>
+          <Current />
+          <Suspense fallback={<div data-testid="waiting-loading">Loading</div>}>
+            <Waiting />
+          </Suspense>
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(screen.getByTestId("current-result").textContent, "1:true")
+      assert.strictEqual(screen.getByTestId("waiting-loading").textContent, "Loading")
+
+      act(() => {
+        registry.set(atom, AsyncResult.success({ count: 1 }))
+      })
+      await waitFor(() => {
+        assert.strictEqual(screen.getByTestId("current-result").textContent, "1:false")
+        assert.strictEqual(screen.getByTestId("waiting-result").textContent, "1")
+      })
+    })
+
+    it("does not hide failures behind selection equality", async () => {
+      const atom = Atom.make(AsyncResult.success({ count: 1 }))
+
+      function TestComponent() {
+        const result = useAtomSuspense(atom, {
+          select: (value) => value.count,
+          equals: () => true
+        })
+        return <div data-testid="failure-value">{result.value}</div>
+      }
+
+      render(
+        <ErrorBoundary fallback={<div data-testid="error">Error</div>}>
+          <TestComponent />
+        </ErrorBoundary>,
+        {
+          wrapper: ({ children }) => <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>,
+          onCaughtError: (() => {}) as unknown as undefined
+        }
+      )
+      assert.strictEqual(screen.getByTestId("failure-value").textContent, "1")
+
+      act(() => {
+        registry.set(atom, AsyncResult.failure(Cause.fail(new Error("test"))))
+      })
+      await waitFor(() => {
+        assert.strictEqual(screen.getByTestId("error").textContent, "Error")
+      })
+    })
+
+    it("throws the original failure without selecting its previous success", () => {
+      const originalError = new Error("original")
+      const select = vi.fn((): number => {
+        throw new Error("selector")
+      })
+      const atom = Atom.make(
+        AsyncResult.failure<{ count: number }, Error>(Cause.fail(originalError), {
+          previousSuccess: Option.some(AsyncResult.success({ count: 1 }))
+        })
+      )
+
+      function TestComponent() {
+        useAtomSuspense(atom, { select })
+        return null
+      }
+
+      render(
+        <ErrorBoundary
+          fallbackRender={({ error }) => <div data-testid="original-error">{error.message}</div>}
+        >
+          <TestComponent />
+        </ErrorBoundary>,
+        {
+          wrapper: ({ children }) => <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>,
+          onCaughtError: (() => {}) as unknown as undefined
+        }
+      )
+
+      assert.strictEqual(screen.getByTestId("original-error").textContent, "original")
+      assert.strictEqual(select.mock.calls.length, 0)
+    })
+
+    it("observes failure cause changes despite selection equality", async () => {
+      const previousSuccess = Option.some(AsyncResult.success({ count: 1 }))
+      const atom = Atom.make(
+        AsyncResult.failure<{ count: number }, Error>(Cause.fail(new Error("first")), {
+          previousSuccess
+        })
+      )
+      const renders = vi.fn()
+
+      function TestComponent() {
+        renders()
+        const result = useAtomSuspense(atom, {
+          select: (value) => value.count,
+          equals: () => true,
+          includeFailure: true
+        })
+        if (result._tag === "Success") {
+          return null
+        }
+        const error = Cause.squash(result.cause)
+        return <div data-testid="failure-cause">{error instanceof Error ? error.message : String(error)}</div>
+      }
+
+      render(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(screen.getByTestId("failure-cause").textContent, "first")
+
+      act(() => {
+        registry.set(
+          atom,
+          AsyncResult.failure(Cause.fail(new Error("second")), { previousSuccess })
+        )
+      })
+      await waitFor(() => {
+        assert.strictEqual(screen.getByTestId("failure-cause").textContent, "second")
+      })
+      assert.strictEqual(renders.mock.calls.length, 2)
+    })
+
+    it("maps a failure's previous success", () => {
+      const atom = Atom.make(
+        AsyncResult.failure<{ count: number }, string>(Cause.fail("test"), {
+          previousSuccess: Option.some(AsyncResult.success({ count: 2 }))
+        })
+      )
+
+      function TestComponent() {
+        const result = useAtomSuspense(atom, {
+          select: (value) => value.count * 2,
+          includeFailure: true
+        })
+        return result._tag === "Failure"
+          ? <div data-testid="previous-success">{Option.getOrThrow(result.previousSuccess).value}</div>
+          : null
+      }
+
+      render(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(screen.getByTestId("previous-success").textContent, "4")
     })
   })
 
@@ -315,33 +647,6 @@ describe("atom-react", () => {
         expect(screen.getByTestId("value")).toHaveTextContent("1")
       })
     })
-  })
-
-  test("suspense error", () => {
-    const atom = Atom.make(Effect.fail(new Error("test")))
-    function TestComponent() {
-      const value = useAtomSuspense(atom).value
-      return <div data-testid="value">{value}</div>
-    }
-
-    render(
-      <ErrorBoundary fallback={<div data-testid="error">Error</div>}>
-        <Suspense fallback={<div data-testid="loading">Loading...</div>}>
-          <TestComponent />
-        </Suspense>
-      </ErrorBoundary>,
-      {
-        onCaughtError: ((error: unknown) => {
-          if (error instanceof Error && error.message === "test") {
-            return
-          }
-          // eslint-disable-next-line no-console
-          console.error(error)
-        }) as unknown as undefined // todo: fix idk why the types are weird
-      }
-    )
-
-    expect(screen.getByTestId("error")).toBeInTheDocument()
   })
 
   describe("hydration", () => {
@@ -686,6 +991,22 @@ describe("atom-react", () => {
 
       expect(getCount).toHaveBeenCalled()
       expect(screen.getByText("0")).toBeInTheDocument()
+    })
+
+    it("selects from a suspense server snapshot", () => {
+      const atom = Atom.make(AsyncResult.success({ count: 1, ignored: 0 }))
+
+      function TestComponent() {
+        const result = useAtomSuspense(atom, { select: (value) => value.count })
+        return <div>{result.value}</div>
+      }
+
+      const html = renderToString(
+        <RegistryContext.Provider value={registry}>
+          <TestComponent />
+        </RegistryContext.Provider>
+      )
+      assert.strictEqual(html.includes(">1<"), true)
     })
   })
 
