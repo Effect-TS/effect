@@ -1,8 +1,47 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Option, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser } from "effect"
-import { assertSchemaIssueError, assertTrue, strictEqual, throws } from "../utils/assert.ts"
+import { assertSchemaIssueError, assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaParser", () => {
+  describe("sequential parsing", () => {
+    const cases = [
+      {
+        name: "Struct",
+        make: (item: Schema.Codec<string>) => Schema.Struct({ a: item, b: item }),
+        input: { a: "a", b: "b" }
+      },
+      { name: "Tuple", make: (item: Schema.Codec<string>) => Schema.Tuple([item, item]), input: ["a", "b"] },
+      { name: "Array", make: (item: Schema.Codec<string>) => Schema.Array(item), input: ["a", "b"] },
+      {
+        name: "Record",
+        make: (item: Schema.Codec<string>) => Schema.Record(Schema.String, item),
+        input: { a: "a", b: "b" }
+      }
+    ]
+    for (const { input, make, name } of cases) {
+      for (const errors of ["first", "all"] as const) {
+        it.effect(`${name} decodes and encodes asynchronous children sequentially (${errors})`, () =>
+          Effect.gen(function*() {
+            const calls: Array<string> = []
+            const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+              calls.push(`start ${value}`)
+              return Effect.gen(function*() {
+                yield* Effect.yieldNow
+                calls.push(`end ${value}`)
+                return value
+              })
+            })
+            const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
+            deepStrictEqual(yield* SchemaParser.decodeUnknownEffect(schema)(input, { errors }), input)
+            deepStrictEqual(calls, ["start a", "end a", "start b", "end b"])
+            calls.length = 0
+            deepStrictEqual(yield* SchemaParser.encodeUnknownEffect(schema)(input, { errors }), input)
+            deepStrictEqual(calls, ["start a", "end a", "start b", "end b"])
+          }))
+      }
+    }
+  })
+
   const makeMixedCause = () =>
     Cause.combine(
       Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
@@ -56,6 +95,100 @@ describe("SchemaParser", () => {
   })
 
   describe("decodeUnknownSync / encodeUnknownSync", () => {
+    it("decodes inherited struct properties", () => {
+      const schema = Schema.Struct({
+        required: Schema.String,
+        optional: Schema.optionalKey(Schema.String),
+        defaulted: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default"))),
+        own: Schema.String
+      })
+      const input = Object.assign(
+        Object.create({
+          required: "required",
+          optional: "optional",
+          defaulted: "inherited"
+        }),
+        { own: "own" }
+      )
+
+      const output = SchemaParser.decodeUnknownSync(schema)(input)
+
+      deepStrictEqual(output, {
+        required: "required",
+        optional: "optional",
+        defaulted: "inherited",
+        own: "own"
+      })
+      for (const key of ["required", "optional", "defaulted", "own"]) {
+        assertTrue(Object.hasOwn(output, key))
+      }
+
+      const encoded = SchemaParser.encodeUnknownSync(Schema.Struct({ required: Schema.String }))(
+        Object.create({ required: "required" })
+      )
+      deepStrictEqual(encoded, { required: "required" })
+      assertTrue(Object.hasOwn(encoded, "required"))
+
+      deepStrictEqual(SchemaParser.decodeUnknownSync(schema)({ required: "required", own: "own" }), {
+        required: "required",
+        defaulted: "default",
+        own: "own"
+      })
+    })
+
+    it("distinguishes an inherited undefined property from a missing property", () => {
+      const schema = Schema.Struct({
+        value: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default")))
+      })
+      const decode = SchemaParser.decodeUnknownSync(schema)
+
+      deepStrictEqual(decode({}), { value: "default" })
+      throws(() => decode(Object.create({ value: undefined })), (error) => {
+        assertSchemaIssueError(error, `Expected string\n  at ["value"]`)
+      })
+    })
+
+    it("distinguishes required properties containing undefined from missing properties", () => {
+      const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ value: Schema.String }))
+
+      throws(() => decode({}), (error) => {
+        assertSchemaIssueError(error, `Missing key\n  at ["value"]`)
+      })
+      throws(() => decode({ value: undefined }), (error) => {
+        assertSchemaIssueError(error, `Expected string\n  at ["value"]`)
+      })
+      throws(() => decode(Object.create({ value: undefined })), (error) => {
+        assertSchemaIssueError(error, `Expected string\n  at ["value"]`)
+      })
+    })
+
+    it("selects union members using inherited discriminants", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("A"), value: Schema.String }),
+        Schema.Struct({ _tag: Schema.Literal("B"), value: Schema.Number })
+      ])
+      const input = Object.assign(Object.create({ _tag: "A" }), { value: "value" })
+
+      const output = SchemaParser.decodeUnknownSync(schema)(input)
+
+      deepStrictEqual(output, { _tag: "A", value: "value" })
+      assertTrue(Object.hasOwn(output, "_tag"))
+    })
+
+    it("decodes inherited Object.prototype properties", () => {
+      const output = SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.Unknown }))({})
+
+      strictEqual(output.toString, Object.prototype.toString)
+      assertTrue(Object.hasOwn(output, "toString"))
+    })
+
+    it("keeps dynamic record properties own-only", () => {
+      const input = Object.assign(Object.create({ inherited: 1 }), { own: 2 })
+      const output = SchemaParser.decodeUnknownSync(Schema.Record(Schema.String, Schema.Number))(input)
+
+      deepStrictEqual(output, { own: 2 })
+    })
+
     it("should throw an error when the input is invalid", () => {
       const schema = Schema.String
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {
@@ -183,6 +316,40 @@ describe("SchemaParser", () => {
       const is = SchemaParser.is(Schema.String)
       strictEqual(is("a"), true)
       strictEqual(is(null), false)
+    })
+
+    it("should accept ParseOptions", () => {
+      const schema = Schema.Struct({ value: Schema.String })
+      const is = SchemaParser.is(schema, { onExcessProperty: "error" })
+
+      strictEqual(is({ value: "a" }), true)
+      strictEqual(is({ value: "a", extra: true }), false)
+    })
+
+    it("should pass ParseOptions to checks", () => {
+      const schema = Schema.String.check(
+        Schema.makeFilter((_input, _ast, options) => options.reportInput === true)
+      )
+
+      strictEqual(SchemaParser.is(schema)("a"), false)
+      strictEqual(SchemaParser.is(schema, { reportInput: true })("a"), true)
+    })
+
+    it("should honor disableChecks", () => {
+      const schema = Schema.String.check(Schema.isMinLength(2))
+
+      strictEqual(SchemaParser.is(schema)("a"), false)
+      strictEqual(SchemaParser.is(schema, { disableChecks: true })("a"), true)
+    })
+
+    it("should honor propertyOrder for checks that inspect decoded output", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
+        Schema.makeFilter((value) => Object.keys(value)[0] === "b")
+      )
+      const input = { b: "b", a: "a" }
+
+      strictEqual(SchemaParser.is(schema)(input), false)
+      strictEqual(SchemaParser.is(schema, { propertyOrder: "original" })(input), true)
     })
 
     it("should throw an error when the cause is not an Issue", () => {
@@ -488,7 +655,7 @@ describe("SchemaParser", () => {
         strictEqual(error.success._tag, "AnyOf")
       }))
 
-    it.effect("resolves an unchanged concurrent union candidate", () =>
+    it.effect("resolves an unchanged union candidate after an asynchronous failure", () =>
       Effect.gen(function*() {
         const delayedFailure = Schema.String.pipe(Schema.decode({
           decode: new SchemaGetter.Getter(() =>
@@ -501,7 +668,7 @@ describe("SchemaParser", () => {
         const schema = Schema.Union([delayedFailure, Schema.String])
 
         strictEqual(
-          yield* SchemaParser.decodeUnknownEffect(schema)("value", { concurrency: 2 }),
+          yield* SchemaParser.decodeUnknownEffect(schema)("value"),
           "value"
         )
       }))
@@ -715,6 +882,24 @@ describe("SchemaParser", () => {
         assertTrue(Result.isSuccess(error))
         assertTrue(SchemaIssue.isIssue(error.success))
       }
+    })
+
+    it("captures synchronous defects during Union candidate selection", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String }),
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.Number })
+      ])
+      const defect = new Error("sentinel defect")
+      const input = {
+        get kind(): string {
+          throw defect
+        },
+        value: "value"
+      }
+
+      const exit = SchemaParser.decodeUnknownExit(schema)(input)
+      assertTrue(Exit.isFailure(exit))
+      assertTrue(Exit.hasDies(exit))
     })
   })
 })

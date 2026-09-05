@@ -1,12 +1,22 @@
 import { hole, Schema } from "effect"
-import type { Effect, Exit, Option, Result } from "effect"
+import type { Effect, Exit, Option, Result, SchemaAST } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("decoding / encoding API", () => {
+  it("parse options do not include concurrency or typed annotation overrides", () => {
+    expect<Extract<keyof SchemaAST.ParseOptions, "concurrency">>().type.toBe<never>()
+    // Unrecognized annotations are still permitted as custom metadata.
+    expect<Schema.Annotations.Bottom<string, []>["parseOptions"]>().type.toBe<unknown>()
+  })
+
   it("is", () => {
     const is = Schema.is(Schema.String)
+    const isWithOptions = Schema.is(Schema.String, { onExcessProperty: "error" })
     const u = hole<unknown>()
     if (is(u)) {
+      expect(u).type.toBe<string>()
+    }
+    if (isWithOptions(u)) {
       expect(u).type.toBe<string>()
     }
     const sn = hole<string | number>()

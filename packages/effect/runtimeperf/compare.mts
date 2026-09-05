@@ -37,6 +37,7 @@ Options:
   --rounds <n>
   --time <ms>
   --warmup-time <ms>
+  --batch-size <n>      Use the same fixed batch for base and head
   --tier <0-3>
   --family <name>
   --fail-on-regression

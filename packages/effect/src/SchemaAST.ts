@@ -12,7 +12,7 @@
  */
 
 import * as Arr from "./Array.ts"
-import * as Cause from "./Cause.ts"
+import type * as Cause from "./Cause.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
@@ -21,6 +21,15 @@ import { effectIsExit, iterateEager } from "./internal/effect.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
+import { wrapPropertyKeyIssue } from "./internal/schema/cause.ts"
+import {
+  hasDefaultObjectOptions,
+  type ObjectParserState,
+  type ParsedProperty,
+  parseProperties,
+  resumeProperties,
+  stepProperty
+} from "./internal/schema/objects.ts"
 import * as InternalParser from "./internal/schema/parser.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
@@ -453,8 +462,10 @@ export type Encoding = readonly [Link, ...Array<Link>]
  * **Details**
  *
  * Pass to `Schema.decodeUnknown`, `Schema.encode`, and related APIs to customize
- * error reporting, excess property handling, output key ordering, check
- * execution, and asynchronous parser concurrency.
+ * error reporting, excess property handling, output key ordering, and check
+ * execution. Options apply throughout the parse; schema annotations do not
+ * override them. Composite schemas parse their children sequentially, including
+ * asynchronous transformations and middleware.
  *
  * - `errors` — `"first"` (default) stops at the first error; `"all"` collects
  *   every error.
@@ -464,8 +475,6 @@ export type Encoding = readonly [Link, ...Array<Link>]
  *   `"original"` preserves input key order.
  * - `disableChecks` — skips validation checks while still applying defaults and
  *   transformations.
- * - `concurrency` — maximum number of async parse effects to run concurrently;
- *   defaults to `1`, or use `"unbounded"`.
  * - `reportInput` — includes rejected input values in value-bearing schema
  *   issues.
  *
@@ -529,13 +538,6 @@ export interface ParseOptions {
   readonly disableChecks?: boolean | undefined
 
   /**
-   * The maximum number of async effects to run concurrently.
-   *
-   * @default 1
-   */
-  readonly concurrency?: number | "unbounded" | undefined
-
-  /**
    * Whether schema issues should retain and report rejected input values.
    *
    * **Details**
@@ -549,13 +551,12 @@ export interface ParseOptions {
    * Enabling this option can retain or disclose secrets, personally
    * identifiable information, and large object graphs. The `input` field is
    * enumerable and may be included by object enumeration, spread, or
-   * serialization. Disabling it on a nested schema does not redact that value
-   * from an ancestor issue whose input reporting remains enabled. Issues
-   * returned directly by user-defined declarations, checks, transformations,
-   * and middleware are not modified; their authors decide whether to retain an
-   * input. To respect this option, pass the callback's input and parse options
-   * directly to a value-bearing issue constructor. Custom messages and
-   * annotations remain the caller's responsibility regardless of this option.
+   * serialization. Issues returned directly by user-defined declarations,
+   * checks, transformations, and middleware are not modified; their authors
+   * decide whether to retain an input. To respect this option, pass the
+   * callback's input and parse options directly to a value-bearing issue
+   * constructor. Custom messages and annotations remain the caller's
+   * responsibility regardless of this option.
    * Formatting an issue with `SchemaIssue.makeFormatterDefault()`, reading
    * `SchemaError.message`, or formatting a Standard Schema failure can disclose
    * retained input.
@@ -698,8 +699,10 @@ type DeclarationRun = (
  * - `typeParameters` — inner schemas this declaration is parameterized over
  *   (e.g. the element type for a custom collection).
  * - `run` — factory that receives `typeParameters` and returns a parser that
- *   validates or transforms raw input. The `Effect` returned by the parser must
- *   complete synchronously.
+ *   recognizes the declared representation. It may materialize an equivalent
+ *   container, but semantic encoded-to-type conversions belong in an AST link.
+ *   The parser must complete synchronously, have no observable side effects,
+ *   and be safe to evaluate again with the same input.
  *
  * @see {@link isDeclaration}
  * @category models
@@ -2281,11 +2284,7 @@ export const Arrays: new(
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
       }
-      const concurrency = resolveConcurrency(options?.concurrency)
-      const eff = parseArray(state, input, {
-        concurrency: concurrency?.concurrency,
-        end: ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
-      })
+      const eff = parseArray(state, input, 0, ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen))
       if (eff) yield* eff
 
       // ---------------------------------------------
@@ -2385,50 +2384,6 @@ const parseArray = iterateEager<{
   }
 })
 
-const resolveConcurrency = (value: number | "unbounded" | undefined) => {
-  value = value === "unbounded" ? Infinity : value ?? 1
-  return value > 1 ? { concurrency: value } : undefined
-}
-
-const wrapPropertyKeyIssue = (
-  s: {
-    readonly input: unknown
-    readonly options: ParseOptions
-    issues: Array<SchemaIssue.Issue> | undefined
-  },
-  ast: AST,
-  key: PropertyKey,
-  exit: Exit.Failure<any, SchemaIssue.Issue>
-) => {
-  if (exit.cause.reasons.length === 0) {
-    return exit
-  }
-  const issue = InternalSchemaCause.getSchemaIssue(exit.cause)
-  if (issue === undefined) {
-    return Exit.failCause(
-      Cause.map(
-        exit.cause,
-        (issue) =>
-          new SchemaIssue.Composite(
-            ast,
-            [new SchemaIssue.Pointer([key], issue)],
-            s.input,
-            s.options
-          )
-      )
-    )
-  }
-  const pointer = new SchemaIssue.Pointer([key], issue)
-  if (s.options.errors === "all") {
-    if (s.issues) s.issues.push(pointer)
-    else s.issues = [pointer]
-  } else {
-    return Exit.fail(
-      new SchemaIssue.Composite(ast, [pointer], s.input, s.options)
-    )
-  }
-}
-
 /**
  * floating point or integer, with optional exponent
  * @internal
@@ -2474,7 +2429,9 @@ export function getIndexSignatureKeys(
  *
  * Pairs a `name` (any `PropertyKey`) with a `type` ({@link AST}). The
  * property's optionality and mutability are determined by the `type`'s
- * {@link Context}.
+ * {@link Context}. During object parsing, a property is present when its name
+ * exists anywhere on the input's prototype chain. The special `__proto__`
+ * property must be an own property.
  *
  * @see {@link Objects}
  * @category models
@@ -2769,19 +2726,13 @@ export const Objects: new(
         ? finishIndex(s, key, key, inputValue, result)
         : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
     }
-    const parseIndexes = indexCount ?
-      iterateEager<ObjectParserState, [key: PropertyKey, index: Index]>()({
-        onItem: (s, [key, index]) => parseIndex(s, key, index),
-        step: (_s, _, exit: Exit.Exit<void, SchemaIssue.Issue>) => exit._tag === "Failure" ? exit : undefined
-      }) :
-      undefined
-
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
           parser: compileConstructorDefault(ps.type),
           name: ps.name,
-          type: ps.type
+          type: ps.type,
+          valueFirst: ps.name !== "__proto__" && !isOptional(ps.type)
         }))
         indexes = indexCount
           ? ast.indexSignatures.map((is) => ({
@@ -2852,20 +2803,18 @@ export const Objects: new(
         }
       }
 
-      const concurrency = resolveConcurrency(options?.concurrency)
-
       // ---------------------------------------------
       // handle property signatures
       // ---------------------------------------------
       if (hasProperties) {
-        const eff = parseProperties(state, properties!, concurrency)
+        const eff = parseProperties(state, properties!)
         if (eff) yield* eff
       }
 
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (indexCount && !concurrency) {
+      if (indexCount) {
         for (let i = 0; i < indexCount; i++) {
           const index = indexes![i]
           const parse = index.is.parameter === string ? parseStringIndex : parseIndex
@@ -2878,17 +2827,6 @@ export const Objects: new(
             else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
           }
         }
-      } else if (parseIndexes) {
-        const keyPairs = Arr.empty<[PropertyKey, Index]>()
-        for (let i = 0; i < indexCount; i++) {
-          const index = indexes![i]
-          const keys = getIndexSignatureKeys(record, index.is.parameter, options)
-          for (let j = 0; j < keys.length; j++) {
-            keyPairs.push([keys[j], index])
-          }
-        }
-        const eff = parseIndexes(state, keyPairs, concurrency)
-        if (eff) yield* eff
       }
 
       if (state.issues) {
@@ -2912,33 +2850,11 @@ export const Objects: new(
 
     if (indexCount) return fallback
 
-    // Resumes at the property whose parser suspended, without replaying the
-    // properties already parsed.
-    const resume = (
-      state: ObjectParserState,
-      index: number,
-      pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
-    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
-      const property = properties![index]
-      return Effect.flatMap(Effect.exit(pending), (exit) => {
-        const terminal = stepProperty(state, property, exit)
-        if (terminal) return terminal
-        const done = () => InternalParser.succeed(state.out)
-        const eff = parseProperties(state, properties!.slice(index + 1))
-        return eff ? Effect.flatMapEager(eff, done) : done()
-      })
-    }
-
     // Fast path: a struct without index signatures, under the default parse
     // options, needs none of the generator the fallback runs per value.
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
-      if (
-        options.errors === "all" ||
-        options.onExcessProperty !== undefined ||
-        options.propertyOrder === "original" ||
-        options.concurrency !== undefined
-      ) {
+      if (!hasDefaultObjectOptions(options)) {
         return fallback(input, options)
       }
       if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
@@ -2952,14 +2868,20 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = Object.hasOwn(record, name)
-          const value = hasKey ? record[name] : InternalParser.missing
+          let value: unknown
+          if (property.valueFirst) {
+            value = record[name]
+            if (value === undefined && !(name in record)) value = InternalParser.missing
+          } else {
+            value = hasPropertySignature(record, name) ? record[name] : InternalParser.missing
+          }
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
-            return resume(state, index, exit)
+            return resumeProperties(state, props, index, exit)
           }
           if (exit === InternalParser.sameExit) {
-            if (hasKey) InternalRecord.assignProperty(out, name, value)
+            // Missing inputs return `missingExit`, so `sameExit` proves the property was present.
+            InternalRecord.assignProperty(out, name, value)
             continue
           }
           const terminal = stepProperty(state, property, exit)
@@ -3018,61 +2940,6 @@ export const Objects: new(
     return "object"
   }
 }
-
-type ObjectParserState = {
-  readonly ast: Objects
-  readonly input: Record<PropertyKey, unknown>
-  readonly options: ParseOptions
-  readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
-}
-
-type ParsedProperty = {
-  readonly parser: SchemaParser.Parser
-  readonly name: PropertyKey
-  readonly type: AST
-}
-
-function stepProperty(
-  s: ObjectParserState,
-  p: ParsedProperty,
-  exit: Exit.Exit<unknown, SchemaIssue.Issue>
-): Exit.Exit<void, SchemaIssue.Issue> | void {
-  if (exit._tag === "Failure") {
-    return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
-  }
-  if (exit === InternalParser.sameExit) return
-  const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-  if (value !== InternalParser.missing) {
-    InternalRecord.assignProperty(s.out, p.name, value)
-    return
-  }
-  delete s.out[p.name]
-  if (!isOptional(p.type)) {
-    const issue = new SchemaIssue.Pointer([p.name], new SchemaIssue.MissingKey(p.type.context?.annotations))
-    if (s.options.errors === "all") {
-      if (s.issues) s.issues.push(issue)
-      else s.issues = [issue]
-      return
-    } else {
-      return Exit.fail(
-        new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
-      )
-    }
-  }
-}
-
-const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
-  onItem(s, p) {
-    if (!Object.hasOwn(s.input, p.name)) {
-      return p.parser(InternalParser.missing, s.options)
-    }
-    const value = s.input[p.name]
-    InternalRecord.assignProperty(s.out, p.name, value)
-    return p.parser(value, s.options)
-  },
-  step: stepProperty
-})
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {
   if (!a) return b
@@ -3296,6 +3163,9 @@ type SentinelIndex = Map<PropertyKey, SentinelEntry>
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
 const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
+const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
+  key === "__proto__" ? Object.hasOwn(input, key) : key in input
+
 function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
   if (index) return index
@@ -3353,7 +3223,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
     index = (input, isConstructor) => {
       if (Predicate.isObjectKeyword(input)) {
-        const value = Object.hasOwn(input, key) ? (input as any)[key] : undefined
+        const value = hasPropertySignature(input, key) ? (input as any)[key] : undefined
         if (value !== undefined) return candidates.get(value) ?? emptyCandidates
         if (isConstructor) return types
       }
@@ -3385,7 +3255,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       // discriminated candidate.
       if (commonSentinel) {
         const [key, [byValue]] = commonSentinel
-        const hasKey = Object.hasOwn(input, key)
+        const hasKey = hasPropertySignature(input, key)
         const value = hasKey ? (input as any)[key] : undefined
         if (hasKey && (!isConstructor || value !== undefined)) {
           const match = byValue.get(value)
@@ -3399,7 +3269,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       // absent and undefined keys as unconstrained and therefore selects every candidate that owns the key.
       if (directKey === undefined) {
         for (const [key, [byValue, all]] of bySentinel) {
-          const hasKey = Object.hasOwn(input, key)
+          const hasKey = hasPropertySignature(input, key)
           const value = hasKey ? (input as any)[key] : undefined
           if (hasKey && (!isConstructor || value !== undefined)) {
             const match = byValue.get(value)
@@ -3414,7 +3284,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       // Missing keys are neutral. An observed key rejects only selected candidates that own it and do not match.
       for (const [key, [byValue, all]] of bySentinel) {
         if (key === directKey) continue
-        const hasKey = Object.hasOwn(input, key)
+        const hasKey = hasPropertySignature(input, key)
         const value = hasKey ? (input as any)[key] : undefined
         if (hasKey && (!isConstructor || value !== undefined)) {
           const match = byValue.get(value)
@@ -3555,12 +3425,15 @@ export const Union: new<A extends AST = AST>(
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
 
-    return (input, options) => {
+    const parse: SchemaParser.Parser = (input, options) => {
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
       const candidates = getCandidates(input, ast.types, compileConstructorDefault !== undefined)
 
+      if (candidates.length === 0) {
+        return Effect.fail(new SchemaIssue.AnyOf(ast, [], input, options))
+      }
       if (candidates.length === 1) {
         const result = compile(candidates[0])(input, options)
         if ((result as Exit.Exit<unknown, SchemaIssue.Issue>)._tag === "Success") return result
@@ -3578,8 +3451,7 @@ export const Union: new<A extends AST = AST>(
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
       }
-      const concurrency = resolveConcurrency(options?.concurrency)
-      const eff = parseUnion(state, candidates, concurrency ? { ...concurrency, orderedStep: true } : undefined)
+      const eff = parseUnion(state, candidates)
       if (!eff) {
         if (state.out) return state.out
         return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
@@ -3589,6 +3461,13 @@ export const Union: new<A extends AST = AST>(
         if (state.out) return state.out
         return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
       })
+    }
+    return (input, options) => {
+      try {
+        return parse(input, options)
+      } catch (error) {
+        return Effect.die(error)
+      }
     }
   }
   private _rebuild(
@@ -4650,7 +4529,8 @@ function segmentTemplateLiteralParts(
   return go(0, 0) ? out : undefined
 }
 
-const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+/** @internal */
+export const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast

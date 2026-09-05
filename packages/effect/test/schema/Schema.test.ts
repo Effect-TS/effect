@@ -127,8 +127,8 @@ describe("Schema", () => {
     })
   })
 
-  describe("parseOptions annotation", () => {
-    it("Number", async () => {
+  describe("parse options", () => {
+    it("does not interpret custom parseOptions metadata", async () => {
       const schema = Schema.Number.check(Schema.isGreaterThan(0), Schema.isInt()).annotate({
         parseOptions: { errors: "all" }
       })
@@ -137,12 +137,11 @@ describe("Schema", () => {
       const decoding = asserts.decoding()
       await decoding.fail(
         -1.2,
-        `Expected a value greater than 0
-Expected an integer`
+        "Expected a value greater than 0"
       )
     })
 
-    it("Struct", async () => {
+    it("applies errors to nested schemas without annotation overrides", async () => {
       const schema = Schema.Struct({
         a: Schema.String,
         b: Schema.Struct({
@@ -156,18 +155,19 @@ Expected an integer`
       await decoding.fail(
         { a: "a", b: {} },
         `Missing key
-  at ["b"]["c"]`
+  at ["b"]["c"]
+Missing key
+  at ["b"]["d"]`
       )
     })
 
-    it("should not read parseOptions from encodingChecks", async () => {
+    it("applies errors with encoding checks", async () => {
       const schema = Schema.Struct({
         a: Schema.String,
         b: Schema.String
       }).pipe(
         Schema.flip,
         Schema.check(Schema.isMaxProperties(1)),
-        Schema.annotate({ parseOptions: { errors: "first" } }),
         Schema.flip
       )
       assertTrue(SchemaAST.isObjects(schema.ast))
@@ -184,9 +184,6 @@ Missing key
   at ["b"]`
       )
     })
-  })
-
-  describe("parse options", () => {
     it("decoders can receive options when they are created", () => {
       const schema = Schema.Struct({
         a: Schema.String
@@ -4457,42 +4454,51 @@ Expected a value between -2147483648 and 2147483647`
       strictEqual(evaluations, 0)
     })
 
-    it.effect("preserves member order with concurrent decoding", () =>
+    it.effect("does not start later members after an asynchronous success", () =>
       Effect.gen(function*() {
+        const firstStarted = yield* Deferred.make<void>()
         const firstLatch = yield* Deferred.make<void>()
-        const secondCompleted = yield* Deferred.make<void>()
+        let secondCalls = 0
         const first = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() => Deferred.await(firstLatch).pipe(Effect.as("first"))),
+            decode: SchemaGetter.transformOrFail(() =>
+              Deferred.succeed(firstStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(firstLatch)),
+                Effect.as("first")
+              )
+            ),
             encode: SchemaGetter.passthrough()
           })
         )
         const second = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
-              Deferred.succeed(secondCompleted, undefined).pipe(Effect.as("second"))
-            ),
+            decode: SchemaGetter.transform(() => {
+              secondCalls++
+              return "second"
+            }),
             encode: SchemaGetter.passthrough()
           })
         )
-        const fiber = yield* Schema.decodeUnknownEffect(Schema.Union([first, second]))("value", {
-          concurrency: 2
-        }).pipe(Effect.forkChild)
+        const fiber = yield* Schema.decodeUnknownEffect(Schema.Union([first, second]))("value").pipe(Effect.forkChild)
 
-        yield* Deferred.await(secondCompleted)
+        yield* Deferred.await(firstStarted)
         yield* Effect.yieldNow
+        strictEqual(secondCalls, 0)
         yield* Deferred.succeed(firstLatch, undefined)
         strictEqual(yield* Fiber.join(fiber), "first")
+        strictEqual(secondCalls, 0)
       }))
 
-    it.effect("uses a buffered concurrent success after earlier candidates fail", () =>
+    it.effect("starts the next member only after an asynchronous failure", () =>
       Effect.gen(function*() {
+        const firstStarted = yield* Deferred.make<void>()
         const firstLatch = yield* Deferred.make<void>()
-        const secondCompleted = yield* Deferred.make<void>()
+        let secondCalls = 0
         const first = Schema.String.pipe(
           Schema.decode({
             decode: SchemaGetter.transformOrFail(() =>
-              Deferred.await(firstLatch).pipe(
+              Deferred.succeed(firstStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(firstLatch)),
                 Effect.andThen(Effect.fail(new SchemaIssue.Forbidden({ message: "first failed" })))
               )
             ),
@@ -4501,49 +4507,58 @@ Expected a value between -2147483648 and 2147483647`
         )
         const second = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
-              Deferred.succeed(secondCompleted, undefined).pipe(Effect.as("second"))
-            ),
+            decode: SchemaGetter.transform(() => {
+              secondCalls++
+              return "second"
+            }),
             encode: SchemaGetter.passthrough()
           })
         )
-        const fiber = yield* Schema.decodeUnknownEffect(Schema.Union([first, second]))("value", {
-          concurrency: 2
-        }).pipe(Effect.forkChild)
+        const fiber = yield* Schema.decodeUnknownEffect(Schema.Union([first, second]))("value").pipe(Effect.forkChild)
 
-        yield* Deferred.await(secondCompleted)
+        yield* Deferred.await(firstStarted)
         yield* Effect.yieldNow
+        strictEqual(secondCalls, 0)
         yield* Deferred.succeed(firstLatch, undefined)
         strictEqual(yield* Fiber.join(fiber), "second")
+        strictEqual(secondCalls, 1)
       }))
 
-    it.effect(`mode: "oneOf" detects concurrent successes in member order`, () =>
+    it.effect(`mode: "oneOf" detects asynchronous successes in member order`, () =>
       Effect.gen(function*() {
+        const firstStarted = yield* Deferred.make<void>()
         const firstLatch = yield* Deferred.make<void>()
-        const secondCompleted = yield* Deferred.make<void>()
+        let secondCalls = 0
         const first = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() => Deferred.await(firstLatch).pipe(Effect.as("first"))),
+            decode: SchemaGetter.transformOrFail(() =>
+              Deferred.succeed(firstStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(firstLatch)),
+                Effect.as("first")
+              )
+            ),
             encode: SchemaGetter.passthrough()
           })
         )
         const second = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
-              Deferred.succeed(secondCompleted, undefined).pipe(Effect.as("second"))
-            ),
+            decode: SchemaGetter.transform(() => {
+              secondCalls++
+              return "second"
+            }),
             encode: SchemaGetter.passthrough()
           })
         )
         const fiber = yield* Schema.decodeUnknownEffect(Schema.Union([first, second], { mode: "oneOf" }))(
-          "value",
-          { concurrency: 2 }
+          "value"
         ).pipe(Effect.exit, Effect.forkChild)
 
-        yield* Deferred.await(secondCompleted)
+        yield* Deferred.await(firstStarted)
         yield* Effect.yieldNow
+        strictEqual(secondCalls, 0)
         yield* Deferred.succeed(firstLatch, undefined)
         const exit = yield* Fiber.join(fiber)
+        strictEqual(secondCalls, 1)
         strictEqual(exit._tag, "Failure")
         if (exit._tag === "Failure") {
           const reason = exit.cause.reasons[0]
@@ -4558,45 +4573,6 @@ Expected a value between -2147483648 and 2147483647`
             }
           }
         }
-      }))
-
-    it.effect("interrupts pending concurrent members after anyOf succeeds", () =>
-      Effect.gen(function*() {
-        const firstStarted = yield* Deferred.make<void>()
-        const firstLatch = yield* Deferred.make<void>()
-        const secondStarted = yield* Deferred.make<void>()
-        const secondInterrupted = yield* Deferred.make<void>()
-        const first = Schema.String.pipe(
-          Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
-              Deferred.succeed(firstStarted, undefined).pipe(
-                Effect.andThen(Deferred.await(firstLatch)),
-                Effect.as("first")
-              )
-            ),
-            encode: SchemaGetter.passthrough()
-          })
-        )
-        const second = Schema.String.pipe(
-          Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
-              Deferred.succeed(secondStarted, undefined).pipe(
-                Effect.andThen(Effect.never),
-                Effect.onInterrupt(() => Deferred.succeed(secondInterrupted, undefined).pipe(Effect.asVoid))
-              )
-            ),
-            encode: SchemaGetter.passthrough()
-          })
-        )
-        const fiber = yield* Schema.decodeUnknownEffect(Schema.Union([first, second]))("value", {
-          concurrency: 2
-        }).pipe(Effect.forkChild)
-
-        yield* Deferred.await(firstStarted)
-        yield* Deferred.await(secondStarted)
-        yield* Deferred.succeed(firstLatch, undefined)
-        strictEqual(yield* Fiber.join(fiber), "first")
-        yield* Deferred.await(secondInterrupted)
       }))
 
     it(`mode: "oneOf" with Void`, async () => {

@@ -51,24 +51,244 @@ Values are microseconds per operation and lower is better. Results vary between
 machines, so they are most useful for understanding relative costs. A dash
 means that the library does not provide that benchmark.
 
-| Scenario                              | Effect Schema |    Valibot |      Zod 4 |
-| ------------------------------------- | ------------: | ---------: | ---------: |
-| Create a schema                       |        118.23 |  **40.24** |     318.56 |
-| Create a schema and parser            |    **130.50** |          — |          — |
-| Validate valid data                   |     **5.415** |       5.63 |          — |
-| Validate invalid data                 |         1.348 | **0.2431** |          — |
-| Parse valid data and collect errors   |         5.366 |   **5.22** |       7.16 |
-| Parse invalid data and collect errors |     **9.100** |      15.70 |      41.58 |
-| Parse valid data and stop early       |     **5.294** |       5.37 |          — |
-| Parse invalid data and stop early     |         1.352 | **0.2572** |          — |
-| Standard Schema, valid data           |         5.935 |       5.35 |   **3.83** |
-| Standard Schema, invalid data         |    **15.203** |      16.51 |      32.85 |
-| Standard Schema, valid, stop early    |     **5.843** |          — |          — |
-| Standard Schema, invalid, stop early  |     **2.244** |          — |          — |
-| Encode with a typed codec             |        0.3420 |          — | **0.0405** |
-| Decode with a typed codec             |        0.3762 |          — | **0.0463** |
-| Encode unknown input                  |    **0.3472** |          — |          — |
-| Decode unknown input                  |    **0.3637** |          — |          — |
+| Scenario                              | Effect interpreted |   Valibot |      Zod 4 |
+| ------------------------------------- | -----------------: | --------: | ---------: |
+| Create a schema                       |              79.21 | **30.97** |      93.27 |
+| Create a schema and parser            |          **79.68** |         — |          — |
+| Validate valid data                   |           **3.89** |      5.11 |          — |
+| Validate invalid data                 |         **0.2333** |    0.2335 |          — |
+| Parse valid data and collect errors   |           **4.72** |      5.18 |       7.10 |
+| Parse invalid data and collect errors |           **7.78** |     15.37 |      22.73 |
+| Parse valid data and stop early       |           **3.89** |      5.12 |          — |
+| Parse invalid data and stop early     |         **0.2315** |    0.2470 |          — |
+| Standard Schema, valid data           |               5.11 |      5.22 |   **3.56** |
+| Standard Schema, invalid data         |          **12.17** |     15.40 |      17.54 |
+| Standard Schema, valid, stop early    |           **4.27** |         — |          — |
+| Standard Schema, invalid, stop early  |         **0.7703** |         — |          — |
+| Encode with a typed codec             |             0.0857 |         — | **0.0442** |
+| Decode with a typed codec             |             0.1062 |         — | **0.0485** |
+| Encode unknown input                  |         **0.0862** |         — |          — |
+| Decode unknown input                  |         **0.1057** |         — |          — |
+
+### Runtime compilation
+
+`SchemaJITCompiler` is an experimental, opt-in runtime compiler for Schema decoders, encoders, and type guards. Import its `enable` entrypoint for a side effect during application startup:
+
+```ts
+import "effect/unstable/schema/SchemaJITCompiler/enable"
+```
+
+The import installs the compiler globally, but it does not compile schemas immediately. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
+
+```ts
+import "effect/unstable/schema/SchemaJITCompiler/enable"
+import { Schema, SchemaParser } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+
+const decodeUser = SchemaParser.decodeUnknownSync(User)
+
+decodeUser({ id: 1, name: "Ada" })
+```
+
+#### One cache, interchangeable parsers
+
+`SchemaCompiler` owns a single registry keyed by AST. `SchemaParser`, the
+interpreter, the JIT compiler, and future AOT compilers all use this registry.
+Encoding uses the same mechanism with the encoded-side AST. A compiler does
+not introduce a parallel cache, a compiled schema type, or an alternative
+parsing API.
+
+On the first execution of a parser, the registry:
+
+1. looks up the AST in its central cache;
+2. asks the installed compiler for an optimized implementation when no parser is cached;
+3. stores exactly one parser for the AST: either interpreted or compiled.
+
+```text
+SchemaParser API
+       |
+       v
+SchemaCompiler: WeakMap<AST, Parser>
+       |
+       +-- interpreted parser
+       |
+       `-- compiled parser
+             |
+             +-- is?(input, options) -> boolean
+             +-- validate?(input, options) -> decoded value or INVALID
+             `-- decode(input, options) -> decoded value or SchemaIssue
+```
+
+There are three ways to populate the same registry:
+
+- Import `effect/unstable/schema/SchemaJITCompiler/enable` to enable lazy JIT
+  compilation for every subsequently resolved AST. Existing registry entries
+  are not replaced.
+- Call `SchemaJITCompiler.enable(ast)` to enable JIT compilation for one exact
+  AST and the dependencies reached while building its decoder. The root is
+  installed immediately, but its operations and lazy descendants remain lazy.
+- Call `SchemaCompiler.set(ast, decoder)` to install a trusted decoder directly.
+  This is the integration point for generated AOT decoders. A later call for the
+  same AST replaces the registry entry.
+
+The selective APIs accept an AST rather than a Schema. Decoding uses
+`schema.ast`; encoding uses `SchemaAST.flip(schema.ast)`. Parser closures that
+already resolved an older registry entry keep it, so late installation is safe
+but may not accelerate those existing closures.
+
+`SchemaCompiler.set` is a trusted low-level API. Every operation receives the
+active `ParseOptions`; `validate` reports failure with
+`SchemaCompiler.invalid`, and `decode` receives `SchemaCompiler.missing` when an
+optional input is absent. The registry does not verify that an installed
+decoder implements the supplied AST.
+
+This replacement is transparent to every `SchemaParser` API that resolves the
+AST. A supported type-side AST has up to three independently lazy operations:
+
+- `is` validates without constructing an output and returns a boolean. It is
+  generated only when the compiler can prove that no decoded composite value is
+  needed, for example by a check on a reconstructed struct.
+- `validate` validates, materializes the decoded value, and returns a private
+  `INVALID` sentinel instead of constructing issues.
+- `decode` materializes the same value and constructs the normal `SchemaIssue`
+  on failure.
+
+When `validate` is available, successful decoding stops there. When it returns
+`INVALID`, `decode` performs one detailed compiled pass. Without `validate`,
+decoding calls `decode` directly. All `ParseOptions` are supported; options that
+affect the decoded output or issue collection may select a more detailed
+generated path.
+
+Pass parse options when creating or calling a parser. They apply throughout the
+parse; annotations cannot override them. Composite schemas parse children
+sequentially, including asynchronous transformations and middleware. There is
+no `concurrency` parse option. Use Effect concurrency combinators explicitly
+inside a transformation or around independent parsing operations when needed.
+
+An AST containing an encoding has no root `is` phase. Its compiled `decode`
+orchestrates transformations and middleware directly, executing each operation
+exactly once. The schemas before, between, and after those operations are
+resolved through the same central cache, so every checkpoint independently uses
+its compiled or interpreted parser:
+
+```text
+cached checkpoint -> compiled decode operation -> cached checkpoint
+```
+
+Interpreted parsers also resolve their children through this cache. Unsupported
+or unprofitable structural roots can therefore remain interpreted while their
+supported descendants compile. This local fallback does not create a second
+parser role or retain a private interpreted copy of a compiled parser.
+
+`SchemaParser.is(schema, options)` always checks `SchemaAST.toType(schema.ast)`.
+It uses the generated `is` operation when available, otherwise it runs
+`validate` and reduces its result to a boolean. The options are captured when
+the type guard is created. In particular, `onExcessProperty`, `propertyOrder`,
+and checks have the same meaning as in decoding. `disableChecks: true` is an
+explicitly unsafe optimization: the caller takes responsibility for the type
+narrowing. There is no second parser cache or separately exposed compiled
+schema.
+
+Unsupported or unprofitable AST roots use the interpreter. If the environment
+disallows dynamic code generation, JIT installation leaves the interpreted
+entry in place; manually installed AOT decoders continue to work. On an invalid
+type-side decode, `validate` and `decode` can read input properties and execute
+checks twice. Checks must therefore be free of observable side effects, and
+input property getters reached by a compiled parser must be deterministic and
+safe to repeat. Declaration parsers have the same replay constraint and must
+also complete synchronously. Transformations and middleware are executed only
+by `decode` and remain outside the replay region. Enabling the JIT compiler
+changes the execution strategy, not the results of the `SchemaParser` APIs.
+
+#### Performance snapshot
+
+This snapshot is checked in so compiler regressions appear as numeric changes in
+the Git diff. Keep scenario names, units, environment, and measurement settings
+unchanged when updating it. Lower values are better.
+
+- Moltar snapshot date: 2026-09-04
+- Environment: Node 24.12.0, V8 13.6, Apple M3
+- Libraries: Effect 4.0.0-rc.112, Zod 4.5.4
+- Runtime settings: 9 fresh processes, 500 ms measurement, 150 ms warmup;
+  Moltar scenarios use a shared batch of 256
+- Effect API: public `SchemaParser` functions only
+
+Run the Moltar snapshot with:
+
+```sh
+pnpm runtimeperf moltar-parse-safe --rounds 9 --time 500 --warmup-time 150
+pnpm runtimeperf moltar-assert-loose --rounds 9 --time 500 --warmup-time 150
+```
+
+| Scenario                           | Effect interpreted (ns/op) | Effect compiled (ns/op) | Zod compile (ns/op) |
+| ---------------------------------- | -------------------------: | ----------------------: | ------------------: |
+| `parseSafe`, valid                 |                      265.4 |                     5.4 |                 5.2 |
+| `parseSafe`, extra property        |                      266.8 |                     5.1 |                 5.3 |
+| `parseSafe`, invalid               |                     3000.0 |                  3070.0 |              3940.0 |
+| `assertLoose`, valid               |                      264.0 |                     3.6 |                 3.3 |
+| `assertLoose`, extra property      |                      266.1 |                     3.6 |                 3.3 |
+| `assertLoose`, invalid             |                      120.2 |                     3.1 |               211.0 |
+| Effect initialization, parseSafe   |                     6710.0 |                  8360.0 |                   — |
+| Zod initialization, parseSafe      |                          — |                       — |             34460.0 |
+| Effect initialization, assertLoose |                     6820.0 |                  8400.0 |                   — |
+| Zod initialization, assertLoose    |                          — |                       — |             46890.0 |
+
+The broader snapshot tracks arrays, tuples, encoding orchestration, and local
+fallback paths. It was refreshed on 2026-09-05 from the worktree based on
+`5ea366e01c`, using the same runtime settings above. Run each row by passing its
+scenario name to `pnpm runtimeperf` with those settings. Timings are medians;
+the final column is the median paired compiled/interpreted ratio.
+
+| Runtimeperf scenario                           | Interpreted (ns/op) | Compiled (ns/op) | Compiled / interpreted |
+| ---------------------------------------------- | ------------------: | ---------------: | ---------------------: |
+| `schema-compiler-array-100-valid`              |               715.9 |            126.2 |                  0.177 |
+| `schema-compiler-tuple-rest-valid`             |               426.1 |             37.7 |                  0.089 |
+| `schema-compiler-transformation-struct-valid`  |              1956.2 |           1206.7 |                  0.618 |
+| `schema-compiler-middleware-struct-valid`      |              1899.6 |            413.2 |                  0.219 |
+| `schema-compiler-recursive-node-valid`         |             13752.8 |           8344.2 |                  0.616 |
+| `schema-compiler-transformed-key-record-valid` |              3582.9 |           3521.6 |                  0.981 |
+| `schema-compiler-transformation-root-invalid`  |              3378.0 |           3503.6 |                  1.041 |
+
+A separate paired comparison against `5ea366e01c` measured interpreted Array
+and tuple time reductions of 22.32% and 11.83%. That comparison used five rounds
+of 300 ms after 100 ms warmup and covered the full worktree diff, including the
+removal of AST-local parse options and concurrency as well as the subsequent
+simplifications. Snapshot deltas alone do not establish a performance regression.
+
+Bundle sizes use the stable `schema-compiler.ts` and
+`schema-compiler-off.ts` fixtures in `packages/tools/bundle/fixtures`. Values
+are minified and gzipped decimal kilobytes, rounded independently from byte
+counts. This snapshot was refreshed on 2026-09-05 with `pnpm bundle-compare HEAD`
+against `5ea366e01c`, covering the full worktree diff. Of all 33 stable fixtures,
+23 became smaller and 10 were unchanged; none grew. All 17 Schema fixtures
+became smaller. Run `pnpm bundle-compare HEAD~1` after a compiler commit to
+compare with the preceding commit.
+
+| Bundle fixture        | Size (KB) |
+| --------------------- | --------: |
+| Compiler not imported |     16.89 |
+| Compiler imported     |     21.96 |
+| Compiler increment    |      5.06 |
+
+The retained-memory measurements below are from 2026-09-04 and have not been
+refreshed for this worktree.
+
+The retained-memory probe creates 1,000 distinct four-field Structs, retains
+their public sync decoders, then forces two garbage collections after the first
+valid decode. Values are medians of seven fresh processes. Cold CPU is
+process-wide and can exceed wall time when V8 uses concurrent work.
+
+| Compiler cost after first valid decode | Per schema |
+| -------------------------------------- | ---------: |
+| Retained JavaScript heap               |      907 B |
+| V8 code and metadata                   |      103 B |
+| V8 bytecode and metadata               |       17 B |
+| Cold compile and decode wall time      |    4.98 µs |
+| Cold compile and decode process CPU    |    7.90 µs |
 
 # Defining Elementary Schemas
 
@@ -1678,10 +1898,8 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-When parsing sequentially, transformed keys are applied in selection order, so
+Transformed keys are applied sequentially in selection order, so
 the later selected property wins if a transformation produces a duplicate key.
-With concurrency greater than `1`, completion order determines which value is
-retained.
 
 **Example** (Keeping the later selected value when parsing sequentially)
 
@@ -2320,6 +2538,12 @@ While `Schema.declare` works for fixed types like `URL` or `File`, some types ar
 `Schema.declareConstructor` handles this by letting you define a **schema factory**: a function that takes schemas for the type parameters and returns a schema for the full type.
 
 > **Important:** `declareConstructor` is for types where the **container shape is the same** on both sides: only the inner type parameter changes (e.g. `Box<Encoded>` to `Box<Type>`). If you need to convert a structurally different type into your declared type (e.g. `T` to `Box<T>`), first declare `Box` with `declareConstructor`, then define a separate transformation schema to express the conversion.
+
+The declaration parser must complete synchronously, have no observable side
+effects, and be safe to evaluate again with the same input. It may reconstruct
+an equivalent container (for example, a `ReadonlySet` whose elements were
+decoded), but it must not perform a semantic encoded-to-type conversion; express
+that conversion with a schema transformation.
 
 ### How the two-step call works
 

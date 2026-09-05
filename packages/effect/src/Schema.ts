@@ -446,6 +446,11 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *   returns a parsing function `(u, ast, options) => Effect<T, Issue>`
  * - `annotations` — optional metadata
  *
+ * The parser returned by `run` must complete synchronously, have no observable
+ * side effects, and be safe to evaluate again with the same input. It may
+ * materialize an equivalent container representation, but encoded-to-type
+ * conversions belong in a separate schema transformation.
+ *
  * @see {@link declare} for creating schemas for non-parametric types.
  *
  * **Example** (Schema for a parametric `Box<A>` type)
@@ -1363,6 +1368,10 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  * Only causes made entirely of schema issues are converted to `false`. Causes
  * that contain defects, interruptions, or other non-schema reasons throw
  * instead.
+ *
+ * Parse options are captured when the guard is created. Passing
+ * `disableChecks: true` skips refinement checks and is unsafe: the caller
+ * assumes responsibility for the resulting type narrowing.
  *
  * **Example** (Defining a basic type guard)
  *
@@ -3336,6 +3345,11 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  *
  * The resulting schema's `Type` is a readonly object type with the fields'
  * decoded types. The `Encoded` form mirrors the field schemas' encoded types.
+ * A declared field is present when its key exists anywhere on the input's
+ * prototype chain. The special `__proto__` field must be an own property.
+ * Parsing copies inherited field values to own properties on the output.
+ * Dynamic {@link Record} index signatures continue to select own properties
+ * only.
  *
  * **Example** (Defining a basic struct)
  *
@@ -3749,9 +3763,8 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * **Gotchas**
  *
  * When decoded or encoded key transformations produce the same property key,
- * sequential parsing applies selected own properties in selection order, so
- * the later selected property overwrites the earlier value. With concurrency
- * greater than `1`, completion order determines which value is retained.
+ * parsing applies selected own properties sequentially in selection order, so
+ * the later selected property overwrites the earlier value.
  *
  * **Example** (Defining a string-keyed record of numbers)
  *
@@ -6364,6 +6377,10 @@ export function link<T>() {
  *
  * When `abort` is `true`, parsing stops after this filter fails instead of
  * collecting later check failures.
+ *
+ * Filter predicates must have no observable side effects. A runtime compiler
+ * may evaluate them once during fast validation and again to construct detailed
+ * issues after validation fails.
  *
  * **Example** (Reporting failure at a nested path)
  *
@@ -14358,7 +14375,7 @@ export declare namespace Annotations {
   }
   /**
    * Base annotations shared by all composite schema nodes. Extends
-   * {@link Documentation} with error messages, branding, parse options, and
+   * {@link Documentation} with error messages, branding, and
    * arbitrary generation hooks. {@link Declaration} and other annotation
    * interfaces build on top of this.
    *
@@ -14397,7 +14414,6 @@ export declare namespace Annotations {
      * filter/refinement instead.
      */
     readonly identifier?: string | undefined
-    readonly parseOptions?: SchemaAST.ParseOptions | undefined
     /**
      * Accumulated brands when multiple brands are added with `Schema.brand`.
      */

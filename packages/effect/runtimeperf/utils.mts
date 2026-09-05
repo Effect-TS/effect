@@ -62,6 +62,7 @@ export const parseArgs = (args, { compare = false } = {}) => {
     rounds: undefined,
     timeMs: undefined,
     warmupTimeMs: undefined,
+    batchSize: undefined,
     tier: undefined,
     family: undefined,
     implementation: undefined,
@@ -74,6 +75,7 @@ export const parseArgs = (args, { compare = false } = {}) => {
     ["--rounds", "rounds"],
     ["--time", "timeMs"],
     ["--warmup-time", "warmupTimeMs"],
+    ["--batch-size", "batchSize"],
     ["--tier", "tier"],
     ["--family", "family"],
     ["--implementation", "implementation"],
@@ -100,11 +102,18 @@ export const parseArgs = (args, { compare = false } = {}) => {
       throw new Error(`Expected at most one target, got ${options.target} and ${arg}`)
     }
   }
-  for (const key of ["rounds", "timeMs", "warmupTimeMs", "tier"]) {
+  const numericOptions = new Map([
+    ["rounds", "--rounds"],
+    ["timeMs", "--time"],
+    ["warmupTimeMs", "--warmup-time"],
+    ["batchSize", "--batch-size"],
+    ["tier", "--tier"]
+  ])
+  for (const [key, option] of numericOptions) {
     if (options[key] !== undefined) {
       const value = Number(options[key])
       if (!Number.isInteger(value) || value < 0 || (key !== "tier" && value === 0)) {
-        throw new Error(`--${key} must be ${key === "tier" ? "a non-negative" : "a positive"} integer`)
+        throw new Error(`${option} must be ${key === "tier" ? "a non-negative" : "a positive"} integer`)
       }
       options[key] = value
     }
@@ -119,9 +128,10 @@ export const loadRegistry = () => {
       fixtureGroup.cases.map((runtimeCase) => ({
         ...fixtureGroup.defaults,
         ...runtimeCase,
+        batchSize: suite.batchSize,
         suite: suite.name,
         target: `${suite.name}/${runtimeCase.name}`,
-        fixturePath: resolve(runtimeperfDir, fixtureGroup.file)
+        fixturePath: resolve(runtimeperfDir, runtimeCase.file ?? fixtureGroup.file)
       }))
     )
   )
@@ -147,7 +157,9 @@ export const selectFixtures = (fixtures, options, { effectOnly = false } = {}) =
     selected = selected.filter((fixture) => fixture.implementation === options.implementation)
   }
   if (effectOnly) {
-    selected = selected.filter((fixture) => fixture.implementation === "effect")
+    selected = selected.filter((fixture) =>
+      fixture.implementation === "effect" || fixture.implementation.startsWith("effect-")
+    )
   }
   if (selected.length === 0) {
     throw new Error("No runtimeperf fixtures matched the selection")
@@ -159,6 +171,7 @@ export const resolveDefaults = (config, options) => ({
   rounds: options.rounds ?? config.defaults.rounds,
   timeMs: options.timeMs ?? config.defaults.timeMs,
   warmupTimeMs: options.warmupTimeMs ?? config.defaults.warmupTimeMs,
+  batchSize: options.batchSize ?? null,
   targetBatchTimeNs: config.defaults.targetBatchTimeNs,
   maxBatchSize: config.defaults.maxBatchSize,
   bootstrapIterations: config.defaults.bootstrapIterations,
@@ -184,19 +197,23 @@ export const runWorker = (workerArgs) => {
   }
 }
 
-export const calibrateFixture = (fixture, defaults, fixturePath = fixture.fixturePath) =>
-  runWorker([
-    "--mode",
-    "calibrate",
-    "--fixture",
-    fixturePath,
-    "--export",
-    fixture.export,
-    "--target-batch-time-ns",
-    String(defaults.targetBatchTimeNs),
-    "--max-batch-size",
-    String(defaults.maxBatchSize)
-  ])
+export const calibrateFixture = (fixture, defaults, fixturePath = fixture.fixturePath) => {
+  const batchSize = defaults.batchSize ?? fixture.batchSize ?? null
+  return batchSize === null
+    ? runWorker([
+      "--mode",
+      "calibrate",
+      "--fixture",
+      fixturePath,
+      "--export",
+      fixture.export,
+      "--target-batch-time-ns",
+      String(defaults.targetBatchTimeNs),
+      "--max-batch-size",
+      String(defaults.maxBatchSize)
+    ])
+    : { ok: true, mode: "fixed", batchSize, warnings: [] }
+}
 
 export const measureFixture = (fixture, defaults, batchSize, fixturePath = fixture.fixturePath) =>
   runWorker([

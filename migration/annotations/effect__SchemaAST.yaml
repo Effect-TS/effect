@@ -18,7 +18,7 @@
   note: "The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model."
 "effect/SchemaAST#BatchingAnnotation":
   replacement: "none"
-  note: "Per-schema batching annotations were removed; control asynchronous parsing with ParseOptions.concurrency."
+  note: "Per-schema batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations."
 "effect/SchemaAST#BatchingAnnotationId":
   replacement: "none"
   note: "Symbol annotation IDs were removed and batching is no longer a schema annotation."
@@ -53,11 +53,11 @@
   replacement: "SchemaAST.Encoding"
   note: "The marker transformation was replaced by explicit SchemaAST.Link encoding chains."
 "effect/SchemaAST#ConcurrencyAnnotation":
-  replacement: "SchemaAST.ParseOptions[\"concurrency\"]"
-  note: "Concurrency is now a parse option rather than its own annotation type."
+  replacement: "none"
+  note: "Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations."
 "effect/SchemaAST#ConcurrencyAnnotationId":
-  replacement: "Schema.Annotations.Bottom[\"parseOptions\"]"
-  note: "Symbol annotation IDs were removed; put concurrency inside the parseOptions annotation."
+  replacement: "none"
+  note: "Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations."
 "effect/SchemaAST#Declaration":
   replacement: "SchemaAST.Declaration"
   note: "The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model."
@@ -117,7 +117,7 @@
   note: "Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription."
 "effect/SchemaAST#getBatchingAnnotation":
   replacement: "none"
-  note: "Batching annotations were removed; read ParseOptions.concurrency when controlling asynchronous parsing."
+  note: "Batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations."
 "effect/SchemaAST#getBrandAnnotation":
   replacement: "SchemaAST.resolveAt(\"brands\")"
   note: "Resolve the string-keyed brands annotation."
@@ -125,8 +125,8 @@
   replacement: "none"
   note: "The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API."
 "effect/SchemaAST#getConcurrencyAnnotation":
-  replacement: "SchemaAST.resolveAt(\"parseOptions\")"
-  note: "Resolve parseOptions and read concurrency from it."
+  replacement: "none"
+  note: "Schema parsing concurrency and its annotations were removed. Use Effect concurrency combinators around independent parsing operations."
 "effect/SchemaAST#getDecodingFallbackAnnotation":
   replacement: "none"
   note: "Fallbacks are encoding middleware in v4, not readable annotations; attach them with Schema.catchDecoding."
@@ -164,8 +164,8 @@
   replacement: "none"
   note: "Issue-title callbacks were removed; use message or expected annotations and SchemaIssue formatters."
 "effect/SchemaAST#getParseOptionsAnnotation":
-  replacement: "SchemaAST.resolveAt(\"parseOptions\")"
-  note: "Resolve the string-keyed parseOptions annotation."
+  replacement: "none"
+  note: "Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas."
 "effect/SchemaAST#getPropertySignatures":
   replacement: "SchemaAST.Objects.propertySignatures"
   note: "Narrow to Objects and read propertySignatures directly."
@@ -332,8 +332,8 @@
   replacement: "SchemaAST.ParseOptions"
   note: "The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model."
 "effect/SchemaAST#ParseOptionsAnnotationId":
-  replacement: "Schema.Annotations.Bottom[\"parseOptions\"]"
-  note: "Symbol annotation IDs were removed; use the parseOptions key."
+  replacement: "none"
+  note: "Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas."
 "effect/SchemaAST#partial":
   replacement: "Schema.mapFields + Struct.map(Schema.optional)"
   note: "Partial object transforms moved to schema field transforms."

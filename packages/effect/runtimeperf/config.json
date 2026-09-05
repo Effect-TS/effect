@@ -1589,6 +1589,848 @@
           ]
         }
       ]
+    },
+    {
+      "name": "moltar-assert-loose",
+      "batchSize": 256,
+      "fixtures": [
+        {
+          "file": "suites/moltar-assert-loose/fixtures/effect.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect",
+            "family": "moltar-assert-loose",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "is"
+          },
+          "cases": [
+            {
+              "name": "valid-effect",
+              "export": "assertLooseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect",
+              "export": "assertLooseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect",
+              "export": "assertLooseInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect",
+              "export": "initializationSchema",
+              "scenario": "moltar-assert-loose-effect-initialization",
+              "operation": "schema-and-is",
+              "path": "cold"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar-assert-loose/fixtures/effect-compiled.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect-compiled",
+            "family": "moltar-assert-loose",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "is-compiled"
+          },
+          "cases": [
+            {
+              "name": "valid-effect-compiled",
+              "export": "assertLooseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect-compiled",
+              "export": "assertLooseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect-compiled",
+              "export": "assertLooseInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect-compiled",
+              "export": "initializationSchema",
+              "scenario": "moltar-assert-loose-effect-initialization",
+              "operation": "schema-compile-and-is",
+              "path": "cold"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar-assert-loose/fixtures/zod.ts",
+          "defaults": {
+            "tier": 3,
+            "family": "moltar-assert-loose",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "valid-zod4-parse",
+              "export": "assertLooseParseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4",
+              "operation": "parse-and-assert",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-parse",
+              "export": "assertLooseParseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4",
+              "operation": "parse-and-assert",
+              "path": "extra-valid"
+            },
+            {
+              "name": "valid-zod4-jitless-parse",
+              "export": "assertLooseParseJitlessValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-and-assert-jitless",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-jitless-parse",
+              "export": "assertLooseParseJitlessExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-and-assert-jitless",
+              "path": "extra-valid"
+            },
+            {
+              "name": "valid-zod4-validate",
+              "export": "assertLooseValidateValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-validate",
+              "export": "assertLooseValidateExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-validate",
+              "export": "assertLooseValidateInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "invalid"
+            },
+            {
+              "name": "valid-zod4-compiled",
+              "export": "assertLooseCompiledValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-compiled",
+              "export": "assertLooseCompiledExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-compiled",
+              "export": "assertLooseCompiledInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-schema-zod4",
+              "export": "initializationSchema",
+              "scenario": "moltar-assert-loose-zod-initialization",
+              "implementation": "zod4",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "initialization-compiled-schema-zod4",
+              "export": "initializationCompiledSchema",
+              "scenario": "moltar-assert-loose-zod-initialization",
+              "implementation": "zod4-compiled",
+              "operation": "schema-and-compile",
+              "path": "cold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "moltar-parse-safe",
+      "batchSize": 256,
+      "fixtures": [
+        {
+          "file": "suites/moltar-parse-safe/fixtures/effect.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect",
+            "family": "moltar-parse-safe",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "decode-sync"
+          },
+          "cases": [
+            {
+              "name": "valid-effect",
+              "export": "parseSafeValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect",
+              "export": "parseSafeExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect",
+              "export": "parseSafeInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect",
+              "export": "initializationSchema",
+              "scenario": "moltar-parse-safe-effect-initialization",
+              "operation": "schema-and-decode",
+              "path": "cold"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar-parse-safe/fixtures/effect-compiled.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect-compiled",
+            "family": "moltar-parse-safe",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "decode-sync"
+          },
+          "cases": [
+            {
+              "name": "valid-effect-compiled",
+              "export": "parseSafeValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect-compiled",
+              "export": "parseSafeExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect-compiled",
+              "export": "parseSafeInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect-compiled",
+              "export": "initializationSchema",
+              "scenario": "moltar-parse-safe-effect-initialization",
+              "operation": "schema-and-compile-and-decode",
+              "path": "cold"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar-parse-safe/fixtures/zod.ts",
+          "defaults": {
+            "tier": 3,
+            "family": "moltar-parse-safe",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "valid-zod4-parse",
+              "export": "parseSafeValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-parse",
+              "export": "parseSafeExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-parse",
+              "export": "parseSafeInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "invalid"
+            },
+            {
+              "name": "valid-zod4-jitless-parse",
+              "export": "parseSafeJitlessValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-jitless-parse",
+              "export": "parseSafeJitlessExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-jitless-parse",
+              "export": "parseSafeJitlessInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "invalid"
+            },
+            {
+              "name": "valid-zod4-compiled",
+              "export": "parseSafeCompiledValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-compiled",
+              "export": "parseSafeCompiledExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-compiled",
+              "export": "parseSafeCompiledInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-schema-zod4",
+              "export": "initializationSchema",
+              "scenario": "moltar-parse-safe-zod-initialization",
+              "implementation": "zod4",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "initialization-compiled-schema-zod4",
+              "export": "initializationCompiledSchema",
+              "scenario": "moltar-parse-safe-zod-initialization",
+              "implementation": "zod4-compiled",
+              "operation": "schema-and-compile",
+              "path": "cold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "schema-compiler",
+      "fixtures": [
+        {
+          "file": "suites/schema-compiler/fixtures/coverage.ts",
+          "defaults": {
+            "tier": 2,
+            "operation": "decode-sync",
+            "astTags": []
+          },
+          "cases": [
+            {
+              "name": "array-100-valid-effect",
+              "export": "array100Valid",
+              "scenario": "schema-compiler-array-100-valid",
+              "implementation": "effect",
+              "family": "arrays",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "array-100-valid-effect-compiled",
+              "export": "array100ValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-array-100-valid",
+              "implementation": "effect-compiled",
+              "family": "arrays",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "array-100-invalid-last-effect",
+              "export": "array100InvalidLast",
+              "scenario": "schema-compiler-array-100-invalid-last",
+              "implementation": "effect",
+              "family": "arrays",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "array-100-invalid-last-effect-compiled",
+              "export": "array100InvalidLastCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-array-100-invalid-last",
+              "implementation": "effect-compiled",
+              "family": "arrays",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tuple-rest-valid-effect",
+              "export": "tupleRestValid",
+              "scenario": "schema-compiler-tuple-rest-valid",
+              "implementation": "effect",
+              "family": "arrays",
+              "path": "valid",
+              "size": 34
+            },
+            {
+              "name": "tuple-rest-valid-effect-compiled",
+              "export": "tupleRestValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-tuple-rest-valid",
+              "implementation": "effect-compiled",
+              "family": "arrays",
+              "path": "valid",
+              "size": 34
+            },
+            {
+              "name": "optional-struct-valid-effect",
+              "export": "optionalStructValid",
+              "scenario": "schema-compiler-optional-struct-valid",
+              "implementation": "effect",
+              "family": "objects",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "optional-struct-valid-effect-compiled",
+              "export": "optionalStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-optional-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "objects",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "record-valid-effect",
+              "export": "recordValid",
+              "scenario": "schema-compiler-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "record-valid-effect-compiled",
+              "export": "recordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "template-record-valid-effect",
+              "export": "templateRecordValid",
+              "scenario": "schema-compiler-template-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "template-record-valid-effect-compiled",
+              "export": "templateRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-template-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "struct-with-record-valid-effect",
+              "export": "structWithRecordValid",
+              "scenario": "schema-compiler-struct-with-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "struct-with-record-valid-effect-compiled",
+              "export": "structWithRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-struct-with-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "number-record-valid-effect",
+              "export": "numberRecordValid",
+              "scenario": "schema-compiler-number-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "number-record-valid-effect-compiled",
+              "export": "numberRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-number-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformed-key-record-valid-effect",
+              "export": "transformedKeyRecordValid",
+              "scenario": "schema-compiler-transformed-key-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformed-key-record-valid-effect-compiled",
+              "export": "transformedKeyRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformed-key-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "encoding-checked-struct-valid-effect",
+              "export": "encodingCheckedStructValid",
+              "scenario": "schema-compiler-encoding-checked-struct-valid",
+              "implementation": "effect",
+              "family": "checks",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "encoding-checked-struct-valid-effect-compiled",
+              "export": "encodingCheckedStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-encoding-checked-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "checks",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "literal-100-valid-last-effect",
+              "export": "literal100ValidLast",
+              "scenario": "schema-compiler-literal-100-valid-last",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-valid-last-effect-compiled",
+              "export": "literal100ValidLastCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-literal-100-valid-last",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-invalid-effect",
+              "export": "literal100Invalid",
+              "scenario": "schema-compiler-literal-100-invalid",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-invalid-effect-compiled",
+              "export": "literal100InvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-literal-100-invalid",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-valid-last-effect",
+              "export": "taggedUnion100ValidLast",
+              "scenario": "schema-compiler-tagged-union-100-valid-last",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-valid-last-effect-compiled",
+              "export": "taggedUnion100ValidLastCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-tagged-union-100-valid-last",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-invalid-effect",
+              "export": "taggedUnion100Invalid",
+              "scenario": "schema-compiler-tagged-union-100-invalid",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-invalid-effect-compiled",
+              "export": "taggedUnion100InvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-tagged-union-100-invalid",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "checked-string-valid-effect",
+              "export": "checkedStringValid",
+              "scenario": "schema-compiler-checked-string-valid",
+              "implementation": "effect",
+              "family": "checks",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "checked-string-valid-effect-compiled",
+              "export": "checkedStringValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-checked-string-valid",
+              "implementation": "effect-compiled",
+              "family": "checks",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "template-literal-valid-effect",
+              "export": "templateLiteralValid",
+              "scenario": "schema-compiler-template-literal-valid",
+              "implementation": "effect",
+              "family": "template-literals",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "template-literal-valid-effect-compiled",
+              "export": "templateLiteralValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-template-literal-valid",
+              "implementation": "effect-compiled",
+              "family": "template-literals",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-struct-valid-effect",
+              "export": "transformationStructValid",
+              "scenario": "schema-compiler-transformation-struct-valid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformation-struct-valid-effect-compiled",
+              "export": "transformationStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformation-root-valid-effect",
+              "export": "transformationRootValid",
+              "scenario": "schema-compiler-transformation-root-valid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-root-valid-effect-compiled",
+              "export": "transformationRootValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-root-valid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-root-invalid-effect",
+              "export": "transformationRootInvalid",
+              "scenario": "schema-compiler-transformation-root-invalid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "transformation-uppercase-valid-effect",
+              "export": "transformationUpperCaseValid",
+              "scenario": "schema-compiler-transformation-uppercase-valid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-uppercase-valid-effect-compiled",
+              "export": "transformationUpperCaseValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-uppercase-valid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-root-invalid-effect-compiled",
+              "export": "transformationRootInvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-root-invalid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "transformation-output-invalid-effect",
+              "export": "transformationOutputInvalid",
+              "scenario": "schema-compiler-transformation-output-invalid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "transformation-output-invalid-effect-compiled",
+              "export": "transformationOutputInvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-transformation-output-invalid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "middleware-struct-valid-effect",
+              "export": "middlewareStructValid",
+              "scenario": "schema-compiler-middleware-struct-valid",
+              "implementation": "effect",
+              "family": "middleware",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "middleware-struct-valid-effect-compiled",
+              "export": "middlewareStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-middleware-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "middleware",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "recursive-node-valid-effect",
+              "export": "recursiveNodeValid",
+              "scenario": "schema-compiler-recursive-node-valid",
+              "implementation": "effect",
+              "family": "recursion",
+              "path": "valid",
+              "size": 121
+            },
+            {
+              "name": "recursive-node-valid-effect-compiled",
+              "export": "recursiveNodeValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
+              "scenario": "schema-compiler-recursive-node-valid",
+              "implementation": "effect-compiled",
+              "family": "recursion",
+              "path": "valid",
+              "size": 121
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -29,9 +29,10 @@ Options:
   --rounds <n>
   --time <ms>
   --warmup-time <ms>
+  --batch-size <n>      Use the same fixed batch for every selected fixture
   --tier <0-3>
   --family <name>
-  --implementation <effect|fast-check-v4|valibot|zod4>
+  --implementation <effect|effect-compiled|fast-check-v4|valibot|zod4|zod4-jitless|zod4-validate|zod4-compiled>
 `
 
 const rotate = (items, offset) => items.map((_, index) => items[(index + offset) % items.length])

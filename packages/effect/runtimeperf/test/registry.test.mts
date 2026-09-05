@@ -2,15 +2,38 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { describe, it } from "node:test"
 import { pathToFileURL } from "node:url"
-import { loadRegistry } from "../utils.mts"
+import { loadRegistry, selectFixtures } from "../utils.mts"
 
 describe("runtimeperf registry", () => {
   it("uses unique fixture targets and valid implementations", () => {
     const { fixtures } = loadRegistry()
     assert.equal(new Set(fixtures.map((fixture) => fixture.target)).size, fixtures.length)
     for (const fixture of fixtures) {
-      assert.ok(["effect", "fast-check-v4", "valibot", "zod4"].includes(fixture.implementation))
+      assert.ok(
+        [
+          "effect",
+          "effect-compiled",
+          "fast-check-v4",
+          "valibot",
+          "zod4",
+          "zod4-jitless",
+          "zod4-validate",
+          "zod4-compiled"
+        ].includes(fixture.implementation)
+      )
     }
+  })
+
+  it("selects Effect implementation variants for comparisons", () => {
+    const { fixtures } = loadRegistry()
+    const selected = selectFixtures(
+      fixtures,
+      { target: "moltar-parse-safe/valid-effect-compiled" },
+      { effectOnly: true }
+    )
+
+    assert.equal(selected.length, 1)
+    assert.equal(selected[0].implementation, "effect-compiled")
   })
 
   it("pairs every Arbitrary scenario across the native and fast-check implementations", () => {
@@ -113,6 +136,89 @@ describe("runtimeperf registry", () => {
       assert.doesNotMatch(source, /from "zod\/v4-mini"/)
       assert.match(source, /jitless:\s*true/)
     }
+  })
+
+  it("includes the Moltar assertLoose matrix and isolates the Zod optimization layers", async () => {
+    const { fixtures } = loadRegistry()
+    const moltar = fixtures.filter((fixture) => fixture.suite === "moltar-assert-loose")
+    assert.equal(moltar.every((fixture) => fixture.batchSize === 256), true)
+    const implementations = (scenario) =>
+      moltar
+        .filter((fixture) => fixture.scenario === scenario)
+        .map((fixture) => fixture.implementation)
+        .sort()
+
+    assert.deepEqual(implementations("moltar-assert-loose-valid"), [
+      "effect",
+      "effect-compiled",
+      "zod4",
+      "zod4-compiled",
+      "zod4-jitless",
+      "zod4-validate"
+    ])
+    assert.deepEqual(implementations("moltar-assert-loose-extra-valid"), [
+      "effect",
+      "effect-compiled",
+      "zod4",
+      "zod4-compiled",
+      "zod4-jitless",
+      "zod4-validate"
+    ])
+    assert.deepEqual(implementations("moltar-assert-loose-invalid"), [
+      "effect",
+      "effect-compiled",
+      "zod4-compiled",
+      "zod4-validate"
+    ])
+
+    const source = await readFile(moltar.find((fixture) => fixture.implementation === "zod4-compiled").fixturePath, "utf8")
+    assert.match(source, /z\.compile\(/)
+    assert.match(source, /z\.validate\(/)
+    assert.match(source, /schema\.parse\(input, \{ jitless: true \}\)/)
+  })
+
+  it("includes the Moltar parseSafe matrix and isolates the Zod compilation layers", async () => {
+    const { fixtures } = loadRegistry()
+    const moltar = fixtures.filter((fixture) => fixture.suite === "moltar-parse-safe")
+    assert.equal(moltar.every((fixture) => fixture.batchSize === 256), true)
+    const implementations = (scenario) =>
+      moltar
+        .filter((fixture) => fixture.scenario === scenario)
+        .map((fixture) => fixture.implementation)
+        .sort()
+    const parsers = ["effect", "effect-compiled", "zod4", "zod4-compiled", "zod4-jitless"]
+
+    assert.deepEqual(implementations("moltar-parse-safe-valid"), parsers)
+    assert.deepEqual(implementations("moltar-parse-safe-extra-valid"), parsers)
+    assert.deepEqual(implementations("moltar-parse-safe-invalid"), parsers)
+
+    const source = await readFile(moltar.find((fixture) => fixture.implementation === "zod4-compiled").fixturePath, "utf8")
+    assert.match(source, /z\.compile\(/)
+    assert.match(source, /schema\.parse\(input, \{ jitless: true \}\)/)
+    assert.doesNotMatch(source, /passthrough\(/)
+  })
+
+  it("pairs Schema compiler cases through public SchemaParser APIs", async () => {
+    const { fixtures } = loadRegistry()
+    const compiler = fixtures.filter((fixture) => fixture.suite === "schema-compiler")
+    const scenarios = new Map()
+    for (const fixture of compiler) {
+      const implementations = scenarios.get(fixture.scenario) ?? []
+      implementations.push(fixture.implementation)
+      scenarios.set(fixture.scenario, implementations)
+    }
+    for (const implementations of scenarios.values()) {
+      assert.deepEqual(implementations.sort(), ["effect", "effect-compiled"])
+    }
+
+    const interpreted = compiler.find((fixture) => fixture.implementation === "effect")
+    const compiled = compiler.find((fixture) => fixture.implementation === "effect-compiled")
+    const interpretedSource = await readFile(interpreted.fixturePath, "utf8")
+    const compiledSource = await readFile(compiled.fixturePath, "utf8")
+    assert.match(interpretedSource, /SchemaParser\.decodeUnknownSync\(/)
+    assert.doesNotMatch(interpretedSource, /SchemaCompiler/)
+    assert.match(compiledSource, /import "effect\/unstable\/schema\/SchemaJITCompiler\/enable"/)
+    assert.doesNotMatch(compiledSource, /internal\/schema/)
   })
 
   it("loads, runs and validates every fixture export", async () => {

@@ -2625,8 +2625,7 @@ function isExact(root: SchemaAST.AST): boolean {
   const exact = (ast: SchemaAST.AST): boolean => {
     if (
       ast.encoding !== undefined || ast.checks !== undefined ||
-      (ast as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks !== undefined ||
-      ast.annotations?.parseOptions !== undefined
+      (ast as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks !== undefined
     ) {
       return false
     }
@@ -2693,7 +2692,6 @@ function isExitWithExactSuccess(root: SchemaAST.AST): boolean {
   return root._tag === "Declaration" &&
     root.encoding === undefined && root.checks === undefined &&
     (root as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks === undefined &&
-    root.annotations?.parseOptions === undefined &&
     representationId(root) === "effect/schema/Exit" &&
     isExact(root.typeParameters[0])
 }
