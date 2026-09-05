@@ -14098,12 +14098,8 @@ export const withLogSpan = dual<
 // -----------------------------------------------------------------------------
 
 /**
- * Updates the `Metric` every time the `Effect` is executed.
- *
- * **Details**
- *
- * Also accepts an optional function which can be used to map the `Exit` value
- * of the `Effect` into a valid `Input` for the `Metric`.
+ * Updates a metric after each execution of an effect.
+ * An optional mapper converts the effect's `Exit` into the metric's input.
  *
  * **Example** (Incrementing a metric for each execution)
  *
@@ -14127,7 +14123,6 @@ export const withLogSpan = dual<
  * ```ts import.meta.vitest
  * import { Effect, Exit, Metric } from "effect"
  *
- * // Track different exit types with custom mapping
  * const exitTracker = Metric.frequency("exit_types", {
  *   description: "Tracks success/failure/defect counts"
  * })
