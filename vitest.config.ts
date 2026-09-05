@@ -148,6 +148,7 @@ export default defineConfig({
         }
       }),
       ...project("@effect/platform-bun", "packages/platform/bun", isBun),
+      ...project("@effect/platform-cloudflare", "packages/platform/cloudflare", !isDeno),
       ...project("@effect/platform-deno", "packages/platform/deno", isDeno),
       ...project("@effect/platform-node", "packages/platform/node", isNode),
       ...project(

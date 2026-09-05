@@ -47,6 +47,8 @@
       "@effect/platform-browser/*": ["./packages/platform/browser/src/*.ts"],
       "@effect/platform-bun": ["./packages/platform/bun/src/index.ts"],
       "@effect/platform-bun/*": ["./packages/platform/bun/src/*.ts"],
+      "@effect/platform-cloudflare": ["./packages/platform/cloudflare/src/index.ts"],
+      "@effect/platform-cloudflare/*": ["./packages/platform/cloudflare/src/*.ts"],
       "@effect/platform-node": ["./packages/platform/node/src/index.ts"],
       "@effect/platform-node/*": ["./packages/platform/node/src/*.ts"],
       "@effect/platform-node-shared": ["./packages/platform/node-shared/src/index.ts"],
