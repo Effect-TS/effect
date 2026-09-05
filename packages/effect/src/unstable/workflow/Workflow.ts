@@ -779,8 +779,11 @@ const adoptActivityUnsafe = (
   instance: WorkflowInstance["Service"]
 ): ActivityRegistration | undefined => {
   const pending = Context.getOrElse(context, PendingActivityRegistration, () => undefined)
-  if (!pending || pending.instance !== instance || pending.adopted || pending.released) {
+  if (!pending || pending.instance !== instance) {
     return undefined
+  }
+  if (pending.adopted || pending.released) {
+    throw new Error("Workflow.wrapActivityResult: pending child registration has already been consumed")
   }
   pending.adopted = true
   return pending

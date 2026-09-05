@@ -358,7 +358,11 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
+            // Assigned when the handler is called, before RPC concurrency scheduling.
+            // Replays reuse the request id. Before the first run is delivered,
+            // resume reads its stored reply; a queued run will read child results.
             let currentRun: Entity.Request<any> | undefined
+            let waitingResume: object | undefined
             return {
               run: (request: Entity.Request<any>) => {
                 currentRun = request
@@ -456,32 +460,46 @@ export const make = Effect.gen(function*() {
               resume: () =>
                 ensureSuccess(
                   Effect.gen(function*() {
-                    if (currentRun) {
-                      // A child may complete while its parent is still unwinding.
-                      // Subscribe before checking storage so the wake cannot fall
-                      // between the parent's last read and its suspended reply.
-                      const request = currentRun
-                      const waiter = yield* storage.registerReplyHandler(
-                        new Message.OutgoingRequest<any>({
-                          envelope: request,
-                          context: Context.empty() as Context.Context<any>,
-                          rpc: ensureEntity(workflow).protocol.requests.get("run")!,
-                          lastReceivedReply: Option.none(),
-                          respond: () => Effect.void,
-                          annotations: Context.empty()
-                        })
-                      ).pipe(Effect.interruptible, Effect.forkScoped({ startImmediately: true }))
-                      const reply = yield* replyForRequestId(request.requestId)
-                      if (Option.isNone(reply)) {
-                        yield* Fiber.join(waiter).pipe(
-                          Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
-                          Effect.catchCause((cause) =>
-                            ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause)
+                    // The waiting request remains unacknowledged and durable, so
+                    // it also carries wakes acknowledged during this phase.
+                    if (waitingResume) return
+                    const token = {}
+                    waitingResume = token
+                    return yield* Effect.gen(function*() {
+                      if (currentRun) {
+                        // A child may complete while its parent is still unwinding.
+                        // Subscribe before checking storage so the wake cannot fall
+                        // between the parent's last read and its suspended reply.
+                        const request = currentRun
+                        const waiter = yield* storage.registerReplyHandler(
+                          new Message.OutgoingRequest<any>({
+                            envelope: request,
+                            context: Context.empty() as Context.Context<any>,
+                            rpc: ensureEntity(workflow).protocol.requests.get("run")!,
+                            lastReceivedReply: Option.none(),
+                            respond: () => Effect.void,
+                            annotations: Context.empty()
+                          })
+                        ).pipe(Effect.interruptible, Effect.forkScoped({ startImmediately: true }))
+                        const reply = yield* replyForRequestId(request.requestId)
+                        if (Option.isNone(reply)) {
+                          yield* Fiber.join(waiter).pipe(
+                            Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
+                            Effect.catchCause((cause) =>
+                              ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause)
+                            )
                           )
-                        )
+                        } else {
+                          yield* Fiber.interrupt(waiter)
+                        }
                       }
-                    }
-                    yield* resume(workflow, executionId)
+                      // Stop coalescing before reset can start another parent run.
+                      // Later child completions must be able to wake that replay.
+                      waitingResume = undefined
+                      yield* resume(workflow, executionId)
+                    }).pipe(Effect.ensuring(Effect.sync(() => {
+                      if (waitingResume === token) waitingResume = undefined
+                    })))
                   }).pipe(Effect.scoped)
                 ).pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
@@ -737,6 +755,7 @@ const DeferredRpc = Rpc.make("deferred", {
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 
 const ResumeRpc = Rpc.make("resume", {
+  // Older persisted resume envelopes have an empty payload and use the empty key.
   payload: { childExecutionId: Schema.optional(Schema.String) },
   // Different children must not share an in-flight wake: the parent may have
   // already started another run when the next child finishes.

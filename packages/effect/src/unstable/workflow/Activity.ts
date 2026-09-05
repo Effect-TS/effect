@@ -117,6 +117,13 @@ export interface AnyWithProps {
  * Creates a workflow activity from an effect, using the provided schemas to
  * encode successes and failures for durable execution.
  *
+ * **Gotchas**
+ *
+ * Only completed activity results are memoized. If the activity suspends while
+ * awaiting child workflows or a durable clock, its body runs again when the
+ * parent workflow replays. Side effects before the suspension can repeat;
+ * make those side effects idempotent.
+ *
  * @category constructors
  * @since 4.0.0
  */
