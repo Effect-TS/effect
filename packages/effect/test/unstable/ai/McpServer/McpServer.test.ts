@@ -1,8 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as ErrorReporter from "effect/ErrorReporter"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
@@ -45,6 +47,10 @@ const DefectTool = Tool.make("DefectTool", {
   success: Schema.String
 })
 
+const UnserializableResultTool = Tool.make("UnserializableResultTool", {
+  success: Schema.Unknown
+})
+
 const UntypedTool = Tool.make("UntypedTool")
 
 const StructuredResultTool = Tool.make("StructuredResultTool", {
@@ -68,6 +74,7 @@ const TestToolkit = Toolkit.make(
   PublicFailureTool,
   InternalAiErrorTool,
   DefectTool,
+  UnserializableResultTool,
   UntypedTool,
   StructuredResultTool,
   AnnotatedVoidTool,
@@ -76,16 +83,20 @@ const TestToolkit = Toolkit.make(
 )
 type TestToolkitHandlers = Toolkit.HandlersFrom<Toolkit.Tools<typeof TestToolkit>>
 
+const publicFailure = new Error("Public failure")
+const privateDefect = new Error("private defect details")
+
 const testToolkitHandlers = TestToolkit.of({
   OptionalStringTool: ({ signature }) => Effect.succeed(signature ?? "omitted"),
-  PublicFailureTool: () => Effect.fail(new Error("Public failure")),
+  PublicFailureTool: () => Effect.fail(publicFailure),
   InternalAiErrorTool: () => Effect.fail(new AiError.RateLimitError({})),
-  DefectTool: () => Effect.die("private defect details"),
+  DefectTool: () => Effect.die(privateDefect),
   UntypedTool: () => Effect.void,
   StructuredResultTool: () => Effect.succeed({ answer: "result" }),
   AnnotatedVoidTool: () => Effect.void,
   NullableResultTool: () => Effect.succeed(null),
-  ArrayResultTool: () => Effect.succeed(["first", "second"])
+  ArrayResultTool: () => Effect.succeed(["first", "second"]),
+  UnserializableResultTool: () => Effect.succeed(1n)
 })
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
@@ -153,10 +164,14 @@ const makeRouterTestClient = (
   router: Layer.Layer<never, never, HttpRouter.HttpRouter>
 ) => makeTestClientWith(TestServerLayer, { routerLayer: router })
 
-const makeToolkitTestClient = Effect.fnUntraced(function*(handlers: TestToolkitHandlers = testToolkitHandlers) {
+const makeToolkitTestClient = Effect.fnUntraced(function*(
+  handlers: TestToolkitHandlers = testToolkitHandlers,
+  reporterLayer: Layer.Layer<never> = Layer.empty
+) {
   const serverLayer = McpServer.toolkit(TestToolkit).pipe(
     Layer.provideMerge(TestToolkit.toLayer(handlers)),
-    Layer.provide(TestServerLayer)
+    Layer.provide(TestServerLayer),
+    Layer.provide(reporterLayer)
   )
   const { client } = yield* makeTestClientWith(serverLayer)
   yield* client.initialize({
@@ -521,6 +536,48 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, INTERNAL_TOOL_ERROR_MESSAGE)
+      }))
+
+    it.effect("reports tool failures before converting them to public results", () =>
+      Effect.gen(function*() {
+        const reported: Array<Cause.Cause<unknown>> = []
+        const reporter = ErrorReporter.make(({ cause }) => {
+          reported.push(cause)
+        })
+        const client = yield* makeToolkitTestClient(
+          testToolkitHandlers,
+          ErrorReporter.layer([reporter])
+        )
+
+        const success = yield* client["tools/call"]({
+          name: "UntypedTool",
+          arguments: {}
+        })
+        assert.strictEqual(success.isError, false)
+        assert.lengthOf(reported, 0)
+
+        const publicFailureResult = yield* client["tools/call"]({
+          name: "PublicFailureTool",
+          arguments: {}
+        })
+        assert.strictEqual(toolResultText(publicFailureResult), "Public failure")
+
+        const defectResult = yield* client["tools/call"]({
+          name: "DefectTool",
+          arguments: {}
+        })
+        assert.strictEqual(toolResultText(defectResult), INTERNAL_TOOL_ERROR_MESSAGE)
+
+        const serializationResult = yield* client["tools/call"]({
+          name: "UnserializableResultTool",
+          arguments: {}
+        })
+        assert.strictEqual(toolResultText(serializationResult), INTERNAL_TOOL_ERROR_MESSAGE)
+
+        assert.lengthOf(reported, 3)
+        assert.strictEqual(Cause.squash(reported[0]), publicFailure)
+        assert.strictEqual(Cause.squash(reported[1]), privateDefect)
+        assert.instanceOf(Cause.squash(reported[2]), TypeError)
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>

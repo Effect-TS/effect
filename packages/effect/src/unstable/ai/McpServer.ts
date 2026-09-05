@@ -1573,9 +1573,6 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Stream.unwrap,
           Stream.run(Sink.last()),
           Effect.flatMap(Effect.fromOption),
-          Effect.provideContext(
-            services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
-          ),
           Effect.map((result) =>
             new CallToolResult({
               isError: false,
@@ -1585,6 +1582,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
                 text: JSON.stringify(result.encodedResult)
               }]
             })
+          ),
+          Effect.withErrorReporting,
+          Effect.provideContext(
+            services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
           ),
           Effect.tapCause(Effect.logError),
           Effect.catch((error) => {
