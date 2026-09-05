@@ -33,6 +33,36 @@ const TestServices = Layer.mergeAll(
   HttpPlatform.layer
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
 
+it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
+  it.effect("returns the callback unchanged and supports registration in a group", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          HttpApiEndpoint.post("create", "/users/:id", {
+            params: { id: Schema.FiniteFromString },
+            payload: Schema.Struct({ name: Schema.String }),
+            success: Schema.Struct({ id: Schema.Number, name: Schema.String })
+          })
+        )
+      )
+      const callback = vi.fn(({ params, payload }: {
+        readonly params: { readonly id: number }
+        readonly payload: { readonly name: string }
+      }) => Effect.succeed({ id: params.id, name: payload.name }))
+      const handler = HttpApiBuilder.handler(Api, "users", "create", callback)
+
+      assert.strictEqual(handler, callback)
+      assert.strictEqual(callback.mock.calls.length, 0)
+
+      const GroupLayer = HttpApiBuilder.group(Api, "users", (handlers) => handlers.handle("create", handler))
+      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLayer))
+      const result = yield* client.users.create({ params: { id: 42 }, payload: { name: "Ada" } })
+
+      assert.deepStrictEqual(result, { id: 42, name: "Ada" })
+      assert.strictEqual(callback.mock.calls.length, 1)
+    }))
+})
+
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
   it.effect("runs registered pre-response handlers", () =>
     Effect.gen(function*() {
