@@ -242,13 +242,23 @@ describe("NetAddress", () => {
     const result = NetAddress.ipFromString("localhost")
     if (Result.isSuccess(result)) assert.fail("expected Failure")
     assert.instanceOf(result.failure, NetAddress.NetAddressError)
-    assert.strictEqual(result.failure.message, "IpAddress: expected exactly four decimal octets")
+    assert.strictEqual(result.failure.message, "failed to parse an IP address")
+    assert.instanceOf(result.failure.cause, NetAddress.NetAddressError)
+    assert.strictEqual(result.failure.cause.message, "expected exactly four decimal octets")
   })
 
   describe("socket addresses", () => {
     it("constructs socket addresses from input", () => {
       const inet = NetAddress.inetAddressFromStringUnsafe("127.0.0.1:8080")
       assert.strictEqual(success(NetAddress.socketAddressFromInput(inet)), inet)
+      assert.strictEqual(
+        NetAddress.formatSocketAddress(success(NetAddress.socketAddressFromInput("127.0.0.1:3000"))),
+        "127.0.0.1:3000"
+      )
+      assert.strictEqual(
+        NetAddress.formatSocketAddress(success(NetAddress.socketAddressFromInput("[::1]:3000"))),
+        "[::1]:3000"
+      )
       assert.strictEqual(
         NetAddress.formatSocketAddress(success(NetAddress.socketAddressFromInput({
           address: "::1",
@@ -269,6 +279,7 @@ describe("NetAddress", () => {
       )
       failure(NetAddress.socketAddressFromInput({ address: "localhost", port: 8080 }))
       failure(NetAddress.socketAddressFromInput({ address: "127.0.0.1", port: 65536 }))
+      failure(NetAddress.socketAddressFromInput("localhost:8080"))
       assert.throws(() => NetAddress.socketAddressFromInputUnsafe({ address: "localhost", port: 8080 }))
     })
 
@@ -325,8 +336,9 @@ describe("NetAddress", () => {
       }
       const invalidPort = NetAddress.inetAddressFromString("127.0.0.1:65536")
       if (Result.isSuccess(invalidPort)) assert.fail("expected Failure")
-      assert.strictEqual(invalidPort.failure.kind, "InetAddress")
-      assert.strictEqual(invalidPort.failure.input, "127.0.0.1:65536")
+      assert.strictEqual(invalidPort.failure.message, "failed to parse an internet address")
+      assert.instanceOf(invalidPort.failure.cause, NetAddress.NetAddressError)
+      assert.strictEqual(invalidPort.failure.cause.message, "port must be an integer from 0 through 65535")
     })
 
     it("preserves IPv6 scope metadata in equality and hashing", () => {

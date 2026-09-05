@@ -46,9 +46,7 @@ describe("IpNetwork", () => {
 
     const error = failure(IpNetwork.make(ipv4, -1))
     assert.strictEqual(error._tag, "IpNetworkError")
-    assert.strictEqual(error.kind, "PrefixLength")
-    assert.strictEqual(error.input, -1)
-    assert.strictEqual(error.message, "PrefixLength: prefix length must be an integer from 0 through 32")
+    assert.strictEqual(error.message, "prefix length must be an integer from 0 through 32")
   })
 
   it("explicitly truncates byte-aligned and partial-byte host addresses", () => {
@@ -91,6 +89,11 @@ describe("IpNetwork", () => {
     ) {
       failure(IpNetwork.fromString(input))
     }
+    const parseError = failure(IpNetwork.fromString("1.2.3.4/+24"))
+    assert.strictEqual(parseError.message, "failed to parse an IP network prefix")
+    const cause = parseError.cause
+    assert.instanceOf(cause, Error)
+    assert.strictEqual(cause.message, "prefix length must be an unpadded ASCII decimal integer")
     failure(IpNetwork.ipv4FromString("::/0"))
     failure(IpNetwork.ipv6FromString("0.0.0.0/0"))
   })

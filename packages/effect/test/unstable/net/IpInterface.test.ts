@@ -50,9 +50,7 @@ describe("IpInterface", () => {
     }
     const error = failure(IpInterface.make(address, -1))
     assert.strictEqual(error._tag, "IpInterfaceError")
-    assert.strictEqual(error.kind, "PrefixLength")
-    assert.strictEqual(error.input, -1)
-    assert.strictEqual(error.message, "PrefixLength: prefix length must be an integer from 0 through 32")
+    assert.strictEqual(error.message, "prefix length must be an integer from 0 through 32")
 
     for (
       const input of [
@@ -69,6 +67,11 @@ describe("IpInterface", () => {
     ) {
       failure(IpInterface.fromString(input))
     }
+    const parseError = failure(IpInterface.fromString("1.2.3.4/+24"))
+    assert.strictEqual(parseError.message, "failed to parse an IP interface address")
+    const cause = parseError.cause
+    assert.instanceOf(cause, Error)
+    assert.strictEqual(cause.message, "prefix length must be an unpadded ASCII decimal integer")
     failure(IpInterface.ipv4FromString("::1/128"))
     failure(IpInterface.ipv6FromString("127.0.0.1/32"))
   })

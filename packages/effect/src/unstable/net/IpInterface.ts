@@ -7,6 +7,7 @@ import * as Data from "../../Data.ts"
 import * as Equal from "../../Equal.ts"
 import * as Hash from "../../Hash.ts"
 import { NodeInspectSymbol } from "../../Inspectable.ts"
+import * as InternalNet from "../../internal/net.ts"
 import { hasProperty } from "../../Predicate.ts"
 import * as Result from "../../Result.ts"
 import * as IpNetwork from "./IpNetwork.ts"
@@ -21,14 +22,9 @@ const TypeId = "~effect/net/IpInterface" as const
  * @since 4.0.0
  */
 export class IpInterfaceError extends Data.TaggedError("IpInterfaceError")<{
-  readonly input: unknown
-  readonly kind: "Ipv4Interface" | "Ipv6Interface" | "IpInterface" | "PrefixLength"
-  readonly reason: string
-}> {
-  override get message(): string {
-    return `${this.kind}: ${this.reason}`
-  }
-}
+  readonly cause?: unknown
+  readonly message: string
+}> {}
 
 /**
  * An IPv4 host address and prefix length that preserves host bits.
@@ -128,74 +124,23 @@ const Ipv6InterfaceProto = {
   }
 }
 
-const interfaceError = (
-  kind: IpInterfaceError["kind"],
-  input: unknown,
-  reason: string
-): Result.Result<never, IpInterfaceError> => Result.fail(new IpInterfaceError({ kind, input, reason }))
-
-const width = (address: NetAddress.IpAddress): 32 | 128 => NetAddress.isIpv4Address(address) ? 32 : 128
-
-const checkPrefixLength = (address: NetAddress.IpAddress, prefixLength: number): IpInterfaceError | undefined => {
-  const maximum = width(address)
-  return Number.isInteger(prefixLength) && prefixLength >= 0 && prefixLength <= maximum
-    ? undefined
-    : new IpInterfaceError({
-      kind: "PrefixLength",
-      input: prefixLength,
-      reason: `prefix length must be an integer from 0 through ${maximum}`
-    })
-}
-
-const makeIpv4Interface = (address: NetAddress.Ipv4Address, prefixLength: number): Ipv4Interface => {
-  const self = Object.create(Ipv4InterfaceProto)
-  self.address = address
-  self.prefixLength = prefixLength
-  return Object.freeze(self)
-}
-
-const makeIpv6Interface = (address: NetAddress.Ipv6Address, prefixLength: number): Ipv6Interface => {
-  const self = Object.create(Ipv6InterfaceProto)
-  self.address = address
-  self.prefixLength = prefixLength
-  return Object.freeze(self)
-}
-
 /**
  * Creates an interface address while preserving all address bits.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const make =
-  ((address: NetAddress.IpAddress, prefixLength: number): Result.Result<IpInterface, IpInterfaceError> => {
-    const prefixError = checkPrefixLength(address, prefixLength)
-    if (prefixError !== undefined) return Result.fail(prefixError)
-    return Result.succeed(
-      NetAddress.isIpv4Address(address)
-        ? makeIpv4Interface(address, prefixLength)
-        : makeIpv6Interface(address, prefixLength)
-    )
-  }) as {
-    (address: NetAddress.Ipv4Address, prefixLength: number): Result.Result<Ipv4Interface, IpInterfaceError>
-    (address: NetAddress.Ipv6Address, prefixLength: number): Result.Result<Ipv6Interface, IpInterfaceError>
-    (address: NetAddress.IpAddress, prefixLength: number): Result.Result<IpInterface, IpInterfaceError>
+export const make: {
+  (address: NetAddress.Ipv4Address, prefixLength: number): Result.Result<Ipv4Interface, IpInterfaceError>
+  (address: NetAddress.Ipv6Address, prefixLength: number): Result.Result<Ipv6Interface, IpInterfaceError>
+  (address: NetAddress.IpAddress, prefixLength: number): Result.Result<IpInterface, IpInterfaceError>
+} = (address: any, prefixLength: number): Result.Result<any, IpInterfaceError> => {
+  if (!InternalNet.checkPrefixLength(address, prefixLength)) {
+    return Result.fail(new IpInterfaceError({
+      message: `prefix length must be an integer from 0 through ${InternalNet.width(address)}`
+    }))
   }
-
-const parseParts = (
-  input: string,
-  kind: "Ipv4Interface" | "Ipv6Interface" | "IpInterface"
-): Result.Result<readonly [string, number | undefined], IpInterfaceError> => {
-  const slash = input.indexOf("/")
-  if (slash === -1) return Result.succeed([input, undefined])
-  if (slash === 0 || slash !== input.lastIndexOf("/") || slash === input.length - 1) {
-    return interfaceError(kind, input, "expected an address with at most one trailing prefix length")
-  }
-  const prefix = input.slice(slash + 1)
-  if (!/^(0|[1-9][0-9]*)$/.test(prefix)) {
-    return interfaceError("PrefixLength", prefix, "prefix length must be an unpadded ASCII decimal integer")
-  }
-  return Result.succeed([input.slice(0, slash), Number(prefix)])
+  return Result.succeed(InternalNet.make(address, prefixLength, Ipv4InterfaceProto, Ipv6InterfaceProto))
 }
 
 /**
@@ -205,11 +150,10 @@ const parseParts = (
  * @since 4.0.0
  */
 export const ipv4FromString = (input: string): Result.Result<Ipv4Interface, IpInterfaceError> => {
-  const parts = parseParts(input, "Ipv4Interface")
-  if (Result.isFailure(parts)) return Result.fail(parts.failure)
-  const address = NetAddress.ipv4FromString(parts.success[0])
-  if (Result.isFailure(address)) return interfaceError("Ipv4Interface", input, address.failure.reason)
-  return make(address.success, parts.success[1] ?? 32)
+  const parsed = InternalNet.parse(input, false, NetAddress.ipv4FromString)
+  return Result.isFailure(parsed)
+    ? Result.fail(new IpInterfaceError({ cause: parsed.failure, message: "failed to parse an IPv4 interface address" }))
+    : make(parsed.success.address, parsed.success.prefixLength)
 }
 
 /**
@@ -219,11 +163,10 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Interface, IpIn
  * @since 4.0.0
  */
 export const ipv6FromString = (input: string): Result.Result<Ipv6Interface, IpInterfaceError> => {
-  const parts = parseParts(input, "Ipv6Interface")
-  if (Result.isFailure(parts)) return Result.fail(parts.failure)
-  const address = NetAddress.ipv6FromString(parts.success[0])
-  if (Result.isFailure(address)) return interfaceError("Ipv6Interface", input, address.failure.reason)
-  return make(address.success, parts.success[1] ?? 128)
+  const parsed = InternalNet.parse(input, false, NetAddress.ipv6FromString)
+  return Result.isFailure(parsed)
+    ? Result.fail(new IpInterfaceError({ cause: parsed.failure, message: "failed to parse an IPv6 interface address" }))
+    : make(parsed.success.address, parsed.success.prefixLength)
 }
 
 /**
@@ -233,11 +176,10 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Interface, IpIn
  * @since 4.0.0
  */
 export const fromString = (input: string): Result.Result<IpInterface, IpInterfaceError> => {
-  const parts = parseParts(input, "IpInterface")
-  if (Result.isFailure(parts)) return Result.fail(parts.failure)
-  const address = NetAddress.ipFromString(parts.success[0])
-  if (Result.isFailure(address)) return interfaceError("IpInterface", input, address.failure.reason)
-  return make(address.success, parts.success[1] ?? width(address.success))
+  const parsed = InternalNet.parse(input, false, NetAddress.ipFromString)
+  return Result.isFailure(parsed)
+    ? Result.fail(new IpInterfaceError({ cause: parsed.failure, message: "failed to parse an interface address" }))
+    : make(parsed.success.address, parsed.success.prefixLength)
 }
 
 /**
@@ -246,13 +188,11 @@ export const fromString = (input: string): Result.Result<IpInterface, IpInterfac
  * @category unsafe
  * @since 4.0.0
  */
-export const makeUnsafe =
-  ((address: NetAddress.IpAddress, prefixLength: number): IpInterface =>
-    Result.getOrThrow(make(address, prefixLength))) as {
-      (address: NetAddress.Ipv4Address, prefixLength: number): Ipv4Interface
-      (address: NetAddress.Ipv6Address, prefixLength: number): Ipv6Interface
-      (address: NetAddress.IpAddress, prefixLength: number): IpInterface
-    }
+export const makeUnsafe: {
+  (address: NetAddress.Ipv4Address, prefixLength: number): Ipv4Interface
+  (address: NetAddress.Ipv6Address, prefixLength: number): Ipv6Interface
+  (address: NetAddress.IpAddress, prefixLength: number): IpInterface
+} = (address: any, prefixLength: number): any => Result.getOrThrow(make(address, prefixLength))
 
 /**
  * Parses a trusted interface address, throwing on failure.
@@ -268,7 +208,7 @@ export const fromStringUnsafe = (input: string): IpInterface => Result.getOrThro
  * @category encoding
  * @since 4.0.0
  */
-export const format = (self: IpInterface): string => `${NetAddress.formatIp(self.address)}/${self.prefixLength}`
+export const format = (self: IpInterface): string => InternalNet.format(self)
 
 /**
  * Returns the canonical network containing an interface address.
@@ -276,9 +216,8 @@ export const format = (self: IpInterface): string => `${NetAddress.formatIp(self
  * @category conversions
  * @since 4.0.0
  */
-export const network =
-  ((self: IpInterface): IpNetwork.IpNetwork => IpNetwork.fromAddressUnsafe(self.address, self.prefixLength)) as {
-    (self: Ipv4Interface): IpNetwork.Ipv4Network
-    (self: Ipv6Interface): IpNetwork.Ipv6Network
-    (self: IpInterface): IpNetwork.IpNetwork
-  }
+export const network: {
+  (self: Ipv4Interface): IpNetwork.Ipv4Network
+  (self: Ipv6Interface): IpNetwork.Ipv6Network
+  (self: IpInterface): IpNetwork.IpNetwork
+} = (self: any): any => IpNetwork.fromAddressUnsafe(self.address, self.prefixLength)

@@ -16,16 +16,20 @@ describe("NetAddress", () => {
     expect(NetAddress.socketAddressFromInput({ address: "::1", port: 80 })).type.toBe<
       Result.Result<NetAddress.SocketAddress, NetAddress.NetAddressError>
     >()
+    expect(NetAddress.socketAddressFromInput("127.0.0.1:3000")).type.toBe<
+      Result.Result<NetAddress.SocketAddress, NetAddress.NetAddressError>
+    >()
     expect(NetAddress.socketAddressFromInputUnsafe({ path: "server.sock" })).type.toBe<NetAddress.SocketAddress>()
     expect(NetAddress.ipv4FromBytesUnsafe(new Uint8Array(4))).type.toBe<NetAddress.Ipv4Address>()
     expect(NetAddress.ipv6FromBytesUnsafe(new Uint8Array(16))).type.toBe<NetAddress.Ipv6Address>()
     expect(NetAddress.ipv6ToOctets(NetAddress.ipv6Loopback)).type.toBe<ReadonlyArray<number>>()
-    expect(NetAddress.ipv4Loopback.bytes).type.toBe<Uint8Array>()
+    // @ts-expect-error Property 'bytes' does not exist
+    void NetAddress.ipv4Loopback.bytes
   })
 
   it("normalizes socket address input at consumer constructors", () => {
     const server = HttpServer.make({
-      address: { address: "127.0.0.1", port: 8080 },
+      address: "127.0.0.1:8080",
       serve: () => Effect.void
     })
     expect(server.address).type.toBe<NetAddress.SocketAddress>()
