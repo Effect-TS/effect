@@ -5484,7 +5484,7 @@ export function decode<S extends Constraint, RD = never, RE = never>(transformat
  */
 export function encodeTo<To extends Constraint>(
   to: To
-): <From extends Constraint>(from: From) => decodeTo<From, To>
+): <From extends Constraint>(from: From) => compose<From, To>
 export function encodeTo<To extends Constraint, From extends Constraint, RD = never, RE = never>(
   to: To,
   transformation: {
