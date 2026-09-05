@@ -11,6 +11,7 @@
     { "path": "packages/ai/openrouter" },
     { "path": "packages/atom/react" },
     { "path": "packages/atom/vue" },
+    { "path": "packages/bun-test" },
     { "path": "packages/atom/solid" },
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform/browser" },

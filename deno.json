@@ -23,6 +23,7 @@
     "packages/*/benchmark/",
     "packages/ai",
     "packages/atom",
+    "packages/bun-test/",
     "packages/effect/test/cluster/",
     "packages/opentelemetry/",
     "packages/platform/browser/",
