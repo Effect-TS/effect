@@ -8,8 +8,8 @@
   replacement: "effect/unstable/httpapi/HttpApiBuilder#group"
   note: "The group layer remains; names are now identifiers and API/group global error channels are gone."
 "@effect/platform/HttpApiBuilder#handler":
-  replacement: "effect/unstable/httpapi/HttpApiBuilder#endpoint"
-  note: "Use endpoint for a standalone typed endpoint implementation; inside a group pass callbacks to handlers.handle."
+  replacement: "effect/unstable/httpapi/HttpApiBuilder#handler"
+  note: "The typed callback helper remains; names are now identifiers and API/group global error channels are gone. Pass the returned callback to handlers.handle."
 "@effect/platform/HttpApiBuilder#Handlers":
   replacement: "effect/unstable/httpapi/HttpApiBuilder#Handlers"
   note: "Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup<Group>."
