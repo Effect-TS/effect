@@ -24,7 +24,8 @@ import {
   Runners,
   RunnerStorage,
   Sharding,
-  ShardingConfig
+  ShardingConfig,
+  Snowflake
 } from "effect/unstable/cluster"
 import { Rpc } from "effect/unstable/rpc"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
@@ -812,6 +813,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         assert.strictEqual(wakes.length, indices.length)
         // Each wake remains durable, but only one waits on this parent run.
         assert.strictEqual(parkedBeforeRelease, 1, `peak parked reply handlers: ${peak}`)
+        assert.strictEqual(peak, 1)
       }).pipe(Effect.provide(
         Layer.mergeAll(ParentLayer, ChildLayer).pipe(
           Layer.provideMerge(makeTestWorkflowEngine({ entityMailboxCapacity: 1000 }, storageLayer))
@@ -868,7 +870,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
               message.address.entityType === "Workflow/ColdParent" && message.tag === "run"
             )!
             assert(run._tag === "Request")
-            yield* sharding.reset(run.requestId)
+            assert.isTrue(yield* sharding.reset(Snowflake.Snowflake(run.requestId)))
+            assert.isTrue(Option.isNone(yield* Parent.poll(executionId)))
           }
           const client = yield* LegacyResume.client
           // The empty payload is the format of resume messages persisted before this fix.
