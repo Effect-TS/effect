@@ -2,7 +2,6 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
-import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import * as LifecycleTest from "./McpConformance/LifecycleTest.ts"
 import * as LoggingTest from "./McpConformance/LoggingTest.ts"
 import * as McpConformance from "./McpConformance/McpConformance.ts"
@@ -19,13 +18,16 @@ const testLayer = McpConformance.layer(protocol)
 
 LifecycleTest.suite(protocol, testLayer)
 BaseProtocolTest.suite(protocol, testLayer)
+BaseProtocolTest.statefulLegacySuite(protocol, testLayer)
 TransportsTest.suite(protocol, testLayer)
 UtilitiesTest.suite(protocol, testLayer)
 LoggingTest.suite(protocol, testLayer)
-CompletionTest.suite(protocol, testLayer)
 ToolsTest.suite(protocol, testLayer)
+ToolsTest.statefulLegacySuite(protocol, testLayer)
 ResourcesTest.suite(protocol, testLayer)
+ResourcesTest.statefulLegacySuite(protocol, testLayer)
 PromptsTest.suite(protocol, testLayer)
+PromptsTest.statefulLegacySuite(protocol, testLayer)
 RootsTest.suite(protocol, testLayer)
 SamplingTest.suite(protocol, testLayer)
 

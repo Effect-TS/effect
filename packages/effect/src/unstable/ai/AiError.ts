@@ -1634,7 +1634,7 @@ export const reasonFromHttpStatus = (params: {
   readonly status: number
   readonly body?: unknown
   readonly http?: typeof HttpContext.Type
-  readonly metadata?: typeof ProviderMetadata.Type
+  readonly metadata?: ProviderMetadata
   readonly description?: string | undefined
 }): AiErrorReason => {
   const { status, http, metadata, description } = params

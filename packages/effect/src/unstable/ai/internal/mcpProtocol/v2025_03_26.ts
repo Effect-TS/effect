@@ -6,6 +6,7 @@ import * as Schema from "../../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
+import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2025_03_26.ts"
 
 const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
@@ -45,7 +46,7 @@ const requireCapability = (
     ? Effect.void
     : Effect.fail(unsupported(operation, `Client did not advertise the ${capability} capability`))
 
-const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
+const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.ContentBlock) {
   const projected = Match.value(content).pipe(
     Match.when({ type: "text" }, (content) => ({
       ...content,
@@ -110,10 +111,10 @@ const projectResourceContents = (
 /** @internal */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
-  transport: {
-    acceptsJsonRpcBatches: true,
-    requiresVersionHeader: false
-  },
+  runtime: McpRuntime.stateful({
+    jsonRpc: { acceptsBatches: true },
+    http: { requiresVersionHeader: false }
+  }),
   clientRpcs: ClientRpcs,
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
@@ -223,9 +224,18 @@ export const protocol = McpProtocol.make({
           ),
       "prompts/get": Effect.fnUntraced(function*({ arguments: args, name }) {
         const request = yield* PublicMcpSchema.McpServerClient
-        const result = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
+        const outcome = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromFeature)
         )
+        if (outcome._tag === "InputRequired") {
+          return yield* McpProtocol.ProtocolError.fromFeature(
+            new McpCore.UnsupportedByProtocol({
+              protocolVersion: McpSchema.protocolVersion,
+              feature: "prompt input requirements"
+            })
+          )
+        }
+        const result = outcome.value
         const messages = yield* Effect.forEach(result.messages, (message) =>
           projectContent(message.content).pipe(
             Effect.map((content) => ({ role: message.role, content })),
@@ -280,6 +290,7 @@ export const protocol = McpProtocol.make({
           { ...call, arguments: call.arguments ?? {} },
           McpProtocol.invocationFromClient(request)
         ).pipe(
+          Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
         const content = yield* Effect.forEach(result.content, projectContent).pipe(

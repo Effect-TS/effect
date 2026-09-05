@@ -379,6 +379,27 @@ describe("RpcSerialization", () => {
     )
   })
 
+  it("jsonRpc decodes standard error objects as typed failures", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    const error = { code: -32021, message: "Missing capability", data: { requiredCapabilities: {} } }
+
+    assert.deepStrictEqual(
+      parser.decode(JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        error
+      })),
+      [{
+        _tag: "Exit",
+        requestId: 1,
+        exit: {
+          _tag: "Failure",
+          cause: [{ _tag: "Fail", error }]
+        }
+      }]
+    )
+  })
+
   it("jsonRpc encodes a notification without an id", () => {
     const parser = RpcSerialization.jsonRpc().makeUnsafe()
     const decoded = parser.decode("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"}")

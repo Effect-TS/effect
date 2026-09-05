@@ -13,6 +13,7 @@ import { protocol as protocol2024_11_05 } from "./internal/mcpProtocol/v2024_11_
 import { protocol as protocol2025_03_26 } from "./internal/mcpProtocol/v2025_03_26.ts"
 import { protocol as protocol2025_06_18 } from "./internal/mcpProtocol/v2025_06_18.ts"
 import { protocol as protocol2025_11_25 } from "./internal/mcpProtocol/v2025_11_25.ts"
+import { protocol as protocol2026_07_28 } from "./internal/mcpProtocol/v2026_07_28.ts"
 import type * as McpSchema from "./McpSchema.ts"
 
 /**
@@ -21,7 +22,15 @@ import type * as McpSchema from "./McpSchema.ts"
  * @category models
  * @since 4.0.0
  */
-export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18" | "2025-11-25"
+export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18" | "2025-11-25" | "2026-07-28"
+
+/**
+ * MCP protocol versions that use initialization and server-managed sessions.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type StatefulProtocolVersion = Exclude<ProtocolVersion, "2026-07-28">
 
 /**
  * Payload codecs used by a protocol adapter.
@@ -66,17 +75,79 @@ export interface ErasedClientRpcGroup extends ErasedRpcGroup {
 }
 
 /**
+ * Transport behavior declared by an MCP runtime descriptor.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TransportPolicy {
+  readonly jsonRpc: {
+    readonly acceptsBatches: boolean
+  }
+  readonly http: {
+    readonly requiresVersionHeader?: boolean | undefined
+  }
+}
+
+/**
+ * Request information decoded by a stateless MCP runtime.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StatelessRuntimeProfile {
+  readonly protocolVersion: string
+  readonly clientCapabilities: Schema.JsonObject
+  readonly clientInfo?: McpSchema.Implementation | undefined
+  readonly requestMetadata: Schema.JsonObject
+}
+
+/**
+ * Stateful lifecycle runtime declaration carried by a protocol adapter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StatefulRuntimeDescriptor {
+  readonly _tag: "Stateful"
+  readonly transport: TransportPolicy
+}
+
+/**
+ * Stateless lifecycle runtime declaration carried by a protocol adapter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StatelessRuntimeDescriptor {
+  readonly _tag: "Stateless"
+  readonly transport: TransportPolicy
+  readonly profileFromRequestMetadata: (
+    metadata: unknown
+  ) => Effect.Effect<StatelessRuntimeProfile, unknown>
+}
+
+/**
+ * Lifecycle runtime declaration carried by a protocol adapter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type RuntimeDescriptor = StatefulRuntimeDescriptor | StatelessRuntimeDescriptor
+
+/**
  * The operational shape shared by protocol adapters.
  *
  * @category models
  * @since 4.0.0
  */
-export interface AnyProtocolAdapter<out Version extends string = string, HandlerRequirements = unknown> {
+export interface AnyProtocolAdapter<
+  out Version extends string = string,
+  HandlerRequirements = unknown,
+  out Runtime extends RuntimeDescriptor = RuntimeDescriptor
+> {
   readonly protocolVersion: Version
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
+  readonly runtime: Runtime
   readonly clientRpcs: ErasedClientRpcGroup
   readonly clientNotificationRpcs: ErasedRpcGroup
   readonly serverRequestRpcs: RpcGroup.Any
@@ -102,9 +173,27 @@ export interface AnyProtocolAdapter<out Version extends string = string, Handler
  * @category models
  * @since 4.0.0
  */
-export interface ProtocolAdapter<out Version extends ProtocolVersion = ProtocolVersion>
-  extends AnyProtocolAdapter<Version>
-{}
+export interface ProtocolAdapter<
+  out Version extends ProtocolVersion = ProtocolVersion,
+  out Runtime extends RuntimeDescriptor = RuntimeDescriptor
+> extends AnyProtocolAdapter<Version, unknown, Runtime> {}
+
+/**
+ * The MCP 2026-07-28 protocol implementation.
+ *
+ * **Details**
+ *
+ * This revision uses request-scoped metadata instead of initialization and
+ * protocol-level sessions.
+ *
+ * When the selected transport supports server notifications, discovery
+ * advertises change-notification capabilities and `subscriptions/listen`
+ * delivers the requested notifications over the long-lived response.
+ *
+ * @category protocols
+ * @since 4.0.0
+ */
+export const v2026_07_28: ProtocolAdapter<"2026-07-28", StatelessRuntimeDescriptor> = protocol2026_07_28
 
 /**
  * The MCP 2025-11-25 protocol implementation.
@@ -112,7 +201,7 @@ export interface ProtocolAdapter<out Version extends ProtocolVersion = ProtocolV
  * @category protocols
  * @since 4.0.0
  */
-export const v2025_11_25: ProtocolAdapter<"2025-11-25"> = protocol2025_11_25
+export const v2025_11_25: ProtocolAdapter<"2025-11-25", StatefulRuntimeDescriptor> = protocol2025_11_25
 
 /**
  * The MCP 2025-06-18 protocol implementation.
@@ -120,7 +209,7 @@ export const v2025_11_25: ProtocolAdapter<"2025-11-25"> = protocol2025_11_25
  * @category protocols
  * @since 4.0.0
  */
-export const v2025_06_18: ProtocolAdapter<"2025-06-18"> = protocol2025_06_18
+export const v2025_06_18: ProtocolAdapter<"2025-06-18", StatefulRuntimeDescriptor> = protocol2025_06_18
 
 /**
  * The MCP 2025-03-26 protocol implementation.
@@ -128,7 +217,7 @@ export const v2025_06_18: ProtocolAdapter<"2025-06-18"> = protocol2025_06_18
  * @category protocols
  * @since 4.0.0
  */
-export const v2025_03_26: ProtocolAdapter<"2025-03-26"> = protocol2025_03_26
+export const v2025_03_26: ProtocolAdapter<"2025-03-26", StatefulRuntimeDescriptor> = protocol2025_03_26
 
 /**
  * The MCP 2024-11-05 protocol implementation.
@@ -143,4 +232,4 @@ export const v2025_03_26: ProtocolAdapter<"2025-03-26"> = protocol2025_03_26
  * @category protocols
  * @since 4.0.0
  */
-export const v2024_11_05: ProtocolAdapter<"2024-11-05"> = protocol2024_11_05
+export const v2024_11_05: ProtocolAdapter<"2024-11-05", StatefulRuntimeDescriptor> = protocol2024_11_05
