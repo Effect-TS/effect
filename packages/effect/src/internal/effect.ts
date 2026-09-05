@@ -1453,12 +1453,6 @@ const OnSuccessProto = makePrimitiveProto({
   [evaluate]: evaluateCont
 })
 
-const OnSuccessImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
-  this[args] = self
-  this[contA] = f
-} as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
-OnSuccessImpl.prototype = OnSuccessProto
-
 // A success continuation with an extra payload slot. The stored continuation
 // receives the primitive as `this` and reads `this.payload`, so combinators
 // like map / as / tap / andThen can share module-level continuation functions
