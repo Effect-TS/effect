@@ -299,12 +299,12 @@ const hashBytes = (tag: string, bytes: Uint8Array): number => {
 }
 
 const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
-  const self = Object.assign(Object.create(Ipv4Proto), { bytes: bytes.slice() })
+  const self = Object.assign(Object.create(Ipv4Proto), { bytes: new Uint8Array(bytes) })
   return Object.freeze(self)
 }
 
 const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
-  const self = Object.assign(Object.create(Ipv6Proto), { bytes: bytes.slice() })
+  const self = Object.assign(Object.create(Ipv6Proto), { bytes: new Uint8Array(bytes) })
   return Object.freeze(self)
 }
 
@@ -590,7 +590,7 @@ export const ipv6ToSegments = (
 }
 
 /**
- * Returns the sixteen numeric octets of an IPv6 address in a fresh tuple.
+ * Returns the sixteen numeric octets of an IPv6 address in a fresh array.
  *
  * @category getters
  * @since 4.0.0

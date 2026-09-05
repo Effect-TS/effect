@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Equal, Hash, Option, Result, Schema } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
+import { Buffer } from "node:buffer"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
   if (Result.isFailure(result)) assert.fail("expected Success")
@@ -258,6 +259,26 @@ describe("NetAddress", () => {
     assert.strictEqual(NetAddress.formatIp(ipv6), "::1")
     assert.strictEqual(Hash.hash(ipv4), ipv4Hash)
     assert.strictEqual(Hash.hash(ipv6), ipv6Hash)
+  })
+
+  it("copies Buffer constructor inputs", () => {
+    const ipv4Bytes = Buffer.from([127, 0, 0, 1])
+    const ipv6Bytes = Buffer.alloc(16)
+    ipv6Bytes[15] = 1
+    const ipv4 = NetAddress.ipv4FromBytesUnsafe(ipv4Bytes)
+    const ipv6 = NetAddress.ipv6FromBytesUnsafe(ipv6Bytes)
+    const ipv4Hash = Hash.hash(ipv4)
+    const ipv6Hash = Hash.hash(ipv6)
+
+    ipv4Bytes[0] = 1
+    ipv6Bytes[15] = 2
+
+    assert.strictEqual(NetAddress.formatIp(ipv4), "127.0.0.1")
+    assert.strictEqual(NetAddress.formatIp(ipv6), "::1")
+    assert.strictEqual(Hash.hash(ipv4), ipv4Hash)
+    assert.strictEqual(Hash.hash(ipv6), ipv6Hash)
+    assert.isTrue(Equal.equals(ipv4, NetAddress.ipv4Loopback))
+    assert.isTrue(Equal.equals(ipv6, NetAddress.ipv6Loopback))
   })
 
   it("discriminates addresses sharing the common type id", () => {
