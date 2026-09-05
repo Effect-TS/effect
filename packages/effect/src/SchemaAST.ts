@@ -12,7 +12,7 @@
  */
 
 import * as Arr from "./Array.ts"
-import * as Cause from "./Cause.ts"
+import type * as Cause from "./Cause.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
@@ -21,6 +21,15 @@ import { effectIsExit, iterateEager } from "./internal/effect.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
+import { wrapPropertyKeyIssue } from "./internal/schema/cause.ts"
+import {
+  hasDefaultObjectOptions,
+  type ObjectParserState,
+  type ParsedProperty,
+  parseProperties,
+  resumeProperties,
+  stepProperty
+} from "./internal/schema/objects.ts"
 import * as InternalParser from "./internal/schema/parser.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
@@ -453,8 +462,10 @@ export type Encoding = readonly [Link, ...Array<Link>]
  * **Details**
  *
  * Pass to `Schema.decodeUnknown`, `Schema.encode`, and related APIs to customize
- * error reporting, excess property handling, output key ordering, check
- * execution, and asynchronous parser concurrency.
+ * error reporting, excess property handling, output key ordering, and check
+ * execution. Options apply throughout the parse; schema annotations do not
+ * override them. Composite schemas parse their children sequentially, including
+ * asynchronous transformations and middleware.
  *
  * - `errors` — `"first"` (default) stops at the first error; `"all"` collects
  *   every error.
@@ -464,8 +475,6 @@ export type Encoding = readonly [Link, ...Array<Link>]
  *   `"original"` preserves input key order.
  * - `disableChecks` — skips validation checks while still applying defaults and
  *   transformations.
- * - `concurrency` — maximum number of async parse effects to run concurrently;
- *   defaults to `1`, or use `"unbounded"`.
  * - `reportInput` — includes rejected input values in value-bearing schema
  *   issues.
  *
@@ -529,13 +538,6 @@ export interface ParseOptions {
   readonly disableChecks?: boolean | undefined
 
   /**
-   * The maximum number of async effects to run concurrently.
-   *
-   * @default 1
-   */
-  readonly concurrency?: number | "unbounded" | undefined
-
-  /**
    * Whether schema issues should retain and report rejected input values.
    *
    * **Details**
@@ -549,13 +551,12 @@ export interface ParseOptions {
    * Enabling this option can retain or disclose secrets, personally
    * identifiable information, and large object graphs. The `input` field is
    * enumerable and may be included by object enumeration, spread, or
-   * serialization. Disabling it on a nested schema does not redact that value
-   * from an ancestor issue whose input reporting remains enabled. Issues
-   * returned directly by user-defined declarations, checks, transformations,
-   * and middleware are not modified; their authors decide whether to retain an
-   * input. To respect this option, pass the callback's input and parse options
-   * directly to a value-bearing issue constructor. Custom messages and
-   * annotations remain the caller's responsibility regardless of this option.
+   * serialization. Issues returned directly by user-defined declarations,
+   * checks, transformations, and middleware are not modified; their authors
+   * decide whether to retain an input. To respect this option, pass the
+   * callback's input and parse options directly to a value-bearing issue
+   * constructor. Custom messages and annotations remain the caller's
+   * responsibility regardless of this option.
    * Formatting an issue with `SchemaIssue.makeFormatterDefault()`, reading
    * `SchemaError.message`, or formatting a Standard Schema failure can disclose
    * retained input.
@@ -2283,11 +2284,7 @@ export const Arrays: new(
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
       }
-      const concurrency = resolveConcurrency(options?.concurrency)
-      const eff = parseArray(state, input, {
-        concurrency: concurrency?.concurrency,
-        end: ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
-      })
+      const eff = parseArray(state, input, 0, ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen))
       if (eff) yield* eff
 
       // ---------------------------------------------
@@ -2386,50 +2383,6 @@ const parseArray = iterateEager<{
     }
   }
 })
-
-const resolveConcurrency = (value: number | "unbounded" | undefined) => {
-  value = value === "unbounded" ? Infinity : value ?? 1
-  return value > 1 ? { concurrency: value } : undefined
-}
-
-const wrapPropertyKeyIssue = (
-  s: {
-    readonly input: unknown
-    readonly options: ParseOptions
-    issues: Array<SchemaIssue.Issue> | undefined
-  },
-  ast: AST,
-  key: PropertyKey,
-  exit: Exit.Failure<any, SchemaIssue.Issue>
-) => {
-  if (exit.cause.reasons.length === 0) {
-    return exit
-  }
-  const issue = InternalSchemaCause.getSchemaIssue(exit.cause)
-  if (issue === undefined) {
-    return Exit.failCause(
-      Cause.map(
-        exit.cause,
-        (issue) =>
-          new SchemaIssue.Composite(
-            ast,
-            [new SchemaIssue.Pointer([key], issue)],
-            s.input,
-            s.options
-          )
-      )
-    )
-  }
-  const pointer = new SchemaIssue.Pointer([key], issue)
-  if (s.options.errors === "all") {
-    if (s.issues) s.issues.push(pointer)
-    else s.issues = [pointer]
-  } else {
-    return Exit.fail(
-      new SchemaIssue.Composite(ast, [pointer], s.input, s.options)
-    )
-  }
-}
 
 /**
  * floating point or integer, with optional exponent
@@ -2773,13 +2726,6 @@ export const Objects: new(
         ? finishIndex(s, key, key, inputValue, result)
         : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
     }
-    const parseIndexes = indexCount ?
-      iterateEager<ObjectParserState, [key: PropertyKey, index: Index]>()({
-        onItem: (s, [key, index]) => parseIndex(s, key, index),
-        step: (_s, _, exit: Exit.Exit<void, SchemaIssue.Issue>) => exit._tag === "Failure" ? exit : undefined
-      }) :
-      undefined
-
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
@@ -2857,20 +2803,18 @@ export const Objects: new(
         }
       }
 
-      const concurrency = resolveConcurrency(options?.concurrency)
-
       // ---------------------------------------------
       // handle property signatures
       // ---------------------------------------------
       if (hasProperties) {
-        const eff = parseProperties(state, properties!, concurrency)
+        const eff = parseProperties(state, properties!)
         if (eff) yield* eff
       }
 
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (indexCount && !concurrency) {
+      if (indexCount) {
         for (let i = 0; i < indexCount; i++) {
           const index = indexes![i]
           const parse = index.is.parameter === string ? parseStringIndex : parseIndex
@@ -2883,17 +2827,6 @@ export const Objects: new(
             else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
           }
         }
-      } else if (parseIndexes) {
-        const keyPairs = Arr.empty<[PropertyKey, Index]>()
-        for (let i = 0; i < indexCount; i++) {
-          const index = indexes![i]
-          const keys = getIndexSignatureKeys(record, index.is.parameter, options)
-          for (let j = 0; j < keys.length; j++) {
-            keyPairs.push([keys[j], index])
-          }
-        }
-        const eff = parseIndexes(state, keyPairs, concurrency)
-        if (eff) yield* eff
       }
 
       if (state.issues) {
@@ -2917,33 +2850,11 @@ export const Objects: new(
 
     if (indexCount) return fallback
 
-    // Resumes at the property whose parser suspended, without replaying the
-    // properties already parsed.
-    const resume = (
-      state: ObjectParserState,
-      index: number,
-      pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
-    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
-      const property = properties![index]
-      return Effect.flatMap(Effect.exit(pending), (exit) => {
-        const terminal = stepProperty(state, property, exit)
-        if (terminal) return terminal
-        const done = () => InternalParser.succeed(state.out)
-        const eff = parseProperties(state, properties!.slice(index + 1))
-        return eff ? Effect.flatMapEager(eff, done) : done()
-      })
-    }
-
     // Fast path: a struct without index signatures, under the default parse
     // options, needs none of the generator the fallback runs per value.
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
-      if (
-        options.errors === "all" ||
-        options.onExcessProperty !== undefined ||
-        options.propertyOrder === "original" ||
-        options.concurrency !== undefined
-      ) {
+      if (!hasDefaultObjectOptions(options)) {
         return fallback(input, options)
       }
       if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
@@ -2966,7 +2877,7 @@ export const Objects: new(
           }
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
-            return resume(state, index, exit)
+            return resumeProperties(state, props, index, exit)
           }
           if (exit === InternalParser.sameExit) {
             // Missing inputs return `missingExit`, so `sameExit` proves the property was present.
@@ -3029,70 +2940,6 @@ export const Objects: new(
     return "object"
   }
 }
-
-type ObjectParserState = {
-  readonly ast: Objects
-  readonly input: Record<PropertyKey, unknown>
-  readonly options: ParseOptions
-  readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
-}
-
-type ParsedProperty = {
-  readonly parser: SchemaParser.Parser
-  readonly name: PropertyKey
-  readonly type: AST
-  readonly valueFirst: boolean
-}
-
-function stepProperty(
-  s: ObjectParserState,
-  p: ParsedProperty,
-  exit: Exit.Exit<unknown, SchemaIssue.Issue>
-): Exit.Exit<void, SchemaIssue.Issue> | void {
-  if (exit._tag === "Failure") {
-    return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
-  }
-  if (exit === InternalParser.sameExit) return
-  const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-  if (value !== InternalParser.missing) {
-    InternalRecord.assignProperty(s.out, p.name, value)
-    return
-  }
-  delete s.out[p.name]
-  if (!isOptional(p.type)) {
-    const issue = new SchemaIssue.Pointer([p.name], new SchemaIssue.MissingKey(p.type.context?.annotations))
-    if (s.options.errors === "all") {
-      if (s.issues) s.issues.push(issue)
-      else s.issues = [issue]
-      return
-    } else {
-      return Exit.fail(
-        new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
-      )
-    }
-  }
-}
-
-const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
-  onItem(s, p) {
-    let value: unknown
-    if (p.valueFirst) {
-      value = s.input[p.name]
-      if (value === undefined && !(p.name in s.input)) {
-        return p.parser(InternalParser.missing, s.options)
-      }
-    } else {
-      if (!hasPropertySignature(s.input, p.name)) {
-        return p.parser(InternalParser.missing, s.options)
-      }
-      value = s.input[p.name]
-    }
-    InternalRecord.assignProperty(s.out, p.name, value)
-    return p.parser(value, s.options)
-  },
-  step: stepProperty
-})
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {
   if (!a) return b
@@ -3584,6 +3431,9 @@ export const Union: new<A extends AST = AST>(
       }
       const candidates = getCandidates(input, ast.types, compileConstructorDefault !== undefined)
 
+      if (candidates.length === 0) {
+        return Effect.fail(new SchemaIssue.AnyOf(ast, [], input, options))
+      }
       if (candidates.length === 1) {
         const result = compile(candidates[0])(input, options)
         if ((result as Exit.Exit<unknown, SchemaIssue.Issue>)._tag === "Success") return result
@@ -3601,8 +3451,7 @@ export const Union: new<A extends AST = AST>(
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
       }
-      const concurrency = resolveConcurrency(options?.concurrency)
-      const eff = parseUnion(state, candidates, concurrency ? { ...concurrency, orderedStep: true } : undefined)
+      const eff = parseUnion(state, candidates)
       if (!eff) {
         if (state.out) return state.out
         return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))

@@ -3,6 +3,45 @@ import { Cause, Effect, Exit, Option, Result, Schema, SchemaGetter, SchemaIssue,
 import { assertSchemaIssueError, assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaParser", () => {
+  describe("sequential parsing", () => {
+    const cases = [
+      {
+        name: "Struct",
+        make: (item: Schema.Codec<string>) => Schema.Struct({ a: item, b: item }),
+        input: { a: "a", b: "b" }
+      },
+      { name: "Tuple", make: (item: Schema.Codec<string>) => Schema.Tuple([item, item]), input: ["a", "b"] },
+      { name: "Array", make: (item: Schema.Codec<string>) => Schema.Array(item), input: ["a", "b"] },
+      {
+        name: "Record",
+        make: (item: Schema.Codec<string>) => Schema.Record(Schema.String, item),
+        input: { a: "a", b: "b" }
+      }
+    ]
+    for (const { input, make, name } of cases) {
+      for (const errors of ["first", "all"] as const) {
+        it.effect(`${name} decodes and encodes asynchronous children sequentially (${errors})`, () =>
+          Effect.gen(function*() {
+            const calls: Array<string> = []
+            const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+              calls.push(`start ${value}`)
+              return Effect.gen(function*() {
+                yield* Effect.yieldNow
+                calls.push(`end ${value}`)
+                return value
+              })
+            })
+            const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
+            deepStrictEqual(yield* SchemaParser.decodeUnknownEffect(schema)(input, { errors }), input)
+            deepStrictEqual(calls, ["start a", "end a", "start b", "end b"])
+            calls.length = 0
+            deepStrictEqual(yield* SchemaParser.encodeUnknownEffect(schema)(input, { errors }), input)
+            deepStrictEqual(calls, ["start a", "end a", "start b", "end b"])
+          }))
+      }
+    }
+  })
+
   const makeMixedCause = () =>
     Cause.combine(
       Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
@@ -616,7 +655,7 @@ describe("SchemaParser", () => {
         strictEqual(error.success._tag, "AnyOf")
       }))
 
-    it.effect("resolves an unchanged concurrent union candidate", () =>
+    it.effect("resolves an unchanged union candidate after an asynchronous failure", () =>
       Effect.gen(function*() {
         const delayedFailure = Schema.String.pipe(Schema.decode({
           decode: new SchemaGetter.Getter(() =>
@@ -629,7 +668,7 @@ describe("SchemaParser", () => {
         const schema = Schema.Union([delayedFailure, Schema.String])
 
         strictEqual(
-          yield* SchemaParser.decodeUnknownEffect(schema)("value", { concurrency: 2 }),
+          yield* SchemaParser.decodeUnknownEffect(schema)("value"),
           "value"
         )
       }))

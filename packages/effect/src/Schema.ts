@@ -3763,9 +3763,8 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * **Gotchas**
  *
  * When decoded or encoded key transformations produce the same property key,
- * sequential parsing applies selected own properties in selection order, so
- * the later selected property overwrites the earlier value. With concurrency
- * greater than `1`, completion order determines which value is retained.
+ * parsing applies selected own properties sequentially in selection order, so
+ * the later selected property overwrites the earlier value.
  *
  * **Example** (Defining a string-keyed record of numbers)
  *
@@ -14376,7 +14375,7 @@ export declare namespace Annotations {
   }
   /**
    * Base annotations shared by all composite schema nodes. Extends
-   * {@link Documentation} with error messages, branding, parse options, and
+   * {@link Documentation} with error messages, branding, and
    * arbitrary generation hooks. {@link Declaration} and other annotation
    * interfaces build on top of this.
    *
@@ -14415,7 +14414,6 @@ export declare namespace Annotations {
      * filter/refinement instead.
      */
     readonly identifier?: string | undefined
-    readonly parseOptions?: SchemaAST.ParseOptions | undefined
     /**
      * Accumulated brands when multiple brands are added with `Schema.brand`.
      */

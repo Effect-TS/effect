@@ -4886,19 +4886,16 @@ const forEachSequential = <A, B, E, R>(
     )
   })
 
-type IterateEagerOptions = {
-  readonly concurrency?: number | undefined
-  readonly end?: number | undefined
-  readonly orderedStep?: boolean | undefined
-}
-
-const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
+/** @internal */
+export const iterateEager = <S, A>() =>
+<X, E, R, E2>(options: {
   readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
   readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
 }): (
   initialState: S,
   items: ReadonlyArray<A>,
-  options?: IterateEagerOptions
+  start?: number,
+  end?: number
 ) => Effect.Effect<void, E | E2, R> | undefined => {
   const onItem = options.onItem
   const step = options.step
@@ -4906,8 +4903,8 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
   const runSequential = (
     state: S,
     items: ReadonlyArray<A>,
-    index: number,
-    end: number
+    index = 0,
+    end = items.length
   ): Effect.Effect<void, E | E2, R> | undefined => {
     for (; index < end; index++) {
       const item = items[index]
@@ -4923,18 +4920,23 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     }
   }
 
+  return runSequential
+}
+
+const iterateConcurrent = <S, A, X, E, R, E2>(options: {
+  readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
+  readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
+}) => {
+  const onItem = options.onItem
+  const step = options.step
   return (
     state: S,
     items: ReadonlyArray<A>,
-    opts: IterateEagerOptions | undefined
+    opts: { readonly concurrency: number }
   ): Effect.Effect<void, E | E2, R> | undefined => {
     let index = 0
-    const end = opts?.end ?? items.length
-    const concurrency = opts?.concurrency ?? 1
-    if (concurrency === 1) {
-      return runSequential(state, items, 0, end)
-    }
-    const orderedStep = opts?.orderedStep === true
+    const end = items.length
+    const concurrency = opts.concurrency
     let done = false
     let parentFiber: Fiber.Fiber<any, any> | undefined
     let fibers: Set<Fiber.Fiber<any, any>> | undefined
@@ -4942,8 +4944,6 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     let interrupted = false
     let terminal: Exit.Exit<void, E | E2> | void
     let effect: Effect.Effect<X, E, R> | undefined
-    let nextIndex = index
-    const exits: Array<Exit.Exit<X, E> | undefined> | undefined = orderedStep ? new Array(end) : undefined
 
     const failDefect = (error: unknown): Effect.Effect<void, E | E2, R> => {
       const defect = exitDie(error)
@@ -4955,20 +4955,6 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
         : defect
     }
 
-    const runStep = (item: A, exit: Exit.Exit<X, E>, currentIndex: number): Exit.Exit<void, E | E2> | void => {
-      if (!orderedStep) return step(state, item, exit, currentIndex)
-      if (terminal) return terminal
-      exits![currentIndex] = exit
-      while (nextIndex < end) {
-        const nextExit = exits![nextIndex]
-        if (nextExit === undefined) return
-        exits![nextIndex] = undefined
-        const index = nextIndex++
-        const result = step(state, items[index], nextExit, index)
-        if (result) return result
-      }
-    }
-
     const go = (): Effect.Effect<void, E | E2, R> | undefined => {
       let paused = false
       for (; !terminal && index < end; index++) {
@@ -4977,7 +4963,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
 
         // fast case (already an exit)
         if (effectIsExit(eff)) {
-          terminal = runStep(item, eff, index)
+          terminal = step(state, item, eff, index)
           if (terminal) break
 
           // We have an effect, so enter "async" mode
@@ -5008,7 +4994,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
 
           const fiber = forkUnsafe(parentFiber, eff, true, true, "inherit")
           if (fiber._exit) {
-            terminal = runStep(item, fiber._exit, index)
+            terminal = step(state, item, fiber._exit, index)
             if (terminal) break
             continue
           }
@@ -5032,7 +5018,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
                   }
                 }
               } else {
-                const result = runStep(item, exit, currentIndex)
+                const result = step(state, item, exit, currentIndex)
                 if (result) {
                   terminal = result._tag === "Failure"
                     ? exitFailCause(causeFromReasons(result.cause.reasons.slice()))
@@ -5084,17 +5070,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
   }
 }
 
-/** @internal */
-export const iterateEager = <S, A>(): <X, E, R, E2>(options: {
-  readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
-  readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
-}) => (
-  initialState: S,
-  items: ReadonlyArray<A>,
-  options?: IterateEagerOptions
-) => Effect.Effect<void, E | E2, R> | undefined => iterateEagerImpl
-
-const forEachConcurrent = iterateEagerImpl({
+const forEachConcurrent = iterateConcurrent({
   onItem(
     state: {
       readonly f: (a: any, i: number) => Effect.Effect<any, any, any>

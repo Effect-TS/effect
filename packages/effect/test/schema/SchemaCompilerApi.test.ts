@@ -78,6 +78,33 @@ describe("SchemaCompiler", () => {
 })
 
 describe("SchemaJITCompiler", () => {
+  it("reuses option-independent generated functions for explicit options", () => {
+    const schema = Schema.Struct({ nested: Schema.Struct({ value: Schema.String }) })
+    const input = { nested: { value: "valid" } }
+    const Function = globalThis.Function
+    let constructions = 0
+    try {
+      globalThis.Function = ((...args: ReadonlyArray<string>) => {
+        constructions++
+        return Function(...args)
+      }) as FunctionConstructor
+
+      SchemaJITCompiler.enable(schema.ast)
+      const decode = SchemaParser.decodeUnknownSync(schema)
+      deepStrictEqual(decode(input), input)
+      strictEqual(SchemaParser.is(schema)(input), true)
+      const initialized = constructions
+      assert(initialized > 1)
+      for (const options of [{}, { reportInput: true }, { errors: "all" }, { disableChecks: true }] as const) {
+        deepStrictEqual(decode(input, options), input)
+        strictEqual(SchemaParser.is(schema, options)(input), true)
+        strictEqual(constructions, initialized)
+      }
+    } finally {
+      globalThis.Function = Function
+    }
+  })
+
   it("keeps generated operations lazy", () => {
     const schema = Schema.Struct({ value: Schema.String })
     const Function = globalThis.Function

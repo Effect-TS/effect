@@ -1,7 +1,5 @@
-import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
-import type * as Option from "../../Option.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import { effectIsExit } from "../effect.ts"
@@ -15,14 +13,9 @@ import {
   type Parser,
   type ResolveParser
 } from "./compilerRegistry.ts"
+import { hasDefaultObjectOptions, type ParsedProperty, resumeProperties } from "./objects.ts"
 import * as InternalParser from "./parser.ts"
-
-const hasParseOptions = (ast: SchemaAST.AST): boolean => {
-  const annotations = ast.checks === undefined
-    ? ast.annotations
-    : ast.checks[ast.checks.length - 1].annotations
-  return annotations?.["parseOptions"] !== undefined
-}
+import { makeEncoding } from "./transformation.ts"
 
 const isOptional = (ast: SchemaAST.AST): boolean => ast.context?.isOptional ?? false
 
@@ -44,7 +37,7 @@ const supportsDynamicFunction = (): boolean => {
 type Emission = 0 | 1 | 2
 
 const getEmission = (ast: SchemaAST.AST, depth = 0): Emission => {
-  if (depth > maxGeneratedDepth || ast.encoding !== undefined || hasParseOptions(ast)) return 0
+  if (depth > maxGeneratedDepth || ast.encoding !== undefined) return 0
   switch (ast._tag) {
     case "Null":
     case "Undefined":
@@ -122,6 +115,7 @@ type Emitter = {
   readonly constants: Array<unknown>
   readonly constantIndexes: Map<unknown, number>
   readonly options: "D" | "o"
+  usesOptions: boolean
   next: number
 }
 
@@ -230,7 +224,7 @@ const lookupMemberValues = (ast: SchemaAST.AST): ReadonlyArray<unknown> | undefi
   }
 }
 
-function emitDecoded(
+function emit(
   ast: SchemaAST.AST,
   input: string,
   statements: Array<string>,
@@ -241,25 +235,17 @@ function emitDecoded(
   const encodingChecks = getEncodingChecks(ast)
   const astConstant = ast.checks !== undefined || encodingChecks !== undefined ? constant(emitter, ast) : undefined
   if (encodingChecks !== undefined) {
+    emitter.usesOptions = true
     statements.push(`if(K(${astConstant},${input},1,${emitter.options}))return I`)
   }
   if (ast.checks === undefined) return output
+  emitter.usesOptions = true
   const checked = variable(emitter)
   statements.push(
     `const ${checked}=${output}`,
     `if(K(${astConstant},${checked},0,${emitter.options}))return I`
   )
   return checked
-}
-
-function emit(
-  ast: SchemaAST.AST,
-  input: string,
-  statements: Array<string>,
-  emitter: Emitter,
-  needsValue: boolean
-): string {
-  return emitDecoded(ast, input, statements, emitter, needsValue)
 }
 
 const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter, needsValue: boolean): string => {
@@ -303,6 +289,7 @@ const emitIndexes = (
     const index = variable(emitter)
     const key = variable(emitter)
     const parameter = signature.parameter
+    if (parameter._tag !== "String" || parameter.checks !== undefined) emitter.usesOptions = true
     statements.push(
       `const ${keys}=${
         parameter._tag === "String" && parameter.checks === undefined
@@ -386,6 +373,7 @@ const emitBase = (
       statements.push(`if(typeof ${input}!=="bigint")return I`)
       return input
     case "TemplateLiteral": {
+      emitter.usesOptions = true
       const template = constant(emitter, ast)
       statements.push(`if(!T(${template},${input},${emitter.options}))return I`)
       return input
@@ -947,108 +935,8 @@ const makeDetailed = (decode: DetailedDecoder): OptimizedCompiledDecoder["decode
   }
 }
 
-type ComposedObjectProperty = {
-  readonly ast: SchemaAST.AST
-  readonly name: PropertyKey
-  readonly optional: boolean
-  parser: Parser
-  readonly valueFirst: boolean
-}
-
-type ComposedObjectState = {
-  readonly ast: SchemaAST.Objects
-  readonly input: Record<PropertyKey, unknown>
-  readonly options: SchemaAST.ParseOptions
-  readonly output: Record<PropertyKey, unknown>
-}
-
 const resolveDirect = (resolve: ResolveParser, ast: SchemaAST.AST): Parser => {
   return getDirectParser(resolve(ast))
-}
-
-const wrapComposedObjectFailure = (
-  state: ComposedObjectState,
-  key: PropertyKey,
-  exit: Exit.Failure<unknown, SchemaIssue.Issue>
-): Exit.Exit<void, SchemaIssue.Issue> | undefined => {
-  if (exit.cause.reasons.length === 0) return exit
-  const issue = InternalSchemaCause.getSchemaIssue(exit.cause)
-  if (issue === undefined) {
-    return Exit.failCause(
-      Cause.map(
-        exit.cause,
-        (issue) =>
-          new SchemaIssue.Composite(
-            state.ast,
-            [new SchemaIssue.Pointer([key], issue)],
-            state.input,
-            state.options
-          )
-      )
-    )
-  }
-  const pointed = new SchemaIssue.Pointer([key], issue)
-  return Exit.fail(new SchemaIssue.Composite(state.ast, [pointed], state.input, state.options))
-}
-
-const finishComposedObjectProperty = (
-  state: ComposedObjectState,
-  property: ComposedObjectProperty,
-  exit: Exit.Exit<unknown, SchemaIssue.Issue>
-): Exit.Exit<void, SchemaIssue.Issue> | undefined => {
-  if (exit._tag === "Failure") return wrapComposedObjectFailure(state, property.name, exit)
-  if (exit === InternalParser.sameExit) return
-  const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-  if (value !== InternalParser.missing) {
-    assignDecodedProperty(state.output, property.name, value)
-    return
-  }
-  delete state.output[property.name]
-  if (property.optional) return
-  const issue = new SchemaIssue.Pointer(
-    [property.name],
-    new SchemaIssue.MissingKey(property.ast.context?.annotations)
-  )
-  return Exit.fail(new SchemaIssue.Composite(state.ast, [issue], state.input, state.options))
-}
-
-const startComposedObjectProperty = (
-  state: ComposedObjectState,
-  property: ComposedObjectProperty
-): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
-  const name = property.name
-  let value: unknown
-  if (property.valueFirst) {
-    value = state.input[name]
-    if (value === undefined && !(name in state.input)) {
-      return property.parser(InternalParser.missing, state.options)
-    }
-  } else {
-    const present = name === "__proto__" ? Object.hasOwn(state.input, name) : name in state.input
-    if (!present) return property.parser(InternalParser.missing, state.options)
-    value = state.input[name]
-  }
-  assignDecodedProperty(state.output, name, value)
-  return property.parser(value, state.options)
-}
-
-const runComposedObjectProperties = (
-  state: ComposedObjectState,
-  properties: ReadonlyArray<ComposedObjectProperty>,
-  start: number
-): Effect.Effect<void, SchemaIssue.Issue, any> | undefined => {
-  for (let index = start; index < properties.length; index++) {
-    const property = properties[index]
-    const result = startComposedObjectProperty(state, property)
-    if (!effectIsExit(result)) {
-      return Effect.flatMap(Effect.exit(result), (exit) => {
-        const terminal = finishComposedObjectProperty(state, property, exit)
-        return terminal ?? runComposedObjectProperties(state, properties, index + 1) ?? Exit.void
-      })
-    }
-    const terminal = finishComposedObjectProperty(state, property, result)
-    if (terminal !== undefined) return terminal
-  }
 }
 
 const makeComposedObjectFallback = (
@@ -1067,22 +955,14 @@ const makeComposedObjectFallback = (
 
 const resumeComposedObject = (
   ast: SchemaAST.Objects,
-  properties: ReadonlyArray<ComposedObjectProperty>,
+  properties: ReadonlyArray<ParsedProperty>,
   input: Record<PropertyKey, unknown>,
   output: Record<PropertyKey, unknown>,
   index: number,
   pending: Effect.Effect<unknown, SchemaIssue.Issue, any>,
   options: SchemaAST.ParseOptions
 ): Effect.Effect<unknown, SchemaIssue.Issue, any> =>
-  Effect.flatMap(Effect.exit(pending), (exit) => {
-    const state: ComposedObjectState = { ast, input, options, output }
-    const terminal = finishComposedObjectProperty(state, properties[index], exit)
-    if (terminal !== undefined) return terminal
-    const rest = runComposedObjectProperties(state, properties, index + 1)
-    return rest === undefined
-      ? InternalParser.succeed(output)
-      : Effect.flatMapEager(rest, () => InternalParser.succeed(output))
-  })
+  resumeProperties({ ast, input, options, out: output, issues: undefined }, properties, index, pending)
 
 const failComposedObjectProperty = (
   ast: SchemaAST.Objects,
@@ -1091,8 +971,9 @@ const failComposedObjectProperty = (
   key: PropertyKey,
   exit: Exit.Failure<unknown, SchemaIssue.Issue>
 ): Exit.Exit<void, SchemaIssue.Issue> =>
-  wrapComposedObjectFailure(
-    { ast, input, options, output: {} },
+  InternalSchemaCause.wrapPropertyKeyIssue(
+    { input, options, issues: undefined },
+    ast,
     key,
     exit
   )!
@@ -1101,12 +982,12 @@ const failMissingComposedObjectProperty = (
   ast: SchemaAST.Objects,
   input: Record<PropertyKey, unknown>,
   options: SchemaAST.ParseOptions,
-  property: ComposedObjectProperty
+  property: ParsedProperty
 ): Exit.Exit<never, SchemaIssue.Issue> =>
   Exit.fail(
     new SchemaIssue.Composite(
       ast,
-      [new SchemaIssue.Pointer([property.name], new SchemaIssue.MissingKey(property.ast.context?.annotations))],
+      [new SchemaIssue.Pointer([property.name], new SchemaIssue.MissingKey(property.type.context?.annotations))],
       input,
       options
     )
@@ -1114,12 +995,12 @@ const failMissingComposedObjectProperty = (
 
 const makeComposedObjectDefault = (
   ast: SchemaAST.Objects,
-  properties: ReadonlyArray<ComposedObjectProperty>,
+  properties: ReadonlyArray<ParsedProperty>,
   fallback: Parser
 ): Parser | undefined => {
   try {
     const statements = [
-      "if(o!==D)return F(i,o)",
+      "if(o!==D&&!O(o))return F(i,o)",
       "if(i===M)return MX",
       "if(typeof i!==\"object\"||i===null||Array.isArray(i))return IT(T,i,o)",
       "const out={}",
@@ -1152,7 +1033,7 @@ const makeComposedObjectDefault = (
         "if(r!==S){if(!X(r))return R(T,P,i,out," + index +
           ",r,o);if(r._tag===\"Failure\")return W(T,i,o," + key +
           ",r);x=r[A];if(x===M){delete out[" + key + "];" +
-          (property.optional ? "" : "return N(T,i,o,P[" + index + "])") +
+          (isOptional(property.type) ? "" : "return N(T,i,o,P[" + index + "])") +
           "}else{" + assignDecoded + "}}"
       )
     }
@@ -1163,6 +1044,7 @@ const makeComposedObjectDefault = (
       "T",
       "P",
       "D",
+      "O",
       "F",
       "M",
       "MX",
@@ -1181,6 +1063,7 @@ const makeComposedObjectDefault = (
       ast,
       properties,
       SchemaAST.defaultParseOptions,
+      hasDefaultObjectOptions,
       fallback,
       InternalParser.missing,
       InternalParser.missingExit,
@@ -1205,18 +1088,10 @@ const makeComposedObjectDecode = (
   ast: SchemaAST.Objects,
   resolve: ResolveParser
 ): Parser | undefined => {
-  if (
-    ast.encoding !== undefined ||
-    ast.indexSignatures.length !== 0 ||
-    ast.checks !== undefined ||
-    ast.encodingChecks !== undefined ||
-    hasParseOptions(ast)
-  ) return undefined
-  const properties = ast.propertySignatures.map((property): ComposedObjectProperty => {
-    const out: ComposedObjectProperty = {
-      ast: property.type,
+  const properties = ast.propertySignatures.map((property): ParsedProperty => {
+    const out: ParsedProperty = {
+      type: property.type,
       name: property.name,
-      optional: isOptional(property.type),
       parser(input, options) {
         const parser = resolveDirect(resolve, property.type)
         out.parser = parser
@@ -1234,42 +1109,7 @@ const canCompileComposedObject = (ast: SchemaAST.Objects): boolean =>
   ast.encoding === undefined &&
   ast.indexSignatures.length === 0 &&
   ast.checks === undefined &&
-  ast.encodingChecks === undefined &&
-  !hasParseOptions(ast)
-
-function applyTransformation(
-  result: Effect.Effect<unknown, SchemaIssue.Issue, unknown>,
-  current: unknown,
-  transformation: SchemaAST.Link["transformation"],
-  options: SchemaAST.ParseOptions
-): Effect.Effect<unknown, SchemaIssue.Issue, unknown> {
-  let transformed: Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue, unknown>
-  if (effectIsExit(result) && result._tag === "Success") {
-    const optional = InternalParser.toOption(
-      result === InternalParser.sameExit
-        ? current
-        : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    )
-    transformed = transformation._tag === "Transformation"
-      ? transformation.decode.run(optional, options)
-      : transformation.decode(InternalParser.succeed(optional), options)
-  } else if (transformation._tag === "Transformation") {
-    transformed = Effect.flatMapEager(
-      result,
-      (value) => transformation.decode.run(InternalParser.toOption(value), options)
-    )
-  } else {
-    transformed = transformation.decode(
-      Effect.mapEager(result, InternalParser.toOption),
-      options
-    )
-  }
-  return effectIsExit(transformed) && transformed._tag === "Success"
-    ? InternalParser.fromOptionExit(
-      (transformed as InternalParser.Success<Option.Option<unknown>, SchemaIssue.Issue>)[InternalParser.args]
-    )
-    : Effect.flatMapEager(transformed, InternalParser.fromOptionExit)
-}
+  ast.encodingChecks === undefined
 
 const makeEncodingDetailed = (
   ast: SchemaAST.AST,
@@ -1278,44 +1118,7 @@ const makeEncodingDetailed = (
   const links = ast.encoding!
   const parsers = links.map((link) => resolveDirect(resolve, link.to))
   const local = resolveDirect(resolve, SchemaAST.replaceEncoding(ast, undefined))
-  const decode = (input: unknown, options: SchemaAST.ParseOptions) => {
-    let current = input
-    let result = parsers[parsers.length - 1](input, options)
-    for (let index = links.length - 1; index >= 0; index--) {
-      result = applyTransformation(result, current, links[index].transformation, options)
-      if (index !== 0) {
-        const next = parsers[index - 1]
-        if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
-          current = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          result = next(current, options)
-        } else {
-          result = Effect.flatMapEager(result, (value) => {
-            const nextResult = next(value, options)
-            return nextResult === InternalParser.sameExit ? InternalParser.succeed(value) : nextResult
-          })
-        }
-      }
-    }
-    if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
-      const value = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-      const decoded = local(value, options)
-      return decoded === InternalParser.sameExit ? result : decoded
-    }
-    result = Effect.catchCause(
-      result,
-      (cause) =>
-        Effect.failCauseSync(() =>
-          Cause.map(
-            cause,
-            (issue) => new SchemaIssue.Encoding(ast, issue, input, options)
-          )
-        )
-    )
-    return Effect.flatMapEager(result, (value) => {
-      const decoded = local(value, options)
-      return decoded === InternalParser.sameExit ? InternalParser.succeed(value) : decoded
-    })
-  }
+  const decode = makeEncoding(ast, links, parsers, local)
   return (input, options) => {
     try {
       return decode(input, options)
@@ -1331,7 +1134,7 @@ const makeValidate = (
   ast: SchemaAST.AST,
   needsValue: boolean,
   defaultOptions: boolean
-): GeneratedValidate | undefined => {
+): { readonly run: GeneratedValidate; readonly usesOptions: boolean } | undefined => {
   try {
     const emitter: Emitter = {
       statements: [],
@@ -1342,13 +1145,14 @@ const makeValidate = (
       constants: [],
       constantIndexes: new Map(),
       options: defaultOptions ? "D" : "o",
+      usesOptions: false,
       next: 0
     }
     const output = emit(ast, "i", emitter.statements, emitter, needsValue)
     const source = `"use strict";${emitter.helpers.join(";")};${emitter.initializers.join(";")};return function(i${
       defaultOptions ? "" : ",o"
     }){${emitter.statements.join(";")};return ${output}}`
-    return globalThis.Function("I", "C", "K", "T", "U", "G", "D", source)(
+    const run = globalThis.Function("I", "C", "K", "T", "U", "G", "D", source)(
       invalid,
       emitter.constants,
       failsChecks,
@@ -1357,6 +1161,7 @@ const makeValidate = (
       SchemaAST.getIndexSignatureKeys,
       SchemaAST.defaultParseOptions
     ) as GeneratedValidate
+    return { run, usesOptions: emitter.usesOptions }
   } catch {
     return undefined
   }
@@ -1383,15 +1188,16 @@ class CompiledDecoderImpl {
   }
 
   get is(): OptimizedIs | undefined {
-    const defaultValidate = this.emitIs ? makeValidate(this.ast, false, true) : undefined
-    let withOptions: GeneratedValidate | undefined
+    const generated = this.emitIs ? makeValidate(this.ast, false, true) : undefined
+    const defaultValidate = generated?.run
+    let withOptions = generated?.usesOptions ? undefined : defaultValidate
     const is: OptimizedIs | undefined = defaultValidate === undefined
       ? undefined
       : Object.assign(
         (input: unknown, options: SchemaAST.ParseOptions) => {
           if (options === SchemaAST.defaultParseOptions) return defaultValidate(input) !== invalid
           if (usesDefaultOutputOptions(options)) {
-            withOptions ??= makeValidate(this.ast, false, false)
+            withOptions ??= makeValidate(this.ast, false, false)?.run
             if (withOptions !== undefined) return withOptions(input, options) !== invalid
           }
           return this.validate!(input, options) !== invalid
@@ -1403,15 +1209,16 @@ class CompiledDecoderImpl {
   }
 
   get validate(): OptimizedValidate | undefined {
-    const defaultValidate = makeValidate(this.ast, true, true)
-    let withOptions: GeneratedValidate | undefined
+    const generated = makeValidate(this.ast, true, true)
+    const defaultValidate = generated?.run
+    let withOptions = generated?.usesOptions ? undefined : defaultValidate
     const validate: OptimizedValidate | undefined = defaultValidate === undefined
       ? undefined
       : Object.assign(
         (input: unknown, options: SchemaAST.ParseOptions) => {
           if (options === SchemaAST.defaultParseOptions) return defaultValidate(input)
           if (usesDefaultOutputOptions(options)) {
-            withOptions ??= makeValidate(this.ast, true, false)
+            withOptions ??= makeValidate(this.ast, true, false)?.run
             if (withOptions !== undefined) return withOptions(input, options)
           }
           const output = this.detailed(input, options)

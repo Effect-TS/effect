@@ -163,6 +163,12 @@ decoding calls `decode` directly. All `ParseOptions` are supported; options that
 affect the decoded output or issue collection may select a more detailed
 generated path.
 
+Pass parse options when creating or calling a parser. They apply throughout the
+parse; annotations cannot override them. Composite schemas parse children
+sequentially, including asynchronous transformations and middleware. There is
+no `concurrency` parse option. Use Effect concurrency combinators explicitly
+inside a transformation or around independent parsing operations when needed.
+
 An AST containing an encoding has no root `is` phase. Its compiled `decode`
 orchestrates transformations and middleware directly, executing each operation
 exactly once. The schemas before, between, and after those operations are
@@ -204,7 +210,7 @@ This snapshot is checked in so compiler regressions appear as numeric changes in
 the Git diff. Keep scenario names, units, environment, and measurement settings
 unchanged when updating it. Lower values are better.
 
-- Date: 2026-09-04
+- Moltar snapshot date: 2026-09-04
 - Environment: Node 24.12.0, V8 13.6, Apple M3
 - Libraries: Effect 4.0.0-rc.112, Zod 4.5.4
 - Runtime settings: 9 fresh processes, 500 ms measurement, 150 ms warmup;
@@ -231,28 +237,45 @@ pnpm runtimeperf moltar-assert-loose --rounds 9 --time 500 --warmup-time 150
 | Effect initialization, assertLoose |                     6820.0 |                  8400.0 |                   — |
 | Zod initialization, assertLoose    |                          — |                       — |             46890.0 |
 
-The broader snapshot tracks encoding orchestration and local fallback paths.
-Run each row by passing its scenario name to `pnpm runtimeperf` with the same
-round, measurement, and warmup settings.
+The broader snapshot tracks arrays, tuples, encoding orchestration, and local
+fallback paths. It was refreshed on 2026-09-05 from the worktree based on
+`5ea366e01c`, using the same runtime settings above. Run each row by passing its
+scenario name to `pnpm runtimeperf` with those settings. Timings are medians;
+the final column is the median paired compiled/interpreted ratio.
 
 | Runtimeperf scenario                           | Interpreted (ns/op) | Compiled (ns/op) | Compiled / interpreted |
 | ---------------------------------------------- | ------------------: | ---------------: | ---------------------: |
-| `schema-compiler-transformation-struct-valid`  |              1950.0 |           1200.0 |                  0.617 |
-| `schema-compiler-middleware-struct-valid`      |              1900.0 |            411.4 |                  0.216 |
-| `schema-compiler-recursive-node-valid`         |             14750.0 |           9510.0 |                  0.653 |
-| `schema-compiler-transformed-key-record-valid` |              3600.0 |           3500.0 |                  0.962 |
-| `schema-compiler-transformation-root-invalid`  |              3440.0 |           3570.0 |                  1.024 |
+| `schema-compiler-array-100-valid`              |               715.9 |            126.2 |                  0.177 |
+| `schema-compiler-tuple-rest-valid`             |               426.1 |             37.7 |                  0.089 |
+| `schema-compiler-transformation-struct-valid`  |              1956.2 |           1206.7 |                  0.618 |
+| `schema-compiler-middleware-struct-valid`      |              1899.6 |            413.2 |                  0.219 |
+| `schema-compiler-recursive-node-valid`         |             13752.8 |           8344.2 |                  0.616 |
+| `schema-compiler-transformed-key-record-valid` |              3582.9 |           3521.6 |                  0.981 |
+| `schema-compiler-transformation-root-invalid`  |              3378.0 |           3503.6 |                  1.041 |
+
+A separate paired comparison against `5ea366e01c` measured interpreted Array
+and tuple time reductions of 22.32% and 11.83%. That comparison used five rounds
+of 300 ms after 100 ms warmup and covered the full worktree diff, including the
+removal of AST-local parse options and concurrency as well as the subsequent
+simplifications. Snapshot deltas alone do not establish a performance regression.
 
 Bundle sizes use the stable `schema-compiler.ts` and
 `schema-compiler-off.ts` fixtures in `packages/tools/bundle/fixtures`. Values
-are minified and gzipped decimal kilobytes. Run `pnpm bundle-compare HEAD~1`
-after a compiler commit to compare both fixtures with the preceding commit.
+are minified and gzipped decimal kilobytes, rounded independently from byte
+counts. This snapshot was refreshed on 2026-09-05 with `pnpm bundle-compare HEAD`
+against `5ea366e01c`, covering the full worktree diff. Of all 33 stable fixtures,
+23 became smaller and 10 were unchanged; none grew. All 17 Schema fixtures
+became smaller. Run `pnpm bundle-compare HEAD~1` after a compiler commit to
+compare with the preceding commit.
 
 | Bundle fixture        | Size (KB) |
 | --------------------- | --------: |
-| Compiler not imported |     18.17 |
-| Compiler imported     |     23.59 |
-| Compiler increment    |      5.42 |
+| Compiler not imported |     16.89 |
+| Compiler imported     |     21.96 |
+| Compiler increment    |      5.06 |
+
+The retained-memory measurements below are from 2026-09-04 and have not been
+refreshed for this worktree.
 
 The retained-memory probe creates 1,000 distinct four-field Structs, retains
 their public sync decoders, then forces two garbage collections after the first
@@ -1875,10 +1898,8 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-When parsing sequentially, transformed keys are applied in selection order, so
+Transformed keys are applied sequentially in selection order, so
 the later selected property wins if a transformation produces a duplicate key.
-With concurrency greater than `1`, completion order determines which value is
-retained.
 
 **Example** (Keeping the later selected value when parsing sequentially)
 

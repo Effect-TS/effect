@@ -90,6 +90,29 @@ describe("SchemaJITCompiler", () => {
     strictEqual(SchemaParser.is(checked, { disableChecks: true })(input), true)
   })
 
+  it("keeps runtime options for nested checks, template parts and record keys", () => {
+    const checked = Schema.Struct({
+      nested: Schema.Struct({ value: Schema.String }).check(
+        Schema.makeFilter((_value, _ast, options) => options.reportInput === true)
+      )
+    })
+    const value = { nested: { value: "valid" } }
+    strictEqual(SchemaParser.is(checked)(value), false)
+    strictEqual(SchemaParser.is(checked, { reportInput: true })(value), true)
+    deepStrictEqual(SchemaParser.decodeUnknownSync(checked)(value, { reportInput: true }), value)
+
+    const template = Schema.Struct({
+      value: Schema.TemplateLiteral(["prefix-", Schema.String.check(Schema.isMinLength(2))])
+    })
+    strictEqual(SchemaParser.is(template)({ value: "prefix-a" }), false)
+    strictEqual(SchemaParser.is(template, { disableChecks: true })({ value: "prefix-a" }), true)
+
+    const record = Schema.Record(Schema.String.check(Schema.isStartsWith("x")), Schema.Number)
+    const decode = SchemaParser.decodeUnknownSync(record)
+    deepStrictEqual(decode({ x: 1, y: 2 }), { x: 1 })
+    deepStrictEqual(decode({ x: 1, y: 2 }, { disableChecks: true }), { x: 1, y: 2 })
+  })
+
   it("runs the diagnostic phase after fast validation fails", () => {
     let reads = 0
     const input = {
@@ -210,10 +233,20 @@ describe("SchemaJITCompiler", () => {
       }
     })
 
-    deepStrictEqual(
-      SchemaParser.decodeUnknownSync(schema)({ first: "1", second: "2" }),
-      { first: 1, second: 2 }
-    )
+    const decode = SchemaParser.decodeUnknownSync(schema)
+    for (
+      const options of [
+        undefined,
+        {},
+        { errors: "first" },
+        { onExcessProperty: "ignore" },
+        { propertyOrder: "none" },
+        { reportInput: true },
+        { disableChecks: true }
+      ] as const
+    ) {
+      deepStrictEqual(decode({ first: "1", second: "2" }, options), { first: 1, second: 2 })
+    }
   })
 
   it("constructs the diagnostic phase lazily and once", () => {
