@@ -164,7 +164,7 @@ export declare namespace Client {
 
   /**
    * The typed function generated for an endpoint, accepting the endpoint request
-   * shape and optional per-call SSE decoding options. The returned effect's success,
+   * shape, including optional per-call SSE decoding options. The returned effect's success,
    * error, and service channels reflect the endpoint schemas, middleware, and
    * selected response mode.
    *
@@ -184,8 +184,7 @@ export declare namespace Client {
         Endpoint["~Headers"],
         Mode
       >
-    >,
-    options?: { readonly sseOptions?: Sse.DecodeOptions | undefined }
+    >
   ) => MethodReturn<Endpoint, E, R, Mode>
 
   /**
@@ -402,8 +401,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             readonly payload: unknown
             readonly headers: Record<string, string> | undefined
             readonly responseMode?: HttpApiEndpoint.ClientResponseMode
-          } | undefined,
-          callOptions?: { readonly sseOptions?: Sse.DecodeOptions | undefined }
+            readonly sseOptions?: Sse.DecodeOptions | undefined
+          } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
 
@@ -454,7 +453,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             return response
           }
 
-          const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, callOptions?.sseOptions)
+          const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, request?.sseOptions)
           const value = yield* (options.transformResponse === undefined
             ? decoded
             : options.transformResponse(decoded))

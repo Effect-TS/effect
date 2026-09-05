@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Allow generated `HttpApiClient` methods to accept native SSE decode options per call through a second `{ sseOptions }` argument.
+Allow generated `HttpApiClient` methods and `AtomHttpApi` queries and mutations to accept native SSE decode options per call through the request's `sseOptions` field.

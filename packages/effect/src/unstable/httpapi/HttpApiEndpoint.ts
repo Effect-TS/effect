@@ -23,6 +23,7 @@ import * as AST from "../../SchemaAST.ts"
 import type * as Stream from "../../Stream.ts"
 import type { Simplify } from "../../Struct.ts"
 import type * as Types from "../../Types.ts"
+import type * as Sse from "../encoding/Sse.ts"
 import type { HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import type { HttpServerRequest } from "../http/HttpServerRequest.ts"
@@ -486,9 +487,10 @@ export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint
   : {}
 
 /**
- * Builds the request object accepted by a generated client method, including only
- * the params, query, headers, payload, and response mode fields required by the
- * endpoint. Multipart payloads are supplied as `FormData`.
+ * Builds the request object accepted by a generated client method, including the
+ * params, query, headers, and payload required by the endpoint, plus optional
+ * response mode and SSE decoding options. Multipart payloads are supplied as
+ * `FormData`.
  *
  * @category utility types
  * @since 4.0.0
@@ -509,8 +511,14 @@ export type ClientRequest<
         ? { readonly payload: FormData }
       : { readonly payload: Payload["Type"] }
     : { readonly payload: Payload["Type"] })
-) extends infer Req ? keyof Req extends never ? (void | { readonly responseMode?: ResponseMode }) :
-  Req & { readonly responseMode?: ResponseMode } :
+) extends infer Req ? keyof Req extends never ? (void | {
+      readonly responseMode?: ResponseMode
+      readonly sseOptions?: Sse.DecodeOptions | undefined
+    }) :
+  Req & {
+    readonly responseMode?: ResponseMode
+    readonly sseOptions?: Sse.DecodeOptions | undefined
+  } :
   void
 
 /**
