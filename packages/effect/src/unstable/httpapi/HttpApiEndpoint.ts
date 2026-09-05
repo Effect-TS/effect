@@ -489,8 +489,9 @@ export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint
 /**
  * Builds the request object accepted by a generated client method, including the
  * params, query, headers, and payload required by the endpoint, plus optional
- * response mode and SSE decoding options. Multipart payloads are supplied as
- * `FormData`.
+ * response mode. SSE decoding options are available when a success variant is
+ * `StreamSse`, including inside `WithHeaders`. Multipart payloads are supplied
+ * as `FormData`.
  *
  * @category utility types
  * @since 4.0.0
@@ -500,7 +501,8 @@ export type ClientRequest<
   Query extends Schema.Constraint,
   Payload extends Schema.Constraint,
   Headers extends Schema.Constraint,
-  ResponseMode extends ClientResponseMode
+  ResponseMode extends ClientResponseMode,
+  Success extends Schema.Constraint = never
 > = (
   & ([Params["Type"]] extends [never] ? {} : { readonly params: Params["Type"] })
   & ([Query["Type"]] extends [never] ? {} : { readonly query: Query["Type"] })
@@ -511,15 +513,18 @@ export type ClientRequest<
         ? { readonly payload: FormData }
       : { readonly payload: Payload["Type"] }
     : { readonly payload: Payload["Type"] })
-) extends infer Req ? keyof Req extends never ? (void | {
-      readonly responseMode?: ResponseMode
-      readonly sseOptions?: Sse.DecodeOptions | undefined
-    }) :
-  Req & {
-    readonly responseMode?: ResponseMode
-    readonly sseOptions?: Sse.DecodeOptions | undefined
-  } :
+) extends infer Req ? keyof Req extends never ? (void | ClientRequestOptions<ResponseMode, Success>) :
+  Req & ClientRequestOptions<ResponseMode, Success> :
   void
+
+type ClientRequestOptions<ResponseMode extends ClientResponseMode, Success> =
+  & { readonly responseMode?: ResponseMode }
+  & ([
+    Extract<
+      Success extends HttpApiSchema.WithHeaders<infer Inner, infer _Headers> ? Inner : Success,
+      HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Top, unknown>
+    >
+  ] extends [never] ? {} : { readonly sseOptions?: Sse.DecodeOptions | undefined })
 
 /**
  * Controls what a generated client method returns: the decoded success value,
