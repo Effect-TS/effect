@@ -109,26 +109,27 @@ describe("WorkflowEngine", () => {
         }))
         yield* Effect.gen(function*() {
           const executionId = yield* Parent.execute({}, { discard: true })
+          // Execution-ID digests use real promises, so wait for state rather than clock ticks.
           for (const expected of waves) {
-            let suspended = false
-            for (let i = 0; i < 50 && !suspended; i++) {
-              yield* TestClock.adjust(1)
-              const result = yield* Parent.poll(executionId)
-              suspended = Option.isSome(result) && result.value._tag === "Suspended" && started.size === expected
+            let result = yield* Parent.poll(executionId)
+            while (Option.isNone(result) || result.value._tag !== "Suspended" || started.size !== expected) {
+              yield* Effect.yieldNow
+              result = yield* Parent.poll(executionId)
             }
-            assert.isTrue(suspended, `parent did not suspend after ${expected} children`)
             assert.deepStrictEqual([...started].sort(), Array.from({ length: expected }, (_, index) => index))
             assert.strictEqual(released, activityRuns)
             assert.isAtMost(activityRuns, parentRuns)
             if (expected === waves[0]) assert.strictEqual(parentRuns, 1)
             yield* TestClock.adjust("2 seconds")
           }
-          for (let i = 0; i < 50; i++) yield* TestClock.adjust(1)
+          let result = yield* Parent.poll(executionId)
+          while (Option.isNone(result) || result.value._tag !== "Complete") {
+            yield* Effect.yieldNow
+            result = yield* Parent.poll(executionId)
+          }
           assert.deepStrictEqual(
-            yield* Parent.poll(executionId),
-            Option.some(
-              new Workflow.Complete({ exit: Exit.succeed(Array.from({ length: childCount }, (_, index) => index)) })
-            )
+            result.value,
+            new Workflow.Complete({ exit: Exit.succeed(Array.from({ length: childCount }, (_, index) => index)) })
           )
           assert.isAtLeast(parentRuns, waves.length + 1)
           assert.isAtMost(activityRuns, parentRuns)
@@ -168,16 +169,17 @@ describe("WorkflowEngine", () => {
       )
       yield* Effect.gen(function*() {
         const executionId = yield* Parent.execute({}, { discard: true })
-        yield* TestClock.adjust(1)
         yield* cleaningUp.await
         yield* TestClock.adjust("2 seconds")
         yield* release.open
-        for (let i = 0; i < 50; i++) {
-          yield* TestClock.adjust(1)
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
         }
         assert.deepStrictEqual(
-          yield* Parent.poll(executionId),
-          Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
+          result.value,
+          new Workflow.Complete({ exit: Exit.succeed([0, 1]) })
         )
       }).pipe(
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
@@ -225,21 +227,21 @@ describe("WorkflowEngine", () => {
         }))
         yield* Effect.gen(function*() {
           const executionId = yield* Parent.execute({}, { discard: true })
-          for (let i = 0; i < 50; i++) {
-            yield* TestClock.adjust(1)
+          let result = yield* Parent.poll(executionId)
+          while (Option.isNone(result) || result.value._tag !== "Suspended") {
+            yield* Effect.yieldNow
+            result = yield* Parent.poll(executionId)
           }
-          assert.deepStrictEqual(
-            Option.map(yield* Parent.poll(executionId), (result) => result._tag),
-            Option.some("Suspended")
-          )
           assert.deepStrictEqual([...started], [0])
           yield* TestClock.adjust("2 seconds")
-          for (let i = 0; i < 50; i++) {
-            yield* TestClock.adjust(1)
+          result = yield* Parent.poll(executionId)
+          while (Option.isNone(result) || result.value._tag !== "Complete") {
+            yield* Effect.yieldNow
+            result = yield* Parent.poll(executionId)
           }
           assert.deepStrictEqual(
-            yield* Parent.poll(executionId),
-            Option.some(new Workflow.Complete({ exit: Exit.succeed([0, -1]) }))
+            result.value,
+            new Workflow.Complete({ exit: Exit.succeed([0, -1]) })
           )
         }).pipe(
           Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))

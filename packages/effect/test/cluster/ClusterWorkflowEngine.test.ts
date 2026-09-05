@@ -588,13 +588,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       // the parent suspends durably once every child has been dispatched
       let suspended = false
-      for (let i = 0; i < 50 && !suspended; i++) {
-        yield* TestClock.adjust(1)
+      while (!suspended) {
+        yield* Effect.yieldNow
         yield* sharding.pollStorage
         const result = yield* ParallelParentWorkflow.poll(executionId)
         suspended = Option.isSome(result) && result.value._tag === "Suspended"
       }
-      assert.isTrue(suspended, "parent run was not durably suspended")
       assert.strictEqual(flags.get("parallel-runs-parallel-activity"), 1)
       assert.isTrue(flags.get("parallel-child-start-parallel-activity-child-0"))
       assert.isTrue(flags.get("parallel-child-start-parallel-activity-child-1"))
@@ -605,8 +604,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // the children complete after a single sleep window and wake the parent
       yield* TestClock.adjust(Duration.seconds(2))
       yield* sharding.pollStorage
-      for (let i = 0; i < 4; i++) {
-        yield* TestClock.adjust(Duration.seconds(1))
+      while (fiber.pollUnsafe() === undefined) {
+        yield* Effect.yieldNow
+        yield* TestClock.adjust(1)
         yield* sharding.pollStorage
       }
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["done-0", "done-1", "done-2"]))
@@ -629,14 +629,21 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       for (const started of [2, 4, 5]) {
         let suspended = false
-        for (let i = 0; i < 50 && !suspended; i++) {
-          yield* TestClock.adjust(10)
+        while (!suspended) {
+          yield* Effect.yieldNow
+          // Drive cluster retries between runs without advancing child clocks
+          // while the activity is computing execution IDs.
+          if (
+            flags.get("parallel-activity-runs-parallel-bounded") ===
+              flags.get("parallel-activity-releases-parallel-bounded")
+          ) {
+            yield* TestClock.adjust(1)
+          }
           yield* sharding.pollStorage
           const result = yield* ParallelParentWorkflow.poll(executionId)
           suspended = Option.isSome(result) && result.value._tag === "Suspended" &&
             flags.get(`parallel-child-start-parallel-bounded-child-${started - 1}`) === true
         }
-        assert.isTrue(suspended, `parent did not suspend after dispatching ${started} children`)
         for (let index = 0; index < 5; index++) {
           assert.strictEqual(
             flags.get(`parallel-child-start-parallel-bounded-child-${index}`),
@@ -650,13 +657,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* TestClock.adjust(Duration.seconds(2))
         yield* sharding.pollStorage
       }
-      for (let i = 0; i < 50; i++) {
-        yield* TestClock.adjust(10)
+      let result = yield* ParallelParentWorkflow.poll(executionId)
+      while (Option.isNone(result) || result.value._tag !== "Complete") {
+        yield* Effect.yieldNow
+        yield* TestClock.adjust(1)
         yield* sharding.pollStorage
+        result = yield* ParallelParentWorkflow.poll(executionId)
       }
       assert.deepStrictEqual(
-        yield* ParallelParentWorkflow.poll(executionId),
-        Option.some(new Workflow.Complete({ exit: Exit.succeed(["done-0", "done-1", "done-2", "done-3", "done-4"]) }))
+        result.value,
+        new Workflow.Complete({ exit: Exit.succeed(["done-0", "done-1", "done-2", "done-3", "done-4"]) })
       )
       assert.isAtMost(
         Number(flags.get("parallel-activity-runs-parallel-bounded")),
@@ -696,30 +706,34 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         const sharding = yield* Sharding.Sharding
         yield* TestClock.adjust(1)
         const executionId = yield* Parent.execute({}, { discard: true })
-        yield* TestClock.adjust(1)
-        yield* sharding.pollStorage
         yield* cleaningUp.await
         yield* TestClock.adjust("2 seconds")
         yield* sharding.pollStorage
-        for (let i = 0; i < 10; i++) {
-          yield* TestClock.adjust(10)
-          yield* sharding.pollStorage
-        }
         for (const index of [0, 1]) {
           const childId = yield* Child.executionId({ index })
+          let childResult = yield* Child.poll(childId)
+          while (Option.isNone(childResult) || childResult.value._tag !== "Complete") {
+            yield* Effect.yieldNow
+            yield* TestClock.adjust(1)
+            yield* sharding.pollStorage
+            childResult = yield* Child.poll(childId)
+          }
           assert.deepStrictEqual(
-            yield* Child.poll(childId),
-            Option.some(new Workflow.Complete({ exit: Exit.succeed(index) }))
+            childResult.value,
+            new Workflow.Complete({ exit: Exit.succeed(index) })
           )
         }
         yield* release.open
-        for (let i = 0; i < 50; i++) {
-          yield* TestClock.adjust(10)
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          yield* TestClock.adjust(1)
           yield* sharding.pollStorage
+          result = yield* Parent.poll(executionId)
         }
         assert.deepStrictEqual(
-          yield* Parent.poll(executionId),
-          Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
+          result.value,
+          new Workflow.Complete({ exit: Exit.succeed([0, 1]) })
         )
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
@@ -785,29 +799,39 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         const driver = yield* MessageStorage.MemoryDriver
         yield* TestClock.adjust(1)
         const executionId = yield* Parent.execute({}, { discard: true })
-        for (let i = 0; i < 100; i++) {
-          yield* TestClock.adjust(10)
-          yield* sharding.pollStorage
-        }
         yield* cleaningUp.await
         yield* TestClock.adjust("2 seconds")
-        for (let i = 0; i < 100; i++) {
-          yield* TestClock.adjust(10)
+        const wakeRequests = () =>
+          driver.journal.filter((message) =>
+            message._tag === "Request" &&
+            message.address.entityType === "Workflow/ManyChildrenParent" && message.tag === "resume"
+          )
+        const allWakesHandled = () => {
+          const wakes = wakeRequests()
+          const replied = wakes.filter((message) =>
+            message._tag === "Request" && (driver.requests.get(message.requestId)?.replies.length ?? 0) > 0
+          ).length
+          // Every wake must have replied or parked before releasing the parent.
+          return wakes.length === indices.length && replied + parked === indices.length
+        }
+        while (!allWakesHandled()) {
+          yield* Effect.yieldNow
+          yield* TestClock.adjust(1)
           yield* sharding.pollStorage
         }
-        const wakes = driver.journal.filter((message) =>
-          message._tag === "Request" &&
-          message.address.entityType === "Workflow/ManyChildrenParent" && message.tag === "resume"
-        )
+        const wakes = wakeRequests()
         const parkedBeforeRelease = parked
         yield* release.open
-        for (let i = 0; i < 100; i++) {
-          yield* TestClock.adjust(10)
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Complete" || parked !== 0) { // oxlint-disable-line no-unmodified-loop-condition
+          yield* Effect.yieldNow
+          yield* TestClock.adjust(1)
           yield* sharding.pollStorage
+          result = yield* Parent.poll(executionId)
         }
         assert.deepStrictEqual(
-          yield* Parent.poll(executionId),
-          Option.some(new Workflow.Complete({ exit: Exit.succeed(indices) }))
+          result.value,
+          new Workflow.Complete({ exit: Exit.succeed(indices) })
         )
         assert.strictEqual(parked, 0)
         assert.strictEqual(wakes.length, indices.length)
@@ -852,14 +876,13 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           const engine = yield* WorkflowEngine
           yield* TestClock.adjust(1)
           const executionId = yield* Parent.execute({}, { discard: true })
-          for (let i = 0; i < 50; i++) {
-            yield* TestClock.adjust(10)
+          let result = yield* Parent.poll(executionId)
+          while (Option.isNone(result) || result.value._tag !== "Suspended") {
+            yield* Effect.yieldNow
+            yield* TestClock.adjust(1)
             yield* sharding.pollStorage
+            result = yield* Parent.poll(executionId)
           }
-          assert.deepStrictEqual(
-            Option.map(yield* Parent.poll(executionId), (result) => result._tag),
-            Option.some("Suspended")
-          )
           for (let i = 0; i < 12 && (yield* sharding.activeEntityCount) > 0; i++) {
             yield* TestClock.adjust(5000)
           }
@@ -884,13 +907,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
               exit: Exit.void
             })
           }
-          for (let i = 0; i < 100; i++) {
-            yield* TestClock.adjust(10)
+          result = yield* Parent.poll(executionId)
+          while (Option.isNone(result) || result.value._tag !== "Complete" || legacyResume.pollUnsafe() === undefined) {
+            yield* Effect.yieldNow
+            yield* TestClock.adjust(1)
             yield* sharding.pollStorage
+            result = yield* Parent.poll(executionId)
           }
           assert.deepStrictEqual(
-            yield* Parent.poll(executionId),
-            Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
+            result.value,
+            new Workflow.Complete({ exit: Exit.succeed([0, 1]) })
           )
           assert.deepStrictEqual(legacyResume.pollUnsafe(), Exit.void)
         }).pipe(Effect.provide(
@@ -914,13 +940,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
 
       let suspended = false
-      for (let i = 0; i < 50 && !suspended; i++) {
-        yield* TestClock.adjust(1)
+      while (!suspended) {
+        yield* Effect.yieldNow
         yield* sharding.pollStorage
         const result = yield* ParallelParentWorkflow.poll(executionId)
         suspended = Option.isSome(result) && result.value._tag === "Suspended"
       }
-      assert.isTrue(suspended, "parent run was not durably suspended")
 
       // well past the activity interrupt retry budget the run is still suspended
       // and the activity body has not been re-executed
@@ -934,8 +959,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       yield* TestClock.adjust(Duration.seconds(10))
       yield* sharding.pollStorage
-      for (let i = 0; i < 6; i++) {
-        yield* TestClock.adjust(Duration.seconds(5))
+      while (fiber.pollUnsafe() === undefined) {
+        yield* Effect.yieldNow
+        yield* TestClock.adjust(1)
         yield* sharding.pollStorage
       }
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["done-0", "done-1"]))
@@ -954,13 +980,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
 
       let suspended = false
-      for (let i = 0; i < 50 && !suspended; i++) {
-        yield* TestClock.adjust(1)
+      while (!suspended) {
+        yield* Effect.yieldNow
         yield* sharding.pollStorage
         const result = yield* ParallelDirectWorkflow.poll(executionId)
         suspended = Option.isSome(result) && result.value._tag === "Suspended"
       }
-      assert.isTrue(suspended, "parent run was not durably suspended")
       assert.strictEqual(flags.get("parallel-runs-parallel-direct"), 1)
       assert.isTrue(flags.get("parallel-child-start-parallel-direct-child-0"))
       assert.isTrue(flags.get("parallel-child-start-parallel-direct-child-1"))
@@ -968,8 +993,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       yield* TestClock.adjust(Duration.seconds(2))
       yield* sharding.pollStorage
-      for (let i = 0; i < 4; i++) {
-        yield* TestClock.adjust(Duration.seconds(1))
+      while (fiber.pollUnsafe() === undefined) {
+        yield* Effect.yieldNow
+        yield* TestClock.adjust(1)
         yield* sharding.pollStorage
       }
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["done-0", "done-1", "done-2"]))
