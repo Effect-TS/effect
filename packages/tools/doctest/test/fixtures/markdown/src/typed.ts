@@ -1,4 +1,4 @@
-throw new Error("R11_SOURCE_BODY_EXECUTED")
+throw new Error("The source module must not execute")
 
 /**
  * ```ts import.meta.vitest name=typed-jsdoc

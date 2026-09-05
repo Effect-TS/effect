@@ -7,15 +7,10 @@ export default defineConfig({
   test: {
     watch: false,
     include: [],
-    includeSource: process.env.DOCTEST_DIAGNOSTIC === "1"
-      ? ["diagnostic.md"]
-      : ["docs/typed.md", "docs/javascript.md", "src/typed.ts"],
-    setupFiles: ["./setup.ts"],
+    includeSource: ["docs/typed.md", "src/typed.ts"],
     passWithNoTests: false,
     fileParallelism: false,
     maxWorkers: 1,
-    retry: 0,
-    reporters: ["default", "json"],
-    outputFile: process.env.DOCTEST_RESULT ?? "result.json"
+    retry: 0
   }
 })
