@@ -73,6 +73,7 @@ declare const resultStringOrNumber: Result.Result<string, "err-1"> | Result.Resu
 declare const fiberStringOrNumber: Fiber.Fiber<string, "err-1"> | Fiber.Fiber<number, "err-2">
 declare const stringArray: Array<Effect.Effect<string, "err-3", "dep-3">>
 declare const numberRecord: Record<string, Effect.Effect<number, "err-4", "dep-4">>
+declare const unionRecord: { a: typeof string } | { b: typeof number }
 declare const optionalEffect: Option.Option<Effect.Effect<string, "err-1", "dep-1">>
 declare const iterableString: Effect.Effect<Iterable<string>, "err-1", "dep-1">
 
@@ -1161,6 +1162,22 @@ describe("all", () => {
     >()
     expect(Effect.all(numberRecord, { mode: "result", discard: true })).type.toBe<
       Effect.Effect<void, never, "dep-4">
+    >()
+  })
+
+  it("union of records", () => {
+    expect(Effect.all(unionRecord)).type.toBe<
+      Effect.Effect<{ a: string } | { b: number }, "err-1" | "err-2", "dep-1" | "dep-2">
+    >()
+    expect(Effect.all(unionRecord, { discard: true })).type.toBe<
+      Effect.Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
+    >()
+    expect(Effect.all(unionRecord, { mode: "result" })).type.toBe<
+      Effect.Effect<
+        { a: Result.Result<string, "err-1"> } | { b: Result.Result<number, "err-2"> },
+        never,
+        "dep-1" | "dep-2"
+      >
     >()
   })
 })
