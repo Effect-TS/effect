@@ -63,6 +63,57 @@ describe("Prompt.date", () => {
 
       assert.include(output, "24 11th PM")
     }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Tab advances to the next field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12)
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "MM-DD" }))
+
+      assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Tab wraps to the first field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12)
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD-MM" }))
+
+      assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("accumulates multiple digits while staying in the same field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12)
+      yield* MockTerminal.inputText("15")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD" }))
+
+      assert.deepStrictEqual(result, new Date(2024, 0, 15, 12))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Tab wraps a single editable field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12)
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD" }))
+
+      assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
+    }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.all", () => {

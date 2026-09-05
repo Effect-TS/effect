@@ -1777,7 +1777,7 @@ const processDateNext = (state: DateState) => {
     onSome: (next) => state.dateParts.indexOf(next)
   })
   return Action.NextFrame({
-    state: { ...state, cursor }
+    state: { ...state, typed: "", cursor }
   })
 }
 
