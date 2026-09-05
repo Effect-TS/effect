@@ -122,6 +122,8 @@ export interface HandlerContext<Tool extends Tool.Any> {
    *
    * Preliminary results are streamed to the caller before the handler completes,
    * enabling real-time progress updates for lengthy operations.
+   * Each tool call buffers up to 16 results. This effect suspends while that
+   * buffer is full, until the caller consumes results from the returned stream.
    */
   readonly preliminary: (result: Tool.Success<Tool>) => Effect.Effect<void>
 }
@@ -336,7 +338,7 @@ const Proto = {
           readonly result: any
           readonly isFailure: boolean
           readonly preliminary: boolean
-        }, Cause.Done>()
+        }, Cause.Done>({ capacity: 16 })
         const context: HandlerContext<any> = {
           toolCallId,
           preliminary: (result) =>
@@ -391,7 +393,7 @@ const Proto = {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
             return { ...output, encodedResult }
           })),
-          Stream.onEnd(Fiber.interrupt(fiber))
+          Stream.ensuring(Fiber.interrupt(fiber))
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
       })
 
