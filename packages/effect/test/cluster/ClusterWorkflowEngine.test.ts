@@ -18,6 +18,7 @@ import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
   ClusterWorkflowEngine,
+  Entity,
   MessageStorage,
   RunnerHealth,
   Runners,
@@ -25,6 +26,7 @@ import {
   Sharding,
   ShardingConfig
 } from "effect/unstable/cluster"
+import { Rpc } from "effect/unstable/rpc"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
 import {
   makeUnsafe as makeWorkflowEngineUnsafe,
@@ -721,6 +723,181 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
+  it.effect("coalesces parked child wakeups while parent cleanup is pending", () =>
+    Effect.gen(function*() {
+      const cleaningUp = yield* Latch.make()
+      const release = yield* Latch.make()
+      const indices = Array.from({ length: 64 }, (_, index) => index)
+      let parked = 0
+      let peak = 0
+      const storageLayer = Layer.effect(
+        MessageStorage.MessageStorage,
+        Effect.map(
+          MessageStorage.MessageStorage,
+          (storage) =>
+            MessageStorage.MessageStorage.of({
+              ...storage,
+              registerReplyHandler: (message) => {
+                if (
+                  message.envelope.address.entityType !== "Workflow/ManyChildrenParent" ||
+                  message.envelope.tag !== "run"
+                ) {
+                  return storage.registerReplyHandler(message)
+                }
+                return Effect.suspend(() => {
+                  parked++
+                  peak = Math.max(peak, parked)
+                  return storage.registerReplyHandler(message)
+                }).pipe(Effect.ensuring(Effect.sync(() => {
+                  parked--
+                })))
+              }
+            })
+        )
+      ).pipe(Layer.provideMerge(MessageStorage.layerMemory))
+      const Parent = Workflow.make("ManyChildrenParent", {
+        payload: {},
+        success: Schema.Array(Schema.Number),
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("ManyChildrenChild", {
+        payload: { index: Schema.Number },
+        success: Schema.Number,
+        idempotencyKey: ({ index }) => String(index)
+      })
+      const ParentLayer = Parent.toLayer(() =>
+        Activity.make({
+          name: "children",
+          success: Schema.Array(Schema.Number),
+          execute: Effect.forEach(indices, (index) => Child.execute({ index }), { concurrency: "unbounded" }).pipe(
+            Effect.ensuring(Effect.andThen(cleaningUp.open, release.await))
+          )
+        })
+      )
+      const ChildLayer = Child.toLayer(({ index }) =>
+        DurableClock.sleep({ name: "wait", duration: "2 seconds", inMemoryThreshold: Duration.zero }).pipe(
+          Effect.as(index)
+        )
+      )
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        yield* TestClock.adjust(1)
+        const executionId = yield* Parent.execute({}, { discard: true })
+        for (let i = 0; i < 100; i++) {
+          yield* TestClock.adjust(10)
+          yield* sharding.pollStorage
+        }
+        yield* cleaningUp.await
+        yield* TestClock.adjust("2 seconds")
+        for (let i = 0; i < 100; i++) {
+          yield* TestClock.adjust(10)
+          yield* sharding.pollStorage
+        }
+        const wakes = driver.journal.filter((message) =>
+          message._tag === "Request" &&
+          message.address.entityType === "Workflow/ManyChildrenParent" && message.tag === "resume"
+        )
+        const parkedBeforeRelease = parked
+        yield* release.open
+        for (let i = 0; i < 100; i++) {
+          yield* TestClock.adjust(10)
+          yield* sharding.pollStorage
+        }
+        assert.deepStrictEqual(
+          yield* Parent.poll(executionId),
+          Option.some(new Workflow.Complete({ exit: Exit.succeed(indices) }))
+        )
+        assert.strictEqual(parked, 0)
+        assert.strictEqual(wakes.length, indices.length)
+        // Each wake remains durable, but only one waits on this parent run.
+        assert.strictEqual(parkedBeforeRelease, 1, `peak parked reply handlers: ${peak}`)
+      }).pipe(Effect.provide(
+        Layer.mergeAll(ParentLayer, ChildLayer).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({ entityMailboxCapacity: 1000 }, storageLayer))
+        )
+      ))
+    }))
+
+  for (const queuedReplay of [false, true]) {
+    it.effect(`resumes a fresh entity from a legacy envelope with queued replay ${queuedReplay}`, () =>
+      Effect.gen(function*() {
+        const Parent = Workflow.make("ColdParent", {
+          payload: {},
+          success: Schema.Array(Schema.Number),
+          idempotencyKey: () => "parent"
+        })
+        const Child = Workflow.make("ColdChild", {
+          payload: { index: Schema.Number },
+          success: Schema.Number,
+          idempotencyKey: ({ index }) => String(index)
+        })
+        const gate = DurableDeferred.make("cold-child")
+        const ParentLayer = Parent.toLayer(() =>
+          Activity.make({
+            name: "children",
+            success: Schema.Array(Schema.Number),
+            execute: Effect.forEach([0, 1], (index) => Child.execute({ index }), { concurrency: "unbounded" })
+          })
+        )
+        const ChildLayer = Child.toLayer(({ index }) => DurableDeferred.await(gate).pipe(Effect.as(index)))
+        const LegacyResume = Entity.make("Workflow/ColdParent", [
+          Rpc.make("resume", { payload: {}, primaryKey: () => "" }).annotate(ClusterSchema.Persisted, true)
+        ])
+        yield* Effect.gen(function*() {
+          const sharding = yield* Sharding.Sharding
+          const driver = yield* MessageStorage.MemoryDriver
+          const engine = yield* WorkflowEngine
+          yield* TestClock.adjust(1)
+          const executionId = yield* Parent.execute({}, { discard: true })
+          for (let i = 0; i < 50; i++) {
+            yield* TestClock.adjust(10)
+            yield* sharding.pollStorage
+          }
+          assert.deepStrictEqual(
+            Option.map(yield* Parent.poll(executionId), (result) => result._tag),
+            Option.some("Suspended")
+          )
+          for (let i = 0; i < 12 && (yield* sharding.activeEntityCount) > 0; i++) {
+            yield* TestClock.adjust(5000)
+          }
+          assert.strictEqual(yield* sharding.activeEntityCount, 0)
+          if (queuedReplay) {
+            const run = driver.journal.find((message) =>
+              message._tag === "Request" &&
+              message.address.entityType === "Workflow/ColdParent" && message.tag === "run"
+            )!
+            assert(run._tag === "Request")
+            yield* sharding.reset(run.requestId)
+          }
+          const client = yield* LegacyResume.client
+          // The empty payload is the format of resume messages persisted before this fix.
+          const legacyResume = yield* client(executionId).resume({}).pipe(Effect.forkChild({ startImmediately: true }))
+          for (const index of [0, 1]) {
+            yield* engine.deferredDone(gate, {
+              workflowName: Child._tag,
+              executionId: yield* Child.executionId({ index }),
+              deferredName: gate.name,
+              exit: Exit.void
+            })
+          }
+          for (let i = 0; i < 100; i++) {
+            yield* TestClock.adjust(10)
+            yield* sharding.pollStorage
+          }
+          assert.deepStrictEqual(
+            yield* Parent.poll(executionId),
+            Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
+          )
+          assert.deepStrictEqual(legacyResume.pollUnsafe(), Exit.void)
+        }).pipe(Effect.provide(
+          Layer.mergeAll(ParentLayer, ChildLayer).pipe(
+            Layer.provideMerge(makeTestWorkflowEngine({ entityMessagePollInterval: "1 hour" }))
+          )
+        ))
+      }))
+  }
+
   it.effect("a parent stays suspended past the activity interrupt retry budget", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
@@ -987,11 +1164,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
-const makeTestWorkflowEngine = (config?: Partial<ShardingConfig.ShardingConfig["Service"]>) =>
+const makeTestWorkflowEngine = (
+  config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
+  storageLayer = MessageStorage.layerMemory
+) =>
   ClusterWorkflowEngine.layer.pipe(
     Layer.provideMerge(Sharding.layer),
     Layer.provide(Runners.layerNoop),
-    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provideMerge(storageLayer),
     Layer.provide(RunnerStorage.layerMemory),
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provide(ShardingConfig.layer({
