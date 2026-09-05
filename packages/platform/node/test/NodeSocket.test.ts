@@ -560,8 +560,8 @@ describe("Socket", () => {
         const server = yield* NodeSocketServer.makeWebSocket({ host: "127.0.0.1", port: 0 }).pipe(
           Scope.provide(serverScope)
         )
-        assert.strictEqual(server.address._tag, "TcpAddress")
-        if (server.address._tag !== "TcpAddress") return
+        assert.strictEqual(server.address._tag, "InetAddressV4")
+        if (server.address._tag !== "InetAddressV4") return
 
         yield* server.run((socket) =>
           Effect.gen(function*() {

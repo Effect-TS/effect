@@ -29,7 +29,7 @@ import {
   UrlParams
 } from "effect/unstable/http"
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
-import type * as NetAddress from "effect/unstable/net/NetAddress"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Socket } from "effect/unstable/socket"
 import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
@@ -98,7 +98,9 @@ describe("HttpServer", () => {
         Layer.build
       )
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as HttpServer.TcpAddress).port
+      assert.isTrue(NetAddress.isInetAddress(server.address))
+      if (!NetAddress.isInetAddress(server.address)) return
+      const port = server.address.port
 
       assert.strictEqual(yield* getStatusText(port), statusText)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
