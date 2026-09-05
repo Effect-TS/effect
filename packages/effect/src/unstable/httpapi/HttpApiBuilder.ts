@@ -163,6 +163,8 @@ export const group = <
 /**
  * Creates a reusable handler for a single endpoint in an API group.
  *
+ * **Details**
+ *
  * Returns the supplied callback unchanged, with its request, success, and error
  * types inferred from the endpoint. Pass the result to `handlers.handle` when
  * implementing the group.
