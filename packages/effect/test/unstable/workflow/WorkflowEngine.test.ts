@@ -108,10 +108,7 @@ describe("WorkflowEngine", () => {
   it.effect("layerMemory suspends the parent durably while parallel child workflows run inside an activity", () =>
     Effect.gen(function*() {
       const payload = { id: "fan-out-1", childCount: 3 }
-      const executionId = yield* FanOutParentWorkflow.executionId(payload)
-      const fiber = yield* FanOutParentWorkflow.execute(payload).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
+      const executionId = yield* FanOutParentWorkflow.execute(payload, { discard: true })
 
       // the parent suspends once every child has been dispatched
       let suspended = false
@@ -127,10 +124,13 @@ describe("WorkflowEngine", () => {
 
       // the children complete after a single sleep window and wake the parent
       yield* TestClock.adjust(Duration.seconds(2))
-      for (let i = 0; i < 4; i++) {
-        yield* TestClock.adjust(Duration.seconds(1))
+      for (let i = 0; i < 50; i++) {
+        yield* TestClock.adjust(1)
       }
-      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["done-0", "done-1", "done-2"]))
+      assert.deepStrictEqual(
+        yield* FanOutParentWorkflow.poll(executionId),
+        Option.some(new Workflow.Complete({ exit: Exit.succeed(["done-0", "done-1", "done-2"]) }))
+      )
       assert.isAtLeast(fanOutParentRuns, 2)
       assert.isAtMost(fanOutActivityRuns, fanOutParentRuns)
     }).pipe(
@@ -175,7 +175,9 @@ describe("WorkflowEngine", () => {
         yield* cleaningUp.await
         yield* TestClock.adjust("2 seconds")
         yield* release.open
-        yield* TestClock.adjust(1)
+        for (let i = 0; i < 50; i++) {
+          yield* TestClock.adjust(1)
+        }
         assert.deepStrictEqual(
           yield* Parent.poll(executionId),
           Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
@@ -184,6 +186,69 @@ describe("WorkflowEngine", () => {
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
       )
     }))
+
+  for (const mode of ["failure", "interruption"] as const) {
+    it.effect(`layerMemory releases a pending child registration on ${mode}`, () =>
+      Effect.gen(function*() {
+        const computingId = yield* Latch.make()
+        const started = new Set<number>()
+        const Parent = Workflow.make(`WorkflowEngine/PendingParent/${mode}`, {
+          payload: {},
+          success: Schema.Array(Schema.Number),
+          idempotencyKey: () => "parent"
+        })
+        const Child = Workflow.make(`WorkflowEngine/PendingChild/${mode}`, {
+          payload: { index: Schema.Number },
+          success: Schema.Number,
+          idempotencyKey: ({ index }) => {
+            if (index === 1) {
+              if (mode === "failure") throw new Error("cannot compute the execution id")
+              computingId.openUnsafe()
+            }
+            return String(index)
+          }
+        })
+        const ParentLayer = Parent.toLayer(() =>
+          Activity.make({
+            name: "children",
+            success: Schema.Array(Schema.Number),
+            execute: Effect.forEach([0, 1], (index) => {
+              const execute = Child.execute({ index })
+              if (index === 0) return execute
+              return mode === "failure"
+                ? Effect.catchDefect(execute, () => Effect.succeed(-1))
+                : Effect.raceFirst(execute, Effect.as(computingId.await, -1))
+            }, { concurrency: "unbounded" })
+          })
+        )
+        const ChildLayer = Child.toLayer(Effect.fnUntraced(function*({ index }) {
+          started.add(index)
+          yield* DurableClock.sleep({ name: "wait", duration: "2 seconds", inMemoryThreshold: Duration.zero })
+          return index
+        }))
+        yield* Effect.gen(function*() {
+          const executionId = yield* Parent.execute({}, { discard: true })
+          for (let i = 0; i < 50; i++) {
+            yield* TestClock.adjust(1)
+          }
+          assert.deepStrictEqual(
+            Option.map(yield* Parent.poll(executionId), (result) => result._tag),
+            Option.some("Suspended")
+          )
+          assert.deepStrictEqual([...started], [0])
+          yield* TestClock.adjust("2 seconds")
+          for (let i = 0; i < 50; i++) {
+            yield* TestClock.adjust(1)
+          }
+          assert.deepStrictEqual(
+            yield* Parent.poll(executionId),
+            Option.some(new Workflow.Complete({ exit: Exit.succeed([0, -1]) }))
+          )
+        }).pipe(
+          Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+        )
+      }))
+  }
 
   it.effect("discard returns the deterministic execution ID", () =>
     Effect.gen(function*() {

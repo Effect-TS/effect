@@ -627,7 +627,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       for (const started of [2, 4, 5]) {
         let suspended = false
         for (let i = 0; i < 50 && !suspended; i++) {
-          yield* TestClock.adjust(1)
+          yield* TestClock.adjust(10)
           yield* sharding.pollStorage
           const result = yield* ParallelParentWorkflow.poll(executionId)
           suspended = Option.isSome(result) && result.value._tag === "Suspended" &&
@@ -647,8 +647,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* TestClock.adjust(Duration.seconds(2))
         yield* sharding.pollStorage
       }
-      for (let i = 0; i < 10; i++) {
-        yield* TestClock.adjust(1)
+      for (let i = 0; i < 50; i++) {
+        yield* TestClock.adjust(10)
         yield* sharding.pollStorage
       }
       assert.deepStrictEqual(
@@ -660,6 +660,66 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         Number(flags.get("parallel-runs-parallel-bounded"))
       )
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("resumes when children complete during activity cleanup", () =>
+    Effect.gen(function*() {
+      const cleaningUp = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Parent = Workflow.make("CleanupParent", {
+        payload: {},
+        success: Schema.Array(Schema.Number),
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("CleanupChild", {
+        payload: { index: Schema.Number },
+        success: Schema.Number,
+        idempotencyKey: ({ index }) => String(index)
+      })
+      const ParentLayer = Parent.toLayer(() =>
+        Activity.make({
+          name: "children",
+          success: Schema.Array(Schema.Number),
+          execute: Effect.forEach([0, 1], (index) => Child.execute({ index }), { concurrency: "unbounded" }).pipe(
+            Effect.ensuring(Effect.andThen(cleaningUp.open, release.await))
+          )
+        })
+      )
+      const ChildLayer = Child.toLayer(({ index }) =>
+        DurableClock.sleep({ name: "wait", duration: "2 seconds", inMemoryThreshold: Duration.zero }).pipe(
+          Effect.as(index)
+        )
+      )
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* TestClock.adjust(1)
+        const executionId = yield* Parent.execute({}, { discard: true })
+        yield* TestClock.adjust(1)
+        yield* sharding.pollStorage
+        yield* cleaningUp.await
+        yield* TestClock.adjust("2 seconds")
+        yield* sharding.pollStorage
+        for (let i = 0; i < 10; i++) {
+          yield* TestClock.adjust(10)
+          yield* sharding.pollStorage
+        }
+        for (const index of [0, 1]) {
+          const childId = yield* Child.executionId({ index })
+          assert.deepStrictEqual(
+            yield* Child.poll(childId),
+            Option.some(new Workflow.Complete({ exit: Exit.succeed(index) }))
+          )
+        }
+        yield* release.open
+        for (let i = 0; i < 50; i++) {
+          yield* TestClock.adjust(10)
+          yield* sharding.pollStorage
+        }
+        assert.deepStrictEqual(
+          yield* Parent.poll(executionId),
+          Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
+        )
+      }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
+    }))
 
   it.effect("a parent stays suspended past the activity interrupt retry budget", () =>
     Effect.gen(function*() {
