@@ -21,6 +21,7 @@ import type * as Record from "../../Record.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import { ClientAbort } from "../rpc/RpcSchema.ts"
@@ -310,6 +311,28 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
+  // A child may complete while its parent run is still unwinding. Subscribe to
+  // the run's reply before reading storage so the wake cannot fall between the
+  // parent's last read and its suspended reply.
+  const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
+    const waiter = yield* storage.registerReplyHandler(
+      new Message.OutgoingRequest<any>({
+        envelope: request,
+        context: Context.empty() as Context.Context<any>,
+        rpc: ensureEntity(workflow).protocol.requests.get("run")!,
+        lastReceivedReply: Option.none(),
+        respond: () => Effect.void,
+        annotations: Context.empty()
+      })
+    ).pipe(Effect.interruptible, Effect.forkScoped({ startImmediately: true }))
+    const reply = yield* replyForRequestId(request.requestId)
+    if (Option.isSome(reply)) return
+    yield* Fiber.join(waiter).pipe(
+      Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
+      Effect.catchCause((cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause))
+    )
+  }, Effect.scoped)
+
   const interrupt = Effect.fnUntraced(
     function*(workflow: Workflow.Any, executionId: string) {
       ensureEntity(workflow)
@@ -358,11 +381,10 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
-            // Assigned when the handler is called, before RPC concurrency scheduling.
-            // Replays reuse the request id. Before the first run is delivered,
-            // resume reads its stored reply; a queued run will read child results.
+            // Latest run request for this entity; replays reuse its request id.
             let currentRun: Entity.Request<any> | undefined
-            let waitingResume: object | undefined
+            // Concurrent wakes share one wait for the current run to publish its reply.
+            const resumeGate = Semaphore.makeUnsafe(1)
             return {
               run: (request: Entity.Request<any>) => {
                 currentRun = request
@@ -458,50 +480,15 @@ export const make = Effect.gen(function*() {
               }),
 
               resume: () =>
-                ensureSuccess(
-                  Effect.gen(function*() {
-                    // The waiting request remains unacknowledged and durable, so
-                    // it also carries wakes acknowledged during this phase.
-                    if (waitingResume) return
-                    const token = {}
-                    waitingResume = token
-                    return yield* Effect.gen(function*() {
-                      if (currentRun) {
-                        // A child may complete while its parent is still unwinding.
-                        // Subscribe before checking storage so the wake cannot fall
-                        // between the parent's last read and its suspended reply.
-                        const request = currentRun
-                        const waiter = yield* storage.registerReplyHandler(
-                          new Message.OutgoingRequest<any>({
-                            envelope: request,
-                            context: Context.empty() as Context.Context<any>,
-                            rpc: ensureEntity(workflow).protocol.requests.get("run")!,
-                            lastReceivedReply: Option.none(),
-                            respond: () => Effect.void,
-                            annotations: Context.empty()
-                          })
-                        ).pipe(Effect.interruptible, Effect.forkScoped({ startImmediately: true }))
-                        const reply = yield* replyForRequestId(request.requestId)
-                        if (Option.isNone(reply)) {
-                          yield* Fiber.join(waiter).pipe(
-                            Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
-                            Effect.catchCause((cause) =>
-                              ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause)
-                            )
-                          )
-                        } else {
-                          yield* Fiber.interrupt(waiter)
-                        }
-                      }
-                      // Stop coalescing before reset can start another parent run.
-                      // Later child completions must be able to wake that replay.
-                      waitingResume = undefined
-                      yield* resume(workflow, executionId)
-                    }).pipe(Effect.ensuring(Effect.sync(() => {
-                      if (waitingResume === token) waitingResume = undefined
-                    })))
-                  }).pipe(Effect.scoped)
-                ).pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
+                resumeGate.withPermitsIfAvailable(1)(
+                  currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
+                ).pipe(
+                  // Release the gate before reset can start another parent run, so
+                  // later child completions can wake that replay.
+                  Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+                  ensureSuccess,
+                  Rpc.wrap({ fork: true, uninterruptible: true })
+                )
             }
           }),
           // Reserve a slot for deferred completions to wake the active run.

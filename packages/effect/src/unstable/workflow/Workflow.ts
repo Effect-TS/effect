@@ -759,8 +759,7 @@ export const wrapActivityResult = <A, E, R>(
 
 interface ActivityRegistration {
   readonly instance: WorkflowInstance["Service"]
-  adopted: boolean
-  released: boolean
+  state: "pending" | "adopted" | "released"
 }
 
 const PendingActivityRegistration = Context.Service<ActivityRegistration>(
@@ -771,27 +770,27 @@ const registerActivityUnsafe = (instance: WorkflowInstance["Service"]): Activity
   const state = instance.activityState
   if (state.count === 0) state.latch.closeUnsafe()
   state.count++
-  return { instance, adopted: false, released: false }
+  return { instance, state: "pending" }
 }
 
 const adoptActivityUnsafe = (
   context: Context.Context<never>,
   instance: WorkflowInstance["Service"]
 ): ActivityRegistration | undefined => {
-  const pending = Context.getOrElse(context, PendingActivityRegistration, () => undefined)
+  const pending = Context.getOrUndefined(context, PendingActivityRegistration)
   if (!pending || pending.instance !== instance) {
     return undefined
   }
-  if (pending.adopted || pending.released) {
+  if (pending.state !== "pending") {
     throw new Error("Workflow.wrapActivityResult: pending child registration has already been consumed")
   }
-  pending.adopted = true
+  pending.state = "adopted"
   return pending
 }
 
 const releaseActivityUnsafe = (registration: ActivityRegistration) => {
-  if (registration.released) return
-  registration.released = true
+  if (registration.state === "released") return
+  registration.state = "released"
   const state = registration.instance.activityState
   state.count--
   if (state.count === 0) state.latch.openUnsafe()
@@ -804,15 +803,12 @@ const releaseActivityUnsafe = (registration: ActivityRegistration) => {
  */
 const withPendingActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.contextWith((context: Context.Context<never>) => {
-    const instance = Context.getOrElse(context, InstanceTag, () => undefined)
+    const instance = Context.getOrUndefined(context, InstanceTag)
     if (!instance) return effect
     return Effect.acquireUseRelease(
       Effect.sync(() => registerActivityUnsafe(instance)),
       (registration) => Effect.provideService(effect, PendingActivityRegistration, registration),
-      (registration) =>
-        Effect.sync(() => {
-          releaseActivityUnsafe(registration)
-        })
+      (registration) => Effect.sync(() => releaseActivityUnsafe(registration))
     )
   })
 

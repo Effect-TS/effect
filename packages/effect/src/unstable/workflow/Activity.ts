@@ -198,20 +198,18 @@ const retryOnInterrupt = (
   policy: Schedule.Schedule<any, Cause.Cause<unknown>> = interruptRetryPolicy
 ) =>
 <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | WorkflowInstance> =>
-  Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
-    const instance = Context.get(context, InstanceTag)
-    return effect.pipe(
+  Effect.flatMap(InstanceTag, (instance) =>
+    effect.pipe(
       Effect.sandbox,
       // A suspension interrupts the activity body on purpose and must surface
       // as a suspended result instead of being retried.
       Effect.retry({ schedule: policy, while: () => !instance.suspended }),
-      Effect.catch((cause) => {
-        if (!Cause.hasInterrupts(cause)) return Effect.failCause(cause)
-        if (instance.suspended) return Effect.failCause(cause)
-        return Effect.die(`Activity "${name}" interrupted and retry attempts exhausted`)
-      })
-    )
-  })
+      Effect.catch((cause) =>
+        Cause.hasInterrupts(cause) && !instance.suspended
+          ? Effect.die(`Activity "${name}" interrupted and retry attempts exhausted`)
+          : Effect.failCause(cause)
+      )
+    ))
 
 /**
  * Retries an effect with `Effect.retry` while updating `CurrentAttempt` for
