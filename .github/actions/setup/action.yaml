@@ -13,6 +13,9 @@ runs:
   steps:
     - name: Install pnpm
       uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      env:
+        npm_config_audit: "false"
+        npm_config_fund: "false"
     - name: Install node
       uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:

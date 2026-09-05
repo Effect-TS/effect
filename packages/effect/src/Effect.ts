@@ -3942,7 +3942,7 @@ export const tapCauseFilter: {
  * @since 2.0.0
  */
 export const tapDefect: {
-  <E, B, E2, R2>(f: (defect: unknown) => Effect<B, E2, R2>): <A, R>(self: Effect<A, E, R>) => Effect<A, E | E2, R | R2>
+  <B, E2, R2>(f: (defect: unknown) => Effect<B, E2, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, R | R2>
   <A, E, R, B, E2, R2>(self: Effect<A, E, R>, f: (defect: unknown) => Effect<B, E2, R2>): Effect<A, E | E2, R | R2>
 } = internal.tapDefect
 
@@ -4419,8 +4419,8 @@ export const withErrorReporting: <
 >(
   effectOrOptions: Arg,
   options?: { readonly defectsOnly?: boolean | undefined } | undefined
-) => [Arg] extends [Effect<infer _A, infer _E, infer _R>] ? Arg : <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> =
-  internal.withErrorReporting
+) => [Arg] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R>
+  : <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = internal.withErrorReporting
 
 // -----------------------------------------------------------------------------
 // Fallback
@@ -4609,21 +4609,8 @@ export const timeoutOption: {
 } = internal.timeoutOption
 
 /**
- * Applies a timeout to an effect, with a fallback effect executed if the timeout is reached.
- *
- * **When to use**
- *
- * Use when a timeout of an `Effect` should switch to a fallback effect.
- *
- * **Details**
- *
- * The fallback effect is created lazily by `orElse` and may introduce its own
- * success, failure, and requirement types.
- *
- * **Gotchas**
- *
- * If the timeout wins, the source effect is interrupted before the fallback is
- * run.
+ * Applies a timeout to an effect, lazily evaluating `orElse` after interrupting
+ * the source if the timeout is reached.
  *
  * **Example** (Falling back on timeout)
  *

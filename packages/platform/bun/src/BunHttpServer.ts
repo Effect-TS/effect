@@ -186,11 +186,17 @@ export const make = Effect.fnUntraced(
         yield* Scope.addFinalizerExit(serveScope, () => {
           const index = handlerStack.indexOf(handler)
           if (index !== -1) handlerStack.splice(index, 1)
-          server.reload({ fetch: handlerStack[handlerStack.length - 1] })
+          server.reload({
+            fetch: handlerStack[handlerStack.length - 1],
+            ...(options.routes === undefined ? undefined : { routes: options.routes })
+          })
           return handlerStack.length === 1 ? preemptiveShutdown : Effect.void
         })
         handlerStack.push(handler)
-        server.reload({ fetch: handler })
+        server.reload({
+          fetch: handler,
+          ...(options.routes === undefined ? undefined : { routes: options.routes })
+        })
       })
     })
   }

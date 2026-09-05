@@ -1340,7 +1340,7 @@ export const fnUntracedEager: Effect.fn.Untraced = (
       : function(this: any) {
         let effect = fromIteratorEagerUnsafe(() => body.apply(this, arguments))
         for (const pipeable of pipeables) {
-          effect = pipeable(effect)
+          effect = pipeable(effect, ...arguments)
         }
         return effect
       }
@@ -2827,9 +2827,9 @@ export const tapErrorTag: {
 
 /** @internal */
 export const tapDefect: {
-  <E, B, E2, R2>(
+  <B, E2, R2>(
     f: (defect: unknown) => Effect.Effect<B, E2, R2>
-  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (defect: unknown) => Effect.Effect<B, E2, R2>
@@ -3184,7 +3184,10 @@ export const catchReason: {
   > =>
     catchIf(
       self,
-      ((e: any) => isTagged(e, errorTag) && hasProperty(e, "reason")) as any,
+      ((e: any) =>
+        isTagged(e, errorTag) &&
+        hasProperty(e, "reason") &&
+        (orElse !== undefined || isTagged(e.reason, reasonTag))) as any,
       (e: any): Effect.Effect<A2 | A3, E | E2 | E3, R2 | R3> => {
         const reason = e.reason as any
         if (isTagged(reason, reasonTag)) return f(reason as any, e)
@@ -3284,7 +3287,8 @@ export const catchReasons: {
       isTagged(e, errorTag) &&
       hasProperty(e, "reason") &&
       hasProperty(e.reason, "_tag") &&
-      isString(e.reason._tag)) as any,
+      isString(e.reason._tag) &&
+      (orElse !== undefined || (keys ??= Object.keys(cases)).includes(e.reason._tag))) as any,
     (e: any) => {
       const reason = e.reason
       keys ??= Object.keys(cases)
@@ -3790,9 +3794,9 @@ export const timeoutOrElse: {
       readonly orElse: LazyArg<Effect.Effect<A2, E2, R2>>
     }
   ): Effect.Effect<A | A2, E | E2, R | R2> =>
-    raceFirst(
-      self,
-      flatMap(sleep(options.duration), options.orElse)
+    flatMap(
+      timeoutOption(self, options.duration),
+      (option): Effect.Effect<A | A2, E2, R2> => Option.isNone(option) ? options.orElse() : succeed(option.value)
     )
 )
 
@@ -6831,7 +6835,7 @@ export const withErrorReporting: <
   options?: {
     readonly defectsOnly?: boolean | undefined
   } | undefined
-) => [Arg] extends [Effect.Effect<infer _A, infer _E, infer _R>] ? Arg
+) => [Arg] extends [Effect.Effect<infer A, infer E, infer R>] ? Effect.Effect<A, E, R>
   : <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = dual(
     (args) => isEffect(args[0]),
     <A, E, R>(
