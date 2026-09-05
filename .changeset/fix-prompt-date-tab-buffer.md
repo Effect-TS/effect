@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reset the typed input buffer when Tab moves between fields in `Prompt.date`, including when navigation wraps. Digits entered in the newly selected field no longer include input from the previous field.
+Fix `Prompt.date` carrying typed digits into the next field when pressing Tab, including when navigation wraps.
