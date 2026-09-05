@@ -76,6 +76,9 @@ import type { Unify } from "./Unify.ts"
 import * as Cookies_ from "./unstable/http/Cookies.ts"
 import * as Headers_ from "./unstable/http/Headers.ts"
 import * as UrlParams_ from "./unstable/http/UrlParams.ts"
+import * as IpInterface_ from "./unstable/net/IpInterface.ts"
+import * as IpNetwork_ from "./unstable/net/IpNetwork.ts"
+import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
 const TypeId = InternalMake.TypeId
 /**
@@ -11264,6 +11267,333 @@ export interface DateTimeZonedFromString extends decodeTo<DateTimeZoned, String>
 export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedString.pipe(
   decodeTo(DateTimeZoned, dateTimeZonedFromString)
 )
+
+const netAddressFromString = <A, E extends { readonly message: string }>(
+  declaration: declare<A>,
+  parse: (input: string) => Result_.Result<A, E>,
+  encode: (value: A) => string,
+  identifier: string
+) =>
+  String.pipe(decodeTo(
+    declaration,
+    SchemaTransformation.transformOrFail({
+      decode: (input, options) => {
+        const result = parse(input)
+        return Result_.isSuccess(result)
+          ? Effect.succeed(result.success)
+          : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+      },
+      encode: (value) => Effect.succeed(encode(value))
+    })
+  )).annotate({ identifier })
+
+/**
+ * Schema for already-constructed MAC address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MacAddress: declare<NetAddress_.MacAddress> = declare(NetAddress_.isMacAddress, {
+  identifier: "MacAddress"
+})
+
+/**
+ * Schema for MAC addresses encoded as canonical colon-separated hexadecimal strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MacAddressFromString = netAddressFromString(
+  MacAddress,
+  NetAddress_.macAddressFromString,
+  NetAddress_.formatMacAddress,
+  "MacAddressFromString"
+)
+
+/**
+ * Schema for already-constructed IPv4 address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4Address: declare<NetAddress_.Ipv4Address> = declare(NetAddress_.isIpv4Address, {
+  identifier: "Ipv4Address"
+})
+
+/**
+ * Schema for IPv4 addresses encoded as canonical dotted-decimal strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4AddressFromString = netAddressFromString(
+  Ipv4Address,
+  NetAddress_.ipv4FromString,
+  NetAddress_.formatIp,
+  "Ipv4AddressFromString"
+)
+
+/**
+ * Schema for already-constructed IPv6 address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6Address: declare<NetAddress_.Ipv6Address> = declare(NetAddress_.isIpv6Address, {
+  identifier: "Ipv6Address"
+})
+
+/**
+ * Schema for IPv6 addresses encoded as canonical strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6AddressFromString = netAddressFromString(
+  Ipv6Address,
+  NetAddress_.ipv6FromString,
+  NetAddress_.formatIp,
+  "Ipv6AddressFromString"
+)
+
+/**
+ * Schema for already-constructed IPv4 or IPv6 address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpAddress: declare<NetAddress_.IpAddress> = declare(NetAddress_.isIpAddress, {
+  identifier: "IpAddress"
+})
+
+/**
+ * Schema for IP addresses encoded as canonical numeric strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpAddressFromString = netAddressFromString(
+  IpAddress,
+  NetAddress_.ipFromString,
+  NetAddress_.formatIp,
+  "IpAddressFromString"
+)
+
+/**
+ * Schema for already-constructed IPv4 interface address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4Interface: declare<IpInterface_.Ipv4Interface> = declare(IpInterface_.isIpv4Interface, {
+  identifier: "Ipv4Interface"
+})
+
+/**
+ * Schema for IPv4 interface addresses encoded as an address and prefix length.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4InterfaceFromString = netAddressFromString(
+  Ipv4Interface,
+  IpInterface_.ipv4FromString,
+  IpInterface_.format,
+  "Ipv4InterfaceFromString"
+)
+
+/**
+ * Schema for already-constructed IPv6 interface address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6Interface: declare<IpInterface_.Ipv6Interface> = declare(IpInterface_.isIpv6Interface, {
+  identifier: "Ipv6Interface"
+})
+
+/**
+ * Schema for IPv6 interface addresses encoded as an address and prefix length.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6InterfaceFromString = netAddressFromString(
+  Ipv6Interface,
+  IpInterface_.ipv6FromString,
+  IpInterface_.format,
+  "Ipv6InterfaceFromString"
+)
+
+/**
+ * Schema for already-constructed IPv4 or IPv6 interface address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpInterface: declare<IpInterface_.IpInterface> = declare(IpInterface_.isIpInterface, {
+  identifier: "IpInterface"
+})
+
+/**
+ * Schema for IPv4 or IPv6 interface addresses encoded as an address and prefix length.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpInterfaceFromString = netAddressFromString(
+  IpInterface,
+  IpInterface_.fromString,
+  IpInterface_.format,
+  "IpInterfaceFromString"
+)
+
+/**
+ * Schema for already-constructed canonical IPv4 network prefixes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4Network: declare<IpNetwork_.Ipv4Network> = declare(IpNetwork_.isIpv4Network, {
+  identifier: "Ipv4Network"
+})
+
+/**
+ * Schema for canonical IPv4 network prefixes encoded in CIDR notation.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4NetworkFromString = netAddressFromString(
+  Ipv4Network,
+  IpNetwork_.ipv4FromString,
+  IpNetwork_.format,
+  "Ipv4NetworkFromString"
+)
+
+/**
+ * Schema for already-constructed canonical IPv6 network prefixes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6Network: declare<IpNetwork_.Ipv6Network> = declare(IpNetwork_.isIpv6Network, {
+  identifier: "Ipv6Network"
+})
+
+/**
+ * Schema for canonical IPv6 network prefixes encoded in CIDR notation.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6NetworkFromString = netAddressFromString(
+  Ipv6Network,
+  IpNetwork_.ipv6FromString,
+  IpNetwork_.format,
+  "Ipv6NetworkFromString"
+)
+
+/**
+ * Schema for already-constructed canonical IPv4 or IPv6 network prefixes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpNetwork: declare<IpNetwork_.IpNetwork> = declare(IpNetwork_.isIpNetwork, {
+  identifier: "IpNetwork"
+})
+
+/**
+ * Schema for canonical IPv4 or IPv6 network prefixes encoded in CIDR notation.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpNetworkFromString = netAddressFromString(
+  IpNetwork,
+  IpNetwork_.fromString,
+  IpNetwork_.format,
+  "IpNetworkFromString"
+)
+
+/**
+ * Schema for already-constructed resolved IPv4 internet addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddressV4: declare<NetAddress_.InetAddressV4> = declare(NetAddress_.isInetAddressV4, {
+  identifier: "InetAddressV4"
+})
+
+/**
+ * Schema for already-constructed resolved IPv6 internet addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddressV6: declare<NetAddress_.InetAddressV6> = declare(NetAddress_.isInetAddressV6, {
+  identifier: "InetAddressV6"
+})
+
+/**
+ * Schema for already-constructed resolved internet addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddress: declare<NetAddress_.InetAddress> = declare(NetAddress_.isInetAddress, {
+  identifier: "InetAddress"
+})
+
+/**
+ * Schema for resolved internet addresses encoded as numeric socket strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddressFromString = netAddressFromString(
+  InetAddress,
+  NetAddress_.inetAddressFromString,
+  NetAddress_.formatInet,
+  "InetAddressFromString"
+)
+
+/**
+ * Schema for already-constructed Unix-domain filesystem addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UnixPathAddress: declare<NetAddress_.UnixPathAddress> = declare(
+  NetAddress_.isUnixPathAddress,
+  { identifier: "UnixPathAddress" }
+)
+
+/**
+ * Schema for Unix-domain filesystem addresses encoded as opaque path strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UnixPathAddressFromString = String.pipe(decodeTo(
+  UnixPathAddress,
+  SchemaTransformation.transform({
+    decode: NetAddress_.unixPathAddress,
+    encode: (address) => address.path
+  })
+)).annotate({ identifier: "UnixPathAddressFromString" })
+
+/**
+ * Schema for already-constructed portable concrete socket addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const SocketAddress: declare<NetAddress_.SocketAddress> = declare(NetAddress_.isSocketAddress, {
+  identifier: "SocketAddress"
+})
 
 // -----------------------------------------------------------------------------
 // Duration schemas

@@ -22,6 +22,7 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as References from "effect/References"
 import * as Scope from "effect/Scope"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
 import type * as Http from "node:http"
@@ -31,6 +32,19 @@ import * as NodeSocket from "./NodeSocket.ts"
 import { NodeWS } from "./NodeSocket.ts"
 
 const isDeno = "Deno" in globalThis
+
+const socketAddressFromNode = (
+  address: string | Net.AddressInfo
+): Effect.Effect<NetAddress.SocketAddress, SocketServer.SocketServerError> =>
+  typeof address === "string"
+    ? Effect.succeed(NetAddress.unixPathAddress(address))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
+      Effect.mapError((cause) =>
+        new SocketServer.SocketServerError({
+          reason: new SocketServer.SocketServerOpenError({ cause })
+        })
+      )
+    )
 
 /**
  * Service tag for the Node `IncomingMessage` associated with the current
@@ -228,18 +242,9 @@ export const makeWebSocket: (
     )
   })
 
-  const address = server.address()!
+  const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
-    address: typeof address === "string" ?
-      {
-        _tag: "UnixAddress",
-        path: address
-      } :
-      {
-        _tag: "TcpAddress",
-        hostname: address.address,
-        port: address.port
-      },
+    address: boundAddress,
     run
   })
 })
@@ -376,18 +381,9 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
     })
   })
 
-  const address = server.address()!
+  const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
-    address: typeof address === "string" ?
-      {
-        _tag: "UnixAddress",
-        path: address
-      } :
-      {
-        _tag: "TcpAddress",
-        hostname: address.address,
-        port: address.port
-      },
+    address: boundAddress,
     run
   })
 })
