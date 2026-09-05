@@ -3812,6 +3812,17 @@ describe("Effect", () => {
       defaultValue: () => []
     })
 
+    it.effect("skips restoration when the provider expires before scope closure", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1)
+          return yield* CurrentNumber
+        }).pipe(Effect.provideService(CurrentNumber, 1), Effect.scoped)
+
+        assert.strictEqual(result, 2)
+        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
+      }))
+
     it.effect("updates a Context.Service until the scope closes", () =>
       Effect.gen(function*() {
         const before = yield* CurrentNumber
