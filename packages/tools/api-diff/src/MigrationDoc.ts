@@ -222,27 +222,31 @@ const migrationEntries = (
   return entries.sort((left, right) => compareStrings(left.module, right.module) || compareStrings(left.id, right.id))
 }
 
-const exampleFence = (example: string): string =>
-  "`".repeat(Math.max(3, ...(example.match(/`+/g)?.map((run) => run.length + 1) ?? [])))
-
 const renderDetailedEntry = (
   entry: MigrationEntry,
   annotation: MigrationAnnotation,
   example: string
-): ReadonlyArray<string> => [
-  `#### ${codeSpan(displayApiId(entry.id))}`,
-  "",
-  `**Replacement:** ${codeSpan(annotation.replacement)}`,
-  "",
-  escapeAnnotationText(annotation.note),
-  "",
-  "**Example**",
-  "",
-  `${exampleFence(example)}ts`,
-  example,
-  exampleFence(example),
-  ""
-]
+): ReadonlyArray<string> => {
+  let fenceLength = 3
+  for (const match of example.matchAll(/`+/g)) {
+    fenceLength = Math.max(fenceLength, match[0].length + 1)
+  }
+  const fence = "`".repeat(fenceLength)
+  return [
+    `#### ${codeSpan(displayApiId(entry.id))}`,
+    "",
+    `**Replacement:** ${codeSpan(annotation.replacement)}`,
+    "",
+    escapeAnnotationText(annotation.note),
+    "",
+    "**Example**",
+    "",
+    `${fence}ts`,
+    example,
+    fence,
+    ""
+  ]
+}
 
 const renderCompactEntry = (
   entry: MigrationEntry,

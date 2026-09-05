@@ -143,6 +143,30 @@ describe("migration document", () => {
     assert(!document.includes("**After**"))
   })
 
+  it.each([
+    { name: "plain", example: "const value = 1", fence: "```" },
+    { name: "empty", example: "", fence: "```" },
+    { name: "single backticks", example: "const value = `text`", fence: "```" },
+    { name: "double backticks", example: "// ``literal``", fence: "```" },
+    { name: "triple backticks", example: "/*\n```text\nliteral\n```\n*/", fence: "````" },
+    { name: "four backticks", example: "/*\n````text\nliteral\n````\n*/", fence: "`````" },
+    { name: "longest run last", example: "const value = `text`\n/*\n```\n`````\n*/", fence: "``````" },
+    { name: "whitespace", example: "\n  const value = 1  \n\n", fence: "```" },
+    { name: "many backtick runs", example: "// ` ".repeat(150_000), fence: "```" }
+  ])("preserves example framing: $name", ({ example, fence }) => {
+    const document = renderMigrationDocument(
+      diff,
+      new Map([...annotations, ["effect/Zeta#changed", {
+        replacement: "Zeta.changed()",
+        note: "Call the zero-argument form.",
+        example
+      }]]),
+      "## Import Map\n"
+    )
+
+    assert.strictEqual(document.split("**Example**\n\n")[1], `${fence}ts\n${example}\n${fence}\n`)
+  })
+
   it("escapes annotation prose while preserving inline code and fenced examples", () => {
     const document = renderMigrationDocument(
       diff,
