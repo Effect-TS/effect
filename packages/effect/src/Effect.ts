@@ -331,13 +331,8 @@ export declare namespace All {
           ] ? Mode extends true ? Result.Result<_A, _E> : _A
             : never
         },
-      Mode extends true ? never
-        : keyof T extends never ? never
-        : T[keyof T] extends Effect<infer _A, infer _E, infer _R> ? _E
-        : never,
-      keyof T extends never ? never
-        : T[keyof T] extends Effect<infer _A, infer _E, infer _R> ? _R
-        : never
+      Mode extends true ? never : Error<ObjectValues<T>>,
+      Services<ObjectValues<T>>
     >
     : never
 
@@ -377,6 +372,8 @@ export declare namespace All {
     : [Arg] extends [Iterable<EffectAny>] ? ReturnIterable<Arg, IsDiscard<O>, IsResult<O>>
     : [Arg] extends [Record<string, EffectAny>] ? ReturnObject<Arg, IsDiscard<O>, IsResult<O>>
     : never
+
+  type ObjectValues<T> = T extends unknown ? T[keyof T] : never
 }
 
 /**
