@@ -165,9 +165,79 @@ describe("Command", () => {
         assert.include(output, "Run this command?")
       }).pipe(Effect.provide(TestLayer)))
 
-    it.effect("should redact values in wizard command output", () =>
+    it.effect("should run negative integer flag values with --wizard", () =>
       Effect.gen(function*() {
-        const secret = "hunter2-secret"
+        const captured: Array<number> = []
+        const command = Command.make("demo", {
+          offset: Flag.integer("offset")
+        }, ({ offset }) => Effect.sync(() => captured.push(offset)))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("-2")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, [-2])
+        const output = [...yield* TestConsole.logLines, ...yield* MockTerminal.displayLines].join("\n")
+        assert.include(output, "$ demo --offset=-2")
+      }).pipe(Effect.provide(TestLayer)))
+
+    for (
+      const { args: expectedArgs, value } of [
+        { value: "-v", args: ["--value=-v"] },
+        { value: "--verbose", args: ["--value=--verbose"] },
+        { value: "--", args: ["--value=--"] },
+        { value: "--mode=x=y", args: ["--value=--mode=x=y"] },
+        { value: "plain", args: ["--value", "plain"] },
+        { value: "", args: ["--value", ""] },
+        { value: "-", args: ["--value", "-"] }
+      ]
+    ) {
+      it.effect(`should round trip wizard flag value ${JSON.stringify(value)}`, () =>
+        Effect.gen(function*() {
+          const captured: Array<string> = []
+          const command = Command.make("demo", {
+            value: Flag.string("value")
+          }, ({ value }) => Effect.sync(() => captured.push(value)))
+
+          const fiber = yield* Command.wizard(command).pipe(Effect.forkChild)
+          yield* MockTerminal.inputText(value)
+          yield* MockTerminal.inputKey("enter")
+          const args = yield* Fiber.join(fiber)
+
+          assert.deepStrictEqual(args, ["demo", ...expectedArgs])
+          yield* Command.runWith(command, { version: "1.0.0" })(args.slice(1))
+          assert.deepStrictEqual(captured, [value])
+        }).pipe(Effect.provide(TestLayer)))
+    }
+
+    it.effect("should round trip mixed repeated wizard flag values", () =>
+      Effect.gen(function*() {
+        const values = ["-v", "plain", "--name=x", ""]
+        const captured: Array<ReadonlyArray<string>> = []
+        const command = Command.make("demo", {
+          value: Flag.string("value").pipe(Flag.atLeast(1))
+        }, ({ value }) => Effect.sync(() => captured.push(value)))
+
+        const fiber = yield* Command.wizard(command).pipe(Effect.forkChild)
+        yield* MockTerminal.inputKey("backspace")
+        yield* MockTerminal.inputText("4")
+        yield* MockTerminal.inputKey("enter")
+        for (const value of values) {
+          yield* MockTerminal.inputText(value)
+          yield* MockTerminal.inputKey("enter")
+        }
+        const args = yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(args, ["demo", "--value=-v", "--value", "plain", "--value=--name=x", "--value", ""])
+        yield* Command.runWith(command, { version: "1.0.0" })(args.slice(1))
+        assert.deepStrictEqual(captured, [values])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should redact option-looking values in wizard command output", () =>
+      Effect.gen(function*() {
+        const secret = "-hunter2-secret"
         const captured: Array<readonly [string, string]> = []
         const command = Command.make("login", {
           password: Flag.redacted("password"),
@@ -190,10 +260,8 @@ describe("Command", () => {
         const commandReady = output.slice(output.indexOf("Command ready"))
 
         assert.deepStrictEqual(captured, [[secret, "alice"]])
-        assert.include(currentCommand, "--password")
-        assert.include(currentCommand, "<redacted>")
-        assert.include(commandReady, "--password")
-        assert.include(commandReady, "<redacted>")
+        assert.include(currentCommand, "--password=<redacted>")
+        assert.include(commandReady, "--password=<redacted>")
         assert.notInclude(output, secret)
       }).pipe(Effect.provide(TestLayer)))
 

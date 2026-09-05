@@ -168,7 +168,12 @@ const promptParam = Effect.fnUntraced(
     if (single.kind === Param.argumentKind) {
       return values
     }
-    return values.flatMap((value) => [commandLineArg(`--${single.name}`), value])
+    // Inline option-looking values so the lexer cannot interpret them as flags or the -- delimiter.
+    return values.flatMap((value) =>
+      value.value.startsWith("-") && value.value.length > 1
+        ? [commandLineArg(`--${single.name}=${value.value}`, `--${single.name}=${value.displayValue}`)]
+        : [commandLineArg(`--${single.name}`), value]
+    )
   }
 )
 
