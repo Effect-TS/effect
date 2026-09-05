@@ -1250,6 +1250,24 @@ describe("Effect.updateServiceScoped", () => {
   })
 })
 
+describe("Effect.effectify", () => {
+  it("error mappers receive caller inputs without the callback", () => {
+    const fn = (input: string, callback: (error: Error | null, value?: string) => void) => callback(null, input)
+
+    Effect.effectify(fn, (_error, args) => {
+      expect(args).type.toBe<[input: string]>()
+      return args
+    })
+    Effect.effectify(fn, (_error, args) => {
+      expect(args).type.toBe<[input: string]>()
+      return args
+    }, (_error, args) => {
+      expect(args).type.toBe<[input: string]>()
+      return args
+    })
+  })
+})
+
 describe("Effect.withExecutionPlan", () => {
   const plan = null as unknown as ExecutionPlan.ExecutionPlan<{
     provides: "provided"
