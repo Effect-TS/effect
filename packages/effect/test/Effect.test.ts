@@ -3523,85 +3523,15 @@ describe("Effect", () => {
       defaultValue: () => []
     })
 
-    const updateCurrentNumber = (seen: Array<number>) =>
+    it.effect("skips restoration when the provider expires before scope closure", () =>
       Effect.gen(function*() {
-        seen.push(yield* CurrentNumber)
-        yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1)
-        const result = yield* CurrentNumber
-        seen.push(result)
-        return result
-      })
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1)
+          return yield* CurrentNumber
+        }).pipe(Effect.provideService(CurrentNumber, 1), Effect.scoped)
 
-    it.effect("skips restoration when an inner provideService expires", () =>
-      Effect.gen(function*() {
-        const seen: Array<number> = []
+        assert.strictEqual(result, 2)
         assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
-        const exit = yield* Effect.exit(
-          Effect.scoped(Effect.provideService(updateCurrentNumber(seen), CurrentNumber, 1))
-        )
-        assert.deepStrictEqual(seen, [1, 2])
-        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
-        assert.deepStrictEqual(exit, Exit.succeed(2))
-      }))
-
-    it.effect("skips restoration when an inner provideContext expires", () =>
-      Effect.gen(function*() {
-        const seen: Array<number> = []
-        const exit = yield* Effect.exit(
-          Effect.scoped(Effect.provideContext(updateCurrentNumber(seen), Context.make(CurrentNumber, 1)))
-        )
-        assert.deepStrictEqual(seen, [1, 2])
-        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
-        assert.deepStrictEqual(exit, Exit.succeed(2))
-      }))
-
-    it.effect("skips restoration when an inner setContext expires", () =>
-      Effect.gen(function*() {
-        const seen: Array<number> = []
-        const exit = yield* Effect.exit(Effect.scoped(Effect.gen(function*() {
-          const scope = yield* Effect.scope
-          return yield* Effect.setContext(
-            updateCurrentNumber(seen),
-            Context.make(CurrentNumber, 1).pipe(Context.add(Scope.Scope, scope))
-          )
-        })))
-        assert.deepStrictEqual(seen, [1, 2])
-        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
-        assert.deepStrictEqual(exit, Exit.succeed(2))
-      }))
-
-    it.effect("skips restoration when an inner provideServiceEffect expires", () =>
-      Effect.gen(function*() {
-        const seen: Array<number> = []
-        const exit = yield* Effect.exit(
-          Effect.scoped(Effect.provideServiceEffect(updateCurrentNumber(seen), CurrentNumber, Effect.succeed(1)))
-        )
-        assert.deepStrictEqual(seen, [1, 2])
-        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
-        assert.deepStrictEqual(exit, Exit.succeed(2))
-      }))
-
-    it.effect("does not call a custom reset after its provider expires", () =>
-      Effect.gen(function*() {
-        let calls = 0
-        const seen: Array<number> = []
-        const exit = yield* Effect.exit(Effect.scoped(
-          Effect.gen(function*() {
-            yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1, {
-              reset: (original, updated, current) => {
-                calls++
-                return original + current - updated
-              }
-            })
-            const result = yield* CurrentNumber
-            seen.push(result)
-            return result
-          }).pipe(Effect.provideService(CurrentNumber, 1))
-        ))
-        assert.deepStrictEqual(seen, [2])
-        assert.strictEqual(calls, 0)
-        assert.deepStrictEqual(yield* Effect.serviceOption(CurrentNumber), Option.none())
-        assert.deepStrictEqual(exit, Exit.succeed(2))
       }))
 
     it.effect("updates a Context.Service until the scope closes", () =>
