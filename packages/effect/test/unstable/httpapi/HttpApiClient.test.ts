@@ -34,7 +34,7 @@ describe("HttpApiClient", () => {
           httpClient: clientFromResponse(() => new Response(textStream(["data: ", "hello\n\n"]), { status: 200 }))
         })
 
-        const limitedStream = yield* client.test.events({}, { sseOptions: { maxEventSize: 4 } })
+        const limitedStream = yield* client.test.events({ sseOptions: { maxEventSize: 4 } })
         const defaultStream = yield* client.test.events({})
         const [error, events] = yield* Effect.all([
           limitedStream.pipe(Stream.runCollect, Effect.flip),
@@ -252,7 +252,7 @@ describe("HttpApiClient", () => {
           )
         })
 
-        const value = yield* client.test.chat({}, { sseOptions: { maxEventSize: 4 } })
+        const value = yield* client.test.chat({ sseOptions: { maxEventSize: 4 } })
         if (!(HttpApiSchema.WithHeadersValueTypeId in value)) {
           throw new Error("Expected WithHeaders response")
         }

@@ -2,7 +2,7 @@ import { Effect, Layer, Schema, type Stream } from "effect"
 import type { Sse } from "effect/unstable/encoding"
 import { HttpClient, type HttpClientError, type HttpClientResponse } from "effect/unstable/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/unstable/httpapi"
-import { type Atom, AtomHttpApi } from "effect/unstable/reactivity"
+import { type Atom, AtomHttpApi, AtomRegistry } from "effect/unstable/reactivity"
 import { describe, expect, it } from "tstyche"
 
 class EndpointError extends Schema.Error<EndpointError>("EndpointError")({
@@ -53,6 +53,44 @@ type InnerError = HttpClientError.HttpClientError | Schema.SchemaError | Sse.Ret
 type SseStream = Stream.Stream<string, InnerError>
 
 describe("AtomHttpApi", () => {
+  it("accepts SSE decode options in query and mutation requests", () => {
+    const StreamingClient = AtomHttpApi.Service()("StreamingClient", {
+      api: HttpApi.make("StreamingApi").add(
+        HttpApiGroup.make("group").add(
+          HttpApiEndpoint.get("events", "/events", {
+            params: { id: Schema.String },
+            success: HttpApiSchema.StreamSse({ data: Schema.String })
+          })
+        )
+      ),
+      httpClient: Layer.succeed(HttpClient.HttpClient, HttpClient.make(() => Effect.die("not used")))
+    })
+    const defaults = StreamingClient.query("group", "events", { params: { id: "1" } })
+    const query = StreamingClient.query("group", "events", {
+      params: { id: "1" },
+      sseOptions: { maxEventSize: 4 }
+    })
+    expect(query).type.toBe<typeof defaults>()
+    expect(StreamingClient.query).type.not.toBeCallableWith("group", "events", {
+      params: { id: "1" },
+      sseOptions: { maxEventSize: "4" }
+    })
+    expect(StreamingClient.query).type.not.toBeCallableWith("group", "events", { sseOptions: {} })
+
+    const mutation = StreamingClient.mutation("group", "events", { responseMode: "decoded-only" })
+    const request: Extract<Parameters<typeof mutation.write>[1], { readonly params: unknown }> = {
+      params: { id: "1" },
+      sseOptions: { maxEventSize: Infinity }
+    }
+    const registry = AtomRegistry.make()
+    expect(registry.set(mutation, request)).type.toBe<void>()
+    expect(registry.set).type.not.toBeCallableWith(mutation, {
+      params: { id: "1" },
+      sseOptions: { maxEventSize: "4" }
+    })
+    expect(registry.set).type.not.toBeCallableWith(mutation, { sseOptions: {} })
+  })
+
   it("should include middleware errors in query and mutation atoms", () => {
     const mutation = Client.mutation("group", "get")
     const query = Client.query("group", "get", {})
