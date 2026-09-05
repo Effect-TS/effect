@@ -33,6 +33,45 @@ const StreamApi = HttpApi.make("StreamApi").add(
 )
 
 describe("AtomHttpApi", () => {
+  it.effect("query keeps SSE decode options in the cache key and forwards them", () =>
+    Effect.gen(function*() {
+      const Client = makeStreamingClient()
+      const registry = AtomRegistry.make()
+      yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
+      const limited = Client.query("group", "events", { sseOptions: { maxEventSize: 4 } })
+      const defaults = Client.query("group", "events", {})
+      assert.notStrictEqual(limited, defaults)
+      assert.strictEqual(limited, Client.query("group", "events", { sseOptions: { maxEventSize: 4 } }))
+
+      const limitedStream = yield* AtomRegistry.getResult(registry, limited)
+      const defaultStream = yield* AtomRegistry.getResult(registry, defaults)
+      const [error, values] = yield* Effect.all([
+        limitedStream.pipe(Stream.runCollect, Effect.flip),
+        Stream.runCollect(defaultStream)
+      ], { concurrency: "unbounded" })
+
+      assertEventTooLarge(error)
+      assert.deepStrictEqual(values, ["hello"])
+    }).pipe(Effect.scoped))
+
+  it.effect("mutation forwards SSE decode options independently for each call", () =>
+    Effect.gen(function*() {
+      const Client = makeStreamingClient()
+      const registry = AtomRegistry.make()
+      yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
+      const mutation = Client.mutation("group", "events", { responseMode: "decoded-only" })
+      yield* AtomRegistry.mount(registry, mutation)
+
+      registry.set(mutation, { sseOptions: { maxEventSize: 4 } })
+      const limitedStream = yield* AtomRegistry.getResult(registry, mutation, { suspendOnWaiting: true })
+      const error = yield* limitedStream.pipe(Stream.runCollect, Effect.flip)
+      assertEventTooLarge(error)
+
+      registry.set(mutation, {})
+      const defaultStream = yield* AtomRegistry.getResult(registry, mutation, { suspendOnWaiting: true })
+      assert.deepStrictEqual(yield* Stream.runCollect(defaultStream), ["hello"])
+    }).pipe(Effect.scoped))
+
   it.effect("dispatches queries and mutations for top-level groups", () =>
     Effect.gen(function*() {
       const requests: Array<string> = []
@@ -198,3 +237,40 @@ describe("AtomHttpApi", () => {
       )
     }).pipe(Effect.scoped))
 })
+
+const makeStreamingClient = () =>
+  AtomHttpApi.Service()("StreamingClient", {
+    baseUrl: "http://test",
+    api: HttpApi.make("StreamingApi").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Schema.String })
+        })
+      )
+    ),
+    httpClient: Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.make((request) =>
+        Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                const encoder = new TextEncoder()
+                controller.enqueue(encoder.encode("data: "))
+                controller.enqueue(encoder.encode("\"hello\"\n\n"))
+                controller.close()
+              }
+            }),
+            { headers: { "content-type": "text/event-stream" } }
+          )
+        ))
+      )
+    )
+  })
+
+const assertEventTooLarge = (error: unknown) => {
+  assert.instanceOf(error, Sse.SseError)
+  assert.instanceOf(error.reason, Sse.EventTooLarge)
+  assert.strictEqual(error.reason.maxEventSize, 4)
+}

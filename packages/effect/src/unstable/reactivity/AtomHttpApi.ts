@@ -17,6 +17,7 @@ import type { ReadonlyRecord } from "../../Record.ts"
 import * as Schema from "../../Schema.ts"
 import type { SchemaError } from "../../Schema.ts"
 import type { Mutable, Simplify } from "../../Types.ts"
+import type * as Sse from "../encoding/Sse.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import type * as HttpApi from "../httpapi/HttpApi.ts"
@@ -222,6 +223,7 @@ export const Service =
         query: any
         headers: any
         payload: any
+        sseOptions?: Sse.DecodeOptions | undefined
         reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
       }>()(
         Effect.fnUntraced(function*(opts) {
@@ -297,6 +299,7 @@ export const Service =
         readonly payload?: any
         readonly headers?: any
         readonly responseMode?: HttpApiEndpoint.ClientResponseMode
+        readonly sseOptions?: Sse.DecodeOptions | undefined
         readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
@@ -310,6 +313,7 @@ export const Service =
         payload: request.payload,
         headers: request.headers,
         responseMode: request.responseMode ?? "decoded-only",
+        sseOptions: request.sseOptions,
         reactivityKeys: request.reactivityKeys,
         timeToLive: request.timeToLive !== undefined
           ? Duration.fromInputUnsafe(request.timeToLive)
@@ -337,6 +341,7 @@ interface QueryKey {
   payload: any
   responseMode: HttpApiEndpoint.ClientResponseMode
   reactivityKeys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+  sseOptions: Sse.DecodeOptions | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
 }
