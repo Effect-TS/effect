@@ -94,7 +94,8 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     infer _Payload,
     infer _Success,
     infer _Error,
-    infer _Middleware
+    infer _Middleware,
+    infer _Requires
   > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? Atom.Writable<
         Atom.PullResult<
           _A["Type"],
