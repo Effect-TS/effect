@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `sseDecodeOptions` to `HttpApiClient` constructors to configure native SSE decoding per client.
+Allow generated `HttpApiClient` methods to accept native SSE decode options per call through a second `{ sseOptions }` argument.

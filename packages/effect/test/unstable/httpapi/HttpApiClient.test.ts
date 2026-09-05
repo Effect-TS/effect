@@ -27,26 +27,28 @@ describe("HttpApiClient", () => {
         assert.deepStrictEqual(first, [{ event: "first", data: "one" }])
       }))
 
-    it.effect("keeps SSE decode options scoped to each client", () =>
+    it.effect("keeps per-call SSE decode options isolated", () =>
       Effect.gen(function*() {
-        const httpClient = clientFromResponse(() => new Response(textStream(["data: ", "hello\n\n"]), { status: 200 }))
-        const limited = yield* HttpApiClient.makeWith(StreamingApi, {
+        const client = yield* HttpApiClient.makeWith(StreamingApi, {
           baseUrl: "http://test",
-          httpClient,
-          sseDecodeOptions: { maxEventSize: 4 }
-        })
-        const defaults = yield* HttpApiClient.makeWith(StreamingApi, {
-          baseUrl: "http://test",
-          httpClient
+          httpClient: clientFromResponse(() => new Response(textStream(["data: ", "hello\n\n"]), { status: 200 }))
         })
 
-        const limitedStream = yield* limited.test.events({})
-        const error = yield* limitedStream.pipe(Stream.runCollect, Effect.flip)
+        const limitedStream = yield* client.test.events({}, { sseOptions: { maxEventSize: 4 } })
+        const defaultStream = yield* client.test.events({})
+        const [limitedExit, events] = yield* Effect.all([
+          Effect.exit(Stream.runCollect(limitedStream)),
+          Stream.runCollect(defaultStream)
+        ], { concurrency: "unbounded" })
+
+        assert.strictEqual(limitedExit._tag, "Failure")
+        if (limitedExit._tag === "Success") {
+          throw new Error("Expected SSE decoding to fail")
+        }
+        const error = Cause.squash(limitedExit.cause)
         assert.instanceOf(error, Sse.SseError)
         assert.instanceOf(error.reason, Sse.EventTooLarge)
         assert.strictEqual(error.reason.maxEventSize, 4)
-
-        const events = yield* defaults.test.events({}).pipe(Effect.flatMap(Stream.runCollect))
         assert.deepStrictEqual(events, [{ event: "message", data: "hello" }])
       }))
 
@@ -227,7 +229,7 @@ describe("HttpApiClient", () => {
         }
       }))
 
-    it.effect("selects a WithHeaders stream from a mixed buffered success by content type", () =>
+    it.effect("forwards SSE options through mixed WithHeaders content-type selection", () =>
       Effect.gen(function*() {
         const Api = HttpApi.make("Api").add(
           HttpApiGroup.make("test").add(
@@ -245,7 +247,7 @@ describe("HttpApiClient", () => {
         const client = yield* HttpApiClient.makeWith(Api, {
           baseUrl: "http://test",
           httpClient: clientFromResponse(() =>
-            new Response(textStream([`data: {"text":"hello"}\n\n`]), {
+            new Response(textStream(["data: ", `{"text":"hello"}\n\n`]), {
               status: 200,
               headers: {
                 "content-type": "text/event-stream; charset=utf-8",
@@ -255,14 +257,16 @@ describe("HttpApiClient", () => {
           )
         })
 
-        const value = yield* client.test.chat({})
+        const value = yield* client.test.chat({}, { sseOptions: { maxEventSize: 4 } })
         if (!(HttpApiSchema.WithHeadersValueTypeId in value)) {
           throw new Error("Expected WithHeaders response")
         }
-        const events = yield* Stream.runCollect(value.body)
+        const error = yield* value.body.pipe(Stream.runCollect, Effect.flip)
 
         assert.deepStrictEqual(value.headers, { "x-count": 1 })
-        assert.deepStrictEqual(events, [{ text: "hello" }])
+        assert.instanceOf(error, Sse.SseError)
+        assert.instanceOf(error.reason, Sse.EventTooLarge)
+        assert.strictEqual(error.reason.maxEventSize, 4)
       }))
 
     it.effect("decodes StreamSse successes at the annotated status", () =>

@@ -16,22 +16,29 @@ type ResponseMode = HttpApiEndpoint.ClientResponseMode
 
 describe("HttpApiClient", () => {
   describe("options", () => {
-    it("accepts native SSE decode options for every client constructor", () => {
+    it("accepts native SSE decode options per call", () => {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("group").add(HttpApiEndpoint.get("events", "/events"))
       )
       const httpClient = HttpClient.make(() => Effect.die("not used"))
-      const sseDecodeOptions = hole<Sse.DecodeOptions>()
-
-      expect(HttpApiClient.make).type.toBeCallableWith(Api, { sseDecodeOptions })
-      expect(HttpApiClient.makeWith).type.toBeCallableWith(Api, { httpClient, sseDecodeOptions })
-      expect(HttpApiClient.group).type.toBeCallableWith(Api, { group: "group", httpClient, sseDecodeOptions })
-      expect(HttpApiClient.endpoint).type.toBeCallableWith(Api, {
+      const client = Effect.runSync(HttpApiClient.makeWith(Api, { httpClient }))
+      const endpoint = Effect.runSync(HttpApiClient.endpoint(Api, {
         group: "group",
         endpoint: "events",
-        httpClient,
-        sseDecodeOptions
-      })
+        httpClient
+      }))
+      const sseOptions = hole<Sse.DecodeOptions>()
+
+      expect(client.group.events).type.toBeCallableWith({}, { sseOptions })
+      expect(endpoint).type.toBeCallableWith({}, { sseOptions })
+      expect<Parameters<typeof client.group.events>[0]>().type.toBe<
+        void | { readonly responseMode?: ResponseMode } | undefined
+      >()
+      expect<Parameters<typeof client.group.events>[1]>().type.toBe<
+        { readonly sseOptions?: Sse.DecodeOptions | undefined } | undefined
+      >()
+      expect(client.group.events).type.not.toBeCallableWith({}, { sseOptions: { maxEventSize: "4" } })
+      expect(HttpApiClient.makeWith).type.not.toBeCallableWith(Api, { httpClient, sseDecodeOptions: sseOptions })
     })
   })
 

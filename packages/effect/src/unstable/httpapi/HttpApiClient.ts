@@ -29,7 +29,7 @@ import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
-import * as HttpClientResponse from "../http/HttpClientResponse.ts"
+import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as HttpApi from "./HttpApi.ts"
@@ -164,8 +164,9 @@ export declare namespace Client {
 
   /**
    * The typed function generated for an endpoint, accepting the endpoint request
-   * shape and returning an effect whose success, error, and service channels reflect
-   * the endpoint schemas, middleware, and selected response mode.
+   * shape and optional per-call SSE decoding options. The returned effect's success,
+   * error, and service channels reflect the endpoint schemas, middleware, and
+   * selected response mode.
    *
    * @category models
    * @since 4.0.0
@@ -183,7 +184,8 @@ export declare namespace Client {
         Endpoint["~Headers"],
         Mode
       >
-    >
+    >,
+    options?: { readonly sseOptions?: Sse.DecodeOptions | undefined }
   ) => MethodReturn<Endpoint, E, R, Mode>
 
   /**
@@ -259,7 +261,6 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
   api: HttpApi.HttpApi<ApiId, Groups>,
   options: {
     readonly httpClient: HttpClient.HttpClient.With<E, R>
-    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly predicate?: Predicate.Predicate<{
       readonly endpoint: HttpApiEndpoint.Top
       readonly group: HttpApiGroup.Top
@@ -331,11 +332,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
       onEndpoint(onEndpointOptions) {
         const { group, endpoint, errors, successes } = onEndpointOptions
         const makeUrl = compilePath(endpoint.path)
-        const decodeMap: Record<
-          number | "orElse",
-          (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
-        > = { orElse: statusOrElse }
-        const decodeResponse = HttpClientResponse.matchStatus(decodeMap)
+        const decodeMap: Record<number | "orElse", ResponseDecoder> = { orElse: statusOrElse }
+        const decodeResponse: ResponseDecoder = (response, sseOptions) =>
+          (decodeMap[response.status] ?? decodeMap.orElse)(response, sseOptions)
         const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of errors.entries()) {
           const grouped = groupSchemasByContentType(schemas)
@@ -345,9 +344,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
         for (const [status, alternatives] of errorAlternatives.entries()) {
           const decode = makeResponseDecoder(alternatives)
-          decodeMap[status] = (response) =>
+          decodeMap[status] = (response, sseOptions) =>
             Effect.flatMap(
-              Effect.catchCause(decode(response), (cause) =>
+              Effect.catchCause(decode(response, sseOptions), (cause) =>
                 Effect.failCause(Cause.combine(
                   Cause.fail(
                     new HttpClientError.HttpClientError({
@@ -376,7 +375,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             successAlternatives,
             HttpApiSchema.getStatusSuccessSchema(streamSuccess),
             streamSchema.contentType,
-            streamToResponse(streamSuccess, options.sseDecodeOptions)
+            streamToResponse(streamSuccess)
           )
         }
         for (const [status, alternatives] of successAlternatives.entries()) {
@@ -405,7 +404,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             readonly payload: unknown
             readonly headers: Record<string, string> | undefined
             readonly responseMode?: HttpApiEndpoint.ClientResponseMode
-          } | undefined
+          } | undefined,
+          callOptions?: { readonly sseOptions?: Sse.DecodeOptions | undefined }
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
 
@@ -457,8 +457,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           }
 
           const value = yield* (options.transformResponse === undefined
-            ? decodeResponse(response)
-            : options.transformResponse(decodeResponse(response)))
+            ? decodeResponse(response, callOptions?.sseOptions)
+            : options.transformResponse(decodeResponse(response, callOptions?.sseOptions)))
 
           return request?.responseMode === "decoded-and-response" ? [value, response] : value
         })
@@ -482,7 +482,6 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Constrain
   api: HttpApi.HttpApi<ApiId, Groups>,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined
@@ -511,7 +510,6 @@ export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Const
   api: HttpApi.HttpApi<ApiId, Groups>,
   options: {
     readonly httpClient: HttpClient.HttpClient.With<E, R>
-    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined
@@ -557,7 +555,6 @@ export const group = <
   options: {
     readonly group: GroupIdentifier
     readonly httpClient: HttpClient.HttpClient.With<E, R>
-    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined
@@ -610,7 +607,6 @@ export const endpoint = <
     readonly group: GroupIdentifier
     readonly endpoint: EndpointIdentifier
     readonly httpClient: HttpClient.HttpClient.With<E, R>
-    readonly sseDecodeOptions?: Sse.DecodeOptions | undefined
     readonly transformClient?:
       | ((client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>)
       | undefined
@@ -783,7 +779,10 @@ function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
   )
 }
 
-type ResponseDecoder = (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
+type ResponseDecoder = (
+  response: HttpClientResponse.HttpClientResponse,
+  sseOptions?: Sse.DecodeOptions
+) => Effect.Effect<unknown, unknown, unknown>
 
 interface ResponseAlternative {
   readonly contentType: string
@@ -810,12 +809,12 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
   if (alternatives.length === 1 && first !== undefined) {
     return first.decode
   }
-  return (response) => {
+  return (response, sseOptions) => {
     const contentType = MediaType.normalize(response.headers["content-type"] ?? "")
     const alternative = alternatives.find((alternative) => alternative.contentType === contentType)
     return alternative === undefined
       ? failUnsupportedContentType(response, contentType, alternatives)
-      : alternative.decode(response)
+      : alternative.decode(response, sseOptions)
   }
 }
 
@@ -878,36 +877,35 @@ function getStreamSuccessSchemas(endpoint: HttpApiEndpoint.Top): Array<StreamSuc
   return schemas
 }
 
-function streamToResponse(successSchema: StreamSuccessSchema, sseDecodeOptions?: Sse.DecodeOptions) {
+function streamToResponse(successSchema: StreamSuccessSchema) {
   const isWithHeaders = isWithHeadersStreamSuccess(successSchema)
   const streamSchema = isWithHeaders ? successSchema.schema : successSchema
   const sse = HttpApiSchema.isStreamUint8Array(streamSchema)
     ? undefined
     : {
       declaration: streamSchema,
-      decoder: makeSseDecoder(streamSchema, sseDecodeOptions)
+      decoder: makeSseDecoder(streamSchema)
     }
-  const toStream = (response: HttpClientResponse.HttpClientResponse) =>
+  const toStream: ResponseDecoder = (response, sseOptions) =>
     Effect.map(Effect.context<never>(), (context) =>
       Stream.provideContext(
         sse === undefined ?
           response.stream :
-          decodeSseStream(response.stream, sse.declaration, sse.decoder),
+          decodeSseStream(response.stream, sse.declaration, sse.decoder(sseOptions)),
         context as Context.Context<unknown>
       ))
   if (!isWithHeaders) return toStream
 
   const decodeHeaders = Schema.decodeUnknownEffect(successSchema.headers)
-  return (response: HttpClientResponse.HttpClientResponse) =>
+  return (response: HttpClientResponse.HttpClientResponse, sseOptions?: Sse.DecodeOptions) =>
     Effect.flatMap(
       decodeHeaders(response.headers),
-      (headers) => Effect.map(toStream(response), (body) => HttpApiSchema.withHeaders({ body, headers }))
+      (headers) => Effect.map(toStream(response, sseOptions), (body) => HttpApiSchema.withHeaders({ body, headers }))
     )
 }
 
 function makeSseDecoder(
-  declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
-  options?: Sse.DecodeOptions
+  declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>
 ) {
   const Event = Schema.Union([
     Schema.Struct({
@@ -916,13 +914,14 @@ function makeSseDecoder(
     }),
     declaration.events
   ])
-  return Sse.decodeSchema(Event, options)
+  const defaultDecoder = Sse.decodeSchema(Event)
+  return (options?: Sse.DecodeOptions) => options === undefined ? defaultDecoder : Sse.decodeSchema(Event, options)
 }
 
 function decodeSseStream(
   stream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
   declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
-  decoder: ReturnType<typeof makeSseDecoder>
+  decoder: ReturnType<ReturnType<typeof makeSseDecoder>>
 ): Stream.Stream<unknown, unknown, unknown> {
   const events = Stream.transformPull(
     stream.pipe(
