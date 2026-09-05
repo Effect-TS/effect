@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
+import { Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
 import { TestClock } from "effect/testing"
-import { DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
+import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
 describe("WorkflowEngine", () => {
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
@@ -46,6 +46,50 @@ describe("WorkflowEngine", () => {
     })
   )
 
+  const FanOutParentWorkflow = Workflow.make("WorkflowEngine/FanOutParentWorkflow", {
+    payload: { id: Schema.String, childCount: Schema.Number },
+    success: Schema.Array(Schema.String),
+    idempotencyKey: ({ id }) => id
+  })
+
+  const FanOutChildWorkflow = Workflow.make("WorkflowEngine/FanOutChildWorkflow", {
+    payload: { id: Schema.String, index: Schema.Number },
+    success: Schema.String,
+    idempotencyKey: ({ id }) => id
+  })
+
+  const fanOutStarted = new Set<number>()
+  let fanOutParentRuns = 0
+  let fanOutActivityRuns = 0
+
+  const FanOutParentWorkflowLayer = FanOutParentWorkflow.toLayer(({ childCount, id }) =>
+    Effect.suspend(() => {
+      fanOutParentRuns++
+      return Activity.make({
+        name: "fan-out",
+        success: Schema.Array(Schema.String),
+        execute: Effect.suspend(() => {
+          fanOutActivityRuns++
+          return Effect.forEach(
+            Array.from({ length: childCount }, (_, index) => index),
+            (index) => FanOutChildWorkflow.execute({ id: `${id}-child-${index}`, index }),
+            { concurrency: "unbounded" }
+          )
+        })
+      })
+    })
+  )
+
+  const FanOutChildWorkflowLayer = FanOutChildWorkflow.toLayer(Effect.fnUntraced(function*({ index }) {
+    fanOutStarted.add(index)
+    yield* DurableClock.sleep({
+      name: "fan-out-child",
+      duration: "2 seconds",
+      inMemoryThreshold: Duration.zero
+    })
+    return `done-${index}`
+  }))
+
   it.effect("layer executes and polls workflows", () =>
     Effect.gen(function*() {
       const executionId = yield* IncrementWorkflow.execute({ value: 1 }, { discard: true })
@@ -60,6 +104,86 @@ describe("WorkflowEngine", () => {
         Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
+
+  it.effect("layerMemory suspends the parent durably while parallel child workflows run inside an activity", () =>
+    Effect.gen(function*() {
+      const payload = { id: "fan-out-1", childCount: 3 }
+      const executionId = yield* FanOutParentWorkflow.executionId(payload)
+      const fiber = yield* FanOutParentWorkflow.execute(payload).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      // the parent suspends once every child has been dispatched
+      let suspended = false
+      for (let i = 0; i < 50 && !suspended; i++) {
+        yield* TestClock.adjust(1)
+        const result = yield* FanOutParentWorkflow.poll(executionId)
+        suspended = Option.isSome(result) && result.value._tag === "Suspended"
+      }
+      assert.isTrue(suspended, "parent run was not suspended")
+      assert.strictEqual(fanOutParentRuns, 1)
+      assert.deepStrictEqual([...fanOutStarted].sort(), [0, 1, 2])
+      assert.strictEqual(fanOutActivityRuns, 1)
+
+      // the children complete after a single sleep window and wake the parent
+      yield* TestClock.adjust(Duration.seconds(2))
+      for (let i = 0; i < 4; i++) {
+        yield* TestClock.adjust(Duration.seconds(1))
+      }
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["done-0", "done-1", "done-2"]))
+      assert.isAtLeast(fanOutParentRuns, 2)
+      assert.isAtMost(fanOutActivityRuns, fanOutParentRuns)
+    }).pipe(
+      Effect.provide(
+        Layer.mergeAll(FanOutParentWorkflowLayer, FanOutChildWorkflowLayer).pipe(
+          Layer.provideMerge(WorkflowEngine.layerMemory)
+        )
+      )
+    ))
+
+  it.effect("layerMemory resumes when children complete during activity cleanup", () =>
+    Effect.gen(function*() {
+      const cleaningUp = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Parent = Workflow.make("WorkflowEngine/CleanupParent", {
+        payload: {},
+        success: Schema.Array(Schema.Number),
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/CleanupChild", {
+        payload: { index: Schema.Number },
+        success: Schema.Number,
+        idempotencyKey: ({ index }) => String(index)
+      })
+      const ParentLayer = Parent.toLayer(() =>
+        Activity.make({
+          name: "children",
+          success: Schema.Array(Schema.Number),
+          execute: Effect.forEach([0, 1], (index) => Child.execute({ index }), { concurrency: "unbounded" }).pipe(
+            Effect.ensuring(Effect.andThen(cleaningUp.open, release.await))
+          )
+        })
+      )
+      const ChildLayer = Child.toLayer(({ index }) =>
+        DurableClock.sleep({ name: "wait", duration: "2 seconds", inMemoryThreshold: Duration.zero }).pipe(
+          Effect.as(index)
+        )
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        yield* TestClock.adjust(1)
+        yield* cleaningUp.await
+        yield* TestClock.adjust("2 seconds")
+        yield* release.open
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(
+          yield* Parent.poll(executionId),
+          Option.some(new Workflow.Complete({ exit: Exit.succeed([0, 1]) }))
+        )
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
 
   it.effect("discard returns the deterministic execution ID", () =>
     Effect.gen(function*() {
