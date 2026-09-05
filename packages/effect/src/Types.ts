@@ -1176,11 +1176,7 @@ type WithoutIndexSignature_<T> = {
 }
 
 /**
- * Extracts the required keys from a type.
- *
- * **When to use**
- *
- * Use to derive the keys whose properties must be present on an object type.
+ * Extracts the keys of required properties from a type.
  *
  * @category utility types
  * @since 4.0.0
