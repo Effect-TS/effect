@@ -18,7 +18,6 @@
  */
 import * as Data from "effect/Data"
 import * as Result from "effect/Result"
-import * as IpInterface from "effect/unstable/net/IpInterface"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import type * as PgProtocol from "./PgProtocol.ts"
@@ -660,7 +659,7 @@ const PGSQL_AF_INET6 = 3
 
 const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
   const text = requireString(value, isCidr ? "cidr" : "inet")
-  const parsed = IpInterface.fromString(text)
+  const parsed = NetAddress.ipInterfaceFromString(text)
   if (Result.isFailure(parsed)) return fail(parsed.failure.message)
   const address = parsed.success.address
   const bits = parsed.success.prefixLength
@@ -698,15 +697,16 @@ const decodeInet = (bytes: Uint8Array, offset: number, size: number): string => 
   const address = family === PGSQL_AF_INET
     ? NetAddress.ipv4FromBytesUnsafe(addressBytes)
     : NetAddress.ipv6FromBytesUnsafe(addressBytes)
-  const interfaceAddress = IpInterface.make(address, bits)
+  const interfaceAddress = NetAddress.withPrefix(address, bits)
   if (Result.isFailure(interfaceAddress)) return fail(interfaceAddress.failure.message)
   if (isCidr) {
     const network = IpNetwork.make(interfaceAddress.success.address, interfaceAddress.success.prefixLength)
     if (Result.isFailure(network)) return fail(network.failure.message)
     return IpNetwork.format(network.success)
   }
-  const text = IpInterface.format(interfaceAddress.success)
-  return bits === addressSize * 8 ? text.slice(0, text.lastIndexOf("/")) : text
+  return bits === addressSize * 8
+    ? NetAddress.formatIp(address)
+    : NetAddress.formatIpInterface(interfaceAddress.success)
 }
 
 // -----------------------------------------------------------------------------

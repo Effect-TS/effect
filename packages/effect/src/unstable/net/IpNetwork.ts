@@ -3,7 +3,6 @@
  *
  * @since 4.0.0
  */
-import * as Data from "../../Data.ts"
 import * as Equal from "../../Equal.ts"
 import { dual } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
@@ -15,51 +14,34 @@ import * as NetAddress from "./NetAddress.ts"
 const TypeId = "~effect/net/IpNetwork" as const
 
 /**
- * A checked IP network operation failure.
- *
- * @category errors
- * @since 4.0.0
- */
-export class IpNetworkError extends Data.TaggedError("IpNetworkError")<{
-  readonly cause?: unknown
-  readonly message: string
-}> {}
-
-/**
- * An immutable canonical 32-bit IPv4 network prefix.
+ * An immutable canonical IP network prefix.
  *
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4Network extends Equal.Equal, Hash.Hash {
-  readonly _tag: "Ipv4Network"
-  readonly address: NetAddress.Ipv4Address
+export interface IpNetwork<out A extends NetAddress.IpAddress = NetAddress.IpAddress> extends Equal.Equal, Hash.Hash {
+  readonly _tag: "IpNetwork"
+  readonly address: A
   readonly prefixLength: number
   readonly [TypeId]: typeof TypeId
   toString(): string
 }
 
 /**
- * An immutable canonical 128-bit IPv6 network prefix.
+ * An immutable canonical IPv4 network prefix.
  *
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6Network extends Equal.Equal, Hash.Hash {
-  readonly _tag: "Ipv6Network"
-  readonly address: NetAddress.Ipv6Address
-  readonly prefixLength: number
-  readonly [TypeId]: typeof TypeId
-  toString(): string
-}
+export type Ipv4Network = IpNetwork<NetAddress.Ipv4Address>
 
 /**
- * A canonical IPv4 or IPv6 network prefix.
+ * An immutable canonical IPv6 network prefix.
  *
  * @category models
  * @since 4.0.0
  */
-export type IpNetwork = Ipv4Network | Ipv6Network
+export type Ipv6Network = IpNetwork<NetAddress.Ipv6Address>
 
 /**
  * Returns `true` when a value is an IPv4 network prefix.
@@ -67,7 +49,7 @@ export type IpNetwork = Ipv4Network | Ipv6Network
  * @category guards
  * @since 4.0.0
  */
-export const isIpv4Network = (u: unknown): u is Ipv4Network => isIpNetwork(u) && u._tag === "Ipv4Network"
+export const isIpv4Network = (u: unknown): u is Ipv4Network => isIpNetwork(u) && NetAddress.isIpv4Address(u.address)
 
 /**
  * Returns `true` when a value is an IPv6 network prefix.
@@ -75,7 +57,7 @@ export const isIpv4Network = (u: unknown): u is Ipv4Network => isIpNetwork(u) &&
  * @category guards
  * @since 4.0.0
  */
-export const isIpv6Network = (u: unknown): u is Ipv6Network => isIpNetwork(u) && u._tag === "Ipv6Network"
+export const isIpv6Network = (u: unknown): u is Ipv6Network => isIpNetwork(u) && NetAddress.isIpv6Address(u.address)
 
 /**
  * Returns `true` when a value is an IPv4 or IPv6 network prefix.
@@ -85,54 +67,39 @@ export const isIpv6Network = (u: unknown): u is Ipv6Network => isIpNetwork(u) &&
  */
 export const isIpNetwork = (u: unknown): u is IpNetwork => hasProperty(u, TypeId)
 
-const Ipv4NetworkProto = {
-  _tag: "Ipv4Network",
+const IpNetworkProto = {
+  _tag: "IpNetwork",
   [TypeId]: TypeId,
-  [Equal.symbol](this: Ipv4Network, that: Equal.Equal): boolean {
-    return isIpv4Network(that) && this.prefixLength === that.prefixLength && Equal.equals(this.address, that.address)
+  [Equal.symbol](this: IpNetwork, that: Equal.Equal): boolean {
+    return isIpNetwork(that) && this.prefixLength === that.prefixLength && Equal.equals(this.address, that.address)
   },
-  [Hash.symbol](this: Ipv4Network): number {
+  [Hash.symbol](this: IpNetwork): number {
     return Hash.combine(Hash.hash(this.address))(Hash.number(this.prefixLength))
   },
-  toString(this: Ipv4Network): string {
+  toString(this: IpNetwork): string {
     return format(this)
   },
-  [NodeInspectSymbol](this: Ipv4Network): string {
+  [NodeInspectSymbol](this: IpNetwork): string {
     return this.toString()
   }
 }
 
-const Ipv6NetworkProto = {
-  _tag: "Ipv6Network",
-  [TypeId]: TypeId,
-  [Equal.symbol](this: Ipv6Network, that: Equal.Equal): boolean {
-    return isIpv6Network(that) && this.prefixLength === that.prefixLength && Equal.equals(this.address, that.address)
-  },
-  [Hash.symbol](this: Ipv6Network): number {
-    return Hash.combine(Hash.hash(this.address))(Hash.number(this.prefixLength))
-  },
-  toString(this: Ipv6Network): string {
-    return format(this)
-  },
-  [NodeInspectSymbol](this: Ipv6Network): string {
-    return this.toString()
-  }
-}
-
-const fromAddressWithPrefix = (value: NetAddress.IpAddressWithPrefix): IpNetwork => {
-  const proto = Object.create(NetAddress.isIpv4Address(value.address) ? Ipv4NetworkProto : Ipv6NetworkProto)
-  const self = Object.assign(proto, { address: value.address, prefixLength: value.prefixLength })
+const fromInterfaceValue = <A extends NetAddress.IpAddress>(value: NetAddress.IpInterface<A>): IpNetwork<A> => {
+  const self = Object.assign(Object.create(IpNetworkProto), {
+    address: value.address,
+    prefixLength: value.prefixLength
+  })
   return Object.freeze(self)
 }
 
 const toBytes = (address: NetAddress.IpAddress): ReadonlyArray<number> =>
   NetAddress.isIpv4Address(address) ? NetAddress.ipv4ToOctets(address) : NetAddress.ipv6ToOctets(address)
 
-const fromBytes = (address: NetAddress.IpAddress, bytes: ReadonlyArray<number>): NetAddress.IpAddress => {
+const fromBytes = <A extends NetAddress.IpAddress>(address: A, bytes: ReadonlyArray<number>): A => {
   const array = new Uint8Array(bytes)
-  return NetAddress.isIpv4Address(address)
+  return (NetAddress.isIpv4Address(address)
     ? NetAddress.ipv4FromBytesUnsafe(array)
-    : NetAddress.ipv6FromBytesUnsafe(array)
+    : NetAddress.ipv6FromBytesUnsafe(array)) as A
 }
 
 const maskBytes = (bytes: ReadonlyArray<number>, prefixLength: number): Array<number> => {
@@ -145,11 +112,6 @@ const maskBytes = (bytes: ReadonlyArray<number>, prefixLength: number): Array<nu
   })
 }
 
-const prefixLengthError = (address: NetAddress.IpAddress): IpNetworkError =>
-  new IpNetworkError({
-    message: `prefix length must be an integer from 0 through ${NetAddress.width(address)}`
-  })
-
 /**
  * Creates a network prefix when the address has no host bits set.
  *
@@ -160,19 +122,18 @@ const prefixLengthError = (address: NetAddress.IpAddress): IpNetworkError =>
  * @category constructors
  * @since 4.0.0
  */
-export const make: {
-  (address: NetAddress.Ipv4Address, prefixLength: number): Result.Result<Ipv4Network, IpNetworkError>
-  (address: NetAddress.Ipv6Address, prefixLength: number): Result.Result<Ipv6Network, IpNetworkError>
-  (address: NetAddress.IpAddress, prefixLength: number): Result.Result<IpNetwork, IpNetworkError>
-} = (address: any, prefixLength: number): Result.Result<any, IpNetworkError> => {
-  const value = NetAddress.withPrefix(address, prefixLength)
-  if (Result.isFailure(value)) return Result.fail(prefixLengthError(address))
-  const bytes = toBytes(address)
-  const masked = maskBytes(bytes, prefixLength)
-  if (bytes.some((byte, index) => byte !== masked[index])) {
-    return Result.fail(new IpNetworkError({ message: "address has non-zero host bits" }))
-  }
-  return Result.succeed(fromAddressWithPrefix(value.success))
+export const make = <A extends NetAddress.IpAddress>(
+  address: A,
+  prefixLength: number
+): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> => {
+  return Result.flatMap(NetAddress.withPrefix(address, prefixLength), (value) => {
+    const bytes = toBytes(address)
+    const masked = maskBytes(bytes, prefixLength)
+    if (bytes.some((byte, index) => byte !== masked[index])) {
+      return Result.fail(new NetAddress.NetAddressError({ message: "address has non-zero host bits" }))
+    }
+    return Result.succeed(fromInterfaceValue(value))
+  })
 }
 
 /**
@@ -185,16 +146,24 @@ export const make: {
  * @category constructors
  * @since 4.0.0
  */
-export const fromAddress: {
-  (address: NetAddress.Ipv4Address, prefixLength: number): Result.Result<Ipv4Network, IpNetworkError>
-  (address: NetAddress.Ipv6Address, prefixLength: number): Result.Result<Ipv6Network, IpNetworkError>
-  (address: NetAddress.IpAddress, prefixLength: number): Result.Result<IpNetwork, IpNetworkError>
-} = (address: any, prefixLength: number): Result.Result<any, IpNetworkError> => {
-  const value = NetAddress.withPrefix(address, prefixLength)
-  if (Result.isFailure(value)) return Result.fail(prefixLengthError(address))
-  const masked = fromBytes(address, maskBytes(toBytes(address), prefixLength))
-  return Result.succeed(fromAddressWithPrefix(NetAddress.withPrefixUnsafe(masked, prefixLength)))
+export const fromAddress = <A extends NetAddress.IpAddress>(
+  address: A,
+  prefixLength: number
+): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> => {
+  return Result.map(NetAddress.withPrefix(address, prefixLength), (value) => {
+    const masked = fromBytes(address, maskBytes(toBytes(address), prefixLength))
+    return fromInterfaceValue(NetAddress.withPrefixUnsafe(masked, value.prefixLength))
+  })
 }
+
+/**
+ * Returns the canonical network containing an interface address.
+ *
+ * @category conversions
+ * @since 4.0.0
+ */
+export const fromInterface = <A extends NetAddress.IpAddress>(self: NetAddress.IpInterface<A>): IpNetwork<A> =>
+  fromAddressUnsafe(self.address, self.prefixLength)
 
 /**
  * Parses a strict IPv4 network prefix in CIDR notation.
@@ -202,11 +171,11 @@ export const fromAddress: {
  * @category decoding
  * @since 4.0.0
  */
-export const ipv4FromString = (input: string): Result.Result<Ipv4Network, IpNetworkError> => {
-  const value = NetAddress.ipv4WithPrefixFromString(input)
-  return Result.isFailure(value)
-    ? Result.fail(new IpNetworkError({ cause: value.failure, message: "failed to parse an IPv4 network prefix" }))
-    : make(value.success.address, value.success.prefixLength)
+export const ipv4FromString = (input: string): Result.Result<Ipv4Network, NetAddress.NetAddressError> => {
+  return Result.flatMap(
+    NetAddress.ipv4InterfaceFromString(input, { prefix: "required" }),
+    (value) => make(value.address, value.prefixLength)
+  )
 }
 
 /**
@@ -215,11 +184,11 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Network, IpNetw
  * @category decoding
  * @since 4.0.0
  */
-export const ipv6FromString = (input: string): Result.Result<Ipv6Network, IpNetworkError> => {
-  const value = NetAddress.ipv6WithPrefixFromString(input)
-  return Result.isFailure(value)
-    ? Result.fail(new IpNetworkError({ cause: value.failure, message: "failed to parse an IPv6 network prefix" }))
-    : make(value.success.address, value.success.prefixLength)
+export const ipv6FromString = (input: string): Result.Result<Ipv6Network, NetAddress.NetAddressError> => {
+  return Result.flatMap(
+    NetAddress.ipv6InterfaceFromString(input, { prefix: "required" }),
+    (value) => make(value.address, value.prefixLength)
+  )
 }
 
 /**
@@ -228,11 +197,11 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Network, IpNetw
  * @category decoding
  * @since 4.0.0
  */
-export const fromString = (input: string): Result.Result<IpNetwork, IpNetworkError> => {
-  const value = NetAddress.ipWithPrefixFromString(input)
-  return Result.isFailure(value)
-    ? Result.fail(new IpNetworkError({ cause: value.failure, message: "failed to parse an IP network prefix" }))
-    : make(value.success.address, value.success.prefixLength)
+export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.NetAddressError> => {
+  return Result.flatMap(
+    NetAddress.ipInterfaceFromString(input, { prefix: "required" }),
+    (value) => make(value.address, value.prefixLength)
+  )
 }
 
 /**
@@ -241,11 +210,8 @@ export const fromString = (input: string): Result.Result<IpNetwork, IpNetworkErr
  * @category unsafe
  * @since 4.0.0
  */
-export const makeUnsafe: {
-  (address: NetAddress.Ipv4Address, prefixLength: number): Ipv4Network
-  (address: NetAddress.Ipv6Address, prefixLength: number): Ipv6Network
-  (address: NetAddress.IpAddress, prefixLength: number): IpNetwork
-} = (address: any, prefixLength: number): any => Result.getOrThrow(make(address, prefixLength))
+export const makeUnsafe = <A extends NetAddress.IpAddress>(address: A, prefixLength: number): IpNetwork<A> =>
+  Result.getOrThrow(make(address, prefixLength))
 
 /**
  * Creates the network containing a trusted address, throwing when its prefix is invalid.
@@ -253,11 +219,8 @@ export const makeUnsafe: {
  * @category unsafe
  * @since 4.0.0
  */
-export const fromAddressUnsafe: {
-  (address: NetAddress.Ipv4Address, prefixLength: number): Ipv4Network
-  (address: NetAddress.Ipv6Address, prefixLength: number): Ipv6Network
-  (address: NetAddress.IpAddress, prefixLength: number): IpNetwork
-} = (address: any, prefixLength: number): any => Result.getOrThrow(fromAddress(address, prefixLength))
+export const fromAddressUnsafe = <A extends NetAddress.IpAddress>(address: A, prefixLength: number): IpNetwork<A> =>
+  Result.getOrThrow(fromAddress(address, prefixLength))
 
 /**
  * Parses a trusted network prefix in CIDR notation, throwing on failure.
@@ -281,7 +244,7 @@ export const format = (self: IpNetwork): string => `${NetAddress.formatIp(self.a
  * @category getters
  * @since 4.0.0
  */
-export const firstAddress = (self: IpNetwork): NetAddress.IpAddress => self.address
+export const firstAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>): A => self.address
 
 /**
  * Returns the numerically greatest address in a network prefix.
@@ -289,7 +252,7 @@ export const firstAddress = (self: IpNetwork): NetAddress.IpAddress => self.addr
  * @category getters
  * @since 4.0.0
  */
-export const lastAddress = (self: IpNetwork): NetAddress.IpAddress => {
+export const lastAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>): A => {
   const bytes = toBytes(self.address)
   const networkMask = maskBytes(bytes.map(() => 0xff), self.prefixLength)
   return fromBytes(self.address, bytes.map((byte, index) => byte | (networkMask[index] ^ 0xff)))
@@ -332,7 +295,7 @@ export const containsNetwork: {
   (other: IpNetwork): (self: IpNetwork) => boolean
   (self: IpNetwork, other: IpNetwork): boolean
 } = dual(2, (self: IpNetwork, other: IpNetwork): boolean => {
-  return self._tag === other._tag && self.prefixLength <= other.prefixLength && containsBytes(self, other.address)
+  return self.prefixLength <= other.prefixLength && containsBytes(self, other.address)
 })
 
 /**
@@ -345,7 +308,6 @@ export const overlaps: {
   (other: IpNetwork): (self: IpNetwork) => boolean
   (self: IpNetwork, other: IpNetwork): boolean
 } = dual(2, (self: IpNetwork, other: IpNetwork): boolean => {
-  if (self._tag !== other._tag) return false
   return self.prefixLength <= other.prefixLength
     ? containsBytes(self, other.address)
     : containsBytes(other, self.address)

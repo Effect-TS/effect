@@ -25,6 +25,8 @@ describe("IpNetwork", () => {
     assert.isTrue(Object.isFrozen(ipv6))
     assert.isTrue(IpNetwork.isIpv4Network(ipv4))
     assert.isTrue(IpNetwork.isIpv6Network(ipv6))
+    assert.strictEqual(ipv4._tag, "IpNetwork")
+    assert.strictEqual(ipv6._tag, "IpNetwork")
     assert.isFalse(IpNetwork.isIpv4Network(ipv6))
     assert.isFalse(IpNetwork.isIpv6Network(ipv4))
     assert.isTrue(IpNetwork.isIpNetwork(ipv4))
@@ -45,7 +47,7 @@ describe("IpNetwork", () => {
     failure(IpNetwork.make(ipv6, 32))
 
     const error = failure(IpNetwork.make(ipv4, -1))
-    assert.strictEqual(error._tag, "IpNetworkError")
+    assert.strictEqual(error._tag, "NetAddressError")
     assert.strictEqual(error.message, "prefix length must be an integer from 0 through 32")
   })
 
@@ -90,10 +92,7 @@ describe("IpNetwork", () => {
       failure(IpNetwork.fromString(input))
     }
     const parseError = failure(IpNetwork.fromString("1.2.3.4/+24"))
-    assert.strictEqual(parseError.message, "failed to parse an IP network prefix")
-    const cause = parseError.cause
-    assert.instanceOf(cause, Error)
-    assert.strictEqual(cause.message, "prefix length must be an unpadded ASCII decimal integer")
+    assert.strictEqual(parseError.message, "prefix length must be an unpadded ASCII decimal integer")
     failure(IpNetwork.ipv4FromString("::/0"))
     failure(IpNetwork.ipv6FromString("0.0.0.0/0"))
   })
@@ -176,7 +175,7 @@ describe("IpNetwork", () => {
     )
     assert.throws(() => Schema.decodeUnknownSync(Schema.IpNetworkFromString)("192.0.2.1/24"))
     assert.throws(() =>
-      Schema.decodeUnknownSync(Schema.IpNetwork)({ _tag: "Ipv4Network", address: ip("192.0.2.0"), prefixLength: 24 })
+      Schema.decodeUnknownSync(Schema.IpNetwork)({ _tag: "IpNetwork", address: ip("192.0.2.0"), prefixLength: 24 })
     )
   })
 

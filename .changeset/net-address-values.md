@@ -7,8 +7,13 @@
 "@effect/platform-bun": patch
 ---
 
-Add platform-neutral network values under `effect/unstable/net`: `NetAddress` for MAC, IP, internet, and Unix socket addresses; `IpInterface` for host addresses that preserve their prefix and host bits; and `IpNetwork` for canonical IPv4 and IPv6 CIDR values. These modules provide strict parsing, canonical formatting, checked and unsafe construction, equality, hashing, matching unstable `effect/Schema` codecs, and network operations including containment, overlap, exact bounds, and address counts.
+Add platform-neutral network address modules under `effect/unstable/net`:
 
-Add `NetAddress.SocketAddress.Input` and checked and unsafe constructors for normalizing concrete socket address configuration. HTTP and socket servers now accept these inputs and expose canonical `NetAddress.SocketAddress` values. Replace their TCP address types with `NetAddress.InetAddress`, use `address` instead of `hostname`, and replace Unix address types with `NetAddress.UnixPathAddress`. Bun listener hostnames continue to resolve before binding; native conversion failures remain typed server-open errors, and IPv6 authorities are formatted with brackets. Servers bound to the IPv6 unspecified address now log addresses such as `http://[::]:3000` instead of substituting `0.0.0.0`.
+- `NetAddress` provides MAC, IP, interface, internet, and Unix socket addresses.
+- `IpNetwork` provides canonical IPv4 and IPv6 CIDR networks, including containment, overlap, bounds, and address counts.
 
-PostgreSQL `inet` now uses `IpInterface`, while `cidr` enforces canonical network addresses and continues to accept bare addresses with their full-width prefix.
+HTTP and socket servers now expose canonical `NetAddress.SocketAddress` values. TCP addresses use `NetAddress.InetAddress` with an `address` field instead of `hostname`, and Unix addresses use `NetAddress.UnixPathAddress`. IPv6 URL authorities are bracketed. A server bound to `::` now logs `http://[::]:3000` instead of `http://0.0.0.0:3000`.
+
+Bun continues to resolve listener hostnames before binding. Bun and Deno HTTP server layers can now fail with `ServeError` when their native listener address cannot be converted to a `NetAddress`.
+
+PostgreSQL `inet` now uses `NetAddress.IpInterface`. The `cidr` codec rejects addresses with host bits set and still treats a bare address as a full-width network.

@@ -69,12 +69,9 @@ export const make = (
       httpEffect: Effect.Effect<HttpServerResponse, unknown, HttpServerRequest | Scope.Scope>,
       middleware?: Middleware.HttpMiddleware
     ) => Effect.Effect<void, never, Scope.Scope>
-    readonly address: NetAddress.SocketAddress.Input
+    readonly address: NetAddress.SocketAddress
   }
-): HttpServer["Service"] => ({
-  ...options,
-  address: NetAddress.socketAddressFromInputUnsafe(options.address)
-})
+): HttpServer["Service"] => options
 
 /**
  * Creates a layer that starts serving an HTTP response effect with the current
@@ -188,7 +185,7 @@ export const formatAddress = (address: NetAddress.SocketAddress): string => {
       return `unix://${address.path}`
     case "InetAddressV4":
     case "InetAddressV6":
-      return `http://${NetAddress.formatInet(address)}`
+      return `http://${NetAddress.formatUrlHost(address.address)}:${address.port}`
   }
 }
 
@@ -236,7 +233,7 @@ export const withLogAddress = <A, E, R>(
  * **Details**
  *
  * For internet servers, requests are prefixed with the server URL and unspecified
- * addresses are replaced by the loopback address of the same IP version.
+ * addresses are replaced by the IPv4 loopback address.
  *
  * **Gotchas**
  *
@@ -257,9 +254,7 @@ export const makeTestClient: Effect.Effect<
     return yield* Effect.die(new Error("HttpServer.layerTestClient: UnixPathAddress not supported"))
   }
   const host = NetAddress.isUnspecified(address.address)
-    ? address._tag === "InetAddressV4"
-      ? NetAddress.ipv4Loopback
-      : NetAddress.ipv6Loopback
+    ? NetAddress.ipv4Loopback
     : address.address
   const url = `http://${NetAddress.formatUrlHost(host)}:${address.port}`
   return HttpClient.mapRequest(client, ClientRequest.prependUrl(url))
