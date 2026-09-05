@@ -874,6 +874,58 @@ describe("Arbitrary", () => {
         assert.isTrue(prototypes.has(null))
       }))
 
+    it.effect("validates fixed fields against index signatures during generation and shrinking", () =>
+      Effect.gen(function*() {
+        const schema = Schema.StructWithRest(
+          Schema.Struct({ fixed: Schema.String }),
+          [Schema.Record(Schema.String, Schema.NonEmptyString)]
+        )
+        const exhausted = yield* Effect.result(Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+          count: 1,
+          maxDiscards: 0,
+          seed: "indexed-object-validity",
+          size: 0
+        }))
+        // Constructive intersections are out of scope, so size-zero exhaustion is intentional for now.
+        assert.isTrue(Result.isFailure(exhausted))
+        if (Result.isFailure(exhausted)) {
+          assert.deepStrictEqual(exhausted.failure, {
+            _tag: "SampleError",
+            generated: 0,
+            discards: 1,
+            seed: "indexed-object-validity"
+          })
+        }
+
+        const seen: Array<typeof schema.Type> = []
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+          seen.push(value)
+          return false
+        }, {
+          runs: 1,
+          maxDiscards: 128,
+          maxShrinks: 64,
+          seed: "indexed-object-validity",
+          size: 4
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") assert.isAbove(result.shrinks, 0)
+        assert.isTrue(seen.every(Schema.is(schema)))
+
+        const overlapping = Schema.StructWithRest(Schema.Struct({}), [
+          Schema.Record(Schema.String, Schema.String),
+          Schema.Record(Schema.String, Schema.NonEmptyString)
+        ])
+        const checked = yield* Arbitrary.checkEffect(Arbitrary.schema(overlapping), Schema.is(overlapping), {
+          runs: 100,
+          maxDiscards: 128,
+          seed: "overlapping-index-validity",
+          size: 4
+        })
+        assert.strictEqual(checked._tag, "Passed")
+      }))
+
     it.effect("preserves special Record keys with null-prototype objects", () =>
       Effect.gen(function*() {
         const schema = Schema.Record(Schema.Literal("__proto__"), Schema.Literal("value"))

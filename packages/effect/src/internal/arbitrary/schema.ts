@@ -1298,8 +1298,27 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       }
       case "Arrays":
         return compileArrays(ast, path, constraint)
-      case "Objects":
-        return compileObjects(ast, path, constraint)
+      case "Objects": {
+        const compiled = compileObjects(ast, path, constraint)
+        if (
+          ast.indexSignatures.length === 0 ||
+          (ast.indexSignatures.length === 1 && ast.propertySignatures.length === 0)
+        ) return compiled
+        const parse = SchemaParser.run<Record<PropertyKey, any>, never>(
+          new SchemaAST.Objects([], ast.indexSignatures)
+        )
+        return Model.makeCompiled(
+          compiled.dependencies,
+          compiled.computeMinCost,
+          (state) =>
+            Model.filterMapGeneration(
+              compiled.generate(state),
+              (value) =>
+                Model.mapComputation(optionComputation(parse(value)), (parsed) =>
+                  Option.isNone(parsed) ? parsed : Option.some(value))
+            )
+        )
+      }
       case "Suspend": {
         const body = recur(ast.thunk(), path)
         return Model.makeCompiled([body], () => body.minCost, (state) => body.generate(state))
