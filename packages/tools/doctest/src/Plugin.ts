@@ -106,7 +106,9 @@ export const plugin = (): Plugin => {
         }
 
         const source = transform(snippet.source, loaded.file, snippet.line)
-        if (loaded.file.endsWith(".md")) {
+        if (Source.isMarkdown(loaded.file)) {
+          // Seed the source map with the snippet's document offset. Oxc removes
+          // these blank lines from the emitted code but preserves their mapping.
           return transformWithOxc("\n".repeat(snippet.line) + source, loaded.file, { lang: "ts" })
         }
         return source
