@@ -333,8 +333,6 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const { group, endpoint, errors, successes } = onEndpointOptions
         const makeUrl = compilePath(endpoint.path)
         const decodeMap: Record<number | "orElse", ResponseDecoder> = { orElse: statusOrElse }
-        const decodeResponse: ResponseDecoder = (response, sseOptions) =>
-          (decodeMap[response.status] ?? decodeMap.orElse)(response, sseOptions)
         const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of errors.entries()) {
           const grouped = groupSchemasByContentType(schemas)
@@ -344,9 +342,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
         for (const [status, alternatives] of errorAlternatives.entries()) {
           const decode = makeResponseDecoder(alternatives)
-          decodeMap[status] = (response, sseOptions) =>
+          decodeMap[status] = (response) =>
             Effect.flatMap(
-              Effect.catchCause(decode(response, sseOptions), (cause) =>
+              Effect.catchCause(decode(response), (cause) =>
                 Effect.failCause(Cause.combine(
                   Cause.fail(
                     new HttpClientError.HttpClientError({
@@ -456,9 +454,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             return response
           }
 
+          const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, callOptions?.sseOptions)
           const value = yield* (options.transformResponse === undefined
-            ? decodeResponse(response, callOptions?.sseOptions)
-            : options.transformResponse(decodeResponse(response, callOptions?.sseOptions)))
+            ? decoded
+            : options.transformResponse(decoded))
 
           return request?.responseMode === "decoded-and-response" ? [value, response] : value
         })

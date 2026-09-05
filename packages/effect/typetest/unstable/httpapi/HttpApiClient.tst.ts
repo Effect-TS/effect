@@ -15,33 +15,6 @@ import { describe, expect, it } from "tstyche"
 type ResponseMode = HttpApiEndpoint.ClientResponseMode
 
 describe("HttpApiClient", () => {
-  describe("options", () => {
-    it("accepts native SSE decode options per call", () => {
-      const Api = HttpApi.make("Api").add(
-        HttpApiGroup.make("group").add(HttpApiEndpoint.get("events", "/events"))
-      )
-      const httpClient = HttpClient.make(() => Effect.die("not used"))
-      const client = Effect.runSync(HttpApiClient.makeWith(Api, { httpClient }))
-      const endpoint = Effect.runSync(HttpApiClient.endpoint(Api, {
-        group: "group",
-        endpoint: "events",
-        httpClient
-      }))
-      const sseOptions = hole<Sse.DecodeOptions>()
-
-      expect(client.group.events).type.toBeCallableWith({}, { sseOptions })
-      expect(endpoint).type.toBeCallableWith({}, { sseOptions })
-      expect<Parameters<typeof client.group.events>[0]>().type.toBe<
-        void | { readonly responseMode?: ResponseMode } | undefined
-      >()
-      expect<Parameters<typeof client.group.events>[1]>().type.toBe<
-        { readonly sseOptions?: Sse.DecodeOptions | undefined } | undefined
-      >()
-      expect(client.group.events).type.not.toBeCallableWith({}, { sseOptions: { maxEventSize: "4" } })
-      expect(HttpApiClient.makeWith).type.not.toBeCallableWith(Api, { httpClient, sseDecodeOptions: sseOptions })
-    })
-  })
-
   describe("params", () => {
     it("derives request params from a field record", () => {
       const Api = HttpApi.make("Api")
@@ -643,6 +616,7 @@ describe("HttpApiClient", () => {
         HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
       )
       const f = client.group.a
+      const sseOptions = hole<Sse.DecodeOptions>()
 
       type Event = { readonly event: "user.created"; readonly data: string }
       type StreamError = { readonly reason: string }
@@ -651,7 +625,13 @@ describe("HttpApiClient", () => {
         StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError
       >
 
+      expect<Parameters<typeof f>[1]>().type.toBe<
+        { readonly sseOptions?: Sse.DecodeOptions | undefined } | undefined
+      >()
       expect(f()).type.toBe<
+        Effect.Effect<ClientStream, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+      expect(f(undefined, { sseOptions })).type.toBe<
         Effect.Effect<ClientStream, HttpClientError.HttpClientError | Schema.SchemaError>
       >()
       expect(f({ responseMode: "decoded-only" })).type.toBe<
@@ -663,9 +643,16 @@ describe("HttpApiClient", () => {
           HttpClientError.HttpClientError | Schema.SchemaError
         >
       >()
+      expect(f({ responseMode: "decoded-and-response" }, { sseOptions })).type.toBe<
+        Effect.Effect<
+          [ClientStream, HttpClientResponse.HttpClientResponse],
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
       expect(f({ responseMode: "response-only" })).type.toBe<
         Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
       >()
+      expect(f).type.not.toBeCallableWith(undefined, { sseOptions: { maxEventSize: "4" } })
     })
 
     it("widens only the body stream errors for WithHeaders StreamSse successes", () => {
@@ -1001,7 +988,15 @@ describe("HttpApiClient", () => {
           readonly responseMode?: ResponseMode
         }
       >()
+      const sseOptions = hole<Sse.DecodeOptions>()
+
       expect(getUser({ params: { id: "1" }, query: { page: 1 } })).type.toBe<
+        Effect.Effect<
+          { readonly id: string; readonly age: number },
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+      expect(getUser({ params: { id: "1" }, query: { page: 1 } }, { sseOptions })).type.toBe<
         Effect.Effect<
           { readonly id: string; readonly age: number },
           HttpClientError.HttpClientError | Schema.SchemaError
