@@ -4,6 +4,7 @@ import type * as PublicSchema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 import * as InternalTransformation from "../../SchemaTransformation.ts"
+import * as InternalAnnotations from "./annotations.ts"
 import * as InternalMake from "./make.ts"
 
 /** @internal */
@@ -12,7 +13,17 @@ export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): Publi
 }
 
 /** @internal */
-export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+export const toCodecJsonAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
+  const out = toCodecJsonASTBase(ast)
+  const annotations = SchemaAST.isDeclaration(ast) ? getClassJsonAnnotations(ast) : undefined
+  return annotations === undefined
+    ? out
+    : SchemaAST.applyToSelfOrLastLinkEncoding((encoded) =>
+      SchemaAST.annotate(encoded, { ...annotations, ...InternalAnnotations.resolve(encoded) })
+    )(out)
+})
+
+const toCodecJsonASTBase = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   const out = toCodecJsonASTStep(ast, toCodecJsonAST)
   const context = ast.context
   if (out === ast || context === undefined) return out
@@ -118,6 +129,23 @@ function toCodecJsonASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => S
   }
   // `Schema.Any` is used as an escape hatch
   return ast
+}
+
+function getClassJsonAnnotations(ast: SchemaAST.Declaration): PublicSchema.Annotations.Annotations | undefined {
+  const annotations = ast.annotations
+  if (annotations?.[InternalAnnotations.CONSTRUCTOR_ANNOTATION_KEY] === undefined) return undefined
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(annotations)) {
+    if (
+      key !== "identifier" &&
+      key !== InternalAnnotations.IDENTIFIER_FALLBACK_KEY &&
+      !InternalAnnotations.annotationExcludedKeys.has(key) &&
+      SchemaAST.isJson(value)
+    ) {
+      out[key] = value
+    }
+  }
+  return Object.keys(out).length === 0 ? undefined : out
 }
 
 /** @internal */
