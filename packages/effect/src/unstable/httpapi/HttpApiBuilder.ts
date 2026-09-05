@@ -160,6 +160,49 @@ export const group = <
     )
   })) as any
 
+/**
+ * Creates a reusable handler for a single endpoint in an API group.
+ *
+ * Returns the supplied callback unchanged, with its request, success, and error
+ * types inferred from the endpoint. Pass the result to `handlers.handle` when
+ * implementing the group.
+ *
+ * @category handlers
+ * @since 4.0.0
+ */
+export const handler = <
+  ApiId extends string,
+  Groups extends HttpApiGroup.Constraint,
+  const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+  const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
+  R
+>(
+  _api: HttpApi.HttpApi<ApiId, Groups>,
+  _groupIdentifier: GroupIdentifier,
+  _endpointIdentifier: EndpointIdentifier,
+  f: HttpApiEndpoint.HandlerWithIdentifier<
+    HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+    EndpointIdentifier,
+    HttpApiEndpoint.MiddlewareError<
+      HttpApiEndpoint.WithIdentifier<
+        HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+        EndpointIdentifier
+      >
+    >,
+    R
+  >
+): HttpApiEndpoint.HandlerWithIdentifier<
+  HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+  EndpointIdentifier,
+  HttpApiEndpoint.MiddlewareError<
+    HttpApiEndpoint.WithIdentifier<
+      HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+      EndpointIdentifier
+    >
+  >,
+  R
+> => f
+
 const HandlersTypeId = "~effect/httpapi/HttpApiBuilder/Handlers"
 
 type EndpointMap<Endpoints extends HttpApiEndpoint.Constraint> = {
