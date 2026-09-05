@@ -176,6 +176,11 @@ export const serveEffect: {
  * Internet addresses are formatted as `http://host:port`, with IPv6 hosts
  * bracketed; Unix socket addresses are formatted as `unix://path`.
  *
+ * **Gotchas**
+ *
+ * IPv6 scope identifiers are omitted because WHATWG URLs do not support scoped
+ * IPv6 hosts.
+ *
  * @category converting
  * @since 4.0.0
  */
@@ -233,11 +238,11 @@ export const withLogAddress = <A, E, R>(
  * **Details**
  *
  * For internet servers, requests are prefixed with the server URL and unspecified
- * addresses are replaced by the IPv4 loopback address.
+ * addresses are replaced by the loopback address of the same IP family.
  *
  * **Gotchas**
  *
- * Unix socket addresses are not supported.
+ * Unix socket addresses and scoped IPv6 addresses are not supported.
  *
  * @category testing
  * @since 4.0.0
@@ -254,7 +259,7 @@ export const makeTestClient: Effect.Effect<
     return yield* Effect.die(new Error("HttpServer.layerTestClient: UnixPathAddress not supported"))
   }
   const host = NetAddress.isUnspecified(address.address)
-    ? NetAddress.ipv4Loopback
+    ? NetAddress.isIpv4Address(address.address) ? NetAddress.ipv4Loopback : NetAddress.ipv6Loopback
     : address.address
   const url = `http://${NetAddress.formatUrlHost(host)}:${address.port}`
   return HttpClient.mapRequest(client, ClientRequest.prependUrl(url))

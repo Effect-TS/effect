@@ -299,17 +299,17 @@ const hashBytes = (tag: string, bytes: Uint8Array): number => {
 }
 
 const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
-  const self = Object.assign(Object.create(Ipv4Proto), { bytes })
+  const self = Object.assign(Object.create(Ipv4Proto), { bytes: bytes.slice() })
   return Object.freeze(self)
 }
 
 const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
-  const self = Object.assign(Object.create(Ipv6Proto), { bytes })
+  const self = Object.assign(Object.create(Ipv6Proto), { bytes: bytes.slice() })
   return Object.freeze(self)
 }
 
 const makeMac = (bytes: Uint8Array): MacAddress => {
-  const self = Object.assign(Object.create(MacProto), { bytes })
+  const self = Object.assign(Object.create(MacProto), { bytes: bytes.slice() })
   return Object.freeze(self)
 }
 
@@ -379,12 +379,8 @@ const addressError = (message: string): Result.Result<never, NetAddressError> =>
  * @since 4.0.0
  */
 export const ipv4FromOctets = (
-  a: number,
-  b: number,
-  c: number,
-  d: number
+  octets: readonly [number, number, number, number]
 ): Result.Result<Ipv4Address, NetAddressError> => {
-  const octets = [a, b, c, d]
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("octets must be integers from 0 through 255")
   }
@@ -398,16 +394,8 @@ export const ipv4FromOctets = (
  * @since 4.0.0
  */
 export const ipv6FromSegments = (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number
+  segments: readonly [number, number, number, number, number, number, number, number]
 ): Result.Result<Ipv6Address, NetAddressError> => {
-  const segments = [a, b, c, d, e, f, g, h]
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
     return addressError("segments must be integers from 0 through 65535")
   }
@@ -426,14 +414,8 @@ export const ipv6FromSegments = (
  * @since 4.0.0
  */
 export const macAddressFromOctets = (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number
+  octets: readonly [number, number, number, number, number, number]
 ): Result.Result<MacAddress, NetAddressError> => {
-  const octets = [a, b, c, d, e, f]
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("octets must be integers from 0 through 255")
   }
@@ -483,7 +465,7 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Address, NetAdd
   if (octets.some((part) => part > 255)) {
     return addressError("octets must be at most 255")
   }
-  return ipv4FromOctets(octets[0], octets[1], octets[2], octets[3])
+  return ipv4FromOctets([octets[0], octets[1], octets[2], octets[3]])
 }
 
 const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, NetAddressError> => {
@@ -542,7 +524,19 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
 export const ipv6FromString = (input: string): Result.Result<Ipv6Address, NetAddressError> => {
   return Result.flatMap(
     parseIpv6Segments(input),
-    (segments) => ipv6FromSegments(...segments as [number, number, number, number, number, number, number, number])
+    (segments) =>
+      ipv6FromSegments(
+        segments as unknown as readonly [
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number
+        ]
+      )
   )
 }
 

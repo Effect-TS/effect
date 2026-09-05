@@ -20,7 +20,12 @@ describe("NetAddress", () => {
   describe("IPv4", () => {
     it("parses strict dotted decimal", () => {
       assert.strictEqual(NetAddress.formatIp(success(NetAddress.ipv4FromString("1.2.3.4"))), "1.2.3.4")
-      assert.deepStrictEqual(NetAddress.ipv4ToOctets(success(NetAddress.ipv4FromOctets(127, 0, 0, 1))), [127, 0, 0, 1])
+      assert.deepStrictEqual(NetAddress.ipv4ToOctets(success(NetAddress.ipv4FromOctets([127, 0, 0, 1]))), [
+        127,
+        0,
+        0,
+        1
+      ])
     })
 
     it("rejects malformed inputs", () => {
@@ -42,8 +47,8 @@ describe("NetAddress", () => {
       ) {
         failure(NetAddress.ipv4FromString(input))
       }
-      failure(NetAddress.ipv4FromOctets(0, 0, 0, 256))
-      failure(NetAddress.ipv4FromOctets(0, 0, 0, 1.5))
+      failure(NetAddress.ipv4FromOctets([0, 0, 0, 256]))
+      failure(NetAddress.ipv4FromOctets([0, 0, 0, 1.5]))
     })
   })
 
@@ -89,14 +94,14 @@ describe("NetAddress", () => {
       ) {
         failure(NetAddress.ipv6FromString(input))
       }
-      failure(NetAddress.ipv6FromSegments(0, 0, 0, 0, 0, 0, 0, 65536))
+      failure(NetAddress.ipv6FromSegments([0, 0, 0, 0, 0, 0, 0, 65536]))
     })
 
     it("round trips constructed numeric values", () => {
       const values = [
-        success(NetAddress.ipv6FromSegments(0, 0, 0, 0, 0, 0, 0, 0)),
-        success(NetAddress.ipv6FromSegments(0x2001, 0xdb8, 0, 1, 2, 3, 4, 5)),
-        success(NetAddress.ipv6FromSegments(0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff))
+        success(NetAddress.ipv6FromSegments([0, 0, 0, 0, 0, 0, 0, 0])),
+        success(NetAddress.ipv6FromSegments([0x2001, 0xdb8, 0, 1, 2, 3, 4, 5])),
+        success(NetAddress.ipv6FromSegments([0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]))
       ]
       for (const value of values) {
         const encoded = NetAddress.formatIp(value)
@@ -161,7 +166,7 @@ describe("NetAddress", () => {
       Reflect.set(octets, 0, 0xff)
       assert.strictEqual(NetAddress.formatMacAddress(address), "02:0a:0b:0c:0d:0e")
       assert.isTrue(NetAddress.isMacAddress(address))
-      assert.isTrue(Equal.equals(address, success(NetAddress.macAddressFromOctets(2, 10, 11, 12, 13, 14))))
+      assert.isTrue(Equal.equals(address, success(NetAddress.macAddressFromOctets([2, 10, 11, 12, 13, 14]))))
       assert.strictEqual(Hash.hash(address), Hash.hash(success(NetAddress.macAddressFromString("02:0a:0b:0c:0d:0e"))))
     })
 
@@ -179,8 +184,8 @@ describe("NetAddress", () => {
       ) {
         failure(NetAddress.macAddressFromString(input))
       }
-      failure(NetAddress.macAddressFromOctets(0, 0, 0, 0, 0, 256))
-      failure(NetAddress.macAddressFromOctets(0, 0, 0, 0, 0, 1.5))
+      failure(NetAddress.macAddressFromOctets([0, 0, 0, 0, 0, 256]))
+      failure(NetAddress.macAddressFromOctets([0, 0, 0, 0, 0, 1.5]))
       assert.throws(() => NetAddress.macAddressFromStringUnsafe("invalid"))
     })
 
@@ -235,6 +240,24 @@ describe("NetAddress", () => {
     for (const address of [ipv4, ipv6, inet4, inet6, mac, unix]) {
       assert.isTrue(Object.isFrozen(address))
     }
+  })
+
+  it("copies byte constructor inputs", () => {
+    const ipv4Bytes = new Uint8Array([127, 0, 0, 1])
+    const ipv6Bytes = new Uint8Array(16)
+    ipv6Bytes[15] = 1
+    const ipv4 = NetAddress.ipv4FromBytesUnsafe(ipv4Bytes)
+    const ipv6 = NetAddress.ipv6FromBytesUnsafe(ipv6Bytes)
+    const ipv4Hash = Hash.hash(ipv4)
+    const ipv6Hash = Hash.hash(ipv6)
+
+    ipv4Bytes[0] = 1
+    ipv6Bytes[15] = 2
+
+    assert.strictEqual(NetAddress.formatIp(ipv4), "127.0.0.1")
+    assert.strictEqual(NetAddress.formatIp(ipv6), "::1")
+    assert.strictEqual(Hash.hash(ipv4), ipv4Hash)
+    assert.strictEqual(Hash.hash(ipv6), ipv6Hash)
   })
 
   it("discriminates addresses sharing the common type id", () => {

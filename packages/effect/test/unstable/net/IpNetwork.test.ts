@@ -189,7 +189,7 @@ describe("IpNetwork", () => {
         fc.integer({ min: 0, max: 32 })
       ),
       ([a, b, c, d, prefix]) => {
-        const address = success(NetAddress.ipv4FromOctets(a, b, c, d))
+        const address = success(NetAddress.ipv4FromOctets([a, b, c, d]))
         const value = success(IpNetwork.fromAddress(address, prefix))
         const input = (((a * 256 + b) * 256 + c) * 256 + d) >>> 0
         const hostBits = 32 - prefix
@@ -226,9 +226,9 @@ describe("IpNetwork", () => {
         fc.integer({ min: 0, max: 128 })
       ),
       ([segments, prefix]) => {
-        const address = success(
-          NetAddress.ipv6FromSegments(...segments as [number, number, number, number, number, number, number, number])
-        )
+        const address = success(NetAddress.ipv6FromSegments(
+          segments as [number, number, number, number, number, number, number, number]
+        ))
         const value = success(IpNetwork.fromAddress(address, prefix))
         const input = segments.reduce((value, segment) => (value << BigInt(16)) | BigInt(segment), BigInt(0))
         const hostBits = BigInt(128 - prefix)

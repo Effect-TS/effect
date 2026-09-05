@@ -33,6 +33,19 @@ import { NodeWS } from "./NodeSocket.ts"
 
 const isDeno = "Deno" in globalThis
 
+const socketAddressFromNode = (
+  address: string | Net.AddressInfo
+): Effect.Effect<NetAddress.SocketAddress, SocketServer.SocketServerError> =>
+  typeof address === "string"
+    ? Effect.succeed(NetAddress.unixPathAddress(address))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
+      Effect.mapError((cause) =>
+        new SocketServer.SocketServerError({
+          reason: new SocketServer.SocketServerOpenError({ cause })
+        })
+      )
+    )
+
 /**
  * Service tag for the Node `IncomingMessage` associated with the current
  * WebSocket server connection.
@@ -229,16 +242,7 @@ export const makeWebSocket: (
     )
   })
 
-  const address = server.address()!
-  const boundAddress = yield* (typeof address === "string"
-    ? Effect.succeed(NetAddress.unixPathAddress(address))
-    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
-      Effect.mapError((cause) =>
-        new SocketServer.SocketServerError({
-          reason: new SocketServer.SocketServerOpenError({ cause })
-        })
-      )
-    ))
+  const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
     address: boundAddress,
     run
@@ -377,16 +381,7 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
     })
   })
 
-  const address = server.address()!
-  const boundAddress = yield* (typeof address === "string"
-    ? Effect.succeed(NetAddress.unixPathAddress(address))
-    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
-      Effect.mapError((cause) =>
-        new SocketServer.SocketServerError({
-          reason: new SocketServer.SocketServerOpenError({ cause })
-        })
-      )
-    ))
+  const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
     address: boundAddress,
     run

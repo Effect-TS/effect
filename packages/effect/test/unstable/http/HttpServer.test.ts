@@ -23,13 +23,13 @@ describe("HttpServer", () => {
     assert.doesNotThrow(() => new URL(formatted))
   })
 
-  it.effect("uses IPv4 loopback for unspecified test server addresses", () => {
+  it.effect("preserves the address family for unspecified test server addresses", () => {
     const server = HttpServer.make({
       address: NetAddress.inetAddressUnsafe(NetAddress.ipv6Unspecified, 3000),
       serve: () => Effect.void
     })
     const client = HttpClient.make((request, url) => {
-      assert.strictEqual(url.origin, "http://127.0.0.1:3000")
+      assert.strictEqual(url.origin, "http://[::1]:3000")
       return Effect.succeed(HttpClientResponse.fromWeb(request, new Response()))
     })
 

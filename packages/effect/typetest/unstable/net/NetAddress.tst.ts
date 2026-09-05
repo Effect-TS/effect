@@ -22,6 +22,17 @@ describe("NetAddress", () => {
     expect(NetAddress.socketAddressFromInputUnsafe({ path: "server.sock" })).type.toBe<NetAddress.SocketAddress>()
     expect(NetAddress.ipv4FromBytesUnsafe(new Uint8Array(4))).type.toBe<NetAddress.Ipv4Address>()
     expect(NetAddress.ipv6FromBytesUnsafe(new Uint8Array(16))).type.toBe<NetAddress.Ipv6Address>()
+    expect(NetAddress.ipv4FromOctets([127, 0, 0, 1])).type.toBe<
+      Result.Result<NetAddress.Ipv4Address, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.ipv6FromSegments([0, 0, 0, 0, 0, 0, 0, 1])).type.toBe<
+      Result.Result<NetAddress.Ipv6Address, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.macAddressFromOctets([0, 0, 0, 0, 0, 0])).type.toBe<
+      Result.Result<NetAddress.MacAddress, NetAddress.NetAddressError>
+    >()
+    // @ts-expect-error Source has 3 element(s) but target requires 4.
+    NetAddress.ipv4FromOctets([127, 0, 1])
     expect(NetAddress.ipv6ToOctets(NetAddress.ipv6Loopback)).type.toBe<ReadonlyArray<number>>()
     // @ts-expect-error Property 'bytes' does not exist
     void NetAddress.ipv4Loopback.bytes
