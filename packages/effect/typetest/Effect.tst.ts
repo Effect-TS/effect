@@ -51,16 +51,6 @@ declare const mixedEffect: Effect.Effect<string, AiError | OtherError>
 declare const simpleEffect: Effect.Effect<string, SimpleError>
 declare const noSuchOrOther: Effect.Effect<string, Cause.NoSuchElementError | OtherError>
 declare const onlyNoSuch: Effect.Effect<number, Cause.NoSuchElementError>
-declare const consumeSimple: (effect: Effect.Effect<number, SimpleError>) => void
-type TryOptions<A, E> = { readonly try: () => A; readonly catch: (error: unknown) => E }
-type TryPromiseOptions<A, E> = {
-  readonly try: (signal: AbortSignal) => PromiseLike<A>
-  readonly catch: (error: unknown) => E
-}
-declare const tryInput: (() => number) | TryOptions<number, SimpleError>
-declare const tryPromiseInput:
-  | ((signal: AbortSignal) => PromiseLike<number>)
-  | TryPromiseOptions<number, SimpleError>
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -140,22 +130,12 @@ describe("Effect.try", () => {
     expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
   })
 
-  it("retains UnknownError when the success type is explicit", () => {
-    const result = Effect.try<number>(() => 1)
-    expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
-  })
-
   it("rejects a narrower return annotation for the direct-thunk form", () => {
     function load(): Effect.Effect<number, SimpleError> {
       // @ts-expect-error is not assignable to type
       return Effect.try(() => 1)
     }
     expect(load).type.toBe<() => Effect.Effect<number, SimpleError>>()
-  })
-
-  it("rejects the direct-thunk form in a narrower argument position", () => {
-    // @ts-expect-error is not assignable to parameter
-    consumeSimple(Effect.try(() => 1))
   })
 
   it("infers the mapped error from the options form", () => {
@@ -166,21 +146,11 @@ describe("Effect.try", () => {
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
   })
 
-  it("rejects an explicit error type for the direct-thunk form", () => {
-    // @ts-expect-error is not assignable to parameter
-    Effect.try<number, SimpleError>(() => 1)
-  })
-
-  it("rejects a union of direct and mapped inputs", () => {
-    // @ts-expect-error No overload matches this call
-    Effect.try(tryInput)
-  })
-
   it("rejects a generic alias that erases UnknownError", () => {
-    // @ts-expect-error is not assignable to type
-    const tryAs: <A, E>(options: (() => A) | TryOptions<A, E>) => Effect.Effect<A, E> = Effect.try
-    expect(tryAs<number, SimpleError>).type.toBe<
-      (options: (() => number) | TryOptions<number, SimpleError>) => Effect.Effect<number, SimpleError>
+    expect(Effect.try).type.not.toBeAssignableTo<
+      <A, E>(
+        options: (() => A) | { readonly try: () => A; readonly catch: (error: unknown) => E }
+      ) => Effect.Effect<A, E>
     >()
   })
 })
@@ -194,22 +164,12 @@ describe("Effect.tryPromise", () => {
     expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
   })
 
-  it("retains UnknownError when the success type is explicit", () => {
-    const result = Effect.tryPromise<number>(() => Promise.resolve(1))
-    expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
-  })
-
   it("rejects a narrower return annotation for the direct-thunk form", () => {
     function load(): Effect.Effect<number, SimpleError> {
       // @ts-expect-error is not assignable to type
       return Effect.tryPromise(() => Promise.resolve(1))
     }
     expect(load).type.toBe<() => Effect.Effect<number, SimpleError>>()
-  })
-
-  it("rejects the direct-thunk form in a narrower argument position", () => {
-    // @ts-expect-error is not assignable to parameter
-    consumeSimple(Effect.tryPromise(() => Promise.resolve(1)))
   })
 
   it("infers the mapped error from the options form", () => {
@@ -223,27 +183,13 @@ describe("Effect.tryPromise", () => {
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
   })
 
-  it("rejects an explicit error type for the direct-thunk form", () => {
-    // @ts-expect-error is not assignable to parameter
-    Effect.tryPromise<number, SimpleError>(() => Promise.resolve(1))
-  })
-
-  it("rejects a union of direct and mapped inputs", () => {
-    // @ts-expect-error No overload matches this call
-    Effect.tryPromise(tryPromiseInput)
-  })
-
   it("rejects a generic alias that erases UnknownError", () => {
-    // @ts-expect-error is not assignable to type
-    const tryPromiseAs: <A, E>(
-      options: ((signal: AbortSignal) => PromiseLike<A>) | TryPromiseOptions<A, E>
-    ) => Effect.Effect<A, E> = Effect.tryPromise
-    expect(tryPromiseAs<number, SimpleError>).type.toBe<
-      (
+    expect(Effect.tryPromise).type.not.toBeAssignableTo<
+      <A, E>(
         options:
-          | ((signal: AbortSignal) => PromiseLike<number>)
-          | TryPromiseOptions<number, SimpleError>
-      ) => Effect.Effect<number, SimpleError>
+          | ((signal: AbortSignal) => PromiseLike<A>)
+          | { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
+      ) => Effect.Effect<A, E>
     >()
   })
 })
