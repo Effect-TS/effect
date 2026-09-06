@@ -176,14 +176,14 @@ export const make: Effect.Effect<
           refillRate,
           allowOverflow: onExceeded === "delay"
         }),
-        (remaining) => {
+        ([remaining, retryAfterMillis]) => {
           if (onExceeded === "fail") {
             if (remaining < 0) {
               return Effect.fail(
                 new RateLimiterError({
                   reason: new RateLimitExceeded({
                     key: options.key,
-                    retryAfter: Duration.times(refillRate, -remaining),
+                    retryAfter: Duration.millis(retryAfterMillis),
                     limit: options.limit,
                     remaining: 0
                   })
@@ -206,7 +206,7 @@ export const make: Effect.Effect<
             })
           }
           return Effect.succeed<ConsumeResult>({
-            delay: Duration.times(refillRate, -remaining),
+            delay: Duration.millis(retryAfterMillis),
             limit: options.limit,
             remaining,
             resetAfter: Duration.times(refillRate, options.limit - remaining)
@@ -633,14 +633,20 @@ export class RateLimiterStore extends Context.Service<
     }) => Effect.Effect<readonly [count: number, ttl: number], RateLimiterError>
 
     /**
-     * Returns the current remaining tokens for the `key` after consuming the
-     * specified amount of tokens.
+     * Atomically consumes tokens for the `key` and returns
+     * `[remaining, retryAfterMillis]`.
      *
-     * If `allowOverflow` is true, the number of tokens can drop below zero.
+     * `remaining` is the token count after subtracting the requested tokens.
+     * If `allowOverflow` is true, negative counts are persisted as reservations.
+     * Otherwise, a negative result rejects the request without consuming tokens
+     * or discarding existing reservations; elapsed refills still apply.
      *
-     * In the case of no overflow, the returned token count will only be
-     * negative if the requested tokens exceed the available tokens, but the
-     * real token count will not be persisted below zero.
+     * `retryAfterMillis` is zero when `remaining` is nonnegative. Otherwise, it
+     * is the time until enough whole tokens refill to cover the deficit,
+     * including existing reservations and subtracting the elapsed time since
+     * the last refill. Calculate it in the same atomic operation, assuming no
+     * intervening consumption, and round the total delay up to whole
+     * milliseconds without rounding the refill interval.
      */
     readonly tokenBucket: (options: {
       readonly key: string
@@ -648,7 +654,7 @@ export class RateLimiterStore extends Context.Service<
       readonly limit: number
       readonly refillRate: Duration.Duration
       readonly allowOverflow: boolean
-    }) => Effect.Effect<number, RateLimiterError>
+    }) => Effect.Effect<readonly [remaining: number, retryAfterMillis: number], RateLimiterError>
 
     /**
      * Consumes tokens from the adaptive rate-limit state for the `key`.
@@ -758,7 +764,11 @@ export const layerStoreMemory: Layer.Layer<
           if (options.allowOverflow || newTokenCount >= 0) {
             bucket.tokens = newTokenCount
           }
-          return newTokenCount
+          const retryAfterMillis = newTokenCount >= 0 ? 0 : Math.max(
+            0,
+            Math.ceil(Math.ceil(-newTokenCount) * refillRateMillis - (now - bucket.lastRefill))
+          )
+          return [newTokenCount, retryAfterMillis] as const
         })
       ),
     adaptiveConsume: (options) =>
@@ -1089,10 +1099,14 @@ local ttl = math.floor((limit - stored) * refill_ms)
 if ttl < 1 then ttl = 1 end
 redis.call("SET", key, stored, "PX", ttl)
 redis.call("SET", last_refill_key, last_refill, "PX", ttl)
-return next
+local retry_after_ms = 0
+if next < 0 then
+  retry_after_ms = math.max(0, math.ceil(math.ceil(-next) * refill_ms - (now - last_refill)))
+end
+return { next, retry_after_ms }
 `
   }
-).withReturnType<number>()
+).withReturnType<readonly [remaining: number, retryAfterMillis: number]>()
 
 const adaptiveConsumeScript = Redis.script(
   (key: string, tokens: number, fallbackWindowMillis: number, ttlGraceMillis: number) => [

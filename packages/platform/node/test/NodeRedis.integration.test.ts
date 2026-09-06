@@ -1,11 +1,11 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Effect, Layer, Queue, Schema } from "effect"
+import { Duration, Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import { TestClock } from "effect/testing"
-import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
+import { PersistedQueue, Persistence, RateLimiter, Redis } from "effect/unstable/persistence"
 import { createServer } from "node:net"
 
 const RedisLayer = Layer.unwrap(
@@ -24,6 +24,127 @@ const RedisLayer = Layer.unwrap(
     Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
   )
 )
+
+it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) => {
+  it.effect.each(
+    [
+      {
+        name: "rejected attempts and exact refill boundaries",
+        limit: 5,
+        refillMillis: 60_000,
+        steps: [
+          [0, 5, false, 0, 0],
+          [0, 1, false, -1, 60_000],
+          [59_000, 1, false, -1, 1_000],
+          [0, 1, false, -1, 1_000],
+          [1_000, 1, false, 0, 0],
+          [0, 1, false, -1, 60_000]
+        ]
+      },
+      {
+        name: "rejected batches preserve refilled tokens",
+        limit: 5,
+        refillMillis: 60_000,
+        steps: [
+          [0, 5, false, 0, 0],
+          [59_000, 3, false, -3, 121_000],
+          [1_000, 3, false, -2, 120_000],
+          [120_000, 3, false, 0, 0]
+        ]
+      },
+      {
+        name: "delay reservations and existing debt",
+        limit: 5,
+        refillMillis: 60_000,
+        steps: [
+          [0, 5, false, 0, 0],
+          [59_000, 1, true, -1, 1_000],
+          [0, 2, true, -3, 121_000],
+          [0, 1, false, -4, 181_000],
+          [0, 1, false, -4, 181_000],
+          [61_000, 1, false, -2, 120_000],
+          [120_000, 1, false, 0, 0]
+        ]
+      },
+      {
+        name: "fractional intervals with multiple tokens",
+        limit: 3,
+        refillMillis: 1_000 / 3,
+        steps: [
+          [0, 3, false, 0, 0],
+          [1, 2, false, -2, 666],
+          [0, 3, false, -3, 999],
+          [666, 2, false, 0, 0],
+          [332, 1, false, -1, 1],
+          [0, 1, true, -1, 1],
+          [1, 1, false, -1, 334]
+        ]
+      }
+    ] as const
+  )("matches memory: $name", (test) =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      for (const [elapsed, tokens, allowOverflow, remaining, retryAfter] of test.steps) {
+        yield* TestClock.adjust(elapsed)
+        const options = {
+          key: test.name,
+          tokens,
+          limit: test.limit,
+          refillRate: Duration.millis(test.refillMillis),
+          allowOverflow
+        }
+        const expected = [remaining, retryAfter] as const
+        assert.deepStrictEqual(yield* memory.tokenBucket(options), expected)
+        assert.deepStrictEqual(yield* redis.tokenBucket(options), expected)
+      }
+    }))
+
+  it.effect("reserves distinct boundaries across concurrent Redis stores", () =>
+    Effect.gen(function*() {
+      const first = yield* RateLimiter.makeStoreRedis()
+      const second = yield* RateLimiter.makeStoreRedis()
+      const options = {
+        key: "concurrent-token-bucket",
+        tokens: 5,
+        limit: 5,
+        refillRate: Duration.minutes(1),
+        allowOverflow: true
+      }
+      yield* first.tokenBucket(options)
+      yield* TestClock.adjust("59 seconds")
+      const results = yield* Effect.all(
+        [first, second, first].map((store) => store.tokenBucket({ ...options, tokens: 1 })),
+        { concurrency: "unbounded" }
+      )
+      assert.deepStrictEqual(results.sort((a, b) => a[1] - b[1]), [[-1, 1_000], [-2, 61_000], [-3, 121_000]])
+    }))
+
+  it.effect("keeps Redis expiration based on stored tokens and reservations", () =>
+    Effect.gen(function*() {
+      const store = yield* RateLimiter.makeStoreRedis()
+      const redis = yield* Redis.Redis
+      const options = {
+        key: "token-bucket-expiration",
+        tokens: 5,
+        limit: 5,
+        refillRate: Duration.minutes(1),
+        allowOverflow: false
+      }
+      yield* store.tokenBucket(options)
+      yield* TestClock.adjust("59 seconds")
+      assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [-1, 1_000])
+      for (const key of ["ratelimiter:token-bucket-expiration", "ratelimiter:token-bucket-expiration:refill"]) {
+        const ttl = yield* redis.send<number>("PTTL", key)
+        assert.isTrue(ttl > 240_000 && ttl <= 300_000)
+      }
+      assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 2, allowOverflow: true }), [-2, 61_000])
+      for (const key of ["ratelimiter:token-bucket-expiration", "ratelimiter:token-bucket-expiration:refill"]) {
+        const ttl = yield* redis.send<number>("PTTL", key)
+        assert.isTrue(ttl > 360_000 && ttl <= 420_000)
+      }
+    }))
+})
 
 PersistedCacheTest.suite(
   "NodeRedis",

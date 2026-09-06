@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect } from "effect"
+import { Duration, Effect, Fiber } from "effect"
 import { TestClock } from "effect/testing"
 import { RateLimiter } from "effect/unstable/persistence"
 
@@ -196,6 +196,140 @@ describe(`RateLimiter`, () => {
   })
 
   describe("token-bucket", () => {
+    const options = {
+      algorithm: "token-bucket",
+      onExceeded: "fail",
+      window: Duration.minutes(5),
+      limit: 5,
+      key: "timing"
+    } as const
+
+    const assertRetryAfter = (error: RateLimiter.RateLimiterError, millis: number) => {
+      if (error.reason._tag !== "RateLimitExceeded") {
+        throw new Error("Expected RateLimitExceeded")
+      }
+      assert.strictEqual(Duration.toMillis(error.reason.retryAfter), millis)
+      assert.strictEqual(error.reason.remaining, 0)
+    }
+
+    it.effect("retries at the refill boundary without consuming rejected attempts", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const consume = limiter.consume(options)
+        yield* Effect.repeat(consume, { times: 4 })
+
+        assertRetryAfter(yield* Effect.flip(consume), 60_000)
+        yield* TestClock.adjust("59 seconds")
+        assertRetryAfter(yield* Effect.flip(consume), 1_000)
+        assertRetryAfter(yield* Effect.flip(consume), 1_000)
+
+        yield* TestClock.adjust("1 second")
+        const result = yield* consume
+        assert.strictEqual(result.remaining, 0)
+        assert.deepStrictEqual(result.delay, Duration.zero)
+        assertRetryAfter(yield* Effect.flip(consume), 60_000)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect("preserves available tokens and the refill schedule after a rejected batch", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ ...options, tokens: 5 })
+        yield* TestClock.adjust("59 seconds")
+        const consume = limiter.consume({ ...options, tokens: 3 })
+        assertRetryAfter(yield* Effect.flip(consume), 121_000)
+
+        yield* TestClock.adjust("1 second")
+        assertRetryAfter(yield* Effect.flip(consume), 120_000)
+        yield* TestClock.adjust("2 minutes")
+        const result = yield* consume
+        assert.strictEqual(result.remaining, 0)
+        assert.deepStrictEqual(result.delay, Duration.zero)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect("subtracts elapsed time from delays including existing token debt", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ ...options, tokens: 5 })
+        yield* TestClock.adjust("59 seconds")
+
+        const first = yield* limiter.consume({ ...options, onExceeded: "delay" })
+        assert.strictEqual(first.remaining, -1)
+        assert.deepStrictEqual(first.delay, Duration.seconds(1))
+
+        const second = yield* limiter.consume({ ...options, tokens: 2, onExceeded: "delay" })
+        assert.strictEqual(second.remaining, -3)
+        assert.deepStrictEqual(second.delay, Duration.seconds(121))
+
+        assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 181_000)
+        assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 181_000)
+        yield* TestClock.adjust("61 seconds")
+        assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 120_000)
+        yield* TestClock.adjust("2 minutes")
+        assert.strictEqual((yield* limiter.consume(options)).remaining, 0)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect("reserves distinct refill boundaries across concurrent limiters", () =>
+      Effect.gen(function*() {
+        const first = yield* RateLimiter.make
+        const second = yield* RateLimiter.make
+        yield* first.consume({ ...options, tokens: 5 })
+        yield* TestClock.adjust("59 seconds")
+
+        const results = yield* Effect.all(
+          [first, second, first].map((limiter) => limiter.consume({ ...options, onExceeded: "delay" })),
+          { concurrency: "unbounded" }
+        )
+        assert.deepStrictEqual(results.map((result) => Duration.toMillis(result.delay)).sort((a, b) => a - b), [
+          1_000,
+          61_000,
+          121_000
+        ])
+        yield* TestClock.adjust("121 seconds")
+        assertRetryAfter(yield* Effect.flip(second.consume(options)), 60_000)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect("sleeps only until the next refill boundary", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ ...options, tokens: 5 })
+        yield* TestClock.adjust("59 seconds")
+
+        const fiber = yield* RateLimiter.sleep(limiter, options).pipe(Effect.forkChild)
+        yield* TestClock.adjust(999)
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* TestClock.adjust(1)
+        assert.isDefined(fiber.pollUnsafe())
+        assert.deepStrictEqual((yield* Fiber.join(fiber)).delay, Duration.seconds(1))
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect.each([
+      { limit: 3, window: 1_000, elapsed: 999, tokens: 1, retryAfter: 1 },
+      { limit: 3, window: 1_000, elapsed: 1, tokens: 2, retryAfter: 666 },
+      { limit: 3, window: 1_000, elapsed: 1, tokens: 3, retryAfter: 999 },
+      { limit: 4, window: 1, elapsed: 0, tokens: 3, retryAfter: 1 }
+    ])("rounds the total delay up for fractional refill intervals %#", (test) =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const config = { ...options, limit: test.limit, window: test.window }
+        const delayConfig = { ...config, key: "delay", onExceeded: "delay" } as const
+        yield* limiter.consume({ ...config, tokens: test.limit })
+        yield* limiter.consume({ ...delayConfig, tokens: test.limit })
+        yield* TestClock.adjust(test.elapsed)
+        // Consume any whole tokens refilled before this attempt.
+        const refilled = Math.floor(test.elapsed / (test.window / test.limit))
+        if (refilled > 0) {
+          yield* limiter.consume({ ...config, tokens: refilled })
+          yield* limiter.consume({ ...delayConfig, tokens: refilled })
+        }
+
+        const consume = limiter.consume({ ...config, tokens: test.tokens })
+        assertRetryAfter(yield* Effect.flip(consume), test.retryAfter)
+        const delayed = yield* limiter.consume({ ...delayConfig, tokens: test.tokens })
+        assert.strictEqual(Duration.toMillis(delayed.delay), test.retryAfter)
+        yield* TestClock.adjust(test.retryAfter)
+        assert.deepStrictEqual((yield* consume).delay, Duration.zero)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
     it.effect("returns delay based on the token refill rate", () =>
       Effect.gen(function*() {
         const limiter = yield* RateLimiter.make
