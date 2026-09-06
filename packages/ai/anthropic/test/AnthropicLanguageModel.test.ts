@@ -872,6 +872,75 @@ describe("AnthropicLanguageModel", () => {
         assert.notProperty(body, "structuredOutputs")
       }))
 
+    for (const withTool of [false, true]) {
+      it.effect(`decodes native structured output ${withTool ? "alongside an ordinary tool call" : "without tool calls"}`, () =>
+        Effect.gen(function*() {
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) =>
+                Effect.succeed(jsonResponse(request, {
+                  id: "msg_native_summary",
+                  type: "message",
+                  role: "assistant",
+                  model: "claude-sonnet-4-6",
+                  content: [
+                    { type: "text", text: JSON.stringify({ title: "Rain" }) },
+                    ...(withTool
+                      ? [{ type: "tool_use", id: "toolu_weather", name: "Weather", input: { city: "SF" } }]
+                      : [])
+                  ],
+                  stop_reason: withTool ? "tool_use" : "end_turn",
+                  stop_sequence: null,
+                  usage: {
+                    cache_creation: null,
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    inference_geo: null,
+                    input_tokens: 1,
+                    output_tokens: 1,
+                    service_tier: null
+                  }
+                }))
+              )
+            ))
+          )
+          const toolkit = Toolkit.make(Tool.make("Weather", {
+            description: "Get the weather for a city",
+            parameters: Schema.Struct({ city: Schema.String }),
+            success: Schema.String
+          }))
+          const receivedCities: Array<string> = []
+          const toolkitLayer = toolkit.toLayer({
+            Weather: ({ city }) => {
+              receivedCities.push(city)
+              return Effect.succeed("Rain")
+            }
+          })
+
+          const response = yield* LanguageModel.generateObject({
+            prompt: "Give a title for a story about rain.",
+            objectName: "summary",
+            schema: Schema.Struct({ title: Schema.String }),
+            toolkit: withTool ? toolkit : undefined
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-6")),
+            Effect.provide(toolkitLayer),
+            Effect.provide(layer)
+          )
+
+          assert.deepStrictEqual(response.value, { title: "Rain" })
+          assert.strictEqual(response.toolCalls.length, withTool ? 1 : 0)
+          assert.deepStrictEqual(receivedCities, withTool ? ["SF"] : [])
+          if (withTool) {
+            const toolCall = response.toolCalls[0]
+            assert.strictEqual(toolCall.id, "toolu_weather")
+            assert.strictEqual(toolCall.name, "Weather")
+            assert.deepStrictEqual(toolCall.params, { city: "SF" })
+          }
+        }))
+    }
+
     const fallbackCases = [
       {
         name: "explicitly disabled structured outputs",
