@@ -118,11 +118,8 @@ export declare namespace SqlClient {
      */
     readonly borrower?: Connection.Borrower | undefined
     /**
-     * Provides the `sql.execute` span as the parent during connection
-     * acquisition and statement execution, including stream pulls. Enable for
-     * drivers whose calls can create child spans, such as instrumented client
-     * libraries. Defaults to `false` and is skipped when tracing is disabled.
-     * This does not capture a stack trace or add an Effect stack frame.
+     * Provides `sql.execute` as the parent for driver calls, including acquisition
+     * and stream pulls. Defaults to `false`; skipped when tracing is disabled.
      */
     readonly propagateSpan?: boolean | undefined
     readonly compiler: Compiler

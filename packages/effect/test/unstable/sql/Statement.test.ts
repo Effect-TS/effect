@@ -181,7 +181,6 @@ describe("Statement", () => {
       yield* off`select 1`
       yield* on`select 1`
       yield* off`select 1`
-      // A transformer can execute another statement with its supplied constructor.
       yield* on`select 1`.pipe(Effect.provideService(
         Statement.CurrentTransformer,
         (statement, sql) =>

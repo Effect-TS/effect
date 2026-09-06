@@ -1321,10 +1321,6 @@ const StatementProto: Omit<
       }
       span.attribute(ATTR_DB_OPERATION_NAME, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
-      // A client that can lend a connection for the duration of one effect
-      // saves the scope and the finalizer that borrowing through the acquirer
-      // needs. `stream` keeps the acquirer, because its lease has to outlive
-      // the effect that starts it.
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
         : this.borrower((connection: Connection) => f(connection, sql, params))
