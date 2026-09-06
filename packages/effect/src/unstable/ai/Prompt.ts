@@ -19,6 +19,7 @@ import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
+import { encodeAiError } from "./internal/ai-error.ts"
 import type * as Response from "./Response.ts"
 
 // =============================================================================
@@ -2147,6 +2148,30 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           name: part.name,
           params: part.params,
           providerExecuted: part.providerExecuted ?? false,
+          options: part.metadata
+        }))
+        break
+      }
+
+      // Tool Call Error Parts
+      //
+      // The original call is preserved as an assistant tool call and the
+      // validation error becomes its failed result, so the model can correct
+      // the call on the next turn
+      case "tool-call-error": {
+        assistantParts.push(makePart("tool-call", {
+          id: part.id,
+          name: part.name,
+          params: part.params,
+          providerExecuted: false,
+          options: part.metadata
+        }))
+        toolParts.push(makePart("tool-result", {
+          id: part.id,
+          name: part.name,
+          isFailure: true,
+          result: encodeAiError(part.error),
+          providerExecuted: false,
           options: part.metadata
         }))
         break
