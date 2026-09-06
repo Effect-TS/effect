@@ -151,6 +151,73 @@ export const suite = (
         assert.strictEqual(error.limit, 5)
       }))
 
+    for (const onExceeded of ["fail", "delay"] as const) {
+      it.effect(`${onExceeded}: fractional costs reset at the next whole-token refill`, () =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          const opts = options(`fractional-reset-${onExceeded}`, onExceeded)
+          const initial = yield* limiter.consume({ ...opts, tokens: 0.5 })
+          yield* TestClock.adjust("45 seconds")
+          const partial = yield* limiter.consume({ ...opts, tokens: 0 })
+          yield* TestClock.adjust("15 seconds")
+          const full = yield* limiter.consume({ ...opts, tokens: 0 })
+
+          assert.strictEqual(full.remaining, 5)
+          assert.deepStrictEqual(
+            [initial, partial, full].map((result) => Duration.toMillis(result.resetAfter)),
+            [60_000, 15_000, 0]
+          )
+        }))
+    }
+
+    it.effect("fractional deficits remain rejected until the whole-token refill", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const opts = options("fractional-retry-boundary", "fail")
+        yield* limiter.consume({ ...opts, tokens: 4.5 })
+        yield* TestClock.adjust("45 seconds")
+        const first = exceeded(yield* Effect.flip(limiter.consume(opts)))
+        yield* TestClock.adjust(14_999)
+        const beforeRefill = exceeded(yield* Effect.flip(limiter.consume(opts)))
+        yield* TestClock.adjust(1)
+        const allowed = yield* limiter.consume(opts)
+
+        assert.deepStrictEqual(
+          [first, beforeRefill].map((error) => Duration.toMillis(error.retryAfter)),
+          [15_000, 1]
+        )
+        assert.strictEqual(allowed.remaining, 0.5)
+        assert.deepStrictEqual(allowed.delay, Duration.zero)
+      }))
+
+    it.effect("fractional delay reservations wait for enough whole-token refills", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const opts = options("fractional-reservation-boundary", "delay")
+        yield* limiter.consume({ ...opts, tokens: 4.5 })
+        yield* TestClock.adjust("45 seconds")
+        const first = yield* limiter.consume(opts)
+        const second = yield* limiter.consume({ ...opts, tokens: 1.25 })
+        yield* TestClock.adjust(74_999)
+        const beforeRefill = yield* limiter.consume({ ...opts, tokens: 0 })
+        yield* TestClock.adjust(1)
+        const available = yield* limiter.consume({ ...opts, tokens: 0 })
+
+        assert.deepStrictEqual(
+          [first, second, beforeRefill, available].map((result) => ({
+            remaining: result.remaining,
+            delay: Duration.toMillis(result.delay),
+            resetAfter: Duration.toMillis(result.resetAfter)
+          })),
+          [
+            { remaining: -0.5, delay: 15_000, resetAfter: 315_000 },
+            { remaining: -1.75, delay: 75_000, resetAfter: 375_000 },
+            { remaining: -0.75, delay: 1, resetAfter: 300_001 },
+            { remaining: 0.25, delay: 0, resetAfter: 300_000 }
+          ]
+        )
+      }))
+
     it.effect("preserves fractional elapsed milliseconds in the store tuple and timing metadata", () =>
       Effect.gen(function*() {
         const store = yield* RateLimiter.RateLimiterStore
