@@ -8,11 +8,22 @@ import * as Result from "effect/Result"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
-describe("KeyValueStore / layerLocalStorage", () => testLayer(BrowserKeyValueStore.layerLocalStorage))
+// The fixture clears the shared browser store after each test.
+describe(
+  "KeyValueStore / layerLocalStorage",
+  { concurrent: false },
+  () => testLayer(BrowserKeyValueStore.layerLocalStorage)
+)
 
-describe("KeyValueStore / layerSessionStorage", () => testLayer(BrowserKeyValueStore.layerSessionStorage))
+// The fixture clears the shared browser store after each test.
+describe(
+  "KeyValueStore / layerSessionStorage",
+  { concurrent: false },
+  () => testLayer(BrowserKeyValueStore.layerSessionStorage)
+)
 
-describe("KeyValueStore / layerIndexedDb", () => {
+// The fixture clears the shared browser store after each test.
+describe("KeyValueStore / layerIndexedDb", { concurrent: false }, () => {
   const layerFakeIndexedDb = Layer.succeed(
     IndexedDb.IndexedDb,
     IndexedDb.make({ indexedDB, IDBKeyRange })

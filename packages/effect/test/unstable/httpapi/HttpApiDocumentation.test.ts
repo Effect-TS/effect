@@ -9,7 +9,8 @@ const TestServices = Layer.mergeAll(
   HttpPlatform.layer
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
 
-describe("HttpApiBuilder", () => {
+// These tests spy on shared HttpServerResponse functions.
+describe("HttpApiBuilder", { concurrent: false }, () => {
   it.effect("defers and memoizes successful openapiPath responses", () =>
     Effect.gen(function*() {
       let transforms = 0
@@ -87,7 +88,8 @@ describe("HttpApiBuilder", () => {
     }))
 })
 
-describe("HttpApiScalar", () => {
+// These tests spy on shared HttpServerResponse functions.
+describe("HttpApiScalar", { concurrent: false }, () => {
   it.effect("defers and memoizes successful OpenAPI responses", () =>
     Effect.gen(function*() {
       let transforms = 0
@@ -215,7 +217,8 @@ describe("HttpApiScalar", () => {
     }))
 })
 
-describe("HttpApiSwagger", () => {
+// These tests spy on shared HttpServerResponse functions.
+describe("HttpApiSwagger", { concurrent: false }, () => {
   it.effect("defers and memoizes successful OpenAPI responses", () =>
     Effect.gen(function*() {
       let transforms = 0

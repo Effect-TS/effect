@@ -31,7 +31,8 @@ export const suiteWith = <R>(
   testApi: Vitest.MethodsNonLive<R>,
   timeout: Duration.Input = "30 seconds"
 ) => {
-  const testOptions = { timeout: Duration.toMillis(timeout) }
+  // Cases share a TestClock through the fixture; each case advances it independently.
+  const testOptions = { timeout: Duration.toMillis(timeout), concurrent: false }
   return testApi.layer(
     PersistedQueue.layer.pipe(
       Layer.provideMerge(layer)

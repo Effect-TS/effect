@@ -56,6 +56,7 @@ describe("SqlMessageStorage", () => {
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
+    // Cases truncate the message and reply tables shared by this backend.
     it.layer(StorageLayer.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {
@@ -70,7 +71,7 @@ describe("SqlMessageStorage", () => {
               AND indexname = 'cluster_messages_rowid_idx'
             `
             expect(indexes).toHaveLength(1)
-          }))
+          }), { concurrent: false })
       }
 
       it.effect("saveRequest", () =>
@@ -96,7 +97,7 @@ describe("SqlMessageStorage", () => {
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(5)
           expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([6, 7, 8, 9, 10])
-        }))
+        }), { concurrent: false })
 
       it.effect("saveReply + saveRequest duplicate", () =>
         Effect.gen(function*() {
@@ -150,7 +151,7 @@ describe("SqlMessageStorage", () => {
           }
           const error = yield* Effect.flip(Fiber.join(fiber))
           expect(error._tag).toEqual("PersistenceError")
-        }))
+        }), { concurrent: false })
 
       it.effect("detects duplicates", () =>
         Effect.gen(function*() {
@@ -170,7 +171,7 @@ describe("SqlMessageStorage", () => {
             })
           )
           expect(result._tag).toEqual("Duplicate")
-        }))
+        }), { concurrent: false })
 
       it.effect("hashes primary keys longer than the message_id column", () =>
         Effect.gen(function*() {
@@ -204,7 +205,7 @@ describe("SqlMessageStorage", () => {
           const rows = yield* sql<{ message_id: string }>`SELECT message_id FROM cluster_messages`
           expect(rows).toHaveLength(1)
           expect(rows[0].message_id).toMatch(/^[0-9a-f]{64}$/)
-        }))
+        }), { concurrent: false })
 
       it.effect("keeps primary keys within the column width as plaintext", () =>
         Effect.gen(function*() {
@@ -240,7 +241,7 @@ describe("SqlMessageStorage", () => {
             id: "456"
           })
           expect(requestId).toEqual(Option.some(request.envelope.requestId))
-        }))
+        }), { concurrent: false })
 
       if (label === "sqlite") {
         // sqlite's TEXT message_id column stored over-long plaintext keys
@@ -281,7 +282,7 @@ describe("SqlMessageStorage", () => {
               id: longId
             })
             expect(requestId).toEqual(Option.some(request.envelope.requestId))
-          }))
+          }), { concurrent: false })
       }
 
       it.effect("unprocessedMessages", () =>
@@ -298,7 +299,7 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveRequest(yield* makeRequest())
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(1)
-        }))
+        }), { concurrent: false })
 
       it.effect("unprocessedMessages honors the limit and claims only returned rows", () =>
         Effect.gen(function*() {
@@ -317,7 +318,7 @@ describe("SqlMessageStorage", () => {
           // next read
           const rest = yield* storage.unprocessedMessages([shardId])
           expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([4, 5])
-        }))
+        }), { concurrent: false })
 
       it.effect("unprocessedMessages filters by address", () =>
         Effect.gen(function*() {
@@ -342,7 +343,7 @@ describe("SqlMessageStorage", () => {
           // the filtered read must not claim the other addresses
           const rest = yield* storage.unprocessedMessages([shardId])
           expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([1, 3])
-        }))
+        }), { concurrent: false })
 
       it.effect("unprocessedMessages filters addresses by shard", () =>
         Effect.gen(function*() {
@@ -365,7 +366,7 @@ describe("SqlMessageStorage", () => {
 
           const rest = yield* storage.unprocessedMessages([shardOne, shardTwo])
           expect(rest.map((message: any) => message.envelope.payload.id)).toEqual([2])
-        }))
+        }), { concurrent: false })
 
       it.effect("encoded unprocessedMessages fails closed for empty addresses", () =>
         Effect.gen(function*() {
@@ -381,7 +382,7 @@ describe("SqlMessageStorage", () => {
 
           const unfiltered = yield* encoded.unprocessedMessages([shardId], Date.now())
           expect(unfiltered).toHaveLength(1)
-        }))
+        }), { concurrent: false })
 
       it.effect("encoded resetAddresses fails closed for an empty address list", () =>
         Effect.gen(function*() {
@@ -398,7 +399,7 @@ describe("SqlMessageStorage", () => {
           yield* encoded.resetAddresses([])
           const messages = yield* encoded.unprocessedMessages([shardId], Date.now())
           expect(messages).toHaveLength(0)
-        }))
+        }), { concurrent: false })
 
       it.effect("resetAddresses releases claims in one batch", () =>
         Effect.gen(function*() {
@@ -420,7 +421,7 @@ describe("SqlMessageStorage", () => {
 
           const messages = yield* storage.unprocessedMessages([shardId])
           expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([1, 3, 4])
-        }))
+        }), { concurrent: false })
 
       it.effect("unprocessedMessages excludes complete requests", () =>
         Effect.gen(function*() {
@@ -432,7 +433,7 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(0)
-        }))
+        }), { concurrent: false })
 
       it.effect("repliesFor", () =>
         Effect.gen(function*() {
@@ -447,7 +448,7 @@ describe("SqlMessageStorage", () => {
           replies = yield* storage.repliesFor([request])
           expect(replies).toHaveLength(1)
           expect(replies[0].requestId).toEqual(request.envelope.requestId)
-        }))
+        }), { concurrent: false })
 
       it.effect("registerReplyHandler", () =>
         Effect.gen(function*() {
@@ -465,7 +466,7 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           yield* latch.await
           yield* Fiber.await(fiber)
-        }))
+        }), { concurrent: false })
 
       it.effect("unprocessedMessagesById", () =>
         Effect.gen(function*() {
@@ -494,7 +495,7 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           messages = yield* storage.unprocessedMessagesById([request.envelope.requestId])
           expect(messages).toHaveLength(0)
-        }))
+        }), { concurrent: false })
     })
   })
 

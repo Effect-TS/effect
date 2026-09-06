@@ -3,6 +3,7 @@ import type { Layer } from "effect"
 import { Effect, Encoding } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 
+// Cases clear the shared store and assert its total size.
 export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueStore, unknown>) =>
   it.layer(layer, { timeout: { seconds: 30 } })(`KeyValueStore (${name})`, (it) => {
     it.effect("set + get + size", () =>
@@ -19,7 +20,7 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
 
         assert.strictEqual(yield* kv.get("key"), "value-2")
         assert.strictEqual(yield* kv.size, 1)
-      }))
+      }), { concurrent: false })
 
     it.effect("binary values", () =>
       Effect.gen(function*() {
@@ -31,7 +32,7 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
 
         assert.strictEqual(yield* kv.get("binary"), Encoding.encodeBase64(bytes))
         assert.deepStrictEqual(yield* kv.getUint8Array("binary"), bytes)
-      }))
+      }), { concurrent: false })
 
     it.effect("string values are not decoded as base64", () =>
       Effect.gen(function*() {
@@ -43,7 +44,7 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
 
         assert.strictEqual(yield* kv.get("string"), value)
         assert.deepStrictEqual(yield* kv.getUint8Array("string"), new TextEncoder().encode(value))
-      }))
+      }), { concurrent: false })
 
     it.effect("utf8 string values", () =>
       Effect.gen(function*() {
@@ -55,7 +56,7 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
 
         assert.strictEqual(yield* kv.get("utf8"), value)
         assert.deepStrictEqual(yield* kv.getUint8Array("utf8"), new TextEncoder().encode(value))
-      }))
+      }), { concurrent: false })
 
     it.effect("remove", () =>
       Effect.gen(function*() {
@@ -67,7 +68,7 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
 
         assert.strictEqual(yield* kv.get("a"), undefined)
         assert.strictEqual(yield* kv.size, 0)
-      }))
+      }), { concurrent: false })
 
     it.effect("clear", () =>
       Effect.gen(function*() {
@@ -81,5 +82,5 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
         assert.strictEqual(yield* kv.size, 0)
         assert.strictEqual(yield* kv.get("a"), undefined)
         assert.strictEqual(yield* kv.get("b"), undefined)
-      }))
+      }), { concurrent: false })
   })

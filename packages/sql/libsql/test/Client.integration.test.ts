@@ -65,6 +65,7 @@ describe("Client", () => {
     )
   })
 
+  // Migrations create and drop the same tables for each case.
   layer(LibsqlContainer.layerClient, { timeout: "30 seconds" })((it) => {
     it.effect("should work", () =>
       Effect.gen(function*() {
@@ -77,7 +78,7 @@ describe("Client", () => {
         assert.deepStrictEqual(yield* sql`select * from test`.values, [
           [1, "hello"]
         ])
-      }).pipe(Effect.provide(Migrations)))
+      }).pipe(Effect.provide(Migrations)), { concurrent: false })
 
     it.effect("should work with raw", () =>
       Effect.gen(function*() {
@@ -108,7 +109,7 @@ describe("Client", () => {
           rows: [[1, "hello"]],
           rowsAffected: 0
         })
-      }).pipe(Effect.provide(Migrations)))
+      }).pipe(Effect.provide(Migrations)), { concurrent: false })
 
     it.effect("withTransaction", () =>
       Effect.gen(function*() {
@@ -116,7 +117,7 @@ describe("Client", () => {
         yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
         const rows = yield* sql`SELECT * FROM test`
         assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
-      }).pipe(Effect.provide(Migrations)))
+      }).pipe(Effect.provide(Migrations)), { concurrent: false })
 
     it.effect("withTransaction rollback", () =>
       Effect.gen(function*() {
@@ -128,7 +129,7 @@ describe("Client", () => {
         )
         const rows = yield* sql`SELECT * FROM test`
         assert.deepStrictEqual(rows, [])
-      }).pipe(Effect.provide(Migrations)))
+      }).pipe(Effect.provide(Migrations)), { concurrent: false })
 
     it.effect("withTransaction nested", () =>
       Effect.gen(function*() {
@@ -138,7 +139,7 @@ describe("Client", () => {
         yield* stmt.pipe(Effect.andThen(() => stmt.pipe(sql.withTransaction)), sql.withTransaction)
         const rows = yield* sql<{ total_rows: number }>`select count(*) as total_rows FROM test`
         assert.deepStrictEqual(rows.at(0)?.total_rows, 2)
-      }).pipe(Effect.provide(Migrations)))
+      }).pipe(Effect.provide(Migrations)), { concurrent: false })
 
     it.effect("withTransaction nested rollback", () =>
       Effect.gen(function*() {
@@ -151,6 +152,6 @@ describe("Client", () => {
         )
         const rows = yield* sql<{ total_rows: number }>`select count(*) as total_rows FROM test`
         assert.deepStrictEqual(rows.at(0)?.total_rows, 1)
-      }).pipe(Effect.provide(Migrations)))
+      }).pipe(Effect.provide(Migrations)), { concurrent: false })
   })
 })
