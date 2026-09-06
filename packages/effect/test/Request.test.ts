@@ -133,7 +133,7 @@ const provideEnv = flow(
   Effect.provideServiceEffect(Requests, Effect.sync(() => ({ count: 0 })))
 )
 
-describe.sequential("Request", () => {
+describe("Request", { concurrent: false }, () => {
   it("preserves __proto__ as an own constructor property", () => {
     interface ProtoRequest extends Request.Request<void> {
       readonly "__proto__": { readonly polluted: boolean }

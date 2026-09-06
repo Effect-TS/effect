@@ -3,39 +3,47 @@ import * as Protocol from "@effect/doctest/Protocol"
 import { assert, describe, it } from "@effect/vitest"
 import { rejects } from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire, SourceMap } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { compileFunction } from "node:vm"
-import type { JsonTestResults } from "vitest/reporters"
+import type { JsonTestResults } from "vitest/node"
 
 describe("Plugin", () => {
   it("executes Markdown, MDX and JSDoc snippets through Vitest", () => {
-    const result = spawnSync("node", [
-      join(dirname(createRequire(import.meta.url).resolve("vitest/package.json")), "vitest.mjs"),
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "--reporter=json"
-    ], {
-      cwd: join(import.meta.dirname, "fixtures/markdown"),
-      encoding: "utf8",
-      timeout: 30_000
-    })
-    assert.strictEqual(result.status, 0, `${result.error ?? ""}\n${result.stdout}\n${result.stderr}`)
-    const report: JsonTestResults = JSON.parse(result.stdout)
-    assert.deepStrictEqual(
-      report.testResults.flatMap((file) => file.assertionResults.map((test) => [test.fullName, test.status])).sort(),
-      [
-        ["assertion-comments", "passed"],
-        ["dynamic-import", "passed"],
-        ["javascript", "passed"],
-        ["static-import", "passed"],
-        ["typed-jsdoc", "passed"],
-        ["typed-mdx", "passed"]
-      ]
-    )
+    const output = mkdtempSync(join(tmpdir(), "effect-doctest-report-"))
+    try {
+      const reportFile = join(output, "report.json")
+      const result = spawnSync("node", [
+        join(dirname(createRequire(import.meta.url).resolve("vitest/package.json")), "vitest.mjs"),
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "--reporter=json",
+        "--outputFile",
+        reportFile
+      ], {
+        cwd: join(import.meta.dirname, "fixtures/markdown"),
+        encoding: "utf8",
+        timeout: 30_000
+      })
+      assert.strictEqual(result.status, 0, `${result.error ?? ""}\n${result.stdout}\n${result.stderr}`)
+      const report: JsonTestResults = JSON.parse(readFileSync(reportFile, "utf8"))
+      assert.deepStrictEqual(
+        report.testResults.flatMap((file) => file.assertionResults.map((test) => [test.fullName, test.status])).sort(),
+        [
+          ["assertion-comments", "passed"],
+          ["dynamic-import", "passed"],
+          ["javascript", "passed"],
+          ["static-import", "passed"],
+          ["typed-jsdoc", "passed"],
+          ["typed-mdx", "passed"]
+        ]
+      )
+    } finally {
+      rmSync(output, { recursive: true, force: true })
+    }
   }, 40_000)
 
   it("configures the doctest runner by default", () => {

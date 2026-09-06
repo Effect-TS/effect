@@ -178,7 +178,7 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(encoded), [{ _tag, requestId }])
   })
 
-  describe.sequential("jsonRpc inherited properties", () => {
+  describe("jsonRpc inherited properties", { concurrent: false }, () => {
     afterEach(() => {
       delete objectPrototype["method"]
       delete objectPrototype["error"]

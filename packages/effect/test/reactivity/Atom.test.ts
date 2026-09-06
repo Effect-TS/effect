@@ -22,7 +22,7 @@ declare const global: any
 
 addEqualityTesters()
 
-describe.sequential("Atom", () => {
+describe("Atom", { concurrent: false }, () => {
   beforeEach(async () => {
     vitest.useFakeTimers({
       toFake: [

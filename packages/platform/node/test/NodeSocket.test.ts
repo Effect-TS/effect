@@ -524,7 +524,7 @@ describe("Socket", () => {
       }))
   })
 
-  describe("WebSocket", () => {
+  describe("WebSocket", { concurrent: false }, () => {
     const url = `ws://localhost:1234`
 
     const makeServer = Effect.acquireRelease(
