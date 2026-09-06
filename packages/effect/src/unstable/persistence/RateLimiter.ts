@@ -181,33 +181,17 @@ export const make: Effect.Effect<
           const resetAfter = Duration.millis(
             Math.max(0, (options.limit - remaining) * refillRateMillis - elapsedMillis)
           )
-          if (onExceeded === "fail") {
-            if (remaining < 0) {
-              return Effect.fail(
-                new RateLimiterError({
-                  reason: new RateLimitExceeded({
-                    key: options.key,
-                    retryAfter: delay,
-                    limit: options.limit,
-                    remaining: 0
-                  })
+          if (onExceeded === "fail" && remaining < 0) {
+            return Effect.fail(
+              new RateLimiterError({
+                reason: new RateLimitExceeded({
+                  key: options.key,
+                  retryAfter: delay,
+                  limit: options.limit,
+                  remaining: 0
                 })
-              )
-            }
-            return Effect.succeed<ConsumeResult>({
-              delay: Duration.zero,
-              limit: options.limit,
-              remaining,
-              resetAfter
-            })
-          }
-          if (remaining >= 0) {
-            return Effect.succeed<ConsumeResult>({
-              delay: Duration.zero,
-              limit: options.limit,
-              remaining,
-              resetAfter
-            })
+              })
+            )
           }
           return Effect.succeed<ConsumeResult>({
             delay,
@@ -649,8 +633,9 @@ export class RateLimiterStore extends Context.Service<
      * counts are persisted only when `allowOverflow` is true.
      *
      * `elapsedMillis` is the time since the last whole-token refill boundary,
-     * in milliseconds (possibly fractional). It is zero for new buckets and
-     * must be nonnegative and less than `Duration.toMillis(refillRate)`.
+     * in milliseconds (possibly fractional). It must be nonnegative and less
+     * than `Duration.toMillis(refillRate)`. Restart the interval for new or full
+     * buckets; reads of partially filled buckets must preserve it.
      */
     readonly tokenBucket: (options: {
       readonly key: string
@@ -761,6 +746,9 @@ export const layerStoreMemory: Layer.Layer<
             if (tokensToAdd > 0) {
               bucket.tokens = Math.min(options.limit, bucket.tokens + tokensToAdd)
               bucket.lastRefill += tokensToAdd * refillRateMillis
+            }
+            if (bucket.tokens >= options.limit) {
+              bucket.lastRefill = now
             }
           }
 
@@ -1090,6 +1078,9 @@ local refill_amount = math.floor(elapsed / refill_ms)
 if refill_amount > 0 then
   current = math.min(current + refill_amount, limit)
   last_refill = last_refill + (refill_amount * refill_ms)
+end
+if current >= limit then
+  last_refill = now
 end
 
 local next = current - tokens
