@@ -117,11 +117,6 @@ export declare namespace SqlClient {
      * whose lease outlives the effect that starts it.
      */
     readonly borrower?: Connection.Borrower | undefined
-    /**
-     * Provides `sql.execute` as the parent for driver calls, including acquisition
-     * and stream pulls. Defaults to `false`; skipped when tracing is disabled.
-     */
-    readonly propagateSpan?: boolean | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
@@ -209,14 +204,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     )
 
   const client: SqlClient = Object.assign(
-    Statement.make(
-      getConnection,
-      options.compiler,
-      options.spanAttributes,
-      options.transformRows,
-      borrower,
-      options.propagateSpan
-    ),
+    Statement.make(getConnection, options.compiler, options.spanAttributes, options.transformRows, borrower),
     {
       [TypeId]: TypeId as typeof TypeId,
       safe: undefined as any,
@@ -232,8 +220,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
           options.compiler.withoutTransform,
           options.spanAttributes,
           undefined,
-          borrower,
-          options.propagateSpan
+          borrower
         )
         const client = Object.assign(statement, {
           ...this,

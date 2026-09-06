@@ -2,4 +2,11 @@
 "effect": patch
 ---
 
-Add a `propagateSpan` option to `SqlClient.make` for parenting driver spans under `sql.execute`. Disabled by default.
+Add `Statement.SpanPropagationEnabled` to scope driver span parenting under `sql.execute` for any SQL client. Disabled by default.
+
+```ts
+import { Effect } from "effect"
+import { Statement } from "effect/unstable/sql"
+
+query.pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
+```

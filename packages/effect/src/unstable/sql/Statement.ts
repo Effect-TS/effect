@@ -107,6 +107,17 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 })
 
 /**
+ * Enables parenting driver spans under `sql.execute`, including acquisition and
+ * stream pulls. Defaults to `false`; ignored when tracing is disabled.
+ *
+ * @category references
+ * @since 4.0.0
+ */
+export const SpanPropagationEnabled = Context.Reference<boolean>("effect/sql/SpanPropagationEnabled", {
+  defaultValue: () => false
+})
+
+/**
  * Returns `true` when a value is a SQL `Fragment`.
  *
  * @category guards
@@ -534,11 +545,9 @@ export const make = (
   compiler: Compiler,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
   transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
-  borrower?: Borrower | undefined,
-  propagateSpan?: boolean | undefined
+  borrower?: Borrower | undefined
 ): Constructor => {
-  const caches = propagateSpan ? constructorCache.withSpan : constructorCache.withoutSpan
-  const cache = transformRows === undefined ? caches.noTransforms : caches.transforms
+  const cache = transformRows === undefined ? constructorCache.noTransforms : constructorCache.transforms
   if (cache.has(acquirer)) {
     return cache.get(acquirer)!
   }
@@ -554,8 +563,7 @@ export const make = (
           args,
           spanAttributes,
           transformRows,
-          borrower,
-          propagateSpan
+          borrower
         )
       }
 
@@ -572,8 +580,7 @@ export const make = (
           compiler,
           spanAttributes,
           transformRows,
-          borrower,
-          propagateSpan
+          borrower
         )
       },
       literal(sql: string) {
@@ -610,14 +617,8 @@ export const make = (
 }
 
 const constructorCache = {
-  withoutSpan: {
-    transforms: new WeakMap<Acquirer, Constructor>(),
-    noTransforms: new WeakMap<Acquirer, Constructor>()
-  },
-  withSpan: {
-    transforms: new WeakMap<Acquirer, Constructor>(),
-    noTransforms: new WeakMap<Acquirer, Constructor>()
-  }
+  transforms: new WeakMap<Acquirer, Constructor>(),
+  noTransforms: new WeakMap<Acquirer, Constructor>()
 }
 
 /**
@@ -635,8 +636,7 @@ export const statement = <A = Row>(
   args: Array<any>,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
   transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
-  borrower?: Borrower | undefined,
-  propagateSpan?: boolean | undefined
+  borrower?: Borrower | undefined
 ): Statement<A> => {
   const segments: Array<Segment> = strings[0].length > 0 ? [literal(strings[0])] : []
 
@@ -656,7 +656,7 @@ export const statement = <A = Row>(
     }
   }
 
-  return makeUnsafe(segments, acquirer, compiler, spanAttributes, transformRows, borrower, propagateSpan)
+  return makeUnsafe(segments, acquirer, compiler, spanAttributes, transformRows, borrower)
 }
 
 /**
@@ -1232,7 +1232,6 @@ interface StatementImpl<A> extends Statement<A> {
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
   readonly transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   readonly borrower: Borrower | undefined
-  readonly propagateSpan: boolean
 
   withConnection<XA, E>(
     operation: string,
@@ -1261,11 +1260,9 @@ const makeUnsafe = <A = Row>(
   compiler: Compiler,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
   transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
-  borrower: Borrower | undefined,
-  propagateSpan = false
+  borrower: Borrower | undefined
 ): StatementImpl<A> => {
   const self = Object.create(StatementProto)
-  self.propagateSpan = propagateSpan
   self.segments = segments
   self.acquirer = acquirer
   self.compiler = compiler
@@ -1278,7 +1275,7 @@ const makeUnsafe = <A = Row>(
 // TODO: figure out why these diagnostics are emitted
 const StatementProto: Omit<
   StatementImpl<any>,
-  "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows" | "borrower" | "propagateSpan"
+  "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows" | "borrower"
 > = {
   [FragmentTypeId]: FragmentTypeId,
   withConnection<XA, E>(
@@ -1324,7 +1321,7 @@ const StatementProto: Omit<
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
         : this.borrower((connection: Connection) => f(connection, sql, params))
-      return this.propagateSpan && fiber.cache.tracerEnabled
+      return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
         ? Effect.provideService(execute, Tracer.ParentSpan, span)
         : execute
     })
@@ -1359,7 +1356,7 @@ const StatementProto: Omit<
           span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
           const acquire = Effect.map(self.acquirer, (_) => _.executeStream(sql, params, self.transformRows))
-          return self.propagateSpan && fiber.cache.tracerEnabled
+          return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
             ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
             : acquire
         })
@@ -1439,7 +1436,7 @@ const withStatement = <A, X, E, R>(
     return Effect.flatMap(
       transform(
         self,
-        make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows, self.borrower, self.propagateSpan),
+        make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows, self.borrower),
         fiber,
         span
       ) as Effect.Effect<StatementImpl<A>>,
