@@ -3628,6 +3628,78 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    describe("checked classes", () => {
+      const options = { includeAnnotationKey: (key: string) => key.startsWith("x-") }
+
+      it("preserves constructor annotations through an unannotated check", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
+        const schema = A.check(Schema.makeFilter(() => true))
+        assertJsonSchemaDocument(schema, { schema: definition }, options)
+      })
+
+      it("merges check annotations over constructor annotations", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
+        const schema = A.check(Schema.makeFilter(() => true, {
+          title: "Check title",
+          "x-taplo": { hidden: false },
+          "x-check": true
+        }))
+        assertJsonSchemaDocument(schema, {
+          schema: {
+            ...definition,
+            title: "Check title",
+            "x-taplo": { hidden: false },
+            "x-check": true
+          }
+        }, options)
+      })
+
+      it("merges later annotations over check and constructor annotations", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
+        const schema = A.check(Schema.makeFilter(() => true, {
+          title: "Check title",
+          "x-check": true
+        })).annotate({
+          title: "Late title",
+          "x-taplo": { hidden: false },
+          "x-late": true
+        })
+        assertJsonSchemaDocument(schema, {
+          schema: {
+            ...definition,
+            title: "Late title",
+            "x-taplo": { hidden: false },
+            "x-check": true,
+            "x-late": true
+          }
+        }, options)
+      })
+
+      it("keeps encoded annotations ahead of checked-class annotations", () => {
+        const encoded = Schema.Struct({ a: Schema.String }).annotate({
+          identifier: "WireA",
+          title: "Encoded title",
+          "x-taplo": { hidden: false }
+        })
+        class A extends Schema.Class<A>("A")(encoded, annotations) {}
+        const schema = A.check(Schema.makeFilter(() => true, {
+          title: "Check title",
+          "x-check": true
+        })).annotate({ title: "Late title", "x-taplo": { hidden: true } })
+        assertJsonSchemaDocument(schema, {
+          schema: { $ref: "#/$defs/WireA" },
+          definitions: {
+            WireA: {
+              ...definition,
+              title: "Encoded title",
+              "x-taplo": { hidden: false },
+              "x-check": true
+            }
+          }
+        }, options)
+      })
+    })
+
     it("preserves annotations on recursive class definitions", () => {
       class A extends Schema.Class<A>("A")({
         children: Schema.Array(Schema.suspend((): Schema.Codec<A> => A))
