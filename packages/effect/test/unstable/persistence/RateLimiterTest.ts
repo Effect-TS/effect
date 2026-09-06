@@ -118,6 +118,39 @@ export const suite = (
         assert.strictEqual(Duration.toMillis(result.resetAfter), 60_000)
       }))
 
+    for (const allowOverflow of [false, true]) {
+      it.effect(`preserves signed fractional token counts with allowOverflow=${allowOverflow}`, () =>
+        Effect.gen(function*() {
+          const store = yield* RateLimiter.RateLimiterStore
+          const opts = {
+            key: `fractional-count-${allowOverflow}`,
+            limit: 5,
+            refillRate: Duration.minutes(1),
+            allowOverflow
+          }
+          const initial = yield* store.tokenBucket({ ...opts, tokens: 4.5 })
+          const excess = yield* store.tokenBucket({ ...opts, tokens: 1 })
+          const stored = yield* store.tokenBucket({ ...opts, tokens: 0 })
+
+          assert.deepStrictEqual([initial, excess, stored], [
+            [0.5, 0],
+            [-0.5, 0],
+            [allowOverflow ? -0.5 : 0.5, 0]
+          ])
+        }))
+    }
+
+    it.effect("rejects a request with a fractional token deficit", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const opts = options("fractional-deficit", "fail")
+        yield* limiter.consume({ ...opts, tokens: 4.5 })
+
+        const error = exceeded(yield* Effect.flip(limiter.consume(opts)))
+        assert.strictEqual(error.remaining, 0)
+        assert.strictEqual(error.limit, 5)
+      }))
+
     it.effect("preserves fractional elapsed milliseconds in the store tuple and timing metadata", () =>
       Effect.gen(function*() {
         const store = yield* RateLimiter.RateLimiterStore

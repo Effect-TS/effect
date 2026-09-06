@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Effect, Layer, Queue, Schema } from "effect"
+import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/unstable/persistence/RateLimiterTest"
@@ -49,6 +49,46 @@ RateLimiterTest.suite(
 it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), { timeout: "30 seconds" })(
   "RateLimiter token-bucket expiry (NodeRedis)",
   (it) => {
+    it.effect(
+      "does not restore capacity early after a fractional token cost",
+      () =>
+        Effect.gen(function*() {
+          const redis = yield* Redis.Redis
+          const store = yield* RateLimiter.RateLimiterStore
+          const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+          const opts = {
+            key: "fractional-cost-expiry",
+            limit: 5,
+            refillRate: Duration.seconds(4),
+            allowOverflow: false
+          }
+          const key = `ratelimiter:${opts.key}`
+          const refillKey = `${key}:refill`
+          yield* memory.tokenBucket({ ...opts, tokens: 0.5 })
+          yield* store.tokenBucket({ ...opts, tokens: 0.5 })
+          const refillAt = Number(yield* redis.send<string>("GET", refillKey))
+          assert.isAbove(yield* redis.send<number>("PTTL", key), 0)
+
+          // Use wall time: the reported bug expires these keys after 2s, before the 4s refill.
+          yield* Effect.sleep("2500 millis")
+          const beforeRefill = {
+            keys: yield* redis.send<number>("EXISTS", key, refillKey),
+            tokens: yield* redis.send<string | null>("GET", key),
+            memoryRemaining: (yield* memory.tokenBucket({ ...opts, tokens: 0 }))[0],
+            redisRemaining: (yield* store.tokenBucket({ ...opts, tokens: 0 }))[0]
+          }
+          const elapsed = (yield* Clock.currentTimeMillis) - refillAt
+          assert.isAtLeast(elapsed, 2_500)
+          assert.isBelow(elapsed, 4_000)
+
+          yield* Effect.sleep(4_100 - elapsed)
+          assert.strictEqual((yield* memory.tokenBucket({ ...opts, tokens: 0 }))[0], 5)
+          assert.strictEqual((yield* store.tokenBucket({ ...opts, tokens: 0 }))[0], 5)
+          assert.deepStrictEqual(beforeRefill, { keys: 2, tokens: "4.5", memoryRemaining: 4.5, redisRemaining: 4.5 })
+        }).pipe(TestClock.withLive),
+      10_000
+    )
+
     for (const onExceeded of ["fail", "delay"] as const) {
       it.effect(`${onExceeded}: restarts the refill interval after both Redis keys expire`, () => {
         const key = `timing-expired-${onExceeded}`
