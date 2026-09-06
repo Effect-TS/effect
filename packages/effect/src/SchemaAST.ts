@@ -1372,20 +1372,34 @@ type TemplateLiteralPart =
   | TemplateLiteral
   | Union<TemplateLiteralPart>
 
-function isTemplateLiteralPart(ast: AST): ast is TemplateLiteralPart {
+function isTemplateLiteralPart(ast: AST, path: string, validated: WeakSet<AST>): ast is TemplateLiteralPart {
+  if (validated.has(ast)) return true
+  if (ast.encoding) {
+    throw new Error(`TemplateLiteral parts cannot have an encoding at ${path}`)
+  }
+  let valid: boolean
   switch (ast._tag) {
     case "String":
     case "Number":
     case "BigInt":
-      return true
+      valid = true
+      break
     case "Literal":
+      valid = !ast.checks
+      break
     case "TemplateLiteral":
-      return !ast.checks
+      valid = !ast.checks &&
+        ast.parts.every((part, index) => isTemplateLiteralPart(part, `${path}.parts[${index}]`, validated))
+      break
     case "Union":
-      return !ast.checks && ast.types.every(isTemplateLiteralPart)
+      valid = !ast.checks &&
+        ast.types.every((part, index) => isTemplateLiteralPart(part, `${path}.types[${index}]`, validated))
+      break
     default:
       return false
   }
+  if (valid) validated.add(ast)
+  return valid
 }
 
 /**
@@ -1419,13 +1433,15 @@ export interface TemplateLiteral extends ASTNode {
   /** @internal */
 
   matchPart(s: string, options: ParseOptions): string | undefined
-  /** @internal */
-
-  asTemplateLiteralParser(): Arrays
 }
 
 /**
  * Constructs a {@link TemplateLiteral}.
+ *
+ * **Gotchas**
+ *
+ * Throws if a part contains an encoding, including inside unions or nested
+ * template literals. Parts must describe their values without transformations.
  *
  * @category constructors
  * @since 4.0.0
@@ -1456,14 +1472,14 @@ export const TemplateLiteral: new(
     super(annotations, checks, encoding, context)
     const encodedParts: Array<TemplateLiteralPart> = []
     const literals: Array<string | undefined> = []
-    for (const part of parts) {
-      const encoded = toEncoded(part)
-      if (isTemplateLiteralPart(encoded)) {
-        encodedParts.push(encoded)
-        literals.push(encoded._tag === "Literal" ? globalThis.String(encoded.literal) : undefined)
-      } else {
-        throw new Error(`Invalid TemplateLiteral part ${encoded._tag}`)
+    const validated = new WeakSet<AST>()
+    for (let index = 0; index < parts.length; index++) {
+      const part = parts[index]
+      if (!isTemplateLiteralPart(part, `parts[${index}]`, validated)) {
+        throw new Error(`Invalid TemplateLiteral part ${part._tag}`)
       }
+      encodedParts.push(part)
+      literals.push(part._tag === "Literal" ? globalThis.String(part.literal) : undefined)
     }
     const suffixLengths = new Array<number>(encodedParts.length + 1)
     suffixLengths[encodedParts.length] = 0
@@ -1477,7 +1493,8 @@ export const TemplateLiteral: new(
   }
   /** @internal */
   getParser(compile: SchemaParser.Compiler): SchemaParser.Parser {
-    const parser = compile(this.asTemplateLiteralParser())
+    const tuple = new Arrays(false, this.parts.map(partFromString), [])
+    const parser = compile(decodeTo(string, tuple, templateLiteralTransformation(this)))
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
       const result = parser(input, options)
@@ -1498,28 +1515,39 @@ export const TemplateLiteral: new(
   matchPart(s: string, options: ParseOptions): string | undefined {
     return segmentTemplateLiteralParts(this, s, options) === undefined ? undefined : s
   }
-  /** @internal */
-  asTemplateLiteralParser(): Arrays {
-    const tuple = new Arrays(false, this.parts.map(partFromString), [])
-    return decodeTo(
-      string,
-      tuple,
-      new SchemaTransformation.Transformation(
-        SchemaGetter.transformOrFail((s: string, options) => {
-          const segments = segmentTemplateLiteralParts(this, s, options)
-          if (segments) return Effect.succeed(segments)
-          return Effect.fail(
-            new SchemaIssue.InvalidValue(
-              { expected: "a string matching template literal parts" },
-              s,
-              options
-            )
-          )
-        }),
-        SchemaGetter.transform((parts) => parts.join(""))
+}
+
+/** @internal */
+export function templateLiteralParser(parts: ReadonlyArray<AST>): Arrays {
+  // Encoded members can overlap even when decoding selects exactly one member.
+  // Match their spellings here; the original tuple enforces the union's mode.
+  const normalize = memoize((encoded: AST): AST => {
+    if (encoded._tag !== "Union") return encoded
+    const types = mapOrSame(encoded.types, normalize)
+    return encoded.mode === "anyOf" && types === encoded.types
+      ? encoded
+      : new Union(types, "anyOf", encoded.annotations, encoded.checks, undefined, encoded.context)
+  })
+  const template = new TemplateLiteral(parts.map((part) => normalize(toEncoded(part))))
+  const tuple = new Arrays(false, parts.map(partFromString), [])
+  return decodeTo(template, tuple, templateLiteralTransformation(template))
+}
+
+function templateLiteralTransformation(template: TemplateLiteral) {
+  return new SchemaTransformation.Transformation(
+    SchemaGetter.transformOrFail((s: string, options) => {
+      const segments = segmentTemplateLiteralParts(template, s, options)
+      if (segments) return Effect.succeed(segments)
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a string matching template literal parts" },
+          s,
+          options
+        )
       )
-    )
-  }
+    }),
+    SchemaGetter.transform((parts: ReadonlyArray<string>) => parts.join(""))
+  )
 }
 
 /**

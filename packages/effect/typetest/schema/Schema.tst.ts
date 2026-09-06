@@ -868,6 +868,24 @@ describe("Schema", () => {
       .type.toBe<Schema.Codec<readonly ["a", string | number], `a${string}` | `a${number}`>>()
   })
 
+  it("TemplateLiteralParser propagates decoding and encoding services separately", () => {
+    const first = hole<Schema.Codec<number, string, "DecodeFirst", "EncodeFirst">>()
+    const second = hole<Schema.Codec<boolean, 0 | 1, "DecodeSecond", "EncodeSecond">>()
+    const schema = Schema.TemplateLiteralParser(["value:", first, ":", second])
+
+    expect(schema.DecodingServices).type.toBe<"DecodeFirst" | "DecodeSecond">()
+    expect(schema.EncodingServices).type.toBe<"EncodeFirst" | "EncodeSecond">()
+    expect(Schema.decodeEffect(schema)).type.toBe<
+      (
+        input: `value:${string}:0` | `value:${string}:1`,
+        options?: SchemaAST.ParseOptions
+      ) => Effect.Effect<readonly ["value:", number, ":", boolean], Schema.SchemaError, "DecodeFirst" | "DecodeSecond">
+    >()
+    expect(Schema.encodeEffect(schema)(["value:", 1, ":", true])).type.toBe<
+      Effect.Effect<`value:${string}:0` | `value:${string}:1`, Schema.SchemaError, "EncodeFirst" | "EncodeSecond">
+    >()
+  })
+
   describe("flip", () => {
     it("applying flip twice should return the original schema", () => {
       const schema = Schema.FiniteFromString

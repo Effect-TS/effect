@@ -6396,26 +6396,10 @@ Expected a value between -2147483648 and 2147483647`
       )
     })
 
-    it(`"a" + transformation`, async () => {
-      const schema = Schema.TemplateLiteral(["a", Schema.FiniteFromString])
-      const asserts = new TestSchema.Asserts(schema)
-
-      const decoding = asserts.decoding()
-      await decoding.succeed("a")
-      await decoding.succeed("a1")
-
-      await decoding.fail(
-        null,
-        "Expected string"
-      )
-      await decoding.fail(
-        "",
-        `Expected a string matching template literal parts`
-      )
-      await decoding.fail(
-        "ab",
-        `Expected a finite number
-  at [1]`
+    it(`rejects "a" + transformation`, () => {
+      throws(
+        () => Schema.TemplateLiteral(["a", Schema.FiniteFromString]),
+        "TemplateLiteral parts cannot have an encoding at parts[1]"
       )
     })
   })
@@ -6560,8 +6544,7 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.succeed("ced", ["c", "e", "d"])
       await decoding.fail(
         "cabd",
-        `Expected a string matching template literal parts
-  at [1]`
+        `Expected a string matching template literal parts`
       )
       await decoding.fail(
         "ed",
@@ -6585,13 +6568,11 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.succeed("ca1bd", ["c", ["a", 1, "b"], "d"])
       await decoding.fail(
         "ca1.1bd",
-        `Expected a string matching template literal parts
-  at [1]`
+        `Expected a string matching template literal parts`
       )
       await decoding.fail(
         "ca-bd",
-        `Expected a string matching template literal parts
-  at [1]`
+        `Expected a string matching template literal parts`
       )
     })
 
@@ -6621,8 +6602,7 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.succeed("<h2>", ["<", ["h", 2], ">"])
       await decoding.fail(
         "<h3>",
-        `Expected a string matching template literal parts
-  at [1]`
+        `Expected a string matching template literal parts`
       )
     })
   })

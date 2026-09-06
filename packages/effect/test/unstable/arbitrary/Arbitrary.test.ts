@@ -1319,6 +1319,29 @@ describe("Arbitrary", () => {
         assert.isTrue(values.every(Schema.is(schema)))
       }))
 
+    it.effect("generates bit templates and preserves checked numeric template shrinks", () =>
+      Effect.gen(function*() {
+        const bits = Schema.TemplateLiteral([Schema.Literals([0, 1])])
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(bits), {
+          count: 50,
+          maxDiscards: 0,
+          seed: 0
+        })
+        assert.deepStrictEqual(new Set(values), new Set(["0", "1"]))
+
+        const schema = Schema.TemplateLiteral(["a", Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))])
+        const seen: Array<string> = []
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+          seen.push(value)
+          return false
+        }, { runs: 1, maxDiscards: 0, maxShrinks: 100, seed: 0, size: 10 })
+
+        assert.strictEqual(result._tag, "Falsified")
+        assert.isAbove(seen.length, 1)
+        assert.isTrue(seen.every(Schema.is(schema)))
+        if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput, "a1")
+      }))
+
     it.effect("validates overlapping oneOf Union members", () =>
       Effect.gen(function*() {
         const schema = Schema.Union([Schema.String, Schema.Literal("a")], { mode: "oneOf" })

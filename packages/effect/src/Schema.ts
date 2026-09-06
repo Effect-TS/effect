@@ -2648,6 +2648,8 @@ export declare namespace TemplateLiteral {
    *
    * The schema's encoded value must be a `string`, `number`, or `bigint` so it can
    * be converted into a template literal string segment.
+   * `TemplateLiteral` additionally rejects encodings at runtime;
+   * `TemplateLiteralParser` supports transformed parts.
    *
    * @category utility types
    * @since 4.0.0
@@ -2709,10 +2711,8 @@ export interface TemplateLiteral<Parts extends TemplateLiteral.Parts> extends
   readonly parts: Parts
 }
 
-function templateLiteralFromParts<Parts extends TemplateLiteral.Parts>(parts: Parts) {
-  return new SchemaAST.TemplateLiteral(
-    parts.map((part) => isSchema(part) ? part.ast : new SchemaAST.Literal(part as TemplateLiteral.LiteralPart))
-  )
+function templateLiteralParts(parts: TemplateLiteral.Parts) {
+  return parts.map((part) => isSchema(part) ? part.ast : new SchemaAST.Literal(part as TemplateLiteral.LiteralPart))
 }
 /**
  * Creates a schema that validates strings by matching ordered template literal
@@ -2729,6 +2729,13 @@ function templateLiteralFromParts<Parts extends TemplateLiteral.Parts>(parts: Pa
  * encoded type is `string`, `number`, or `bigint`. Checks on string, number,
  * and bigint schema parts are applied while matching each segment.
  *
+ * **Gotchas**
+ *
+ * Parts must not contain encodings, including inside unions or nested templates.
+ * Construction throws for transformed parts even when their decoded and encoded
+ * types are the same. Use {@link TemplateLiteralParser} to decode transformed parts.
+ * Brands and supported checks without encodings remain valid.
+ *
  * **Example** (Defining a URL path pattern)
  *
  * ```ts import.meta.vitest
@@ -2743,7 +2750,7 @@ function templateLiteralFromParts<Parts extends TemplateLiteral.Parts>(parts: Pa
  * @since 3.10.0
  */
 export function TemplateLiteral<const Parts extends TemplateLiteral.Parts>(parts: Parts): TemplateLiteral<Parts> {
-  return make(templateLiteralFromParts(parts), { parts })
+  return make(new SchemaAST.TemplateLiteral(templateLiteralParts(parts)), { parts })
 }
 /**
  * Namespace for {@link TemplateLiteralParser} helper types.
@@ -2782,8 +2789,8 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
 {
   readonly "Type": TemplateLiteralParser.Type<Parts>
   readonly "Encoded": TemplateLiteral.Encoded<Parts>
-  readonly "DecodingServices": never
-  readonly "EncodingServices": never
+  readonly "DecodingServices": Extract<Parts[number], Constraint>["DecodingServices"]
+  readonly "EncodingServices": Extract<Parts[number], Constraint>["EncodingServices"]
   readonly "~type.make.in": TemplateLiteralParser.Type<Parts>
   readonly "~type.make": TemplateLiteralParser.Type<Parts>
   readonly "Iso": TemplateLiteralParser.Type<Parts>
@@ -2802,6 +2809,14 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
  * Unlike {@link TemplateLiteral}, this schema decodes the matched string into a
  * readonly tuple with one element per schema part. Checks on string, number,
  * and bigint schema parts are applied while matching each segment.
+ * The source template uses the encoded sides of the parts; the tuple retains
+ * their transformations, checks, and decoding and encoding service requirements.
+ *
+ * **Gotchas**
+ *
+ * Ambiguous templates use greedy segmentation with backtracking. Encoding a
+ * tuple and decoding the resulting string can therefore produce a different
+ * tuple when a segment contains a separator used by the template.
  *
  * **Example** (Parsing path parameters)
  *
@@ -2819,7 +2834,7 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
 export function TemplateLiteralParser<const Parts extends TemplateLiteral.Parts>(
   parts: Parts
 ): TemplateLiteralParser<Parts> {
-  return make(templateLiteralFromParts(parts).asTemplateLiteralParser(), { parts })
+  return make(SchemaAST.templateLiteralParser(templateLiteralParts(parts)), { parts })
 }
 /**
  * Type-level representation returned by {@link Enum}.

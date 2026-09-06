@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
+Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `origin/main` (`a9d1ee3d4d51e97ea33440fe6100935d5fd5aada`)
+Head: `HEAD` (`fe788d21697a228fbf21bd2749e95cf7908c3926`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -7832,6 +7832,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `SqliteClient.asyncQuery` -> `@effect/sql-sqlite-react-native/SqliteClient#AsyncQuery`: Renamed and changed from FiberRef to Context.Reference; prefer withAsyncQuery or provide AsyncQuery as a service.
 
+### `@effect/sql-sqlite-wasm/OpfsWorker`
+
+- `OpfsWorker.OpfsWorkerConfig`: TODO: needs guidance
+
 ### `@effect/sql-sqlite-wasm/SqliteClient`
 
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service.
@@ -14397,9 +14401,9 @@ Schema.toFormatter(schema)
 
 - `Schema.TaggedStruct` -> `Schema.TaggedStruct`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.TemplateLiteral` -> `Schema.TemplateLiteral(parts)`: Pass template literal parts as one array.
+- `Schema.TemplateLiteral` -> `Schema.TemplateLiteral(parts)`: Pass template literal parts as one array. Parts must not contain encodings, including inside unions and nested templates. Transformations whose decoded and encoded types are equal are also rejected. Use Schema.TemplateLiteralParser(parts) for transformed parts.
 
-- `Schema.TemplateLiteralParser` -> `Schema.TemplateLiteralParser(schema.parts)`: Create the template schema first and pass its `parts` property.
+- `Schema.TemplateLiteralParser` -> `Schema.TemplateLiteralParser(parts)`: Pass template literal parts directly as one array. Transformed parts are supported, and their decoding and encoding services are required in the corresponding direction.
 
 - `Schema.TimeZone` -> `Schema.TimeZoneFromString`: Use the string codec; v4 `TimeZone` is the self schema.
 

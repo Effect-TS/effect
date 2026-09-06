@@ -286,6 +286,10 @@ You can use `Schema.TemplateLiteral` to define structured string patterns made o
 
 Template literal matching is based on the semantics of each part rather than only a generated regular expression. Checks on string, number, and bigint schema parts are applied while matching each segment.
 
+Parts must not contain encodings. Construction throws for transformed parts, including transformations inside unions and transformations whose decoded and encoded types are equal. Brands and supported checks without encodings remain valid. Use `Schema.TemplateLiteralParser` when the parts need to decode values, such as `BooleanFromBit` or `FiniteFromString`.
+
+To describe bit spellings directly, use `Schema.Literals([0, 1])` as the part. To describe finite numeric spellings, use `Schema.Finite`. Replacing `FiniteFromString` with `Finite` changes the accepted spelling rules: a finite numeric part does not accept an empty segment. Explicit `Schema.toType` and `Schema.toEncoded` projections remove transformations, but can also change the constraints a template validates.
+
 **Example** (Constraining parts of an email-like string)
 
 ```ts
@@ -321,6 +325,12 @@ Failure(Cause([Fail(SchemaError(Expected a string matching template literal part
 ### Template literal parser
 
 If you want to extract the parts of a string that match a template, you can use `Schema.TemplateLiteralParser`. This allows you to parse the input into its individual components rather than treat it as a single string.
+
+The parser transforms a template built from the encoded sides of the parts into a tuple that retains their decoders and checks. Encoding applies the parts' encoders and joins the segments. The parser requires the decoding and encoding services of its parts in the corresponding direction.
+
+`Schema.toEncoded(parser)` validates that source template. Use `Schema.String` if you need to accept unrestricted strings.
+
+Ambiguous templates use greedy segmentation with backtracking. Encoding a tuple and decoding the resulting string can produce a different tuple when a segment contains a separator used by the template.
 
 **Example** (Parsing a template literal into components)
 
