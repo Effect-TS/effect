@@ -439,10 +439,7 @@ export const randomHex = (length: number): string => {
   }
 }
 
-const hexCharCodes = new Uint8Array(16)
-for (let i = 0; i < 16; i++) {
-  hexCharCodes[i] = "0123456789abcdef".charCodeAt(i)
-}
+const hexCharCodes = Uint8Array.from("0123456789abcdef", (c) => c.charCodeAt(0))
 
 const randomWord = (): number => (Math.random() * 0x100000000) >>> 0
 
@@ -865,10 +862,7 @@ const base64UrlEncodeUint8Array = (data: Uint8Array) =>
 
 // Hex internals
 
-const byteToHex: Array<string> = []
-for (let i = 0; i < 256; i++) {
-  byteToHex.push(i.toString(16).padStart(2, "0"))
-}
+const byteToHex: Array<string> = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"))
 
 const hexEncodeUint8Array = (bytes: Uint8Array): string => {
   let result = ""

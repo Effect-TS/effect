@@ -136,8 +136,8 @@ export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> => h
 
 /** @internal */
 export class CauseImpl<E> implements Cause.Cause<E> {
-  readonly [CauseTypeId]: typeof CauseTypeId
-  readonly reasons: ReadonlyArray<
+  declare readonly [CauseTypeId]: typeof CauseTypeId
+  declare readonly reasons: ReadonlyArray<
     Cause.Fail<E> | Cause.Die | Cause.Interrupt
   >
   constructor(
@@ -243,7 +243,7 @@ export const constEmptyAnnotations: ReadonlyMap<string, unknown> = new Map<strin
 
 /** @internal */
 export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
-  readonly error: E
+  declare readonly error: E
   constructor(
     error: E,
     annotations = constEmptyAnnotations
@@ -287,7 +287,7 @@ export const causeFail = <E>(error: E): Cause.Cause<E> => new CauseImpl([new Fai
 
 /** @internal */
 export class Die extends ReasonBase<"Die"> implements Cause.Die {
-  readonly defect: unknown
+  declare readonly defect: unknown
   constructor(
     defect: unknown,
     annotations = constEmptyAnnotations
