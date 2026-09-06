@@ -7,6 +7,7 @@ import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQ
 import { TestClock } from "effect/testing"
 import { PersistedQueue, Persistence, RateLimiter, Redis } from "effect/unstable/persistence"
 import { createServer } from "node:net"
+import { setTimeout } from "node:timers/promises"
 
 const RedisLayer = Layer.unwrap(
   Effect.gen(function*() {
@@ -202,7 +203,7 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
       assert.deepStrictEqual(yield* store.tokenBucket(options), [0, 0, 300_000])
     }).pipe(Effect.provide(TestClock.layer())))
 
-  it.effect("preserves the last refill boundary when the configured rate changes", () =>
+  it.effect("settles refills under the previous configuration before applying a new one", () =>
     Effect.gen(function*() {
       const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
       const redis = yield* RateLimiter.makeStoreRedis()
@@ -224,11 +225,136 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
       }
       yield* TestClock.adjust("1 second")
       for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [0, 0, 300_000])
+      }
+      yield* TestClock.adjust("30 seconds")
+      for (const store of [memory, redis]) {
         assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [-1, 30_000, 270_000])
       }
       yield* TestClock.adjust("30 seconds")
       for (const store of [memory, redis]) {
         assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [0, 0, 300_000])
+      }
+      yield* TestClock.adjust("90 seconds")
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0, limit: 10 }), [2, 0, 240_000])
+      }
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect.each([
+    { name: "retained", windowMillis: 300_000, expire: false },
+    { name: "expired", windowMillis: 100, expire: true }
+  ])("applies a new configuration after full recovery with $name Redis state", (test) =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      const client = yield* Redis.Redis
+      const options = {
+        key: `recovered-configuration-${test.name}`,
+        tokens: 5,
+        limit: 5,
+        window: Duration.millis(test.windowMillis),
+        allowOverflow: false
+      }
+      for (const store of [memory, redis]) yield* store.tokenBucket(options)
+      // Redis expiration uses server time, independently of TestClock.
+      if (test.expire) yield* Effect.promise((signal) => setTimeout(test.windowMillis * 2, undefined, { signal }))
+      yield* TestClock.adjust(test.windowMillis * 2)
+      const key = `ratelimiter:${options.key}`
+      assert.strictEqual(
+        yield* client.send<number>("EXISTS", key, `${key}:refill`, `${key}:refill-state`),
+        test.expire ? 0 : 3
+      )
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(
+          yield* store.tokenBucket({
+            ...options,
+            tokens: 10,
+            limit: 10,
+            window: Duration.millis(test.windowMillis * 2)
+          }),
+          [0, 0, test.windowMillis * 2]
+        )
+      }
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect("keeps fractional token state until a whole-token refill can restore the bucket", () =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      const client = yield* Redis.Redis
+      const options = {
+        key: "fractional-token-expiration",
+        tokens: 0.5,
+        limit: 3,
+        window: Duration.seconds(6),
+        allowOverflow: false
+      }
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [2.5, 0, 2_000])
+      }
+      // The old TTL was 1 second, but a whole token refills after 2 seconds.
+      yield* Effect.promise((signal) => setTimeout(1_200, undefined, { signal }))
+      yield* TestClock.adjust(1_200)
+      const key = `ratelimiter:${options.key}`
+      assert.strictEqual(yield* client.send<number>("EXISTS", key, `${key}:refill`, `${key}:refill-state`), 3)
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 3 }), [-0.5, 800, 800])
+      }
+      yield* TestClock.adjust(800)
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 3 }), [0, 0, 6_000])
+      }
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect("discards partial refill progress once the bucket is full", () =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      const options = {
+        key: "full-bucket",
+        tokens: 1,
+        limit: 5,
+        window: Duration.minutes(5),
+        allowOverflow: false
+      }
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [4, 0, 60_000])
+      }
+      yield* TestClock.adjust(119_999)
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 5 }), [0, 0, 300_000])
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 60_000, 300_000])
+      }
+      yield* TestClock.adjust(1)
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 59_999, 299_999])
+      }
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect("preserves fractional token counts", () =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      const options = {
+        key: "fractional-tokens",
+        tokens: 3,
+        limit: 3,
+        window: Duration.seconds(1),
+        allowOverflow: false
+      }
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [0, 0, 1_000])
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0.5 }), [-0.5, 334, 1_000])
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0.5, allowOverflow: true }), [
+          -0.5,
+          334,
+          1_334
+        ])
+      }
+      yield* TestClock.adjust(334)
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0.5 }), [0, 0, 1_000])
       }
     }).pipe(Effect.provide(TestClock.layer())))
 

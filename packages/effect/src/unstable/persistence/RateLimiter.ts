@@ -652,6 +652,15 @@ export class RateLimiterStore extends Context.Service<
      * refill boundaries; rounding individual refill intervals can postpone
      * those boundaries. Avoid accumulating fractional intervals on epoch-sized
      * timestamps.
+     *
+     * A full bucket discards partial refill progress, so the next refill
+     * boundary is measured from the next consumption. When `window` or `limit`
+     * change for an existing `key`, settle refills under the previous
+     * configuration first. If it has fully recovered, start a full bucket
+     * using the new configuration, as with expired state. Otherwise, measure
+     * new boundaries from its last refill. Preserve fractional token counts
+     * in `remaining`, and retain expiring state until enough whole tokens can
+     * refill to restore the bucket to its limit.
      */
     readonly tokenBucket: (options: {
       readonly key: string
@@ -710,12 +719,23 @@ export const layerStoreMemory: Layer.Layer<
   RateLimiterStore
 > = Layer.sync(RateLimiterStore, () => {
   const fixedCounters = new Map<string, { count: number; expiresAt: number }>()
-  const tokenBuckets = new Map<string, {
+  interface TokenBucket {
     tokens: number
     refillAnchor: number
     refillCount: number
-    refillRateMillis: number
-  }>()
+    windowMillis: number
+    limit: number
+  }
+  const tokenBuckets = new Map<string, TokenBucket>()
+  // Count refills from a stable anchor instead of repeatedly adding a
+  // fractional interval to a large timestamp.
+  const refillTokenBucket = (bucket: TokenBucket, now: number) => {
+    const refillCount = Math.floor((now - bucket.refillAnchor) * bucket.limit / bucket.windowMillis)
+    if (refillCount > bucket.refillCount) {
+      bucket.tokens = Math.min(bucket.limit, bucket.tokens + refillCount - bucket.refillCount)
+      bucket.refillCount = refillCount
+    }
+  }
   const adaptiveStates = new Map<string, AdaptiveState>()
 
   const getAdaptiveState = (key: string, now: number): AdaptiveState | undefined => {
@@ -759,31 +779,40 @@ export const layerStoreMemory: Layer.Layer<
       Effect.clockWith((clock) =>
         Effect.sync(() => {
           const windowMillis = Duration.toMillis(options.window)
-          const refillRateMillis = windowMillis / options.limit
           const now = clock.currentTimeMillisUnsafe()
           let bucket = tokenBuckets.get(options.key)
           if (!bucket) {
-            bucket = { tokens: options.limit, refillAnchor: now, refillCount: 0, refillRateMillis }
+            bucket = { tokens: options.limit, refillAnchor: now, refillCount: 0, windowMillis, limit: options.limit }
             tokenBuckets.set(options.key, bucket)
-          } else if (bucket.refillRateMillis !== refillRateMillis) {
-            bucket.refillAnchor += bucket.refillCount * bucket.refillRateMillis
+          } else if (bucket.windowMillis !== windowMillis || bucket.limit !== options.limit) {
+            // A recovered bucket starts fresh, just as expired Redis state
+            // does. Otherwise, retain its last refill boundary.
+            refillTokenBucket(bucket, now)
+            if (bucket.tokens >= bucket.limit) {
+              bucket.tokens = options.limit
+              bucket.refillAnchor = now
+            } else {
+              bucket.refillAnchor += bucket.refillCount * bucket.windowMillis / bucket.limit
+              bucket.tokens = Math.min(bucket.tokens, options.limit)
+            }
             bucket.refillCount = 0
-            bucket.refillRateMillis = refillRateMillis
+            bucket.windowMillis = windowMillis
+            bucket.limit = options.limit
           }
 
-          // Count refills from a stable anchor instead of repeatedly adding a
-          // fractional interval to a large timestamp.
-          const elapsed = now - bucket.refillAnchor
-          const refillCount = Math.floor(elapsed * options.limit / windowMillis)
-          if (refillCount > bucket.refillCount) {
-            bucket.tokens = Math.min(options.limit, bucket.tokens + refillCount - bucket.refillCount)
-            bucket.refillCount = refillCount
+          refillTokenBucket(bucket, now)
+          if (bucket.tokens >= options.limit) {
+            // A full bucket discards partial refill progress, matching the
+            // Redis store where a full bucket's keys expire.
+            bucket.refillAnchor = now
+            bucket.refillCount = 0
           }
 
           const newTokenCount = bucket.tokens - options.tokens
           if (options.allowOverflow || newTokenCount >= 0) {
             bucket.tokens = newTokenCount
           }
+          const elapsed = now - bucket.refillAnchor
           const timingElapsed = Math.max(elapsed, bucket.refillCount * windowMillis / options.limit)
           const retryAfterMillis = newTokenCount >= 0 ? 0 : Math.max(
             0,
@@ -982,7 +1011,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       const lastRefillKey = `${key}:refill`
       const refillStateKey = `${key}:refill-state`
       return Effect.clockWith((clock) =>
-        Effect.mapError(
+        Effect.mapBoth(
           tokenBucket(
             key,
             lastRefillKey,
@@ -993,13 +1022,19 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             clock.currentTimeMillisUnsafe(),
             options.allowOverflow ? 1 : 0
           ),
-          (cause) =>
-            new RateLimiterError({
-              reason: new RateLimitStoreError({
-                message: `Failed to execute tokenBucket rate limiting command`,
-                cause
-              })
-            })
+          {
+            onFailure: (cause) =>
+              new RateLimiterError({
+                reason: new RateLimitStoreError({
+                  message: `Failed to execute tokenBucket rate limiting command`,
+                  cause
+                })
+              }),
+            // Redis truncates numeric replies, so the script returns the
+            // possibly fractional token count as a string.
+            onSuccess: ([remaining, retryAfterMillis, resetAfterMillis]) =>
+              [Number(remaining), retryAfterMillis, resetAfterMillis] as const
+          }
         )
       )
     },
@@ -1109,41 +1144,69 @@ local now = tonumber(ARGV[4])
 local overflow = ARGV[5] == "1"
 local current = tonumber(redis.call("GET", key))
 local last_refill = tonumber(redis.call("GET", last_refill_key))
-local state = redis.call("HMGET", refill_state_key, "anchor", "count", "rate", "lastRefill")
-local refill_ms = window_ms / limit
+local state = redis.call("HMGET", refill_state_key, "anchor", "count", "window", "limit", "lastRefill")
 local anchor = last_refill or now
 local previous_refills = 0
 
 -- Keep the existing numeric refill key compatible with older writers. If one
--- updates it, or the rate changes, rebase from its last refill timestamp.
-if current and last_refill and tonumber(state[3]) == refill_ms and tonumber(state[4]) == last_refill then
+-- updates it, rebase from its last refill timestamp.
+if current and last_refill and tonumber(state[5]) == last_refill then
   anchor = tonumber(state[1])
   previous_refills = tonumber(state[2])
+  local previous_window_ms = tonumber(state[3])
+  local previous_limit = tonumber(state[4])
+  if previous_window_ms ~= window_ms or previous_limit ~= limit then
+    -- A recovered bucket starts fresh, just as expired state does.
+    -- Otherwise, retain its last refill boundary.
+    local settled = math.floor((now - anchor) * previous_limit / previous_window_ms)
+    if settled > previous_refills then
+      current = math.min(current + settled - previous_refills, previous_limit)
+      previous_refills = settled
+    end
+    if current >= previous_limit then
+      current = limit
+      anchor = now
+    else
+      anchor = anchor + previous_refills * previous_window_ms / previous_limit
+      current = math.min(current, limit)
+    end
+    previous_refills = 0
+  end
 end
 
 if not current then
   current = limit
 end
 
-local elapsed = now - anchor
-local refill_count = math.floor(elapsed * limit / window_ms)
+-- Count refills from a stable anchor instead of repeatedly adding a fractional
+-- interval to a large timestamp.
+local refill_count = math.floor((now - anchor) * limit / window_ms)
 if refill_count > previous_refills then
   current = math.min(current + refill_count - previous_refills, limit)
   previous_refills = refill_count
 end
+if current >= limit then
+  -- A full bucket discards partial refill progress.
+  anchor = now
+  previous_refills = 0
+end
+local elapsed = now - anchor
 last_refill = anchor + previous_refills * window_ms / limit
 
 local next = current - tokens
+if next == 0 then next = 0 end
 local stored = current
 if next >= 0 or overflow then
   stored = next
 end
 
-local ttl = math.floor((limit - stored) * window_ms / limit)
+-- Fractional deficits still need whole-token refills. Round both the deficit
+-- and the resulting milliseconds up so state cannot expire before recovery.
+local ttl = math.ceil(math.ceil(limit - stored) * window_ms / limit)
 if ttl < 1 then ttl = 1 end
 redis.call("SET", key, stored, "PX", ttl)
 redis.call("SET", last_refill_key, last_refill, "PX", ttl)
-redis.call("HSET", refill_state_key, "anchor", anchor, "count", previous_refills, "rate", refill_ms, "lastRefill", last_refill)
+redis.call("HSET", refill_state_key, "anchor", anchor, "count", previous_refills, "window", window_ms, "limit", limit, "lastRefill", last_refill)
 redis.call("PEXPIRE", refill_state_key, ttl)
 local timing_elapsed = math.max(elapsed, previous_refills * window_ms / limit)
 local retry_after_ms = 0
@@ -1154,10 +1217,12 @@ local reset_after_ms = 0
 if stored < limit then
   reset_after_ms = math.max(0, math.ceil((previous_refills + math.ceil(limit - stored)) * window_ms / limit - timing_elapsed))
 end
-return { next, retry_after_ms, reset_after_ms }
+-- Redis truncates numeric replies to integers, so preserve fractional token
+-- counts as a string.
+return { string.format("%.17g", next), retry_after_ms, reset_after_ms }
 `
   }
-).withReturnType<readonly [remaining: number, retryAfterMillis: number, resetAfterMillis: number]>()
+).withReturnType<readonly [remaining: string, retryAfterMillis: number, resetAfterMillis: number]>()
 
 const adaptiveConsumeScript = Redis.script(
   (key: string, tokens: number, fallbackWindowMillis: number, ttlGraceMillis: number) => [

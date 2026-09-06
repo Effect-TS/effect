@@ -291,6 +291,91 @@ describe(`RateLimiter`, () => {
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory))
     )
 
+    it.effect("discards partial refill progress once the bucket is full", () =>
+      Effect.gen(function*() {
+        const store = yield* RateLimiter.RateLimiterStore
+        const options = {
+          key: "full-bucket",
+          tokens: 1,
+          limit: 5,
+          window: Duration.minutes(5),
+          allowOverflow: false
+        }
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [4, 0, 60_000])
+        yield* TestClock.adjust(119_999)
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 5 }), [0, 0, 300_000])
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 60_000, 300_000])
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 59_999, 299_999])
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect("settles refills under the previous configuration before applying a new one", () =>
+      Effect.gen(function*() {
+        const store = yield* RateLimiter.RateLimiterStore
+        const options = {
+          key: "changing-configuration",
+          tokens: 5,
+          limit: 5,
+          window: Duration.minutes(5),
+          allowOverflow: false
+        }
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [0, 0, 300_000])
+        yield* TestClock.adjust("59 seconds")
+        assert.deepStrictEqual(
+          yield* store.tokenBucket({ ...options, tokens: 1, window: Duration.seconds(150) }),
+          [0, 0, 121_000]
+        )
+        yield* TestClock.adjust("1 second")
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [0, 0, 300_000])
+        yield* TestClock.adjust("30 seconds")
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [-1, 30_000, 270_000])
+        yield* TestClock.adjust("30 seconds")
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [0, 0, 300_000])
+        yield* TestClock.adjust("90 seconds")
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0, limit: 10 }), [2, 0, 240_000])
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect.each(
+      [
+        { elapsed: 99, expected: [-5, 41, 41] },
+        { elapsed: 100, expected: [0, 0, 100] },
+        { elapsed: 200, expected: [0, 0, 100] }
+      ] as const
+    )("applies a new limit around full recovery at $elapsed ms", ({ elapsed, expected }) =>
+      Effect.gen(function*() {
+        const store = yield* RateLimiter.RateLimiterStore
+        const options = {
+          key: "recovered-configuration",
+          tokens: 5,
+          limit: 5,
+          window: Duration.millis(100),
+          allowOverflow: false
+        }
+        yield* store.tokenBucket(options)
+        yield* TestClock.adjust(elapsed)
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 10, limit: 10 }), expected)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect("preserves fractional token counts", () =>
+      Effect.gen(function*() {
+        const store = yield* RateLimiter.RateLimiterStore
+        const options = {
+          key: "fractional-tokens",
+          tokens: 3,
+          limit: 3,
+          window: Duration.seconds(1),
+          allowOverflow: false
+        }
+        assert.deepStrictEqual(yield* store.tokenBucket(options), [0, 0, 1_000])
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0.5 }), [-0.5, 334, 1_000])
+        assert.deepStrictEqual(
+          yield* store.tokenBucket({ ...options, tokens: 0.5, allowOverflow: true }),
+          [-0.5, 334, 1_334]
+        )
+        yield* TestClock.adjust(334)
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 0.5 }), [0, 0, 1_000])
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
     it.effect("preserves available tokens and the refill schedule after a rejected batch", () =>
       Effect.gen(function*() {
         const limiter = yield* RateLimiter.make
