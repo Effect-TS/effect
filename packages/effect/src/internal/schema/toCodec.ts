@@ -1,9 +1,10 @@
-import { memoize } from "../../Function.ts"
+import { memoize, memoizeIdempotent } from "../../Function.ts"
 import * as Predicate from "../../Predicate.ts"
 import type * as PublicSchema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 import * as InternalTransformation from "../../SchemaTransformation.ts"
+import * as InternalAnnotations from "./annotations.ts"
 import * as InternalMake from "./make.ts"
 
 /** @internal */
@@ -12,7 +13,30 @@ export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): Publi
 }
 
 /** @internal */
-export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+export const toCodecJsonAST = memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.AST => {
+  const out = toCodecJsonASTBase(ast)
+  if (
+    !SchemaAST.isDeclaration(ast) || ast.annotations?.[InternalAnnotations.CONSTRUCTOR_ANNOTATION_KEY] === undefined
+  ) {
+    return out
+  }
+  // Class metadata lives on the declaration, while JSON Schema uses its encoding.
+  // Carry JSON annotations across without changing encoded identifiers or callbacks.
+  const annotations = Object.fromEntries(
+    Object.entries(InternalAnnotations.resolve(ast) ?? {}).filter(([key, value]) =>
+      key !== "identifier" &&
+      key !== InternalAnnotations.IDENTIFIER_FALLBACK_KEY &&
+      !InternalAnnotations.annotationExcludedKeys.has(key) &&
+      SchemaAST.isJson(value)
+    )
+  )
+  if (Object.keys(annotations).length === 0) return out
+  return SchemaAST.applyToSelfOrLastLinkEncoding((encoded) =>
+    SchemaAST.annotate(encoded, { ...annotations, ...InternalAnnotations.resolve(encoded) })
+  )(out)
+})
+
+const toCodecJsonASTBase = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   const out = toCodecJsonASTStep(ast, toCodecJsonAST)
   const context = ast.context
   if (out === ast || context === undefined) return out

@@ -3627,6 +3627,26 @@ describe("toJsonSchemaDocument", () => {
         }
       })
     })
+
+    it("preserves annotations on recursive class definitions", () => {
+      class A extends Schema.Class<A>("A")({
+        children: Schema.Array(Schema.suspend((): Schema.Codec<A> => A))
+      }, { title: "Recursive class" }) {}
+      assertJsonSchemaDocument(A, {
+        schema: { $ref: "#/$defs/AEncoded" },
+        definitions: {
+          AEncoded: {
+            type: "object",
+            properties: {
+              children: { type: "array", items: { $ref: "#/$defs/AEncoded" } }
+            },
+            required: ["children"],
+            additionalProperties: false,
+            title: "Recursive class"
+          }
+        }
+      }, { includeAnnotationKey: () => true })
+    })
   })
 
   it("Error preserves its identifier as a canonical reference", () => {

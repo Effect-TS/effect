@@ -47,6 +47,12 @@ describe("Serializers", () => {
       strictEqual(Schema.toCodecJson(once).ast, once.ast)
     })
 
+    it("is idempotent for annotated classes", () => {
+      class A extends Schema.Class<A>("A")({ a: Schema.String }, { title: "A title" }) {}
+      const once = Schema.toCodecJson(A)
+      strictEqual(Schema.toCodecJson(once).ast, once.ast)
+    })
+
     it("should reorder the types in the Union based on the encoded side", async () => {
       const schema = Schema.Union([
         Schema.String,
