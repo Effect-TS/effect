@@ -26,6 +26,8 @@ const RedisLayer = Layer.unwrap(
 )
 
 it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) => {
+  // Tests run concurrently, so each body provides its own clock instead of
+  // advancing the TestClock shared by it.layer.
   it.effect.each(
     [
       {
@@ -98,7 +100,7 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
         assert.deepStrictEqual(yield* memory.tokenBucket(options), expected)
         assert.deepStrictEqual(yield* redis.tokenBucket(options), expected)
       }
-    }))
+    }).pipe(Effect.provide(TestClock.layer())))
 
   it.effect("reserves distinct boundaries across concurrent Redis stores", () =>
     Effect.gen(function*() {
@@ -118,7 +120,7 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
         { concurrency: "unbounded" }
       )
       assert.deepStrictEqual(results.sort((a, b) => a[1] - b[1]), [[-1, 1_000], [-2, 61_000], [-3, 121_000]])
-    }))
+    }).pipe(Effect.provide(TestClock.layer())))
 
   it.effect("keeps Redis expiration based on stored tokens and reservations", () =>
     Effect.gen(function*() {
@@ -143,7 +145,7 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
         const ttl = yield* redis.send<number>("PTTL", key)
         assert.isTrue(ttl > 360_000 && ttl <= 420_000)
       }
-    }))
+    }).pipe(Effect.provide(TestClock.layer())))
 })
 
 PersistedCacheTest.suite(
