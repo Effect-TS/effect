@@ -107,6 +107,27 @@ export const suite = (
       }
     }
 
+    it.effect("restarts the interval after a zero-token call without a whole-token refill", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const options = {
+          algorithm: "token-bucket",
+          window: "5 minutes",
+          limit: 5,
+          key: "timing-zero-tokens"
+        } as const
+        const initial = yield* limiter.consume({ ...options, tokens: 0 })
+        assert.strictEqual(initial.remaining, 5)
+        assert.deepStrictEqual(initial.resetAfter, Duration.zero)
+
+        yield* TestClock.adjust("30 seconds")
+        const result = yield* limiter.consume(options)
+
+        assert.strictEqual(result.remaining, 4)
+        assert.deepStrictEqual(result.delay, Duration.zero)
+        assert.strictEqual(Duration.toMillis(result.resetAfter), 60_000)
+      }))
+
     it.effect("preserves fractional elapsed milliseconds in the store tuple and timing metadata", () =>
       Effect.gen(function*() {
         const store = yield* RateLimiter.RateLimiterStore

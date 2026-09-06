@@ -634,8 +634,9 @@ export class RateLimiterStore extends Context.Service<
      *
      * `elapsedMillis` is the time since the last whole-token refill boundary,
      * in milliseconds (possibly fractional). It must be nonnegative and less
-     * than `Duration.toMillis(refillRate)`. Restart the interval for new or full
-     * buckets; reads of partially filled buckets must preserve it.
+     * than `Duration.toMillis(refillRate)`. Restart the interval for new buckets
+     * or buckets at capacity after refill and before consumption. Reads of
+     * partially filled buckets must preserve it.
      */
     readonly tokenBucket: (options: {
       readonly key: string
