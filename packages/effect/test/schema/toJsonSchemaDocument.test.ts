@@ -3567,6 +3567,68 @@ describe("toJsonSchemaDocument", () => {
     )
   })
 
+  describe("Class annotations", () => {
+    const annotations = {
+      title: "Class title",
+      description: "Class description",
+      "x-taplo": { hidden: true }
+    }
+    const definition = {
+      type: "object",
+      properties: { a: { type: "string" } },
+      required: ["a"],
+      additionalProperties: false,
+      ...annotations
+    }
+
+    it.each([false, true])("preserves annotations added with annotate: %s", (annotate) => {
+      class A extends Schema.Class<A>("A")({ a: Schema.String }, annotate ? undefined : annotations) {}
+      const schema = annotate ? A.annotate(annotations) : A
+      const options = { includeAnnotationKey: (key: string) => key === "x-taplo" }
+      assertJsonSchemaDocument(schema, {
+        schema: { $ref: "#/$defs/AEncoded" },
+        definitions: { AEncoded: definition }
+      }, options)
+      deepStrictEqual(JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema, options)), {
+        dialect: "draft-07",
+        schema: { $ref: "#/definitions/AEncoded" },
+        definitions: { AEncoded: definition }
+      })
+      const { "x-taplo": _, ...withoutCustom } = definition
+      assertJsonSchemaDocument(schema, {
+        schema: { $ref: "#/$defs/AEncoded" },
+        definitions: { AEncoded: withoutCustom }
+      })
+    })
+
+    it("keeps explicit encoded annotations authoritative", () => {
+      const encoded = Schema.Struct({ a: Schema.String }).annotate({
+        identifier: "WireA",
+        title: "Encoded title",
+        "x-taplo": { hidden: false }
+      })
+      class A extends Schema.Class<A>("A")(encoded, annotations) {}
+      assertJsonSchemaDocument(A, {
+        schema: { $ref: "#/$defs/WireA" },
+        definitions: {
+          WireA: { ...definition, title: "Encoded title", "x-taplo": { hidden: false } }
+        }
+      }, { includeAnnotationKey: (key) => key === "x-taplo" })
+      assertJsonSchemaDocument(encoded, {
+        schema: { $ref: "#/$defs/WireA" },
+        definitions: {
+          WireA: {
+            type: "object",
+            properties: { a: { type: "string" } },
+            required: ["a"],
+            additionalProperties: false,
+            title: "Encoded title"
+          }
+        }
+      })
+    })
+  })
+
   it("Error preserves its identifier as a canonical reference", () => {
     class E extends Schema.Error<E>("E")({
       a: Schema.String
