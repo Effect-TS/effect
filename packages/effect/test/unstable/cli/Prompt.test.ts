@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, DateTime, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
+import { Data, DateTime, Deferred, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/unstable/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
@@ -1161,6 +1161,64 @@ describe("Prompt.multiSelect", () => {
 })
 
 describe("Prompt.custom", () => {
+  for (const transition of ["NextFrame", "Submit"] as const) {
+    it.effect(`keeps the previous frame visible while rendering ${transition}`, () =>
+      Effect.gen(function*() {
+        const rendering = yield* Deferred.make<void>()
+        const resume = yield* Deferred.make<void>()
+        const calls: Array<string> = []
+        const clear = `${escape}[2K\r`
+        const prompt = Prompt.custom<number, number>(0, {
+          render: (state, action) =>
+            Effect.gen(function*() {
+              calls.push(`render ${state} ${action._tag}`)
+              if (action._tag === transition && (state > 0 || action._tag === "Submit")) {
+                yield* Deferred.succeed(rendering, undefined)
+                yield* Deferred.await(resume)
+              }
+              return action._tag === "Submit" ? `Done ${state}` : action._tag === "Beep" ? bell : `Frame ${state}`
+            }),
+          clear: (state, action) =>
+            Effect.sync(() => {
+              calls.push(`clear ${state} ${action._tag}`)
+              return clear
+            }),
+          process: (input, state) =>
+            Effect.succeed(
+              input.key.name === "q"
+                ? Action.Submit({ value: 42 })
+                : input.key.name === "b"
+                ? Action.Beep()
+                : Action.NextFrame({ state: state + 1 })
+            )
+        })
+
+        if (transition === "NextFrame") {
+          yield* MockTerminal.inputKey("enter")
+          yield* MockTerminal.inputKey("b")
+        }
+        yield* MockTerminal.inputKey("q")
+        const fiber = yield* Prompt.run(prompt).pipe(Effect.forkChild)
+        yield* Deferred.await(rendering)
+
+        assert.deepStrictEqual(yield* MockTerminal.displayLines, ["Frame 0"])
+        assert.deepStrictEqual(calls, [
+          "render 0 NextFrame",
+          `clear 0 ${transition}`,
+          `render ${transition === "NextFrame" ? 1 : 0} ${transition}`
+        ])
+
+        yield* Deferred.succeed(resume, undefined)
+        assert.strictEqual(yield* Fiber.join(fiber), 42)
+        assert.deepStrictEqual(
+          yield* MockTerminal.displayLines,
+          transition === "NextFrame"
+            ? ["Frame 0", `${clear}Frame 1`, bell, `${clear}Done 1`, `${escape}[?25h`]
+            : ["Frame 0", `${clear}Done 0`, `${escape}[?25h`]
+        )
+      }).pipe(Effect.provide(TestLayer)))
+  }
+
   it.effect("receive handles events from external dequeue", () =>
     Effect.gen(function*() {
       const eventQueue = yield* Queue.make<string>()
