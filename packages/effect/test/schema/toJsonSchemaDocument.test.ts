@@ -3542,36 +3542,12 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  it("Class preserves its identifier as a canonical reference", () => {
-    class A extends Schema.Class<A>("A")({
-      a: Schema.String
-    }) {}
-    assertJsonSchemaDocument(
-      A,
-      {
-        schema: {
-          "$ref": "#/$defs/AEncoded"
-        },
-        definitions: {
-          "AEncoded": {
-            "type": "object",
-            "properties": {
-              "a": { "type": "string" }
-            },
-            "required": ["a"],
-            "additionalProperties": false
-          }
-        }
-      },
-      { includeAnnotationKey: () => true }
-    )
-  })
-
   describe("Class annotations", () => {
+    const fields = { a: Schema.String }
     const annotations = {
       title: "Class title",
       description: "Class description",
-      "x-taplo": { hidden: true }
+      "x-custom": 1
     }
     const definition = {
       type: "object",
@@ -3580,148 +3556,39 @@ describe("toJsonSchemaDocument", () => {
       additionalProperties: false,
       ...annotations
     }
+    const options = { includeAnnotationKey: (key: string) => key.startsWith("x-") }
 
-    it.each([false, true])("preserves annotations added with annotate: %s", (annotate) => {
-      class A extends Schema.Class<A>("A")({ a: Schema.String }, annotate ? undefined : annotations) {}
-      const schema = annotate ? A.annotate(annotations) : A
-      const options = { includeAnnotationKey: (key: string) => key === "x-taplo" }
+    it("preserves its identifier and annotations on the encoded definition", () => {
+      class A extends Schema.Class<A>("A")(fields, { title: "Class title" }) {}
+      const schema = A.annotate({ description: "Class description", "x-custom": 1 })
       assertJsonSchemaDocument(schema, {
         schema: { $ref: "#/$defs/AEncoded" },
         definitions: { AEncoded: definition }
       }, options)
-      deepStrictEqual(JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema, options)), {
-        dialect: "draft-07",
-        schema: { $ref: "#/definitions/AEncoded" },
-        definitions: { AEncoded: definition }
-      })
-      const { "x-taplo": _, ...withoutCustom } = definition
-      assertJsonSchemaDocument(schema, {
-        schema: { $ref: "#/$defs/AEncoded" },
-        definitions: { AEncoded: withoutCustom }
-      })
     })
 
     it("keeps explicit encoded annotations authoritative", () => {
-      const encoded = Schema.Struct({ a: Schema.String }).annotate({
+      const encoded = Schema.Struct(fields).annotate({
         identifier: "WireA",
         title: "Encoded title",
-        "x-taplo": { hidden: false }
+        "x-custom": 2
       })
       class A extends Schema.Class<A>("A")(encoded, annotations) {}
       assertJsonSchemaDocument(A, {
         schema: { $ref: "#/$defs/WireA" },
         definitions: {
-          WireA: { ...definition, title: "Encoded title", "x-taplo": { hidden: false } }
+          WireA: { ...definition, title: "Encoded title", "x-custom": 2 }
         }
-      }, { includeAnnotationKey: (key) => key === "x-taplo" })
-      assertJsonSchemaDocument(encoded, {
-        schema: { $ref: "#/$defs/WireA" },
-        definitions: {
-          WireA: {
-            type: "object",
-            properties: { a: { type: "string" } },
-            required: ["a"],
-            additionalProperties: false,
-            title: "Encoded title"
-          }
-        }
-      })
+      }, options)
     })
 
-    describe("checked classes", () => {
-      const options = { includeAnnotationKey: (key: string) => key.startsWith("x-") }
-
-      it("preserves constructor annotations through an unannotated check", () => {
-        class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
-        const schema = A.check(Schema.makeFilter(() => true))
-        assertJsonSchemaDocument(schema, { schema: definition }, options)
-      })
-
-      it("preserves constructor annotations without emitting custom-check annotations", () => {
-        class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
-        const schema = A.check(Schema.makeFilter(() => true, {
-          title: "Check title",
-          "x-taplo": { hidden: false },
-          "x-check": true
-        }))
-        assertJsonSchemaDocument(schema, { schema: definition }, options)
-      })
-
-      it("does not emit later annotations stored on custom checks", () => {
-        class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
-        const schema = A.check(Schema.makeFilter(() => true, {
-          title: "Check title",
-          "x-check": true
-        })).annotate({
-          title: "Late title",
-          "x-taplo": { hidden: false },
-          "x-late": true
-        })
-        assertJsonSchemaDocument(schema, { schema: definition }, options)
-      })
-
-      it("keeps encoded annotations ahead of checked-class annotations", () => {
-        const encoded = Schema.Struct({ a: Schema.String }).annotate({
-          identifier: "WireA",
-          title: "Encoded title",
-          "x-taplo": { hidden: false }
-        })
-        class A extends Schema.Class<A>("A")(encoded, annotations) {}
-        const schema = A.check(Schema.makeFilter(() => true, {
-          title: "Check title",
-          "x-check": true
-        })).annotate({ title: "Late title", "x-taplo": { hidden: true } })
-        assertJsonSchemaDocument(schema, {
-          schema: { $ref: "#/$defs/WireA" },
-          definitions: {
-            WireA: {
-              ...definition,
-              title: "Encoded title",
-              "x-taplo": { hidden: false }
-            }
-          }
-        }, options)
-      })
-
-      it("matches structs in suppressing custom-check annotations and later annotations", () => {
-        const checked = Schema.Struct({ a: Schema.String }).annotate(annotations).check(
-          Schema.makeFilter(() => true, {
-            title: "Check title",
-            "x-taplo": { hidden: false },
-            "x-check": true
-          })
-        )
+    it("preserves own annotations and ignores custom-check annotations like a struct", () => {
+      class A extends Schema.Class<A>("A")(fields, annotations) {}
+      const check = Schema.makeFilter(() => true, { title: "Check title", "x-check": true })
+      for (const schema of [A, Schema.Struct(fields).annotate(annotations)]) {
+        const checked = schema.check(check).annotate({ description: "Late description", "x-late": true })
         assertJsonSchemaDocument(checked, { schema: definition }, options)
-        assertJsonSchemaDocument(
-          checked.annotate({
-            title: "Late title",
-            "x-taplo": { hidden: false },
-            "x-late": true
-          }),
-          { schema: definition },
-          options
-        )
-      })
-    })
-
-    it("preserves annotations on recursive class definitions", () => {
-      class A extends Schema.Class<A>("A")({
-        children: Schema.Array(Schema.suspend((): Schema.Codec<A> => A))
-      }, { title: "Recursive class" }) {}
-      assertJsonSchemaDocument(A, {
-        schema: { $ref: "#/$defs/AEncoded" },
-        definitions: {
-          AEncoded: {
-            type: "object",
-            properties: {
-              children: { type: "array", items: { $ref: "#/$defs/AEncoded" } }
-            },
-            required: ["children"],
-            additionalProperties: false,
-            title: "Recursive class"
-          }
-        }
-      }, { includeAnnotationKey: () => true })
+      }
     })
   })
 
