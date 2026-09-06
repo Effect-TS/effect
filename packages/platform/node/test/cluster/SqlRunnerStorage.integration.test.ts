@@ -342,6 +342,7 @@ describe("SqlRunnerStorage", () => {
       ]
     ] as const
   ).forEach(([label, layer]) => {
+    // Both cases mutate the same runner rows within this backend fixture.
     it.layer(layer, {
       timeout: 60000
     })(label, (it) => {
@@ -364,7 +365,7 @@ describe("SqlRunnerStorage", () => {
 
           yield* storage.unregister(runnerAddress1)
           expect(yield* storage.getRunners).toEqual([])
-        }), 30_000)
+        }), { timeout: 30_000, concurrent: false })
 
       it.effect("acquireShards", () =>
         Effect.gen(function*() {
@@ -394,7 +395,7 @@ describe("SqlRunnerStorage", () => {
 
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
-        }))
+        }), { concurrent: false })
     })
   })
 })

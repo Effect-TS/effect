@@ -20,8 +20,9 @@ describe("Plugin", () => {
         "run",
         "--config",
         "vitest.config.ts",
+        "--reporter=default",
         "--reporter=json",
-        "--outputFile",
+        "--outputFile.json",
         reportFile
       ], {
         cwd: join(import.meta.dirname, "fixtures/markdown"),
