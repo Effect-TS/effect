@@ -8,6 +8,7 @@
     "@effect/ai-openai": "workspace:*",
     "@effect/ai-openai-compat": "workspace:*",
     "@effect/ai-openrouter": "workspace:*",
+    "@effect/atom-angular": "workspace:*",
     "@effect/atom-react": "workspace:*",
     "@effect/atom-solid": "workspace:*",
     "@effect/atom-vue": "workspace:*",

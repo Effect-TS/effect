@@ -113,6 +113,12 @@ export default defineConfig({
       ...project("@effect/ai-openai", "packages/ai/openai"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),
       ...project("@effect/ai-openrouter", "packages/ai/openrouter"),
+      ...project("@effect/atom-angular", "packages/atom/angular", true, {
+        test: {
+          environment: "jsdom",
+          setupFiles: [path.join(import.meta.dirname, "packages/atom/angular/vitest.setup.ts")]
+        }
+      }),
       ...project("@effect/atom-react", "packages/atom/react", true, {
         test: {
           environment: "jsdom",
