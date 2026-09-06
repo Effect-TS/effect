@@ -3637,24 +3637,17 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(schema, { schema: definition }, options)
       })
 
-      it("merges check annotations over constructor annotations", () => {
+      it("preserves constructor annotations without emitting custom-check annotations", () => {
         class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
         const schema = A.check(Schema.makeFilter(() => true, {
           title: "Check title",
           "x-taplo": { hidden: false },
           "x-check": true
         }))
-        assertJsonSchemaDocument(schema, {
-          schema: {
-            ...definition,
-            title: "Check title",
-            "x-taplo": { hidden: false },
-            "x-check": true
-          }
-        }, options)
+        assertJsonSchemaDocument(schema, { schema: definition }, options)
       })
 
-      it("merges later annotations over check and constructor annotations", () => {
+      it("does not emit later annotations stored on custom checks", () => {
         class A extends Schema.Class<A>("A")({ a: Schema.String }, annotations) {}
         const schema = A.check(Schema.makeFilter(() => true, {
           title: "Check title",
@@ -3664,15 +3657,7 @@ describe("toJsonSchemaDocument", () => {
           "x-taplo": { hidden: false },
           "x-late": true
         })
-        assertJsonSchemaDocument(schema, {
-          schema: {
-            ...definition,
-            title: "Late title",
-            "x-taplo": { hidden: false },
-            "x-check": true,
-            "x-late": true
-          }
-        }, options)
+        assertJsonSchemaDocument(schema, { schema: definition }, options)
       })
 
       it("keeps encoded annotations ahead of checked-class annotations", () => {
@@ -3692,11 +3677,30 @@ describe("toJsonSchemaDocument", () => {
             WireA: {
               ...definition,
               title: "Encoded title",
-              "x-taplo": { hidden: false },
-              "x-check": true
+              "x-taplo": { hidden: false }
             }
           }
         }, options)
+      })
+
+      it("matches structs in suppressing custom-check annotations and later annotations", () => {
+        const checked = Schema.Struct({ a: Schema.String }).annotate(annotations).check(
+          Schema.makeFilter(() => true, {
+            title: "Check title",
+            "x-taplo": { hidden: false },
+            "x-check": true
+          })
+        )
+        assertJsonSchemaDocument(checked, { schema: definition }, options)
+        assertJsonSchemaDocument(
+          checked.annotate({
+            title: "Late title",
+            "x-taplo": { hidden: false },
+            "x-late": true
+          }),
+          { schema: definition },
+          options
+        )
       })
     })
 
