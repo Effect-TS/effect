@@ -6,6 +6,82 @@ import { LanguageModel, Prompt, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("OpenRouterLanguageModel", () => {
+  describe("strictJsonSchema", () => {
+    for (const strictJsonSchema of [true, false, undefined]) {
+      const config = {
+        temperature: 0.25,
+        ...(strictJsonSchema === undefined ? {} : { strictJsonSchema })
+      }
+
+      for (const method of ["generateText", "streamText"] as const) {
+        it.effect(`${method} omits strictJsonSchema=${strictJsonSchema} and preserves tool strictness`, () =>
+          Effect.gen(function*() {
+            const toolkit = Toolkit.make(
+              Tool.make("StrictTool", { parameters: Schema.Struct({ query: Schema.String }) })
+                .annotate(Tool.Strict, true),
+              Tool.make("FlexibleTool", { parameters: Schema.Struct({ query: Schema.String }) })
+                .annotate(Tool.Strict, false)
+            )
+            const options = {
+              prompt: "Use a tool",
+              toolkit,
+              disableToolCallResolution: true
+            } as const
+
+            yield* (method === "streamText"
+              ? LanguageModel.streamText(options).pipe(Stream.runDrain)
+              : LanguageModel.generateText(options).pipe(Effect.asVoid)).pipe(
+                Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini", config))
+              )
+
+            const requests = yield* MockHttpClient.requests
+            strictEqual(requests.length, 1)
+            const body = yield* getRequestBody(requests[0])
+
+            strictEqual(body.model, "openai/gpt-4o-mini")
+            strictEqual(body.temperature, 0.25)
+            deepStrictEqual(body.messages, [{ role: "user", content: "Use a tool" }])
+            deepStrictEqual(
+              body.tools.map((tool: any) => ({ name: tool.function.name, strict: tool.function.strict })),
+              [{ name: "StrictTool", strict: true }, { name: "FlexibleTool", strict: false }]
+            )
+            if (method === "streamText") {
+              strictEqual(body.stream, true)
+            }
+            assert.notProperty(body, "strictJsonSchema")
+          }).pipe(Effect.provide(method === "streamText" ? makeStreamTestLayer([]) : makeTestLayer())))
+      }
+
+      it.effect(`generateObject omits strictJsonSchema=${strictJsonSchema} and preserves response strictness`, () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateObject({
+            prompt: "Give me a name",
+            schema: Schema.Struct({ name: Schema.String })
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini", config)))
+
+          deepStrictEqual(result.value, { name: "Alice" })
+          const requests = yield* MockHttpClient.requests
+          strictEqual(requests.length, 1)
+          const body = yield* getRequestBody(requests[0])
+
+          strictEqual(body.model, "openai/gpt-4o-mini")
+          strictEqual(body.temperature, 0.25)
+          strictEqual(body.response_format.type, "json_schema")
+          strictEqual(body.response_format.json_schema.strict, strictJsonSchema ?? null)
+          deepStrictEqual(body.response_format.json_schema.schema.required, ["name"])
+          assert.notProperty(body, "strictJsonSchema")
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            choices: [{
+              finish_reason: "stop",
+              index: 0,
+              message: { role: "assistant", content: JSON.stringify({ name: "Alice" }) }
+            }]
+          }
+        }))))
+    }
+  })
+
   describe("generateText", () => {
     describe("message preparation", () => {
       describe("audio file parts", () => {
@@ -475,20 +551,27 @@ const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
 
 const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ChatStreamChunk.Encoded>) => {
   const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n"
-  const httpClient = HttpClient.makeWith(
-    Effect.fnUntraced(function*(requestEffect) {
-      const request = yield* requestEffect
-      return HttpClientResponse.fromWeb(
-        request,
-        new Response(body, {
-          status: 200,
-          headers: { "content-type": "text/event-stream" }
-        })
-      )
-    }),
-    Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
-  )
+  const httpClientLayer = Layer.effectContext(Effect.gen(function*() {
+    const capturedRequests = yield* Ref.make<ReadonlyArray<HttpClientRequest.HttpClientRequest>>([])
+    const httpClient = HttpClient.makeWith(
+      Effect.fnUntraced(function*(requestEffect) {
+        const request = yield* requestEffect
+        yield* Ref.update(capturedRequests, Array.append(request))
+        return HttpClientResponse.fromWeb(
+          request,
+          new Response(body, {
+            status: 200,
+            headers: { "content-type": "text/event-stream" }
+          })
+        )
+      }),
+      Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+    )
+    return Context.make(HttpClient.HttpClient, httpClient).pipe(
+      Context.add(MockHttpClient, MockHttpClient.of({ requests: Ref.get(capturedRequests) }))
+    )
+  }))
   return OpenRouterClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-    Layer.provide(Layer.succeed(HttpClient.HttpClient, httpClient))
+    Layer.provideMerge(httpClientLayer)
   )
 }
