@@ -375,6 +375,12 @@ const realPath: FileSystem.FileSystem["realPath"] = (path) => tryPromise("realPa
 const rename: FileSystem.FileSystem["rename"] = (oldPath, newPath) =>
   tryPromise("rename", oldPath, () => Deno.rename(oldPath, newPath))
 
+const lstat: FileSystem.FileSystem["lstat"] = (path) =>
+  Effect.map(
+    tryPromise("lstat", path, () => Deno.lstat(path)),
+    makeFileInfo
+  )
+
 const stat: FileSystem.FileSystem["stat"] = (path) =>
   Effect.map(
     tryPromise("stat", path, () => Deno.stat(path)),
@@ -472,6 +478,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     copyFile,
     glob,
     link,
+    lstat,
     makeDirectory,
     makeTempDirectory,
     makeTempDirectoryScoped,
