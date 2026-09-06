@@ -512,10 +512,8 @@ export interface ConsumeResult {
    *
    * **Details**
    *
-   * For token buckets, this is the time from this consumption until the bucket
-   * reaches its full capacity, assuming no further consumption. It accounts for
-   * the elapsed portion of the current refill interval and includes any debt
-   * reserved by the "delay" strategy. It is zero when the bucket is already full.
+   * For token buckets, accounts for elapsed refill time and reserved debt,
+   * assuming no further consumption.
    */
   readonly resetAfter: Duration.Duration
 }
@@ -644,25 +642,15 @@ export class RateLimiterStore extends Context.Service<
     }) => Effect.Effect<readonly [count: number, ttl: number], RateLimiterError>
 
     /**
-     * Returns `[remaining, elapsedMillis]` for the `key` from a single atomic
-     * operation. `remaining` is the token count after applying whole-token
-     * refills and subtracting the requested tokens. `elapsedMillis` is the
-     * elapsed portion of the current refill interval, in milliseconds (including
-     * fractional milliseconds), measured after advancing the last-refill time
-     * by the whole refill intervals. It is zero for a new bucket and must be
-     * nonnegative and less than `Duration.toMillis(refillRate)`.
+     * Returns `[remaining, elapsedMillis]` atomically after refilling and
+     * attempting consumption.
      *
-     * If `allowOverflow` is true, the number of tokens can drop below zero.
+     * `remaining` is the count after subtracting the requested tokens. Negative
+     * counts are persisted only when `allowOverflow` is true.
      *
-     * In the case of no overflow, the returned token count will only be
-     * negative if the requested tokens exceed the available tokens, but the
-     * real token count will not be persisted below zero.
-     *
-     * Custom stores migrating from the previous numeric return value must
-     * return the existing count together with the elapsed time since the last
-     * refill boundary. Compute both from the same clock reading and state
-     * update; returning `[remaining, 0]` preserves the old timing bug. Reads
-     * between refill boundaries must not restart the refill interval.
+     * `elapsedMillis` is the time since the last whole-token refill boundary,
+     * in milliseconds (possibly fractional). It is zero for new buckets and
+     * must be nonnegative and less than `Duration.toMillis(refillRate)`.
      */
     readonly tokenBucket: (options: {
       readonly key: string
@@ -1114,7 +1102,7 @@ local ttl = math.floor((limit - stored) * refill_ms)
 if ttl < 1 then ttl = 1 end
 redis.call("SET", key, stored, "PX", ttl)
 redis.call("SET", last_refill_key, last_refill, "PX", ttl)
--- Redis truncates Lua numeric replies to integers; preserve fractional milliseconds.
+-- Use a string to preserve fractional milliseconds in Redis replies.
 return { next, tostring(math.max(0, now - last_refill)) }
 `
   }
