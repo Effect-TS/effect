@@ -4,8 +4,9 @@ import { RedisContainer } from "@testcontainers/redis"
 import { Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
+import { tokenBucketTimingSuite } from "effect-test/unstable/persistence/RateLimiterTest"
 import { TestClock } from "effect/testing"
-import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
+import { PersistedQueue, Persistence, RateLimiter, Redis } from "effect/unstable/persistence"
 import { createServer } from "node:net"
 
 const RedisLayer = Layer.unwrap(
@@ -38,6 +39,11 @@ PersistedQueueTest.suite(
     pollInterval: "50 millis",
     lockRefreshInterval: "100 millis"
   }).pipe(Layer.provide(RedisLayer))
+)
+
+tokenBucketTimingSuite(
+  "NodeRedis",
+  RateLimiter.layerStoreRedis().pipe(Layer.provide(RedisLayer))
 )
 
 const PersistedQueueRedisLayer = Layer.mergeAll(

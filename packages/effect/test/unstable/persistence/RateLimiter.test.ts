@@ -2,6 +2,9 @@ import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect } from "effect"
 import { TestClock } from "effect/testing"
 import { RateLimiter } from "effect/unstable/persistence"
+import { tokenBucketTimingSuite } from "./RateLimiterTest.ts"
+
+tokenBucketTimingSuite("memory", RateLimiter.layerStoreMemory)
 
 describe(`RateLimiter`, () => {
   it.effect("supports partially applied sleep", () =>
