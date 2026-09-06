@@ -177,9 +177,9 @@ export const make: Effect.Effect<
           allowOverflow: onExceeded === "delay"
         }),
         ([remaining, elapsedMillis]) => {
-          const delay = Duration.millis(Math.max(0, -remaining * refillRateMillis - elapsedMillis))
+          const delay = Duration.millis(Math.max(0, Math.ceil(-remaining) * refillRateMillis - elapsedMillis))
           const resetAfter = Duration.millis(
-            Math.max(0, (options.limit - remaining) * refillRateMillis - elapsedMillis)
+            Math.max(0, Math.ceil(options.limit - remaining) * refillRateMillis - elapsedMillis)
           )
           if (onExceeded === "fail" && remaining < 0) {
             return Effect.fail(
@@ -952,7 +952,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
               clock.currentTimeMillisUnsafe(),
               options.allowOverflow ? 1 : 0
             ),
-            ([remaining, elapsedMillis]) => [remaining, Number(elapsedMillis)] as const
+            ([remaining, elapsedMillis]) => [Number(remaining), Number(elapsedMillis)] as const
           ),
           (cause) =>
             new RateLimiterError({
@@ -1088,15 +1088,16 @@ if next >= 0 or overflow then
   stored = next
 end
 
-local ttl = math.floor((limit - stored) * refill_ms)
+elapsed = math.max(0, now - last_refill)
+local ttl = math.ceil(math.ceil(limit - stored) * refill_ms - elapsed)
 if ttl < 1 then ttl = 1 end
 redis.call("SET", key, stored, "PX", ttl)
 redis.call("SET", last_refill_key, last_refill, "PX", ttl)
--- Use a string to preserve fractional milliseconds in Redis replies.
-return { next, tostring(math.max(0, now - last_refill)) }
+-- Return strings to preserve fractions in Redis replies.
+return { tostring(next), tostring(elapsed) }
 `
   }
-).withReturnType<readonly [remaining: number, elapsedMillis: string]>()
+).withReturnType<readonly [remaining: string, elapsedMillis: string]>()
 
 const adaptiveConsumeScript = Redis.script(
   (key: string, tokens: number, fallbackWindowMillis: number, ttlGraceMillis: number) => [
