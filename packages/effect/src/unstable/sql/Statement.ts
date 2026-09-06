@@ -19,7 +19,7 @@ import { constUndefined } from "../../Function.ts"
 import * as internalEffect from "../../internal/effect.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import { hasProperty } from "../../Predicate.ts"
-import { TracerEnabled, TracerTimingEnabled } from "../../References.ts"
+import { TracerTimingEnabled } from "../../References.ts"
 import * as Stream from "../../Stream.ts"
 import * as Tracer from "../../Tracer.ts"
 import type { Acquirer, Borrower, Connection, Row } from "./SqlConnection.ts"
@@ -1324,7 +1324,7 @@ const StatementProto: Omit<
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
         : this.borrower((connection: Connection) => f(connection, sql, params))
-      return this.propagateSpan && fiber.getRef(TracerEnabled)
+      return this.propagateSpan && fiber.cache.tracerEnabled
         ? Effect.provideService(execute, Tracer.ParentSpan, span)
         : execute
     })
@@ -1359,7 +1359,7 @@ const StatementProto: Omit<
           span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
           const acquire = Effect.map(self.acquirer, (_) => _.executeStream(sql, params, self.transformRows))
-          return self.propagateSpan && fiber.getRef(TracerEnabled)
+          return self.propagateSpan && fiber.cache.tracerEnabled
             ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
             : acquire
         })
