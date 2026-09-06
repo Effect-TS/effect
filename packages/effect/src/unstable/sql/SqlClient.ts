@@ -117,6 +117,14 @@ export declare namespace SqlClient {
      * whose lease outlives the effect that starts it.
      */
     readonly borrower?: Connection.Borrower | undefined
+    /**
+     * Provides the `sql.execute` span as the parent during connection
+     * acquisition and statement execution, including stream pulls. Enable for
+     * drivers whose calls can create child spans, such as instrumented client
+     * libraries. Defaults to `false` and is skipped when tracing is disabled.
+     * This does not capture a stack trace or add an Effect stack frame.
+     */
+    readonly propagateSpan?: boolean | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
@@ -204,7 +212,14 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     )
 
   const client: SqlClient = Object.assign(
-    Statement.make(getConnection, options.compiler, options.spanAttributes, options.transformRows, borrower),
+    Statement.make(
+      getConnection,
+      options.compiler,
+      options.spanAttributes,
+      options.transformRows,
+      borrower,
+      options.propagateSpan
+    ),
     {
       [TypeId]: TypeId as typeof TypeId,
       safe: undefined as any,
@@ -220,7 +235,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
           options.compiler.withoutTransform,
           options.spanAttributes,
           undefined,
-          borrower
+          borrower,
+          options.propagateSpan
         )
         const client = Object.assign(statement, {
           ...this,
