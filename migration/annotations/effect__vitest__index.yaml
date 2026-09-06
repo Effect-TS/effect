@@ -147,10 +147,10 @@
   note: "Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest."
 "@effect/vitest/index#ExtendedContext":
   replacement: "vitest#TestContext"
-  note: "The separate context alias was removed. Vitest 4 uses TestContext, which includes the current task and lifecycle methods."
+  note: "The separate context alias was removed. Vitest 5 uses TestContext, which includes the current task and lifecycle methods."
 "@effect/vitest/index#TaskContext":
   replacement: "vitest#TestContext"
-  note: "The separate context alias was removed. Vitest 4 uses TestContext, which includes the current task and lifecycle methods."
+  note: "The separate context alias was removed. Vitest 5 uses TestContext, which includes the current task and lifecycle methods."
 "@effect/vitest/index#Environment":
   replacement: "vitest/runtime#Environment"
   note: "This was a deprecated root re-export. Import it from vitest/runtime; Vitest 5 exposes custom environments through vitest/runtime."
@@ -162,10 +162,10 @@
   note: "This was a deprecated root re-export. Import it from vitest/runtime; Vitest 5 exposes custom environments through vitest/runtime."
 "@effect/vitest/index#HappyDOMOptions":
   replacement: "NonNullable<import(\"vitest/node\").EnvironmentOptions[\"happyDOM\"]>"
-  note: "Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type."
+  note: "Vitest 5 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type."
 "@effect/vitest/index#JSDOMOptions":
   replacement: "NonNullable<import(\"vitest/node\").EnvironmentOptions[\"jsdom\"]>"
-  note: "Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type."
+  note: "Vitest 5 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type."
 "@effect/vitest/index#ArgumentsType":
   replacement: "T extends (...args: infer A) => any ? A : never"
   note: "Vitest 3 marked this root alias as an internal helper. Define the small TypeScript shape locally instead of depending on transitive internals."
@@ -195,13 +195,13 @@
   note: "Import Reporter from vitest/node; the deprecated vitest/reporters entrypoint was removed in Vitest 5."
 "@effect/vitest/index#UserConfig":
   replacement: "vitest/config#TestUserConfig"
-  note: "Vitest 4 exposes its config as TestUserConfig; ViteUserConfig is the separate Vite configuration type."
+  note: "Vitest 5 exposes its config as TestUserConfig; ViteUserConfig is the separate Vite configuration type."
 "@effect/vitest/index#UserWorkspaceConfig":
   replacement: "vitest/config#UserWorkspaceConfig"
   note: "Import the type from vitest/config and migrate Vitest workspace configuration to projects."
 "@effect/vitest/index#PoolOptions":
   replacement: "vitest/config#TestUserConfig"
-  note: "The v3 built-in poolOptions object was removed. Move its fields to Vitest 4 top-level config such as maxWorkers and vmMemoryLimit; vitest/node PoolOptions is a different custom-pool API."
+  note: "The v3 built-in poolOptions object was removed. Move its fields to Vitest 5 top-level config such as maxWorkers and vmMemoryLimit; vitest/node PoolOptions is a different custom-pool API."
 "@effect/vitest/index#RuntimeContext":
   replacement: "none"
   note: "Vitest 5 deprecates @vitest/runner and does not expose this internal state type. Extend TestRunner from vitest and use its public methods instead."
@@ -213,13 +213,13 @@
   note: "Vitest does not support callback-style tests. Return a Promise or, in @effect/vitest tests, return an Effect."
 "@effect/vitest/index#HookCleanupCallback":
   replacement: "none"
-  note: "No named Vitest 4 export replaces this alias. Let the hook return type infer, or type the cleanup function locally."
+  note: "No named Vitest 5 export replaces this alias. Let the hook return type infer, or type the cleanup function locally."
 "@effect/vitest/index#HookListener":
   replacement: "none"
   note: "Infer the callback from the public hook function, or derive it with Parameters<typeof import(\"vitest\").beforeAll>[0] and the corresponding hook name."
 "@effect/vitest/index#ModuleCache":
   replacement: "none"
-  note: "Vitest 3 marked this unused internal cache shape deprecated; Vitest 4 has no public replacement."
+  note: "Vitest 3 marked this unused internal cache shape deprecated; Vitest 5 has no public replacement."
 "@effect/vitest/index#ResolvedTestEnvironment":
   replacement: "none"
   note: "Vitest 3 marked this type unsupported. Use Environment from vitest/runtime for custom environments."
