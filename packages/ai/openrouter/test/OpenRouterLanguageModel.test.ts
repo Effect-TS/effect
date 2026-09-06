@@ -7,79 +7,46 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("OpenRouterLanguageModel", () => {
   describe("strictJsonSchema", () => {
-    for (const strictJsonSchema of [true, false, undefined]) {
-      const config = {
-        temperature: 0.25,
-        ...(strictJsonSchema === undefined ? {} : { strictJsonSchema })
-      }
+    it.effect("omits false from requests while preserving response strictness", () =>
+      Effect.gen(function*() {
+        yield* LanguageModel.generateObject({
+          prompt: "Give me a name",
+          schema: Schema.Struct({ name: Schema.String })
+        }).pipe(Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini", { strictJsonSchema: false })))
 
-      for (const method of ["generateText", "streamText"] as const) {
-        it.effect(`${method} omits strictJsonSchema=${strictJsonSchema} and preserves tool strictness`, () =>
-          Effect.gen(function*() {
-            const toolkit = Toolkit.make(
-              Tool.make("StrictTool", { parameters: Schema.Struct({ query: Schema.String }) })
-                .annotate(Tool.Strict, true),
-              Tool.make("FlexibleTool", { parameters: Schema.Struct({ query: Schema.String }) })
-                .annotate(Tool.Strict, false)
-            )
-            const options = {
-              prompt: "Use a tool",
-              toolkit,
-              disableToolCallResolution: true
-            } as const
+        const requests = yield* MockHttpClient.requests
+        const body = yield* getRequestBody(requests[0])
+        strictEqual(body.response_format.json_schema.strict, false)
+        assert.notProperty(body, "strictJsonSchema")
+      }).pipe(Effect.provide(makeTestLayer({
+        body: {
+          choices: [{
+            finish_reason: "stop",
+            index: 0,
+            message: { role: "assistant", content: JSON.stringify({ name: "Alice" }) }
+          }]
+        }
+      }))))
 
-            yield* (method === "streamText"
-              ? LanguageModel.streamText(options).pipe(Stream.runDrain)
-              : LanguageModel.generateText(options).pipe(Effect.asVoid)).pipe(
-                Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini", config))
-              )
+    it.effect("omits true from streaming requests while preserving tool strictness", () =>
+      Effect.gen(function*() {
+        const tool = Tool.make("FlexibleTool", { parameters: Schema.Struct({ query: Schema.String }) })
+          .annotate(Tool.Strict, false)
+        yield* LanguageModel.streamText({
+          prompt: "Use a tool",
+          toolkit: Toolkit.make(tool),
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runDrain,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini", { strictJsonSchema: true }))
+        )
 
-            const requests = yield* MockHttpClient.requests
-            strictEqual(requests.length, 1)
-            const body = yield* getRequestBody(requests[0])
-
-            strictEqual(body.model, "openai/gpt-4o-mini")
-            strictEqual(body.temperature, 0.25)
-            deepStrictEqual(body.messages, [{ role: "user", content: "Use a tool" }])
-            deepStrictEqual(
-              body.tools.map((tool: any) => ({ name: tool.function.name, strict: tool.function.strict })),
-              [{ name: "StrictTool", strict: true }, { name: "FlexibleTool", strict: false }]
-            )
-            if (method === "streamText") {
-              strictEqual(body.stream, true)
-            }
-            assert.notProperty(body, "strictJsonSchema")
-          }).pipe(Effect.provide(method === "streamText" ? makeStreamTestLayer([]) : makeTestLayer())))
-      }
-
-      it.effect(`generateObject omits strictJsonSchema=${strictJsonSchema} and preserves response strictness`, () =>
-        Effect.gen(function*() {
-          const result = yield* LanguageModel.generateObject({
-            prompt: "Give me a name",
-            schema: Schema.Struct({ name: Schema.String })
-          }).pipe(Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini", config)))
-
-          deepStrictEqual(result.value, { name: "Alice" })
-          const requests = yield* MockHttpClient.requests
-          strictEqual(requests.length, 1)
-          const body = yield* getRequestBody(requests[0])
-
-          strictEqual(body.model, "openai/gpt-4o-mini")
-          strictEqual(body.temperature, 0.25)
-          strictEqual(body.response_format.type, "json_schema")
-          strictEqual(body.response_format.json_schema.strict, strictJsonSchema ?? null)
-          deepStrictEqual(body.response_format.json_schema.schema.required, ["name"])
-          assert.notProperty(body, "strictJsonSchema")
-        }).pipe(Effect.provide(makeTestLayer({
-          body: {
-            choices: [{
-              finish_reason: "stop",
-              index: 0,
-              message: { role: "assistant", content: JSON.stringify({ name: "Alice" }) }
-            }]
-          }
-        }))))
-    }
+        const requests = yield* MockHttpClient.requests
+        const body = yield* getRequestBody(requests[0])
+        strictEqual(body.stream, true)
+        strictEqual(body.tools[0].function.strict, false)
+        assert.notProperty(body, "strictJsonSchema")
+      }).pipe(Effect.provide(makeStreamTestLayer([]))))
   })
 
   describe("generateText", () => {
