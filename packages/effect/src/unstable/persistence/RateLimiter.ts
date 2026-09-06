@@ -629,8 +629,9 @@ export class RateLimiterStore extends Context.Service<
      * Refills the bucket for `key`, attempts to consume `tokens`, and returns
      * `[remaining, elapsedMillis]` from that single atomic operation.
      *
-     * `remaining` is the token count after subtracting `tokens`. A negative
-     * count is only persisted when `allowOverflow` is true.
+     * `remaining` is the token count after subtracting `tokens`. Fractional counts
+     * must retain their numeric precision. A negative count is only persisted
+     * when `allowOverflow` is true.
      *
      * `elapsedMillis` is the time since the current refill interval started, in
      * milliseconds (fractions preserved), always at least `0` and less than
@@ -1093,8 +1094,8 @@ local ttl = math.ceil(math.ceil(limit - stored) * refill_ms - elapsed)
 if ttl < 1 then ttl = 1 end
 redis.call("SET", key, stored, "PX", ttl)
 redis.call("SET", last_refill_key, last_refill, "PX", ttl)
--- Return strings to preserve fractions in Redis replies.
-return { tostring(next), tostring(elapsed) }
+-- Use 17 significant digits to round-trip both numbers.
+return { string.format("%.17g", next), string.format("%.17g", elapsed) }
 `
   }
 ).withReturnType<readonly [remaining: string, elapsedMillis: string]>()
