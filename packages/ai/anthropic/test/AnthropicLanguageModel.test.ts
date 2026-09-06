@@ -24,7 +24,7 @@ describe("AnthropicLanguageModel", () => {
             () =>
               Effect.gen(function*() {
                 let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
-                const model = "claude-sonnet-4-6"
+                const model = "claude-sonnet-4-5"
                 const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
                   Layer.provide(Layer.succeed(
                     HttpClient.HttpClient,
@@ -83,6 +83,57 @@ describe("AnthropicLanguageModel", () => {
         }
       }
     }
+
+    it.effect("omits tool strictness for a model without structured output support", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const model = "claude-sonnet-4-20250514"
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model,
+                content: [{ type: "text", text: "Hello" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: "Hello",
+          toolkit: Toolkit.make(Tool.make("Search", {
+            parameters: Schema.Struct({ query: Schema.String }),
+            success: Schema.String
+          })),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model(model, { strictJsonSchema: false })),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        const body = yield* getRequestBody(capturedRequest)
+        assert.strictEqual(body.model, model)
+        assert.strictEqual(body.tools[0].name, "Search")
+        assert.notProperty(body.tools[0], "strict")
+        assert.notProperty(body, "strictJsonSchema")
+      }))
   })
 
   describe("streamText", () => {
