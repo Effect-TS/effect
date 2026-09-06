@@ -104,7 +104,7 @@ import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 
 /** @internal */
 export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrupt {
-  readonly fiberId: number | undefined
+  declare readonly fiberId: number | undefined
   constructor(
     fiberId: number | undefined,
     annotations = constEmptyAnnotations
@@ -237,6 +237,29 @@ export const causeAnnotations = <E>(
   return Context.makeUnsafe(map)
 }
 
+const dedupeReasons = <E>(
+  self: ReadonlyArray<Cause.Reason<E>>,
+  that: ReadonlyArray<Cause.Reason<E>>
+): Array<Cause.Reason<E>> => {
+  // Keep deduplication local so causeCombine does not retain Array.ts in the core bundle.
+  // Snapshot both arrays before invoking user-defined hash or equality methods.
+  const buckets = new Map<number, Array<Cause.Reason<E>>>()
+  const out: Array<Cause.Reason<E>> = []
+  for (const reason of self.concat(that)) {
+    const hash = Hash.hash(reason)
+    const bucket = buckets.get(hash)
+    if (bucket === undefined) {
+      buckets.set(hash, [reason])
+    } else if (bucket.some((previous) => Equal.equals(previous, reason))) {
+      continue
+    } else {
+      bucket.push(reason)
+    }
+    out.push(reason)
+  }
+  return out
+}
+
 /** @internal */
 export const causeCombine: {
   <E2>(that: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E | E2>
@@ -250,7 +273,7 @@ export const causeCombine: {
       return self as Cause.Cause<E | E2>
     }
     const newCause = new CauseImpl<E | E2>(
-      Arr.union(self.reasons, that.reasons)
+      dedupeReasons<E | E2>(self.reasons, that.reasons)
     )
     return Equal.equals(self, newCause) ? self : newCause
   }
