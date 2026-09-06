@@ -68,10 +68,10 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "effect": "workspace:^",
     "tar": "^7.5.22",
-    "tinybench": "^6.1.4"
+    "tinybench": "^6.1.6"
   },
   "dependencies": {
     "@types/ws": "^8.18.1",

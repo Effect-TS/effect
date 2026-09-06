@@ -107,13 +107,13 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "ajv": "^8.20.0",
     "ajv-draft-04": "^1.0.0",
-    "ast-types": "^0.16.1",
+    "ast-types": "^0.16.3",
     "immer": "^11.1.18",
     "protobufjs": "^8.8.0",
-    "tinybench": "^6.1.4",
+    "tinybench": "^6.1.6",
     "valibot": "^1.4.2"
   }
 }

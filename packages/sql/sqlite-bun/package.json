@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@effect/platform-bun": "workspace:^",
-    "@types/bun": "^1.4.0",
+    "@types/bun": "^1.4.1",
     "effect": "workspace:^"
   },
   "peerDependencies": {

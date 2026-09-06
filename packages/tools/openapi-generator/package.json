@@ -73,6 +73,6 @@
     "effect": "workspace:^",
     "json-schema-typed": "^8.0.2",
     "openapi-typescript": "^7.13.0",
-    "rolldown": "^1.2.6"
+    "rolldown": "^1.2.7"
   }
 }
