@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option, References, Stream, Tracer } from "effect"
+import { Deferred, Effect, Fiber, Option, References, Stream, Tracer } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import type { Connection } from "effect/unstable/sql/SqlConnection"
@@ -110,13 +110,14 @@ describe("Statement", () => {
             const sql = yield* SqlClient.make({
               acquirer,
               borrower: borrower ? (f) => Effect.flatMap(observe("borrow"), () => f(connection)) : undefined,
-              propagateSpan,
               compiler: Statement.makeCompilerSqlite(),
               spanAttributes: [],
               transformRows: (rows) => rows
             })
-            yield* Effect.gen(function*() {
-              yield* sql`select 1`
+            const query = sql`select 1`
+            const stream = query.stream
+            const program = Effect.gen(function*() {
+              yield* query
               yield* sql`select 1`.values
               yield* sql`select 1`.raw
               yield* sql`select 1`.unprepared
@@ -124,13 +125,16 @@ describe("Statement", () => {
               yield* sql`select 1`.withoutTransform
               yield* sql.unsafe("select 1")
               yield* sql.withoutTransforms()`select 1`
-              yield* Stream.runDrain(sql`select 1`.stream)
+              yield* Stream.runDrain(stream)
               assert.isFalse(leased)
               assert.strictEqual(yield* Effect.orDie(Effect.currentSpan), outer)
             }).pipe(
               Effect.provideService(Tracer.ParentSpan, outer),
               Effect.provideService(References.TracerEnabled, tracing)
             )
+            yield* propagateSpan === undefined
+              ? program
+              : Effect.provideService(program, Statement.SpanPropagationEnabled, propagateSpan)
             const lease = borrower ? "borrow" : "acquire"
             assert.deepStrictEqual(seen, [
               lease,
@@ -157,7 +161,7 @@ describe("Statement", () => {
     }
   }
 
-  it.effect("keeps propagation separate in cached statement constructors", () =>
+  it.effect("reads scoped flags when reusing clients, statements, and streams", () =>
     Effect.gen(function*() {
       const seen: Array<string> = []
       const observe = Effect.map(Effect.option(Effect.currentSpan), (span) => {
@@ -172,25 +176,91 @@ describe("Statement", () => {
         executeUnprepared: () => observe,
         executeValuesUnprepared: () => observe
       }
-      const acquirer = Effect.succeed(connection)
-      const compiler = Statement.makeCompilerSqlite()
-      const off = Statement.make(acquirer, compiler, [], undefined)
-      const on = Statement.make(acquirer, compiler, [], undefined, undefined, true)
-      assert.strictEqual(Statement.make(acquirer, compiler, [], undefined, undefined, false), off)
-      assert.strictEqual(Statement.make(acquirer, compiler, [], undefined, undefined, true), on)
-      yield* off`select 1`
-      yield* on`select 1`
-      yield* off`select 1`
-      yield* on`select 1`.pipe(Effect.provideService(
-        Statement.CurrentTransformer,
-        (statement, sql) =>
-          Effect.as(
-            Effect.orDie(Effect.provideService(sql`select 2`, Statement.CurrentTransformer, undefined)),
-            statement
-          )
-      ))
-      assert.deepStrictEqual(seen, ["none", "sql.execute", "none", "sql.execute", "sql.execute"])
-    }))
+      const sql = yield* SqlClient.make({
+        acquirer: Effect.succeed(connection),
+        compiler: Statement.makeCompilerSqlite(),
+        spanAttributes: []
+      }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
+      const query = sql`select 1`
+      const stream = query.stream
+      const run = Effect.andThen(query, Stream.runDrain(stream))
+      yield* run
+      yield* Effect.gen(function*() {
+        yield* run
+        yield* Effect.provideService(run, Statement.SpanPropagationEnabled, false)
+        assert.isTrue(yield* Effect.service(Statement.SpanPropagationEnabled))
+        yield* run
+      }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
+      assert.isFalse(yield* Effect.service(Statement.SpanPropagationEnabled))
+      yield* run
+      yield* query.pipe(
+        Effect.provideService(
+          Statement.CurrentTransformer,
+          (statement, sql) =>
+            Effect.as(
+              Effect.orDie(Effect.provideService(sql`select 2`, Statement.CurrentTransformer, undefined)),
+              statement
+            )
+        ),
+        Effect.provideService(Statement.SpanPropagationEnabled, true)
+      )
+      assert.deepStrictEqual(seen, [
+        "none",
+        "none",
+        "sql.execute",
+        "sql.execute",
+        "none",
+        "none",
+        "sql.execute",
+        "sql.execute",
+        "none",
+        "none",
+        "sql.execute",
+        "sql.execute"
+      ])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  for (const stream of [false, true]) {
+    it.effect(`isolates concurrent ${stream ? "stream" : "execute"} propagation overrides`, () =>
+      Effect.gen(function*() {
+        const ready = yield* Deferred.make<void>()
+        const resume = yield* Deferred.make<void>()
+        const seen: Array<readonly [boolean, string]> = []
+        const observe = Effect.gen(function*() {
+          const enabled = yield* Effect.service(Statement.SpanPropagationEnabled)
+          if (enabled) {
+            yield* Deferred.succeed(ready, undefined)
+            yield* Deferred.await(resume)
+          }
+          const span = yield* Effect.option(Effect.currentSpan)
+          seen.push([enabled, Option.isSome(span) ? span.value.name : "none"])
+          return []
+        })
+        const connection: Connection = {
+          execute: () => observe,
+          executeRaw: () => observe,
+          executeValues: () => observe,
+          executeUnprepared: () => observe,
+          executeValuesUnprepared: () => observe,
+          executeStream: () => Stream.fromEffect(observe)
+        }
+        const sql = yield* SqlClient.make({
+          acquirer: Effect.succeed(connection),
+          borrower: (f) => f(connection),
+          compiler: Statement.makeCompilerSqlite(),
+          spanAttributes: []
+        })
+        const query = sql`select 1`
+        const run = stream ? Stream.runDrain(query.stream) : query
+        const fiber = yield* Effect.forkChild(Effect.provideService(run, Statement.SpanPropagationEnabled, true))
+        yield* Deferred.await(ready)
+        yield* Effect.provideService(run, Statement.SpanPropagationEnabled, false)
+        yield* Deferred.succeed(resume, undefined)
+        yield* Fiber.join(fiber)
+        assert.isFalse(yield* Effect.service(Statement.SpanPropagationEnabled))
+        assert.deepStrictEqual(seen, [[false, "none"], [true, "sql.execute"]])
+      }).pipe(Effect.provide(Reactivity.layer)))
+  }
 
   for (const stream of [false, true]) {
     it.effect(`restores the parent and releases the connection on ${stream ? "stream" : "execute"} failure`, () =>
@@ -215,13 +285,14 @@ describe("Statement", () => {
             Effect.sync(() => {
               released = true
             })),
-          propagateSpan: true,
           compiler: Statement.makeCompilerSqlite(),
           spanAttributes: []
         })
         yield* Effect.gen(function*() {
-          const exit = yield* Effect.exit(stream ? Stream.runDrain(sql`select 1`.stream) : sql`select 1`)
+          const run = stream ? Stream.runDrain(sql`select 1`.stream) : sql`select 1`
+          const exit = yield* Effect.exit(Effect.provideService(run, Statement.SpanPropagationEnabled, true))
           assert.strictEqual(exit._tag, "Failure")
+          assert.isFalse(yield* Effect.service(Statement.SpanPropagationEnabled))
           assert.strictEqual(yield* Effect.orDie(Effect.currentSpan), outer)
         }).pipe(Effect.provideService(Tracer.ParentSpan, outer))
         assert.isTrue(released)
