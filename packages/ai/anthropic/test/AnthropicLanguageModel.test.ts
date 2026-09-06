@@ -13,6 +13,78 @@ import {
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("AnthropicLanguageModel", () => {
+  describe("strictJsonSchema", () => {
+    for (const stream of [false, true]) {
+      for (const withTools of [false, true]) {
+        for (const strictJsonSchema of [undefined, false, true]) {
+          it.effect(
+            `${stream ? "streamText" : "generateText"} with strictJsonSchema=${strictJsonSchema} ${
+              withTools ? "with" : "without"
+            } tools`,
+            () =>
+              Effect.gen(function*() {
+                let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+                const model = "claude-sonnet-4-6"
+                const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+                  Layer.provide(Layer.succeed(
+                    HttpClient.HttpClient,
+                    makeHttpClient((request) => {
+                      capturedRequest = request
+                      return Effect.succeed(
+                        stream ? sseResponse(request, []) : jsonResponse(request, {
+                          id: "msg_test_1",
+                          type: "message",
+                          role: "assistant",
+                          model,
+                          content: [{ type: "text", text: "Hello" }],
+                          stop_reason: "end_turn",
+                          stop_sequence: null,
+                          usage: {
+                            cache_creation: null,
+                            cache_creation_input_tokens: null,
+                            cache_read_input_tokens: null,
+                            inference_geo: null,
+                            input_tokens: 1,
+                            output_tokens: 1,
+                            service_tier: null
+                          }
+                        })
+                      )
+                    })
+                  ))
+                )
+                const toolkit = Toolkit.make(Tool.make("Search", {
+                  parameters: Schema.Struct({ query: Schema.String }),
+                  success: Schema.String
+                }))
+                const options = {
+                  prompt: "Hello",
+                  toolkit: withTools ? toolkit : Toolkit.empty,
+                  disableToolCallResolution: true as const
+                }
+
+                yield* (stream
+                  ? LanguageModel.streamText(options).pipe(Stream.runDrain)
+                  : LanguageModel.generateText(options)).pipe(
+                    Effect.provide(AnthropicLanguageModel.model(model, { strictJsonSchema })),
+                    Effect.provide(layer)
+                  )
+
+                assert.isDefined(capturedRequest)
+                const body = yield* getRequestBody(capturedRequest)
+                assert.strictEqual(body.model, model)
+                if (withTools) {
+                  assert.strictEqual(body.tools[0].name, "Search")
+                  assert.strictEqual(body.tools[0].strict, strictJsonSchema ?? true)
+                }
+                assert.notProperty(body, "strictJsonSchema")
+              })
+          )
+        }
+      }
+    }
+  })
+
   describe("streamText", () => {
     it.effect("decodes tool call params in content_block_stop", () =>
       Effect.gen(function*() {
