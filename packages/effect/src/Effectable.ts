@@ -46,7 +46,7 @@ export const Prototype = <A extends Effect.Effect<any, any, any>>(options: {
 const proto = Prototype<Class<any, any, any>>({
   label: "Effectable",
   evaluate(_) {
-    return this.override
+    return this.asEffect()
   }
 })
 
@@ -73,14 +73,14 @@ export abstract class Class<A, E = never, R = never> extends Base<A, E, R> {
   abstract asEffect(): Effect.Effect<A, E, R>
 }
 
-type OverrideEffect<Self> = Self extends {
-  override: infer Override extends Effect.Effect<any, any, any>
-} ? Override
+type AsEffectReturn<Self> = Self extends {
+  asEffect(): infer A extends Effect.Effect<any, any, any>
+} ? A
   : never
 
-interface EffectableFromOverride extends Pipeable.Pipeable, Inspectable.Inspectable {
-  readonly [EffectTypeId]: OverrideEffect<this>[typeof EffectTypeId]
-  [Symbol.iterator](): Effect.EffectIterator<OverrideEffect<this>>
+interface EffectableFromAsEffect extends Pipeable.Pipeable, Inspectable.Inspectable {
+  readonly [EffectTypeId]: AsEffectReturn<this>[typeof EffectTypeId]
+  [Symbol.iterator](): Effect.EffectIterator<AsEffectReturn<this>>
 }
 
 /**
@@ -97,7 +97,7 @@ interface EffectableFromOverride extends Pipeable.Pipeable, Inspectable.Inspecta
  * @category models
  * @since 4.0.0
  */
-export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) => EffectableFromOverride
+export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) => EffectableFromAsEffect
 
 /**
  * Returns a subclass of the provided class that inserts the Effect prototype
@@ -110,10 +110,10 @@ export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) =>
  *
  * **Details**
  *
- * Pass the class to wrap, then define the `override` Effect on the final class.
- * The returned class is abstract, and the success, error, and service types are
- * inferred from the concrete `override` property. The original constructor and
- * instance members are preserved.
+ * Pass the class to wrap, then implement `asEffect` on the final class. The
+ * returned class is abstract, and the success, error, and service types are
+ * inferred from the concrete `asEffect` return type. The original constructor
+ * and instance members are preserved.
  *
  * **Example** (Evaluating a mixed-in class)
  *
@@ -125,7 +125,9 @@ export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) =>
  * }
  *
  * class EffectBox extends Effectable.Mixin(Box) {
- *   override = Effect.succeed(this.value)
+ *   asEffect() {
+ *     return Effect.succeed(this.value)
+ *   }
  * }
  *
  * const box = new EffectBox(2)
@@ -142,7 +144,7 @@ export const Mixin = <TBase extends new(...args: ReadonlyArray<any>) => any>(
   klass: TBase
 ) => {
   abstract class Mixed extends klass {
-    abstract override: Effect.Effect<any, any, any>
+    abstract asEffect(): Effect.Effect<any, any, any>
   }
   Object.setPrototypeOf(
     Mixed.prototype,

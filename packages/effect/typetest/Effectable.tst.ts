@@ -7,18 +7,22 @@ describe("Effectable.Mixin", () => {
   }
 
   class EffectBox extends Effectable.Mixin(Box) {
-    override override = Effect.succeed(this.value.toString())
+    override asEffect() {
+      return Effect.succeed(this.value.toString())
+    }
   }
 
   class FullEffectBox extends Effectable.Mixin(Box) {
-    override override = undefined as unknown as Effect.Effect<"success", "error", "service">
+    override asEffect() {
+      return undefined as unknown as Effect.Effect<"success", "error", "service">
+    }
   }
 
   it("preserves constructor parameters", () => {
     expect<ConstructorParameters<typeof EffectBox>>().type.toBe<[value: number]>()
   })
 
-  it("instances are Effects of the override success type and original class instances", () => {
+  it("instances are Effects of the asEffect success type and original class instances", () => {
     expect<Effect.Success<EffectBox>>().type.toBe<string>()
     expect(new EffectBox(1)).type.toBeAssignableTo<Effect.Effect<string>>()
     expect(new EffectBox(1)).type.toBeAssignableTo<Box>()
@@ -31,8 +35,8 @@ describe("Effectable.Mixin", () => {
     expect(effect).type.toBe<Effect.Effect<"success", "error", "service">>()
   })
 
-  it("requires override", () => {
-    // @ts-expect-error does not implement inherited abstract member override
-    class MissingOverride extends Effectable.Mixin(Box) {}
+  it("requires asEffect", () => {
+    // @ts-expect-error does not implement inherited abstract member asEffect
+    class MissingAsEffect extends Effectable.Mixin(Box) {}
   })
 })

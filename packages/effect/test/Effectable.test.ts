@@ -11,10 +11,12 @@ describe("Effectable", () => {
     }
 
     class EffectBox extends Effectable.Mixin(Box) {
-      override override = Effect.succeed(this.value)
+      override asEffect() {
+        return Effect.succeed(this.value)
+      }
     }
 
-    it.effect("evaluates override", () =>
+    it.effect("evaluates asEffect", () =>
       Effect.gen(function*() {
         const effectValue = yield* new EffectBox(1)
         assert.strictEqual(effectValue, 1)
