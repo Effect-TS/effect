@@ -107,10 +107,10 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 })
 
 /**
- * Enables parenting driver spans under `sql.execute`, including acquisition and
- * stream pulls. Defaults to `false`; ignored when tracing is disabled.
+ * Parents driver spans under `sql.execute` for every client in the current scope,
+ * including acquisition and stream pulls. Defaults to `false`; ignored when tracing is disabled.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const SpanPropagationEnabled = Context.Reference<boolean>("effect/sql/SpanPropagationEnabled", {
