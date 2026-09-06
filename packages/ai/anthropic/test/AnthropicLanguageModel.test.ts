@@ -814,6 +814,7 @@ describe("AnthropicLanguageModel", () => {
         // Assert the request shape; the response outcome is irrelevant here.
         yield* LanguageModel.generateObject({
           prompt: "Give me a person",
+          objectName: "person",
           schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
         }).pipe(
           Effect.provide(AnthropicLanguageModel.model(model, config)),
@@ -870,6 +871,82 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(body.output_config?.format?.type, "json_schema")
         assert.notProperty(body, "structuredOutputs")
       }))
+
+    const fallbackCases = [
+      {
+        name: "explicitly disabled structured outputs",
+        model: "claude-sonnet-4-6",
+        config: { structuredOutputs: false }
+      },
+      {
+        name: "legacy model capabilities",
+        model: "claude-sonnet-4-20250514",
+        config: undefined
+      }
+    ] as const
+
+    for (const { config, model, name } of fallbackCases) {
+      it.effect(`forces the response tool with no user tools for ${name}`, () =>
+        Effect.gen(function*() {
+          const body = yield* getRequest(model, config)
+
+          assert.isUndefined(body.output_config)
+          assert.strictEqual(body.tools?.length, 1)
+          assert.strictEqual(body.tools[0].name, "person")
+          assert.strictEqual(body.tools[0].input_schema.type, "object")
+          assert.deepStrictEqual(body.tools[0].input_schema.required, ["name", "age"])
+          assert.deepStrictEqual(body.tool_choice, {
+            type: "tool",
+            name: "person",
+            disable_parallel_tool_use: true
+          })
+        }))
+
+      for (const withProse of [false, true]) {
+        it.effect(`decodes the response tool ${withProse ? "with prose" : "alone"} for ${name}`, () =>
+          Effect.gen(function*() {
+            const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+              Layer.provide(Layer.succeed(
+                HttpClient.HttpClient,
+                makeHttpClient((request) =>
+                  Effect.succeed(jsonResponse(request, {
+                    id: "msg_summary",
+                    type: "message",
+                    role: "assistant",
+                    model,
+                    content: [
+                      ...(withProse ? [{ type: "text", text: "Here is the summary." }] : []),
+                      { type: "tool_use", id: "toolu_summary", name: "summary", input: { title: "Rain" } }
+                    ],
+                    stop_reason: "tool_use",
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      inference_geo: null,
+                      input_tokens: 1,
+                      output_tokens: 1,
+                      service_tier: null
+                    }
+                  }))
+                )
+              ))
+            )
+
+            const response = yield* LanguageModel.generateObject({
+              prompt: "Give a title for a story about rain.",
+              objectName: "summary",
+              schema: Schema.Struct({ title: Schema.String })
+            }).pipe(
+              Effect.provide(AnthropicLanguageModel.model(model, config)),
+              Effect.provide(layer)
+            )
+
+            assert.deepStrictEqual(response.value, { title: "Rain" })
+          }))
+      }
+    }
   })
 
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
