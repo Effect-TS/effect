@@ -15,34 +15,33 @@ const exceeded = (error: RateLimiter.RateLimiterError) =>
  * Consumes `tokens`, runs `idle`, and asserts the bucket is back at capacity
  * with a fresh refill interval.
  */
-export const restartsInterval = <E, R>(
+export const restartsInterval = Effect.fnUntraced(function*<E, R>(
   key: string,
   onExceeded: OnExceeded,
   tokens: number,
   idle: Effect.Effect<void, E, R>
-) =>
-  Effect.gen(function*() {
-    const limiter = yield* RateLimiter.make
-    const opts = options(key, onExceeded)
-    yield* limiter.consume({ ...opts, tokens })
-    yield* idle
-    const result = yield* limiter.consume({ ...opts, tokens })
+) {
+  const limiter = yield* RateLimiter.make
+  const opts = options(key, onExceeded)
+  yield* limiter.consume({ ...opts, tokens })
+  yield* idle
+  const result = yield* limiter.consume({ ...opts, tokens })
 
-    assert.strictEqual(result.remaining, 5 - tokens)
-    assert.deepStrictEqual(result.delay, Duration.zero)
-    assert.strictEqual(Duration.toMillis(result.resetAfter), tokens * 60_000)
+  assert.strictEqual(result.remaining, 5 - tokens)
+  assert.deepStrictEqual(result.delay, Duration.zero)
+  assert.strictEqual(Duration.toMillis(result.resetAfter), tokens * 60_000)
 
-    const excess = limiter.consume({ ...opts, tokens: 6 - tokens })
-    if (onExceeded === "fail") {
-      const error = exceeded(yield* Effect.flip(excess))
-      assert.strictEqual(Duration.toMillis(error.retryAfter), 60_000)
-    } else {
-      const delayed = yield* excess
-      assert.strictEqual(delayed.remaining, -1)
-      assert.strictEqual(Duration.toMillis(delayed.delay), 60_000)
-      assert.strictEqual(Duration.toMillis(delayed.resetAfter), 360_000)
-    }
-  })
+  const excess = limiter.consume({ ...opts, tokens: 6 - tokens })
+  if (onExceeded === "fail") {
+    const error = exceeded(yield* Effect.flip(excess))
+    assert.strictEqual(Duration.toMillis(error.retryAfter), 60_000)
+  } else {
+    const delayed = yield* excess
+    assert.strictEqual(delayed.remaining, -1)
+    assert.strictEqual(Duration.toMillis(delayed.delay), 60_000)
+    assert.strictEqual(Duration.toMillis(delayed.resetAfter), 360_000)
+  }
+})
 
 export const suite = (
   name: string,
