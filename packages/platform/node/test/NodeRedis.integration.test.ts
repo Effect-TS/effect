@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Duration, Effect, Layer, Queue, Schema } from "effect"
+import { Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/unstable/persistence/RateLimiterTest"
@@ -50,46 +50,21 @@ it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), { t
   "RateLimiter token-bucket expiry (NodeRedis)",
   (it) => {
     for (const onExceeded of ["fail", "delay"] as const) {
-      it.effect(`${onExceeded}: restarts the refill interval after both Redis keys expire`, () =>
-        Effect.gen(function*() {
+      it.effect(`${onExceeded}: restarts the refill interval after both Redis keys expire`, () => {
+        const key = `timing-expired-${onExceeded}`
+        const redisKey = `ratelimiter:${key}`
+        const refillKey = `${redisKey}:refill`
+        // TestClock does not advance Redis's expiry clock, so expire the keys by hand.
+        const idle = Effect.gen(function*() {
           const redis = yield* Redis.Redis
-          const limiter = yield* RateLimiter.make
-          const options = {
-            algorithm: "token-bucket",
-            onExceeded,
-            window: "5 minutes",
-            limit: 5,
-            key: `timing-expired-${onExceeded}`
-          } as const
-          const key = `ratelimiter:${options.key}`
-          const refillKey = `${key}:refill`
-          yield* limiter.consume({ ...options, tokens: 5 })
           yield* TestClock.adjust("359 seconds")
-
-          // TestClock does not advance Redis's expiry clock.
-          assert.strictEqual(yield* redis.send<number>("EXISTS", key, refillKey), 2)
-          assert.strictEqual(yield* redis.send<number>("PEXPIRE", key, "0"), 1)
+          assert.strictEqual(yield* redis.send<number>("EXISTS", redisKey, refillKey), 2)
+          assert.strictEqual(yield* redis.send<number>("PEXPIRE", redisKey, "0"), 1)
           assert.strictEqual(yield* redis.send<number>("PEXPIRE", refillKey, "0"), 1)
-          assert.strictEqual(yield* redis.send<number>("EXISTS", key, refillKey), 0)
-
-          const result = yield* limiter.consume({ ...options, tokens: 5 })
-          assert.strictEqual(result.remaining, 0)
-          assert.deepStrictEqual(result.delay, Duration.zero)
-          assert.strictEqual(Duration.toMillis(result.resetAfter), 300_000)
-
-          if (onExceeded === "fail") {
-            const error = yield* Effect.flip(limiter.consume(options))
-            if (error.reason._tag !== "RateLimitExceeded") {
-              throw new Error("Expected RateLimitExceeded")
-            }
-            assert.strictEqual(Duration.toMillis(error.reason.retryAfter), 60_000)
-          } else {
-            const delayed = yield* limiter.consume(options)
-            assert.strictEqual(delayed.remaining, -1)
-            assert.strictEqual(Duration.toMillis(delayed.delay), 60_000)
-            assert.strictEqual(Duration.toMillis(delayed.resetAfter), 360_000)
-          }
-        }))
+          assert.strictEqual(yield* redis.send<number>("EXISTS", redisKey, refillKey), 0)
+        })
+        return RateLimiterTest.restartsInterval(key, onExceeded, 5, idle)
+      })
     }
   }
 )

@@ -626,17 +626,16 @@ export class RateLimiterStore extends Context.Service<
     }) => Effect.Effect<readonly [count: number, ttl: number], RateLimiterError>
 
     /**
-     * Returns `[remaining, elapsedMillis]` atomically after refilling and
-     * attempting consumption.
+     * Refills the bucket for `key`, attempts to consume `tokens`, and returns
+     * `[remaining, elapsedMillis]` from that single atomic operation.
      *
-     * `remaining` is the count after subtracting the requested tokens. Negative
-     * counts are persisted only when `allowOverflow` is true.
+     * `remaining` is the token count after subtracting `tokens`. A negative
+     * count is only persisted when `allowOverflow` is true.
      *
-     * `elapsedMillis` is the time since the last whole-token refill boundary,
-     * in milliseconds (possibly fractional). It must be nonnegative and less
-     * than `Duration.toMillis(refillRate)`. Restart the interval for new buckets
-     * or buckets at capacity after refill and before consumption. Reads of
-     * partially filled buckets must preserve it.
+     * `elapsedMillis` is the time since the current refill interval started,
+     * in milliseconds (fractions preserved). It is `0` when the bucket is at
+     * capacity after refilling and before consuming; otherwise it is carried
+     * over from previous calls rather than restarted.
      */
     readonly tokenBucket: (options: {
       readonly key: string
@@ -741,16 +740,14 @@ export const layerStoreMemory: Layer.Layer<
           if (!bucket) {
             bucket = { tokens: options.limit, lastRefill: now }
             tokenBuckets.set(options.key, bucket)
-          } else {
-            const elapsed = now - bucket.lastRefill
-            const tokensToAdd = Math.floor(elapsed / refillRateMillis)
-            if (tokensToAdd > 0) {
-              bucket.tokens = Math.min(options.limit, bucket.tokens + tokensToAdd)
-              bucket.lastRefill += tokensToAdd * refillRateMillis
-            }
-            if (bucket.tokens >= options.limit) {
-              bucket.lastRefill = now
-            }
+          }
+          const tokensToAdd = Math.floor((now - bucket.lastRefill) / refillRateMillis)
+          if (tokensToAdd > 0) {
+            bucket.tokens = Math.min(options.limit, bucket.tokens + tokensToAdd)
+            bucket.lastRefill += tokensToAdd * refillRateMillis
+          }
+          if (bucket.tokens >= options.limit) {
+            bucket.lastRefill = now
           }
 
           const newTokenCount = bucket.tokens - options.tokens

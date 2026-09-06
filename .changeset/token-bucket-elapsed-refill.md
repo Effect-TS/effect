@@ -2,8 +2,6 @@
 "effect": patch
 ---
 
-Fix token-bucket retry and delay timing in memory and Redis by accounting for elapsed refill time. `resetAfter` also accounts for elapsed time and reserved debt.
+Fix token-bucket `retryAfter`, `delay` and `resetAfter` in the memory and Redis stores. They now subtract the time already elapsed in the current refill interval instead of always reporting whole intervals.
 
-`RateLimiterStore.tokenBucket` now returns `[remaining, elapsedMillis]` instead of a number. Custom stores must return both values atomically; `elapsedMillis` is the time since the last refill boundary in milliseconds, preserving fractional values.
-
-Returning `[remaining, 0]` retains the timing bug. Restart the refill interval for new buckets or buckets at capacity after refill and before consumption; preserve partial intervals on reads.
+`RateLimiterStore.tokenBucket` now returns `[remaining, elapsedMillis]` instead of `remaining`. Custom stores must return both values from the same atomic operation; see the `tokenBucket` docs for the contract. Returning `[remaining, 0]` keeps the old timing bug.
