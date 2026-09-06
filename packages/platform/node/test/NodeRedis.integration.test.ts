@@ -33,53 +33,53 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
       {
         name: "rejected attempts and exact refill boundaries",
         limit: 5,
-        refillMillis: 60_000,
+        windowMillis: 300_000,
         steps: [
-          [0, 5, false, 0, 0],
-          [0, 1, false, -1, 60_000],
-          [59_000, 1, false, -1, 1_000],
-          [0, 1, false, -1, 1_000],
-          [1_000, 1, false, 0, 0],
-          [0, 1, false, -1, 60_000]
+          [0, 5, false, 0, 0, 300_000],
+          [0, 1, false, -1, 60_000, 300_000],
+          [59_000, 1, false, -1, 1_000, 241_000],
+          [0, 1, false, -1, 1_000, 241_000],
+          [1_000, 1, false, 0, 0, 300_000],
+          [0, 1, false, -1, 60_000, 300_000]
         ]
       },
       {
         name: "rejected batches preserve refilled tokens",
         limit: 5,
-        refillMillis: 60_000,
+        windowMillis: 300_000,
         steps: [
-          [0, 5, false, 0, 0],
-          [59_000, 3, false, -3, 121_000],
-          [1_000, 3, false, -2, 120_000],
-          [120_000, 3, false, 0, 0]
+          [0, 5, false, 0, 0, 300_000],
+          [59_000, 3, false, -3, 121_000, 241_000],
+          [1_000, 3, false, -2, 120_000, 240_000],
+          [120_000, 3, false, 0, 0, 300_000]
         ]
       },
       {
         name: "delay reservations and existing debt",
         limit: 5,
-        refillMillis: 60_000,
+        windowMillis: 300_000,
         steps: [
-          [0, 5, false, 0, 0],
-          [59_000, 1, true, -1, 1_000],
-          [0, 2, true, -3, 121_000],
-          [0, 1, false, -4, 181_000],
-          [0, 1, false, -4, 181_000],
-          [61_000, 1, false, -2, 120_000],
-          [120_000, 1, false, 0, 0]
+          [0, 5, false, 0, 0, 300_000],
+          [59_000, 1, true, -1, 1_000, 301_000],
+          [0, 2, true, -3, 121_000, 421_000],
+          [0, 1, false, -4, 181_000, 421_000],
+          [0, 1, false, -4, 181_000, 421_000],
+          [61_000, 1, false, -2, 120_000, 360_000],
+          [120_000, 1, false, 0, 0, 300_000]
         ]
       },
       {
         name: "fractional intervals with multiple tokens",
         limit: 3,
-        refillMillis: 1_000 / 3,
+        windowMillis: 1_000,
         steps: [
-          [0, 3, false, 0, 0],
-          [1, 2, false, -2, 666],
-          [0, 3, false, -3, 999],
-          [666, 2, false, 0, 0],
-          [332, 1, false, -1, 1],
-          [0, 1, true, -1, 1],
-          [1, 1, false, -1, 334]
+          [0, 3, false, 0, 0, 1_000],
+          [1, 2, false, -2, 666, 999],
+          [0, 3, false, -3, 999, 999],
+          [666, 2, false, 0, 0, 1_000],
+          [332, 1, false, -1, 1, 668],
+          [0, 1, true, -1, 1, 1_001],
+          [1, 1, false, -1, 334, 1_000]
         ]
       }
     ] as const
@@ -87,16 +87,16 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
     Effect.gen(function*() {
       const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
       const redis = yield* RateLimiter.makeStoreRedis()
-      for (const [elapsed, tokens, allowOverflow, remaining, retryAfter] of test.steps) {
+      for (const [elapsed, tokens, allowOverflow, remaining, retryAfter, resetAfter] of test.steps) {
         yield* TestClock.adjust(elapsed)
         const options = {
           key: test.name,
           tokens,
           limit: test.limit,
-          refillRate: Duration.millis(test.refillMillis),
+          window: Duration.millis(test.windowMillis),
           allowOverflow
         }
-        const expected = [remaining, retryAfter] as const
+        const expected = [remaining, retryAfter, resetAfter] as const
         assert.deepStrictEqual(yield* memory.tokenBucket(options), expected)
         assert.deepStrictEqual(yield* redis.tokenBucket(options), expected)
       }
@@ -110,7 +110,7 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
         key: "concurrent-token-bucket",
         tokens: 5,
         limit: 5,
-        refillRate: Duration.minutes(1),
+        window: Duration.minutes(5),
         allowOverflow: true
       }
       yield* first.tokenBucket(options)
@@ -119,7 +119,148 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
         [first, second, first].map((store) => store.tokenBucket({ ...options, tokens: 1 })),
         { concurrency: "unbounded" }
       )
-      assert.deepStrictEqual(results.sort((a, b) => a[1] - b[1]), [[-1, 1_000], [-2, 61_000], [-3, 121_000]])
+      assert.deepStrictEqual(results.sort((a, b) => a[1] - b[1]), [
+        [-1, 1_000, 301_000],
+        [-2, 61_000, 361_000],
+        [-3, 121_000, 421_000]
+      ])
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect.each([0, 1_700_000_000_000])(
+    "preserves fractional refill boundaries at timestamp %s",
+    (epoch) =>
+      Effect.gen(function*() {
+        const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+        const redis = yield* RateLimiter.makeStoreRedis()
+        const limiters = yield* Effect.all(
+          [memory, redis].map((store) =>
+            RateLimiter.make.pipe(Effect.provideService(RateLimiter.RateLimiterStore, store))
+          )
+        )
+        for (const limit of [3, 7, 11]) {
+          yield* TestClock.setTime(epoch)
+          const options = {
+            algorithm: "token-bucket",
+            key: `fractional-${epoch}-${limit}`,
+            window: 1_000,
+            limit
+          } as const
+          for (const limiter of limiters) {
+            yield* limiter.consume({ ...options, tokens: limit })
+            const error = yield* Effect.flip(limiter.consume({ ...options, tokens: limit }))
+            assert.instanceOf(error.reason, RateLimiter.RateLimitExceeded)
+            if (error.reason._tag === "RateLimitExceeded") {
+              assert.strictEqual(Duration.toMillis(error.reason.retryAfter), 1_000)
+            }
+          }
+          yield* TestClock.adjust(1_000)
+          for (const limiter of limiters) {
+            const result = yield* limiter.consume({ ...options, tokens: limit })
+            assert.strictEqual(result.remaining, 0)
+            assert.strictEqual(Duration.toMillis(result.resetAfter), 1_000)
+          }
+          for (let token = 1; token <= limit * 2; token++) {
+            const boundary = 1_000 + Math.ceil(token * 1_000 / limit)
+            yield* TestClock.setTime(epoch + boundary - 1)
+            for (const limiter of limiters) {
+              const error = yield* Effect.flip(limiter.consume(options))
+              assert.instanceOf(error.reason, RateLimiter.RateLimitExceeded)
+              if (error.reason._tag === "RateLimitExceeded") {
+                assert.strictEqual(Duration.toMillis(error.reason.retryAfter), 1)
+              }
+            }
+            yield* TestClock.adjust(1)
+            for (const limiter of limiters) {
+              assert.strictEqual((yield* limiter.consume(options)).remaining, 0)
+            }
+          }
+        }
+      }).pipe(Effect.provide(TestClock.layer()))
+  )
+
+  it.effect("accepts legacy refill timestamps and rebases after an older writer updates them", () =>
+    Effect.gen(function*() {
+      const store = yield* RateLimiter.makeStoreRedis()
+      const redis = yield* Redis.Redis
+      const key = "ratelimiter:legacy-refill"
+      const options = {
+        key: "legacy-refill",
+        tokens: 1,
+        limit: 5,
+        window: Duration.minutes(5),
+        allowOverflow: false
+      }
+      yield* redis.send("SET", key, "0", "PX", "300000")
+      yield* redis.send("SET", `${key}:refill`, "0", "PX", "300000")
+      yield* TestClock.adjust("59 seconds")
+      assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 1_000, 241_000])
+
+      yield* redis.send("SET", `${key}:refill`, "60000", "PX", "300000")
+      yield* TestClock.adjust("60 seconds")
+      assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 1_000, 241_000])
+      yield* TestClock.adjust("1 second")
+      assert.deepStrictEqual(yield* store.tokenBucket(options), [0, 0, 300_000])
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect("preserves the last refill boundary when the configured rate changes", () =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      const options = {
+        key: "changing-refill-rate",
+        tokens: 5,
+        limit: 5,
+        window: Duration.minutes(5),
+        allowOverflow: false
+      }
+      for (const store of [memory, redis]) yield* store.tokenBucket(options)
+      yield* TestClock.adjust("59 seconds")
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1, window: Duration.seconds(150) }), [
+          0,
+          0,
+          121_000
+        ])
+      }
+      yield* TestClock.adjust("1 second")
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [-1, 30_000, 270_000])
+      }
+      yield* TestClock.adjust("30 seconds")
+      for (const store of [memory, redis]) {
+        assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [0, 0, 300_000])
+      }
+    }).pipe(Effect.provide(TestClock.layer())))
+
+  it.effect("does not add a lagging client's clock skew to retry or reset timing", () =>
+    Effect.gen(function*() {
+      const memory = yield* RateLimiter.RateLimiterStore.pipe(Effect.provide(RateLimiter.layerStoreMemory))
+      const redis = yield* RateLimiter.makeStoreRedis()
+      for (const elapsed of [0, 60_000]) {
+        const options = {
+          key: `backward-clock-${elapsed}`,
+          tokens: 1,
+          limit: 5,
+          window: Duration.minutes(5),
+          allowOverflow: false
+        }
+        yield* TestClock.setTime(120_000)
+        for (const store of [memory, redis]) yield* store.tokenBucket({ ...options, tokens: 5 })
+        if (elapsed > 0) {
+          yield* TestClock.adjust(elapsed)
+          for (const store of [memory, redis]) yield* store.tokenBucket(options)
+        }
+        yield* TestClock.setTime(115_000 + elapsed)
+        for (const store of [memory, redis]) {
+          assert.deepStrictEqual(yield* store.tokenBucket(options), [-1, 60_000, 300_000])
+          assert.deepStrictEqual(yield* store.tokenBucket({ ...options, allowOverflow: true }), [-1, 60_000, 360_000])
+          assert.deepStrictEqual(yield* store.tokenBucket(options), [-2, 120_000, 360_000])
+        }
+        yield* TestClock.setTime(240_000 + elapsed)
+        for (const store of [memory, redis]) {
+          assert.deepStrictEqual(yield* store.tokenBucket(options), [0, 0, 300_000])
+        }
+      }
     }).pipe(Effect.provide(TestClock.layer())))
 
   it.effect("keeps Redis expiration based on stored tokens and reservations", () =>
@@ -130,18 +271,34 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("RateLimiter (NodeRedis)", (it) 
         key: "token-bucket-expiration",
         tokens: 5,
         limit: 5,
-        refillRate: Duration.minutes(1),
+        window: Duration.minutes(5),
         allowOverflow: false
       }
       yield* store.tokenBucket(options)
       yield* TestClock.adjust("59 seconds")
-      assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [-1, 1_000])
-      for (const key of ["ratelimiter:token-bucket-expiration", "ratelimiter:token-bucket-expiration:refill"]) {
+      assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 1 }), [-1, 1_000, 241_000])
+      for (
+        const key of [
+          "ratelimiter:token-bucket-expiration",
+          "ratelimiter:token-bucket-expiration:refill",
+          "ratelimiter:token-bucket-expiration:refill-state"
+        ]
+      ) {
         const ttl = yield* redis.send<number>("PTTL", key)
         assert.isTrue(ttl > 240_000 && ttl <= 300_000)
       }
-      assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 2, allowOverflow: true }), [-2, 61_000])
-      for (const key of ["ratelimiter:token-bucket-expiration", "ratelimiter:token-bucket-expiration:refill"]) {
+      assert.deepStrictEqual(yield* store.tokenBucket({ ...options, tokens: 2, allowOverflow: true }), [
+        -2,
+        61_000,
+        361_000
+      ])
+      for (
+        const key of [
+          "ratelimiter:token-bucket-expiration",
+          "ratelimiter:token-bucket-expiration:refill",
+          "ratelimiter:token-bucket-expiration:refill-state"
+        ]
+      ) {
         const ttl = yield* redis.send<number>("PTTL", key)
         assert.isTrue(ttl > 360_000 && ttl <= 420_000)
       }

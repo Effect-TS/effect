@@ -212,6 +212,43 @@ describe(`RateLimiter`, () => {
       assert.strictEqual(error.reason.remaining, 0)
     }
 
+    it.effect.each(["fail", "delay"] as const)(
+      "subtracts elapsed time from resetAfter in %s mode",
+      (onExceeded) =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          yield* limiter.consume({ ...options, tokens: 5 })
+          yield* TestClock.adjust("119 seconds")
+          const result = yield* limiter.consume({ ...options, onExceeded })
+          assert.strictEqual(result.remaining, 0)
+          assert.strictEqual(Duration.toMillis(result.resetAfter), 241_000)
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory))
+    )
+
+    it.effect.each([0, 1_700_000_000_000])(
+      "preserves fractional refill boundaries at timestamp %s",
+      (epoch) =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          for (const limit of [3, 7, 11]) {
+            yield* TestClock.setTime(epoch)
+            const config = { ...options, key: `fractional-${limit}`, window: 1_000, limit }
+            yield* limiter.consume({ ...config, tokens: limit })
+            assertRetryAfter(yield* Effect.flip(limiter.consume({ ...config, tokens: limit })), 1_000)
+            yield* TestClock.adjust(1_000)
+            assert.strictEqual((yield* limiter.consume({ ...config, tokens: limit })).remaining, 0)
+
+            for (let token = 1; token <= limit * 2; token++) {
+              const boundary = 1_000 + Math.ceil(token * 1_000 / limit)
+              yield* TestClock.setTime(epoch + boundary - 1)
+              assertRetryAfter(yield* Effect.flip(limiter.consume(config)), 1)
+              yield* TestClock.adjust(1)
+              assert.strictEqual((yield* limiter.consume(config)).remaining, 0)
+            }
+          }
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory))
+    )
+
     it.effect("retries at the refill boundary without consuming rejected attempts", () =>
       Effect.gen(function*() {
         const limiter = yield* RateLimiter.make
@@ -229,6 +266,30 @@ describe(`RateLimiter`, () => {
         assert.deepStrictEqual(result.delay, Duration.zero)
         assertRetryAfter(yield* Effect.flip(consume), 60_000)
       }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+    it.effect.each([0, 60_000])(
+      "does not add backward clock skew to waits after %s ms",
+      (elapsed) =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          yield* TestClock.setTime(120_000)
+          yield* limiter.consume({ ...options, tokens: 5 })
+          if (elapsed > 0) {
+            yield* TestClock.adjust(elapsed)
+            yield* limiter.consume(options)
+          }
+          yield* TestClock.setTime(115_000 + elapsed)
+          assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 60_000)
+          const reserved = yield* limiter.consume({ ...options, onExceeded: "delay" })
+          assert.strictEqual(Duration.toMillis(reserved.delay), 60_000)
+          assert.strictEqual(Duration.toMillis(reserved.resetAfter), 360_000)
+
+          yield* TestClock.setTime(120_000 + elapsed)
+          assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 120_000)
+          yield* TestClock.adjust("2 minutes")
+          assert.strictEqual((yield* limiter.consume(options)).remaining, 0)
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory))
+    )
 
     it.effect("preserves available tokens and the refill schedule after a rejected batch", () =>
       Effect.gen(function*() {
@@ -255,10 +316,12 @@ describe(`RateLimiter`, () => {
         const first = yield* limiter.consume({ ...options, onExceeded: "delay" })
         assert.strictEqual(first.remaining, -1)
         assert.deepStrictEqual(first.delay, Duration.seconds(1))
+        assert.strictEqual(Duration.toMillis(first.resetAfter), 301_000)
 
         const second = yield* limiter.consume({ ...options, tokens: 2, onExceeded: "delay" })
         assert.strictEqual(second.remaining, -3)
         assert.deepStrictEqual(second.delay, Duration.seconds(121))
+        assert.strictEqual(Duration.toMillis(second.resetAfter), 421_000)
 
         assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 181_000)
         assertRetryAfter(yield* Effect.flip(limiter.consume(options)), 181_000)
