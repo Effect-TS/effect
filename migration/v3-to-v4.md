@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `HEAD` (`fc026405ab23915456fda6bd1ee404772b3a812f`)
+Head: `HEAD` (`ca11c02e6af95ef0c801adc7a27ac4a1fae3f246`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -8388,25 +8388,25 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.ExpectPollOptions` -> `NonNullable<Parameters<typeof import("vitest").expect.poll>[1]>`: Vitest 5 removes the named options export; derive the options from the public expect.poll function.
 
-- `index.ExtendedContext` -> `vitest#TestContext`: The separate context alias was removed. Vitest 4 uses TestContext, which includes the current task and lifecycle methods.
+- `index.ExtendedContext` -> `vitest#TestContext`: The separate context alias was removed. Vitest 5 uses TestContext, which includes the current task and lifecycle methods.
 
 - `index.File` -> `vitest#RunnerTestFile`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
-- `index.HappyDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["happyDOM"]>`: Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
+- `index.HappyDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["happyDOM"]>`: Vitest 5 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
 
-- `index.HookCleanupCallback` -> `none`: No named Vitest 4 export replaces this alias. Let the hook return type infer, or type the cleanup function locally.
+- `index.HookCleanupCallback` -> `none`: No named Vitest 5 export replaces this alias. Let the hook return type infer, or type the cleanup function locally.
 
 - `index.HookListener` -> `none`: Infer the callback from the public hook function, or derive it with Parameters\<typeof import("vitest").beforeAll\>[0] and the corresponding hook name.
 
 - `index.InlineConfig` -> `vitest/node#InlineConfig`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 5 shape.
 
-- `index.JSDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["jsdom"]>`: Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
+- `index.JSDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["jsdom"]>`: Vitest 5 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
 
 - `index.Matchers` -> `vitest#Matchers`: Augment vitest.Matchers\<R, T\> for custom matchers. R is the matcher return type and T is the received value; @vitest/expect no longer shares Vitest's assertion state.
 
 - `index.Mock` -> `vitest#Mock`: This was a Vitest re-export, not Effect API. Import it directly from vitest; @effect/vitest/index is not a valid v4 route.
 
-- `index.ModuleCache` -> `none`: Vitest 3 marked this unused internal cache shape deprecated; Vitest 4 has no public replacement.
+- `index.ModuleCache` -> `none`: Vitest 3 marked this unused internal cache shape deprecated; Vitest 5 has no public replacement.
 
 - `index.MutableArray` -> `{ -readonly [K in keyof T]: T[K] }`: Vitest 3 marked this root alias as an internal helper. Define the small TypeScript shape locally instead of depending on transitive internals.
 
@@ -8414,7 +8414,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.Pool` -> `vitest/node#Pool`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 5 shape.
 
-- `index.PoolOptions` -> `vitest/config#TestUserConfig`: The v3 built-in poolOptions object was removed. Move its fields to Vitest 4 top-level config such as maxWorkers and vmMemoryLimit; vitest/node PoolOptions is a different custom-pool API.
+- `index.PoolOptions` -> `vitest/config#TestUserConfig`: The v3 built-in poolOptions object was removed. Move its fields to Vitest 5 top-level config such as maxWorkers and vmMemoryLimit; vitest/node PoolOptions is a different custom-pool API.
 
 - `index.ProjectConfig` -> `vitest/node#ProjectConfig`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 5 shape.
 
@@ -8452,7 +8452,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.TaskBase` -> `vitest#RunnerTaskBase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
-- `index.TaskContext` -> `vitest#TestContext`: The separate context alias was removed. Vitest 4 uses TestContext, which includes the current task and lifecycle methods.
+- `index.TaskContext` -> `vitest#TestContext`: The separate context alias was removed. Vitest 5 uses TestContext, which includes the current task and lifecycle methods.
 
 - `index.TaskResult` -> `vitest#RunnerTaskResult`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
@@ -8466,7 +8466,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.TypecheckConfig` -> `vitest/node#TypecheckConfig`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 5 shape.
 
-- `index.UserConfig` -> `vitest/config#TestUserConfig`: Vitest 4 exposes its config as TestUserConfig; ViteUserConfig is the separate Vite configuration type.
+- `index.UserConfig` -> `vitest/config#TestUserConfig`: Vitest 5 exposes its config as TestUserConfig; ViteUserConfig is the separate Vite configuration type.
 
 - `index.UserWorkspaceConfig` -> `vitest/config#UserWorkspaceConfig`: Import the type from vitest/config and migrate Vitest workspace configuration to projects.
 
