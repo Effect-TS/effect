@@ -1483,9 +1483,11 @@ const runLoop = Effect.fnUntraced(
   ) {
     let state = Effect.isEffect(loop.initialState) ? yield* loop.initialState : loop.initialState
     let action: Action<unknown, unknown> = Action.NextFrame({ state })
+    let clear = ""
     while (true) {
       const msg = yield* loop.render(state, action)
-      yield* Effect.orDie(terminal.display(msg))
+      yield* Effect.orDie(terminal.display(clear + msg))
+      clear = ""
       if (loop.events) {
         const takeInput = Queue.take(input).pipe(
           Effect.map((input) => ({ _tag: "Input" as const, input }))
@@ -1503,14 +1505,14 @@ const runLoop = Effect.fnUntraced(
         case "Beep":
           continue
         case "NextFrame": {
-          yield* Effect.orDie(terminal.display(yield* loop.clear(state, action)))
+          clear = yield* loop.clear(state, action)
           state = action.state
           continue
         }
         case "Submit": {
-          yield* Effect.orDie(terminal.display(yield* loop.clear(state, action)))
+          clear = yield* loop.clear(state, action)
           const msg = yield* loop.render(state, action)
-          yield* Effect.orDie(terminal.display(msg))
+          yield* Effect.orDie(terminal.display(clear + msg))
           return action.value
         }
       }
