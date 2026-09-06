@@ -632,10 +632,11 @@ export class RateLimiterStore extends Context.Service<
      * `remaining` is the token count after subtracting `tokens`. A negative
      * count is only persisted when `allowOverflow` is true.
      *
-     * `elapsedMillis` is the time since the current refill interval started,
-     * in milliseconds (fractions preserved). It is `0` when the bucket is at
-     * capacity after refilling and before consuming; otherwise it is carried
-     * over from previous calls rather than restarted.
+     * `elapsedMillis` is the time since the current refill interval started, in
+     * milliseconds (fractions preserved), always at least `0` and less than
+     * `Duration.toMillis(refillRate)`. It is `0` when the bucket is at capacity
+     * after refilling and before consuming. Otherwise the boundary advances by
+     * whole refill intervals and the interval never restarts.
      */
     readonly tokenBucket: (options: {
       readonly key: string
