@@ -43,6 +43,14 @@ export const restartsInterval = Effect.fnUntraced(function*<E, R>(
   }
 })
 
+export const consumeFractionalCosts = Effect.fnUntraced(function*(key: string) {
+  const limiter = yield* RateLimiter.make
+  return yield* Effect.forEach(
+    [0.1, 0.1, 0.4, 0.15, 0.15, 0.1],
+    (tokens) => limiter.consume({ ...options(key), tokens })
+  )
+})
+
 export const suite = (
   name: string,
   layer: Layer.Layer<RateLimiter.RateLimiterStore, unknown>
@@ -139,6 +147,27 @@ export const suite = (
           ])
         }))
     }
+
+    it.effect("preserves accumulated fractional balances and their reset timing", () =>
+      Effect.gen(function*() {
+        const results = yield* consumeFractionalCosts("fractional-accumulation")
+
+        assert.deepStrictEqual(
+          results.map((result) => ({
+            remaining: result.remaining,
+            delay: Duration.toMillis(result.delay),
+            resetAfter: Duration.toMillis(result.resetAfter)
+          })),
+          [
+            { remaining: 4.9, delay: 0, resetAfter: 60_000 },
+            { remaining: 4.800000000000001, delay: 0, resetAfter: 60_000 },
+            { remaining: 4.4, delay: 0, resetAfter: 60_000 },
+            { remaining: 4.25, delay: 0, resetAfter: 60_000 },
+            { remaining: 4.1, delay: 0, resetAfter: 60_000 },
+            { remaining: 3.9999999999999996, delay: 0, resetAfter: 120_000 }
+          ]
+        )
+      }))
 
     it.effect("rejects a request with a fractional token deficit", () =>
       Effect.gen(function*() {

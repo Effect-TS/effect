@@ -47,8 +47,19 @@ RateLimiterTest.suite(
 )
 
 it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), { timeout: "30 seconds" })(
-  "RateLimiter token-bucket expiry (NodeRedis)",
+  "RateLimiter token-bucket storage (NodeRedis)",
   (it) => {
+    it.effect("returns the persisted balance after accumulating fractional costs", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const key = "fractional-persisted-balance"
+        const results = yield* RateLimiterTest.consumeFractionalCosts(key)
+        const stored = Number(yield* redis.send<string>("GET", `ratelimiter:${key}`))
+
+        assert.strictEqual(stored, 3.9999999999999996)
+        assert.strictEqual(results[results.length - 1].remaining, stored)
+      }))
+
     it.effect(
       "does not restore capacity early after a fractional token cost",
       () =>
