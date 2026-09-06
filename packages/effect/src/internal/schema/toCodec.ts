@@ -22,8 +22,10 @@ export const toCodecJsonAST = memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.
   }
   // Class metadata lives on the declaration, while JSON Schema uses its encoding.
   // Carry JSON annotations across without changing encoded identifiers or callbacks.
+  // Checks and later annotations override the class's own annotations.
+  const source = ast.checks ? { ...ast.annotations, ...InternalAnnotations.resolve(ast) } : ast.annotations
   const annotations = Object.fromEntries(
-    Object.entries(InternalAnnotations.resolve(ast) ?? {}).filter(([key, value]) =>
+    Object.entries(source).filter(([key, value]) =>
       key !== "identifier" &&
       key !== InternalAnnotations.IDENTIFIER_FALLBACK_KEY &&
       !InternalAnnotations.annotationExcludedKeys.has(key) &&
