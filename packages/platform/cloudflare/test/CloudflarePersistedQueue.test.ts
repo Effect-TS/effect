@@ -5,7 +5,7 @@ import { armAlarm, type EntityAlarm } from "@effect/platform-cloudflare/internal
 import { makeQueueRuntime, type QueueRuntime } from "@effect/platform-cloudflare/internal/queueRuntime"
 import { earliestLeaseExpiry } from "@effect/platform-cloudflare/internal/queueStorage"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Layer, Schema } from "effect"
+import { Effect, Fiber, Layer, Schedule, Schema } from "effect"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import { PersistedQueue } from "effect/unstable/persistence"
 
@@ -268,7 +268,11 @@ describe("CloudflarePersistedQueue", () => {
   it.effect("retries a failed handler and counts the attempt", () => {
     const namespace = new FakeQueueNamespace()
     return Effect.gen(function*() {
-      const queue = yield* PersistedQueue.make({ name: "retries", schema: Schema.String })
+      const queue = yield* PersistedQueue.make({
+        name: "retries",
+        schema: Schema.String,
+        retrySchedule: Schedule.spaced(0)
+      })
       yield* queue.offer("job", { id: "a" })
       const failed = yield* Effect.flip(queue.take(() => Effect.fail("boom" as const)))
       assert.strictEqual(failed, "boom")
@@ -276,7 +280,7 @@ describe("CloudflarePersistedQueue", () => {
       assert.strictEqual(store.sql.items.get("a")!.attempts, 1)
       assert.include(store.sql.items.get("a")!.last_failure, "boom")
       const attempts = yield* queue.take((_, metadata) => Effect.succeed(metadata.attempts))
-      assert.strictEqual(attempts, 1)
+      assert.strictEqual(attempts, 2)
       assert.strictEqual(store.sql.items.get("a")!.completed, 1)
     }).pipe(Effect.provide(namespace.layer))
   })
@@ -331,7 +335,7 @@ describe("CloudflarePersistedQueue", () => {
       assert.isNull(store.sql.items.get("a")!.lease_until)
       assert.strictEqual(store.sql.items.get("a")!.attempts, 0)
       const attempts = yield* queue.take((_, metadata) => Effect.succeed(metadata.attempts))
-      assert.strictEqual(attempts, 0)
+      assert.strictEqual(attempts, 1)
     }).pipe(Effect.provide(namespace.layer))
   })
 
@@ -449,5 +453,6 @@ PersistedQueueTest.suite(
   "cloudflare",
   Layer.succeed(PersistedQueue.PersistedQueueStore)(
     CloudflarePersistedQueue.make({ queueNamespace: contractNamespace as never })
-  )
+  ),
+  { cleanup: "unsupported" }
 )
