@@ -1643,11 +1643,11 @@ export const ToolResultPart = <
   Success["DecodingServices"] | Failure["DecodingServices"],
   Success["EncodingServices"] | Failure["EncodingServices"]
 > => {
-  const ResultSchema = Schema.Union([success, failure])
   const makeSchema = <Result extends Schema.Constraint, const IsFailure extends boolean>(
     result: Result,
     isFailure: IsFailure
   ) => {
+    // Normalize optionality and mutability so the encodeTo transformation can infer its types.
     const BranchResult = Schema.Union([result])
     const Common = {
       id: Schema.String,
@@ -1661,7 +1661,7 @@ export const ToolResultPart = <
       result: BranchResult,
       providerExecuted: Schema.Boolean,
       metadata: ProviderMetadata,
-      encodedResult: Schema.toEncoded(ResultSchema),
+      encodedResult: Schema.toEncoded(BranchResult),
       preliminary: Schema.Boolean
     })
     const Encoded = Schema.Struct({
