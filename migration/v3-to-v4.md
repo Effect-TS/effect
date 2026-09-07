@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `origin/main` (`26e0085d098f6e526c085c357b8d82ee068b6518`)
+Head: `8cdaafed996088d41316db144bd048735c5a2187` (`8cdaafed996088d41316db144bd048735c5a2187`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5106,9 +5106,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.boolean` -> `Flag.Boolean / Argument.ChoiceWithValue`: Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices.
 
+- `Args.choice` -> `Argument.Choice`: Use the renamed constructor and pass the argument name explicitly.
+
 - `Args.date` -> `Argument.Date`: Use the renamed constructor and pass the argument name explicitly.
 
+- `Args.directory` -> `Argument.Directory`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
+
+- `Args.file` -> `Argument.File`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
+
 - `Args.fileContent` -> `Argument.File + Argument.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains.
+
+- `Args.fileParse` -> `Argument.FileParse`: Pass the old format as an options field; v4 returns parsed content rather than a path/content tuple.
+
+- `Args.fileSchema` -> `Argument.FileSchema`: Pass the old format as an options field and use a v4 Schema constraint decoder.
+
+- `Args.fileText` -> `Argument.FileText`: Use the renamed constructor; it returns content only.
 
 - `Args.float` -> `Argument.Finite`: Use the renamed constructor; it rejects non-finite numbers.
 
@@ -5130,7 +5142,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.mapEffect`: TODO: needs guidance
 
+- `Args.none` -> `omit the config entry`: V4 Argument.None is an always-failing sentinel, not v3's empty successful argument set.
+
 - `Args.optional` -> `Argument.optional`: Use the moved combinator; it still returns Option.
+
+- `Args.path` -> `Argument.Path`: Path options are inline; map exists=yes to mustExist=true and either to omission. exists=no has no exact replacement.
 
 - `Args.redacted` -> `Argument.Redacted`: Use the renamed constructor and pass the argument name explicitly.
 
@@ -5490,9 +5506,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Primitive.date` -> `Primitive.Date`: Date is now a singleton Primitive value.
 
+- `Primitive.float` -> `Primitive.Finite`: Finite is now a singleton Primitive value and rejects non-finite numbers.
+
 - `Primitive.getChoices` -> `none`: Choice introspection is internal in v4; retain alternatives in application code when needed.
 
 - `Primitive.getHelp` -> `none`: Primitive-level help generation was removed from the public API.
+
+- `Primitive.integer` -> `Primitive.Int`: Int is now a singleton Primitive value.
 
 - `Primitive.isBool` -> `none`: The boolean Primitive predicate is internal in v4.
 
@@ -5514,15 +5534,31 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.PromptTypeId` -> `Prompt.isPrompt`: The public type-id symbol was removed; use the runtime guard.
 
+- `Prompt.confirm` -> `Prompt.Confirm`: Use the renamed constructor.
+
+- `Prompt.custom` -> `Prompt.Custom`: Use the renamed constructor; both overloads are preserved.
+
 - `Prompt.date` -> `Prompt.Date`: Use the moved constructor.
 
 - `Prompt.file` -> `Prompt.File`: Use the moved constructor; v4 also supports a default selected path.
 
 - `Prompt.float` -> `Prompt.Float`: Use the moved constructor; v4 also supports a default value.
 
+- `Prompt.hidden` -> `Prompt.Hidden`: Use the renamed constructor.
+
 - `Prompt.integer` -> `Prompt.Integer`: Use the moved constructor; v4 also supports a default value.
 
+- `Prompt.list` -> `Prompt.List`: Use the renamed constructor.
+
+- `Prompt.multiSelect` -> `Prompt.MultiSelect`: Use the renamed constructor.
+
+- `Prompt.password` -> `Prompt.Password`: Use the renamed constructor.
+
+- `Prompt.select` -> `Prompt.Select`: Use the renamed constructor.
+
 - `Prompt.text` -> `Prompt.Text`: Use the moved constructor.
+
+- `Prompt.toggle` -> `Prompt.Toggle`: Use the renamed constructor.
 
 ### `@effect/cli/ValidationError`
 
@@ -7480,7 +7516,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/Url`
 
-- `Url.fromString`: TODO: needs guidance
+- `Url.fromString` -> `Url.fromString`: Retained; returns Result with IllegalArgumentError instead of Either with IllegalArgumentException.
 
 - `Url.setUrlParams` -> `Url.setUrlParams`: Retained and widened to accept UrlParams.Input.
 
@@ -7905,6 +7941,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Model.BooleanFromNumber` -> `effect/Schema#BooleanFromBit`: Use the core 0 | 1 to boolean schema; Model.BooleanSqlite is the ready-made model field.
 
 - `Model.Class` -> `effect/unstable/schema/Model#Class`: Moved; model variants remain select, insert, update, json, jsonCreate, and jsonUpdate.
+
+- `Model.Date` -> `effect/unstable/schema/Model#Date`: Moved; still serializes DateTime.Utc as a YYYY-MM-DD string.
 
 - `Model.DateTimeFromDate` -> `effect/Schema#DateTimeUtcFromDate`: Moved to core Schema and retains Date to DateTime.Utc conversion.
 
@@ -15472,6 +15510,8 @@ Schema.toFormatter(schema)
 - `SortedSet.size` -> `HashSet.size`: Direct size query on the replacement immutable set.
 
 - `SortedSet.some` -> `HashSet.some`: Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects.
+
+- `SortedSet.toggle` -> `HashSet.has + HashSet.add / HashSet.remove`: HashSet has no toggle; branch on membership and add or remove the element.
 
 - `SortedSet.union` -> `HashSet.union + HashSet.fromIterable`: Convert the old general iterable argument to HashSet before taking the union.
 

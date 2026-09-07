@@ -10,6 +10,9 @@
 "@effect/sql/Model#Class":
   replacement: "effect/unstable/schema/Model#Class"
   note: "Moved; model variants remain select, insert, update, json, jsonCreate, and jsonUpdate."
+"@effect/sql/Model#Date":
+  replacement: "effect/unstable/schema/Model#Date"
+  note: "Moved; still serializes DateTime.Utc as a YYYY-MM-DD string."
 "@effect/sql/Model#DateTimeFromDate":
   replacement: "effect/Schema#DateTimeUtcFromDate"
   note: "Moved to core Schema and retains Date to DateTime.Utc conversion."
