@@ -241,6 +241,33 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it.each([
+    { chunkSize: 1.5, bytesToRead: undefined },
+    { chunkSize: NaN, bytesToRead: undefined },
+    { chunkSize: 1.5, bytesToRead: 0 },
+    { chunkSize: NaN, bytesToRead: 0 }
+  ])(
+    "rejects stream chunkSize $chunkSize with bytesToRead $bytesToRead",
+    ({ bytesToRead, chunkSize }) =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const chunks: Array<Uint8Array> = []
+        const stream = fs.stream(`${__dirname}/fixtures/text.txt`, { bytesToRead, chunkSize })
+        const exit = yield* Effect.exit(stream.pipe(
+          Stream.tap((chunk) => Effect.sync(() => chunks.push(chunk))),
+          Stream.runDrain
+        ))
+
+        assert.deepStrictEqual(chunks, [])
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.isTrue(Cause.hasDies(exit.cause))
+          assert.isFalse(Cause.hasFails(exit.cause))
+          assert.instanceOf(Cause.squash(exit.cause), RangeError)
+        }
+      }))
+  )
+
   it("should return a numeric byte count when reading", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
