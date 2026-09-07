@@ -337,6 +337,7 @@ describe("SqlRunnerStorage", () => {
   ).forEach(([label, layer]) => {
     // Both tests update the same runner rows.
     it.layer(layer, {
+      concurrent: false,
       timeout: 60000
     })(label, (it) => {
       it.effect("getRunners", () =>
@@ -358,7 +359,7 @@ describe("SqlRunnerStorage", () => {
 
           yield* storage.unregister(runnerAddress1)
           expect(yield* storage.getRunners).toEqual([])
-        }), { timeout: 30_000, concurrent: false })
+        }), { timeout: 30_000 })
 
       it.effect("acquireShards", () =>
         Effect.gen(function*() {
@@ -388,7 +389,7 @@ describe("SqlRunnerStorage", () => {
 
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
-        }), { concurrent: false })
+        }))
     })
   })
 })
