@@ -854,7 +854,11 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
-  readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint>
+  /**
+   * Moves the cursor and returns its new position. Fails with `BadArgument`
+   * without moving the cursor if the resulting position would be negative.
+   */
+  readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint, PlatformError>
   readonly sync: Effect.Effect<void, PlatformError>
   readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
