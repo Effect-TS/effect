@@ -106,7 +106,7 @@ export class CookiesErrorReason extends Data.Error<{
  * @category errors
  * @since 4.0.0
  */
-export class CookiesError extends Data.TaggedError("CookieError")<{
+export class CookiesError extends Data.TaggedError("CookiesError")<{
   readonly reason: CookiesErrorReason
 }> {
   /**
