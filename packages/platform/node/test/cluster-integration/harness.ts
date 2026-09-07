@@ -465,7 +465,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       Layer.buildWithScope(scope)
     )
     const socketServer = Context.get(serverContext, SocketServer.SocketServer)
-    if (socketServer.address._tag !== "TcpAddress") {
+    if (socketServer.address._tag === "UnixPathAddress") {
       return yield* Effect.die("Expected a TCP socket server")
     }
     const address = RunnerAddress.make("127.0.0.1", socketServer.address.port)

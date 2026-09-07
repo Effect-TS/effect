@@ -53,7 +53,7 @@ const startRunner = Effect.fnUntraced(function*(
   serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerSchemaBinary()
 ) {
   const socketServer = yield* NodeSocketServer.make({ host: HOST, port: 0 })
-  if (socketServer.address._tag !== "TcpAddress") {
+  if (socketServer.address._tag !== "InetAddressV4") {
     return yield* Effect.die("Expected a TCP socket server")
   }
   const port = socketServer.address.port

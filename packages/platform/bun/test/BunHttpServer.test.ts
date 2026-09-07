@@ -5,9 +5,11 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
+import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
 import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
 import { tmpdir } from "node:os"
@@ -111,16 +113,36 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
 })
 
 describe("BunHttpServer", () => {
-  it.effect("formats Unix socket addresses", () =>
+  it.effect("treats an undefined Unix path as a TCP listener", () =>
     Effect.gen(function*() {
+      for (const hostname of ["localhost", "127.0.0.1"]) {
+        const server = yield* BunHttpServer.make({ unix: undefined, hostname, port: 0 })
+        assert.isTrue(server.address._tag === "InetAddressV4" || server.address._tag === "InetAddressV6")
+        yield* server.serve(Effect.succeed(HttpServerResponse.text("tcp")))
+        const client = yield* HttpServer.makeTestClient.pipe(
+          Effect.provideService(HttpServer.HttpServer, server),
+          Effect.provide(FetchHttpClient.layer)
+        )
+        const response = yield* client.get("/")
+        assert.strictEqual(yield* response.text, "tcp")
+      }
+    }))
+
+  it.effect("resolves hostnames and formats Unix socket addresses", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ hostname: "localhost", port: 0 })
+      assert.isTrue(server.address._tag === "InetAddressV4" || server.address._tag === "InetAddressV6")
+
       const directory = yield* Effect.acquireRelease(
         Effect.promise(() => mkdtemp(join(tmpdir(), "bun-http-"))),
         (directory) => Effect.promise(() => rm(directory, { recursive: true, force: true }))
       )
       const path = join(directory, "server.sock")
-      const server = yield* BunHttpServer.make({ unix: path })
+      const unixServer = yield* BunHttpServer.make({ unix: path })
 
-      assert.strictEqual(HttpServer.formatAddress(server.address), `unix://${path}`)
+      assert.strictEqual(unixServer.address._tag, "UnixPathAddress")
+      assert.strictEqual(unixServer.address._tag === "UnixPathAddress" ? unixServer.address.path : undefined, path)
+      assert.strictEqual(NetAddress.formatUrlUnsafe(unixServer.address), `unix://${path}`)
     }))
 
   it.effect("closing an older serve scope keeps the newer handler active", () =>
@@ -135,7 +157,7 @@ describe("BunHttpServer", () => {
 
       yield* server.serve(Effect.succeed(HttpServerResponse.text("first"))).pipe(Scope.provide(firstScope))
       yield* server.serve(Effect.succeed(HttpServerResponse.text("second"))).pipe(Scope.provide(secondScope))
-      const url = HttpServer.formatAddress(server.address)
+      const url = NetAddress.formatUrlUnsafe(server.address)
 
       assert.strictEqual(yield* fetchText(url), "second")
       yield* Scope.close(firstScope, Exit.void)
@@ -154,7 +176,7 @@ describe("BunHttpServer", () => {
 
       yield* server.serve(Effect.succeed(HttpServerResponse.text("first"))).pipe(Scope.provide(firstScope))
       yield* server.serve(Effect.succeed(HttpServerResponse.text("second"))).pipe(Scope.provide(secondScope))
-      const url = HttpServer.formatAddress(server.address)
+      const url = NetAddress.formatUrlUnsafe(server.address)
 
       assert.strictEqual(yield* fetchText(url), "second")
       yield* Scope.close(secondScope, Exit.void)
@@ -171,7 +193,7 @@ describe("BunHttpServer", () => {
       })
       const firstScope = yield* Scope.fork(ownerScope)
       const secondScope = yield* Scope.fork(ownerScope)
-      const url = HttpServer.formatAddress(server.address)
+      const url = NetAddress.formatUrlUnsafe(server.address)
 
       yield* server.serve(Effect.succeed(HttpServerResponse.text("first"))).pipe(Scope.provide(firstScope))
       assert.strictEqual(yield* fetchText(`${url}/static`), "static")
@@ -190,7 +212,7 @@ describe("BunHttpServer", () => {
     Effect.gen(function*() {
       const payload = "a".repeat(4_096)
       const server = yield* makeWebSocketServer(payload)
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const { frames, headers } = yield* readWebSocketFrames(port, true)
 
       assert.match(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
@@ -203,7 +225,7 @@ describe("BunHttpServer", () => {
     Effect.gen(function*() {
       const payload = "a".repeat(64)
       const server = yield* makeWebSocketServer(payload)
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const { frames, headers } = yield* readWebSocketFrames(port, true)
 
       assert.match(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
@@ -216,7 +238,7 @@ describe("BunHttpServer", () => {
     Effect.gen(function*() {
       const payload = "a".repeat(64)
       const server = yield* makeWebSocketServer(payload, 32)
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const { frames } = yield* readWebSocketFrames(port, true)
 
       assert.deepStrictEqual(frames.map((frame) => frame.opcode), [1, 2])
@@ -228,7 +250,7 @@ describe("BunHttpServer", () => {
     Effect.gen(function*() {
       const payload = "a".repeat(4_096)
       const server = yield* makeWebSocketServer(payload)
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const { frames, headers } = yield* readWebSocketFrames(port, false)
 
       assert.notMatch(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
@@ -269,7 +291,7 @@ describe("BunHttpServer", () => {
         return HttpServerResponse.empty()
       }))
 
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       yield* readWebSocketFrames(port, false)
       const failed = yield* Deferred.await(secondReaderFailed)
       assert.isTrue(failed)
