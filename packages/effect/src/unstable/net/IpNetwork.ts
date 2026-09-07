@@ -26,6 +26,7 @@ export interface IpNetwork<out A extends NetAddress.IpAddress = NetAddress.IpAdd
   readonly prefixLength: number
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -75,13 +76,16 @@ const IpNetworkProto = {
     return isIpNetwork(that) && this.prefixLength === that.prefixLength && Equal.equals(this.address, that.address)
   },
   [Hash.symbol](this: IpNetwork): number {
-    return Hash.combine(Hash.hash(this.address))(Hash.number(this.prefixLength))
+    return Hash.combine(Hash.number(this.prefixLength), Hash.hash(this.address))
   },
   toString(this: IpNetwork): string {
     return format(this)
   },
-  [NodeInspectSymbol](this: IpNetwork): string {
+  toJSON(this: IpNetwork): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: IpNetwork): string {
+    return this.toJSON()
   }
 }
 
@@ -131,7 +135,9 @@ export const make = <A extends NetAddress.IpAddress>(
     const bytes = toBytes(address)
     const masked = maskBytes(bytes, prefixLength)
     if (bytes.some((byte, index) => byte !== masked[index])) {
-      return Result.fail(new NetAddress.NetAddressError({ message: "address has non-zero host bits" }))
+      return Result.fail(
+        new NetAddress.NetAddressError({ message: "address has non-zero host bits", input: { address, prefixLength } })
+      )
     }
     return Result.succeed(fromInterfaceValue(value))
   })
@@ -173,9 +179,12 @@ export const fromInterface = <A extends NetAddress.IpAddress>(self: IpInterface.
  * @since 4.0.0
  */
 export const ipv4FromString = (input: string): Result.Result<Ipv4Network, NetAddress.NetAddressError> => {
-  return Result.flatMap(
-    IpInterface.ipv4FromString(input, { prefix: "required" }),
-    (value) => make(value.address, value.prefixLength)
+  return Result.mapError(
+    Result.flatMap(
+      IpInterface.ipv4FromString(input, { prefix: "required" }),
+      (value) => make(value.address, value.prefixLength)
+    ),
+    (error) => new NetAddress.NetAddressError({ message: error.message, input })
   )
 }
 
@@ -186,9 +195,12 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Network, NetAdd
  * @since 4.0.0
  */
 export const ipv6FromString = (input: string): Result.Result<Ipv6Network, NetAddress.NetAddressError> => {
-  return Result.flatMap(
-    IpInterface.ipv6FromString(input, { prefix: "required" }),
-    (value) => make(value.address, value.prefixLength)
+  return Result.mapError(
+    Result.flatMap(
+      IpInterface.ipv6FromString(input, { prefix: "required" }),
+      (value) => make(value.address, value.prefixLength)
+    ),
+    (error) => new NetAddress.NetAddressError({ message: error.message, input })
   )
 }
 
@@ -199,9 +211,12 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Network, NetAdd
  * @since 4.0.0
  */
 export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.NetAddressError> => {
-  return Result.flatMap(
-    IpInterface.fromString(input, { prefix: "required" }),
-    (value) => make(value.address, value.prefixLength)
+  return Result.mapError(
+    Result.flatMap(
+      IpInterface.fromString(input, { prefix: "required" }),
+      (value) => make(value.address, value.prefixLength)
+    ),
+    (error) => new NetAddress.NetAddressError({ message: error.message, input })
   )
 }
 

@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Equal, Hash, Option, Result, Schema } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Buffer } from "node:buffer"
+import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
   if (Result.isFailure(result)) assert.fail("expected Success")
@@ -243,6 +244,46 @@ describe("NetAddress", () => {
     }
   })
 
+  it("serializes and inspects canonical strings without exposing private bytes", () => {
+    const values = [
+      NetAddress.ipv4Loopback,
+      NetAddress.ipv6Loopback,
+      NetAddress.macAddressFromStringUnsafe("00:00:5E:00:53:01"),
+      NetAddress.inetAddressFromStringUnsafe("127.0.0.1:80"),
+      NetAddress.inetAddressFromStringUnsafe("[fe80::1%2]:80"),
+      NetAddress.unixPathAddress("./run/../server.sock")
+    ]
+    const expected = ["127.0.0.1", "::1", "00:00:5e:00:53:01", "127.0.0.1:80", "[fe80::1%2]:80", "./run/../server.sock"]
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(values)), expected)
+    for (let i = 0; i < values.length; i++) {
+      assert.strictEqual(values[i].toJSON(), expected[i])
+      assert.strictEqual(inspect(values[i]), expected[i])
+    }
+  })
+
+  it("retains complete inputs when parsing fails inside nested address parsers", () => {
+    const cases: ReadonlyArray<readonly [unknown, Result.Result<unknown, NetAddress.NetAddressError>]> = [
+      ["invalid", NetAddress.macAddressFromString("invalid")],
+      ["::ffff:192.00.2.1", NetAddress.ipv6FromString("::ffff:192.00.2.1")],
+      ["localhost:80", NetAddress.inetAddressFromString("localhost:80")],
+      ["127.0.0.1:65536", NetAddress.inetAddressFromString("127.0.0.1:65536")],
+      ["[fe80::1%eth0]:80", NetAddress.inetAddressFromString("[fe80::1%eth0]:80")]
+    ]
+    for (const [input, result] of cases) {
+      if (Result.isSuccess(result)) assert.fail("expected Failure")
+      assert.strictEqual(result.failure.input, input)
+    }
+    for (const input of [{ address: "localhost", port: 80 }, { address: "127.0.0.1", port: -1 }]) {
+      const result = NetAddress.socketAddressFromInput(input)
+      if (Result.isSuccess(result)) assert.fail("expected Failure")
+      assert.strictEqual(result.failure.input, input)
+    }
+    const octets = [256, 0, 0, 1] as const
+    const result = NetAddress.ipv4FromOctets(octets)
+    if (Result.isSuccess(result)) assert.fail("expected Failure")
+    assert.strictEqual(result.failure.input, octets)
+  })
+
   it("copies byte constructor inputs", () => {
     const ipv4Bytes = new Uint8Array([127, 0, 0, 1])
     const ipv6Bytes = new Uint8Array(16)
@@ -291,6 +332,7 @@ describe("NetAddress", () => {
     const result = NetAddress.ipFromString("localhost")
     if (Result.isSuccess(result)) assert.fail("expected Failure")
     assert.instanceOf(result.failure, NetAddress.NetAddressError)
+    assert.strictEqual(result.failure.input, "localhost")
     assert.strictEqual(result.failure.message, "expected exactly four decimal octets")
   })
 

@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
+import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
 import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
@@ -127,6 +128,19 @@ describe("BunHttpServer", () => {
       assert.strictEqual(unixServer.address._tag, "UnixPathAddress")
       assert.strictEqual(unixServer.address._tag === "UnixPathAddress" ? unixServer.address.path : undefined, path)
       assert.strictEqual(HttpServer.formatAddress(unixServer.address), `unix://${path}`)
+    }))
+
+  it.effect("treats an undefined Unix option as TCP and supports the test client", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ unix: undefined, hostname: "localhost", port: 0 })
+      assert.isTrue(server.address._tag === "InetAddressV4" || server.address._tag === "InetAddressV6")
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("tcp")))
+      const client = yield* HttpServer.makeTestClient.pipe(
+        Effect.provideService(HttpServer.HttpServer, server),
+        Effect.provide(FetchHttpClient.layer)
+      )
+      const response = yield* client.get("/")
+      assert.strictEqual(yield* response.text, "tcp")
     }))
 
   it.effect("closing an older serve scope keeps the newer handler active", () =>

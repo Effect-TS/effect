@@ -3,6 +3,7 @@ import { Equal, Hash, Result, Schema } from "effect"
 import * as IpInterface from "effect/unstable/net/IpInterface"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
+import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
   if (Result.isFailure(result)) assert.fail("expected Success")
@@ -18,6 +19,23 @@ const ip = (input: string): NetAddress.IpAddress => success(NetAddress.ipFromStr
 const interfaceAddress = (input: string): IpInterface.IpInterface => success(IpInterface.fromString(input))
 
 describe("IpInterface", () => {
+  it("serializes and inspects canonical address and prefix strings", () => {
+    for (const input of ["192.0.2.1/24", "2001:db8::1/64"]) {
+      const value = IpInterface.fromStringUnsafe(input)
+      assert.strictEqual(value.toJSON(), input)
+      assert.strictEqual(JSON.stringify(value), JSON.stringify(input))
+      assert.strictEqual(inspect(value), input)
+    }
+  })
+
+  it("retains the original input for invalid addresses and prefixes", () => {
+    for (const input of ["localhost/24", "1.2.3.4/+24", "1.2.3.4/33", "::ffff:192.00.2.1/128", "2001:db8::/129"]) {
+      assert.strictEqual(failure(IpInterface.fromString(input)).input, input)
+    }
+    assert.strictEqual(failure(IpInterface.ipv4FromString("localhost/24")).input, "localhost/24")
+    assert.strictEqual(failure(IpInterface.ipv6FromString("2001:db8::/129")).input, "2001:db8::/129")
+  })
+
   it("constructs one generic runtime representation", () => {
     const ipv4 = IpInterface.makeUnsafe(NetAddress.ipv4Unspecified, 0)
     const ipv6 = IpInterface.makeUnsafe(NetAddress.ipv6Unspecified, 0)

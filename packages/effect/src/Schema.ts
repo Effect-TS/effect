@@ -11290,6 +11290,7 @@ const netAddressFromString = <A, E extends { readonly message: string }>(
 /**
  * Schema for already-constructed MAC address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11298,12 +11299,24 @@ export const MacAddress: declare<NetAddress_.MacAddress> = declare(NetAddress_.i
 })
 
 /**
+ * Type-level representation of {@link MacAddressFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface MacAddressFromString extends decodeTo<typeof MacAddress, String> {
+  readonly "Rebuild": MacAddressFromString
+}
+
+/**
  * Schema for MAC addresses encoded as canonical colon-separated hexadecimal strings.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const MacAddressFromString = netAddressFromString(
+export const MacAddressFromString: MacAddressFromString = netAddressFromString(
   MacAddress,
   NetAddress_.macAddressFromString,
   NetAddress_.formatMacAddress,
@@ -11313,6 +11326,7 @@ export const MacAddressFromString = netAddressFromString(
 /**
  * Schema for already-constructed IPv4 address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11321,12 +11335,24 @@ export const Ipv4Address: declare<NetAddress_.Ipv4Address> = declare(NetAddress_
 })
 
 /**
+ * Type-level representation of {@link Ipv4AddressFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Ipv4AddressFromString extends decodeTo<typeof Ipv4Address, String> {
+  readonly "Rebuild": Ipv4AddressFromString
+}
+
+/**
  * Schema for IPv4 addresses encoded as canonical dotted-decimal strings.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4AddressFromString = netAddressFromString(
+export const Ipv4AddressFromString: Ipv4AddressFromString = netAddressFromString(
   Ipv4Address,
   NetAddress_.ipv4FromString,
   NetAddress_.formatIp,
@@ -11336,6 +11362,7 @@ export const Ipv4AddressFromString = netAddressFromString(
 /**
  * Schema for already-constructed IPv6 address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11344,12 +11371,24 @@ export const Ipv6Address: declare<NetAddress_.Ipv6Address> = declare(NetAddress_
 })
 
 /**
+ * Type-level representation of {@link Ipv6AddressFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Ipv6AddressFromString extends decodeTo<typeof Ipv6Address, String> {
+  readonly "Rebuild": Ipv6AddressFromString
+}
+
+/**
  * Schema for IPv6 addresses encoded as canonical strings.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6AddressFromString = netAddressFromString(
+export const Ipv6AddressFromString: Ipv6AddressFromString = netAddressFromString(
   Ipv6Address,
   NetAddress_.ipv6FromString,
   NetAddress_.formatIp,
@@ -11359,6 +11398,7 @@ export const Ipv6AddressFromString = netAddressFromString(
 /**
  * Schema for already-constructed IPv4 or IPv6 address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11367,12 +11407,24 @@ export const IpAddress: declare<NetAddress_.IpAddress> = declare(NetAddress_.isI
 })
 
 /**
+ * Type-level representation of {@link IpAddressFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface IpAddressFromString extends decodeTo<typeof IpAddress, String> {
+  readonly "Rebuild": IpAddressFromString
+}
+
+/**
  * Schema for IP addresses encoded as canonical numeric strings.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const IpAddressFromString = netAddressFromString(
+export const IpAddressFromString: IpAddressFromString = netAddressFromString(
   IpAddress,
   NetAddress_.ipFromString,
   NetAddress_.formatIp,
@@ -11382,6 +11434,7 @@ export const IpAddressFromString = netAddressFromString(
 /**
  * Schema for already-constructed IPv4 interface address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11390,12 +11443,24 @@ export const Ipv4Interface: declare<IpInterface_.Ipv4Interface> = declare(IpInte
 })
 
 /**
+ * Type-level representation of {@link Ipv4InterfaceFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Ipv4InterfaceFromString extends decodeTo<typeof Ipv4Interface, String> {
+  readonly "Rebuild": Ipv4InterfaceFromString
+}
+
+/**
  * Schema for IPv4 interface addresses encoded as an address and prefix length.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4InterfaceFromString = netAddressFromString(
+export const Ipv4InterfaceFromString: Ipv4InterfaceFromString = netAddressFromString(
   Ipv4Interface,
   IpInterface_.ipv4FromString,
   IpInterface_.format,
@@ -11405,6 +11470,7 @@ export const Ipv4InterfaceFromString = netAddressFromString(
 /**
  * Schema for already-constructed IPv6 interface address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11413,12 +11479,24 @@ export const Ipv6Interface: declare<IpInterface_.Ipv6Interface> = declare(IpInte
 })
 
 /**
+ * Type-level representation of {@link Ipv6InterfaceFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Ipv6InterfaceFromString extends decodeTo<typeof Ipv6Interface, String> {
+  readonly "Rebuild": Ipv6InterfaceFromString
+}
+
+/**
  * Schema for IPv6 interface addresses encoded as an address and prefix length.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6InterfaceFromString = netAddressFromString(
+export const Ipv6InterfaceFromString: Ipv6InterfaceFromString = netAddressFromString(
   Ipv6Interface,
   IpInterface_.ipv6FromString,
   IpInterface_.format,
@@ -11428,6 +11506,7 @@ export const Ipv6InterfaceFromString = netAddressFromString(
 /**
  * Schema for already-constructed IPv4 or IPv6 interface address values.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11436,12 +11515,24 @@ export const IpInterface: declare<IpInterface_.IpInterface> = declare(IpInterfac
 })
 
 /**
+ * Type-level representation of {@link IpInterfaceFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface IpInterfaceFromString extends decodeTo<typeof IpInterface, String> {
+  readonly "Rebuild": IpInterfaceFromString
+}
+
+/**
  * Schema for IPv4 or IPv6 interface addresses encoded as an address and prefix length.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const IpInterfaceFromString = netAddressFromString(
+export const IpInterfaceFromString: IpInterfaceFromString = netAddressFromString(
   IpInterface,
   IpInterface_.fromString,
   IpInterface_.format,
@@ -11451,6 +11542,7 @@ export const IpInterfaceFromString = netAddressFromString(
 /**
  * Schema for already-constructed canonical IPv4 network prefixes.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11459,12 +11551,24 @@ export const Ipv4Network: declare<IpNetwork_.Ipv4Network> = declare(IpNetwork_.i
 })
 
 /**
+ * Type-level representation of {@link Ipv4NetworkFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Ipv4NetworkFromString extends decodeTo<typeof Ipv4Network, String> {
+  readonly "Rebuild": Ipv4NetworkFromString
+}
+
+/**
  * Schema for canonical IPv4 network prefixes encoded in CIDR notation.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4NetworkFromString = netAddressFromString(
+export const Ipv4NetworkFromString: Ipv4NetworkFromString = netAddressFromString(
   Ipv4Network,
   IpNetwork_.ipv4FromString,
   IpNetwork_.format,
@@ -11474,6 +11578,7 @@ export const Ipv4NetworkFromString = netAddressFromString(
 /**
  * Schema for already-constructed canonical IPv6 network prefixes.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11482,12 +11587,24 @@ export const Ipv6Network: declare<IpNetwork_.Ipv6Network> = declare(IpNetwork_.i
 })
 
 /**
+ * Type-level representation of {@link Ipv6NetworkFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Ipv6NetworkFromString extends decodeTo<typeof Ipv6Network, String> {
+  readonly "Rebuild": Ipv6NetworkFromString
+}
+
+/**
  * Schema for canonical IPv6 network prefixes encoded in CIDR notation.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6NetworkFromString = netAddressFromString(
+export const Ipv6NetworkFromString: Ipv6NetworkFromString = netAddressFromString(
   Ipv6Network,
   IpNetwork_.ipv6FromString,
   IpNetwork_.format,
@@ -11497,6 +11614,7 @@ export const Ipv6NetworkFromString = netAddressFromString(
 /**
  * Schema for already-constructed canonical IPv4 or IPv6 network prefixes.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11505,12 +11623,24 @@ export const IpNetwork: declare<IpNetwork_.IpNetwork> = declare(IpNetwork_.isIpN
 })
 
 /**
+ * Type-level representation of {@link IpNetworkFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface IpNetworkFromString extends decodeTo<typeof IpNetwork, String> {
+  readonly "Rebuild": IpNetworkFromString
+}
+
+/**
  * Schema for canonical IPv4 or IPv6 network prefixes encoded in CIDR notation.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const IpNetworkFromString = netAddressFromString(
+export const IpNetworkFromString: IpNetworkFromString = netAddressFromString(
   IpNetwork,
   IpNetwork_.fromString,
   IpNetwork_.format,
@@ -11520,6 +11650,7 @@ export const IpNetworkFromString = netAddressFromString(
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11530,6 +11661,7 @@ export const InetAddressV4: declare<NetAddress_.InetAddressV4> = declare(NetAddr
 /**
  * Schema for already-constructed resolved IPv6 internet addresses.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11540,6 +11672,7 @@ export const InetAddressV6: declare<NetAddress_.InetAddressV6> = declare(NetAddr
 /**
  * Schema for already-constructed resolved internet addresses.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11548,12 +11681,24 @@ export const InetAddress: declare<NetAddress_.InetAddress> = declare(NetAddress_
 })
 
 /**
+ * Type-level representation of {@link InetAddressFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface InetAddressFromString extends decodeTo<typeof InetAddress, String> {
+  readonly "Rebuild": InetAddressFromString
+}
+
+/**
  * Schema for resolved internet addresses encoded as numeric socket strings.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddressFromString = netAddressFromString(
+export const InetAddressFromString: InetAddressFromString = netAddressFromString(
   InetAddress,
   NetAddress_.inetAddressFromString,
   NetAddress_.formatInet,
@@ -11563,6 +11708,7 @@ export const InetAddressFromString = netAddressFromString(
 /**
  * Schema for already-constructed Unix-domain filesystem addresses.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11572,12 +11718,24 @@ export const UnixPathAddress: declare<NetAddress_.UnixPathAddress> = declare(
 )
 
 /**
+ * Type-level representation of {@link UnixPathAddressFromString}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface UnixPathAddressFromString extends decodeTo<typeof UnixPathAddress, String> {
+  readonly "Rebuild": UnixPathAddressFromString
+}
+
+/**
  * Schema for Unix-domain filesystem addresses encoded as opaque path strings.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
-export const UnixPathAddressFromString = String.pipe(decodeTo(
+export const UnixPathAddressFromString: UnixPathAddressFromString = String.pipe(decodeTo(
   UnixPathAddress,
   SchemaTransformation.transform({
     decode: NetAddress_.unixPathAddress,
@@ -11588,6 +11746,7 @@ export const UnixPathAddressFromString = String.pipe(decodeTo(
 /**
  * Schema for already-constructed portable concrete socket addresses.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */

@@ -3,6 +3,7 @@ import { Equal, Hash, Result, Schema } from "effect"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as fc from "fast-check"
+import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
   if (Result.isFailure(result)) assert.fail("expected Success")
@@ -18,6 +19,23 @@ const ip = (input: string): NetAddress.IpAddress => success(NetAddress.ipFromStr
 const network = (input: string): IpNetwork.IpNetwork => success(IpNetwork.fromString(input))
 
 describe("IpNetwork", () => {
+  it("serializes and inspects canonical address and prefix strings", () => {
+    for (const input of ["192.0.2.0/24", "2001:db8::/64"]) {
+      const value = IpNetwork.fromStringUnsafe(input)
+      assert.strictEqual(value.toJSON(), input)
+      assert.strictEqual(JSON.stringify(value), JSON.stringify(input))
+      assert.strictEqual(inspect(value), input)
+    }
+  })
+
+  it("retains the original input for invalid addresses and prefixes", () => {
+    for (const input of ["localhost/24", "1.2.3.4/+24", "1.2.3.4/33", "::ffff:192.00.2.1/128", "2001:db8::/129"]) {
+      assert.strictEqual(failure(IpNetwork.fromString(input)).input, input)
+    }
+    assert.strictEqual(failure(IpNetwork.ipv4FromString("localhost/24")).input, "localhost/24")
+    assert.strictEqual(failure(IpNetwork.ipv6FromString("2001:db8::/129")).input, "2001:db8::/129")
+  })
+
   it("constructs immutable canonical networks and preserves family identity", () => {
     const ipv4 = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
     const ipv6 = IpNetwork.makeUnsafe(NetAddress.ipv6Unspecified, 0)
@@ -43,8 +61,9 @@ describe("IpNetwork", () => {
       failure(IpNetwork.fromAddress(ipv4, prefix))
     }
     failure(IpNetwork.make(ipv6, 129))
-    failure(IpNetwork.make(ipv4, 8))
+    assert.deepStrictEqual(failure(IpNetwork.make(ipv4, 8)).input, { address: ipv4, prefixLength: 8 })
     failure(IpNetwork.make(ipv6, 32))
+    assert.strictEqual(failure(IpNetwork.fromString("10.1.2.3/8")).input, "10.1.2.3/8")
 
     const error = failure(IpNetwork.make(ipv4, -1))
     assert.strictEqual(error._tag, "NetAddressError")

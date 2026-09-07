@@ -301,6 +301,21 @@ describe("PgTypes", () => {
     assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("010.1.2.3", PgTypes.OID.inet))
   })
 
+  it("includes the original value and column type in network encoding errors", () => {
+    for (
+      const [type, value, reason] of [
+        ["inet", "010.1.2.3/24", "leading zeroes are not allowed"],
+        ["inet", "1.2.3.4/33", "prefix length must be an integer from 0 through 32"],
+        ["cidr", "localhost/24", "expected exactly four decimal octets"],
+        ["cidr", "10.1.2.3/8", "address has non-zero host bits"]
+      ] as const
+    ) {
+      const result = PgTypesResult.encode(value, PgTypes.OID[type])
+      if (Result.isSuccess(result)) assert.fail("expected Failure")
+      assert.strictEqual(result.failure.message, `Invalid ${type} value ${JSON.stringify(value)}: ${reason}`)
+    }
+  })
+
   it("preserves inet host bits alongside the prefix", () => {
     for (const value of ["10.1.2.3/8", "2001:db8::1/32"]) {
       assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.inet), PgTypes.OID.inet, 1), value)

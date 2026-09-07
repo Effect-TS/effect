@@ -63,6 +63,35 @@ describe("NetAddress", () => {
     }
   })
 
+  it("preserves named codec types when rebuilding schemas", () => {
+    expect(Schema.MacAddressFromString).type.toBe<Schema.MacAddressFromString>()
+    expect(Schema.MacAddressFromString.annotate({ title: "Address" })).type.toBe<Schema.MacAddressFromString>()
+    expect(Schema.Ipv4AddressFromString).type.toBe<Schema.Ipv4AddressFromString>()
+    expect(Schema.Ipv4AddressFromString.annotate({ title: "Address" })).type.toBe<Schema.Ipv4AddressFromString>()
+    expect(Schema.Ipv6AddressFromString).type.toBe<Schema.Ipv6AddressFromString>()
+    expect(Schema.Ipv6AddressFromString.annotate({ title: "Address" })).type.toBe<Schema.Ipv6AddressFromString>()
+    expect(Schema.IpAddressFromString).type.toBe<Schema.IpAddressFromString>()
+    expect(Schema.IpAddressFromString.annotate({ title: "Address" })).type.toBe<Schema.IpAddressFromString>()
+    expect(Schema.Ipv4InterfaceFromString).type.toBe<Schema.Ipv4InterfaceFromString>()
+    expect(Schema.Ipv4InterfaceFromString.annotate({ title: "Address" })).type.toBe<Schema.Ipv4InterfaceFromString>()
+    expect(Schema.Ipv6InterfaceFromString).type.toBe<Schema.Ipv6InterfaceFromString>()
+    expect(Schema.Ipv6InterfaceFromString.annotate({ title: "Address" })).type.toBe<Schema.Ipv6InterfaceFromString>()
+    expect(Schema.IpInterfaceFromString).type.toBe<Schema.IpInterfaceFromString>()
+    expect(Schema.IpInterfaceFromString.annotate({ title: "Address" })).type.toBe<Schema.IpInterfaceFromString>()
+    expect(Schema.Ipv4NetworkFromString).type.toBe<Schema.Ipv4NetworkFromString>()
+    expect(Schema.Ipv4NetworkFromString.annotate({ title: "Address" })).type.toBe<Schema.Ipv4NetworkFromString>()
+    expect(Schema.Ipv6NetworkFromString).type.toBe<Schema.Ipv6NetworkFromString>()
+    expect(Schema.Ipv6NetworkFromString.annotate({ title: "Address" })).type.toBe<Schema.Ipv6NetworkFromString>()
+    expect(Schema.IpNetworkFromString).type.toBe<Schema.IpNetworkFromString>()
+    expect(Schema.IpNetworkFromString.annotate({ title: "Address" })).type.toBe<Schema.IpNetworkFromString>()
+    expect(Schema.InetAddressFromString).type.toBe<Schema.InetAddressFromString>()
+    expect(Schema.InetAddressFromString.annotate({ title: "Address" })).type.toBe<Schema.InetAddressFromString>()
+    expect(Schema.UnixPathAddressFromString).type.toBe<Schema.UnixPathAddressFromString>()
+    expect(Schema.UnixPathAddressFromString.annotate({ title: "Address" })).type.toBe<
+      Schema.UnixPathAddressFromString
+    >()
+  })
+
   it("exposes string transformation schemas", () => {
     expect(Schema.MacAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.MacAddress, string>>()
     expect(Schema.IpAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.IpAddress, string>>()

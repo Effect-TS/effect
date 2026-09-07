@@ -178,13 +178,16 @@ export const serveEffect: {
  *
  * **Gotchas**
  *
- * IPv6 scope identifiers are omitted because WHATWG URLs do not support scoped
+ * Throws for scoped IPv6 addresses because WHATWG URLs do not support scoped
  * IPv6 hosts.
  *
  * @category converting
  * @since 4.0.0
  */
 export const formatAddress = (address: NetAddress.SocketAddress): string => {
+  if (address._tag === "InetAddressV6" && address.scopeId !== 0) {
+    throw new Error("HttpServer.formatAddress: scoped IPv6 addresses are not supported")
+  }
   switch (address._tag) {
     case "UnixPathAddress":
       return `unix://${address.path}`
@@ -238,7 +241,7 @@ export const withLogAddress = <A, E, R>(
  * **Details**
  *
  * For internet servers, requests are prefixed with the server URL and unspecified
- * addresses are replaced by the loopback address of the same IP family.
+ * addresses are replaced by IPv4 loopback, including dual-stack IPv6 listeners.
  *
  * **Gotchas**
  *
@@ -258,9 +261,10 @@ export const makeTestClient: Effect.Effect<
   if (address._tag === "UnixPathAddress") {
     return yield* Effect.die(new Error("HttpServer.layerTestClient: UnixPathAddress not supported"))
   }
-  const host = NetAddress.isUnspecified(address.address)
-    ? NetAddress.isIpv4Address(address.address) ? NetAddress.ipv4Loopback : NetAddress.ipv6Loopback
-    : address.address
+  if (address._tag === "InetAddressV6" && address.scopeId !== 0) {
+    return yield* Effect.die(new Error("HttpServer.makeTestClient: scoped IPv6 addresses are not supported"))
+  }
+  const host = NetAddress.isUnspecified(address.address) ? NetAddress.ipv4Loopback : address.address
   const url = `http://${NetAddress.formatUrlHost(host)}:${address.port}`
   return HttpClient.mapRequest(client, ClientRequest.prependUrl(url))
 })
