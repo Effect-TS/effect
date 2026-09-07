@@ -820,6 +820,10 @@ export const fileSchema = <A>(
 /**
  * Parses a single `key=value` pair into a record object.
  *
+ * **Details**
+ *
+ * Splits at the first `=`. Keys and values must be non-empty; values may contain `=`.
+ *
  * **Example** (Parsing key-value pairs)
  *
  * ```ts import.meta.vitest
@@ -860,13 +864,14 @@ export const fileSchema = <A>(
 export const keyValuePair: Primitive<Record<string, string>> = makePrimitive(
   "KeyValuePair",
   Effect.fnUntraced(function*(value) {
-    const parts = value.split("=")
-    if (parts.length !== 2) {
+    const separator = value.indexOf("=")
+    if (separator === -1) {
       return yield* Effect.fail(
         `Invalid key=value format. Expected format: key=value, got: ${value}`
       )
     }
-    const [key, val] = parts
+    const key = value.slice(0, separator)
+    const val = value.slice(separator + 1)
     if (!key || !val) {
       return yield* Effect.fail(
         `Invalid key=value format. Both key and value must be non-empty. Got: ${value}`

@@ -332,4 +332,35 @@ describe("Primitive", () => {
         }))
     })
   })
+
+  describe("keyValuePair", () => {
+    it.layer(TestLayer)((it) => {
+      it.effect("should preserve '=' in URL query parameters", () =>
+        Effect.gen(function*() {
+          const url = yield* Primitive.keyValuePair.parse(
+            "DATABASE_URL=postgres://user:pass@host:5432/db?sslmode=require"
+          )
+          assert.deepStrictEqual(url, {
+            DATABASE_URL: "postgres://user:pass@host:5432/db?sslmode=require"
+          })
+        }))
+
+      it.effect("should preserve trailing '=' in padded values", () =>
+        Effect.gen(function*() {
+          const padded = yield* Primitive.keyValuePair.parse("TOKEN=YWJjZA==")
+          assert.deepStrictEqual(padded, { TOKEN: "YWJjZA==" })
+        }))
+
+      it.effect("should fail when the input is malformed", () =>
+        expectInvalidValues(
+          Primitive.keyValuePair,
+          ["invalid", "=value", "key="],
+          [
+            "Invalid key=value format. Expected format: key=value, got: invalid",
+            "Invalid key=value format. Both key and value must be non-empty. Got: =value",
+            "Invalid key=value format. Both key and value must be non-empty. Got: key="
+          ]
+        ))
+    })
+  })
 })
