@@ -68,7 +68,7 @@ export const make: (impl: {
     start: number,
     end: number | undefined,
     contentLength: number
-  ) => Effect.Effect<Response.HttpServerResponse, PlatformError>
+  ) => Response.HttpServerResponse
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
     status: number,
@@ -107,7 +107,7 @@ export const make: (impl: {
         ;(headers as any)["last-modified"] = info.mtime.value.toUTCString()
       }
       const contentLength = end !== undefined ? end - start : Number(info.size) - start
-      return yield* impl.fileResponse(
+      return impl.fileResponse(
         path,
         options?.status ?? 200,
         options?.statusText,
@@ -156,13 +156,13 @@ export const layer = Layer.effect(HttpPlatform)(
       platform: "web",
       compression: internal.compressionWeb,
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
-        return Effect.succeed(Response.stream(
+        return Response.stream(
           fs.stream(path, {
             offset: start,
             bytesToRead: end !== undefined ? end - start : undefined
           }),
           { contentLength, headers, status, statusText }
-        ))
+        )
       },
       fileWebResponse(file, status, statusText, headers, options) {
         const offset = options?.offset ?? 0

@@ -78,20 +78,18 @@ export const make = Platform.make({
   platform: "node",
   compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
-    return Effect.suspend(() => {
-      const stream = contentLength === 0
-        ? Readable.from([])
-        : Fs.createReadStream(path, { start, end: end === undefined ? undefined : end - 1 })
-      return Effect.succeed(ServerResponse.raw(stream, {
-        headers: {
-          ...headers,
-          "content-type": headers["content-type"] ??
-            Option.getOrElse(Mime.getType(path), () => "application/octet-stream"),
-          "content-length": contentLength.toString()
-        },
-        status,
-        statusText
-      }))
+    const stream = contentLength === 0
+      ? Readable.from([])
+      : Fs.createReadStream(path, { start, end: end === undefined ? undefined : end - 1 })
+    return ServerResponse.raw(stream, {
+      headers: {
+        ...headers,
+        "content-type": headers["content-type"] ??
+          Option.getOrElse(Mime.getType(path), () => "application/octet-stream"),
+        "content-length": contentLength.toString()
+      },
+      status,
+      statusText
     })
   },
   fileWebResponse(file, status, statusText, headers, _options) {

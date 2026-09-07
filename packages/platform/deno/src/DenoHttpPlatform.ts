@@ -15,7 +15,6 @@ import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompr
 import { contentType } from "@std/media-types"
 import { extname } from "@std/path"
 import { ByteSliceStream } from "@std/streams"
-import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
@@ -44,30 +43,28 @@ export const make = Platform.make({
   platform: "deno",
   compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
-    return Effect.suspend(() => {
-      let body: ReadableStream<Uint8Array>
-      if (contentLength === 0) {
-        body = new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.close()
-          }
-        })
-      } else {
-        const file = Deno.openSync(path)
-        file.seekSync(start, Deno.SeekMode.Start)
-        body = end === undefined
-          ? file.readable
-          : file.readable.pipeThrough(new ByteSliceStream(0, contentLength - 1))
-      }
-      return Effect.succeed(Response.raw(body, {
-        headers: {
-          ...headers,
-          "content-type": headers["content-type"] ?? contentType(extname(path)) ?? "application/octet-stream",
-          "content-length": contentLength.toString()
-        },
-        status,
-        statusText
-      }))
+    let body: ReadableStream<Uint8Array>
+    if (contentLength === 0) {
+      body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close()
+        }
+      })
+    } else {
+      const file = Deno.openSync(path)
+      file.seekSync(start, Deno.SeekMode.Start)
+      body = end === undefined
+        ? file.readable
+        : file.readable.pipeThrough(new ByteSliceStream(0, contentLength - 1))
+    }
+    return Response.raw(body, {
+      headers: {
+        ...headers,
+        "content-type": headers["content-type"] ?? contentType(extname(path)) ?? "application/octet-stream",
+        "content-length": contentLength.toString()
+      },
+      status,
+      statusText
     })
   },
   fileWebResponse(file, status, statusText, headers, options) {

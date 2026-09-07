@@ -138,14 +138,11 @@ export const make: (options: {
         }
       }
 
-      const resolvedFileSize = rangeHeader === undefined
-        ? undefined
-        : fileSize ?? Number((yield* handlePlatformError(request, fileSystem.stat(filePath))).size)
-
-      if (rangeHeader === undefined || resolvedFileSize === undefined) {
+      if (rangeHeader === undefined) {
         return yield* getFullResponse()
       }
 
+      const resolvedFileSize = fileSize ?? Number((yield* handlePlatformError(request, fileSystem.stat(filePath))).size)
       const parsedRange = parseRange(rangeHeader, resolvedFileSize)
 
       if (parsedRange === undefined) {

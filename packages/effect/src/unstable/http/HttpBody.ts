@@ -544,19 +544,19 @@ export const file = (
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
-): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> => {
-  const normalizedOptions = normalizeFileOptions(options)
-  return Effect.flatMap(
+): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
+  Effect.flatMap(
     FileSystem.FileSystem,
-    (fs) =>
-      Effect.map(fs.stat(path), (info) =>
+    (fs) => {
+      const normalizedOptions = normalizeFileOptions(options)
+      return Effect.map(fs.stat(path), (info) =>
         stream(
           fs.stream(path, normalizedOptions),
           options?.contentType,
           fileContentLength(info.size, normalizedOptions)
         ))
+    }
   )
-}
 
 /**
  * Creates a streaming HTTP body for a file path using already-known file information.
@@ -578,18 +578,18 @@ export const fileFromInfo = (
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
-): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> => {
-  const normalizedOptions = normalizeFileOptions(options)
-  return Effect.map(
+): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
+  Effect.map(
     FileSystem.FileSystem,
-    (fs) =>
-      stream(
+    (fs) => {
+      const normalizedOptions = normalizeFileOptions(options)
+      return stream(
         fs.stream(path, normalizedOptions),
         options?.contentType,
         fileContentLength(info.size, normalizedOptions)
       )
+    }
   )
-}
 
 const normalizeFileOptions = (
   options: {

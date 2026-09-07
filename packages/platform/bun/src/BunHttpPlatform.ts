@@ -10,7 +10,7 @@
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
-import * as Effect from "effect/Effect"
+import type * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Etag from "effect/unstable/http/Etag"
@@ -37,13 +37,11 @@ const make: Effect.Effect<
   platform: "bun",
   compression,
   fileResponse(path, status, statusText, headers, start, end, _contentLength) {
-    return Effect.suspend(() => {
-      let file = Bun.file(path)
-      if (start > 0 || end !== undefined) {
-        file = file.slice(start, end)
-      }
-      return Effect.succeed(Response.raw(file, { headers, status, statusText }))
-    })
+    let file = Bun.file(path)
+    if (start > 0 || end !== undefined) {
+      file = file.slice(start, end)
+    }
+    return Response.raw(file, { headers, status, statusText })
   },
   fileWebResponse(file, status, statusText, headers, options) {
     const start = options?.offset ?? 0
