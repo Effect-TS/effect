@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array, ByteSize, Cause, Result } from "effect"
+import { Array, ByteSize, Cause, Option, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
@@ -322,19 +322,49 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }).pipe(Effect.scoped)
     })))
 
-  it("should report invalid read allocations as defects", () =>
+  it.each([-1, 1.5, NaN, Infinity, Number.MAX_VALUE])(
+    "readAlloc(%s) fails with BadArgument without moving the cursor",
+    (size) =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.gen(function*() {
+          const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+          const first = yield* file.readAlloc(6).pipe(Effect.flatMap(Effect.fromOption))
+          assert.strictEqual(new TextDecoder().decode(first), "lorem ")
+
+          const exit = yield* Effect.exit(file.readAlloc(size))
+          const position = yield* file.seek(BigInt(0), "current")
+          const next = yield* file.readAlloc(5).pipe(Effect.flatMap(Effect.fromOption))
+
+          assert.strictEqual(position, BigInt(6))
+          assert.strictEqual(new TextDecoder().decode(next), "ipsum")
+          assert(exit._tag === "Failure")
+          assert.isFalse(Cause.hasDies(exit.cause))
+          const error = Cause.findErrorOption(exit.cause)
+          assert(Option.isSome(error))
+          assert.strictEqual(error.value._tag, "PlatformError")
+          assert.strictEqual(error.value.reason._tag, "BadArgument")
+          assert.strictEqual(error.value.reason.module, "FileSystem")
+          assert.strictEqual(error.value.reason.method, "readAlloc")
+        }).pipe(Effect.scoped)
+      }))
+  )
+
+  it("readAlloc(0) returns None without moving the cursor", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
 
       yield* Effect.gen(function*() {
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
-        const exit = yield* Effect.exit(file.readAlloc(-1))
-        assert.strictEqual(exit._tag, "Failure")
-        if (exit._tag === "Failure") {
-          assert.isTrue(Cause.hasDies(exit.cause))
-          assert.isFalse(Cause.hasFails(exit.cause))
-        }
-        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(0))
+        const first = yield* file.readAlloc(6).pipe(Effect.flatMap(Effect.fromOption))
+        assert.strictEqual(new TextDecoder().decode(first), "lorem ")
+
+        assert.deepStrictEqual(yield* file.readAlloc(0), Option.none())
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(6))
+
+        const next = yield* file.readAlloc(5).pipe(Effect.flatMap(Effect.fromOption))
+        assert.strictEqual(new TextDecoder().decode(next), "ipsum")
       }).pipe(Effect.scoped)
     })))
 
