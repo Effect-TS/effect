@@ -7,7 +7,6 @@ import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 import { afterEach, beforeEach, vi } from "vitest"
-import { testFileResponsePrecision } from "../../node-shared/test/HttpPlatform.test-utils.ts"
 
 const readBody = (body: HttpBody.HttpBody) => {
   assert.strictEqual(body._tag, "Raw")
@@ -136,17 +135,20 @@ describe("BunHttpPlatform precision", { concurrent: false }, () => {
     vi.restoreAllMocks()
   })
 
-  testFileResponsePrecision(
-    BunHttpPlatform.layer,
-    () => assert.deepStrictEqual(slice.mock.calls, []),
-    (start, end) => assert.deepStrictEqual(slice.mock.calls, [[start, end]])
-  )
+  it.effect("passes a safe range to the runtime with the correct end bound", () =>
+    Effect.gen(function*() {
+      const maxSafe = Number.MAX_SAFE_INTEGER
+      const platform = yield* HttpPlatform.HttpPlatform
+      yield* platform.fileResponse("precision.bin", { offset: maxSafe - 1, bytesToRead: 1 })
+      assert.deepStrictEqual(slice.mock.calls, [[maxSafe - 1, maxSafe]])
+    }).pipe(Effect.provide(BunHttpPlatform.layer)))
 
   it.effect("serves a whole oversized file without slicing it", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse("precision.bin")
       assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["content-length"], "9007199254740993")
       assert.strictEqual(response.body._tag, "Raw")
       if (response.body._tag === "Raw") {
         assert.strictEqual(response.body.body, vi.mocked(Bun.file).mock.results[0].value)

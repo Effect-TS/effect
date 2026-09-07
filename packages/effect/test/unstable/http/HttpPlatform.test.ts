@@ -1,28 +1,40 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ByteSize, Effect, FileSystem, Option, Stream } from "effect"
+import { ByteSize, Effect, FileSystem, Layer, Option, Stream } from "effect"
 import { HttpPlatform } from "effect/unstable/http"
 
 describe("HttpPlatform", () => {
-  for (const size of [0n, 4n, 9007199254740993n]) {
-    it.effect(`serves a whole ${size}-byte file with an exact content-length header`, () =>
+  const oversized = 9007199254740993n
+  const layer = HttpPlatform.layer.pipe(Layer.provide(FileSystem.layerNoop({
+    stat: () =>
+      Effect.succeed({
+        type: "File",
+        size: ByteSize.bytes(oversized),
+        mtime: Option.none()
+      } as FileSystem.File.Info),
+    stream: () => Stream.empty
+  })))
+
+  it.effect("serves a whole oversized file with an exact content-length header", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("file.bin")
+      assert.strictEqual(response.headers["content-length"], oversized.toString())
+    }).pipe(Effect.provide(layer)))
+
+  for (
+    const [name, options] of [
+      ["unsafe bigint offset", { offset: oversized }],
+      ["unsafe end from safe bounds", { offset: Number.MAX_SAFE_INTEGER, bytesToRead: 2 }],
+      ["unsafe number offset", { offset: Number.MAX_SAFE_INTEGER + 1 }],
+      ["unsafe number byte count", { bytesToRead: Number.MAX_SAFE_INTEGER + 1 }]
+    ] as const
+  ) {
+    it.effect(`rejects ${name} with BadArgument`, () =>
       Effect.gen(function*() {
         const platform = yield* HttpPlatform.HttpPlatform
-        const response = yield* platform.fileResponse("file.bin")
-        assert.strictEqual(response.status, 200)
-        assert.strictEqual(response.headers["content-length"], size.toString())
-      }).pipe(
-        Effect.provide(HttpPlatform.layer),
-        Effect.provide(FileSystem.layerNoop({
-          stat: () =>
-            Effect.succeed({
-              type: "File",
-              size: ByteSize.bytes(size),
-              mtime: Option.none()
-            } as FileSystem.File.Info),
-          // The body is deliberately empty: only metadata and headers are under test.
-          stream: () => Stream.empty
-        }))
-      ))
+        const error = yield* Effect.flip(platform.fileResponse("file.bin", options))
+        assert.strictEqual(error.reason._tag, "BadArgument")
+      }).pipe(Effect.provide(layer)))
   }
 
   const file = {

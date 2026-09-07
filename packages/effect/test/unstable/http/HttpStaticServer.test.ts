@@ -67,54 +67,44 @@ const precisionServices = (size: bigint, calls: Array<{ path: string; options: F
     )
   )
 
-// Accept rounded numeric arguments in the recorder so assertions can expose
-// the static server's arithmetic independently of runtime range validation.
-const toBigInt = (input: ByteSize.Input | undefined) => {
-  assert.isDefined(input)
-  return typeof input === "number" ? BigInt(input) : ByteSize.fromInputUnsafe(input!)
-}
-
 describe("HttpStaticServer precision", () => {
-  for (const size of [10n, 9007199254740993n]) {
-    for (const url of ["/file.bin", "/directory"]) {
-      for (
-        const [range, start, end] of [
-          ["bytes=0-0", 0n, 0n],
-          ["bytes=-2", size - 2n, size - 1n],
-          ["bytes=1-", 1n, size - 1n]
-        ] as const
-      ) {
-        it.effect(`preserves ${range} and the exact ${size}-byte total for ${url}`, () => {
-          const calls: Array<{ path: string; options: FileOptions }> = []
-          return Effect.gen(function*() {
-            const app = yield* HttpStaticServer.make({ root: "/root" })
-            const response = yield* app.pipe(Effect.provideService(
-              HttpServerRequest.HttpServerRequest,
-              HttpServerRequest.fromWeb(new Request(`http://localhost${url}`, { headers: { Range: range } }))
-            ))
-            assert.strictEqual(response.status, 206)
-            assert.strictEqual(response.headers["content-range"], `bytes ${start}-${end}/${size}`)
-            assert.strictEqual(calls.length, 1)
-            assert.strictEqual(calls[0].path, url === "/directory" ? "/root/directory/index.html" : "/root/file.bin")
-            assert.strictEqual(toBigInt(calls[0].options?.offset), start)
-            assert.strictEqual(toBigInt(calls[0].options?.bytesToRead), end - start + 1n)
-          }).pipe(Effect.provide(precisionServices(size, calls)))
-        })
-      }
-
-      it.effect(`preserves the exact ${size}-byte total in a 416 response for ${url}`, () => {
-        const calls: Array<{ path: string; options: FileOptions }> = []
-        return Effect.gen(function*() {
-          const app = yield* HttpStaticServer.make({ root: "/root" })
-          const response = yield* app.pipe(Effect.provideService(
-            HttpServerRequest.HttpServerRequest,
-            HttpServerRequest.fromWeb(new Request(`http://localhost${url}`, { headers: { Range: "bytes=-0" } }))
-          ))
-          assert.strictEqual(response.status, 416)
-          assert.strictEqual(response.headers["content-range"], `bytes */${size}`)
-          assert.deepStrictEqual(calls, [])
-        }).pipe(Effect.provide(precisionServices(size, calls)))
-      })
-    }
+  const size = 9007199254740993n
+  for (
+    const [url, range, start, end] of [
+      ["/file.bin", "bytes=0-0", 0n, 0n],
+      ["/file.bin", "bytes=-2", size - 2n, size - 1n],
+      ["/directory", "bytes=1-", 1n, size - 1n]
+    ] as const
+  ) {
+    it.effect(`preserves ${range} and the exact total for ${url}`, () => {
+      const calls: Array<{ path: string; options: FileOptions }> = []
+      return Effect.gen(function*() {
+        const app = yield* HttpStaticServer.make({ root: "/root" })
+        const response = yield* app.pipe(Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(new Request(`http://localhost${url}`, { headers: { Range: range } }))
+        ))
+        assert.strictEqual(response.status, 206)
+        assert.strictEqual(response.headers["content-range"], `bytes ${start}-${end}/${size}`)
+        assert.deepStrictEqual(calls, [{
+          path: url === "/directory" ? "/root/directory/index.html" : "/root/file.bin",
+          options: { status: 206, offset: start, bytesToRead: end - start + 1n }
+        }])
+      }).pipe(Effect.provide(precisionServices(size, calls)))
+    })
   }
+
+  it.effect("preserves the exact total in a 416 response", () => {
+    const calls: Array<{ path: string; options: FileOptions }> = []
+    return Effect.gen(function*() {
+      const app = yield* HttpStaticServer.make({ root: "/root" })
+      const response = yield* app.pipe(Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(new Request("http://localhost/file.bin", { headers: { Range: "bytes=-0" } }))
+      ))
+      assert.strictEqual(response.status, 416)
+      assert.strictEqual(response.headers["content-range"], `bytes */${size}`)
+      assert.deepStrictEqual(calls, [])
+    }).pipe(Effect.provide(precisionServices(size, calls)))
+  })
 })

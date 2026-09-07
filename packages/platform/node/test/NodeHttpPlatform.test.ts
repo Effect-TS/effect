@@ -9,7 +9,7 @@ import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
 import { afterEach, beforeEach, vi } from "vitest"
-import { fileSystemLayer, testFileResponsePrecision } from "../../node-shared/test/HttpPlatform.test-utils.ts"
+import { fileSystemLayer } from "../../node-shared/test/HttpPlatform.test-utils.ts"
 
 const readStream = (stream: Readable) =>
   Effect.promise(async () => {
@@ -109,12 +109,16 @@ describe("NodeHttpPlatform precision", { concurrent: false }, () => {
     Layer.provide(Etag.layer)
   )
 
-  testFileResponsePrecision(
-    layer,
-    () => assert.deepStrictEqual(vi.mocked(Fs.createReadStream).mock.calls, []),
-    (start, end) =>
-      assert.deepStrictEqual(vi.mocked(Fs.createReadStream).mock.calls, [["precision.bin", { start, end: end - 1 }]])
-  )
+  it.effect("passes a safe range to the runtime with the correct end bound", () =>
+    Effect.gen(function*() {
+      const maxSafe = Number.MAX_SAFE_INTEGER
+      const platform = yield* HttpPlatform.HttpPlatform
+      yield* platform.fileResponse("precision.bin", { offset: maxSafe - 1, bytesToRead: 1 })
+      assert.deepStrictEqual(vi.mocked(Fs.createReadStream).mock.calls, [["precision.bin", {
+        start: maxSafe - 1,
+        end: maxSafe - 1
+      }]])
+    }).pipe(Effect.provide(layer)))
 
   it.effect("serves a whole oversized file with an exact content length and no end offset", () =>
     Effect.gen(function*() {
