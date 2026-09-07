@@ -339,7 +339,7 @@ export const causePrettyErrors = <E>(self: Cause.Cause<E>, options?: {
   if (self.reasons.length === 0) return errors
 
   const prevStackLimit = getStackTraceLimit()
-  setStackTraceLimit(1)
+  if (prevStackLimit !== 0) setStackTraceLimit(1)
 
   for (const failure of self.reasons) {
     if (failure._tag === "Interrupt") {
@@ -364,7 +364,7 @@ export const causePrettyErrors = <E>(self: Cause.Cause<E>, options?: {
     errors.push(causePrettyError(error, interrupts[0].annotations, options))
   }
 
-  setStackTraceLimit(prevStackLimit)
+  if (prevStackLimit !== 0) setStackTraceLimit(prevStackLimit)
   return errors
 }
 
@@ -1285,9 +1285,12 @@ export const fn: typeof Effect.fn = function() {
   const spanOptions = nameFirst ? arguments[1] : undefined
 
   const prevLimit = getStackTraceLimit()
-  setStackTraceLimit(2)
-  const defError = new globalThis.Error()
-  setStackTraceLimit(prevLimit)
+  let defError: Error | undefined
+  if (prevLimit !== 0) {
+    setStackTraceLimit(2)
+    defError = new globalThis.Error()
+    setStackTraceLimit(prevLimit)
+  }
 
   if (nameFirst) {
     return (body: Function | { readonly self: any }, ...pipeables: Array<Function>) =>
@@ -1307,7 +1310,7 @@ export const fn: typeof Effect.fn = function() {
 const makeFn = (
   name: string,
   bodyOrOptions: Function | { readonly self: any },
-  defError: Error,
+  defError: Error | undefined,
   pipeables: Array<Function>,
   addSpan: boolean,
   spanOptions: Tracer.SpanOptionsNoTrace | undefined
@@ -1328,9 +1331,12 @@ const makeFn = (
       return result
     }
     const prevLimit = getStackTraceLimit()
-    setStackTraceLimit(2)
-    const callError = new globalThis.Error()
-    setStackTraceLimit(prevLimit)
+    let callError: Error | undefined
+    if (prevLimit !== 0) {
+      setStackTraceLimit(2)
+      callError = new globalThis.Error()
+      setStackTraceLimit(prevLimit)
+    }
     return updateService(
       addSpan ?
         useSpan(name, spanOptions!, (span) => provideParentSpan(result, span)) :
@@ -1338,10 +1344,10 @@ const makeFn = (
       CurrentStackFrame,
       (prev) => ({
         name,
-        stack: fnStackCleaner(() => callError.stack),
+        stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
         parent: {
           name: `${name} (definition)`,
-          stack: fnStackCleaner(() => defError.stack),
+          stack: defError ? fnStackCleaner(() => defError.stack) : constUndefined,
           parent: prev
         }
       })
