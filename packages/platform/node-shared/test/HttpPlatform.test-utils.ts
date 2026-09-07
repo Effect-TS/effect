@@ -1,5 +1,6 @@
 import { assert, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
@@ -55,6 +56,24 @@ export const testFileResponsePrecision = (
         if (Result.isFailure(result)) {
           assert.strictEqual(result.failure._tag, "PlatformError")
           assert.strictEqual(result.failure.reason._tag, "BadArgument")
+        }
+      }).pipe(Effect.provide(layer)))
+  }
+
+  for (const field of ["offset", "bytesToRead"] as const) {
+    it.effect(`fileResponse rejects an unsafe number ${field} as BadArgument, not a defect`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const exit = yield* Effect.exit(platform.fileResponse("precision.bin", {
+          [field]: Number.MAX_SAFE_INTEGER + 1
+        }))
+        assertNoRead()
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.isFalse(Cause.hasDies(exit.cause))
+          const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+          assert.strictEqual(error._tag, "PlatformError")
+          assert.strictEqual(error.reason._tag, "BadArgument")
         }
       }).pipe(Effect.provide(layer)))
   }

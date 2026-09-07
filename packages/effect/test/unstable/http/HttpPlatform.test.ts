@@ -1,8 +1,30 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Stream } from "effect"
+import { ByteSize, Effect, FileSystem, Option, Stream } from "effect"
 import { HttpPlatform } from "effect/unstable/http"
 
 describe("HttpPlatform", () => {
+  for (const size of [0n, 4n, 9007199254740993n]) {
+    it.effect(`serves a whole ${size}-byte file with an exact content-length header`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileResponse("file.bin")
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(response.headers["content-length"], size.toString())
+      }).pipe(
+        Effect.provide(HttpPlatform.layer),
+        Effect.provide(FileSystem.layerNoop({
+          stat: () =>
+            Effect.succeed({
+              type: "File",
+              size: ByteSize.bytes(size),
+              mtime: Option.none()
+            } as FileSystem.File.Info),
+          // The body is deliberately empty: only metadata and headers are under test.
+          stream: () => Stream.empty
+        }))
+      ))
+  }
+
   const file = {
     name: "file.bin",
     lastModified: 0,
