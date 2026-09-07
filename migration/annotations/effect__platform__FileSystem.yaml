@@ -60,7 +60,7 @@
   note: "Operation option interfaces are inline in the v4 FileSystem service."
 "@effect/platform/FileSystem#Size":
   replacement: "ByteSize.ByteSize"
-  note: "Use ByteSize.bytes or unit constructors for file sizes. Truncation lengths, buffer sizes, and read/write counts use number. File.seek uses signed bigint positions and remains infallible."
+  note: "Use ByteSize.bytes or unit constructors for file sizes. Truncation lengths, buffer sizes, and read/write counts use number. File.seek takes and returns signed bigint positions; it can fail with PlatformError, including BadArgument when seeking before the start."
 "@effect/platform/FileSystem#SizeInput":
   replacement: "ByteSize.Input"
   note: "File-size and path-backed range inputs use ByteSize.Input. Truncation lengths, Web File ranges, and buffer sizes use number."

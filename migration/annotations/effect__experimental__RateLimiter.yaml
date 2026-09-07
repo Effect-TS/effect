@@ -16,3 +16,6 @@
 "@effect/experimental/RateLimiter#TypeId":
   replacement: effect/unstable/persistence/RateLimiter#TypeId
   note: Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
+"@effect/experimental/RateLimiter#RateLimiterStore":
+  replacement: RateLimiter.RateLimiterStore
+  note: "Use the Context.Service class from effect/unstable/persistence/RateLimiter. Custom tokenBucket implementations must return [remaining, elapsedMillis] instead of a number, preserving fractional counts and elapsed refill time."
