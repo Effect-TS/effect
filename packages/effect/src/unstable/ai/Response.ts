@@ -16,7 +16,8 @@ import { identity } from "../../Function.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
-import type * as Tool from "./Tool.ts"
+import * as AiError from "./AiError.ts"
+import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
 const PartTypeId = "~effect/ai/Response/Part" as const
@@ -185,7 +186,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureResultSchema())
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -277,7 +278,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureResultSchema())
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -372,7 +373,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureResultSchema())
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -2133,19 +2134,7 @@ export const UrlSourcePart: Schema.Struct<{
  * @category schemas
  * @since 4.0.0
  */
-export const HttpRequestDetails = Schema.Struct({
-  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE"]),
-  url: Schema.String,
-  urlParams: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
-  hash: Schema.optional(Schema.String),
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpRequestDetails" })
+export const HttpRequestDetails = AiError.HttpRequestDetails
 
 /**
  * Schema for HTTP response details associated with an AI response.
@@ -2174,16 +2163,7 @@ export const HttpRequestDetails = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const HttpResponseDetails = Schema.Struct({
-  status: Schema.Int,
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpResponseDetails" })
+export const HttpResponseDetails = AiError.HttpResponseDetails
 
 // =============================================================================
 // Response Metadata Part

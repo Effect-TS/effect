@@ -256,21 +256,6 @@ export interface Tool<
   readonly failureSchema: Config["failure"]
 
   /**
-   * Returns the `Schema` for the result of a failed tool call.
-   *
-   * **Details**
-   *
-   * A failed result is either a value of the tool's `failureSchema`, an
-   * `AiError` raised while handling the call, or an {@link ExecutionFailure}
-   * synthesized when the call was denied or interrupted. The toolkit result
-   * encoder and the `Response` part schemas both use this schema, so failed
-   * results encode and decode consistently.
-   */
-  failureResultSchema(): Schema.Union<
-    readonly [typeof AiError.AiError, typeof ExecutionFailure, Config["failure"]]
-  >
-
-  /**
    * A `Context` containing tool annotations which can store metadata about
    * the tool.
    */
@@ -834,8 +819,9 @@ export type FailureEncoded<T> = T extends Tool<
 
 /**
  * A utility type for the actual failure value that can appear in tool results.
- * When `failureMode` is `"return"`, this includes both user-defined failures
- * and `AiError`.
+ * This always includes an {@link ExecutionFailure}, which is produced when a
+ * tool call is denied or interrupted. When `failureMode` is `"return"`, it
+ * also includes `AiError`.
  *
  * @category utility types
  * @since 4.0.0
@@ -844,8 +830,11 @@ export type FailureResult<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? _Config["failureMode"] extends "return" ? _Config["failure"]["Type"] | AiError.AiError
-  : _Config["failure"]["Type"]
+> ? _Config["failureMode"] extends "return" ?
+      | _Config["failure"]["Type"]
+      | typeof ExecutionFailure.Type
+      | AiError.AiError
+  : _Config["failure"]["Type"] | typeof ExecutionFailure.Type
   : never
 
 /**
@@ -858,8 +847,11 @@ export type FailureResultEncoded<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? _Config["failureMode"] extends "return" ? _Config["failure"]["Encoded"] | AiError.AiErrorEncoded
-  : _Config["failure"]["Encoded"]
+> ? _Config["failureMode"] extends "return" ?
+      | _Config["failure"]["Encoded"]
+      | typeof ExecutionFailure.Encoded
+      | AiError.AiErrorEncoded
+  : _Config["failure"]["Encoded"] | typeof ExecutionFailure.Encoded
   : never
 
 /**
@@ -868,18 +860,12 @@ export type FailureResultEncoded<T> = T extends Tool<
  *
  * **Details**
  *
- * When `failureMode` is `"return"`, the result may also be an `AiError`.
+ * The result is either a success or a {@link FailureResult}.
  *
  * @category utility types
  * @since 4.0.0
  */
-export type Result<T> = T extends Tool<
-  infer _Name,
-  infer _Config,
-  infer _Requirements
-> ? _Config["failureMode"] extends "return" ? Success<T> | Failure<T> | AiError.AiError
-  : Success<T> | Failure<T>
-  : never
+export type Result<T> = Success<T> | FailureResult<T>
 
 /**
  * A utility type to extract the encoded type of the tool call result whether
@@ -887,18 +873,12 @@ export type Result<T> = T extends Tool<
  *
  * **Details**
  *
- * When `failureMode` is `"return"`, the result may also be an encoded `AiError`.
+ * The result is either an encoded success or a {@link FailureResultEncoded}.
  *
  * @category utility types
  * @since 4.0.0
  */
-export type ResultEncoded<T> = T extends Tool<
-  infer _Name,
-  infer _Config,
-  infer _Requirements
-> ? _Config["failureMode"] extends "return" ? SuccessEncoded<T> | FailureEncoded<T> | AiError.AiErrorEncoded
-  : SuccessEncoded<T> | FailureEncoded<T>
-  : never
+export type ResultEncoded<T> = SuccessEncoded<T> | FailureResultEncoded<T>
 
 /**
  * A utility type to extract the requirements of a `Tool` call handler.
@@ -1086,9 +1066,6 @@ const Proto = {
   },
   setFailure(this: Any, failureSchema: Schema.Constraint) {
     return clone(this, { failureSchema })
-  },
-  failureResultSchema(this: Any) {
-    return Schema.Union([AiError.AiError, ExecutionFailure, this.failureSchema])
   },
   setNeedsApproval(this: Any, needsApproval: NeedsApproval<any>) {
     return clone(this, { needsApproval })
@@ -2038,6 +2015,29 @@ export const ExecutionFailure = Schema.Struct({
   type: Schema.Literals(["execution-denied", "execution-interrupted"]),
   reason: Schema.String
 }).annotate({ identifier: "ToolExecutionFailure" })
+
+/**
+ * Returns the `Schema` for the result of a failed tool call.
+ *
+ * **Details**
+ *
+ * A failed result is an `AiError` raised while handling the call, a value of
+ * the tool's `failureSchema`, or an {@link ExecutionFailure} synthesized when
+ * the call was denied or interrupted. `AiError` comes first so it is always
+ * reconstructed on decoding, and the tool's own schema comes before
+ * `ExecutionFailure` so a user failure keeps all of its fields even when it
+ * has the same shape.
+ *
+ * `Toolkit` result encoding and the `Response` part schemas both use this
+ * schema, so failed results encode and decode consistently.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const failureResultSchema = <T extends Any>(
+  tool: T
+): Schema.Union<readonly [typeof AiError.AiError, T["failureSchema"], typeof ExecutionFailure]> =>
+  Schema.Union([AiError.AiError, tool.failureSchema, ExecutionFailure])
 
 /**
  * Type of the `EmptyParams` schema used for tools with no parameters.
