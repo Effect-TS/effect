@@ -5,6 +5,61 @@ import { TestSchema } from "effect/testing"
 import { AiError, Response, Tool, Toolkit } from "effect/unstable/ai"
 
 describe("Response", () => {
+  for (
+    const [name, failureSchema] of [
+      [
+        "struct",
+        Schema.Struct({
+          type: Schema.Literal("execution-denied"),
+          reason: Schema.String,
+          detail: Schema.String
+        })
+      ],
+      ["unknown", Schema.Unknown],
+      ["record", Schema.Record(Schema.String, Schema.Unknown)]
+    ] as const
+  ) {
+    it.effect(`preserves user failure fields with the ${name} schema`, () =>
+      Effect.gen(function*() {
+        const failure = { type: "execution-denied" as const, reason: "r", detail: "IMPORTANT" }
+        const tool = Tool.make("UserFailure", {
+          success: Schema.Number,
+          failure: failureSchema,
+          failureMode: "return"
+        })
+        const toolkit = Toolkit.make(tool)
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          UserFailure: () => Effect.fail(failure)
+        })))
+        const results = yield* handlers.handle(tool.name, {}).pipe(Effect.flatMap(Stream.runCollect))
+
+        deepStrictEqual(results, [{
+          result: failure,
+          encodedResult: failure,
+          isFailure: true,
+          preliminary: false
+        }], "Toolkit preserves user failure fields")
+
+        const schema = Response.AllParts(toolkit)
+        const decoded = yield* Schema.decodeUnknownEffect(schema)({
+          type: "tool-result",
+          id: "tool-123",
+          name: tool.name,
+          isFailure: true,
+          result: failure
+        })
+
+        assertTrue(decoded.type === "tool-result")
+        assertTrue(decoded.isFailure)
+        deepStrictEqual(decoded.result, failure, "decoded user failure")
+        deepStrictEqual(decoded.encodedResult, failure, "decoded encodedResult")
+
+        const encoded = yield* Schema.encodeEffect(schema)(decoded)
+        assertTrue(encoded.type === "tool-result")
+        deepStrictEqual(encoded.result, failure, "re-encoded user failure")
+      }))
+  }
+
   it.effect("round trips a returned AiError through Toolkit and AllParts JSON with an unknown failure schema", () =>
     Effect.gen(function*() {
       const tool = Tool.make("FrameworkFailure", {

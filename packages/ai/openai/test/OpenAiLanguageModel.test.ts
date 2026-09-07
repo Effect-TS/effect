@@ -1,6 +1,6 @@
 import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
 import { type AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
@@ -1161,6 +1161,7 @@ describe("OpenAiLanguageModel", () => {
           assert.isDefined(toolResult)
           if (toolResult?.type === "tool-result") {
             strictEqual(toolResult.name, "OpenAiMcp")
+            assertTrue(!toolResult.isFailure, "expected a successful MCP result")
             strictEqual(toolResult.result.name, "CheckPackage")
           }
         }).pipe(Effect.provide(makeTestLayer({
@@ -1787,6 +1788,7 @@ describe("OpenAiLanguageModel", () => {
         assert.isDefined(toolResult)
         if (toolResult?.type === "tool-result") {
           strictEqual(toolResult.name, "OpenAiMcp")
+          assertTrue(!toolResult.isFailure, "expected a successful MCP result")
           strictEqual(toolResult.result.name, "CheckPackage")
         }
       }))
