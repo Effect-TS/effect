@@ -12,17 +12,6 @@ This is the Effect TypeScript monorepo. The git base branch is `main`; use `pnpm
 - Migration sources (v3-to-v4) are in `migration/annotations`.
 - Inspect nearby code before editing.
 
-## Changesets
-
-Do not add changesets for packages whose `package.json` has `"private": true`, including private packages under
-`packages/tools`. Check the package manifest rather than assuming every tool package is private. For changes spanning
-private and published packages, list only the published packages in the changeset.
-
-The Changesets config sets `"privatePackages": false`. Any changeset naming a private package remains in the root during
-versioning, even when it also names published packages. A mixed changeset still bumps the published packages and updates
-their changelogs, but can be reapplied on later version runs, duplicating changelog entries. Leftover root changesets keep
-the release workflow on the version-PR path and prevent publishing.
-
 ## Validation
 
 Use the narrowest validation that covers the change:
