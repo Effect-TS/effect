@@ -16,7 +16,7 @@ import * as FileSystem from "../../FileSystem.ts"
 import { identity } from "../../Function.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
-import type { PlatformError } from "../../PlatformError.ts"
+import { badArgument, type PlatformError } from "../../PlatformError.ts"
 import * as Stream from "../../Stream.ts"
 import * as Etag from "./Etag.ts"
 import * as Headers from "./Headers.ts"
@@ -94,10 +94,14 @@ export const make: (impl: {
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
-      const start = options?.offset === undefined ? 0 : Number(ByteSize.fromInputUnsafe(options.offset))
-      const end = options?.bytesToRead !== undefined
-        ? start + Number(ByteSize.fromInputUnsafe(options.bytesToRead))
+      const offset = options?.offset === undefined ? BigInt("0") : ByteSize.fromInputUnsafe(options.offset)
+      const limit = options?.bytesToRead !== undefined
+        ? offset + ByteSize.fromInputUnsafe(options.bytesToRead)
         : undefined
+      // Calculate with bigint before converting the runtime's numeric range options.
+      const start = yield* fileResponseNumber(offset, "offset")
+      const end = limit === undefined ? undefined : yield* fileResponseNumber(limit, "end")
+      const contentLength = yield* fileResponseNumber((limit ?? info.size) - offset, "contentLength")
       const headers = Headers.set(
         options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
         "etag",
@@ -106,7 +110,6 @@ export const make: (impl: {
       if (Option.isSome(info.mtime)) {
         ;(headers as any)["last-modified"] = info.mtime.value.toUTCString()
       }
-      const contentLength = end !== undefined ? end - start : Number(info.size) - start
       return impl.fileResponse(
         path,
         options?.status ?? 200,
@@ -137,6 +140,17 @@ export const make: (impl: {
     }
   })
 })
+
+const fileResponseNumber = (value: bigint, field: string): Effect.Effect<number, PlatformError> => {
+  const number = Number(value)
+  return Number.isSafeInteger(number)
+    ? Effect.succeed(number)
+    : Effect.fail(badArgument({
+      module: "HttpPlatform",
+      method: "fileResponse",
+      description: `${field} exceeds the safe integer range: ${value}`
+    }))
+}
 
 /**
  * Provides the default `HttpPlatform` implementation for serving file paths and

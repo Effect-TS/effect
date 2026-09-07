@@ -7,6 +7,11 @@
  * links, metadata, temporary files and directories, and file watching through
  * the shared `FileSystem` service.
  *
+ * Stats use bigint values to preserve `size` and `blksize` exactly. Metadata
+ * exposed as numbers, including `dev`, `ino`, and `blocks`, must be safe
+ * integers; otherwise `stat` fails with `BadArgument`, even for optional fields.
+ * Writes also fail with `BadArgument` when their position is not a safe integer.
+ *
  * @since 4.0.0
  */
 import * as ByteSize from "effect/ByteSize"
@@ -31,6 +36,24 @@ const handleBadArgument = (method: string) => (err: unknown) =>
     module: "FileSystem",
     method,
     description: (err as Error).message ?? String(err)
+  })
+
+const bigintToNumber = (value: bigint, field: string): number => {
+  const number = Number(value)
+  if (!Number.isSafeInteger(number)) {
+    throw new RangeError(`${field} exceeds the safe integer range: ${value}`)
+  }
+  return number
+}
+
+const bigintToNumberOption = (value: bigint | undefined, field: string): Option.Option<number> =>
+  Option.map(Option.fromNullishOr(value), (value) => bigintToNumber(value, field))
+
+// Callback-based fs.write ignores bigint positions on supported Node versions.
+const positionToNumber = (position: bigint, method: string) =>
+  Effect.try({
+    try: () => bigintToNumber(position, "position"),
+    catch: handleBadArgument(method)
   })
 
 // == access
@@ -268,7 +291,7 @@ const makeFile = (() => {
     }
 
     get stat() {
-      return Effect.map(nodeStat(this.fd), makeFileInfo)
+      return Effect.flatMap(nodeStat(this.fd, { bigint: true }), makeFileInfo)
     }
 
     get sync() {
@@ -338,14 +361,18 @@ const makeFile = (() => {
     write(buffer: Uint8Array) {
       return Effect.suspend(() => {
         const position = this.position
-        return Effect.map(
-          nodeWrite(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
-          (bytesWritten) => {
-            if (!this.append) {
-              this.position = position + BigInt(bytesWritten)
-            }
-            return bytesWritten
-          }
+        return Effect.flatMap(
+          this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
+          (nodePosition) =>
+            Effect.map(
+              nodeWrite(this.fd, buffer, undefined, undefined, nodePosition),
+              (bytesWritten) => {
+                if (!this.append) {
+                  this.position = position + BigInt(bytesWritten)
+                }
+                return bytesWritten
+              }
+            )
         )
       })
     }
@@ -354,26 +381,30 @@ const makeFile = (() => {
       return Effect.suspend(() => {
         const position = this.position
         return Effect.flatMap(
-          nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
-          (bytesWritten) => {
-            if (bytesWritten === 0) {
-              return Effect.fail(
-                Error.systemError({
-                  module: "FileSystem",
-                  method: "writeAll",
-                  _tag: "WriteZero",
-                  pathOrDescriptor: this.fd,
-                  description: "write returned 0 bytes written"
-                })
-              )
-            }
+          this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
+          (nodePosition) =>
+            Effect.flatMap(
+              nodeWriteAll(this.fd, buffer, undefined, undefined, nodePosition),
+              (bytesWritten) => {
+                if (bytesWritten === 0) {
+                  return Effect.fail(
+                    Error.systemError({
+                      module: "FileSystem",
+                      method: "writeAll",
+                      _tag: "WriteZero",
+                      pathOrDescriptor: this.fd,
+                      description: "write returned 0 bytes written"
+                    })
+                  )
+                }
 
-            if (!this.append) {
-              this.position = position + BigInt(bytesWritten)
-            }
+                if (!this.append) {
+                  this.position = position + BigInt(bytesWritten)
+                }
 
-            return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
-          }
+                return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+              }
+            )
         )
       })
     }
@@ -472,43 +503,47 @@ const rename = (() => {
 
 // == stat
 
-const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
-  type: stat.isFile() ?
-    "File" :
-    stat.isDirectory() ?
-    "Directory" :
-    stat.isSymbolicLink() ?
-    "SymbolicLink" :
-    stat.isBlockDevice() ?
-    "BlockDevice" :
-    stat.isCharacterDevice() ?
-    "CharacterDevice" :
-    stat.isFIFO() ?
-    "FIFO" :
-    stat.isSocket() ?
-    "Socket" :
-    "Unknown",
-  mtime: Option.fromNullishOr(stat.mtime),
-  atime: Option.fromNullishOr(stat.atime),
-  birthtime: Option.fromNullishOr(stat.birthtime),
-  dev: stat.dev,
-  rdev: Option.fromNullishOr(stat.rdev),
-  ino: Option.fromNullishOr(stat.ino),
-  mode: stat.mode,
-  nlink: Option.fromNullishOr(stat.nlink),
-  uid: Option.fromNullishOr(stat.uid),
-  gid: Option.fromNullishOr(stat.gid),
-  size: ByteSize.bytes(BigInt(stat.size)),
-  blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(BigInt(stat.blksize))) : Option.none(),
-  blocks: Option.fromNullishOr(stat.blocks)
-})
+const makeFileInfo = (stat: NFS.BigIntStats): Effect.Effect<FileSystem.File.Info, Error.PlatformError> =>
+  Effect.try({
+    try: (): FileSystem.File.Info => ({
+      type: stat.isFile() ?
+        "File" :
+        stat.isDirectory() ?
+        "Directory" :
+        stat.isSymbolicLink() ?
+        "SymbolicLink" :
+        stat.isBlockDevice() ?
+        "BlockDevice" :
+        stat.isCharacterDevice() ?
+        "CharacterDevice" :
+        stat.isFIFO() ?
+        "FIFO" :
+        stat.isSocket() ?
+        "Socket" :
+        "Unknown",
+      mtime: Option.fromNullishOr(stat.mtime),
+      atime: Option.fromNullishOr(stat.atime),
+      birthtime: Option.fromNullishOr(stat.birthtime),
+      dev: bigintToNumber(stat.dev, "dev"),
+      rdev: bigintToNumberOption(stat.rdev, "rdev"),
+      ino: bigintToNumberOption(stat.ino, "ino"),
+      mode: bigintToNumber(stat.mode, "mode"),
+      nlink: bigintToNumberOption(stat.nlink, "nlink"),
+      uid: bigintToNumberOption(stat.uid, "uid"),
+      gid: bigintToNumberOption(stat.gid, "gid"),
+      size: ByteSize.bytes(stat.size),
+      blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(stat.blksize)) : Option.none(),
+      blocks: bigintToNumberOption(stat.blocks, "blocks")
+    }),
+    catch: handleBadArgument("stat")
+  })
 const stat = (() => {
   const nodeStat = effectify(
     NFS.stat,
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat")
   )
-  return (path: string) => Effect.map(nodeStat(path), makeFileInfo)
+  return (path: string) => Effect.flatMap(nodeStat(path, { bigint: true }), makeFileInfo)
 })()
 
 // == symlink
