@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `origin/main` (`5a802043984727b0c5a291af39d1b9bbfa8d7b8b`)
+Head: `10b108c390` (`10b108c390b2897259a98dcef259f24f94f713f2`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5104,9 +5104,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.between` -> `Argument.between`: Use the moved combinator; v4 validates bounds when constructing the parameter.
 
-- `Args.boolean` -> `Flag.boolean / Argument.choiceWithValue`: Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices.
+- `Args.boolean` -> `Flag.Boolean / Argument.choiceWithValue`: Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices.
+
+- `Args.date` -> `Argument.Date`: Use the renamed constructor and pass the argument name explicitly.
 
 - `Args.fileContent` -> `Argument.file + Argument.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains.
+
+- `Args.float` -> `Argument.Finite`: Use the renamed constructor; it rejects non-finite numbers.
 
 - `Args.getHelp` -> `none`: Per-argument help introspection was removed; Command generates help internally.
 
@@ -5118,6 +5122,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.getUsage` -> `none`: The public Usage tree was removed; Command generates a usage string internally.
 
+- `Args.integer` -> `Argument.Int`: Use the renamed constructor and pass the argument name explicitly.
+
 - `Args.isArgs` -> `Param.isParam(value) && value.kind === Param.argumentKind`: Arguments now use the shared Param representation and an explicit kind discriminator.
 
 - `Args.map` -> `Argument.map`: Use the moved combinator.
@@ -5126,11 +5132,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.optional` -> `Argument.optional`: Use the moved combinator; it still returns Option.
 
+- `Args.redacted` -> `Argument.Redacted`: Use the renamed constructor and pass the argument name explicitly.
+
 - `Args.repeated` -> `Argument.variadic`: Renamed to variadic; pass optional min and max bounds.
 
-- `Args.secret` -> `Argument.redacted`: Use Redacted-backed positional input.
+- `Args.secret` -> `Argument.Redacted`: Use Redacted-backed positional input.
 
-- `Args.text` -> `Argument.string`: Renamed to string; pass the argument name explicitly.
+- `Args.text` -> `Argument.String`: Renamed to String; pass the argument name explicitly.
 
 - `Args.validate` -> `argument.parse({ flags: {}, arguments: args })`: Parsing is now a Param method and returns leftover tokens with the value; errors are CliError.
 
@@ -5372,7 +5380,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.Options` -> `Flag.Flag`: Options was renamed to Flag in effect/unstable/cli.
 
-- `Options.Options.BooleanOptionsConfig` -> `Flag.boolean + Flag.withAlias + Flag.map`: The config object was removed; aliases and value inversion are combinators, while custom negation names need application logic.
+- `Options.Options.BooleanOptionsConfig` -> `Flag.Boolean + Flag.withAlias + Flag.map`: The config object was removed; aliases and value inversion are combinators, while custom negation names need application logic.
 
 - `Options.Options.PathOptionsConfig` -> `{ readonly mustExist?: boolean }`: Path options are inline; true replaces exists=yes and omission replaces either. exists=no has no exact replacement.
 
@@ -5388,13 +5396,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.between` -> `Flag.between`: Use the moved combinator; v4 validates bounds when constructing the parameter.
 
-- `Options.boolean` -> `Flag.boolean + Flag.withDefault`: Use Flag.boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
+- `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
 
 - `Options.choice` -> `Flag.choice`: Use the moved constructor.
 
 - `Options.choiceWithValue` -> `Flag.choiceWithValue`: Use the moved constructor.
 
-- `Options.date` -> `Flag.date`: Use the moved constructor.
+- `Options.date` -> `Flag.Date`: Use the moved constructor.
 
 - `Options.directory` -> `Flag.directory`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
 
@@ -5410,7 +5418,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.filterMap` -> `Flag.filterMap`: Use the moved combinator and replace the fixed message with an onNone function.
 
-- `Options.float` -> `Flag.float`: Use the moved constructor.
+- `Options.float` -> `Flag.Finite`: Use the moved constructor.
 
 - `Options.getHelp` -> `none`: Per-flag help introspection was removed; Command generates help internally.
 
@@ -5418,7 +5426,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.getUsage` -> `none`: The public Usage tree was removed; Command generates a usage string internally.
 
-- `Options.integer` -> `Flag.integer`: Use the moved constructor.
+- `Options.integer` -> `Flag.Int`: Use the moved constructor.
 
 - `Options.isBool` -> `none`: No public flag-shape predicate remains; boolean-shape inspection is internal.
 
@@ -5444,13 +5452,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.processCommandLine` -> `Command.runWith`: Raw argv processing is now whole-command execution; no public standalone flag tokenizer remains.
 
-- `Options.redacted` -> `Flag.redacted`: Use the moved constructor.
+- `Options.redacted` -> `Flag.Redacted`: Use the moved constructor.
 
 - `Options.repeated` -> `Flag.variadic`: Renamed to variadic; pass optional min and max bounds.
 
-- `Options.secret` -> `Flag.redacted`: The deprecated Secret constructor was removed; use Redacted-backed input.
+- `Options.secret` -> `Flag.Redacted`: The deprecated Secret constructor was removed; use Redacted-backed input.
 
-- `Options.text` -> `Flag.string`: Renamed from text to string.
+- `Options.text` -> `Flag.String`: Renamed from text to String.
 
 - `Options.withAlias` -> `Flag.withAlias`: Use the moved combinator.
 
@@ -5476,19 +5484,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Primitive.PrimitiveTypeId` -> `none`: The public Primitive type-id symbol was removed.
 
-- `Primitive.boolean` -> `Primitive.boolean`: Boolean is now a singleton value; defaults belong on Flag.boolean or withDefault.
+- `Primitive.boolean` -> `Primitive.Boolean`: Boolean is now a singleton value; defaults belong on Flag.Boolean or withDefault.
 
 - `Primitive.choice` -> `Primitive.choice`: Use the moved constructor.
 
-- `Primitive.date` -> `Primitive.date`: Date is now a singleton Primitive value.
+- `Primitive.date` -> `Primitive.Date`: Date is now a singleton Primitive value.
+
+- `Primitive.float` -> `Primitive.Finite`: Finite is now a singleton Primitive value and rejects non-finite numbers.
 
 - `Primitive.getChoices` -> `none`: Choice introspection is internal in v4; retain alternatives in application code when needed.
 
 - `Primitive.getHelp` -> `none`: Primitive-level help generation was removed from the public API.
 
+- `Primitive.integer` -> `Primitive.Int`: Int is now a singleton Primitive value.
+
 - `Primitive.isBool` -> `none`: The boolean Primitive predicate is internal in v4.
 
-- `Primitive.text` -> `Primitive.string`: Renamed from text to string.
+- `Primitive.text` -> `Primitive.String`: Renamed from text to String.
 
 - `Primitive.validate` -> `primitive.parse(value)`: Parsing is now the Primitive.parse method over a string; defaults and case normalization moved out of this layer.
 
@@ -7156,11 +7168,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpServer`
 
+- `HttpServer.Address` -> `effect/unstable/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
+
 - `HttpServer.HttpServer` -> `HttpServer.HttpServer`: The interface and tag became one Context.Service class; use its Service member for implementations.
 
 - `HttpServer.ServeOptions` -> `none`: The unused respond option model was removed with no shared v4 counterpart.
 
+- `HttpServer.TcpAddress` -> `effect/unstable/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
+
 - `HttpServer.TypeId` -> `none`: The public TypeId was removed; HttpServer is now a Context.Service class.
+
+- `HttpServer.UnixAddress` -> `effect/unstable/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
 - `HttpServer.addressWith` -> `HttpServer.HttpServer.use(({ address }) => effect(address))`: The accessor was removed; read the service and pass its Address to the callback.
 
@@ -7434,7 +7452,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/SocketServer`
 
+- `SocketServer.Address` -> `effect/unstable/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
+
 - `SocketServer.ErrorTypeId` -> `SocketServer.ErrorTypeId`: The API moved to effect/unstable/socket/SocketServer and retains this name.
+
+- `SocketServer.TcpAddress` -> `effect/unstable/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
+
+- `SocketServer.UnixAddress` -> `effect/unstable/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
 ### `@effect/platform/Template`
 
@@ -7459,6 +7483,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Transferable.unsafeMakeCollector` -> `Transferable.makeCollectorUnsafe`: The unsafe collector constructor was renamed.
 
 ### `@effect/platform/Url`
+
+- `Url.fromString`: TODO: needs guidance
 
 - `Url.setUrlParams` -> `Url.setUrlParams`: Retained and widened to accept UrlParams.Input.
 
@@ -7883,6 +7909,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Model.BooleanFromNumber` -> `effect/Schema#BooleanFromBit`: Use the core 0 | 1 to boolean schema; Model.BooleanSqlite is the ready-made model field.
 
 - `Model.Class` -> `effect/unstable/schema/Model#Class`: Moved; model variants remain select, insert, update, json, jsonCreate, and jsonUpdate.
+
+- `Model.Date`: TODO: needs guidance
 
 - `Model.DateTimeFromDate` -> `effect/Schema#DateTimeUtcFromDate`: Moved to core Schema and retains Date to DateTime.Utc conversion.
 

@@ -30,7 +30,7 @@ import type * as Primitive from "./Primitive.ts"
  *
  * **Gotchas**
  *
- * `boolean` is intentionally omitted from Argument constructors. Positional
+ * `Boolean` is intentionally omitted from Argument constructors. Positional
  * boolean arguments are ambiguous in CLI design since there is no flag name to
  * negate (for example, `--no-verbose`). Use Flag.Boolean instead, or use
  * Argument.choice with explicit "true" / "false" strings if needed.

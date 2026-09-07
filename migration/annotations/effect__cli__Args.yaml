@@ -64,6 +64,9 @@
 "@effect/cli/Args#optional":
   replacement: "Argument.optional"
   note: "Use the moved combinator; it still returns Option."
+"@effect/cli/Args#redacted":
+  replacement: "Argument.Redacted"
+  note: "Use the renamed constructor and pass the argument name explicitly."
 "@effect/cli/Args#repeated":
   replacement: "Argument.variadic"
   note: "Renamed to variadic; pass optional min and max bounds."
