@@ -527,7 +527,7 @@ export const make = (
         ? undefined
         : ByteSize.fromInputUnsafe(options.bytesToRead)
       let totalBytesRead = BigInt(0)
-      // Reject fractional and non-finite sizes before reading, even for zero-byte reads.
+      // Validate chunk sizes even for zero-byte reads.
       const chunkSize = Number(BigInt(options?.chunkSize ?? 64 * 1024))
       const readChunk = file.readAlloc(chunkSize)
       return Stream.fromPull(Effect.succeed(
@@ -854,9 +854,6 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
-  /**
-   * Moves the cursor from the start or current position and returns its signed byte offset.
-   */
   readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint>
   readonly sync: Effect.Effect<void, PlatformError>
   readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
