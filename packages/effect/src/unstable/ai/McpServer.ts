@@ -1596,9 +1596,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
                 ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
                 : Effect.failCause(failure.failure)
             }
-            const error = failure.success
+            const error: unknown = failure.success
             if (AiError.isAiError(error)) {
-              const reason = (error as AiError.AiError).reason
+              const reason = error.reason
               return reason._tag === "ToolParameterValidationError"
                 ? Effect.fail(new InvalidParams({ message: reason.message }))
                 : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
