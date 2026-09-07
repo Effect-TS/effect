@@ -5,6 +5,44 @@ import { TestSchema } from "effect/testing"
 import { Response, Tool, Toolkit } from "effect/unstable/ai"
 
 describe("Response", () => {
+  describe("provider-defined tool execution failures", () => {
+    const tool = Tool.providerDefined({
+      id: "test.provider_tool",
+      customName: "ProviderTool",
+      providerName: "provider_tool",
+      success: Schema.Unknown
+    })()
+    const schema = Response.AllParts(Toolkit.make(tool))
+
+    for (
+      const result of [
+        { type: "execution-denied", reason: "User declined" },
+        {
+          type: "execution-interrupted",
+          reason: "Tool call execution was interrupted because the response finished with reason \"length\""
+        }
+      ]
+    ) {
+      it.effect(`round trips ${result.type} through AllParts JSON`, () =>
+        Effect.gen(function*() {
+          const part = Response.makePart("tool-result", {
+            id: "tool-123",
+            name: tool.name,
+            isFailure: true,
+            result,
+            encodedResult: result,
+            providerExecuted: false,
+            preliminary: false
+          })
+
+          const encoded = yield* Schema.encodeUnknownEffect(schema)(part)
+          const decoded = yield* Schema.decodeUnknownEffect(schema)(JSON.parse(JSON.stringify(encoded)))
+
+          deepStrictEqual<unknown>(decoded, part, "decoded execution failure")
+        }))
+    }
+  })
+
   describe("tool results with overlapping success and failure types", () => {
     const tool = Tool.make("ResultEncoding", {
       success: Schema.Number,
