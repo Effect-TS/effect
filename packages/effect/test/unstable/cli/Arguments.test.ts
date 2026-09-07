@@ -56,14 +56,14 @@ describe("Command arguments", () => {
 
       // Create test command with various argument types
       const testCommand = Command.make("test", {
-        name: Argument.string("name"),
-        count: Argument.integer("count"),
-        ratio: Argument.float("ratio"),
+        name: Argument.String("name"),
+        count: Argument.Int("count"),
+        ratio: Argument.Finite("ratio"),
         env: Argument.choice("env", ["dev", "prod"]),
         config: Argument.file("config", { mustExist: false }),
         workspace: Argument.directory("workspace", { mustExist: false }),
-        startDate: Argument.date("start-date"),
-        verbose: Flag.boolean("verbose")
+        startDate: Argument.Date("start-date"),
+        verbose: Flag.Boolean("verbose")
       }, (config) => Ref.set(resultRef, config))
 
       // Test parsing with valid arguments
@@ -132,7 +132,7 @@ describe("Command arguments", () => {
   it.effect("should fail with invalid arguments", () =>
     Effect.gen(function*() {
       const testCommand = Command.make("test", {
-        count: Argument.integer("count"),
+        count: Argument.Int("count"),
         env: Argument.choice("env", ["dev", "prod"])
       }, (config) => Effect.succeed(config))
 
@@ -165,7 +165,7 @@ describe("Command arguments", () => {
       let result: { readonly files: ReadonlyArray<string> } | undefined
 
       const testCommand = Command.make("test", {
-        files: Argument.variadic(Argument.string("files"))
+        files: Argument.variadic(Argument.String("files"))
       }, (parsedConfig) =>
         Effect.sync(() => {
           result = parsedConfig
@@ -206,7 +206,7 @@ describe("Command arguments", () => {
       const resultRef = yield* Ref.make<any>(null)
 
       const testCommand = Command.make("test", {
-        port: Argument.integer("port").pipe(
+        port: Argument.Int("port").pipe(
           Argument.filter(
             (n) => n >= 1 && n <= 65535,
             (n) => `Port ${n} out of range (1-65535)`
@@ -222,7 +222,7 @@ describe("Command arguments", () => {
   it.effect("should handle filter combinator - invalid", () =>
     Effect.gen(function*() {
       const testCommand = Command.make("test", {
-        port: Argument.integer("port").pipe(
+        port: Argument.Int("port").pipe(
           Argument.filter(
             (n) => n >= 1 && n <= 65535,
             (n) => `Port ${n} out of range (1-65535)`
@@ -242,7 +242,7 @@ describe("Command arguments", () => {
       const resultRef = yield* Ref.make<any>(null)
 
       const testCommand = Command.make("test", {
-        positiveInt: Argument.integer("num").pipe(
+        positiveInt: Argument.Int("num").pipe(
           Argument.filterMap(
             (n) => n > 0 ? Option.some(n) : Option.none(),
             (n) => `Expected positive integer, got ${n}`
@@ -258,7 +258,7 @@ describe("Command arguments", () => {
   it.effect("should handle filterMap combinator - invalid", () =>
     Effect.gen(function*() {
       const testCommand = Command.make("test", {
-        positiveInt: Argument.integer("num").pipe(
+        positiveInt: Argument.Int("num").pipe(
           Argument.filterMap(
             (n) => n > 0 ? Option.some(n) : Option.none(),
             (n) => `Expected positive integer, got ${n}`
@@ -279,8 +279,8 @@ describe("Command arguments", () => {
 
       // Try parsing as integer first, fallback to 0
       const testCommand = Command.make("test", {
-        value: Argument.integer("value").pipe(
-          Argument.orElse(() => Argument.string("value").pipe(Argument.map(() => -1)))
+        value: Argument.Int("value").pipe(
+          Argument.orElse(() => Argument.String("value").pipe(Argument.map(() => -1)))
         )
       }, (config) => Ref.set(resultRef, config))
 
@@ -301,8 +301,8 @@ describe("Command arguments", () => {
       const resultRef = yield* Ref.make<any>(null)
 
       const testCommand = Command.make("test", {
-        value: Argument.integer("value").pipe(
-          Argument.orElseResult(() => Argument.string("value"))
+        value: Argument.Int("value").pipe(
+          Argument.orElseResult(() => Argument.String("value"))
         )
       }, (config) => Ref.set(resultRef, config))
 
@@ -323,7 +323,7 @@ describe("Command arguments", () => {
   it.effect("should handle withMetavar combinator", () =>
     Effect.gen(function*() {
       const testCommand = Command.make("test", {
-        file: Argument.string("file").pipe(
+        file: Argument.String("file").pipe(
           Argument.withMetavar("FILE_PATH")
         )
       }, () => Effect.void)
@@ -341,7 +341,7 @@ describe("Command arguments", () => {
 
       const testCommand = Command.make("test", {
         label: Argument.optional(
-          Argument.string("label").pipe(
+          Argument.String("label").pipe(
             Argument.withDescription("Optional label name")
           )
         )
@@ -358,7 +358,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       // BUG TEST: Argument.optional() should work for positional arguments
       // Currently it only catches MissingOption, not MissingArgument
-      const optionalArg = Argument.optional(Argument.string("label"))
+      const optionalArg = Argument.optional(Argument.String("label"))
 
       // Parse with empty arguments - should succeed with Option.none()
       const result = yield* optionalArg.parse({ flags: {}, arguments: [] })
@@ -372,7 +372,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       // When a positional argument has an invalid value, the error should say "argument"
       // not "flag" (which would be confusing)
-      const intArg = Argument.integer("count")
+      const intArg = Argument.Int("count")
 
       const result = yield* Effect.exit(
         intArg.parse({ flags: {}, arguments: ["not-a-number"] })

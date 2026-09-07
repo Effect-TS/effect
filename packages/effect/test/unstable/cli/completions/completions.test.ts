@@ -12,14 +12,14 @@ import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
 // ---------------------------------------------------------------------------
 
 const simpleCmd = Command.make("greet", {
-  name: Argument.string("name").pipe(
+  name: Argument.String("name").pipe(
     Argument.withDescription("Name to greet")
   ),
-  loud: Flag.boolean("loud").pipe(
+  loud: Flag.Boolean("loud").pipe(
     Flag.withAlias("l"),
     Flag.withDescription("Shout the greeting")
   ),
-  times: Flag.integer("times").pipe(
+  times: Flag.Int("times").pipe(
     Flag.withDescription("Repeat count"),
     Flag.withDefault(1)
   )
@@ -27,25 +27,25 @@ const simpleCmd = Command.make("greet", {
 
 const withSubcommands = (() => {
   const start = Command.make("start", {
-    port: Flag.integer("port").pipe(
+    port: Flag.Int("port").pipe(
       Flag.withAlias("p"),
       Flag.withDescription("Port number")
     ),
-    daemon: Flag.boolean("daemon").pipe(
+    daemon: Flag.Boolean("daemon").pipe(
       Flag.withDescription("Run as daemon")
     )
   }).pipe(Command.withDescription("Start the server"))
 
   const stop = Command.make("stop", {
-    force: Flag.boolean("force").pipe(
+    force: Flag.Boolean("force").pipe(
       Flag.withAlias("f"),
       Flag.withDescription("Force stop")
     )
   }).pipe(Command.withDescription("Stop the server"))
 
   return Command.make("server", {
-    verbose: Flag.boolean("verbose").pipe(Flag.withAlias("v")),
-    config: Flag.string("config")
+    verbose: Flag.Boolean("verbose").pipe(Flag.withAlias("v")),
+    config: Flag.String("config")
   }).pipe(
     Command.withDescription("Server management"),
     Command.withSubcommands([start, stop])
@@ -108,7 +108,7 @@ const withOptionalDirectoryAndSubcommands = Command.make("example", {
 
 const nested3Levels = (() => {
   const leaf = Command.make("action", {
-    dryRun: Flag.boolean("dry-run").pipe(Flag.withDescription("Dry run mode"))
+    dryRun: Flag.Boolean("dry-run").pipe(Flag.withDescription("Dry run mode"))
   }).pipe(Command.withDescription("Perform action"))
 
   const mid = Command.make("sub").pipe(

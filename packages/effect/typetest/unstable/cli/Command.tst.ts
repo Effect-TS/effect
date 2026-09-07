@@ -26,10 +26,10 @@ describe("Command", () => {
   describe("withSharedFlags", () => {
     it("adds shared flags to command input and parent context", () => {
       const root = Command.make("root", {
-        workspace: Flag.string("workspace")
+        workspace: Flag.String("workspace")
       }).pipe(
         Command.withSharedFlags({
-          verbose: Flag.boolean("verbose")
+          verbose: Flag.Boolean("verbose")
         }),
         Command.withHandler((config) => {
           expect(config).type.toBe<{ readonly workspace: string; readonly verbose: boolean }>()
@@ -50,10 +50,10 @@ describe("Command", () => {
 
     it("does not expose local config through yield* parent", () => {
       const root = Command.make("root", {
-        workspace: Flag.string("workspace")
+        workspace: Flag.String("workspace")
       }).pipe(
         Command.withSharedFlags({
-          verbose: Flag.boolean("verbose")
+          verbose: Flag.Boolean("verbose")
         })
       )
 
@@ -70,10 +70,10 @@ describe("Command", () => {
 
     it("widens input after withSubcommands for input-based combinators", () => {
       const root = Command.make("root", {
-        local: Flag.string("local")
+        local: Flag.String("local")
       }).pipe(
         Command.withSharedFlags({
-          verbose: Flag.boolean("verbose")
+          verbose: Flag.Boolean("verbose")
         })
       )
 
@@ -96,7 +96,7 @@ describe("Command", () => {
     it("accepts only flags", () => {
       Command.make("root").pipe(
         // @ts-expect-error Type 'Argument<string>' is not assignable
-        Command.withSharedFlags({ file: Argument.string("file") })
+        Command.withSharedFlags({ file: Argument.String("file") })
       )
     })
   })
@@ -104,11 +104,11 @@ describe("Command", () => {
   describe("withGlobalFlags", () => {
     it("strips setting context from mixed global flags", () => {
       const VerboseAction = GlobalFlag.action({
-        flag: Flag.boolean("verbose").pipe(Flag.withDefault(false)),
+        flag: Flag.Boolean("verbose").pipe(Flag.withDefault(false)),
         run: () => Effect.void
       })
       const Format = GlobalFlag.setting("format")({
-        flag: Flag.string("format").pipe(Flag.withDefault("text"))
+        flag: Flag.String("format").pipe(Flag.withDefault("text"))
       })
 
       const command = Command.make("example", {}, () =>
@@ -123,11 +123,11 @@ describe("Command", () => {
 
     it("strips setting context in data-first form", () => {
       const VerboseAction = GlobalFlag.action({
-        flag: Flag.boolean("verbose").pipe(Flag.withDefault(false)),
+        flag: Flag.Boolean("verbose").pipe(Flag.withDefault(false)),
         run: () => Effect.void
       })
       const Format = GlobalFlag.setting("format")({
-        flag: Flag.string("format").pipe(Flag.withDefault("text"))
+        flag: Flag.String("format").pipe(Flag.withDefault("text"))
       })
 
       const command = Command.withGlobalFlags(

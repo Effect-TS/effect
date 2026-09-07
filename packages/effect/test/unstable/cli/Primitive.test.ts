@@ -61,10 +61,10 @@ const expectValidDates = (
   }) as Effect.Effect<void, string, never>
 
 describe("Primitive", () => {
-  describe("boolean", () => {
+  describe("Boolean", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should parse true values correctly", () =>
-        expectValidValues(Primitive.boolean, [
+        expectValidValues(Primitive.Boolean, [
           ["true", true],
           ["1", true],
           ["y", true],
@@ -73,7 +73,7 @@ describe("Primitive", () => {
         ]))
 
       it.effect("should parse false values correctly", () =>
-        expectValidValues(Primitive.boolean, [
+        expectValidValues(Primitive.Boolean, [
           ["false", false],
           ["0", false],
           ["n", false],
@@ -83,21 +83,21 @@ describe("Primitive", () => {
 
       it.effect("should fail for invalid values", () =>
         expectInvalidValues(
-          Primitive.boolean,
+          Primitive.Boolean,
           ["invalid"],
           [`Expected "true" | "yes" | "on" | "1" | "y" | "false" | "no" | "off" | "0" | "n"`]
         ))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.boolean._tag, "Boolean")
+        assert.strictEqual(Primitive.Boolean._tag, "Boolean")
       })
     })
   })
 
-  describe("float", () => {
+  describe("Finite", () => {
     it.layer(TestLayer)((it) => {
-      it.effect("should parse valid float values", () =>
-        expectValidValues(Primitive.float, [
+      it.effect("should parse valid finite numbers", () =>
+        expectValidValues(Primitive.Finite, [
           ["42", 42],
           ["3.14", 3.14],
           ["-42.5", -42.5],
@@ -106,20 +106,28 @@ describe("Primitive", () => {
         ]))
 
       it.effect("should fail for invalid values", () =>
-        expectInvalidValues(Primitive.float, ["not-a-number"], [
+        expectInvalidValues(Primitive.Finite, ["not-a-number"], [
           `Expected a string representing a finite number`
         ]))
 
+      it.effect("should reject non-finite numbers and overflow", () =>
+        Effect.gen(function*() {
+          for (const input of ["NaN", "Infinity", "-Infinity", "1e309"]) {
+            const error = yield* Effect.flip(Primitive.Finite.parse(input))
+            assert.include(error, "finite number")
+          }
+        }))
+
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.float._tag, "Float")
+        assert.strictEqual(Primitive.Finite._tag, "Float")
       })
     })
   })
 
-  describe("date", () => {
+  describe("Date", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should parse valid date values", () =>
-        expectValidDates(Primitive.date, [
+        expectValidDates(Primitive.Date, [
           // ISO date
           [
             "2024-01-15",
@@ -145,18 +153,18 @@ describe("Primitive", () => {
         ]))
 
       it.effect("should fail for invalid values", () =>
-        expectInvalidValues(Primitive.date, ["not-a-date"], [`Expected a valid Date`]))
+        expectInvalidValues(Primitive.Date, ["not-a-date"], [`Expected a valid Date`]))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.date._tag, "Date")
+        assert.strictEqual(Primitive.Date._tag, "Date")
       })
     })
   })
 
-  describe("integer", () => {
+  describe("Int", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should parse valid integer values", () =>
-        expectValidValues(Primitive.integer, [
+        expectValidValues(Primitive.Int, [
           ["42", 42],
           ["-123", -123],
           ["0", 0],
@@ -166,21 +174,21 @@ describe("Primitive", () => {
 
       it.effect("should fail for invalid values", () =>
         expectInvalidValues(
-          Primitive.integer,
+          Primitive.Int,
           ["3.14", "not-a-number"],
           [`Expected an integer`, `Expected a string representing a finite number`]
         ))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.integer._tag, "Integer")
+        assert.strictEqual(Primitive.Int._tag, "Integer")
       })
     })
   })
 
-  describe("string", () => {
+  describe("String", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should parse string values", () =>
-        expectValidValues(Primitive.string, [
+        expectValidValues(Primitive.String, [
           ["hello", "hello"],
           ["", ""],
           [" spaces ", " spaces "],
@@ -189,7 +197,7 @@ describe("Primitive", () => {
         ]))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.string._tag, "String")
+        assert.strictEqual(Primitive.String._tag, "String")
       })
     })
   })
@@ -310,11 +318,11 @@ describe("Primitive", () => {
     })
   })
 
-  describe("redacted", () => {
+  describe("Redacted", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should parse and redact values", () =>
         Effect.gen(function*() {
-          const result = yield* Primitive.redacted.parse("secret123")
+          const result = yield* Primitive.Redacted.parse("secret123")
           // Check if it's a Redacted value
           assert.isTrue(Redacted.isRedacted(result))
           // The toString method should return a redacted representation
@@ -322,12 +330,12 @@ describe("Primitive", () => {
         }))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.redacted._tag, "Redacted")
+        assert.strictEqual(Primitive.Redacted._tag, "Redacted")
       })
 
       it.effect("should handle empty strings", () =>
         Effect.gen(function*() {
-          const result = yield* Primitive.redacted.parse("")
+          const result = yield* Primitive.Redacted.parse("")
           assert.isTrue(Redacted.isRedacted(result))
         }))
     })

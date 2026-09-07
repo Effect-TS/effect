@@ -16,7 +16,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts string flags with aliases", () => {
       const cmd = Command.make("test", {
-        output: Flag.string("output").pipe(
+        output: Flag.String("output").pipe(
           Flag.withAlias("o"),
           Flag.withDescription("Output directory")
         )
@@ -31,7 +31,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts boolean flags", () => {
       const cmd = Command.make("test", {
-        verbose: Flag.boolean("verbose").pipe(Flag.withAlias("v"))
+        verbose: Flag.Boolean("verbose").pipe(Flag.withAlias("v"))
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.flags.length, 1)
@@ -42,8 +42,8 @@ describe("CommandDescriptor", () => {
 
     it("extracts integer and float flags", () => {
       const cmd = Command.make("test", {
-        port: Flag.integer("port"),
-        ratio: Flag.float("ratio")
+        port: Flag.Int("port"),
+        ratio: Flag.Finite("ratio")
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.flags.length, 2)
@@ -110,7 +110,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts optional flags", () => {
       const cmd = Command.make("test", {
-        name: Flag.string("name").pipe(Flag.optional)
+        name: Flag.String("name").pipe(Flag.optional)
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.flags.length, 1)
@@ -120,8 +120,8 @@ describe("CommandDescriptor", () => {
 
     it("extracts positional arguments with types", () => {
       const cmd = Command.make("test", {
-        name: Argument.string("name"),
-        count: Argument.integer("count")
+        name: Argument.String("name"),
+        count: Argument.Int("count")
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.arguments.length, 2)
@@ -135,7 +135,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts variadic arguments", () => {
       const cmd = Command.make("test", {
-        files: Argument.string("files").pipe(Argument.variadic({ min: 1 }))
+        files: Argument.String("files").pipe(Argument.variadic({ min: 1 }))
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.arguments.length, 1)
@@ -146,7 +146,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts optional arguments", () => {
       const cmd = Command.make("test", {
-        email: Argument.string("email").pipe(Argument.optional)
+        email: Argument.String("email").pipe(Argument.optional)
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.arguments.length, 1)
@@ -174,10 +174,10 @@ describe("CommandDescriptor", () => {
 
     it("extracts descriptions from flags and arguments", () => {
       const cmd = Command.make("test", {
-        port: Flag.integer("port").pipe(
+        port: Flag.Int("port").pipe(
           Flag.withDescription("Port number")
         ),
-        host: Argument.string("host").pipe(
+        host: Argument.String("host").pipe(
           Argument.withDescription("Hostname")
         )
       })
@@ -197,7 +197,7 @@ describe("CommandDescriptor", () => {
 
     it("handles deeply nested command trees", () => {
       const level3 = Command.make("level3", {
-        flag: Flag.boolean("deep")
+        flag: Flag.Boolean("deep")
       })
       const level2 = Command.make("level2").pipe(
         Command.withSubcommands([level3])
