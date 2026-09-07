@@ -305,12 +305,11 @@ const resolveMimeType = (path: Path.Path, filePath: string, mimeTypes: Record<st
   return mimeTypes[extension.slice(1)] ?? "application/octet-stream"
 }
 
-const parseInteger = (value: string): number | undefined => {
+const parseInteger = (value: string): bigint | undefined => {
   if (!/^\d+$/.test(value)) {
     return undefined
   }
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) ? parsed : undefined
+  return BigInt(value)
 }
 
 const parseRange = (
@@ -338,16 +337,17 @@ const parseRange = (
   if (startPart === "" && endPart === "") {
     return undefined
   }
+  const size = BigInt(fileSize)
   if (startPart === "") {
     const suffixLength = parseInteger(endPart)
     if (suffixLength === undefined) {
       return undefined
     }
-    if (suffixLength === 0 || fileSize === 0) {
+    if (suffixLength === BigInt(0) || fileSize === 0) {
       return "unsatisfiable"
     }
     return {
-      start: Math.max(fileSize - suffixLength, 0),
+      start: suffixLength >= size ? 0 : Number(size - suffixLength),
       end: fileSize - 1
     }
   }
@@ -356,11 +356,11 @@ const parseRange = (
     return undefined
   }
   if (endPart === "") {
-    if (start >= fileSize) {
+    if (start >= size) {
       return "unsatisfiable"
     }
     return {
-      start,
+      start: Number(start),
       end: fileSize - 1
     }
   }
@@ -368,12 +368,12 @@ const parseRange = (
   if (end === undefined) {
     return undefined
   }
-  if (start > end || start >= fileSize) {
+  if (start > end || start >= size) {
     return "unsatisfiable"
   }
   return {
-    start,
-    end: Math.min(end, fileSize - 1)
+    start: Number(start),
+    end: end >= size ? fileSize - 1 : Number(end)
   }
 }
 
