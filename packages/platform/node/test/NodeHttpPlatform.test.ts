@@ -2,9 +2,14 @@ import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import { assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Etag from "effect/unstable/http/Etag"
 import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
+import * as Fs from "node:fs"
 import { Readable } from "node:stream"
+import { afterEach, beforeEach, vi } from "vitest"
+import { fileSystemLayer, testFileResponsePrecision } from "../../node-shared/test/HttpPlatform.test-utils.ts"
 
 const readStream = (stream: Readable) =>
   Effect.promise(async () => {
@@ -15,7 +20,7 @@ const readStream = (stream: Readable) =>
     return text
   })
 
-describe("NodeHttpPlatform", () => {
+describe("NodeHttpPlatform", { concurrent: false }, () => {
   it.effect("fileResponse reads exact bytesToRead", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
@@ -84,4 +89,42 @@ describe("NodeHttpPlatform", () => {
 
       assert.strictEqual(response.headers["content-type"], "text/html")
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+})
+
+vi.mock("node:fs", async (importOriginal) => {
+  const original = await importOriginal<typeof Fs>()
+  return { ...original, createReadStream: vi.fn(original.createReadStream) }
+})
+
+describe("NodeHttpPlatform precision", { concurrent: false }, () => {
+  beforeEach(() => {
+    vi.mocked(Fs.createReadStream).mockImplementation(() => Readable.from([]) as Fs.ReadStream)
+  })
+  afterEach(() => {
+    vi.mocked(Fs.createReadStream).mockReset()
+  })
+
+  const layer = Layer.effect(HttpPlatform.HttpPlatform)(NodeHttpPlatform.make).pipe(
+    Layer.provide(fileSystemLayer),
+    Layer.provide(Etag.layer)
+  )
+
+  testFileResponsePrecision(
+    layer,
+    () => assert.deepStrictEqual(vi.mocked(Fs.createReadStream).mock.calls, []),
+    (start, end) =>
+      assert.deepStrictEqual(vi.mocked(Fs.createReadStream).mock.calls, [["precision.bin", { start, end: end - 1 }]])
+  )
+
+  it.effect("serves a whole oversized file with an exact content length and no end offset", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("precision.bin")
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["content-length"], "9007199254740993")
+      assert.deepStrictEqual(vi.mocked(Fs.createReadStream).mock.calls, [["precision.bin", {
+        start: 0,
+        end: undefined
+      }]])
+    }).pipe(Effect.provide(layer)))
 })
