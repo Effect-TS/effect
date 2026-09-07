@@ -60,10 +60,10 @@
   note: "Operation option interfaces are inline in the v4 FileSystem service."
 "@effect/platform/FileSystem#Size":
   replacement: "ByteSize.ByteSize"
-  note: "Logical file sizes use the exact non-negative ByteSize value; construct values with ByteSize.bytes or a unit constructor such as ByteSize.mebibytes. Native truncation lengths, in-memory buffer sizes, and read or write counts use number, while File.seek accepts and returns signed bigint positions without adding a typed failure."
+  note: "Use ByteSize.bytes or unit constructors for file sizes. Truncation lengths, buffer sizes, and read/write counts use number. File.seek uses signed bigint positions and remains infallible."
 "@effect/platform/FileSystem#SizeInput":
   replacement: "ByteSize.Input"
-  note: "Logical file-size and path-backed range parameters accept ByteSize inputs and normalize them at the API boundary; native truncation lengths, Web File ranges, and in-memory buffer sizes use number."
+  note: "File-size and path-backed range inputs use ByteSize.Input. Truncation lengths, Web File ranges, and buffer sizes use number."
 "@effect/platform/FileSystem#StreamOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"stream\"]>[1]>"
   note: "Stream options are inline; bufferSize was removed, bytesToRead and offset accept ByteSize inputs, and chunkSize uses number."

@@ -854,8 +854,7 @@ export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
   /**
-   * Moves the cursor relative to the start or current position and returns the
-   * signed position. Native reads and writes retain their platform error behavior.
+   * Moves the cursor from the start or current position and returns its signed byte offset.
    */
   readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint>
   readonly sync: Effect.Effect<void, PlatformError>
