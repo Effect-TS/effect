@@ -777,6 +777,22 @@ export const batched = dual<
  * )
  * ```
  *
+ * **Example** (Logging with console.error, when the environment has TTY)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Logger } from "effect"
+ *
+ * const prettyLoggerLayer = Layer.merge(
+ *   Logger.layer([Logger.consolePretty()]),
+ *   Layer.succeed(Logger.LogToStderr, true)
+ * )
+ *
+ * Effect.log('hello').pipe(
+ *   Effect.provide(prettyLoggerLayer),
+ *   Effect.runSync
+ * )
+ * ```
+ *
  * @category constructors
  * @see {@link consolePrettyBrowser} for browser-specific implementation
  * @see {@link consolePrettyTty} for the TTY-mode implementation
@@ -785,7 +801,6 @@ export const batched = dual<
 export const consolePretty: (
   options?: {
     readonly colors?: "auto" | boolean | undefined
-    readonly stderr?: boolean | undefined
     readonly formatDate?: ((date: Date) => string) | undefined
     readonly mode?: "browser" | "tty" | "auto" | undefined
   }
@@ -848,6 +863,22 @@ export const consolePrettyBrowser: (
  *   Effect.withLogSpan('label'),
  *   Effect.annotateLogs('key', 'value'),
  *   Effect.provide(prettyLogger),
+ *   Effect.runSync
+ * )
+ * ```
+ *
+ * **Example** (Logging with console.error)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Logger } from "effect"
+ *
+ * const prettyLoggerLayer = Layer.merge(
+ *   Logger.layer([Logger.consolePrettyTty()]),
+ *   Layer.succeed(Logger.LogToStderr, true)
+ * )
+ *
+ * Effect.log('hello').pipe(
+ *   Effect.provide(prettyLoggerLayer),
  *   Effect.runSync
  * )
  * ```
