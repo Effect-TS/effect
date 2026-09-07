@@ -35,10 +35,7 @@ export const InvokeResult = Schema.Union([
 ]) satisfies Schema.Codec<EntityInvokeResult>
 
 /** @internal */
-export type InvokeResult = EntityInvokeResult
-
-/** @internal */
-export const decodeInvokeResult = (value: unknown): Effect.Effect<InvokeResult> =>
+export const decodeInvokeResult = (value: unknown): Effect.Effect<EntityInvokeResult> =>
   Effect.orDie(Schema.decodeUnknownEffect(InvokeResult)(value))
 
 const EnvelopePeek = Schema.Struct({ tag: Schema.optional(Schema.String) })
