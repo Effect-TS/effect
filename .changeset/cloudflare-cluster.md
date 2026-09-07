@@ -14,3 +14,7 @@ same-Worker namespace bindings. The `Entity`, `Workflow`, `Activity`,
 `DurableClock`, `DurableQueue`, `Singleton`, and `ClusterCron` user APIs are
 unchanged on this path; every `DurableClock` is durable through the object's
 alarm.
+
+Queue handlers receive one-based attempt metadata. Retried items wait for the
+configured retry delay while leased, before handler delivery. Global queue
+cleanup is explicitly unsupported; completed rows remain retained for deduplication.
