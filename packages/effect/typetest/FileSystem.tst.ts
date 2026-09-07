@@ -1,4 +1,4 @@
-import type { ByteSize, Effect, FileSystem, PlatformError } from "effect"
+import type { ByteSize, Effect, FileSystem } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("FileSystem", () => {
@@ -10,8 +10,7 @@ describe("FileSystem", () => {
     >()
     expect<Parameters<FileSystem.File["truncate"]>[0]>().type.toBe<number | undefined>()
     expect<Parameters<FileSystem.File["seek"]>[0]>().type.toBe<bigint>()
-    expect<Effect.Success<ReturnType<FileSystem.File["seek"]>>>().type.toBe<ByteSize.ByteSize>()
-    expect<Effect.Error<ReturnType<FileSystem.File["seek"]>>>().type.toBe<PlatformError.PlatformError>()
+    expect<ReturnType<FileSystem.File["seek"]>>().type.toBe<Effect.Effect<bigint>>()
     expect<Effect.Success<ReturnType<FileSystem.File["read"]>>>().type.toBe<number>()
     expect<Effect.Success<ReturnType<FileSystem.File["write"]>>>().type.toBe<number>()
   })

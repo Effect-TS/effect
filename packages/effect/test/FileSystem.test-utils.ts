@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array, ByteSize, Result } from "effect"
+import { Array, ByteSize, Cause, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
@@ -278,6 +278,39 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it("should retain signed cursor positions before the start of the file", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        assert.strictEqual(yield* file.seek(BigInt(-1), "start"), BigInt(-1))
+        assert.strictEqual(yield* file.seek(BigInt(-2), "current"), BigInt(-3))
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(-3))
+        assert.strictEqual(yield* file.seek(BigInt(3), "current"), BigInt(0))
+
+        const buffer = new Uint8Array(5)
+        assert.strictEqual(yield* file.read(buffer), 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
+      }).pipe(Effect.scoped)
+    })))
+
+  it("should report invalid read allocations as defects", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        const exit = yield* Effect.exit(file.readAlloc(-1))
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.isTrue(Cause.hasDies(exit.cause))
+          assert.isFalse(Cause.hasFails(exit.cause))
+        }
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(0))
+      }).pipe(Effect.scoped)
+    })))
+
   it("should read sequentially without an intervening seek", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -407,7 +440,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* file.truncate(11)
 
         const cursor = yield* file.seek(BigInt(0), "current")
-        assert.strictEqual(ByteSize.toBigInt(cursor), BigInt(6))
+        assert.strictEqual(cursor, BigInt(6))
       }).pipe(
         Effect.scoped
       )
@@ -425,7 +458,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* file.truncate(11)
 
         const cursor = yield* file.seek(BigInt(0), "current")
-        assert.strictEqual(ByteSize.toBigInt(cursor), BigInt(11))
+        assert.strictEqual(cursor, BigInt(11))
       }).pipe(
         Effect.scoped
       )

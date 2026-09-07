@@ -201,6 +201,16 @@ describe("Stream", () => {
       assert.strictEqual(stream.listenerCount("error"), 1)
     }))
 
+  it.effect("collects strings and array buffers with an Infinity maxBytes limit", () =>
+    Effect.gen(function*() {
+      const chunks = [Buffer.from("hello "), Buffer.from("world")]
+      const text = yield* NodeStream.toString(() => Readable.from(chunks), { maxBytes: Infinity })
+      const buffer = yield* NodeStream.toArrayBuffer(() => Readable.from(chunks), { maxBytes: Infinity })
+
+      assert.strictEqual(text, "hello world")
+      assert.deepStrictEqual(new Uint8Array(buffer), new TextEncoder().encode("hello world"))
+    }))
+
   it.effect("toString enforces a zero maxBytes limit", () =>
     Effect.gen(function*() {
       let emitted = false
