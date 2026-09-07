@@ -276,14 +276,17 @@ const makeFile = (() => {
     }
 
     seek(offset: bigint, from: FileSystem.SeekMode) {
-      return Effect.sync(() => {
-        if (from === "start") {
-          this.position = offset
-        } else if (from === "current") {
-          this.position = this.position + offset
+      return Effect.suspend(() => {
+        const position = from === "start" ? offset : this.position + offset
+        if (position < BigInt(0)) {
+          return Effect.fail(Error.badArgument({
+            module: "FileSystem",
+            method: "seek",
+            description: "Cannot seek before the start of the file"
+          }))
         }
-
-        return this.position
+        this.position = position
+        return Effect.succeed(position)
       })
     }
 

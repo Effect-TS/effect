@@ -305,22 +305,42 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
-  it("should retain signed cursor positions before the start of the file", () =>
-    runPromise(Effect.gen(function*() {
-      const fs = yield* Fs.FileSystem
+  it.each([
+    { offset: BigInt(-1), from: "start" as const },
+    { offset: BigInt(-3), from: "start" as const },
+    { offset: BigInt(-6), from: "current" as const },
+    { offset: BigInt(-8), from: "current" as const }
+  ])(
+    "should reject seeks before the start of the file ($offset from $from)",
+    ({ from, offset }) =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
 
-      yield* Effect.gen(function*() {
-        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
-        assert.strictEqual(yield* file.seek(BigInt(-1), "start"), BigInt(-1))
-        assert.strictEqual(yield* file.seek(BigInt(-2), "current"), BigInt(-3))
-        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(-3))
-        assert.strictEqual(yield* file.seek(BigInt(3), "current"), BigInt(0))
+        yield* Effect.gen(function*() {
+          const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+          const buffer = new Uint8Array(5)
+          assert.strictEqual(yield* file.read(buffer), 5)
+          assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
 
-        const buffer = new Uint8Array(5)
-        assert.strictEqual(yield* file.read(buffer), 5)
-        assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
-      }).pipe(Effect.scoped)
-    })))
+          const result = yield* Effect.result(file.seek(offset, from))
+          expect(result).toMatchObject({
+            _tag: "Failure",
+            failure: {
+              _tag: "PlatformError",
+              reason: { _tag: "BadArgument", module: "FileSystem", method: "seek" }
+            }
+          })
+          assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(5))
+          assert.strictEqual(yield* file.read(buffer), 5)
+          assert.strictEqual(new TextDecoder().decode(buffer), " ipsu")
+          assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(10))
+
+          assert.strictEqual(yield* file.seek(BigInt(-10), "current"), BigInt(0))
+          assert.strictEqual(yield* file.read(buffer), 5)
+          assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
+        }).pipe(Effect.scoped)
+      }))
+  )
 
   it("should report invalid read allocations as defects", () =>
     runPromise(Effect.gen(function*() {
