@@ -94,7 +94,7 @@ export const make: (impl: {
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
-      const start = Number(ByteSize.fromInputUnsafe(options?.offset ?? ByteSize.zero))
+      const start = options?.offset === undefined ? 0 : Number(ByteSize.fromInputUnsafe(options.offset))
       const end = options?.bytesToRead !== undefined
         ? start + Number(ByteSize.fromInputUnsafe(options.bytesToRead))
         : undefined

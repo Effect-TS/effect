@@ -220,9 +220,7 @@ export const toString = <E = Cause.UnknownError>(
     readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<string, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined
-    ? options.maxBytes === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(options.maxBytes))
-    : undefined
+  const maxBytesNumber = toMaxBytes(options?.maxBytes)
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -274,9 +272,7 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined
-    ? options.maxBytes === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(options.maxBytes))
-    : undefined
+  const maxBytesNumber = toMaxBytes(options?.maxBytes)
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable
@@ -451,3 +447,6 @@ class StreamAdapter<E, R> extends Readable {
 }
 
 const defaultOnError = (error: unknown): Cause.UnknownError => new Cause.UnknownError(error)
+
+const toMaxBytes = (maxBytes: ByteSize.Input | undefined): number | undefined =>
+  maxBytes === undefined || maxBytes === Infinity ? undefined : Number(ByteSize.fromInputUnsafe(maxBytes))

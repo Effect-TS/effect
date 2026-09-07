@@ -9,7 +9,6 @@
  *
  * @since 4.0.0
  */
-import * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import * as Layer from "../../Layer.ts"
@@ -133,9 +132,6 @@ export const make: (options: {
         if (conditionalResponse !== undefined) {
           return conditionalResponse
         }
-        if (rangeHeader === undefined) {
-          return fullResponse
-        }
       }
 
       if (rangeHeader === undefined) {
@@ -163,8 +159,8 @@ export const make: (options: {
           request,
           platform.fileResponse(filePath, {
             status: 206,
-            offset: ByteSize.bytes(parsedRange.start),
-            bytesToRead: ByteSize.bytes(parsedRange.end - parsedRange.start + 1)
+            offset: parsedRange.start,
+            bytesToRead: parsedRange.end - parsedRange.start + 1
           })
         ),
         filePath

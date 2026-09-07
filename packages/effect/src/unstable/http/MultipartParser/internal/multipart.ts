@@ -42,6 +42,9 @@ function parseBoundary(headers: Record<string, string>) {
 
 function noopOnChunk(_chunk: Uint8Array | null) {}
 
+const toLimit = (input: ByteSize.Input): number =>
+  input === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(input))
+
 export function make({
   headers,
   onFile: onPart,
@@ -54,9 +57,9 @@ export function make({
   maxPartSize: maxPartSizeInput = Infinity,
   maxFieldSize: maxFieldSizeInput = 1024 * 1024
 }: Config) {
-  const maxTotalSize = maxTotalSizeInput === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(maxTotalSizeInput))
-  const maxPartSize = maxPartSizeInput === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(maxPartSizeInput))
-  const maxFieldSize = maxFieldSizeInput === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(maxFieldSizeInput))
+  const maxTotalSize = toLimit(maxTotalSizeInput)
+  const maxPartSize = toLimit(maxPartSizeInput)
+  const maxFieldSize = toLimit(maxFieldSizeInput)
   const boundary = parseBoundary(headers)
   if (boundary === undefined) {
     onError({ _tag: "InvalidBoundary" })

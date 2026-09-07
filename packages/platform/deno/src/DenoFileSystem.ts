@@ -259,10 +259,10 @@ class FileImpl implements FileSystem.File {
   }
 
   truncate(length?: number) {
-    const size = BigInt(length ?? 0)
     return Effect.map(
-      tryPromise("truncate", undefined, () => this.file.truncate(Number(size))),
+      tryPromise("truncate", undefined, () => this.file.truncate(length)),
       () => {
+        const size = BigInt(length ?? 0)
         if (!this.append && this.position > size) {
           this.position = size
         }

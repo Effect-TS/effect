@@ -527,8 +527,8 @@ export const make = (
         ? undefined
         : ByteSize.fromInputUnsafe(options.bytesToRead)
       let totalBytesRead = BigInt(0)
-      const chunkSize = BigInt(options?.chunkSize ?? 64 * 1024)
-      const readChunk = file.readAlloc(Number(chunkSize))
+      const chunkSize = options?.chunkSize ?? 64 * 1024
+      const readChunk = file.readAlloc(chunkSize)
       return Stream.fromPull(Effect.succeed(
         Effect.flatMap(
           Effect.suspend((): Pull.Pull<Option.Option<Uint8Array>, PlatformError> => {
