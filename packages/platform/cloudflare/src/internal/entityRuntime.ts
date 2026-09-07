@@ -25,6 +25,7 @@ import * as Reply from "effect/unstable/cluster/Reply"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import type { EntityDeliveryOptions, EntityInvokeResult } from "../CloudflareDurableObjectPrograms.ts"
 import { encodeName } from "./clusterName.ts"
 import type { EntityKeepAlive } from "./entityKeepAlive.ts"
 import {
@@ -43,7 +44,7 @@ import {
 import { type EntityRegistration, getEntityRegistration } from "./entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry, type EntityReplyRegistry, makeReplyRegistry } from "./entityReply.ts"
 import { armAlarm, earliestDeliverAt, withTransaction } from "./entityStorage.ts"
-import { decodeReplyFor, decodeRequest, encodeReplyFor, type InvokeResult, peekEnvelopeTag } from "./entityWire.ts"
+import { decodeReplyFor, decodeRequest, encodeReplyFor, peekEnvelopeTag } from "./entityWire.ts"
 
 interface CachedHandlers {
   readonly handlers: Record<string, (request: any) => any>
@@ -229,7 +230,7 @@ interface Session {
 
 interface WorkerWaiter {
   readonly clientRequestId: string
-  readonly deferred: Deferred.Deferred<InvokeResult>
+  readonly deferred: Deferred.Deferred<EntityInvokeResult>
 }
 
 interface ReplayFiber {
@@ -240,13 +241,6 @@ interface ReplayFiber {
 interface RunOptions {
   readonly scheduled?: boolean
   readonly replyTos?: ReadonlyArray<string> | undefined
-}
-
-/** @internal */
-export interface DeliveryOptions {
-  readonly deliverAt?: number | undefined
-  readonly primaryKey?: string | null | undefined
-  readonly replyTo?: string | undefined
 }
 
 /** @internal */
@@ -268,8 +262,8 @@ export interface EntityManager {
   readonly invoke: (
     envelopeText: string,
     discard: boolean,
-    delivery?: DeliveryOptions | undefined
-  ) => Effect.Effect<InvokeResult>
+    delivery?: EntityDeliveryOptions | undefined
+  ) => Effect.Effect<EntityInvokeResult>
   readonly acknowledge: (requestId: string, replyId: string) => Effect.Effect<ReadonlyArray<string>>
   readonly interrupt: (storageRequestId: string, clientRequestId?: string) => Effect.Effect<void>
   readonly reset: (requestId: string) => Effect.Effect<void>
@@ -277,7 +271,7 @@ export interface EntityManager {
   readonly deliverReply: (requestId: string, reply: string) => Effect.Effect<boolean>
 }
 
-const success = (requestId: string, replies: ReadonlyArray<string>): InvokeResult => ({
+const success = (requestId: string, replies: ReadonlyArray<string>): EntityInvokeResult => ({
   _tag: "Success",
   requestId,
   replies
@@ -647,9 +641,9 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     discard: boolean,
     replyTo: string | undefined,
     clientRequestId = requestId
-  ): Effect.Effect<InvokeResult> => {
+  ): Effect.Effect<EntityInvokeResult> => {
     if (discard || replyTo !== undefined) return Effect.succeed(success(requestId, []))
-    const deferred = Deferred.makeUnsafe<InvokeResult>()
+    const deferred = Deferred.makeUnsafe<EntityInvokeResult>()
     const waiters = workerWaiters.get(requestId) ?? []
     waiters.push({ clientRequestId, deferred })
     workerWaiters.set(requestId, waiters)
@@ -661,8 +655,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const invokeEntry = (
     envelopeText: string,
     discard: boolean,
-    delivery: DeliveryOptions | undefined
-  ): Effect.Effect<Effect.Effect<InvokeResult>> => {
+    delivery: EntityDeliveryOptions | undefined
+  ): Effect.Effect<Effect.Effect<EntityInvokeResult>> => {
     const registration = getEntityRegistration(options.address.entityType)
     if (registration === undefined) {
       return Effect.die(`No handlers registered for entity type: ${options.address.entityType}`)
@@ -681,7 +675,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const finish = (
         requestId: string,
         continuation: Effect.Effect<ReadonlyArray<string>>
-      ): Effect.Effect<InvokeResult> =>
+      ): Effect.Effect<EntityInvokeResult> =>
         Effect.andThen(Fiber.awaitAll(replayFibers), continuation).pipe(
           Effect.map((replies) => success(requestId, replies))
         )
@@ -692,7 +686,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const finishTell = (
         requestId: string,
         continuation: Effect.Effect<ReadonlyArray<string>>
-      ): Effect.Effect<Effect.Effect<InvokeResult>> =>
+      ): Effect.Effect<Effect.Effect<EntityInvokeResult>> =>
         Effect.as(
           Effect.forkDetach(Effect.catchCause(
             Effect.asVoid(continuation),
@@ -732,7 +726,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         )
       )
       if (Result.isFailure(persistedResult)) {
-        return Effect.succeed<InvokeResult>(
+        return Effect.succeed<EntityInvokeResult>(
           persistedResult.failure._tag === "MailboxFull"
             ? { _tag: "MailboxFull" }
             : { _tag: "EncodedMessageTooLarge" }
@@ -743,7 +737,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         const original = yield* loadMessage(sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
         if (original.discard && !discard) {
-          return Effect.succeed<InvokeResult>({ _tag: "AskDeduplicatedToTell" })
+          return Effect.succeed<EntityInvokeResult>({ _tag: "AskDeduplicatedToTell" })
         }
         const nextReply = yield* loadNextReply(sql, persisted.originalId)
         if (nextReply !== undefined) {
@@ -790,8 +784,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const invoke = (
     envelopeText: string,
     discard: boolean,
-    delivery?: DeliveryOptions | undefined
-  ): Effect.Effect<InvokeResult> =>
+    delivery?: EntityDeliveryOptions | undefined
+  ): Effect.Effect<EntityInvokeResult> =>
     Effect.flatten(Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)))
 
   const acknowledge = (requestId: string, replyId: string): Effect.Effect<ReadonlyArray<string>> =>

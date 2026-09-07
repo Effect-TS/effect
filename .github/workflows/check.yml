@@ -53,6 +53,8 @@ jobs:
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
           GOMEMLIMIT: 4GiB
+      - name: Typecheck Alchemy integration
+        run: pnpm exec tsc -b packages/platform/cloudflare/tsconfig.alchemy.json
       - run: deno check .
       - run: pnpm test-types --target '>=5.9'
 
