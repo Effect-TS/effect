@@ -1,6 +1,7 @@
 import * as Arr from "../../Array.ts"
 import { format, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
+import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
@@ -10,6 +11,14 @@ type Path = ReadonlyArray<string | number>
 type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
   SchemaRepresentation.Representation
 >
+
+function hasFiniteNumberCheck(checks: ReadonlyArray<SchemaRepresentation.Check>): boolean {
+  return checks.some((check) =>
+    check._tag === "Filter"
+      ? check.representation?.id === "effect/schema/isFinite" || check.representation?.id === "effect/schema/isInt"
+      : hasFiniteNumberCheck(check.checks)
+  )
+}
 
 /** @internal */
 export function makeCode(runtime: string, Type: string): SchemaRepresentation.Code {
@@ -330,6 +339,10 @@ export function toCodeDocument(
     return rendered === undefined ? "" : `.${method}(${rendered})`
   }
 
+  function defaultFiniteAnnotations(): string {
+    return runtimeAnnotate(SchemaAST.isFinite().annotations)
+  }
+
   function compileCheck(
     check: SchemaRepresentation.Check,
     path: Path
@@ -365,6 +378,18 @@ export function toCodeDocument(
     for (let index = 0; index < representation.checks.length; index++) {
       const check = representation.checks[index]
       const brands = checkBrands(check)
+      // `Schema.Finite` already carries this check, so an unannotated or
+      // default-annotated `isFinite` filter adds nothing to the rendered code.
+      if (
+        base.runtime === "Schema.Finite" &&
+        check._tag === "Filter" &&
+        check.representation?.id === "effect/schema/isFinite" &&
+        !check.aborted &&
+        brands.length === 0
+      ) {
+        const rendered = runtimeAnnotate(check.annotations)
+        if (rendered === "" || rendered === defaultFiniteAnnotations()) continue
+      }
       runtime += `.check(${compileCheck(check, [...path, "checks", index])})${runtimeBrands(brands)}`
       if (includeTypeBrands) Type += typeBrands(brands)
     }
@@ -434,7 +459,7 @@ export function toCodeDocument(
       case "String":
         return makeCode("Schema.String", "string")
       case "Number":
-        return makeCode("Schema.Number", "number")
+        return makeCode(hasFiniteNumberCheck(representation.checks) ? "Schema.Finite" : "Schema.Number", "number")
       case "Boolean":
         return makeCode("Schema.Boolean", "boolean")
       case "BigInt":

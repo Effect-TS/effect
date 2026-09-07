@@ -452,6 +452,42 @@ describe("toCodeDocument", () => {
         }
       )
     })
+
+    it("Number & unannotated isFinite", () => {
+      assertSchema(
+        { schema: Schema.Number.check(Schema.isFinite({ expected: undefined })) },
+        {
+          codes: makeCode("Schema.Finite", "number")
+        }
+      )
+    })
+
+    it("Number & default isFinite", () => {
+      assertSchema(
+        { schema: Schema.Number.check(Schema.isFinite()) },
+        {
+          codes: makeCode("Schema.Finite", "number")
+        }
+      )
+    })
+
+    it("Number & annotated isFinite", () => {
+      assertSchema(
+        { schema: Schema.Number.check(Schema.isFinite({ expected: undefined, description: "finite" })) },
+        {
+          codes: makeCode(`Schema.Finite.check(Schema.isFinite().annotate({ "description": "finite" }))`, "number")
+        }
+      )
+    })
+
+    it("Number & isInt", () => {
+      assertSchema(
+        { schema: Schema.Number.check(Schema.isInt({ expected: undefined })) },
+        {
+          codes: makeCode("Schema.Finite.check(Schema.isInt())", "number")
+        }
+      )
+    })
   })
 
   it("Boolean", () => {
@@ -1850,7 +1886,7 @@ describe("toCodeDocument", () => {
             {
               $ref: "A",
               code: makeCode(
-                `Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String }).annotate({ "identifier": "A" })`,
+                `Schema.Struct({ "b": Schema.Finite, "a": Schema.String }).annotate({ "identifier": "A" })`,
                 `{ readonly "b": number, readonly "a": string }`
               )
             }

@@ -149,7 +149,7 @@ ${clientErrorSource(name)}`
       args.push(`options: { ${options.join("; ")} } | undefined`)
     }
 
-    const successTypes = new Set(Array.from(responses.successSchemas.values(), (schema) => `typeof ${schema}.Type`))
+    const successTypes = new Set(responses.successSchemas.values())
     if (responses.binarySuccessStatuses.size > 0) {
       successTypes.add("Uint8Array")
     }
@@ -161,7 +161,7 @@ ${clientErrorSource(name)}`
     if (responses.errorSchemas.size > 0) {
       Utils.spreadElementsInto(
         Array.from(responses.errorSchemas.values()).map(
-          (schema) => `${name}Error<"${schema}", typeof ${schema}.Type>`
+          (schema) => `${name}Error<"${schema}", ${schema}>`
         ),
         errors
       )
@@ -206,8 +206,8 @@ ${clientErrorSource(name)}`
     const methodKey = `readonly "${operation.id}Sse"`
     const parameters = args.join(", ")
     const value = responses.sseSchemaMode === "event"
-      ? `typeof ${responses.sseSchema}.Type`
-      : `{ readonly event: string; readonly id: string | undefined; readonly data: typeof ${responses.sseSchema}.Type }`
+      ? responses.sseSchema
+      : `{ readonly event: string; readonly id: string | undefined; readonly data: ${responses.sseSchema} }`
     const returnType =
       `Stream.Stream<${value}, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ${responses.sseSchema}.DecodingServices>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
