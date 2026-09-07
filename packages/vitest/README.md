@@ -36,6 +36,10 @@ Vitest 5 clears mock call history before each test by default and requires async
 
 The Effect helpers retain their existing calling convention: `it.effect(name, effect, options)`, `it.live(name, effect, options)`, shared layers, and property tests.
 
+Both `layer` and `it.layer` accept `{ concurrent: false }` to serialize a named shared-layer suite, or `{ concurrent: true }` to run its tests concurrently. Omitting the option inherits suite concurrency; nested named layers can override it. Anonymous layers always inherit the enclosing suite's concurrency, regardless of the option.
+
+In concurrent tests, use the callback's `ctx.expect` so snapshots and assertion counts belong to the right test.
+
 ## Documentation
 
 - [Effect website](https://effect.website)

@@ -5,6 +5,8 @@
 
 Require Vitest `>=5.0.0 <6.0.0` and Node.js `^22.12.0 || ^24.0.0 || >=26.0.0`.
 
+Add a `concurrent` option to named `layer` and `it.layer` suites. Omitted options and anonymous layers preserve inherited concurrency.
+
 ### Breaking changes
 
 - Replace `.sequential` and `{ sequential: true }` with `{ concurrent: false }`.
