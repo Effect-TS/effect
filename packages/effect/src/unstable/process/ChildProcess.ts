@@ -249,6 +249,8 @@ export interface KillOptions {
    * before forcefully killing the child process by sending it the `"SIGKILL"`
    * signal. Defaults to `undefined`, so `"SIGKILL"` is never sent.
    *
+   * **Details**
+   *
    * The spawner decides whether to terminate descendants and how long to wait.
    * See its platform module documentation, such as `NodeChildProcessSpawner`.
    */
