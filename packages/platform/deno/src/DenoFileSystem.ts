@@ -247,15 +247,31 @@ class FileImpl implements FileSystem.File {
   }
 
   readAlloc(size: number) {
-    return Effect.suspend(() => {
-      const buffer = new Uint8Array(size)
-      return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
-        if (bytesRead === 0) {
-          return Option.none()
-        }
-        return Option.some(bytesRead === size ? buffer : buffer.subarray(0, bytesRead))
-      })
-    })
+    return Effect.flatMap(
+      Effect.try({
+        try: () => {
+          if (!Number.isInteger(size) || size < 0) {
+            throw new RangeError("size must be a non-negative integer")
+          }
+          return new Uint8Array(size)
+        },
+        catch: (cause) =>
+          PlatformError.badArgument({
+            module: "FileSystem",
+            method: "readAlloc",
+            description: `Could not allocate a buffer of size ${size}`,
+            cause
+          })
+      }),
+      (buffer) => {
+        return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
+          if (bytesRead === 0) {
+            return Option.none()
+          }
+          return Option.some(bytesRead === size ? buffer : buffer.subarray(0, bytesRead))
+        })
+      }
+    )
   }
 
   truncate(length?: number) {

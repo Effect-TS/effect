@@ -301,27 +301,37 @@ const makeFile = (() => {
     }
 
     readAlloc(size: number) {
-      return Effect.suspend(() => {
-        const buffer = Buffer.allocUnsafeSlow(size)
-        const position = this.position
-        return Effect.map(
-          nodeReadAlloc(this.fd, { buffer, position }),
-          (bytesRead): Option.Option<Buffer> => {
-            if (bytesRead === 0) {
-              return Option.none()
+      return Effect.flatMap(
+        Effect.try({
+          try: () => {
+            if (!Number.isInteger(size) || size < 0) {
+              throw new RangeError("size must be a non-negative integer")
             }
+            return Buffer.allocUnsafeSlow(size)
+          },
+          catch: handleBadArgument("readAlloc")
+        }),
+        (buffer) => {
+          const position = this.position
+          return Effect.map(
+            nodeReadAlloc(this.fd, { buffer, position }),
+            (bytesRead): Option.Option<Buffer> => {
+              if (bytesRead === 0) {
+                return Option.none()
+              }
 
-            this.position = position + BigInt(bytesRead)
-            if (bytesRead === size) {
-              return Option.some(buffer)
+              this.position = position + BigInt(bytesRead)
+              if (bytesRead === size) {
+                return Option.some(buffer)
+              }
+
+              const dst = Buffer.allocUnsafeSlow(bytesRead)
+              buffer.copy(dst, 0, 0, bytesRead)
+              return Option.some(dst)
             }
-
-            const dst = Buffer.allocUnsafeSlow(bytesRead)
-            buffer.copy(dst, 0, 0, bytesRead)
-            return Option.some(dst)
-          }
-        )
-      })
+          )
+        }
+      )
     }
 
     truncate(length?: number) {
