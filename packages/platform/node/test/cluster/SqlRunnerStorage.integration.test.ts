@@ -18,15 +18,20 @@ import { PgContainer } from "../fixtures/pg-utils.ts"
 
 const StorageLayer = SqlRunnerStorage.layer
 
+// Allow for CI latency in healthy PostgreSQL queries.
+const lockOperationInterval = 1000
+const partitionConfig = {
+  // Keep expiration / 3 above the operation deadline.
+  shardLockExpiration: lockOperationInterval * 10,
+  shardLockRefreshInterval: lockOperationInterval
+}
+
 describe("SqlRunnerStorage", () => {
   it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
     const partitioned = makePartitionState()
     const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
-      Layer.provide(ShardingConfig.layer({
-        shardLockExpiration: 1000,
-        shardLockRefreshInterval: 100
-      }))
+      Layer.provide(ShardingConfig.layer(partitionConfig))
     )
 
     return Effect.gen(function*() {
@@ -50,7 +55,7 @@ describe("SqlRunnerStorage", () => {
         assert(Exit.isFailure(exit))
         const error = Cause.squash(exit.cause)
         assert(error instanceof ClusterError.PersistenceError)
-        assert.isBelow(Duration.toMillis(elapsed), 1000)
+        assert.isBelow(Duration.toMillis(elapsed), lockOperationInterval * 5)
         yield* Effect.sleep(20)
       })
 
@@ -84,7 +89,7 @@ describe("SqlRunnerStorage", () => {
       assert.strictEqual(partitioned.activeQueries, 0)
     }).pipe(
       Effect.timeoutOrElse({
-        duration: 15_000,
+        duration: 30_000,
         orElse: () =>
           Effect.die(
             `timed out exercising shard lock rebuilds (${partitionDiagnostics(partitioned)})`
@@ -103,10 +108,7 @@ describe("SqlRunnerStorage", () => {
     const partitioned = makePartitionState()
     const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
-      Layer.provide(ShardingConfig.layer({
-        shardLockExpiration: 1000,
-        shardLockRefreshInterval: 100
-      }))
+      Layer.provide(ShardingConfig.layer(partitionConfig))
     )
 
     return Effect.gen(function*() {
@@ -151,8 +153,7 @@ describe("SqlRunnerStorage", () => {
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
         shardLockDisableAdvisory: true,
-        shardLockExpiration: 1000,
-        shardLockRefreshInterval: 100
+        ...partitionConfig
       }))
     )
 
@@ -174,8 +175,6 @@ describe("SqlRunnerStorage", () => {
       restoreConnection(partitioned)
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          // The integration shard can delay a healthy replacement beyond a
-          // handful of 100 ms lock-operation deadlines under load.
           Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
@@ -194,10 +193,7 @@ describe("SqlRunnerStorage", () => {
     const partitioned = makePartitionState()
     const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
-      Layer.provide(ShardingConfig.layer({
-        shardLockExpiration: 1000,
-        shardLockRefreshInterval: 100
-      }))
+      Layer.provide(ShardingConfig.layer(partitionConfig))
     )
 
     return Effect.gen(function*() {
@@ -246,8 +242,7 @@ describe("SqlRunnerStorage", () => {
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
         shardLockDisableAdvisory: true,
-        shardLockExpiration: 1000,
-        shardLockRefreshInterval: 100
+        ...partitionConfig
       }))
     )
 
@@ -268,7 +263,7 @@ describe("SqlRunnerStorage", () => {
       partitionConnection(partitioned)
       partitioned.blockRelease = true
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      yield* Effect.sleep(150)
+      yield* Effect.sleep(lockOperationInterval * 1.5)
 
       // the stalled release must not disable further rebuilds
       restoreConnection(partitioned)
@@ -278,8 +273,6 @@ describe("SqlRunnerStorage", () => {
 
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          // The integration shard can delay a healthy replacement beyond a
-          // handful of 100 ms lock-operation deadlines under load.
           Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
@@ -342,7 +335,9 @@ describe("SqlRunnerStorage", () => {
       ]
     ] as const
   ).forEach(([label, layer]) => {
+    // Both tests update the same runner rows.
     it.layer(layer, {
+      concurrent: false,
       timeout: 60000
     })(label, (it) => {
       it.effect("getRunners", () =>
@@ -364,7 +359,7 @@ describe("SqlRunnerStorage", () => {
 
           yield* storage.unregister(runnerAddress1)
           expect(yield* storage.getRunners).toEqual([])
-        }), 30_000)
+        }), { timeout: 30_000 })
 
       it.effect("acquireShards", () =>
         Effect.gen(function*() {

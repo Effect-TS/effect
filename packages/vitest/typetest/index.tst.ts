@@ -9,6 +9,7 @@ class Bar extends Context.Service<Bar, "bar">()("Bar") {}
 describe("layer", () => {
   test("top-level export accepts full options", () => {
     expect(layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"), {
+      concurrent: false,
       timeout: "5 seconds",
       excludeTestServices: true,
       memoMap: undefined as any
@@ -21,6 +22,7 @@ describe("layer", () => {
 
   test("it.layer accepts full options", () => {
     expect(it.layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"), {
+      concurrent: false,
       timeout: "5 seconds",
       excludeTestServices: true,
       memoMap: undefined as any
@@ -31,11 +33,28 @@ describe("layer", () => {
     expect(it.layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"))
   })
 
-  test("nested it.layer accepts timeout", () => {
+  test("nested it.layer accepts concurrency and timeout", () => {
     layer(Layer.succeed(Foo, "foo"))((it) => {
       expect(it.layer).type.toBeCallableWith(Layer.succeed(Bar, "bar"), {
+        concurrent: true,
         timeout: "3 seconds"
       })
+    })
+  })
+
+  test("concurrency does not require other options", () => {
+    expect(layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"), { concurrent: true })
+    expect(it.layer).type.toBeCallableWith(Layer.succeed(Foo, "foo"), { concurrent: true })
+    layer(Layer.succeed(Foo, "foo"))((it) => {
+      expect(it.layer).type.toBeCallableWith(Layer.succeed(Bar, "bar"), { concurrent: false })
+    })
+  })
+
+  test("concurrency must be boolean", () => {
+    expect(layer).type.not.toBeCallableWith(Layer.succeed(Foo, "foo"), { concurrent: "false" })
+    expect(it.layer).type.not.toBeCallableWith(Layer.succeed(Foo, "foo"), { concurrent: "false" })
+    layer(Layer.succeed(Foo, "foo"))((it) => {
+      expect(it.layer).type.not.toBeCallableWith(Layer.succeed(Bar, "bar"), { concurrent: "false" })
     })
   })
 

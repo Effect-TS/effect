@@ -70,9 +70,6 @@ const shared: ViteUserConfig = {
     exclude,
     passWithNoTests: true,
     setupFiles: [path.join(import.meta.dirname, "vitest.setup.ts")],
-    fakeTimers: {
-      toFake: undefined
-    },
     sequence: {
       concurrent: true
     },

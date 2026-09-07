@@ -32,7 +32,7 @@ it.layer(MysqlContainer.layerClient, { timeout: "90 seconds" })("Persistence", (
       assert.strictEqual(value, payload)
     }).pipe(TestClock.withLive), { timeout: 30000 })
 
-  describe.sequential("single-table persistence", () => {
+  describe("single-table persistence", { concurrent: false }, () => {
     PersistedCacheTest.suiteWith("sql-mysql2-single", Persistence.layerSql, it)
 
     it.effect("deletes expired entries in batches", () =>

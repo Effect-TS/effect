@@ -31,12 +31,13 @@ export const suiteWith = <R>(
   testApi: Vitest.MethodsNonLive<R>,
   timeout: Duration.Input = "30 seconds"
 ) => {
+  // Tests share and advance the same TestClock.
   const testOptions = { timeout: Duration.toMillis(timeout) }
   return testApi.layer(
     PersistedQueue.layer.pipe(
       Layer.provideMerge(layer)
     ),
-    { timeout }
+    { timeout, concurrent: false }
   )(`PersistedQueue (${name})`, (it) => {
     it.effect("offer + take", () =>
       Effect.gen(function*() {

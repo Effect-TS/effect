@@ -486,7 +486,8 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
     }))
 })
 
-it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient listen", (it) => {
+// Each listener uses one of two pool connections.
+it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: false })("PgClient listen", (it) => {
   it.effect("keeps queries available while a listener reserves one connection", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
@@ -510,7 +511,7 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
         })
       )
       expect(payload.payload).toEqual("payload")
-    }).pipe(TestClock.withLive), 20_000)
+    }).pipe(TestClock.withLive), { timeout: 20_000 })
 
   it.effect("notify sends payload", () =>
     Effect.gen(function*() {
@@ -527,7 +528,7 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
         })
       )
       expect(payload.payload).toEqual("payload")
-    }).pipe(TestClock.withLive), 20_000)
+    }).pipe(TestClock.withLive), { timeout: 20_000 })
 
   it.effect("listen rejects channel names longer than 63 UTF-8 bytes", () =>
     Effect.gen(function*() {

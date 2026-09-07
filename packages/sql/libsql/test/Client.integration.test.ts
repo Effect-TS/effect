@@ -65,7 +65,8 @@ describe("Client", () => {
     )
   })
 
-  layer(LibsqlContainer.layerClient, { timeout: "30 seconds" })((it) => {
+  // Each test recreates the same tables.
+  layer(LibsqlContainer.layerClient, { timeout: "30 seconds", concurrent: false })("shared tables", (it) => {
     it.effect("should work", () =>
       Effect.gen(function*() {
         const sql = yield* LibsqlClient.LibsqlClient

@@ -134,7 +134,7 @@ class V1 extends IndexedDbVersion.make(
   Table7
 ) {}
 
-describe.sequential("IndexedDbQueryBuilder", () => {
+describe("IndexedDbQueryBuilder", { concurrent: false }, () => {
   describe("select", () => {
     it.effect("select", () => {
       class Db extends IndexedDbDatabase.make(

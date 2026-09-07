@@ -826,7 +826,8 @@ describe("node async-iterable api", () => {
   })
 })
 
-describe("random data", () => {
+// Synchronous parsing can starve the async suites.
+describe("random data", { concurrent: false }, () => {
   test("smoke test", () => {
     const boundary = "------WebKitFormBoundaryTB2MiQ36fnSJlrhY--"
     let seed = 0x9e3779b9

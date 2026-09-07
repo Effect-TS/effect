@@ -22,7 +22,8 @@ import {
 } from "../src/index.ts"
 import * as ScopedAtom from "../src/ScopedAtom.ts"
 
-describe("atom-react", () => {
+// Tests share the DOM and registry.
+describe("atom-react", { concurrent: false }, () => {
   let registry: AtomRegistry.AtomRegistry
 
   beforeEach(() => {

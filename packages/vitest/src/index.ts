@@ -116,6 +116,7 @@ export namespace Vitest {
       timeout?: Duration.Input
     ) => Effect.Effect<A, never, R2>
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
+      readonly concurrent?: boolean
       readonly timeout?: Duration.Input
     }) => {
       (f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
@@ -164,6 +165,7 @@ export namespace Vitest {
   export interface Methods<R = never> extends MethodsNonLive<R> {
     readonly live: Vitest.Tester<Scope.Scope | R>
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
+      readonly concurrent?: boolean
       readonly memoMap?: Layer.MemoMap
       readonly timeout?: Duration.Input
       readonly excludeTestServices?: boolean
@@ -195,6 +197,10 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
 /**
  * Share a `Layer` between multiple tests, optionally wrapping
  * the tests in a `describe` block if a name is provided.
+ *
+ * Named layers accept `concurrent` to override inherited suite concurrency.
+ * Anonymous layers always inherit the enclosing suite's concurrency.
+ * Use `ctx.expect` in concurrent tests for test-local snapshots and assertion counts.
  *
  * @since 4.0.0
  *
@@ -235,6 +241,7 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
 export const layer: <R, E>(
   layer_: Layer.Layer<R, E>,
   options?: {
+    readonly concurrent?: boolean
     readonly memoMap?: Layer.MemoMap
     readonly timeout?: Duration.Input
     readonly excludeTestServices?: boolean

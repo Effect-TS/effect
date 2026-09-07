@@ -221,6 +221,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
 export const layer = <R, E>(
   layer_: Layer.Layer<R, E>,
   options?: {
+    readonly concurrent?: boolean
     readonly memoMap?: Layer.MemoMap
     readonly timeout?: Duration.Input
     readonly excludeTestServices?: boolean
@@ -276,6 +277,7 @@ export const layer = <R, E>(
       prop,
       flakyTest,
       layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
+        readonly concurrent?: boolean
         readonly timeout?: Duration.Input
       }) {
         return layer(Layer.provideMerge(nestedLayer, withTestEnv), {
@@ -322,7 +324,8 @@ export const layer = <R, E>(
     return
   }
 
-  return V.describe(args[0], () => {
+  const suiteOptions = options?.concurrent === undefined ? {} : { concurrent: options.concurrent }
+  return V.describe(args[0], suiteOptions, () => {
     V.beforeAll(
       () => runPromise(Effect.asVoid(contextEffect)),
       hookTimeout(options?.timeout)

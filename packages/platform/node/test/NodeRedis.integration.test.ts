@@ -46,7 +46,10 @@ RateLimiterTest.suite(
   RateLimiter.layerStoreRedis().pipe(Layer.provide(RedisLayer))
 )
 
-it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), { timeout: "30 seconds" })(
+it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), {
+  timeout: "30 seconds",
+  concurrent: false
+})(
   "RateLimiter token-bucket storage (NodeRedis)",
   (it) => {
     it.effect("returns the persisted balance after accumulating fractional costs", () =>

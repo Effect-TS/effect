@@ -51,13 +51,13 @@
   "peerDependencies": {
     "effect": "workspace:^",
     "vite": ">=8.1.5 <9.0.0",
-    "vitest": ">=4.1.10 <5.0.0"
+    "vitest": ">=5.0.0 <6.0.0"
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
     "@types/node": "^26.4.1",
     "effect": "workspace:^",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }
