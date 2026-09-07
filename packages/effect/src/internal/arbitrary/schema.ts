@@ -1494,52 +1494,53 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     path: ReadonlyArray<PropertyKey>,
     constraint: Constraint | undefined
   ): Model.Compiled<Record<PropertyKey, any>> => {
-    const compileValue = (type: SchemaAST.AST, path: ReadonlyArray<PropertyKey>) => {
+    const constrainedIndexes = ast.indexSignatures.flatMap((index, position) => {
+      const constraint = collectChecks(index.type.checks, undefined).constraint
+      return constraint === undefined ? [] : [{ index, position, constraint }]
+    })
+    const compileIndexedValue = (type: SchemaAST.AST, path: ReadonlyArray<PropertyKey>) => {
       const compiled = recur(type, path)
       // Scalar specializations have no recursive dependencies and keep the same minimum cost.
       const candidates = type._tag === "String" || type._tag === "Number" || type._tag === "BigInt"
-        ? ast.indexSignatures.flatMap((index, position) => {
-          if (index.type === type || index.type._tag !== type._tag) return []
-          const constraint = collectChecks(index.type.checks, undefined).constraint
-          return constraint === undefined ? [] : [{ index, position, constraint }]
-        })
+        ? constrainedIndexes.filter(({ index }) => index.type !== type && index.type._tag === type._tag)
         : []
-      const cache = new Map<string, Model.Compiled<any>>()
+      const specializations = new Map<string, Model.Compiled<any>>()
+      const forKey = (key: PropertyKey): Model.Compiled<any> => {
+        if (candidates.length === 0) return compiled
+        const input = { [key]: undefined }
+        const matching = candidates.filter(({ index }) =>
+          SchemaAST.getIndexSignatureKeys(input, index.parameter).length > 0
+        )
+        if (matching.length === 0) return compiled
+        const cacheKey = matching.map(({ position }) => position).join(",")
+        const cached = specializations.get(cacheKey)
+        if (cached !== undefined) return cached
+        let specialized = compiled
+        try {
+          let inherited: Constraint | undefined
+          for (const match of matching) inherited = mergeConstraint(inherited, match.constraint)
+          const checks = collectChecks(type.checks, inherited)
+          specialized = compileBase(type, path, checks.constraint)
+          specialized.minCost = 0
+          applyFilters(specialized, type, checks.filters)
+        } catch {
+          // Incompatible scalar constraints keep the original generator and indexed validation.
+        }
+        specializations.set(cacheKey, specialized)
+        return specialized
+      }
       return {
         compiled,
-        forKey: (key: PropertyKey): Model.Compiled<any> => {
-          if (candidates.length === 0) return compiled
-          const input = { [key]: undefined }
-          const matching = candidates.filter(({ index }) =>
-            SchemaAST.getIndexSignatureKeys(input, index.parameter).length > 0
-          )
-          if (matching.length === 0) return compiled
-          const cacheKey = matching.map(({ position }) => position).join(",")
-          const cached = cache.get(cacheKey)
-          if (cached !== undefined) return cached
-          let specialized = compiled
-          try {
-            let inherited: Constraint | undefined
-            for (const match of matching) inherited = mergeConstraint(inherited, match.constraint)
-            const checks = collectChecks(type.checks, inherited)
-            specialized = compileBase(type, path, checks.constraint)
-            specialized.minCost = 0
-            applyFilters(specialized, type, checks.filters)
-          } catch {
-            // Incompatible scalar constraints keep the original generator and indexed validation.
-          }
-          cache.set(cacheKey, specialized)
-          return specialized
-        }
+        forKey
       }
     }
     const properties = ast.propertySignatures.map((property) => ({
       property,
       optional: SchemaAST.isOptional(property.type),
-      compiled: compileValue(property.type, [...path, property.name]).forKey(property.name)
+      compiled: compileIndexedValue(property.type, [...path, property.name]).forKey(property.name)
     }))
     const indexes = ast.indexSignatures.map((index, position) => {
-      const value = compileValue(index.type, [...path, `index-${position}-value`])
+      const value = compileIndexedValue(index.type, [...path, `index-${position}-value`])
       return {
         parameter: recur(index.parameter, [...path, `index-${position}-key`]),
         value: value.compiled,
