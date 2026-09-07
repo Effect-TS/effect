@@ -9,7 +9,7 @@ Useful for experimental, internal, or deprecated flags that should be accepted b
 ```ts
 import { Flag } from "effect/unstable/cli"
 
-const experimental = Flag.Boolean("experimental-foo").pipe(
+const experimental = Flag.boolean("experimental-foo").pipe(
   Flag.withHidden
 )
 ```

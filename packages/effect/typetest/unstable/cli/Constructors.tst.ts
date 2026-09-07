@@ -90,19 +90,19 @@ describe("CLI constructors", () => {
     expect(Prompt.MultiSelect({ message: "Value", choices: [{ title: "Development", value: "dev" }] })).type.toBe<
       Prompt.Prompt<Array<"dev">>
     >()
-    expect(Prompt.Succeed(42)).type.toBe<Prompt.Prompt<number>>()
-    expect(Prompt.MakeTheme()).type.toBe<Prompt.Theme>()
+    expect(Prompt.succeed(42)).type.toBe<Prompt.Prompt<number>>()
+    expect(Prompt.makeTheme()).type.toBe<Prompt.Theme>()
   })
   it("supports the public construction factories", () => {
-    expect(Command.Make).type.toBeCallableWith("example")
-    expect(Param.MakeSingle).type.toBeCallableWith({
+    expect(Command.make).type.toBeCallableWith("example")
+    expect(Param.makeSingle).type.toBeCallableWith({
       name: "value",
       kind: Param.flagKind,
       primitiveType: Primitive.String
     })
-    expect(CliConfig.Make()).type.toBe<CliConfig.CliConfig.Service>()
-    expect(CliOutput.DefaultFormatter()).type.toBe<CliOutput.Formatter>()
-    expect(Completions.Generate).type.toBeCallableWith("example", "bash", {
+    expect(CliConfig.make()).type.toBe<CliConfig.CliConfig.Service>()
+    expect(CliOutput.defaultFormatter()).type.toBe<CliOutput.Formatter>()
+    expect(Completions.generate).type.toBeCallableWith("example", "bash", {
       name: "example",
       description: undefined,
       flags: [],

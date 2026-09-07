@@ -9,11 +9,11 @@ describe("Command", () => {
       class _ServiceB extends Context.Service<_ServiceB, string>()("ServiceB") {}
       class _ServiceC extends Context.Service<_ServiceC, string>()("ServiceC") {}
 
-      const childA = Command.Make("child-a", {}, () => Effect.void as Effect.Effect<void, "err-a", _ServiceA>)
-      const childB = Command.Make("child-b", {}, () => Effect.void as Effect.Effect<void, "err-b", _ServiceB>)
-      const childC = Command.Make("child-c", {}, () => Effect.void as Effect.Effect<void, "err-c", _ServiceC>)
+      const childA = Command.make("child-a", {}, () => Effect.void as Effect.Effect<void, "err-a", _ServiceA>)
+      const childB = Command.make("child-b", {}, () => Effect.void as Effect.Effect<void, "err-b", _ServiceB>)
+      const childC = Command.make("child-c", {}, () => Effect.void as Effect.Effect<void, "err-c", _ServiceC>)
 
-      const root = Command.Make("root").pipe(
+      const root = Command.make("root").pipe(
         Command.withSubcommands([childA, childB, childC])
       )
 
@@ -25,7 +25,7 @@ describe("Command", () => {
 
   describe("withSharedFlags", () => {
     it("adds shared flags to command input and parent context", () => {
-      const root = Command.Make("root", {
+      const root = Command.make("root", {
         workspace: Flag.String("workspace")
       }).pipe(
         Command.withSharedFlags({
@@ -49,7 +49,7 @@ describe("Command", () => {
     })
 
     it("does not expose local config through yield* parent", () => {
-      const root = Command.Make("root", {
+      const root = Command.make("root", {
         workspace: Flag.String("workspace")
       }).pipe(
         Command.withSharedFlags({
@@ -57,7 +57,7 @@ describe("Command", () => {
         })
       )
 
-      const child = Command.Make("child", {}, () =>
+      const child = Command.make("child", {}, () =>
         Effect.gen(function*() {
           const parent = yield* root
           expect(parent).type.toBe<{ readonly verbose: boolean }>()
@@ -69,7 +69,7 @@ describe("Command", () => {
     })
 
     it("widens input after withSubcommands for input-based combinators", () => {
-      const root = Command.Make("root", {
+      const root = Command.make("root", {
         local: Flag.String("local")
       }).pipe(
         Command.withSharedFlags({
@@ -77,7 +77,7 @@ describe("Command", () => {
         })
       )
 
-      const child = Command.Make("child")
+      const child = Command.make("child")
 
       root.pipe(
         Command.withSubcommands([child]),
@@ -94,7 +94,7 @@ describe("Command", () => {
     })
 
     it("accepts only flags", () => {
-      Command.Make("root").pipe(
+      Command.make("root").pipe(
         // @ts-expect-error Type 'Argument<string>' is not assignable
         Command.withSharedFlags({ file: Argument.String("file") })
       )
@@ -111,7 +111,7 @@ describe("Command", () => {
         flag: Flag.String("format").pipe(Flag.withDefault("text"))
       })
 
-      const command = Command.Make("example", {}, () =>
+      const command = Command.make("example", {}, () =>
         Effect.gen(function*() {
           yield* Format
         })).pipe(
@@ -131,7 +131,7 @@ describe("Command", () => {
       })
 
       const command = Command.withGlobalFlags(
-        Command.Make("example", {}, () =>
+        Command.make("example", {}, () =>
           Effect.gen(function*() {
             yield* Format
           })),
@@ -143,8 +143,8 @@ describe("Command", () => {
   })
 
   describe("built-in global flags", () => {
-    it("strips built-in setting context from Command.Make handlers", () => {
-      const command = Command.Make("example", {}, () =>
+    it("strips built-in setting context from Command.make handlers", () => {
+      const command = Command.make("example", {}, () =>
         Effect.gen(function*() {
           yield* GlobalFlag.LogLevel
         }))
@@ -153,7 +153,7 @@ describe("Command", () => {
     })
 
     it("strips built-in setting context from Command.withHandler handlers", () => {
-      const command = Command.Make("example").pipe(
+      const command = Command.make("example").pipe(
         Command.withHandler(() =>
           Effect.gen(function*() {
             yield* GlobalFlag.LogLevel

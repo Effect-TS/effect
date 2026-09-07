@@ -8,7 +8,7 @@ declare const objectEvents: Queue.Dequeue<{ readonly tick: number }, never>
 describe("Prompt", () => {
   describe("Theme", () => {
     it("supports context and per-prompt customization", () => {
-      expect(Prompt.MakeTheme({ prefix: "!", primaryColor: "primary" })).type.toBe<Prompt.Theme>()
+      expect(Prompt.makeTheme({ prefix: "!", primaryColor: "primary" })).type.toBe<Prompt.Theme>()
       expect(Prompt.Text).type.toBeCallableWith({
         message: "Name",
         theme: { prefix: "!", errorColor: "error" }

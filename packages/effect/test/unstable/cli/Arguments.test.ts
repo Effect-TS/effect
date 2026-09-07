@@ -28,7 +28,7 @@ const FileSystemLayer = FileSystem.layerNoop({
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
 const CliOutputLayer = CliOutput.layer(
-  CliOutput.DefaultFormatter({
+  CliOutput.defaultFormatter({
     colors: false
   })
 )
@@ -55,7 +55,7 @@ describe("Command arguments", () => {
       const resultRef = yield* Ref.make<any>(null)
 
       // Create test command with various argument types
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         name: Argument.String("name"),
         count: Argument.Int("count"),
         ratio: Argument.Finite("ratio"),
@@ -93,7 +93,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       // Test 1: mustExist: true with existing file - should pass
       const result1Ref = yield* Ref.make<string | null>(null)
-      const existingFileCommand = Command.Make("test", {
+      const existingFileCommand = Command.make("test", {
         file: Argument.File("file", { mustExist: true })
       }, ({ file }) => Ref.set(result1Ref, file))
 
@@ -118,7 +118,7 @@ describe("Command arguments", () => {
 
       // Test 3: mustExist: false - should always pass
       const result3Ref = yield* Ref.make<string | null>(null)
-      const optionalFileCommand = Command.Make("test", {
+      const optionalFileCommand = Command.make("test", {
         file: Argument.File("file", { mustExist: false })
       }, ({ file }) => Ref.set(result3Ref, file))
 
@@ -131,7 +131,7 @@ describe("Command arguments", () => {
 
   it.effect("should fail with invalid arguments", () =>
     Effect.gen(function*() {
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         count: Argument.Int("count"),
         env: Argument.Choice("env", ["dev", "prod"])
       }, (config) => Effect.succeed(config))
@@ -164,7 +164,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       let result: { readonly files: ReadonlyArray<string> } | undefined
 
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         files: Argument.variadic(Argument.String("files"))
       }, (parsedConfig) =>
         Effect.sync(() => {
@@ -185,7 +185,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       const resultRef = yield* Ref.make<any>(null)
 
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         level: Argument.ChoiceWithValue(
           "level",
           [
@@ -205,7 +205,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       const resultRef = yield* Ref.make<any>(null)
 
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         port: Argument.Int("port").pipe(
           Argument.filter(
             (n) => n >= 1 && n <= 65535,
@@ -221,7 +221,7 @@ describe("Command arguments", () => {
 
   it.effect("should handle filter combinator - invalid", () =>
     Effect.gen(function*() {
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         port: Argument.Int("port").pipe(
           Argument.filter(
             (n) => n >= 1 && n <= 65535,
@@ -241,7 +241,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       const resultRef = yield* Ref.make<any>(null)
 
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         positiveInt: Argument.Int("num").pipe(
           Argument.filterMap(
             (n) => n > 0 ? Option.some(n) : Option.none(),
@@ -257,7 +257,7 @@ describe("Command arguments", () => {
 
   it.effect("should handle filterMap combinator - invalid", () =>
     Effect.gen(function*() {
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         positiveInt: Argument.Int("num").pipe(
           Argument.filterMap(
             (n) => n > 0 ? Option.some(n) : Option.none(),
@@ -278,7 +278,7 @@ describe("Command arguments", () => {
       const resultRef = yield* Ref.make<any>(null)
 
       // Try parsing as integer first, fallback to 0
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         value: Argument.Int("value").pipe(
           Argument.orElse(() => Argument.String("value").pipe(Argument.map(() => -1)))
         )
@@ -300,7 +300,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       const resultRef = yield* Ref.make<any>(null)
 
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         value: Argument.Int("value").pipe(
           Argument.orElseResult(() => Argument.String("value"))
         )
@@ -322,7 +322,7 @@ describe("Command arguments", () => {
 
   it.effect("should handle withMetavar combinator", () =>
     Effect.gen(function*() {
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         file: Argument.String("file").pipe(
           Argument.withMetavar("FILE_PATH")
         )
@@ -339,7 +339,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       const resultRef = yield* Ref.make<any>(null)
 
-      const testCommand = Command.Make("test", {
+      const testCommand = Command.make("test", {
         label: Argument.optional(
           Argument.String("label").pipe(
             Argument.withDescription("Optional label name")

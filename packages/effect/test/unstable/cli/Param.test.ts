@@ -67,7 +67,7 @@ describe("Param", () => {
 
   it.effect("recognizes the alternate flag declared by orElse", () =>
     Effect.gen(function*() {
-      const command = Command.Make("app", {
+      const command = Command.make("app", {
         config: Flag.String("config").pipe(
           Flag.orElse(() => Flag.String("config-url"))
         )
@@ -97,7 +97,7 @@ describe("Param", () => {
 
   it("preserves __proto__ as an own makeSingle option", () => {
     const value = { polluted: true }
-    const param = Param.MakeSingle({
+    const param = Param.makeSingle({
       ["__proto__"]: value,
       kind: Param.flagKind,
       name: "name",

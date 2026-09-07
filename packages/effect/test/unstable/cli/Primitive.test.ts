@@ -119,7 +119,7 @@ describe("Primitive", () => {
         }))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.Finite._tag, "Float")
+        assert.strictEqual(Primitive.Finite._tag, "Finite")
       })
     })
   })
@@ -180,7 +180,7 @@ describe("Primitive", () => {
         ))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.Int._tag, "Integer")
+        assert.strictEqual(Primitive.Int._tag, "Int")
       })
     })
   })

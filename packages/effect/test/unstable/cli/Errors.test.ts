@@ -37,7 +37,7 @@ describe("Command errors", () => {
   describe("parse", () => {
     it.effect("fails with MissingOption when a required flag is absent", () =>
       Effect.gen(function*() {
-        const command = Command.Make("needs-value", {
+        const command = Command.make("needs-value", {
           value: Flag.String("value")
         })
 
@@ -48,13 +48,13 @@ describe("Command errors", () => {
       }).pipe(Effect.provide(TestLayer)))
 
     it("throws DuplicateOption when shared parent and child flags reuse a name", () => {
-      const parent = Command.Make("parent").pipe(
+      const parent = Command.make("parent").pipe(
         Command.withSharedFlags({
           shared: Flag.String("shared")
         })
       )
 
-      const child = Command.Make("child", {
+      const child = Command.make("child", {
         shared: Flag.String("shared")
       })
 
@@ -71,11 +71,11 @@ describe("Command errors", () => {
     })
 
     it("allows parent local flags to reuse child flag names", () => {
-      const parent = Command.Make("parent", {
+      const parent = Command.make("parent", {
         shared: Flag.String("shared")
       })
 
-      const child = Command.Make("child", {
+      const child = Command.make("child", {
         shared: Flag.String("shared")
       })
 
@@ -88,7 +88,7 @@ describe("Command errors", () => {
 
     it.effect("accumulates multiple UnrecognizedOption errors", () =>
       Effect.gen(function*() {
-        const command = Command.Make("test", {
+        const command = Command.make("test", {
           verbose: Flag.Boolean("verbose")
         })
 
@@ -105,8 +105,8 @@ describe("Command errors", () => {
 
     it.effect("accumulates UnknownSubcommand error with suggestions", () =>
       Effect.gen(function*() {
-        const sub = Command.Make("deploy")
-        const command = Command.Make("app").pipe(
+        const sub = Command.make("deploy")
+        const command = Command.make("app").pipe(
           Command.withSubcommands([sub])
         )
 
@@ -126,7 +126,7 @@ describe("Command errors", () => {
 
     it.effect("fails with UnexpectedArgument when a bounded variadic leaves operands", () =>
       Effect.gen(function*() {
-        const command = Command.Make("test", {
+        const command = Command.make("test", {
           values: Argument.String("value").pipe(Argument.variadic({ max: 2 }))
         })
 
@@ -142,7 +142,7 @@ describe("Command errors", () => {
 
     it.effect("allows a bounded variadic to leave an operand for a following argument", () =>
       Effect.gen(function*() {
-        const command = Command.Make("test", {
+        const command = Command.make("test", {
           values: Argument.String("value").pipe(Argument.variadic({ max: 2 })),
           destination: Argument.String("destination")
         })
@@ -161,7 +161,7 @@ describe("Command errors", () => {
 
     it.effect("fails with UnexpectedArgument when a fixed argument leaves operands", () =>
       Effect.gen(function*() {
-        const command = Command.Make("test", {
+        const command = Command.make("test", {
           value: Argument.String("value")
         })
 
@@ -178,7 +178,7 @@ describe("Command errors", () => {
 
   describe("error formatting", () => {
     it("escapes control characters in an unrecognized flag", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.UnrecognizedOption({
         option: "--foo\x1b]52;c;bWFsaWNpb3Vz\x07",
         suggestions: []
@@ -191,7 +191,7 @@ describe("Command errors", () => {
     })
 
     it("escapes control characters in an unknown subcommand with colors enabled", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: true })
+      const formatter = CliOutput.defaultFormatter({ colors: true })
       const error = new CliError.UnknownSubcommand({
         subcommand: "deplyo\x1b]8;;https://example.com\x07",
         suggestions: []
@@ -204,7 +204,7 @@ describe("Command errors", () => {
     })
 
     it("escapes control characters in an invalid argument value without colors", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.InvalidValue({
         option: "count",
         value: "12\x1b]52;c;bWFsaWNpb3Vz\x07\x7f",
@@ -219,7 +219,7 @@ describe("Command errors", () => {
     })
 
     it("preserves multi-line suggestion blocks", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const errors = [
         new CliError.UnrecognizedOption({
           option: "--deplyo",
@@ -250,7 +250,7 @@ describe("Command errors", () => {
     })
 
     it("preserves line feeds and tabs in error messages", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.InvalidValue({
         option: "count",
         value: "twelve",
@@ -265,7 +265,7 @@ describe("Command errors", () => {
     })
 
     it("formats single error with ERROR header", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.MissingOption({ option: "value" })
 
       const output = formatter.formatErrors([error])
@@ -275,7 +275,7 @@ describe("Command errors", () => {
     })
 
     it("formats multiple errors with ERRORS header", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const errors = [
         new CliError.UnrecognizedOption({ option: "--foo", suggestions: [] }),
         new CliError.UnrecognizedOption({ option: "--bar", suggestions: [] })
@@ -289,7 +289,7 @@ describe("Command errors", () => {
     })
 
     it("returns empty string for empty array", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const output = formatter.formatErrors([])
       assert.strictEqual(output, "")
     })
@@ -343,7 +343,7 @@ describe("Command errors", () => {
     })
 
     it("escapes control characters in the user-facing message", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.UserError({
         cause: "internal details",
         userMessage: "Deployment failed\x1b]52;c;bWFsaWNpb3Vz\x07"
@@ -356,7 +356,7 @@ describe("Command errors", () => {
     })
 
     it("formats the resolved fallback message with other CLI errors", () => {
-      const formatter = CliOutput.DefaultFormatter({ colors: false })
+      const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.UserError({ cause: new Error("Connection refused") })
 
       assert.strictEqual(formatter.formatErrors([error]), "\nERROR\n  Connection refused")

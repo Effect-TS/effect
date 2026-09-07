@@ -4,7 +4,7 @@ import type { TestActions } from "../services/TestActions.ts"
 import { logAction } from "../services/TestActions.ts"
 
 // Deeply nested admin commands
-const usersList = Command.Make("list", {
+const usersList = Command.make("list", {
   // Optional option with default
   format: Flag.String("format").pipe(
     Flag.withDescription("Output format (json, table, csv)"),
@@ -30,7 +30,7 @@ const usersList = Command.Make("list", {
     Command.withDescription("List all users in the system")
   )
 
-const usersCreate = Command.Make("create", {
+const usersCreate = Command.make("create", {
   // Required positional argument
   username: Argument.String("username").pipe(
     Argument.withDescription("Username for the new user")
@@ -60,12 +60,12 @@ const usersCreate = Command.Make("create", {
     Command.withDescription("Create a new user account")
   )
 
-const users = Command.Make("users").pipe(
+const users = Command.make("users").pipe(
   Command.withDescription("User management commands"),
   Command.withSubcommands([usersList, usersCreate])
 )
 
-const configSet = Command.Make("set", {
+const configSet = Command.make("set", {
   // Variadic positional arguments
   pairs: Argument.String("key=value").pipe(
     Argument.withDescription("Configuration key-value pairs"),
@@ -85,7 +85,7 @@ const configSet = Command.Make("set", {
     Command.withDescription("Set configuration values")
   )
 
-const configGet = Command.Make("get", {
+const configGet = Command.make("get", {
   // Single required positional
   key: Argument.String("key").pipe(
     Argument.withDescription("Configuration key to retrieve")
@@ -103,7 +103,7 @@ const configGet = Command.Make("get", {
     Command.withDescription("Get configuration value")
   )
 
-const config = Command.Make("config").pipe(
+const config = Command.make("config").pipe(
   Command.withSharedFlags({
     // Parent command options shared with config subcommands
     profile: Flag.String("profile").pipe(
@@ -116,7 +116,7 @@ const config = Command.Make("config").pipe(
   Command.withSubcommands([configSet, configGet])
 )
 
-const admin = Command.Make("admin").pipe(
+const admin = Command.make("admin").pipe(
   Command.withSharedFlags({
     // Boolean that can be set to false explicitly
     sudo: Flag.Boolean("sudo").pipe(
@@ -129,7 +129,7 @@ const admin = Command.Make("admin").pipe(
 )
 
 // File operations commands
-const copy = Command.Make("copy", {
+const copy = Command.make("copy", {
   // Multiple required positional arguments (do not require actual filesystem presence in tests)
   source: Argument.File("source", { mustExist: false }).pipe(
     Argument.withDescription("Source file or directory")
@@ -164,7 +164,7 @@ const copy = Command.Make("copy", {
     Command.withDescription("Copy files or directories")
   )
 
-const move = Command.Make("move", {
+const move = Command.make("move", {
   // Variadic sources with at least 2 items
   paths: Argument.String("paths").pipe(
     Argument.withDescription("Source path(s) and destination"),
@@ -184,7 +184,7 @@ const move = Command.Make("move", {
     Command.withDescription("Move or rename files")
   )
 
-const remove = Command.Make("remove", {
+const remove = Command.make("remove", {
   // Variadic with no upper limit
   files: Argument.String("files").pipe(
     Argument.withDescription("Files to remove"),
@@ -217,7 +217,7 @@ const remove = Command.Make("remove", {
   )
 
 // Build command for testing option aliases
-const build = Command.Make("build", {
+const build = Command.make("build", {
   output: Flag.String("output").pipe(
     Flag.withAlias("o"),
     Flag.withDescription("Output directory")
@@ -242,7 +242,7 @@ const build = Command.Make("build", {
   )
 
 // Git-style commands for testing subcommands and context sharing
-const gitClone = Command.Make("clone", {
+const gitClone = Command.make("clone", {
   repository: Argument.String("repository").pipe(
     Argument.withDescription("Repository URL or path")
   ),
@@ -258,7 +258,7 @@ const gitClone = Command.Make("clone", {
     Command.withDescription("Clone a repository")
   )
 
-const gitAdd = Command.Make("add", {
+const gitAdd = Command.make("add", {
   files: Argument.String("files").pipe(
     Argument.withDescription("Files to add")
   ),
@@ -274,7 +274,7 @@ const gitAdd = Command.Make("add", {
     Command.withDescription("Add files to staging")
   )
 
-const gitStatus = Command.Make("status", {
+const gitStatus = Command.make("status", {
   short: Flag.Boolean("short").pipe(
     Flag.withDescription("Show short format"),
     Flag.withDefault(false)
@@ -286,7 +286,7 @@ const gitStatus = Command.Make("status", {
     Command.withDescription("Show repository status")
   )
 
-const git = Command.Make("git").pipe(
+const git = Command.make("git").pipe(
   Command.withSharedFlags({
     verbose: Flag.Boolean("verbose").pipe(
       Flag.withDescription("Enable verbose output"),
@@ -303,7 +303,7 @@ const git = Command.Make("git").pipe(
 )
 
 // Commands for testing error handling
-const testRequired = Command.Make("test-required", {
+const testRequired = Command.make("test-required", {
   required: Flag.String("required").pipe(
     Flag.withDescription("A required option for testing")
   )
@@ -320,7 +320,7 @@ const testFailing: Command.Command<
   {},
   string,
   TestActions
-> = Command.Make("test-failing", {
+> = Command.make("test-failing", {
   input: Flag.String("input").pipe(
     Flag.withDescription("Input that will cause handler to fail")
   )
@@ -333,7 +333,7 @@ const testFailing: Command.Command<
   )
 
 // Deploy command for testing complex nested structures
-const deployCommand = Command.Make("deploy", {
+const deployCommand = Command.make("deploy", {
   service: Argument.String("service").pipe(
     Argument.withDescription("Service to deploy")
   ),
@@ -362,7 +362,7 @@ const deployCommand = Command.Make("deploy", {
     Command.withDescription("Deploy a service")
   )
 
-const app = Command.Make("app").pipe(
+const app = Command.make("app").pipe(
   Command.withSharedFlags({
     env: Flag.String("env").pipe(
       Flag.withDescription("Environment setting"),
@@ -379,7 +379,7 @@ const app = Command.Make("app").pipe(
 )
 
 // Service command for nested context sharing tests
-const serviceCommand = Command.Make("service").pipe(
+const serviceCommand = Command.make("service").pipe(
   Command.withSharedFlags({
     name: Flag.String("name").pipe(
       Flag.withDescription("Service name")
@@ -394,7 +394,7 @@ const serviceCommand = Command.Make("service").pipe(
   Command.withSubcommands([deployCommand])
 )
 
-const appWithService = Command.Make("app-nested").pipe(
+const appWithService = Command.make("app-nested").pipe(
   Command.withSharedFlags({
     env: Flag.String("env").pipe(
       Flag.withDescription("Environment setting")
@@ -411,7 +411,7 @@ const appWithService = Command.Make("app-nested").pipe(
 
 // Main command with global options
 // Note: No handler on root command - running with no args should show help
-export const ComprehensiveCli = Command.Make("mycli").pipe(
+export const ComprehensiveCli = Command.make("mycli").pipe(
   Command.withSharedFlags({
     // Global options available to all subcommands
     debug: Flag.Boolean("debug").pipe(

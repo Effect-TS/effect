@@ -125,7 +125,7 @@ describe("Prompt.all", () => {
 
   it.effect("supports a non-array iterable", () =>
     Effect.gen(function*() {
-      const result = yield* Prompt.all(new Set([Prompt.Succeed(1)]))
+      const result = yield* Prompt.all(new Set([Prompt.succeed(1)]))
       assert.deepStrictEqual(result, [1])
     }).pipe(Effect.provide(TestLayer)))
 })
@@ -226,7 +226,7 @@ describe("Prompt.Text", () => {
       yield* Prompt.run(Prompt.Text({ message: "Name" })).pipe(
         Effect.provideService(
           Prompt.Theme,
-          Prompt.MakeTheme({
+          Prompt.makeTheme({
             prefix: "!",
             pointerSmall: ">",
             tick: "+",
@@ -251,7 +251,7 @@ describe("Prompt.Text", () => {
       })).pipe(
         Effect.provideService(
           Prompt.Theme,
-          Prompt.MakeTheme({
+          Prompt.makeTheme({
             primaryColor: `${escape}[31m`,
             mutedColor: `${escape}[34m`,
             successColor: `${escape}[33m`,
@@ -499,7 +499,7 @@ describe("Prompt.Password", () => {
       yield* MockTerminal.inputKey("enter")
 
       yield* Prompt.run(Prompt.Password({ message: "Password" })).pipe(
-        Effect.provideService(Prompt.Theme, Prompt.MakeTheme({ passwordMask: "•" }))
+        Effect.provideService(Prompt.Theme, Prompt.makeTheme({ passwordMask: "•" }))
       )
 
       const frames = toFrames(yield* MockTerminal.displayLines)

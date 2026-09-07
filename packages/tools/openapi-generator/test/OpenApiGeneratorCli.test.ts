@@ -9,7 +9,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 const makeLayer = (args: ReadonlyArray<string>) =>
   Layer.mergeAll(
     TestConsole.layer,
-    CliOutput.layer(CliOutput.DefaultFormatter({ colors: false })),
+    CliOutput.layer(CliOutput.defaultFormatter({ colors: false })),
     NodeServices.layer,
     Stdio.layerTest({ args: Effect.succeed(args) })
   )
