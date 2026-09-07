@@ -1,10 +1,55 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual } from "@effect/vitest/utils"
-import { Effect, Schema } from "effect"
+import { assertInstanceOf, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { Effect, Schema, Stream } from "effect"
 import { TestSchema } from "effect/testing"
-import { Response, Tool, Toolkit } from "effect/unstable/ai"
+import { AiError, Response, Tool, Toolkit } from "effect/unstable/ai"
 
 describe("Response", () => {
+  it.effect("round trips a returned AiError through Toolkit and AllParts JSON with an unknown failure schema", () =>
+    Effect.gen(function*() {
+      const tool = Tool.make("FrameworkFailure", {
+        success: Schema.Number,
+        failure: Schema.Unknown,
+        failureMode: "return"
+      })
+      const toolkit = Toolkit.make(tool)
+      const failure = new AiError.AiError({
+        module: "Test",
+        method: "FrameworkFailure",
+        reason: new AiError.RateLimitError({})
+      })
+      const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+        FrameworkFailure: () => Effect.fail(failure)
+      })))
+      const results = yield* handlers.handle(tool.name, {}).pipe(Effect.flatMap(Stream.runCollect))
+      const encodedFailure = yield* Schema.encodeEffect(AiError.AiError)(failure)
+
+      deepStrictEqual(results, [{
+        result: failure,
+        encodedResult: encodedFailure,
+        isFailure: true,
+        preliminary: false
+      }], "Toolkit failure result")
+
+      const part = Response.makePart("tool-result", {
+        ...results[0],
+        id: "tool-123",
+        name: tool.name,
+        providerExecuted: false
+      })
+      const schema = Response.AllParts(toolkit)
+      const encoded = yield* Schema.encodeEffect(schema)(part)
+      const decoded = yield* Schema.decodeUnknownEffect(schema)(JSON.parse(JSON.stringify(encoded)))
+
+      assertTrue(decoded.type === "tool-result")
+      assertTrue(decoded.isFailure)
+      assertInstanceOf(decoded.result, AiError.AiError)
+      assertInstanceOf(decoded.result.reason, AiError.RateLimitError)
+      deepStrictEqual(decoded.result.module, failure.module)
+      deepStrictEqual(decoded.result.method, failure.method)
+      deepStrictEqual(decoded.encodedResult, encodedFailure, "round-tripped encoded AiError")
+    }))
+
   describe("provider-defined tool execution failures", () => {
     const tool = Tool.providerDefined({
       id: "test.provider_tool",
