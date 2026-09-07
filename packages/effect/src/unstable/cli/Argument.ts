@@ -13,7 +13,7 @@ import type * as Config from "../../Config.ts"
 import type * as Effect from "../../Effect.ts"
 import { dual, type LazyArg } from "../../Function.ts"
 import type * as Option from "../../Option.ts"
-import type * as Redacted from "../../Redacted.ts"
+import type * as Redacted_ from "../../Redacted.ts"
 import type * as Result from "../../Result.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as CliError from "./CliError.ts"
@@ -32,7 +32,7 @@ import type * as Primitive from "./Primitive.ts"
  *
  * `boolean` is intentionally omitted from Argument constructors. Positional
  * boolean arguments are ambiguous in CLI design since there is no flag name to
- * negate (for example, `--no-verbose`). Use Flag.boolean instead, or use
+ * negate (for example, `--no-verbose`). Use Flag.Boolean instead, or use
  * Argument.choice with explicit "true" / "false" strings if needed.
  *
  * @category models
@@ -52,14 +52,14 @@ export interface Argument<A> extends Param.Param<typeof Param.argumentKind, A> {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const filename = Argument.string("filename")
+ * const filename = Argument.String("filename")
  * filename.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const string = (name: string): Argument<string> => Param.string(Param.argumentKind, name)
+export const String = (name: string): Argument<string> => Param.String(Param.argumentKind, name)
 
 /**
  * Creates a positional integer argument.
@@ -69,14 +69,14 @@ export const string = (name: string): Argument<string> => Param.string(Param.arg
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const count = Argument.integer("count")
+ * const count = Argument.Int("count")
  * count.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const integer = (name: string): Argument<number> => Param.integer(Param.argumentKind, name)
+export const Int = (name: string): Argument<number> => Param.Int(Param.argumentKind, name)
 
 /**
  * Creates a positional file path argument.
@@ -125,14 +125,14 @@ export const directory = (name: string, options?: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const ratio = Argument.float("ratio")
+ * const ratio = Argument.Finite("ratio")
  * ratio.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const float = (name: string): Argument<number> => Param.float(Param.argumentKind, name)
+export const Finite = (name: string): Argument<number> => Param.Finite(Param.argumentKind, name)
 
 /**
  * Creates a positional date argument.
@@ -142,14 +142,14 @@ export const float = (name: string): Argument<number> => Param.float(Param.argum
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const startDate = Argument.date("start-date")
+ * const startDate = Argument.Date("start-date")
  * startDate.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const date = (name: string): Argument<Date> => Param.date(Param.argumentKind, name)
+export const Date = (name: string): Argument<globalThis.Date> => Param.Date(Param.argumentKind, name)
 
 /**
  * Creates a positional choice argument.
@@ -199,14 +199,14 @@ export const path = (name: string, options?: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const secret = Argument.redacted("secret")
+ * const secret = Argument.Redacted("secret")
  * secret.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const redacted = (name: string): Argument<Redacted.Redacted<string>> => Param.redacted(Param.argumentKind, name)
+export const Redacted = (name: string): Argument<Redacted_.Redacted<string>> => Param.Redacted(Param.argumentKind, name)
 
 /**
  * Creates a positional argument that reads file content as a string.
@@ -308,7 +308,7 @@ export const none: Argument<never> = Param.none(Param.argumentKind)
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const optionalVersion = Argument.string("version").pipe(Argument.optional)
+ * const optionalVersion = Argument.String("version").pipe(Argument.optional)
  * optionalVersion.kind // => "argument"
  * ```
  *
@@ -325,7 +325,7 @@ export const optional = <A>(arg: Argument<A>): Argument<Option.Option<A>> => Par
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const filename = Argument.string("filename").pipe(
+ * const filename = Argument.String("filename").pipe(
  *   Argument.withDescription("The input file to process")
  * )
  * filename.kind // => "argument"
@@ -347,7 +347,7 @@ export const withDescription: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const port = Argument.integer("port").pipe(Argument.withDefault(8080))
+ * const port = Argument.Int("port").pipe(Argument.withDefault(8080))
  * port.kind // => "argument"
  * ```
  *
@@ -373,7 +373,7 @@ export const withDefault: {
  * import { Config } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
- * const repository = Argument.string("repository").pipe(
+ * const repository = Argument.String("repository").pipe(
  *   Argument.withFallbackConfig(Config.String("REPOSITORY"))
  * )
  * repository.kind // => "argument"
@@ -395,7 +395,7 @@ export const withFallbackConfig: {
  * ```ts import.meta.vitest
  * import { Argument, Prompt } from "effect/unstable/cli"
  *
- * const filename = Argument.string("filename").pipe(
+ * const filename = Argument.String("filename").pipe(
  *   Argument.withFallbackPrompt(Prompt.text({ message: "Filename" }))
  * )
  * filename.kind // => "argument"
@@ -418,15 +418,15 @@ export const withFallbackPrompt: {
  * import { Argument } from "effect/unstable/cli"
  *
  * // Accept any number of files
- * const anyFiles = Argument.string("files").pipe(Argument.variadic)
+ * const anyFiles = Argument.String("files").pipe(Argument.variadic)
  *
  * // Accept at least 1 file
- * const atLeastOneFile = Argument.string("files").pipe(
+ * const atLeastOneFile = Argument.String("files").pipe(
  *   Argument.variadic({ min: 1 })
  * )
  *
  * // Accept between 1 and 5 files
- * const limitedFiles = Argument.string("files").pipe(
+ * const limitedFiles = Argument.String("files").pipe(
  *   Argument.variadic({ min: 1, max: 5 })
  * )
  *
@@ -452,7 +452,7 @@ export const variadic: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const port = Argument.integer("port").pipe(
+ * const port = Argument.Int("port").pipe(
  *   Argument.map((p) => ({ port: p, url: `http://localhost:${p}` }))
  * )
  * port.kind // => "argument"
@@ -493,7 +493,7 @@ export const map: {
  *   )
  * )
  *
- * const files = Argument.string("files").pipe(
+ * const files = Argument.String("files").pipe(
  *   Argument.mapEffect((file) =>
  *     file.endsWith(".txt")
  *       ? Effect.succeed(file)
@@ -555,7 +555,7 @@ export const mapEffect: {
  *   )
  * )
  *
- * const json = Argument.string("data").pipe(
+ * const json = Argument.String("data").pipe(
  *   Argument.mapTryCatch(
  *     (str) => JSON.parse(str),
  *     (error) =>
@@ -592,7 +592,7 @@ export const mapTryCatch: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const files = Argument.string("files").pipe(Argument.atLeast(1))
+ * const files = Argument.String("files").pipe(Argument.atLeast(1))
  * files.kind // => "argument"
  * ```
  *
@@ -612,7 +612,7 @@ export const atLeast: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const files = Argument.string("files").pipe(Argument.atMost(5))
+ * const files = Argument.String("files").pipe(Argument.atMost(5))
  * files.kind // => "argument"
  * ```
  *
@@ -632,7 +632,7 @@ export const atMost: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const files = Argument.string("files").pipe(Argument.between(1, 5))
+ * const files = Argument.String("files").pipe(Argument.between(1, 5))
  * files.kind // => "argument"
  * ```
  *
@@ -653,7 +653,7 @@ export const between: {
  * import { Schema } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
- * const input = Argument.string("input").pipe(
+ * const input = Argument.String("input").pipe(
  *   Argument.withSchema(Schema.NonEmptyString)
  * )
  * input.kind // => "argument"
@@ -713,7 +713,7 @@ export const choiceWithValue = <const Choices extends ReadonlyArray<readonly [st
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const port = Argument.integer("port").pipe(
+ * const port = Argument.Int("port").pipe(
  *   Argument.withMetavar("PORT")
  * )
  * port.kind // => "argument"
@@ -735,7 +735,7 @@ export const withMetavar: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const positiveInt = Argument.integer("count").pipe(
+ * const positiveInt = Argument.Int("count").pipe(
  *   Argument.filter(
  *     (n) => n > 0,
  *     (n) => `Expected positive integer, got ${n}`
@@ -766,7 +766,7 @@ export const filter: {
  * import { Option } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
- * const positiveInt = Argument.integer("count").pipe(
+ * const positiveInt = Argument.Int("count").pipe(
  *   Argument.filterMap(
  *     (n) => n > 0 ? Option.some(n) : Option.none(),
  *     (n) => `Expected positive integer, got ${n}`
@@ -795,8 +795,8 @@ export const filterMap: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const value = Argument.integer("value").pipe(
- *   Argument.orElse(() => Argument.string("value"))
+ * const value = Argument.Int("value").pipe(
+ *   Argument.orElse(() => Argument.String("value"))
  * )
  * value.kind // => "argument"
  * ```
@@ -818,7 +818,7 @@ export const orElse: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const source = Argument.file("source").pipe(
- *   Argument.orElseResult(() => Argument.string("url"))
+ *   Argument.orElseResult(() => Argument.String("url"))
  * )
  * // Returns Result<string, string>
  * source.kind // => "argument"

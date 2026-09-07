@@ -14,7 +14,7 @@ import type * as Config from "../../Config.ts"
 import type * as Effect from "../../Effect.ts"
 import { dual, type LazyArg } from "../../Function.ts"
 import type * as Option from "../../Option.ts"
-import type * as Redacted from "../../Redacted.ts"
+import type * as Redacted_ from "../../Redacted.ts"
 import type * as Result from "../../Result.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as CliError from "./CliError.ts"
@@ -46,7 +46,7 @@ export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const nameFlag = Flag.string("name")
+ * const nameFlag = Flag.String("name")
  * // Usage: --name "John Doe"
  * nameFlag.kind // => "flag"
  * ```
@@ -54,7 +54,7 @@ export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
  * @category constructors
  * @since 4.0.0
  */
-export const string = (name: string): Flag<string> => Param.string(Param.flagKind, name)
+export const String = (name: string): Flag<string> => Param.String(Param.flagKind, name)
 
 /**
  * Creates a boolean flag that can be enabled or disabled.
@@ -64,7 +64,7 @@ export const string = (name: string): Flag<string> => Param.string(Param.flagKin
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const verboseFlag = Flag.boolean("verbose")
+ * const verboseFlag = Flag.Boolean("verbose")
  * // Usage: --verbose (true) or --no-verbose (false)
  * // Omission fails unless the flag is made optional or given a fallback.
  * verboseFlag.kind // => "flag"
@@ -73,7 +73,7 @@ export const string = (name: string): Flag<string> => Param.string(Param.flagKin
  * @category constructors
  * @since 4.0.0
  */
-export const boolean = (name: string): Flag<boolean> => Param.boolean(Param.flagKind, name)
+export const Boolean = (name: string): Flag<boolean> => Param.Boolean(Param.flagKind, name)
 
 /**
  * Creates an integer flag that accepts whole number input.
@@ -83,7 +83,7 @@ export const boolean = (name: string): Flag<boolean> => Param.boolean(Param.flag
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const portFlag = Flag.integer("port")
+ * const portFlag = Flag.Int("port")
  * // Usage: --port 8080
  * portFlag.kind // => "flag"
  * ```
@@ -91,7 +91,7 @@ export const boolean = (name: string): Flag<boolean> => Param.boolean(Param.flag
  * @category constructors
  * @since 4.0.0
  */
-export const integer = (name: string): Flag<number> => Param.integer(Param.flagKind, name)
+export const Int = (name: string): Flag<number> => Param.Int(Param.flagKind, name)
 
 /**
  * Creates a float flag that accepts decimal number input.
@@ -101,7 +101,7 @@ export const integer = (name: string): Flag<number> => Param.integer(Param.flagK
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const rateFlag = Flag.float("rate")
+ * const rateFlag = Flag.Finite("rate")
  * // Usage: --rate 3.14
  * rateFlag.kind // => "flag"
  * ```
@@ -109,7 +109,7 @@ export const integer = (name: string): Flag<number> => Param.integer(Param.flagK
  * @category constructors
  * @since 4.0.0
  */
-export const float = (name: string): Flag<number> => Param.float(Param.flagKind, name)
+export const Finite = (name: string): Flag<number> => Param.Finite(Param.flagKind, name)
 
 /**
  * Creates a date flag that accepts date input in ISO format.
@@ -119,7 +119,7 @@ export const float = (name: string): Flag<number> => Param.float(Param.flagKind,
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const startDateFlag = Flag.date("start-date")
+ * const startDateFlag = Flag.Date("start-date")
  * // Usage: --start-date 2023-12-25
  * startDateFlag.kind // => "flag"
  * ```
@@ -127,7 +127,7 @@ export const float = (name: string): Flag<number> => Param.float(Param.flagKind,
  * @category constructors
  * @since 4.0.0
  */
-export const date = (name: string): Flag<Date> => Param.date(Param.flagKind, name)
+export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.flagKind, name)
 
 /**
  * Constructs option parameters that represent a choice between several inputs.
@@ -298,7 +298,7 @@ export const directory = (name: string, options?: {
  *   )
  * )
  *
- * const passwordFlag = Flag.redacted("password")
+ * const passwordFlag = Flag.Redacted("password")
  *
  * const program = Effect.gen(function*() {
  *   const [, password] = yield* passwordFlag.parse({
@@ -314,7 +314,7 @@ export const directory = (name: string, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const redacted = (name: string): Flag<Redacted.Redacted<string>> => Param.redacted(Param.flagKind, name)
+export const Redacted = (name: string): Flag<Redacted_.Redacted<string>> => Param.Redacted(Param.flagKind, name)
 
 /**
  * Creates a flag that reads and returns file content as a string.
@@ -430,7 +430,7 @@ export const keyValuePair = (name: string): Flag<Record<string, string>> => Para
  * import { Flag } from "effect/unstable/cli"
  *
  * const makeValueFlag = (includeValue: boolean) =>
- *   includeValue ? Flag.string("value") : Flag.none
+ *   includeValue ? Flag.String("value") : Flag.none
  *
  * makeValueFlag(true) === Flag.none // => false
  * makeValueFlag(false) === Flag.none // => true
@@ -454,12 +454,12 @@ export const none: Flag<never> = Param.none(Param.flagKind)
  * import { Flag } from "effect/unstable/cli"
  *
  * // Flag can be used as both --verbose and -v
- * const verboseFlag = Flag.boolean("verbose").pipe(
+ * const verboseFlag = Flag.Boolean("verbose").pipe(
  *   Flag.withAlias("v")
  * )
  *
  * // Multiple aliases can be chained
- * const helpFlag = Flag.boolean("help").pipe(
+ * const helpFlag = Flag.Boolean("help").pipe(
  *   Flag.withAlias("h"),
  *   Flag.withAlias("?")
  * )
@@ -482,7 +482,7 @@ export const withAlias: {
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const portFlag = Flag.integer("port").pipe(
+ * const portFlag = Flag.Int("port").pipe(
  *   Flag.withDescription("The port number to listen on")
  * )
  *
@@ -517,13 +517,13 @@ export const withDescription: {
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const databaseFlag = Flag.string("database-url").pipe(
+ * const databaseFlag = Flag.String("database-url").pipe(
  *   Flag.withMetavar("URL"),
  *   Flag.withDescription("Database connection URL")
  * )
  * // In help: --database-url URL
  *
- * const timeoutFlag = Flag.integer("timeout").pipe(
+ * const timeoutFlag = Flag.Int("timeout").pipe(
  *   Flag.withMetavar("SECONDS")
  * )
  * // In help: --timeout SECONDS
@@ -554,7 +554,7 @@ export const withMetavar: {
  * import { Flag } from "effect/unstable/cli"
  *
  * // Flag still parses --experimental-foo, but it does not appear in --help.
- * const experimental = Flag.boolean("experimental-foo").pipe(
+ * const experimental = Flag.Boolean("experimental-foo").pipe(
  *   Flag.withHidden
  * )
  * experimental.kind // => "flag"
@@ -592,7 +592,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  *   )
  * )
  *
- * const optionalPort = Flag.optional(Flag.integer("port"))
+ * const optionalPort = Flag.optional(Flag.Int("port"))
  *
  * const program = Effect.gen(function*() {
  *   const [, port] = yield* optionalPort.parse({
@@ -618,12 +618,12 @@ export const optional = <A>(param: Flag<A>): Flag<Option.Option<A>> => Param.opt
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const portFlag = Flag.integer("port").pipe(
+ * const portFlag = Flag.Int("port").pipe(
  *   Flag.withDefault(8080)
  * )
  * // If --port is not provided, defaults to 8080
  *
- * const hostFlag = Flag.string("host").pipe(
+ * const hostFlag = Flag.String("host").pipe(
  *   Flag.withDefault("localhost")
  * )
  * // If --host is not provided, defaults to "localhost"
@@ -647,7 +647,7 @@ export const withDefault: {
  * import { Config } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
- * const verbose = Flag.boolean("verbose").pipe(
+ * const verbose = Flag.Boolean("verbose").pipe(
  *   Flag.withFallbackConfig(Config.Boolean("VERBOSE"))
  * )
  * verbose.kind // => "flag"
@@ -669,7 +669,7 @@ export const withFallbackConfig: {
  * ```ts import.meta.vitest
  * import { Flag, Prompt } from "effect/unstable/cli"
  *
- * const name = Flag.string("name").pipe(
+ * const name = Flag.String("name").pipe(
  *   Flag.withFallbackPrompt(Prompt.text({ message: "Name" }))
  * )
  * name.kind // => "flag"
@@ -692,12 +692,12 @@ export const withFallbackPrompt: {
  * import { Flag } from "effect/unstable/cli"
  *
  * // Convert string to uppercase
- * const nameFlag = Flag.string("name").pipe(
+ * const nameFlag = Flag.String("name").pipe(
  *   Flag.map((name) => name.toUpperCase())
  * )
  *
  * // Convert port to URL
- * const urlFlag = Flag.integer("port").pipe(
+ * const urlFlag = Flag.Int("port").pipe(
  *   Flag.map((port) => `http://localhost:${port}`)
  * )
  * const kinds = [nameFlag.kind, urlFlag.kind] // => ["flag", "flag"]
@@ -738,7 +738,7 @@ export const map: {
  *   )
  * )
  *
- * const upperName = Flag.string("name").pipe(
+ * const upperName = Flag.String("name").pipe(
  *   Flag.mapEffect((name) => Effect.succeed(name.toUpperCase()))
  * )
  *
@@ -795,7 +795,7 @@ export const mapEffect: {
  * )
  *
  * // Parse JSON string with error handling
- * const jsonFlag = Flag.string("config").pipe(
+ * const jsonFlag = Flag.String("config").pipe(
  *   Flag.mapTryCatch(
  *     (json) => JSON.parse(json),
  *     (error) => `Invalid JSON: ${error}`
@@ -803,7 +803,7 @@ export const mapEffect: {
  * )
  *
  * // Parse URL with error handling
- * const urlFlag = Flag.string("url").pipe(
+ * const urlFlag = Flag.String("url").pipe(
  *   Flag.mapTryCatch(
  *     (url) => new URL(url),
  *     (error) => `Invalid URL: ${error}`
@@ -843,7 +843,7 @@ export const mapTryCatch: {
  * // Requires at least 2 source files
  * // Usage: --source file1.ts --source file2.ts
  *
- * const tagFlag = Flag.string("tag").pipe(
+ * const tagFlag = Flag.String("tag").pipe(
  *   Flag.atLeast(1)
  * )
  * // Requires at least 1 tag
@@ -866,11 +866,11 @@ export const atLeast: {
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const warningFlag = Flag.atMost(Flag.string("warning"), 3)
+ * const warningFlag = Flag.atMost(Flag.String("warning"), 3)
  * // Allows up to 3 warning flags
  * // Usage: --warning w1 --warning w2 --warning w3
  *
- * const debugFlag = Flag.string("debug").pipe(
+ * const debugFlag = Flag.String("debug").pipe(
  *   Flag.atMost(1)
  * )
  * // Allows at most 1 debug flag
@@ -893,11 +893,11 @@ export const atMost: {
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const hostFlag = Flag.between(Flag.string("host"), 1, 3)
+ * const hostFlag = Flag.between(Flag.String("host"), 1, 3)
  * // Requires 1-3 host flags
  * // Usage: --host host1 --host host2
  *
- * const excludeFlag = Flag.string("exclude").pipe(
+ * const excludeFlag = Flag.String("exclude").pipe(
  *   Flag.between(0, 5)
  * )
  * // Allows 0-5 exclude patterns
@@ -922,7 +922,7 @@ export const between: {
  * import { Flag } from "effect/unstable/cli"
  *
  * // Parse positive integers only
- * const positiveInt = Flag.integer("count").pipe(
+ * const positiveInt = Flag.Int("count").pipe(
  *   Flag.filterMap(
  *     (n) => n > 0 ? Option.some(n) : Option.none(),
  *     (n) => `Expected positive integer, got ${n}`
@@ -930,7 +930,7 @@ export const between: {
  * )
  *
  * // Parse valid email addresses
- * const emailFlag = Flag.string("email").pipe(
+ * const emailFlag = Flag.String("email").pipe(
  *   Flag.filterMap(
  *     (email) => email.includes("@") ? Option.some(email) : Option.none(),
  *     (email) => `Invalid email address: ${email}`
@@ -960,7 +960,7 @@ export const filterMap: {
  * import { Flag } from "effect/unstable/cli"
  *
  * // Ensure port is in valid range
- * const portFlag = Flag.integer("port").pipe(
+ * const portFlag = Flag.Int("port").pipe(
  *   Flag.filter(
  *     (port) => port >= 1 && port <= 65535,
  *     (port) => `Port ${port} is out of range (1-65535)`
@@ -968,7 +968,7 @@ export const filterMap: {
  * )
  *
  * // Ensure non-empty string
- * const nameFlag = Flag.string("name").pipe(
+ * const nameFlag = Flag.String("name").pipe(
  *   Flag.filter(
  *     (name) => name.trim().length > 0,
  *     () => "Name cannot be empty"
@@ -999,14 +999,14 @@ export const filter: {
  *
  * // Try parsing as integer, fallback to string
  * const valueFlag = Flag.orElse(
- *   Flag.integer("value"),
- *   () => Flag.string("value")
+ *   Flag.Int("value"),
+ *   () => Flag.String("value")
  * )
  *
  * // Multiple input sources with fallback
  * const configFlag = Flag.orElse(
  *   Flag.file("config"),
- *   () => Flag.string("config-url")
+ *   () => Flag.String("config-url")
  * )
  * const kinds = [valueFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
@@ -1047,8 +1047,8 @@ export const orElse: {
  * )
  *
  * const sourceFlag = Flag.orElseResult(
- *   Flag.string("source"),
- *   () => Flag.string("source-url")
+ *   Flag.String("source"),
+ *   () => Flag.String("source-url")
  * )
  *
  * const program = Effect.gen(function*() {
@@ -1088,7 +1088,7 @@ export const orElseResult: {
  *   Schema.check(isEmail)
  * )
  *
- * const emailFlag = Flag.string("email").pipe(
+ * const emailFlag = Flag.String("email").pipe(
  *   Flag.withSchema(EmailSchema)
  * )
  *
@@ -1099,7 +1099,7 @@ export const orElseResult: {
  *   ssl: Schema.optional(Schema.Boolean)
  * }).pipe(Schema.fromJsonString)
  *
- * const configFlag = Flag.string("config").pipe(
+ * const configFlag = Flag.String("config").pipe(
  *   Flag.withSchema(ConfigSchema)
  * )
  * const kinds = [emailFlag.kind, configFlag.kind] // => ["flag", "flag"]

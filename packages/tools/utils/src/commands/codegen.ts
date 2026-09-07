@@ -30,7 +30,7 @@ const CodegenLayer = Layer.provideMerge(Codegen.layer, Glob.layer)
  */
 export const codegen = Command.make("codegen", {
   cwd: Flag.directory("cwd", { mustExist: true }).pipe(Flag.withDefault(".")),
-  pattern: Flag.string("pattern").pipe(Flag.withDefault("src/**/index.ts"))
+  pattern: Flag.String("pattern").pipe(Flag.withDefault("src/**/index.ts"))
 }, (config) =>
   Effect.gen(function*() {
     const path = yield* Path.Path

@@ -153,7 +153,7 @@ let settingIdCounter = 0
  * @since 4.0.0
  */
 export const Help: Action<boolean> = action({
-  flag: Flag.boolean("help").pipe(
+  flag: Flag.Boolean("help").pipe(
     Flag.withAlias("h"),
     Flag.withDescription("Show help information"),
     Flag.withDefault(false)
@@ -176,7 +176,7 @@ export const Help: Action<boolean> = action({
  * @since 4.0.0
  */
 export const Version: Action<boolean> = action({
-  flag: Flag.boolean("version").pipe(
+  flag: Flag.Boolean("version").pipe(
     Flag.withAlias("v"),
     Flag.withDescription("Show version information"),
     Flag.withDefault(false)
@@ -199,7 +199,7 @@ export const Version: Action<boolean> = action({
  * @since 4.0.0
  */
 export const Wizard: Action<boolean> = action({
-  flag: Flag.boolean("wizard").pipe(
+  flag: Flag.Boolean("wizard").pipe(
     Flag.withDescription("Start wizard mode for a command"),
     Flag.withDefault(false)
   ),

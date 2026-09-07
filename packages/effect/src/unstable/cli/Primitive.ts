@@ -15,7 +15,7 @@ import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
 import { identity } from "../../Function.ts"
 import * as Path from "../../Path.ts"
-import * as Redacted from "../../Redacted.ts"
+import * as Redacted_ from "../../Redacted.ts"
 import * as Schema from "../../Schema.ts"
 import type { Formatter } from "../../SchemaIssue.ts"
 import type * as Struct from "../../Struct.ts"
@@ -55,9 +55,9 @@ const TypeId = "~effect/cli/Primitive"
  * )
  *
  * const program = Effect.gen(function*() {
- *   const stringResult = yield* Primitive.string.parse("hello")
- *   const numberResult = yield* Primitive.integer.parse("42")
- *   const boolResult = yield* Primitive.boolean.parse("true")
+ *   const stringResult = yield* Primitive.String.parse("hello")
+ *   const numberResult = yield* Primitive.Int.parse("42")
+ *   const boolResult = yield* Primitive.Boolean.parse("true")
  *   return [stringResult, numberResult, boolResult] as const
  * })
  *
@@ -158,10 +158,10 @@ const makeSchemaPrimitive = <T>(
  * )
  *
  * const parseBoolean = Effect.all([
- *   Primitive.boolean.parse("true"),
- *   Primitive.boolean.parse("yes"),
- *   Primitive.boolean.parse("false"),
- *   Primitive.boolean.parse("0")
+ *   Primitive.Boolean.parse("true"),
+ *   Primitive.Boolean.parse("yes"),
+ *   Primitive.Boolean.parse("false"),
+ *   Primitive.Boolean.parse("0")
  * ])
  *
  * await Effect.runPromise(parseBoolean.pipe(Effect.provide(CliTestLayer))) // => [true, true, false, false]
@@ -170,15 +170,15 @@ const makeSchemaPrimitive = <T>(
  * @category constructors
  * @since 4.0.0
  */
-export const boolean: Primitive<boolean> = makeSchemaPrimitive(
+export const Boolean: Primitive<boolean> = makeSchemaPrimitive(
   "Boolean",
   Schema.BooleanLiterals
 )
 
 /**
- * Creates a primitive that parses floating-point numbers from string input.
+ * Creates a primitive that parses finite numbers from string input.
  *
- * **Example** (Parsing floating-point numbers)
+ * **Example** (Parsing finite numbers)
  *
  * ```ts import.meta.vitest
  * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
@@ -203,9 +203,9 @@ export const boolean: Primitive<boolean> = makeSchemaPrimitive(
  * )
  *
  * const parseFloat = Effect.all([
- *   Primitive.float.parse("3.14"),
- *   Primitive.float.parse("-42.5"),
- *   Primitive.float.parse("0")
+ *   Primitive.Finite.parse("3.14"),
+ *   Primitive.Finite.parse("-42.5"),
+ *   Primitive.Finite.parse("0")
  * ])
  *
  * await Effect.runPromise(parseFloat.pipe(Effect.provide(CliTestLayer))) // => [3.14, -42.5, 0]
@@ -214,7 +214,7 @@ export const boolean: Primitive<boolean> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const float: Primitive<number> = makeSchemaPrimitive(
+export const Finite: Primitive<number> = makeSchemaPrimitive(
   "Float",
   Schema.Finite
 )
@@ -247,9 +247,9 @@ export const float: Primitive<number> = makeSchemaPrimitive(
  * )
  *
  * const parseInteger = Effect.all([
- *   Primitive.integer.parse("42"),
- *   Primitive.integer.parse("-123"),
- *   Primitive.integer.parse("0")
+ *   Primitive.Int.parse("42"),
+ *   Primitive.Int.parse("-123"),
+ *   Primitive.Int.parse("0")
  * ])
  *
  * await Effect.runPromise(parseInteger.pipe(Effect.provide(CliTestLayer))) // => [42, -123, 0]
@@ -258,7 +258,7 @@ export const float: Primitive<number> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const integer: Primitive<number> = makeSchemaPrimitive(
+export const Int: Primitive<number> = makeSchemaPrimitive(
   "Integer",
   Schema.Int
 )
@@ -291,7 +291,7 @@ export const integer: Primitive<number> = makeSchemaPrimitive(
  * )
  *
  * const parseDate = Effect.gen(function*() {
- *   const result = yield* Primitive.date.parse("2023-12-25")
+ *   const result = yield* Primitive.Date.parse("2023-12-25")
  *   return result.toISOString()
  * })
  *
@@ -301,7 +301,7 @@ export const integer: Primitive<number> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const date: Primitive<Date> = makeSchemaPrimitive(
+export const Date: Primitive<globalThis.Date> = makeSchemaPrimitive(
   "Date",
   Schema.Date
 )
@@ -334,9 +334,9 @@ export const date: Primitive<Date> = makeSchemaPrimitive(
  * )
  *
  * const parseString = Effect.all([
- *   Primitive.string.parse("hello world"),
- *   Primitive.string.parse(""),
- *   Primitive.string.parse("123")
+ *   Primitive.String.parse("hello world"),
+ *   Primitive.String.parse(""),
+ *   Primitive.String.parse("123")
  * ])
  *
  * await Effect.runPromise(parseString.pipe(Effect.provide(CliTestLayer))) // => ["hello world", "", "123"]
@@ -345,7 +345,7 @@ export const date: Primitive<Date> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const string: Primitive<string> = makePrimitive("String", (value) => Effect.succeed(value))
+export const String: Primitive<string> = makePrimitive("String", (value) => Effect.succeed(value))
 
 /**
  * Creates a primitive that accepts only specific choice values mapped to custom types.
@@ -553,7 +553,7 @@ export const path = (
  * )
  *
  * const parseRedacted = Effect.gen(function*() {
- *   const result = yield* Primitive.redacted.parse("secret-password")
+ *   const result = yield* Primitive.Redacted.parse("secret-password")
  *   return [Redacted.value(result), String(result)] as const
  * })
  *
@@ -563,9 +563,9 @@ export const path = (
  * @category constructors
  * @since 4.0.0
  */
-export const redacted: Primitive<Redacted.Redacted<string>> = makePrimitive(
+export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
   "Redacted",
-  (value) => Effect.succeed(Redacted.make(value))
+  (value) => Effect.succeed(Redacted_.make(value))
 )
 
 /**
@@ -938,10 +938,10 @@ export const none: Primitive<never> = makePrimitive("None", () => Effect.fail("T
  * ```ts import.meta.vitest
  * import { Primitive } from "effect/unstable/cli"
  *
- * Primitive.getTypeName(Primitive.string) // => "string"
- * Primitive.getTypeName(Primitive.integer) // => "integer"
- * Primitive.getTypeName(Primitive.boolean) // => "boolean"
- * Primitive.getTypeName(Primitive.date) // => "date"
+ * Primitive.getTypeName(Primitive.String) // => "string"
+ * Primitive.getTypeName(Primitive.Int) // => "integer"
+ * Primitive.getTypeName(Primitive.Boolean) // => "boolean"
+ * Primitive.getTypeName(Primitive.Date) // => "date"
  * Primitive.getTypeName(Primitive.keyValuePair) // => "key=value"
  *
  * const logLevelChoice = Primitive.choice([

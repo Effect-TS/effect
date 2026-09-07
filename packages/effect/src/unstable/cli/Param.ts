@@ -16,7 +16,7 @@ import { dual, identity, type LazyArg } from "../../Function.ts"
 import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
-import type * as Redacted from "../../Redacted.ts"
+import type * as Redacted_ from "../../Redacted.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import type { Covariant } from "../../Types.ts"
@@ -279,7 +279,7 @@ const Proto = {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const maybeParam = Param.string(Param.flagKind, "name")
+ * const maybeParam = Param.String(Param.flagKind, "name")
  *
  * Param.isParam(maybeParam) // => true
  * ```
@@ -297,7 +297,7 @@ export const isParam = (u: unknown): u is Param<any, ParamKind> => Predicate.has
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const nameParam = Param.string(Param.flagKind, "name")
+ * const nameParam = Param.String(Param.flagKind, "name")
  * const optionalParam = Param.optional(nameParam)
  *
  * Param.isSingle(nameParam) // => true
@@ -364,10 +364,10 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
  * import { Param } from "effect/unstable/cli"
  *
  * // Create a string flag
- * const nameFlag = Param.string(Param.flagKind, "name")
+ * const nameFlag = Param.String(Param.flagKind, "name")
  *
  * // Create a string argument
- * const fileArg = Param.string(Param.argumentKind, "file")
+ * const fileArg = Param.String(Param.argumentKind, "file")
  *
  * // Usage in CLI: --name "John Doe" or as positional argument
  * const kinds = [nameFlag.kind, fileArg.kind] // => ["flag", "argument"]
@@ -376,13 +376,13 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
  * @category constructors
  * @since 4.0.0
  */
-export const string = <const Kind extends ParamKind>(
+export const String = <const Kind extends ParamKind>(
   kind: Kind,
   name: string
 ): Param<Kind, string> =>
   makeSingle({
     name,
-    primitiveType: Primitive.string,
+    primitiveType: Primitive.String,
     kind
   })
 
@@ -395,10 +395,10 @@ export const string = <const Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Create a boolean flag
- * const verboseFlag = Param.boolean(Param.flagKind, "verbose")
+ * const verboseFlag = Param.Boolean(Param.flagKind, "verbose")
  *
  * // Create a boolean argument
- * const enableArg = Param.boolean(Param.argumentKind, "enable")
+ * const enableArg = Param.Boolean(Param.argumentKind, "enable")
  *
  * // Usage in CLI: --verbose (true) or --no-verbose (false).
  * // The flag is required unless made optional or given a fallback.
@@ -409,13 +409,13 @@ export const string = <const Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const boolean = <const Kind extends ParamKind>(
+export const Boolean = <const Kind extends ParamKind>(
   kind: Kind,
   name: string
 ): Param<Kind, boolean> =>
   makeSingle({
     name,
-    primitiveType: Primitive.boolean,
+    primitiveType: Primitive.Boolean,
     kind
   })
 
@@ -428,10 +428,10 @@ export const boolean = <const Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Create an integer flag
- * const portFlag = Param.integer(Param.flagKind, "port")
+ * const portFlag = Param.Int(Param.flagKind, "port")
  *
  * // Create an integer argument
- * const countArg = Param.integer(Param.argumentKind, "count")
+ * const countArg = Param.Int(Param.argumentKind, "count")
  *
  * // Usage in CLI: --port 8080 or as positional argument: 42
  * const kinds = [portFlag.kind, countArg.kind] // => ["flag", "argument"]
@@ -440,29 +440,29 @@ export const boolean = <const Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const integer = <const Kind extends ParamKind>(
+export const Int = <const Kind extends ParamKind>(
   kind: Kind,
   name: string
 ): Param<Kind, number> =>
   makeSingle({
     name,
-    primitiveType: Primitive.integer,
+    primitiveType: Primitive.Int,
     kind
   })
 
 /**
- * Creates a floating-point number parameter.
+ * Creates a finite number parameter.
  *
- * **Example** (Creating float parameters)
+ * **Example** (Creating finite number parameters)
  *
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * // Create a float flag
- * const rateFlag = Param.float(Param.flagKind, "rate")
+ * // Create a finite number flag
+ * const rateFlag = Param.Finite(Param.flagKind, "rate")
  *
- * // Create a float argument
- * const thresholdArg = Param.float(Param.argumentKind, "threshold")
+ * // Create a finite number argument
+ * const thresholdArg = Param.Finite(Param.argumentKind, "threshold")
  *
  * // Usage in CLI: --rate 0.95 or as positional argument: 3.14159
  * const kinds = [rateFlag.kind, thresholdArg.kind] // => ["flag", "argument"]
@@ -471,13 +471,13 @@ export const integer = <const Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const float = <const Kind extends ParamKind>(
+export const Finite = <const Kind extends ParamKind>(
   kind: Kind,
   name: string
 ): Param<Kind, number> =>
   makeSingle({
     name,
-    primitiveType: Primitive.float,
+    primitiveType: Primitive.Finite,
     kind
   })
 
@@ -490,10 +490,10 @@ export const float = <const Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Create a date flag
- * const startFlag = Param.date(Param.flagKind, "start-date")
+ * const startFlag = Param.Date(Param.flagKind, "start-date")
  *
  * // Create a date argument
- * const dueDateArg = Param.date(Param.argumentKind, "due-date")
+ * const dueDateArg = Param.Date(Param.argumentKind, "due-date")
  *
  * // Usage in CLI: --start-date "2023-12-25" or as positional: "2023-01-01"
  * // Parses to JavaScript Date object
@@ -503,13 +503,13 @@ export const float = <const Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const date = <const Kind extends ParamKind>(
+export const Date = <const Kind extends ParamKind>(
   kind: Kind,
   name: string
-): Param<Kind, Date> =>
+): Param<Kind, globalThis.Date> =>
   makeSingle({
     name,
-    primitiveType: Primitive.date,
+    primitiveType: Primitive.Date,
     kind
   })
 
@@ -711,10 +711,10 @@ export const file = <Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Create a password parameter
- * const password = Param.redacted(Param.flagKind, "password")
+ * const password = Param.Redacted(Param.flagKind, "password")
  *
  * // Create an API key argument
- * const apiKey = Param.redacted(Param.argumentKind, "api-key")
+ * const apiKey = Param.Redacted(Param.argumentKind, "api-key")
  *
  * // Usage: --password (value will be hidden in help/logs)
  * const kinds = [password.kind, apiKey.kind] // => ["flag", "argument"]
@@ -723,13 +723,13 @@ export const file = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const redacted = <Kind extends ParamKind>(
+export const Redacted = <Kind extends ParamKind>(
   kind: Kind,
   name: string
-): Param<Kind, Redacted.Redacted<string>> =>
+): Param<Kind, Redacted_.Redacted<string>> =>
   makeSingle({
     name,
-    primitiveType: Primitive.redacted,
+    primitiveType: Primitive.Redacted,
     kind
   })
 
@@ -902,7 +902,7 @@ export const keyValuePair = <Kind extends ParamKind>(
  * const disabledDebugParam = Param.none(Param.flagKind)
  *
  * const makeDebugParam = (enableDebug: boolean) =>
- *   enableDebug ? Param.string(Param.flagKind, "debug") : disabledDebugParam
+ *   enableDebug ? Param.String(Param.flagKind, "debug") : disabledDebugParam
  *
  * makeDebugParam(true) === disabledDebugParam // => false
  * makeDebugParam(false) === disabledDebugParam // => true
@@ -938,13 +938,13 @@ const FLAG_DASH_REGEXP = /^-+/
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const force = Param.boolean(Param.flagKind, "force").pipe(
+ * const force = Param.Boolean(Param.flagKind, "force").pipe(
  *   Param.withAlias("-f"),
  *   Param.withAlias("-F")
  * )
  *
  * // Also works on composed params:
- * const count = Param.integer(Param.flagKind, "count").pipe(
+ * const count = Param.Int(Param.flagKind, "count").pipe(
  *   Param.optional,
  *   Param.withAlias("-c") // finds the underlying Single and adds alias
  * )
@@ -978,7 +978,7 @@ export const withAlias: {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const verbose = Param.boolean(Param.flagKind, "verbose").pipe(
+ * const verbose = Param.Boolean(Param.flagKind, "verbose").pipe(
  *   Param.withAlias("-v"),
  *   Param.withDescription("Enable verbose output")
  * )
@@ -1013,7 +1013,7 @@ export const withDescription: {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const experimental = Param.boolean(Param.flagKind, "experimental-foo").pipe(
+ * const experimental = Param.Boolean(Param.flagKind, "experimental-foo").pipe(
  *   Param.withHidden
  * )
  * experimental.kind // => "flag"
@@ -1037,7 +1037,7 @@ export const withHidden = <Kind extends ParamKind, A>(self: Param<Kind, A>): Par
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const port = Param.integer(Param.flagKind, "port").pipe(
+ * const port = Param.Int(Param.flagKind, "port").pipe(
  *   Param.map((n) => ({ port: n, url: `http://localhost:${n}` }))
  * )
  * port.kind // => "flag"
@@ -1110,7 +1110,7 @@ const transform = <Kind extends ParamKind, A, B>(
  *   )
  * )
  *
- * const validatedEmail = Param.string(Param.flagKind, "email").pipe(
+ * const validatedEmail = Param.String(Param.flagKind, "email").pipe(
  *   Param.mapEffect((email) =>
  *     email.includes("@")
  *       ? Effect.succeed(email)
@@ -1186,7 +1186,7 @@ export const mapEffect: {
  *   )
  * )
  *
- * const parsedJson = Param.string(Param.flagKind, "config").pipe(
+ * const parsedJson = Param.String(Param.flagKind, "config").pipe(
  *   Param.mapTryCatch(
  *     (str) => JSON.parse(str),
  *     (error) =>
@@ -1235,7 +1235,7 @@ export const mapTryCatch: {
             (error) =>
               new CliError.InvalidValue({
                 option: single.name,
-                value: String(a),
+                value: globalThis.String(a),
                 expected: error,
                 kind: single.kind
               })
@@ -1262,7 +1262,7 @@ export const mapTryCatch: {
  * // Create an optional port option
  * // - When not provided: returns Option.none()
  * // - When provided: returns Option.some(parsedValue)
- * const port = Param.optional(Param.integer(Param.flagKind, "port"))
+ * const port = Param.optional(Param.Int(Param.flagKind, "port"))
  * port.kind // => "flag"
  * ```
  *
@@ -1303,12 +1303,12 @@ export const optional = <Kind extends ParamKind, A>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Using the pipe operator to make an option optional
- * const port = Param.integer(Param.flagKind, "port").pipe(
+ * const port = Param.Int(Param.flagKind, "port").pipe(
  *   Param.withDefault(8080)
  * )
  *
  * // Can also be used with other combinators
- * const verbose = Param.boolean(Param.flagKind, "verbose").pipe(
+ * const verbose = Param.Boolean(Param.flagKind, "verbose").pipe(
  *   Param.withAlias("-v"),
  *   Param.withDescription("Enable verbose output"),
  *   Param.withDefault(false)
@@ -1479,16 +1479,16 @@ export type VariadicParamOptions = {
  * import { Param } from "effect/unstable/cli"
  *
  * // Basic variadic parameter (0 to infinity)
- * const tags = Param.variadic(Param.string(Param.flagKind, "tag"))
+ * const tags = Param.variadic(Param.String(Param.flagKind, "tag"))
  *
  * // Variadic with minimum count
  * const inputs = Param.variadic(
- *   Param.string(Param.flagKind, "input"),
+ *   Param.String(Param.flagKind, "input"),
  *   { min: 1 } // at least 1 required
  * )
  *
  * // Variadic with both min and max
- * const limited = Param.variadic(Param.string(Param.flagKind, "item"), {
+ * const limited = Param.variadic(Param.String(Param.flagKind, "item"), {
  *   min: 2, // at least 2 times
  *   max: 2 // at most 2 times
  * })
@@ -1534,7 +1534,7 @@ export const variadic = <Kind extends ParamKind, A>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Allow 1-3 file inputs
- * const files = Param.string(Param.flagKind, "file").pipe(
+ * const files = Param.String(Param.flagKind, "file").pipe(
  *   Param.between(1, 3),
  *   Param.withAlias("-f")
  * )
@@ -1543,7 +1543,7 @@ export const variadic = <Kind extends ParamKind, A>(
  * // Result: ["a.txt", "b.txt"]
  *
  * // Allow 0 or more tags
- * const tags = Param.string(Param.flagKind, "tag").pipe(
+ * const tags = Param.String(Param.flagKind, "tag").pipe(
  *   Param.between(0, Number.MAX_SAFE_INTEGER)
  * )
  *
@@ -1583,7 +1583,7 @@ export const between: {
  * import { Param } from "effect/unstable/cli"
  *
  * // Allow at most 3 warning suppressions
- * const suppressions = Param.string(Param.flagKind, "suppress").pipe(
+ * const suppressions = Param.String(Param.flagKind, "suppress").pipe(
  *   Param.atMost(3)
  * )
  *
@@ -1619,7 +1619,7 @@ export const atMost: {
  * import { Param } from "effect/unstable/cli"
  *
  * // Require at least 2 input files
- * const inputs = Param.string(Param.flagKind, "input").pipe(
+ * const inputs = Param.String(Param.flagKind, "input").pipe(
  *   Param.atLeast(2),
  *   Param.withAlias("-i")
  * )
@@ -1656,7 +1656,7 @@ export const atLeast: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  * import { Param } from "effect/unstable/cli"
- * const positiveInt = Param.integer(Param.flagKind, "count").pipe(
+ * const positiveInt = Param.Int(Param.flagKind, "count").pipe(
  *   Param.filterMap(
  *     (n) => n > 0 ? Option.some(n) : Option.none(),
  *     (n) => `Expected positive integer, got ${n}`
@@ -1693,7 +1693,7 @@ export const filterMap: {
       const single = getUnderlyingSingleOrThrow(self)
       return yield* new CliError.InvalidValue({
         option: single.name,
-        value: String(a),
+        value: globalThis.String(a),
         expected: onNone(a),
         kind: single.kind
       })
@@ -1708,7 +1708,7 @@ export const filterMap: {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const evenNumber = Param.integer(Param.flagKind, "num").pipe(
+ * const evenNumber = Param.Int(Param.flagKind, "num").pipe(
  *   Param.filter(
  *     (n) => n % 2 === 0,
  *     (n) => `Expected even number, got ${n}`
@@ -1749,7 +1749,7 @@ export const filter: {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const port = Param.integer(Param.flagKind, "port").pipe(
+ * const port = Param.Int(Param.flagKind, "port").pipe(
  *   Param.withMetavar("PORT"),
  *   Param.filter(
  *     (p) => p >= 1 && p <= 65535,
@@ -1789,7 +1789,7 @@ export const withMetavar: {
  *   Schema.check(isEmail)
  * )
  *
- * const email = Param.string(Param.flagKind, "email").pipe(
+ * const email = Param.String(Param.flagKind, "email").pipe(
  *   Param.withSchema(Email)
  * )
  * email.kind // => "flag"
@@ -1818,7 +1818,7 @@ export const withSchema: {
       const single = getUnderlyingSingleOrThrow(self)
       return new CliError.InvalidValue({
         option: single.name,
-        value: String(value),
+        value: globalThis.String(value),
         expected: `Schema validation failed: ${error.message}`,
         kind: single.kind
       })
@@ -1834,7 +1834,7 @@ export const withSchema: {
  * import { Param } from "effect/unstable/cli"
  *
  * const config = Param.file(Param.flagKind, "config").pipe(
- *   Param.orElse(() => Param.string(Param.flagKind, "config-url"))
+ *   Param.orElse(() => Param.String(Param.flagKind, "config-url"))
  * )
  * config.kind // => "flag"
  * ```
@@ -1874,7 +1874,7 @@ export const orElse: {
  * import { Param } from "effect/unstable/cli"
  *
  * const configSource = Param.file(Param.flagKind, "config").pipe(
- *   Param.orElseResult(() => Param.string(Param.flagKind, "config-url"))
+ *   Param.orElseResult(() => Param.String(Param.flagKind, "config-url"))
  * )
  * // Returns Result<string, string>
  * configSource.kind // => "flag"

@@ -23,7 +23,7 @@ const spec = Flag.fileParse("spec").pipe(
   Flag.withDescription("The OpenAPI spec file to generate output from")
 )
 
-const name = Flag.string("name").pipe(
+const name = Flag.String("name").pipe(
   Flag.withAlias("n"),
   Flag.withDescription("The name of the generated output"),
   Flag.withDefault("Client")
@@ -37,7 +37,7 @@ const format = Flag.choice("format", ["httpclient", "httpclient-type-only", "htt
   Flag.withDefault("httpclient")
 )
 
-const patch = Flag.string("patch").pipe(
+const patch = Flag.String("patch").pipe(
   Flag.withAlias("p"),
   Flag.withDescription(
     "JSON patch to apply to OpenAPI spec before generation. " +

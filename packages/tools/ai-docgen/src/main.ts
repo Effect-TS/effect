@@ -23,7 +23,7 @@ const output = Flag.path("output").pipe(
   Flag.withDescription("Output file path")
 )
 
-const watch = Flag.boolean("watch").pipe(
+const watch = Flag.Boolean("watch").pipe(
   Flag.withAlias("w"),
   Flag.withDescription("Watch for file changes and regenerate documentation"),
   Flag.withDefault(false)
