@@ -20,7 +20,73 @@ import { redact } from "../../Redactable.ts"
 import * as Redacted from "../../Redacted.ts"
 import * as Schema from "../../Schema.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
-import { HttpRequestDetails, HttpResponseDetails } from "./Response.ts"
+
+/**
+ * Schema for HTTP requests to an AI provider.
+ *
+ * **Example** (Describing an HTTP request)
+ *
+ * ```ts import.meta.vitest
+ * import type { AiError } from "effect/unstable/ai"
+ *
+ * const requestDetails: typeof AiError.HttpRequestDetails.Type = {
+ *   method: "POST",
+ *   url: "https://api.openai.com/v1/responses",
+ *   urlParams: [],
+ *   hash: undefined,
+ *   headers: { "Content-Type": "application/json" }
+ * }
+ * const result = [requestDetails.method, requestDetails.urlParams] // => ["POST", []]
+ * ```
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HttpRequestDetails = Schema.Struct({
+  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE"]),
+  url: Schema.String,
+  urlParams: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
+  hash: Schema.optional(Schema.String),
+  headers: Schema.Record(
+    Schema.String,
+    Schema.Union([
+      Schema.String,
+      Schema.Redacted(Schema.String)
+    ])
+  )
+}).annotate({ identifier: "HttpRequestDetails" })
+
+/**
+ * Schema for HTTP responses from an AI provider.
+ *
+ * **Example** (Describing an HTTP response)
+ *
+ * ```ts import.meta.vitest
+ * import type { AiError } from "effect/unstable/ai"
+ *
+ * const responseDetails: typeof AiError.HttpResponseDetails.Type = {
+ *   status: 200,
+ *   headers: {
+ *     "Content-Type": "application/json",
+ *     "X-Request-Id": "req_abc123"
+ *   }
+ * }
+ * const result = [responseDetails.status, responseDetails.headers["X-Request-Id"]] // => [200, "req_abc123"]
+ * ```
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HttpResponseDetails = Schema.Struct({
+  status: Schema.Int,
+  headers: Schema.Record(
+    Schema.String,
+    Schema.Union([
+      Schema.String,
+      Schema.Redacted(Schema.String)
+    ])
+  )
+}).annotate({ identifier: "HttpResponseDetails" })
 
 const ReasonTypeId = "~effect/ai/AiError/Reason" as const
 

@@ -24,7 +24,7 @@ import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as AiError from "./AiError.ts"
-import type * as Tool from "./Tool.ts"
+import * as Tool from "./Tool.ts"
 
 const TypeId = "~effect/ai/Toolkit" as const
 
@@ -254,10 +254,8 @@ const Proto = {
             ? Schema.decodeUnknownEffect(tool.parametersSchema) as any
             : (u: unknown) => Effect.succeed(u)
           const encodeSuccess = Schema.encodeUnknownEffect(tool.successSchema) as any
-          const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as any
-          const encodeAiError = Schema.encodeUnknownEffect(AiError.AiError)
-          const encodeResult = (u: unknown, isFailure: boolean) =>
-            !isFailure ? encodeSuccess(u) : AiError.isAiError(u) ? encodeAiError(u) : encodeFailure(u)
+          const encodeFailure = Schema.encodeUnknownEffect(Tool.failureResultSchema(tool)) as any
+          const encodeResult = (u: unknown, isFailure: boolean) => isFailure ? encodeFailure(u) : encodeSuccess(u)
           schemas = {
             context: handler.context,
             handler: handler.handler,

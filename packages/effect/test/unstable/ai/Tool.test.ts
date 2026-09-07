@@ -1422,6 +1422,7 @@ describe("Dynamic", () => {
         )
 
         const toolResult = response.toolResults[0]
+        assertTrue(!toolResult.isFailure, "expected a successful tool result")
         deepStrictEqual(toolResult.result.timestamp, DateTime.makeUnsafe(new Date(1000)))
       }))
   })

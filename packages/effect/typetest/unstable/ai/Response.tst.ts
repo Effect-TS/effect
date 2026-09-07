@@ -58,12 +58,12 @@ describe("Response", () => {
     const result = null as unknown as Response.ToolResultParts<Tools>
     if (result.name === "BooleanTool") {
       if (result.isFailure) {
-        expect(result.result).type.toBe<boolean>()
+        expect(result.result).type.toBe<typeof BooleanTool.failureSchema.Type | typeof Tool.ExecutionFailure.Type>()
       } else {
         expect(result.result).type.toBe<string>()
       }
     } else if (result.isFailure) {
-      expect(result.result).type.toBe<{ readonly message: string }>()
+      expect(result.result).type.toBe<typeof TransformTool.failureSchema.Type | typeof Tool.ExecutionFailure.Type>()
     } else {
       expect(result.result).type.toBe<number>()
     }

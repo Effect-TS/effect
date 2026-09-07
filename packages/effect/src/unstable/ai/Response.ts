@@ -16,7 +16,8 @@ import { identity } from "../../Function.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
-import type * as Tool from "./Tool.ts"
+import * as AiError from "./AiError.ts"
+import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
 const PartTypeId = "~effect/ai/Response/Part" as const
@@ -185,7 +186,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -277,7 +278,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -372,7 +373,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -1629,7 +1630,7 @@ export interface ToolResultPartMetadata extends ProviderMetadata {}
  * @category schemas
  * @since 4.0.0
  */
-export const ToolResultPart: <
+export const ToolResultPart = <
   const Name extends string,
   Success extends Schema.Constraint,
   Failure extends Schema.Constraint
@@ -1637,89 +1638,54 @@ export const ToolResultPart: <
   name: Name,
   success: Success,
   failure: Failure
-) => Schema.decodeTo<
-  Schema.Struct<
-    {
-      readonly "~effect/ai/Response/Part": Schema.Literal<"~effect/ai/Response/Part">
-      readonly result: Schema.Union<readonly [Success, Failure]>
-      readonly providerExecuted: Schema.Boolean
-      readonly metadata: Schema.$Record<
-        Schema.String,
-        Schema.NullOr<Schema.Codec<Schema.Json>>
-      >
-      readonly encodedResult: Schema.toEncoded<Schema.Union<readonly [Success, Failure]>>
-      readonly preliminary: Schema.Boolean
-      readonly id: Schema.String
-      readonly type: Schema.Literal<"tool-result">
-      readonly isFailure: Schema.Boolean
-      readonly name: Schema.Literal<Name>
+): Schema.Codec<
+  ToolResultPart<Name, Success["Type"], Failure["Type"]>,
+  ToolResultPartEncoded,
+  Success["DecodingServices"] | Failure["DecodingServices"],
+  Success["EncodingServices"] | Failure["EncodingServices"]
+> => {
+  const makeSchema = (result: Schema.Constraint, isFailure: boolean) => {
+    const encodedResult = Schema.toEncoded(result)
+    const Common = {
+      id: Schema.String,
+      type: Schema.Literal("tool-result"),
+      isFailure: Schema.Literal(isFailure),
+      name: Schema.Literal(name)
     }
-  >,
-  Schema.Struct<
-    {
-      readonly result: Schema.toEncoded<Schema.Union<readonly [Success, Failure]>>
-      readonly providerExecuted: Schema.optional<Schema.Boolean>
-      readonly metadata: Schema.optional<
-        Schema.$Record<Schema.String, Schema.NullOr<Schema.Codec<Schema.Json>>>
-      >
-      readonly preliminary: Schema.optional<Schema.Boolean>
-      readonly id: Schema.String
-      readonly type: Schema.Literal<"tool-result">
-      readonly isFailure: Schema.Boolean
-      readonly name: Schema.Literal<Name>
-    }
-  >
-> = <
-  const Name extends string,
-  Success extends Schema.Constraint,
-  Failure extends Schema.Constraint
->(
-  name: Name,
-  success: Success,
-  failure: Failure
-) => {
-  const ResultSchema = Schema.Union([success, failure])
-  const Common = {
-    id: Schema.String,
-    type: Schema.Literal("tool-result"),
-    isFailure: Schema.Boolean,
-    name: Schema.Literal(name)
-  }
-  const Decoded = Schema.Struct({
-    ...Common,
-    [PartTypeId]: Schema.Literal(PartTypeId),
-    result: ResultSchema,
-    providerExecuted: Schema.Boolean,
-    metadata: ProviderMetadata,
-    encodedResult: Schema.toEncoded(ResultSchema),
-    preliminary: Schema.Boolean
-  })
-  const Encoded = Schema.Struct({
-    ...Common,
-    result: Schema.toEncoded(ResultSchema),
-    providerExecuted: Schema.optional(Schema.Boolean),
-    metadata: Schema.optional(ProviderMetadata),
-    preliminary: Schema.optional(Schema.Boolean)
-  })
-  return Decoded.pipe(Schema.encodeTo(
-    Encoded,
-    SchemaTransformation.transform({
-      decode: (encoded) => ({
-        ...encoded,
-        [PartTypeId]: PartTypeId,
-        providerExecuted: encoded.providerExecuted ?? false,
-        metadata: encoded.metadata ?? {},
-        encodedResult: encoded.result,
-        preliminary: encoded.preliminary ?? false
-      }),
-      encode: identity
+    const Decoded = Schema.Struct({
+      ...Common,
+      [PartTypeId]: Schema.Literal(PartTypeId),
+      result,
+      providerExecuted: Schema.Boolean,
+      metadata: ProviderMetadata,
+      encodedResult,
+      preliminary: Schema.Boolean
     })
-  )).annotate({ identifier: `ToolResultPart(${name})` }) satisfies Schema.Codec<
-    ToolResultPart<Name, Success["Type"], Failure["Type"]>,
-    ToolResultPartEncoded,
-    Success["EncodingServices"] | Failure["EncodingServices"],
-    Success["DecodingServices"] | Failure["DecodingServices"]
-  >
+    const Encoded = Schema.Struct({
+      ...Common,
+      result: encodedResult,
+      providerExecuted: Schema.optional(Schema.Boolean),
+      metadata: Schema.optional(ProviderMetadata),
+      preliminary: Schema.optional(Schema.Boolean)
+    })
+    return Decoded.pipe(Schema.encodeTo(
+      Encoded,
+      SchemaTransformation.transform({
+        decode: (encoded) => ({
+          ...encoded,
+          [PartTypeId]: PartTypeId,
+          providerExecuted: encoded.providerExecuted ?? false,
+          metadata: encoded.metadata ?? {},
+          encodedResult: encoded.result,
+          preliminary: encoded.preliminary ?? false
+        }),
+        encode: identity
+      })
+    ))
+  }
+  return Schema.Union([makeSchema(success, false), makeSchema(failure, true)]).annotate({
+    identifier: `ToolResultPart(${name})`
+  })
 }
 
 /**
@@ -2142,83 +2108,20 @@ export const UrlSourcePart: Schema.Struct<{
 // =============================================================================
 
 /**
- * Schema for HTTP request details associated with an AI response.
- *
- * **Details**
- *
- * Captures comprehensive information about the HTTP request made to the
- * AI provider, enabling inspection of request metadata for debugging and
- * observability purposes.
- *
- * **Example** (Describing an HTTP request)
- *
- * ```ts import.meta.vitest
- * import type { Response } from "effect/unstable/ai"
- *
- * const requestDetails: typeof Response.HttpRequestDetails.Type = {
- *   method: "POST",
- *   url: "https://api.openai.com/v1/responses",
- *   urlParams: [],
- *   hash: undefined,
- *   headers: { "Content-Type": "application/json" }
- * }
- * const result = [requestDetails.method, requestDetails.urlParams] // => ["POST", []]
- * ```
+ * Alias of {@link AiError.HttpRequestDetails}.
  *
  * @category schemas
  * @since 4.0.0
  */
-export const HttpRequestDetails = Schema.Struct({
-  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE"]),
-  url: Schema.String,
-  urlParams: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
-  hash: Schema.optional(Schema.String),
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpRequestDetails" })
+export const HttpRequestDetails = AiError.HttpRequestDetails
 
 /**
- * Schema for HTTP response details associated with an AI response.
- *
- * **Details**
- *
- * Captures essential information about the HTTP response received from
- * the AI provider, including status codes and headers for debugging and
- * observability purposes.
- *
- * **Example** (Describing an HTTP response)
- *
- * ```ts import.meta.vitest
- * import type { Response } from "effect/unstable/ai"
- *
- * const responseDetails: typeof Response.HttpResponseDetails.Type = {
- *   status: 200,
- *   headers: {
- *     "Content-Type": "application/json",
- *     "X-Request-Id": "req_abc123"
- *   }
- * }
- * const result = [responseDetails.status, responseDetails.headers["X-Request-Id"]] // => [200, "req_abc123"]
- * ```
+ * Alias of {@link AiError.HttpResponseDetails}.
  *
  * @category schemas
  * @since 4.0.0
  */
-export const HttpResponseDetails = Schema.Struct({
-  status: Schema.Int,
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpResponseDetails" })
+export const HttpResponseDetails = AiError.HttpResponseDetails
 
 // =============================================================================
 // Response Metadata Part
