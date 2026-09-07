@@ -146,8 +146,10 @@ describe("CloudflareDurableObjects", () => {
           })
         )
       const id = "scheduled-alarm"
-      const firstAt = Date.now() + 500
-      const secondAt = firstAt + 600
+      // Keep automatic alarms beyond the test timeout; advance the fixture's
+      // clock explicitly so suite load cannot make both deliveries due at once.
+      const firstAt = Date.now() + 86_400_000
+      const secondAt = firstAt + 86_400_000
 
       const first = yield* fetchJson(
         `/delayed?id=${id}&operationId=first&discard=true&deliverAt=${firstAt}`
@@ -168,13 +170,17 @@ describe("CloudflareDurableObjects", () => {
       )
       assert.strictEqual(persisted.alarm, firstAt)
 
-      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 700)))
+      const beforeFirst = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
+      assert.deepStrictEqual(JSON.parse(beforeFirst.replies[0]).exit, { _tag: "Success", value: 0 })
+
+      yield* fetchJson(`/run-alarm?id=${id}&now=${firstAt}`)
       const afterFirst = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
       assert.deepStrictEqual(JSON.parse(afterFirst.replies[0]).exit, { _tag: "Success", value: 1 })
       const rearmed = yield* fetchJson(`/scheduled-rows?id=${id}`)
       assert.strictEqual(rearmed.alarm, secondAt)
 
-      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 500)))
+      const afterAlarm = yield* fetchJson(`/run-alarm?id=${id}&now=${secondAt}`)
+      assert.strictEqual(afterAlarm.alarm, null)
       const afterSecond = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
       assert.deepStrictEqual(JSON.parse(afterSecond.replies[0]).exit, { _tag: "Success", value: 2 })
     }), 60_000)
