@@ -119,7 +119,7 @@ const TestServerLayer = Layer.unwrap(Effect.promise(() =>
           HttpClient.followRedirects()
         )
         const response = yield* client.get("/redirect")
-        // Fetch follows redirects natively, so the response retains the original request.
+        // Fetch follows redirects natively and retains the original request.
         expect(new URL(response.request.url).pathname).toBe("/redirect")
         expect(new URL(response.url).pathname).toBe("/")
         assert.strictEqual(new URL(response.url).search, "?value=a%23b")

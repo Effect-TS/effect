@@ -67,10 +67,8 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
   readonly [TypeId]: typeof TypeId
   readonly request: HttpClientRequest.HttpClientRequest
   /**
-   * The resolved response URL, including query parameters and excluding the hash.
-   * Reflects the final URL when redirects are followed. Node clients require
-   * `HttpClient.followRedirects` to follow redirects.
-   * Empty when the response URL is unknown and the request URL cannot be resolved.
+   * The resolved URL, including query parameters and excluding the hash.
+   * Uses the final URL when redirects are followed. Empty if unknown.
    */
   readonly url: string
   readonly status: number

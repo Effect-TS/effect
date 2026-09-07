@@ -1051,13 +1051,8 @@ export const toWeb = (
 }
 
 /**
- * Wraps an `HttpServerResponse` as an `HttpClientResponse`.
- *
- * **Details**
- *
- * An optional request can be supplied for client-response metadata and decode
- * errors. The response URL includes query parameters and excludes the hash.
- * Without a request, the response URL is an empty string.
+ * Wraps an `HttpServerResponse` as an `HttpClientResponse`, using the optional
+ * request for metadata and decode errors. Without a request, `url` is empty.
  *
  * @category converting
  * @since 4.0.0
