@@ -15,6 +15,13 @@
  * This backs the `DurableQueue` user API; `CloudflareCluster.layer` already
  * includes this layer.
  *
+ * Retries wait for the configured delay after leasing the item and before
+ * delivering it to the handler. The lease is refreshed during this wait;
+ * interruption releases it without counting another failed attempt.
+ *
+ * `PersistedQueue.layerCleanup` is unsupported because the namespace binding
+ * cannot enumerate queue objects. Completed rows remain retained for deduplication.
+ *
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -69,6 +76,13 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
     options.queueNamespace.getByName(encodeName("PersistedQueue", name)) as unknown as QueueStub
 
   return PersistedQueue.PersistedQueueStore.of({
+    cleanup: () =>
+      Effect.fail(
+        new PersistedQueue.PersistedQueueError({
+          message:
+            "Cloudflare persisted queue cleanup is unsupported: the namespace binding cannot enumerate queue objects"
+        })
+      ),
     offer: ({ element, id, name }) =>
       Effect.tryPromise({
         try: () => stubFor(name).offer(id, JSON.stringify(element)),
@@ -78,7 +92,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             cause
           })
       }),
-    take: ({ maxAttempts, name }) =>
+    take: ({ maxAttempts, name, retryDelay }) =>
       // Uninterruptible outside `restore` so the release finalizer is always
       // registered once an item is leased; an interrupt while still waiting
       // cancels the take by taker id, releasing an item that was already
@@ -112,9 +126,12 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             Effect.forkScoped,
             Effect.interruptible
           )
+          if (item.attempts > 0) {
+            yield* restore(Effect.flatMap(retryDelay(item.attempts), Effect.sleep))
+          }
           return {
             id: item.id,
-            attempts: item.attempts,
+            attempts: item.attempts + 1,
             element: JSON.parse(item.element)
           }
         })
