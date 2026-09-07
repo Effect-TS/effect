@@ -855,8 +855,7 @@ export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
   /**
-   * Moves the cursor and returns its new position. Fails with `BadArgument`
-   * without moving the cursor if the resulting position would be negative.
+   * Seeks before the start fail with `BadArgument` and leave the cursor unchanged.
    */
   readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint, PlatformError>
   readonly sync: Effect.Effect<void, PlatformError>
