@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `HEAD` (`ca11c02e6af95ef0c801adc7a27ac4a1fae3f246`)
+Head: `origin/main` (`5a802043984727b0c5a291af39d1b9bbfa8d7b8b`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -506,7 +506,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform-node/NodeContext`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
-- `@effect/platform-node/index` -> `@effect/platform-node`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-node package root or import specific modules directly.
+- `@effect/platform-node/index` -> `@effect/platform-node`: The explicit /index entrypoint was removed; import Node-prefixed namespaces from the @effect/platform-node package root or import specific modules directly. Undici is no longer in the root barrel; import it from @effect/platform-node/Undici or directly from undici.
 - `@effect/platform/ChannelSchema` -> `effect/ChannelSchema`
 - `@effect/platform/Command` -> `effect/unstable/process/ChildProcess`
 - `@effect/platform/CommandExecutor` -> `effect/unstable/process/ChildProcessSpawner`
@@ -4898,6 +4898,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `AiError.AiError` -> `AiError.AiError`: Moved to effect/unstable/ai/AiError and redesigned from a union of separately tagged errors into one AiError wrapper with a semantic reason. Construct it with AiError.make({ module, method, reason }) and match error.reason rather than the old top-level tags.
 
+- `AiError.HttpRequestDetails` -> `AiError.HttpRequestDetails`: Retained in effect/unstable/ai/AiError and also re-exported as Response.HttpRequestDetails. Hash is an optional string instead of Option, headers may contain Redacted strings, and method includes TRACE.
+
 - `AiError.HttpRequestError` -> `AiError.make + AiError.NetworkError`: Replace the old top-level request error with an AiError whose reason is NetworkError. NetworkError.fromRequestError converts a v4 HttpClientError.RequestError.
 
 - `AiError.HttpResponseError` -> `AiError.make + AiError.reasonFromHttpStatus / AiError.InvalidOutputError`: There is no single v4 response-error class. Wrap a semantic reason with AiError.make: use reasonFromHttpStatus for status failures and InvalidOutputError for decode or empty-body failures.
@@ -4994,6 +4996,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Response.ToolCallPartEncoded` -> `Response.ToolCallPartEncoded`: Moved to effect/unstable/ai/Response; providerName was removed while providerExecuted remains optional when encoded.
 
+- `Response.ToolResultPart` -> `Response.ToolResultPart`: The schema selects success or failure using isFailure rather than trying both result schemas. It returns Schema.Codec; supply decoding services when decoding and encoding services when encoding.
+
 - `Response.ToolResultPartEncoded` -> `Response.ToolResultPartEncoded`: Moved to effect/unstable/ai/Response; providerName was removed and optional preliminary was added to the encoded shape.
 
 - `Response.documentSourcePart` -> `Response.makePart("source", { ...params, sourceType: "document" })`: The lowercase convenience constructor was removed. The DocumentSourcePart model remains, and the generic constructor now requires the document source discriminator.
@@ -5047,6 +5051,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Tool.Readonly` -> `Tool.Readonly`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
 
 - `Tool.Requirements` -> `Tool.HandlerServices`: Renamed and refined. HandlerServices combines parameter-decoding, result-encoding, and request-level dependencies required by a tool handler.
+
+- `Tool.Result` -> `Tool.Result`: The result includes success, declared failure, and execution-denied or execution-interrupted values in both failure modes. Return mode also includes AiError; handle these variants when narrowing results.
+
+- `Tool.ResultEncoded` -> `Tool.ResultEncoded`: The encoded result includes execution-denied and execution-interrupted variants in both failure modes, plus encoded AiError in return mode.
 
 - `Tool.Success` -> `Tool.Success`: Moved to effect/unstable/ai/Tool and remains the utility type that extracts a tool's decoded success type.
 
@@ -5636,9 +5644,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EntityProxyServer.RpcHandlers` -> `effect/unstable/cluster/EntityProxyServer#RpcHandlers`: Moved into core Effect and updated for the additional v4 Rpc requirements type parameter.
 
-- `EntityProxyServer.layerHttpApi` -> `effect/unstable/cluster/EntityProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi identifiers and Rpc.ServicesServer requirements.
+- `EntityProxyServer.layerHttpApi` -> `effect/unstable/cluster/EntityProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi identifiers and provide Sharding plus both Rpc.ServicesServer and Rpc.ServicesClient codec requirements.
 
-- `EntityProxyServer.layerRpcHandlers` -> `effect/unstable/cluster/EntityProxyServer#layerRpcHandlers`: Moved into core Effect; the service requirement is now Rpc.ServicesServer rather than Rpc.Context.
+- `EntityProxyServer.layerRpcHandlers` -> `effect/unstable/cluster/EntityProxyServer#layerRpcHandlers`: Moved into core Effect; replace Rpc.Context with both Rpc.ServicesServer and Rpc.ServicesClient codec requirements, alongside Sharding.
 
 ### `@effect/cluster/EntityResource`
 
@@ -5691,6 +5699,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `MessageStorage.makeEncoded` -> `effect/unstable/cluster/MessageStorage#makeEncoded`: Moved into core Effect. Custom encoded drivers must replace resetAddress with resetAddresses and may use the new limit and addresses options passed to unprocessedMessages.
 
 ### `@effect/cluster/Reply`
+
+- `Reply.Reply` -> `Reply.Reply(rpc, codecFor)`: Pass the transport codec. Decoding replies requires Rpc.ServicesClient; encoding replies requires Rpc.ServicesServer.
 
 - `Reply.ReplyEncoded` -> `effect/unstable/cluster/Reply#Encoded`: Renamed to Encoded and no longer parameterized by an Rpc; payload fields are unknown and validated by Reply.Reply(rpc, codecFor) with the transport's codec.
 
@@ -6440,6 +6450,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Cookies.CookieTypeId` -> `Cookies.isCookie`: The cookie brand is private in v4; use the public refinement instead of reading the type-id symbol.
 
+- `Cookies.CookiesError` -> `Cookies.CookiesError`: The error tag is CookiesError rather than CookieError. Update catchTag calls and \_tag comparisons; validation details are in the reason field.
+
 - `Cookies.ErrorTypeId` -> `Cookies.CookiesError`: The error brand is private in v4; identify the exported error class instead.
 
 - `Cookies.TypeId` -> `Cookies.isCookies`: The collection brand is private in v4; use the public refinement instead.
@@ -6488,13 +6500,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.FileTypeId` -> `typeof FileSystem.FileTypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
+- `FileSystem.GiB` -> `ByteSize.gibibytes`: Use the ByteSize binary unit constructor.
+
+- `FileSystem.KiB` -> `ByteSize.kibibytes`: Use the ByteSize binary unit constructor.
+
 - `FileSystem.MakeDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.MakeTempDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeTempDirectory"]>[0]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.MakeTempFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeTempFile"]>[0]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
+- `FileSystem.MiB` -> `ByteSize.mebibytes`: Use the ByteSize binary unit constructor.
+
 - `FileSystem.OpenFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["open"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
+
+- `FileSystem.PiB` -> `ByteSize.pebibytes`: Use the ByteSize binary unit constructor.
 
 - `FileSystem.ReadDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["readDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
@@ -6502,7 +6522,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.SinkOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["sink"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
-- `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset remain.
+- `FileSystem.Size` -> `ByteSize.ByteSize`: Use ByteSize.bytes or unit constructors for file sizes. Truncation lengths, buffer sizes, and read/write counts use number. File.seek takes and returns signed bigint positions; it can fail with PlatformError, including BadArgument when seeking before the start.
+
+- `FileSystem.SizeInput` -> `ByteSize.Input`: File-size and path-backed range inputs use ByteSize.Input. Truncation lengths, Web File ranges, and buffer sizes use number.
+
+- `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed, bytesToRead and offset accept ByteSize inputs, and chunkSize uses number.
+
+- `FileSystem.TiB` -> `ByteSize.tebibytes`: Use the ByteSize binary unit constructor.
 
 - `FileSystem.WatchEventCreate` -> `FileSystem.WatchEvent.Create`: The constructor was removed; construct a tagged object with \_tag: "Create" and path.
 
@@ -6882,9 +6908,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpBody.Uint8Array` -> `HttpBody.Uint8Array`: Retained with the same fields and tag, but v4 exports a class.
 
-- `HttpBody.file` -> `HttpBody.file`: Retained; bufferSize was replaced by chunkSize and the other file options remain.
+- `HttpBody.file` -> `HttpBody.file`: Retained; bufferSize was replaced by numeric chunkSize. Offset and bytesToRead accept ByteSize.Input. Invalid ranges and a final EOF-clamped content length above Number.MAX\_SAFE\_INTEGER fail with PlatformError / BadArgument.
 
-- `HttpBody.fileInfo` -> `HttpBody.fileFromInfo`: Renamed; it still uses supplied File.Info for content length and requires FileSystem.
+- `HttpBody.fileInfo` -> `HttpBody.fileFromInfo`: Renamed; it uses supplied File.Info with ByteSize size metadata and requires FileSystem. Offset and bytesToRead accept ByteSize.Input, while chunkSize is numeric. Invalid ranges and a final EOF-clamped content length above Number.MAX\_SAFE\_INTEGER fail with PlatformError / BadArgument.
 
 - `HttpBody.unsafeJson` -> `HttpBody.jsonUnsafe`: Renamed to put Unsafe last; serialization failures still throw.
 
@@ -6956,6 +6982,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpClientResponse`
 
+- `HttpClientResponse.HttpClientResponse` -> `HttpClientResponse.HttpClientResponse`: Custom implementations must supply the required url string. It represents the resolved URL including query parameters and excluding the hash, uses the final URL after redirects, and is empty when unknown.
+
 - `HttpClientResponse.TypeId` -> `typeof HttpClientResponse.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
 - `HttpClientResponse.filterStatus` -> `HttpClientResponse.filterStatus`: Retained; rejected status now fails with an HttpClientError wrapper.
@@ -6976,11 +7004,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpIncomingMessage`
 
-- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<Size | undefined\>.
+- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<ByteSize.ByteSize | undefined\>.
 
 - `HttpIncomingMessage.TypeId` -> `typeof HttpIncomingMessage.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
-- `HttpIncomingMessage.withMaxBodySize` -> `Effect.provideService(HttpIncomingMessage.MaxBodySize, size)`: The helper was removed; provide FileSystem.Size(input) or undefined directly.
+- `HttpIncomingMessage.withMaxBodySize` -> `Effect.provideService(HttpIncomingMessage.MaxBodySize, size)`: The helper was removed; provide a ByteSize value or undefined directly.
 
 ### `@effect/platform/HttpLayerRouter`
 
@@ -7050,13 +7078,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpPlatform`
 
-- `HttpPlatform.HttpPlatform` -> `HttpPlatform.HttpPlatform`: The service is now a Context.Service class; use its Service member for the implementation type.
+- `HttpPlatform.HttpPlatform` -> `HttpPlatform.HttpPlatform`: The service is now a Context.Service class; use its Service member for the implementation type. Path-backed offset and bytesToRead accept ByteSize.Input, while chunkSize and all Web File range options use number.
 
 - `HttpPlatform.TypeId` -> `none`: The public type id was removed; use the HttpPlatform Context.Service class.
 
 - `HttpPlatform.layer` -> `HttpPlatform.layer`: Retained as the default file-response layer.
 
-- `HttpPlatform.make` -> `HttpPlatform.make`: Retained; v4 returns the service implementation and uses updated file stream options.
+- `HttpPlatform.make` -> `HttpPlatform.make`: Retained; v4 returns the service implementation. The fileResponse callback receives contentLength as bigint, while start and end remain numbers. Web File range options use number.
 
 ### `@effect/platform/HttpRouter`
 
@@ -7184,7 +7212,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServerResponse.expireCookie` -> `HttpServerResponse.expireCookie`: Now effectful and safe; use expireCookieUnsafe for synchronous throwing behavior.
 
-- `HttpServerResponse.file` -> `HttpServerResponse.file`: Retained with updated FileSystem stream options.
+- `HttpServerResponse.file` -> `HttpServerResponse.file`: Retained; offset and bytesToRead accept ByteSize.Input, while chunkSize uses number. Path-backed responses validate ranges and clamp content length to the available bytes.
+
+- `HttpServerResponse.fileWeb` -> `HttpServerResponse.fileWeb`: Web File offset, bytesToRead, and chunkSize options use number, unlike path-backed ByteSize.Input ranges.
 
 - `HttpServerResponse.isServerResponse` -> `HttpServerResponse.isHttpServerResponse`: Renamed.
 
@@ -7248,9 +7278,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.FileSchema` -> `Multipart.PersistedFileSchema`: The schema for persisted multipart files was renamed.
 
-- `Multipart.MaxFieldSize` -> `Multipart.MaxFieldSize`: The setting remains but is now a Context.Reference.
+- `Multipart.MaxFieldSize` -> `Multipart.MaxFieldSize`: Now a Context.Reference\<ByteSize.ByteSize\>; provide a value such as ByteSize.bytes(100).
 
-- `Multipart.MaxFileSize` -> `Multipart.MaxFileSize`: The setting remains as a Context.Reference; use undefined rather than Option.none for no limit.
+- `Multipart.MaxFileSize` -> `Multipart.MaxFileSize`: Now a Context.Reference\<ByteSize.ByteSize | undefined\>; provide ByteSize.bytes(100), for example, or undefined for no limit.
 
 - `Multipart.MaxParts` -> `Multipart.MaxParts`: The setting remains as a Context.Reference; use undefined rather than Option.none for no limit.
 
@@ -7264,13 +7294,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.withLimits` -> `Effect.provideContext(effect, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the effect; Option-valued limits became optional plain values.
 
-- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value.
+- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or ByteSize inputs; convert Option.none to undefined and Option.some(value) to value.
 
 - `Multipart.withLimitsStream` -> `Stream.provideContext(stream, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the stream; Option-valued limits became optional plain values.
 
-- `Multipart.withMaxFieldSize` -> `Effect.provideService(Multipart.MaxFieldSize, size)`: Provide the v4 Context.Reference around the effect.
+- `Multipart.withMaxFieldSize` -> `Effect.provideService(Multipart.MaxFieldSize, size)`: Provide a ByteSize value, such as ByteSize.bytes(100). To normalize ByteSize.Input options, use Multipart.limitsServices.
 
-- `Multipart.withMaxFileSize` -> `Effect.provideService(Multipart.MaxFileSize, size)`: Provide the v4 Context.Reference around the effect, converting Option.none to undefined.
+- `Multipart.withMaxFileSize` -> `Effect.provideService(Multipart.MaxFileSize, size)`: Replace Option.none with undefined and Option.some(value) with a normalized ByteSize value. To normalize ByteSize.Input options, use Multipart.limitsServices.
 
 - `Multipart.withMaxParts` -> `Effect.provideService(Multipart.MaxParts, count)`: Provide the v4 Context.Reference around the effect, converting Option.none to undefined.
 
@@ -7864,7 +7894,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Model.fields` -> `effect/unstable/schema/Model#fields`: Moved with the variant-model helpers into core Effect's unstable schema package.
 
-- `Model.makeDataLoaders` -> `effect/unstable/sql/SqlModel#makeResolvers`: Returns RequestResolvers instead of callable loaders; execute with SqlResolver.request and use RequestResolver delay/batch combinators for batching controls.
+- `Model.makeDataLoaders` -> `effect/unstable/sql/SqlModel#makeResolvers`: Returns RequestResolvers instead of callable loaders; execute with SqlResolver.request and use RequestResolver delay/batch combinators for batching controls. The insert resolver requires model decoding services as well as insert-schema encoding services.
 
 ### `@effect/sql/SqlClient`
 
@@ -8542,7 +8572,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `DurableDeferred.failCause` -> `effect/unstable/workflow/DurableDeferred#failCause`: Moved into core Effect and now requires the error schema encoding services.
 
-- `DurableDeferred.into` -> `effect/unstable/workflow/DurableDeferred#into`: Moved into core Effect with the same exit recording and suspension propagation behavior.
+- `DurableDeferred.into` -> `effect/unstable/workflow/DurableDeferred#into`: Moved into core Effect with the same exit recording and suspension propagation behavior. Provide both decoding and encoding services for the success and error schemas; recording the exit requires encoding services.
 
 - `DurableDeferred.make` -> `effect/unstable/workflow/DurableDeferred#make`: Moved into core Effect with the same name and optional schemas, expressed through v4 Schema.Constraint.
 
@@ -9948,7 +9978,7 @@ Arbitrary.schema(schema)
 
 - `Effect.transposeMapOption` -> `Option.match`: Return `Effect.succeedNone` for None and map the Effect result to Some. Adapt arguments and imports to the v4 API.
 
-- `Effect.try` -> `Effect.try`: Still exported in v4; update call sites for the revised signature, options, and channel inference.
+- `Effect.try` -> `Effect.try`: Use the callback overload for Cause.UnknownError, or the object overload with try and catch to map failures to a custom error. The callback-only overload does not accept a custom error type parameter.
 
 - `Effect.tryMap` -> `Effect.flatMap + Effect.try`: FlatMap the source value into the v4 synchronous try constructor. Adapt arguments and imports to the v4 API.
 
@@ -10038,7 +10068,7 @@ Arbitrary.schema(schema)
 
 - `Effectable.ChannelTypeId` -> `Channel.TypeId`: The public channel brand moved to its owning module; v4 uses a string TypeId rather than the v3 Symbol.
 
-- `Effectable.Class` -> `Effectable.Class`: Still available; replace commit() with an override property or getter returning the Effect.
+- `Effectable.Class` -> `Effectable.Class`: Still available; replace commit() with an asEffect() method returning the Effect. The intermediate v4 override property/getter is no longer supported.
 
 - `Effectable.CommitPrimitive` -> `new<A, E = never, R = never>() => Effect.Effect<A, E, R>`: The named constructor interface was removed; inline the constructor type when needed.
 
@@ -10052,7 +10082,7 @@ Arbitrary.schema(schema)
 
 - `Effectable.StreamTypeId` -> `Stream.TypeId`: The public stream brand moved to its owning module; v4 uses a string TypeId rather than the v3 Symbol.
 
-- `Effectable.StructuralClass` -> `Effectable.Class`: Use Class and migrate commit() to override; v4 equality is structural by default.
+- `Effectable.StructuralClass` -> `Effectable.Class`: Use Class and migrate commit() to asEffect(); v4 equality is structural by default.
 
 - `Effectable.StructuralCommitPrototype` -> `Effectable.Prototype`: Use Prototype with evaluate; a separate structural prototype is unnecessary because v4 equality is structural by default.
 
@@ -10413,6 +10443,8 @@ Arbitrary.schema(schema)
 - `FastCheck.SchedulerSequenceItem`: TODO: needs guidance
 
 - `FastCheck.ShuffledSubarrayConstraints`: TODO: needs guidance
+
+- `FastCheck.Size`: TODO: needs guidance
 
 - `FastCheck.SizeForArbitrary`: TODO: needs guidance
 
@@ -11497,7 +11529,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Layer.setVersionMismatchErrorLogLevel` -> `none`: No version-mismatch log-level Reference or public replacement exists.
 
-- `Layer.tapErrorCause` -> `Layer.tapCause`: The cause observer was renamed.
+- `Layer.tapErrorCause` -> `Layer.tapCause`: The cause observer was renamed. Its callback must accept the source layer's full error cause; a callback narrowed to only part of the error union is rejected.
 
 - `Layer.toRuntime` -> `Layer.build(self), then Effect.runForkWith, Effect.runPromiseWith, or Effect.runSyncWith`: Runtime\<R\> was removed; build a Context, or use ManagedRuntime.make for a reusable managed runner.
 
@@ -11515,7 +11547,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `LayerMap.LayerMap` -> `LayerMap.LayerMap`: The type remains; runtime(key) became contextEffect(key) and returns Context.
 
-- `LayerMap.Service` -> `LayerMap.Service`: Use layer instead of Default, layerNoDeps instead of DefaultWithoutDependencies, and contextEffect instead of runtime.
+- `LayerMap.Service` -> `LayerMap.Service`: Use layer instead of Default, layerNoDeps instead of DefaultWithoutDependencies, and contextEffect instead of runtime. Preloading does not remove acquisition errors from later lookups, which can reacquire expired or invalidated entries.
 
 - `LayerMap.Service.Context` -> `LayerMap.Service.Services<Options>`: The input-services extractor was renamed.
 
@@ -11693,7 +11725,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Logger.pretty` -> `Logger.layer([Logger.consolePretty(), Logger.tracerLogger])`: Logger.layer replaces the active set; include tracerLogger to preserve v3 built-in layer behavior.
 
-- `Logger.prettyLogger` -> `Logger.consolePretty`: Direct constructor rename; call it with the same options.
+- `Logger.prettyLogger` -> `Logger.consolePretty`: Renamed to consolePretty. Remove the stderr option; provide Logger.LogToStderr with true to route TTY output to console.error. Colors, formatDate, and mode remain constructor options.
 
 - `Logger.prettyLoggerDefault` -> `Logger.consolePretty()`: The prebuilt singleton became a constructor call.
 
@@ -14963,7 +14995,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.SymbolKeyword` -> `SchemaAST.Symbol`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
-- `SchemaAST.TemplateLiteral` -> `SchemaAST.TemplateLiteral`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
+- `SchemaAST.TemplateLiteral` -> `SchemaAST.TemplateLiteral`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model. Parts must not contain encodings, including inside unions or nested templates; use Schema.TemplateLiteralParser for transformed parts.
 
 - `SchemaAST.TemplateLiteralSpan` -> `SchemaAST.TemplateLiteral`: Template literal parts are represented directly as AST values in v4.
 
