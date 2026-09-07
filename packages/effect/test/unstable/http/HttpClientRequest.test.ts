@@ -1,10 +1,75 @@
 import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Effect, Stream } from "effect"
+import { ByteSize, Effect, FileSystem, Stream } from "effect"
 import * as Option from "effect/Option"
 import { Headers, HttpBody, HttpClientRequest } from "effect/unstable/http"
 
 describe("HttpClientRequest", () => {
+  describe("bodyFile", () => {
+    const oversized = 9007199254740993n
+    const fileSystem = (size: bigint) =>
+      FileSystem.makeNoop({
+        stat: () => Effect.succeed({ size: ByteSize.bytes(size) } as FileSystem.File.Info),
+        stream: () => Stream.empty
+      })
+
+    it.each([
+      { name: "whole small file", size: 6n, options: {}, expected: 6 },
+      { name: "range clamped to EOF", size: 6n, options: { offset: 2, bytesToRead: 10 }, expected: 4 },
+      { name: "range past EOF", size: 6n, options: { offset: 7 }, expected: 0 },
+      {
+        name: "maximum safe length",
+        size: BigInt(Number.MAX_SAFE_INTEGER),
+        options: {},
+        expected: Number.MAX_SAFE_INTEGER
+      },
+      { name: "small range of an oversized file", size: oversized, options: { bytesToRead: 2 }, expected: 2 },
+      { name: "unsafe bigint offset", size: oversized + 3n, options: { offset: oversized }, expected: 3 },
+      { name: "unsafe string offset", size: oversized + 3n, options: { offset: "9007199254740993 B" }, expected: 3 },
+      { name: "unsafe byte count clamped to EOF", size: 6n, options: { bytesToRead: oversized }, expected: 6 }
+    ])("sets the exact outgoing Content-Length for $name", async ({ expected, options, size }) => {
+      const request = await Effect.runPromise(
+        HttpClientRequest.post("https://example.com").pipe(
+          HttpClientRequest.bodyText("stale"),
+          HttpClientRequest.bodyFile("x", { ...options, contentType: "application/octet-stream" }),
+          Effect.provideService(FileSystem.FileSystem, fileSystem(size))
+        )
+      )
+      strictEqual(request.body._tag, "Stream")
+      if (request.body._tag === "Stream") {
+        strictEqual(request.body.contentLength, expected)
+      }
+      strictEqual(request.headers["content-length"], String(expected))
+      strictEqual(request.headers["content-type"], "application/octet-stream")
+      const web = await Effect.runPromise(HttpClientRequest.toWeb(request))
+      strictEqual(web.headers.get("content-length"), String(expected))
+    })
+
+    it.each([
+      { name: "unrepresentable whole file", size: oversized, options: {} },
+      { name: "unrepresentable clamped length", size: oversized + 3n, options: { offset: 1, bytesToRead: oversized } },
+      { name: "malformed offset", size: 6n, options: { offset: "garbage" } },
+      { name: "malformed byte count", size: 6n, options: { bytesToRead: "garbage" } },
+      { name: "unsafe numeric offset", size: 6n, options: { offset: Number.MAX_SAFE_INTEGER + 1 } },
+      { name: "unsafe numeric byte count", size: 6n, options: { bytesToRead: Number.MAX_SAFE_INTEGER + 1 } },
+      { name: "negative offset", size: 6n, options: { offset: -1n } },
+      { name: "negative byte count", size: 6n, options: { bytesToRead: -1 } },
+      { name: "fractional offset", size: 6n, options: { offset: 1.5 } },
+      { name: "fractional byte count", size: 6n, options: { bytesToRead: 1.5 } },
+      { name: "non-finite offset", size: 6n, options: { offset: Infinity } },
+      { name: "non-finite byte count", size: 6n, options: { bytesToRead: NaN } }
+    ])("propagates typed BadArgument for $name", async ({ options, size }) => {
+      // Invalid inputs must remain lazy through the request combinator too.
+      const request = HttpClientRequest.bodyFile(HttpClientRequest.post("https://example.com"), "x", options)
+      const error = await Effect.runPromise(request.pipe(
+        Effect.flip,
+        Effect.provideService(FileSystem.FileSystem, fileSystem(size))
+      ))
+      strictEqual(error._tag, "PlatformError")
+      strictEqual(error.reason._tag, "BadArgument")
+    })
+  })
+
   describe("appendUrl", () => {
     it("joins segments without slashes", () => {
       const request = HttpClientRequest.get("base").pipe(
