@@ -1,5 +1,12 @@
 # @effect/atom-vue
 
+## 4.0.0-rc.114
+
+### Patch Changes
+
+- Updated dependencies [[`26e0085`](https://github.com/Effect-TS/effect/commit/26e0085d098f6e526c085c357b8d82ee068b6518)]:
+  - effect@4.0.0-rc.114
+
 ## 4.0.0-rc.113
 
 ### Patch Changes

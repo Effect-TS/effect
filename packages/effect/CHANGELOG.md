@@ -1,5 +1,11 @@
 # effect
 
+## 4.0.0-rc.114
+
+### Patch Changes
+
+- [#7520](https://github.com/Effect-TS/effect/pull/7520) [`26e0085`](https://github.com/Effect-TS/effect/commit/26e0085d098f6e526c085c357b8d82ee068b6518) Thanks @ebramanti! - Report recovered MCP toolkit failures and defects to configured `ErrorReporter`s, including declared tool failures returned with `isError: true`.
+
 ## 4.0.0-rc.113
 
 ### Patch Changes
