@@ -63,6 +63,21 @@ export class ClusterEntity extends BaseClusterEntity {
     return this.#testState.storage.getAlarm()
   }
 
+  runAlarmAt(now: number): Promise<void> {
+    return this.#testState.blockConcurrencyWhile(async () => {
+      // Emulate alarm dispatch in this test's isolated Worker, without waiting
+      // for wall time or allowing requests to observe the temporary clock.
+      await this.#testState.storage.deleteAlarm()
+      const originalNow = Date.now
+      Date.now = () => now
+      try {
+        await super.alarm()
+      } finally {
+        Date.now = originalNow
+      }
+    })
+  }
+
   override async deliverReply(requestId: string, reply: string): Promise<boolean> {
     await this.#testState.storage.put("test-delayed-reply", { requestId, reply })
     return super.deliverReply(requestId, reply)
@@ -202,6 +217,12 @@ registerEntity("Mailbox", {
 export default {
   async fetch(request: Request, env: Record<string, any>): Promise<Response> {
     const url = new URL(request.url)
+    if (url.pathname === "/run-alarm") {
+      const id = url.searchParams.get("id") ?? "scheduled"
+      const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
+      await stub.runAlarmAt(Number(url.searchParams.get("now")))
+      return Response.json({ alarm: await stub.getAlarm() })
+    }
     if (url.pathname === "/scheduled-rows") {
       const id = url.searchParams.get("id") ?? "scheduled"
       const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
