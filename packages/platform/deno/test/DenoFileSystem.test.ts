@@ -2,13 +2,9 @@ import * as DenoFileSystem from "@effect/platform-deno/DenoFileSystem"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
+import * as FileSystemTest from "../../../effect/test/FileSystemTest.ts"
 
-describe("FileSystem", () =>
-  testLayer(DenoFileSystem.layer, {
-    accessOnDirectory: false,
-    tempFileScopedRemovesDirectory: false
-  }))
+FileSystemTest.suite("deno", DenoFileSystem.layer)
 
 describe.skipIf(Deno.build.os === "windows")("writeFile", () => {
   it.effect("applies the mode when creating a file", () =>
