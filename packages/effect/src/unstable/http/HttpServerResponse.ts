@@ -1056,7 +1056,8 @@ export const toWeb = (
  * **Details**
  *
  * An optional request can be supplied for client-response metadata and decode
- * errors.
+ * errors. The response URL includes query parameters and excludes the hash.
+ * Without a request, the response URL is an empty string.
  *
  * @category converting
  * @since 4.0.0
@@ -1103,7 +1104,11 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   }
 
   get url(): string {
-    return this.request.url
+    if (this.request === HttpClientRequest.empty) return ""
+    const url = HttpClientRequest.toUrl(this.request)
+    if (Option.isNone(url)) return ""
+    url.value.hash = ""
+    return url.value.href
   }
 
   private cachedHeaders?: Headers.Headers

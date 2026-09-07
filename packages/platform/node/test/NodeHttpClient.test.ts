@@ -127,10 +127,15 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   describe(`NodeHttpClient - ${name}`, () => {
     it.effect("text", () =>
       Effect.gen(function*() {
-        const response = yield* HttpClient.get("/text").pipe(
-          Effect.flatMap((_) => _.text)
-        )
-        expect(response).toBe("test")
+        const response = yield* HttpClient.get("/text?existing=1", {
+          urlParams: { value: "a#b" },
+          hash: "fragment"
+        })
+        const url = new URL(response.url)
+        assert.strictEqual(url.pathname, "/text")
+        assert.strictEqual(url.search, "?existing=1&value=a%23b")
+        assert.strictEqual(url.hash, "")
+        expect(yield* response.text).toBe("test")
       }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("accessing text preserves response bytes", () =>
