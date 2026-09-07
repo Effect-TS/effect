@@ -299,7 +299,7 @@ export interface FileSystem {
     }
   ) => Sink.Sink<void, Uint8Array, never, PlatformError>
   /**
-   * Get information about a file at `path`.
+   * Get information about a file at `path`. See `File.Info` for metadata limits.
    */
   readonly stat: (
     path: string
@@ -853,6 +853,9 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  */
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
+  /**
+   * Get information about the open file. See `File.Info` for metadata limits.
+   */
   readonly stat: Effect.Effect<File.Info, PlatformError>
   /**
    * Seeks before the start fail with `BadArgument` and leave the cursor unchanged.
@@ -902,6 +905,11 @@ export declare namespace File {
    * Contains metadata about a file or directory including type, timestamps,
    * permissions, and size information. This structure is returned by file
    * stat operations.
+   *
+   * Node and Bun preserve `size` and `blksize` exactly. Unsafe numeric metadata
+   * (such as `ino` or `dev`) fails the entire stat operation with `BadArgument`,
+   * including optional fields. Inode values above `Number.MAX_SAFE_INTEGER`
+   * can therefore prevent stat and HTTP file serving even for small files.
    *
    * **Example** (Inspecting file information)
    *
