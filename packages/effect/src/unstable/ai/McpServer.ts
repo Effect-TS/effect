@@ -1538,6 +1538,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     Exclude<Tool.HandlersFor<Tools>, McpServerClient>
   >)
   const services = yield* Effect.context<never>()
+  const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
   for (const tool of Object.values(built.tools)) {
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
@@ -1590,24 +1591,22 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Effect.tapCause(Effect.logError),
           Effect.catchCause((cause) => {
             const failure = Cause.findError(cause)
-            let message = INTERNAL_TOOL_ERROR_MESSAGE
-            if (Result.isSuccess(failure)) {
-              const error = failure.success
-              if (AiError.isAiError(error)) {
-                const reason = (error as AiError.AiError).reason
-                if (reason._tag === "ToolParameterValidationError") {
-                  return Effect.fail(new InvalidParams({ message: reason.message }))
-                }
-              } else if (isDeclaredFailure(error) && error instanceof Error) {
-                message = error.message
-              }
-            } else if (!Cause.hasDies(cause)) {
-              return Effect.failCause(failure.failure)
+            if (Result.isFailure(failure)) {
+              return Cause.hasDies(cause)
+                ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+                : Effect.failCause(failure.failure)
             }
-            return ErrorReporter.report(cause).pipe(
-              Effect.provideContext(services),
-              Effect.as(toolErrorResult(message))
-            )
+            const error = failure.success
+            if (AiError.isAiError(error)) {
+              const reason = (error as AiError.AiError).reason
+              return reason._tag === "ToolParameterValidationError"
+                ? Effect.fail(new InvalidParams({ message: reason.message }))
+                : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+            }
+            const message = isDeclaredFailure(error) && error instanceof Error
+              ? error.message
+              : INTERNAL_TOOL_ERROR_MESSAGE
+            return Effect.as(reportCause(cause), toolErrorResult(message))
           })
         )
       }

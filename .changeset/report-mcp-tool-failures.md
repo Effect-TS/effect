@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-McpServer now reports toolkit failures through configured `ErrorReporter`s before converting them into MCP tool error results.
+Report recovered MCP toolkit failures and defects to configured `ErrorReporter`s, including declared tool failures returned with `isError: true`.
