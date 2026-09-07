@@ -158,6 +158,28 @@ function collectChecks(checks: SchemaAST.Checks | undefined, inherited: Constrai
   return { constraint, filters }
 }
 
+function applyFilters(
+  compiled: Model.Compiled<any>,
+  ast: SchemaAST.AST,
+  filters: ReadonlyArray<SchemaAST.Filter<any>>
+): void {
+  if (filters.length === 0) return
+  const generate = compiled.generate
+  const passes = (value: unknown) => {
+    for (let index = 0; index < filters.length; index++) {
+      if (filters[index].run(value, ast, SchemaAST.defaultParseOptions) !== undefined) return false
+    }
+    return true
+  }
+  compiled.generate = (state) =>
+    Model.mapGeneration(generate(state), (attempt) => {
+      if (attempt._tag === "Discarded") return Model.discarded
+      if (!state.shrinks) return passes(attempt.value) ? attempt : Model.discarded
+      const sample = Model.filterSample(attempt, passes)
+      return sample ?? Model.discarded
+    })
+}
+
 function validateConstraint(constraint: Constraint | undefined, path: ReadonlyArray<PropertyKey>): void {
   if (constraint === undefined) return
   const cardinalities = [
@@ -1049,22 +1071,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         placeholder.computeMinCost = base.computeMinCost
         placeholder.generate = base.generate
       }
-      if (checks.filters.length > 0) {
-        const generate = placeholder.generate
-        const passes = (value: unknown) => {
-          for (let index = 0; index < checks.filters.length; index++) {
-            if (checks.filters[index].run(value, ast, SchemaAST.defaultParseOptions) !== undefined) return false
-          }
-          return true
-        }
-        placeholder.generate = (state) =>
-          Model.mapGeneration(generate(state), (attempt) => {
-            if (attempt._tag === "Discarded") return Model.discarded
-            if (!state.shrinks) return passes(attempt.value) ? attempt : Model.discarded
-            const sample = Model.filterSample(attempt, passes)
-            return sample ?? Model.discarded
-          })
-      }
+      applyFilters(placeholder, ast, checks.filters)
     })
     return placeholder
   }
@@ -1298,8 +1305,25 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       }
       case "Arrays":
         return compileArrays(ast, path, constraint)
-      case "Objects":
-        return compileObjects(ast, path, constraint)
+      case "Objects": {
+        const compiled = compileObjects(ast, path, constraint)
+        if (
+          ast.indexSignatures.length === 0 ||
+          (ast.indexSignatures.length === 1 && ast.propertySignatures.length === 0)
+        ) return compiled
+        const parse = SchemaParser.run<Record<PropertyKey, any>, never>(
+          new SchemaAST.Objects([], ast.indexSignatures)
+        )
+        const generate = compiled.generate
+        compiled.generate = (state) =>
+          Model.filterMapGeneration(
+            generate(state),
+            (value) =>
+              Model.mapComputation(optionComputation(parse(value)), (parsed) =>
+                Option.isNone(parsed) ? parsed : Option.some(value))
+          )
+        return compiled
+      }
       case "Suspend": {
         const body = recur(ast.thunk(), path)
         return Model.makeCompiled([body], () => body.minCost, (state) => body.generate(state))
@@ -1470,15 +1494,59 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     path: ReadonlyArray<PropertyKey>,
     constraint: Constraint | undefined
   ): Model.Compiled<Record<PropertyKey, any>> => {
+    const constrainedIndexes = ast.indexSignatures.flatMap((index, position) => {
+      const constraint = collectChecks(index.type.checks, undefined).constraint
+      return constraint === undefined ? [] : [{ index, position, constraint }]
+    })
+    const compileIndexedValue = (type: SchemaAST.AST, path: ReadonlyArray<PropertyKey>) => {
+      const compiled = recur(type, path)
+      // Scalar specializations have no recursive dependencies and keep the same minimum cost.
+      const candidates = type._tag === "String" || type._tag === "Number" || type._tag === "BigInt"
+        ? constrainedIndexes.filter(({ index }) => index.type !== type && index.type._tag === type._tag)
+        : []
+      const specializations = new Map<string, Model.Compiled<any>>()
+      const forKey = (key: PropertyKey): Model.Compiled<any> => {
+        if (candidates.length === 0) return compiled
+        const input = { [key]: undefined }
+        const matching = candidates.filter(({ index }) =>
+          SchemaAST.getIndexSignatureKeys(input, index.parameter).length > 0
+        )
+        if (matching.length === 0) return compiled
+        const cacheKey = matching.map(({ position }) => position).join(",")
+        const cached = specializations.get(cacheKey)
+        if (cached !== undefined) return cached
+        let specialized = compiled
+        try {
+          let inherited: Constraint | undefined
+          for (const match of matching) inherited = mergeConstraint(inherited, match.constraint)
+          const checks = collectChecks(type.checks, inherited)
+          specialized = compileBase(type, path, checks.constraint)
+          specialized.minCost = 0
+          applyFilters(specialized, type, checks.filters)
+        } catch {
+          // Incompatible scalar constraints keep the original generator and indexed validation.
+        }
+        specializations.set(cacheKey, specialized)
+        return specialized
+      }
+      return {
+        compiled,
+        forKey
+      }
+    }
     const properties = ast.propertySignatures.map((property) => ({
       property,
       optional: SchemaAST.isOptional(property.type),
-      compiled: recur(property.type, [...path, property.name])
+      compiled: compileIndexedValue(property.type, [...path, property.name]).forKey(property.name)
     }))
-    const indexes = ast.indexSignatures.map((index, position) => ({
-      parameter: recur(index.parameter, [...path, `index-${position}-key`]),
-      value: recur(index.type, [...path, `index-${position}-value`])
-    }))
+    const indexes = ast.indexSignatures.map((index, position) => {
+      const value = compileIndexedValue(index.type, [...path, `index-${position}-value`])
+      return {
+        parameter: recur(index.parameter, [...path, `index-${position}-key`]),
+        value: value.compiled,
+        valueForKey: value.forKey
+      }
+    })
     const required = properties.filter((property) => !property.optional)
     const optional = properties.filter((property) => property.optional)
     const [minimum, maximum] = lengthBounds(
@@ -1584,7 +1652,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
                   )
                 }
                 const value = yield* Model.toEffectGeneration(
-                  Model.generateWithReservedBudget(index.value, state, futureReserved)
+                  Model.generateWithReservedBudget(index.valueForKey(keySample.value), state, futureReserved)
                 )
                 if (value._tag === "Discarded") return Model.discarded
                 entries.push({ key: keySample.value, keySample, sample: value, removable: true })

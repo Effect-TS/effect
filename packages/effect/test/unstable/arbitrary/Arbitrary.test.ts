@@ -874,6 +874,223 @@ describe("Arbitrary", () => {
         assert.isTrue(prototypes.has(null))
       }))
 
+    describe("indexed objects", () => {
+      it.effect("combines fixed field constraints at size zero and starts progressive checks", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(
+            Schema.Struct({ fixed: Schema.String }),
+            [Schema.Record(Schema.String, Schema.NonEmptyString)]
+          )
+          const arbitrary = Arbitrary.schema(schema)
+          const values = yield* Arbitrary.sampleEffect(arbitrary, {
+            count: 128,
+            maxDiscards: 0,
+            seed: "indexed-fixed-fields",
+            size: 0
+          })
+          assert.isTrue(values.every(Schema.is(schema)))
+          assert.isTrue(values.every((value) => value.fixed.length === 1))
+          const prototypes = new Set(values.map(Object.getPrototypeOf))
+          assert.isTrue(prototypes.has(null))
+          assert.isTrue(prototypes.has(Object.prototype))
+
+          const result = yield* Arbitrary.checkEffect(arbitrary, Schema.is(schema), {
+            runs: 100,
+            maxDiscards: 128,
+            seed: "indexed-fixed-fields"
+          })
+          assert.strictEqual(result._tag, "Passed")
+        }))
+
+      it.effect("shrinks and replays fixed fields within the combined constraints", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(
+            Schema.Struct({ fixed: Schema.String }),
+            [Schema.Record(Schema.String, Schema.NonEmptyString)]
+          )
+          const arbitrary = Arbitrary.schema(schema)
+          const seen: Array<typeof schema.Type> = []
+          const property = (value: typeof schema.Type) => {
+            seen.push(value)
+            return false
+          }
+          const result = yield* Arbitrary.checkEffect(arbitrary, property, {
+            runs: 1,
+            maxDiscards: 128,
+            maxShrinks: 64,
+            seed: "indexed-object-shrinking",
+            size: 8
+          })
+          assert.strictEqual(result._tag, "Falsified")
+          if (result._tag !== "Falsified") return
+          assert.isAbove(result.shrinks, 0)
+          assert.strictEqual(result.shrunkInput.fixed.length, 1)
+          assert.strictEqual(Object.getPrototypeOf(result.shrunkInput), Object.getPrototypeOf(result.initialInput))
+          const replayed = yield* Arbitrary.checkEffect(arbitrary, property, { replay: result.replay })
+          assert.strictEqual(replayed._tag, "Falsified")
+          if (replayed._tag === "Falsified") {
+            assert.deepStrictEqual(replayed.shrunkInput, result.shrunkInput)
+            assert.strictEqual(replayed.shrinks, result.shrinks)
+          }
+          assert.isTrue(seen.every(Schema.is(schema)))
+        }))
+
+      it.effect("combines numeric and bigint bounds with fixed field constraints", () =>
+        Effect.gen(function*() {
+          const schemas = [
+            Schema.StructWithRest(
+              Schema.Struct({ fixed: Schema.Number }),
+              [Schema.Record(Schema.String, Schema.Int.check(Schema.isBetween({ minimum: 10, maximum: 20 })))]
+            ),
+            Schema.StructWithRest(
+              Schema.Struct({ fixed: Schema.BigInt.check(Schema.isLessThanOrEqualToBigInt(BigInt(15))) }),
+              [Schema.Record(Schema.String, Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(BigInt(10))))]
+            )
+          ]
+          for (const schema of schemas) {
+            const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+              count: 32,
+              maxDiscards: 0,
+              seed: "indexed-numeric-bounds",
+              size: 0
+            })
+            assert.isTrue(values.every(Schema.is(schema)))
+          }
+        }))
+
+      it.effect("combines overlapping index constraints after generating the key", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(Schema.Struct({}), [
+            Schema.Record(Schema.String, Schema.String),
+            Schema.Record(Schema.String, Schema.NonEmptyString)
+          ]).check(Schema.isMinProperties(1))
+          const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+            count: 128,
+            maxDiscards: 0,
+            seed: "indexed-overlap",
+            size: 0
+          })
+          assert.isTrue(values.every(Schema.is(schema)))
+        }))
+
+      it.effect("discards empty scalar intersections without failing compilation", () =>
+        Effect.gen(function*() {
+          const schemas = [
+            Schema.StructWithRest(
+              Schema.Struct({ fixed: Schema.String.check(Schema.isMaxLength(0)) }),
+              [Schema.Record(Schema.String, Schema.NonEmptyString)]
+            ),
+            Schema.StructWithRest(
+              Schema.Struct({ fixed: Schema.Int }),
+              [Schema.Record(Schema.String, Schema.Number.check(Schema.isBetween({ minimum: 0.2, maximum: 0.8 })))]
+            ),
+            Schema.StructWithRest(
+              Schema.Struct({ fixed: Schema.BigInt.check(Schema.isLessThanOrEqualToBigInt(BigInt(1))) }),
+              [Schema.Record(Schema.String, Schema.BigInt.check(Schema.isGreaterThanBigInt(BigInt(1))))]
+            )
+          ]
+          for (const schema of schemas) {
+            const result = yield* Effect.result(Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+              count: 1,
+              maxDiscards: 0,
+              seed: "indexed-empty-intersection",
+              size: 0
+            }))
+            assert.isTrue(Result.isFailure(result))
+            if (Result.isFailure(result)) assert.strictEqual(result.failure._tag, "SampleError")
+          }
+        }))
+
+      it.effect("selects matching pattern, template, numeric and symbol indexes", () =>
+        Effect.gen(function*() {
+          const symbol = Symbol.for("indexed-field")
+          const schema = Schema.StructWithRest(
+            Schema.Struct({
+              a: Schema.String,
+              other: Schema.String,
+              "pre_x": Schema.String,
+              0: Schema.String,
+              [symbol]: Schema.String
+            }),
+            [
+              Schema.Record(Schema.String.check(Schema.isPattern(/^a/)), Schema.NonEmptyString),
+              Schema.Record(Schema.TemplateLiteral(["pre_", Schema.String]), Schema.NonEmptyString),
+              Schema.Record(Schema.Int, Schema.NonEmptyString),
+              Schema.Record(Schema.Symbol, Schema.NonEmptyString)
+            ]
+          )
+          const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+            count: 32,
+            maxDiscards: 0,
+            seed: "indexed-key-matching",
+            size: 0
+          })
+          assert.isTrue(values.every(Schema.is(schema)))
+          assert.isTrue(values.every((value) => value.other === ""))
+        }))
+
+      it.effect("validates residual index filters without constructive constraints", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(
+            Schema.Struct({ fixed: Schema.String }),
+            [Schema.Record(Schema.String, Schema.String.check(Schema.makeFilter((value) => value.length > 0)))]
+          )
+          const arbitrary = Arbitrary.schema(schema)
+          const result = yield* Effect.result(Arbitrary.sampleEffect(arbitrary, {
+            count: 1,
+            maxDiscards: 0,
+            seed: "indexed-residual-filter",
+            size: 0
+          }))
+          assert.isTrue(Result.isFailure(result))
+          if (Result.isFailure(result)) assert.strictEqual(result.failure._tag, "SampleError")
+          const values = yield* Arbitrary.sampleEffect(arbitrary, {
+            count: 32,
+            maxDiscards: 128,
+            seed: "indexed-residual-filter",
+            size: 4
+          })
+          assert.isTrue(values.every(Schema.is(schema)))
+          const seen: Array<typeof schema.Type> = []
+          const checked = yield* Arbitrary.checkEffect(arbitrary, (value) => {
+            seen.push(value)
+            return false
+          }, {
+            runs: 1,
+            maxDiscards: 128,
+            maxShrinks: 64,
+            seed: "indexed-residual-filter",
+            size: 4
+          })
+          assert.strictEqual(checked._tag, "Falsified")
+          if (checked._tag === "Falsified") assert.isAbove(checked.shrinks, 0)
+          assert.isTrue(seen.every(Schema.is(schema)))
+        }))
+
+      it.effect("rejects key shrinks that enter an incompatible index", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(Schema.Struct({}), [
+            Schema.Record(Schema.String, Schema.String.check(Schema.isMaxLength(0))),
+            Schema.Record(Schema.String.check(Schema.isMaxLength(1)), Schema.NonEmptyString)
+          ]).check(Schema.isMinProperties(1), Schema.isMaxProperties(1))
+          const seen: Array<typeof schema.Type> = []
+          const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+            seen.push(value)
+            return false
+          }, {
+            runs: 1,
+            maxDiscards: 128,
+            maxShrinks: 64,
+            seed: "indexed-key-shrinking",
+            size: 8
+          })
+          assert.strictEqual(result._tag, "Falsified")
+          if (result._tag === "Falsified") assert.isAbove(result.shrinks, 0)
+          assert.isTrue(seen.every(Schema.is(schema)))
+          assert.isTrue(seen.every((value) => Object.keys(value)[0].length > 1))
+        }))
+    })
+
     it.effect("preserves special Record keys with null-prototype objects", () =>
       Effect.gen(function*() {
         const schema = Schema.Record(Schema.Literal("__proto__"), Schema.Literal("value"))
