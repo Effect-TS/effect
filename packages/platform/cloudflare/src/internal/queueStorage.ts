@@ -11,6 +11,7 @@
  * @internal
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
+import type { DurableQueueItem } from "../CloudflareDurableObjectPrograms.ts"
 
 const ddl = [
   `CREATE TABLE IF NOT EXISTS queue_items (
@@ -41,11 +42,7 @@ export const ensureQueueStorage = (sql: SqlStorage): void => {
 }
 
 /** @internal */
-export interface QueueItem {
-  readonly id: string
-  readonly element: string
-  readonly attempts: number
-}
+export type QueueItem = DurableQueueItem
 
 type QueueItemRow = {
   readonly id: string
