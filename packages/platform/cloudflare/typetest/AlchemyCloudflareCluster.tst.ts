@@ -97,11 +97,11 @@ describe("Cluster handle", () => {
   })
 
   test("the namespace escape hatches are native bindings", () => {
-    expect(cluster.entityNamespace).type.not.toBe<any>()
-    expect(cluster.entityNamespace.getByName).type.toBeCallableWith("name")
-    expect(cluster.workflowNamespace).type.toBe<typeof cluster.entityNamespace>()
-    expect(cluster.queueNamespace).type.toBe<typeof cluster.entityNamespace>()
-    expect(cluster.singletonNamespace).type.toBe<typeof cluster.entityNamespace>()
+    expect(cluster.entityNamespace).type.toBe<DurableObjectNamespace>()
+    expect(cluster.workflowNamespace).type.toBe<DurableObjectNamespace>()
+    expect(cluster.queueNamespace).type.toBe<DurableObjectNamespace>()
+    expect(cluster.singletonNamespace).type.toBe<DurableObjectNamespace>()
+    expect(cluster.entityNamespace.getByName("name")).type.toBe<DurableObjectStub>()
   })
 
   test("the context carries the built services", () => {

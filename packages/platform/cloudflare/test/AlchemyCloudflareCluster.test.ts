@@ -26,13 +26,16 @@ describe("AlchemyCloudflareCluster", () => {
         }
       }
 
+      const entityNamespace = { getByName: () => undefined }
+      const workflowNamespace = { getByName: () => undefined }
+      const queueNamespace = { getByName: () => undefined }
       const cluster = yield* makeClusterHandle({
         entities: [],
         layer: Singleton.make("maintenance", Effect.void),
         env: {
-          ClusterEntity: fakeNamespace,
-          ClusterWorkflow: fakeNamespace,
-          ClusterDurableQueue: fakeNamespace,
+          ClusterEntity: entityNamespace,
+          ClusterWorkflow: workflowNamespace,
+          ClusterDurableQueue: queueNamespace,
           ClusterSingleton: fakeNamespace
         }
       })
@@ -42,7 +45,10 @@ describe("AlchemyCloudflareCluster", () => {
 
       // The built context carries the cluster services and backs `provide`.
       assert.isTrue(Context.getOption(cluster.context, Sharding)._tag === "Some")
-      assert.strictEqual(cluster.entityNamespace, fakeNamespace as any)
+      assert.strictEqual(cluster.entityNamespace, entityNamespace as any)
+      assert.strictEqual(cluster.workflowNamespace, workflowNamespace as any)
+      assert.strictEqual(cluster.queueNamespace, queueNamespace as any)
+      assert.strictEqual(cluster.singletonNamespace, fakeNamespace as any)
       assert.strictEqual(yield* cluster.provide(Effect.succeed("ok")), "ok")
 
       // `wake` resolves the singleton object lazily and calls its wake().
@@ -51,6 +57,25 @@ describe("AlchemyCloudflareCluster", () => {
       yield* wake()
       assert.deepStrictEqual(wakeCalls, ["Singleton/maintenance"])
     }))
+
+  for (
+    const field of [
+      "entityNamespace",
+      "workflowNamespace",
+      "queueNamespace",
+      "singletonNamespace",
+      "context"
+    ] as const
+  ) {
+    it(`diagnoses access to ${field} during plan evaluation`, () => {
+      const cluster = inertClusterHandle()
+      assert.throws(
+        () => cluster[field],
+        Error,
+        `AlchemyCloudflareCluster: '${field}' is only available at runtime, not during plan evaluation`
+      )
+    })
+  }
 
   it.effect("the plan-time handle is inert", () =>
     Effect.gen(function*() {
