@@ -527,7 +527,8 @@ export const make = (
         ? undefined
         : ByteSize.fromInputUnsafe(options.bytesToRead)
       let totalBytesRead = BigInt(0)
-      const chunkSize = options?.chunkSize ?? 64 * 1024
+      // Reject fractional and non-finite sizes before reading, even for zero-byte reads.
+      const chunkSize = Number(BigInt(options?.chunkSize ?? 64 * 1024))
       const readChunk = file.readAlloc(chunkSize)
       return Stream.fromPull(Effect.succeed(
         Effect.flatMap(
