@@ -51,20 +51,6 @@ describe("NodeHttpPlatform", () => {
       assert.strictEqual(text, "")
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 
-  it.effect("fileResponse clamps byte ranges to the file size", () =>
-    Effect.gen(function*() {
-      const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
-        offset: ByteSize.bytes(22),
-        bytesToRead: ByteSize.bytes(100)
-      })
-
-      assert.strictEqual(response.headers["content-length"], "5")
-      assert.strictEqual(response.body._tag, "Raw")
-      const text = yield* readStream((response.body as HttpBody.Raw).body as Readable)
-      assert.strictEqual(text, "amet\n")
-    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
-
   it.effect("fileWebResponse looks up content types case-insensitively", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform

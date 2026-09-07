@@ -29,11 +29,7 @@ describe("HttpPlatform", () => {
   it.effect("honors Web file chunk size", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileWebResponse(file, {
-        offset: 0,
-        bytesToRead: 4,
-        chunkSize: 2
-      })
+      const response = yield* platform.fileWebResponse(file, { offset: 0, bytesToRead: 4, chunkSize: 2 })
       assert.strictEqual(response.body._tag, "Stream")
       if (response.body._tag === "Stream") {
         assert.strictEqual(response.body.contentLength, 4)

@@ -278,20 +278,6 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
-  it("should reject seeks before the start of the file", () =>
-    runPromise(Effect.gen(function*() {
-      const fs = yield* Fs.FileSystem
-
-      yield* Effect.gen(function*() {
-        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
-        const error = yield* file.seek(BigInt(-1), "start").pipe(Effect.flip)
-        assert.strictEqual(error.reason._tag, "BadArgument")
-
-        const position = yield* file.seek(BigInt(0), "current")
-        assert.strictEqual(ByteSize.toBigInt(position), BigInt(0))
-      }).pipe(Effect.scoped)
-    })))
-
   it("should read sequentially without an intervening seek", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem

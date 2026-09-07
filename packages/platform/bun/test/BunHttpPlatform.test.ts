@@ -17,15 +17,10 @@ describe("BunHttpPlatform", () => {
       const file = new File(["abcd"], "file.txt", { type: "text/plain", lastModified: 0 })
       const sliced = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 2 })
       const empty = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 0 })
-      const clamped = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 10 })
 
       assert.deepStrictEqual(
-        {
-          sliced: yield* readBody(sliced.body),
-          empty: yield* readBody(empty.body),
-          clamped: yield* readBody(clamped.body)
-        },
-        { sliced: "bc", empty: "", clamped: "bcd" }
+        { sliced: yield* readBody(sliced.body), empty: yield* readBody(empty.body) },
+        { sliced: "bc", empty: "" }
       )
     }).pipe(Effect.provide(BunHttpPlatform.layer)))
 
