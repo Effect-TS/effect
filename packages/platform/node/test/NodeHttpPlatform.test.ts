@@ -34,19 +34,31 @@ describe("NodeHttpPlatform", () => {
       assert.strictEqual(text, "ipsum")
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 
-  it.effect("fileResponse retains the requested content length beyond EOF", () =>
-    Effect.gen(function*() {
-      const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
-        offset: ByteSize.bytes(6),
-        bytesToRead: ByteSize.bytes(100)
-      })
+  for (
+    const { name, offset, bytesToRead, expected } of [
+      { name: "clamps bytesToRead beyond EOF", offset: 22, bytesToRead: 100, expected: "amet\n" },
+      { name: "returns an empty body at EOF", offset: 27, bytesToRead: undefined, expected: "" },
+      { name: "returns an empty body past EOF", offset: 50, bytesToRead: undefined, expected: "" },
+      { name: "clamps bytesToRead at EOF", offset: 27, bytesToRead: 100, expected: "" },
+      { name: "clamps bytesToRead past EOF", offset: 50, bytesToRead: 100, expected: "" }
+    ]
+  ) {
+    it.effect(`fileResponse ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
+          offset: ByteSize.bytes(offset),
+          bytesToRead: bytesToRead === undefined ? undefined : ByteSize.bytes(bytesToRead)
+        })
 
-      assert.strictEqual(response.headers["content-length"], "100")
-      assert.strictEqual(response.body._tag, "Raw")
-      const text = yield* readStream((response.body as HttpBody.Raw).body as Readable)
-      assert.strictEqual(text, "ipsum dolar sit amet\n")
-    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+        assert.strictEqual(response.body._tag, "Raw")
+        const text = yield* readStream((response.body as HttpBody.Raw).body as Readable)
+        assert.deepStrictEqual(
+          { contentLength: response.headers["content-length"], body: text },
+          { contentLength: String(expected.length), body: expected }
+        )
+      }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+  }
 
   it.effect("fileResponse supports zero bytesToRead", () =>
     Effect.gen(function*() {

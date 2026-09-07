@@ -19,6 +19,29 @@ const readBody = (body: HttpBody.HttpBody) => {
 }
 
 describe("DenoHttpPlatform", () => {
+  for (
+    const { name, offset, bytesToRead, expected } of [
+      { name: "clamps bytesToRead beyond EOF", offset: 1, bytesToRead: 10, expected: "bcd" },
+      { name: "returns an empty body at EOF", offset: 4, bytesToRead: undefined, expected: "" },
+      { name: "returns an empty body past EOF", offset: 9, bytesToRead: undefined, expected: "" },
+      { name: "clamps bytesToRead at EOF", offset: 4, bytesToRead: 10, expected: "" },
+      { name: "clamps bytesToRead past EOF", offset: 9, bytesToRead: 10, expected: "" }
+    ]
+  ) {
+    it.effect(`fileWebResponse ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const file = new File(["abcd"], "file.txt", { type: "text/plain", lastModified: 0 })
+        const response = yield* platform.fileWebResponse(file, { offset, bytesToRead })
+        const text = yield* readBody(response.body)
+
+        assert.deepStrictEqual(
+          { contentLength: response.headers["content-length"], body: text },
+          { contentLength: String(expected.length), body: expected }
+        )
+      }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+  }
+
   it.effect("fileResponse preserves open failures as defects after stat succeeds", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -77,19 +100,31 @@ describe("DenoHttpPlatform", () => {
       assert.strictEqual(text, "ipsum")
     }).pipe(Effect.provide(DenoHttpPlatform.layer)))
 
-  it.effect("fileResponse retains the requested content length beyond EOF", () =>
-    Effect.gen(function*() {
-      const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileResponse(fixture, {
-        offset: ByteSize.bytes(6),
-        bytesToRead: ByteSize.bytes(100)
-      })
+  for (
+    const { name, offset, bytesToRead, expected } of [
+      { name: "clamps bytesToRead beyond EOF", offset: 22, bytesToRead: 100, expected: "amet\n" },
+      { name: "returns an empty body at EOF", offset: 27, bytesToRead: undefined, expected: "" },
+      { name: "returns an empty body past EOF", offset: 50, bytesToRead: undefined, expected: "" },
+      { name: "clamps bytesToRead at EOF", offset: 27, bytesToRead: 100, expected: "" },
+      { name: "clamps bytesToRead past EOF", offset: 50, bytesToRead: 100, expected: "" }
+    ]
+  ) {
+    it.effect(`fileResponse ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileResponse(fixture, {
+          offset: ByteSize.bytes(offset),
+          bytesToRead: bytesToRead === undefined ? undefined : ByteSize.bytes(bytesToRead)
+        })
 
-      assert.strictEqual(response.headers["content-length"], "100")
-      assert.strictEqual(response.body._tag, "Raw")
-      const text = yield* readStream((response.body as HttpBody.Raw).body as ReadableStream<Uint8Array>)
-      assert.strictEqual(text, "ipsum dolar sit amet\n")
-    }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+        assert.strictEqual(response.body._tag, "Raw")
+        const text = yield* readStream((response.body as HttpBody.Raw).body as ReadableStream<Uint8Array>)
+        assert.deepStrictEqual(
+          { contentLength: response.headers["content-length"], body: text },
+          { contentLength: String(expected.length), body: expected }
+        )
+      }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+  }
 
   it.effect("fileResponse supports zero bytesToRead", () =>
     Effect.gen(function*() {
