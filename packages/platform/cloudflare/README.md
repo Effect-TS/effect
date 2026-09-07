@@ -189,6 +189,7 @@ The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
 | `CloudflareWorkflowEngine` (`WorkflowEngine.Encoded`)                         | adapted      | Dedicated workflow Durable Object, SQLite, and one alarm                                                    |
 | `DurableClock`                                                                | adapted      | Always durable; there is no short in-memory timer path                                                      |
 | `DurableQueue`                                                                | adapted      | One Durable Object per queue name with SQLite and an alarm watchdog                                         |
+| `PersistedQueue.layerCleanup`                                                 | out of scope | Fails explicitly; namespace bindings cannot enumerate queue objects. Completed rows are retained for dedup. |
 | `Singleton`                                                                   | adapted      | Named Durable Object; runs once per wake and then may hibernate                                             |
 | `ClusterCron`                                                                 | adapted      | Per-fire entity ids, `DeliverAt` destination alarms, and a singleton seed                                   |
 | Address `(EntityType, EntityId)`                                              | adapted      | Length-prefixed Durable Object name; cold first contact is normal                                           |
