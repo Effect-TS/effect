@@ -825,7 +825,7 @@ describe("node async-iterable api", () => {
   })
 })
 
-// This synchronous stress test must not block the async suites past their timeouts.
+// Synchronous parsing can starve the async suites.
 describe("random data", { concurrent: false }, () => {
   test("smoke test", () => {
     const boundary = "------WebKitFormBoundaryTB2MiQ36fnSJlrhY--"

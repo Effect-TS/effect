@@ -26,7 +26,6 @@ vi.mock("@clickhouse/client", () => ({
   })
 }))
 
-// The mocked driver shares connection and command state between tests.
 describe("ClickhouseClient", { concurrent: false }, () => {
   it("preserves fractional JavaScript numbers in inferred parameters", () => {
     const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)

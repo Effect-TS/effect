@@ -4,7 +4,6 @@ import { Effect, type Layer, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import * as Persistence from "effect/unstable/persistence/Persistence"
 
-// The cases and their cleanup share a store; keep both inside this serial suite.
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   describe("store operations", { concurrent: false }, () => {
     const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>

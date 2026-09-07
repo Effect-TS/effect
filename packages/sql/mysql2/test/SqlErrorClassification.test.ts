@@ -38,7 +38,6 @@ const assertUniqueViolation = (reason: SqlError.SqlErrorReason, constraint: stri
   }
 }
 
-// The mocked driver shares error state between tests.
 describe("MysqlClient SqlError classification", { concurrent: false }, () => {
   it.effect("maps representative errno codes to reasons", () =>
     Effect.gen(function*() {

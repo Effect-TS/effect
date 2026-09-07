@@ -56,7 +56,6 @@ const queryFailureReasonTag = (code: number) =>
     Effect.provide(Reactivity.layer)
   )
 
-// The mocked driver shares error state between tests.
 describe("ClickhouseClient SqlError classification", { concurrent: false }, () => {
   it.effect("maps representative native codes to reasons", () =>
     Effect.gen(function*() {

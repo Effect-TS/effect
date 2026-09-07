@@ -56,7 +56,7 @@ describe("SqlMessageStorage", () => {
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
-    // Cases truncate the message and reply tables shared by this backend.
+    // Tests truncate this backend's shared tables.
     it.layer(StorageLayer.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {

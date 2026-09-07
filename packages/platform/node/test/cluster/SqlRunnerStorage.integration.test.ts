@@ -18,10 +18,10 @@ import { PgContainer } from "../fixtures/pg-utils.ts"
 
 const StorageLayer = SqlRunnerStorage.layer
 
-// Healthy PostgreSQL queries share this deadline with the injected blackholes.
-// Allow for container and CI scheduling delays while keeping wedged operations bounded.
+// Allow for CI latency in healthy PostgreSQL queries.
 const lockOperationInterval = 1000
 const partitionConfig = {
+  // Keep expiration / 3 above the operation deadline.
   shardLockExpiration: lockOperationInterval * 10,
   shardLockRefreshInterval: lockOperationInterval
 }
@@ -175,8 +175,6 @@ describe("SqlRunnerStorage", () => {
       restoreConnection(partitioned)
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          // The integration shard can delay a healthy replacement beyond a
-          // handful of lock-operation deadlines under load.
           Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
@@ -275,8 +273,6 @@ describe("SqlRunnerStorage", () => {
 
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          // The integration shard can delay a healthy replacement beyond a
-          // handful of lock-operation deadlines under load.
           Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
@@ -339,7 +335,7 @@ describe("SqlRunnerStorage", () => {
       ]
     ] as const
   ).forEach(([label, layer]) => {
-    // Both cases mutate the same runner rows within this backend fixture.
+    // Both tests update the same runner rows.
     it.layer(layer, {
       timeout: 60000
     })(label, (it) => {

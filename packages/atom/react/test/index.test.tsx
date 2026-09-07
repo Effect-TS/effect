@@ -22,7 +22,7 @@ import {
 } from "../src/index.ts"
 import * as ScopedAtom from "../src/ScopedAtom.ts"
 
-// Rendering tests share the DOM and the registry reset in beforeEach.
+// Tests share the DOM and registry.
 describe("atom-react", { concurrent: false }, () => {
   let registry: AtomRegistry.AtomRegistry
 

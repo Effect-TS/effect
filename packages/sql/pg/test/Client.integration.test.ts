@@ -487,7 +487,7 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
 })
 
 it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient listen", (it) => {
-  // Each listener reserves one of two connections; leave the other available for queries.
+  // Each listener uses one of two pool connections.
   it.effect("keeps queries available while a listener reserves one connection", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient

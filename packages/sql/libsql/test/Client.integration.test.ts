@@ -65,7 +65,7 @@ describe("Client", () => {
     )
   })
 
-  // Migrations create and drop the same tables for each case.
+  // Each test recreates the same tables.
   layer(LibsqlContainer.layerClient, { timeout: "30 seconds" })((it) => {
     it.effect("should work", () =>
       Effect.gen(function*() {
