@@ -6,7 +6,7 @@ import { fromCommand } from "effect/unstable/cli/internal/completions/descriptor
 describe("CommandDescriptor", () => {
   describe("fromCommand", () => {
     it("extracts command name and description", () => {
-      const cmd = Command.make("deploy").pipe(
+      const cmd = Command.Make("deploy").pipe(
         Command.withDescription("Deploy the application")
       )
       const desc = fromCommand(cmd)
@@ -15,7 +15,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts string flags with aliases", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         output: Flag.String("output").pipe(
           Flag.withAlias("o"),
           Flag.withDescription("Output directory")
@@ -30,7 +30,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts boolean flags", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         verbose: Flag.Boolean("verbose").pipe(Flag.withAlias("v"))
       })
       const desc = fromCommand(cmd)
@@ -41,7 +41,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts integer and float flags", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         port: Flag.Int("port"),
         ratio: Flag.Finite("ratio")
       })
@@ -54,10 +54,10 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts file, directory, and path flags", () => {
-      const cmd = Command.make("test", {
-        input: Flag.file("input"),
-        outDir: Flag.directory("out-dir"),
-        config: Flag.path("config", { pathType: "either" })
+      const cmd = Command.Make("test", {
+        input: Flag.File("input"),
+        outDir: Flag.Directory("out-dir"),
+        config: Flag.Path("config", { pathType: "either" })
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.flags.length, 3)
@@ -70,9 +70,9 @@ describe("CommandDescriptor", () => {
     })
 
     it("retains path semantics when a path has a custom metavar", () => {
-      const command = Command.make("app", {
-        directory: Flag.path("directory", { pathType: "directory", typeName: "DIR" }),
-        file: Argument.path("file", { pathType: "file" }).pipe(Argument.withMetavar("INPUT"))
+      const command = Command.Make("app", {
+        directory: Flag.Path("directory", { pathType: "directory", typeName: "DIR" }),
+        file: Argument.Path("file", { pathType: "file" }).pipe(Argument.withMetavar("INPUT"))
       })
       const descriptor = fromCommand(command)
 
@@ -81,13 +81,13 @@ describe("CommandDescriptor", () => {
     })
 
     it("classifies file-backed flags and arguments as file paths", () => {
-      const command = Command.make("app", {
-        flagText: Flag.fileText("flag-text"),
-        flagParse: Flag.fileParse("flag-parse"),
-        flagSchema: Flag.fileSchema("flag-schema", Schema.Unknown),
-        argumentText: Argument.fileText("argument-text"),
-        argumentParse: Argument.fileParse("argument-parse"),
-        argumentSchema: Argument.fileSchema("argument-schema", Schema.Unknown)
+      const command = Command.Make("app", {
+        flagText: Flag.FileText("flag-text"),
+        flagParse: Flag.FileParse("flag-parse"),
+        flagSchema: Flag.FileSchema("flag-schema", Schema.Unknown),
+        argumentText: Argument.FileText("argument-text"),
+        argumentParse: Argument.FileParse("argument-parse"),
+        argumentSchema: Argument.FileSchema("argument-schema", Schema.Unknown)
       })
       const descriptor = fromCommand(command)
       const fileType = { _tag: "Path", pathType: "file" } as const
@@ -97,8 +97,8 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts choice flags with values", () => {
-      const cmd = Command.make("test", {
-        color: Flag.choice("color", ["red", "green", "blue"])
+      const cmd = Command.Make("test", {
+        color: Flag.Choice("color", ["red", "green", "blue"])
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.flags.length, 1)
@@ -109,7 +109,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts optional flags", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         name: Flag.String("name").pipe(Flag.optional)
       })
       const desc = fromCommand(cmd)
@@ -119,7 +119,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts positional arguments with types", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         name: Argument.String("name"),
         count: Argument.Int("count")
       })
@@ -134,7 +134,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts variadic arguments", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         files: Argument.String("files").pipe(Argument.variadic({ min: 1 }))
       })
       const desc = fromCommand(cmd)
@@ -145,7 +145,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts optional arguments", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         email: Argument.String("email").pipe(Argument.optional)
       })
       const desc = fromCommand(cmd)
@@ -155,13 +155,13 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts nested subcommands recursively", () => {
-      const leaf = Command.make("leaf").pipe(
+      const leaf = Command.Make("leaf").pipe(
         Command.withDescription("A leaf command")
       )
-      const mid = Command.make("mid").pipe(
+      const mid = Command.Make("mid").pipe(
         Command.withSubcommands([leaf])
       )
-      const root = Command.make("root").pipe(
+      const root = Command.Make("root").pipe(
         Command.withSubcommands([mid])
       )
       const desc = fromCommand(root)
@@ -173,7 +173,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts descriptions from flags and arguments", () => {
-      const cmd = Command.make("test", {
+      const cmd = Command.Make("test", {
         port: Flag.Int("port").pipe(
           Flag.withDescription("Port number")
         ),
@@ -187,7 +187,7 @@ describe("CommandDescriptor", () => {
     })
 
     it("handles commands with no flags or arguments", () => {
-      const cmd = Command.make("noop")
+      const cmd = Command.Make("noop")
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.name, "noop")
       assert.strictEqual(desc.flags.length, 0)
@@ -196,16 +196,16 @@ describe("CommandDescriptor", () => {
     })
 
     it("handles deeply nested command trees", () => {
-      const level3 = Command.make("level3", {
+      const level3 = Command.Make("level3", {
         flag: Flag.Boolean("deep")
       })
-      const level2 = Command.make("level2").pipe(
+      const level2 = Command.Make("level2").pipe(
         Command.withSubcommands([level3])
       )
-      const level1 = Command.make("level1").pipe(
+      const level1 = Command.Make("level1").pipe(
         Command.withSubcommands([level2])
       )
-      const root = Command.make("root").pipe(
+      const root = Command.Make("root").pipe(
         Command.withSubcommands([level1])
       )
       const desc = fromCommand(root)
@@ -217,8 +217,8 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts choice arguments", () => {
-      const cmd = Command.make("test", {
-        env: Argument.choice("env", ["dev", "staging", "prod"])
+      const cmd = Command.Make("test", {
+        env: Argument.Choice("env", ["dev", "staging", "prod"])
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.arguments.length, 1)
@@ -229,9 +229,9 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts file/directory arguments", () => {
-      const cmd = Command.make("test", {
-        input: Argument.file("input", { mustExist: false }),
-        outDir: Argument.directory("output", { mustExist: false })
+      const cmd = Command.Make("test", {
+        input: Argument.File("input", { mustExist: false }),
+        outDir: Argument.Directory("output", { mustExist: false })
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.arguments.length, 2)
@@ -242,10 +242,10 @@ describe("CommandDescriptor", () => {
     })
 
     it("extracts multiple subcommands", () => {
-      const a = Command.make("alpha").pipe(Command.withDescription("First"))
-      const b = Command.make("beta").pipe(Command.withDescription("Second"))
-      const c = Command.make("gamma").pipe(Command.withDescription("Third"))
-      const root = Command.make("root").pipe(
+      const a = Command.Make("alpha").pipe(Command.withDescription("First"))
+      const b = Command.Make("beta").pipe(Command.withDescription("Second"))
+      const c = Command.Make("gamma").pipe(Command.withDescription("Third"))
+      const root = Command.Make("root").pipe(
         Command.withSubcommands([a, b, c])
       )
       const desc = fromCommand(root)
@@ -256,14 +256,14 @@ describe("CommandDescriptor", () => {
     })
 
     it("prefers short descriptions for subcommand listings", () => {
-      const build = Command.make("build").pipe(
+      const build = Command.Make("build").pipe(
         Command.withDescription("Build the project and all artifacts"),
         Command.withShortDescription("Build artifacts")
       )
-      const test = Command.make("test").pipe(
+      const test = Command.Make("test").pipe(
         Command.withDescription("Run the full test suite")
       )
-      const root = Command.make("root").pipe(Command.withSubcommands([build, test]))
+      const root = Command.Make("root").pipe(Command.withSubcommands([build, test]))
 
       const desc = fromCommand(root)
       assert.strictEqual(desc.subcommands[0].description, "Build artifacts")

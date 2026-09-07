@@ -42,7 +42,7 @@ const makeMockLogger = Effect.gen(function*() {
 const FileSystemLayer = FileSystem.layerNoop({})
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
-const CliOutputLayer = CliOutput.layer(CliOutput.defaultFormatter({ colors: false }))
+const CliOutputLayer = CliOutput.layer(CliOutput.DefaultFormatter({ colors: false }))
 const SpawnerLayer = Layer.succeed(
   ChildProcessSpawner.ChildProcessSpawner,
   ChildProcessSpawner.make(() => Effect.die("Not implemented"))
@@ -88,7 +88,7 @@ describe("LogLevel", () => {
 
   // Test helper that logs at all levels and returns captured logs
   const testLogLevels = Effect.fnUntraced(function*(logLevel?: string) {
-    const testCommand = Command.make("test").pipe(
+    const testCommand = Command.Make("test").pipe(
       Command.withHandler(Effect.fnUntraced(function*() {
         // Log at all levels to test filtering
         yield* Effect.log("trace") // Info level by default
@@ -137,7 +137,7 @@ describe("LogLevel", () => {
   it.effect("exposes the built-in log-level setting value", () =>
     Effect.gen(function*() {
       const seen: Array<Option.Option<string>> = []
-      const command = Command.make("test").pipe(
+      const command = Command.Make("test").pipe(
         Command.withHandler(Effect.fnUntraced(function*() {
           seen.push(Option.map(yield* GlobalFlag.LogLevel, (level) => level.toLowerCase()))
         }))
@@ -153,11 +153,11 @@ describe("LogLevel", () => {
 
   it.effect("applies the selected log level to subcommands", () =>
     Effect.gen(function*() {
-      const parentCommand = Command.make("parent", {
+      const parentCommand = Command.Make("parent", {
         verbose: Flag.Boolean("verbose")
       })
 
-      const childCommand = Command.make("child", {}, () =>
+      const childCommand = Command.Make("child", {}, () =>
         Effect.gen(function*() {
           yield* Effect.logDebug("debug from child")
           yield* Effect.logInfo("info from child")
@@ -182,7 +182,7 @@ describe("LogLevel", () => {
 
   it.effect("keeps concurrent command log levels scoped to each run", () =>
     Effect.gen(function*() {
-      const testCommand = Command.make("test", {}, () => Effect.logInfo("Should not see this"))
+      const testCommand = Command.Make("test", {}, () => Effect.logInfo("Should not see this"))
 
       const runCommand = Command.runWith(testCommand, { version: "1.0.0" })
 

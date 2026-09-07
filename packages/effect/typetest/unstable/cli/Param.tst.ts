@@ -30,8 +30,8 @@ describe("Param", () => {
   })
 
   it("accepts effectful fallback prompts for flags and arguments", () => {
-    const prompt = Effect.succeed(Prompt.text({ message: "Name" }))
-    const integerPrompt = Effect.succeed(Prompt.integer({ message: "Count" }))
+    const prompt = Effect.succeed(Prompt.Text({ message: "Name" }))
+    const integerPrompt = Effect.succeed(Prompt.Integer({ message: "Count" }))
 
     const flag = Flag.String("name").pipe(Flag.withFallbackPrompt(prompt))
     const argument = Argument.String("name").pipe(Argument.withFallbackPrompt(prompt))

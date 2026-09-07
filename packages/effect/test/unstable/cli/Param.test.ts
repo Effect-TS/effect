@@ -67,7 +67,7 @@ describe("Param", () => {
 
   it.effect("recognizes the alternate flag declared by orElse", () =>
     Effect.gen(function*() {
-      const command = Command.make("app", {
+      const command = Command.Make("app", {
         config: Flag.String("config").pipe(
           Flag.orElse(() => Flag.String("config-url"))
         )
@@ -97,7 +97,7 @@ describe("Param", () => {
 
   it("preserves __proto__ as an own makeSingle option", () => {
     const value = { polluted: true }
-    const param = Param.makeSingle({
+    const param = Param.MakeSingle({
       ["__proto__"]: value,
       kind: Param.flagKind,
       name: "name",
@@ -162,7 +162,7 @@ describe("Param", () => {
   describe("withFallbackPrompt", () => {
     it.effect("prompts for missing flag values and preserves remaining args", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Name" })
+        const prompt = Prompt.Text({ message: "Name" })
         const flag = Flag.String("name").pipe(Flag.withFallbackPrompt(prompt))
 
         yield* MockTerminal.inputText("Chandra")
@@ -179,7 +179,7 @@ describe("Param", () => {
 
     it.effect("does not prompt when flag value is provided", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Name" })
+        const prompt = Prompt.Text({ message: "Name" })
         const flag = Flag.String("name").pipe(Flag.withFallbackPrompt(prompt))
 
         const [, value] = yield* flag.parse({
@@ -192,7 +192,7 @@ describe("Param", () => {
 
     it.effect("prompts for missing arguments", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "File" })
+        const prompt = Prompt.Text({ message: "File" })
         const argument = Argument.String("file").pipe(Argument.withFallbackPrompt(prompt))
 
         yield* MockTerminal.inputText("notes.txt")
@@ -212,7 +212,7 @@ describe("Param", () => {
         const calls = yield* Ref.make(0)
         const prompt = Effect.gen(function*() {
           yield* Ref.update(calls, (n) => n + 1)
-          return Prompt.text({ message: "Name from effect" })
+          return Prompt.Text({ message: "Name from effect" })
         })
 
         const flag = Flag.String("name").pipe(Flag.withFallbackPrompt(prompt))
@@ -242,7 +242,7 @@ describe("Param", () => {
         const calls = yield* Ref.make(0)
         const prompt = Effect.gen(function*() {
           yield* Ref.update(calls, (n) => n + 1)
-          return Prompt.text({ message: "File from effect" })
+          return Prompt.Text({ message: "File from effect" })
         })
 
         const argument = Argument.String("file").pipe(Argument.withFallbackPrompt(prompt))
@@ -289,7 +289,7 @@ describe("Param", () => {
 
     it.effect("prefers defaults over fallback prompts", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Name" })
+        const prompt = Prompt.Text({ message: "Name" })
         const flag = Flag.String("name").pipe(
           Flag.withDefault("guest"),
           Flag.withFallbackPrompt(prompt)
@@ -305,7 +305,7 @@ describe("Param", () => {
 
     it.effect("does not prompt for invalid flag values", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Count" })
+        const prompt = Prompt.Text({ message: "Count" })
         const flag = Flag.Int("count").pipe(Flag.withFallbackPrompt(prompt))
 
         const error = yield* Effect.flip(
@@ -320,7 +320,7 @@ describe("Param", () => {
 
     it.effect("does not prompt for invalid argument values", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Count" })
+        const prompt = Prompt.Text({ message: "Count" })
         const argument = Argument.Int("count").pipe(Argument.withFallbackPrompt(prompt))
 
         const error = yield* Effect.flip(
@@ -335,7 +335,7 @@ describe("Param", () => {
 
     it.effect("prompts for missing boolean flags", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.confirm({ message: "Verbose" })
+        const prompt = Prompt.Confirm({ message: "Verbose" })
         const flag = Flag.Boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
 
         yield* MockTerminal.inputKey("y")
@@ -350,7 +350,7 @@ describe("Param", () => {
 
     it.effect("uses an explicitly disabled boolean before prompting", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.confirm({ message: "Verbose" })
+        const prompt = Prompt.Confirm({ message: "Verbose" })
         const flag = Flag.Boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
 
         const [, value] = yield* flag.parse({
@@ -363,7 +363,7 @@ describe("Param", () => {
 
     it.effect("returns MissingOption when prompt is cancelled", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Name" })
+        const prompt = Prompt.Text({ message: "Name" })
         const flag = Flag.String("name").pipe(Flag.withFallbackPrompt(prompt))
 
         yield* MockTerminal.inputKey("c", { ctrl: true })
@@ -380,7 +380,7 @@ describe("Param", () => {
 
     it.effect("returns MissingArgument when argument prompt is cancelled", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "File" })
+        const prompt = Prompt.Text({ message: "File" })
         const argument = Argument.String("file").pipe(Argument.withFallbackPrompt(prompt))
 
         yield* MockTerminal.inputKey("c", { ctrl: true })

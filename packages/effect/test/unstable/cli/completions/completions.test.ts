@@ -11,7 +11,7 @@ import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
 // Shared test fixtures
 // ---------------------------------------------------------------------------
 
-const simpleCmd = Command.make("greet", {
+const simpleCmd = Command.Make("greet", {
   name: Argument.String("name").pipe(
     Argument.withDescription("Name to greet")
   ),
@@ -26,7 +26,7 @@ const simpleCmd = Command.make("greet", {
 }).pipe(Command.withDescription("Greet someone"))
 
 const withSubcommands = (() => {
-  const start = Command.make("start", {
+  const start = Command.Make("start", {
     port: Flag.Int("port").pipe(
       Flag.withAlias("p"),
       Flag.withDescription("Port number")
@@ -36,14 +36,14 @@ const withSubcommands = (() => {
     )
   }).pipe(Command.withDescription("Start the server"))
 
-  const stop = Command.make("stop", {
+  const stop = Command.Make("stop", {
     force: Flag.Boolean("force").pipe(
       Flag.withAlias("f"),
       Flag.withDescription("Force stop")
     )
   }).pipe(Command.withDescription("Stop the server"))
 
-  return Command.make("server", {
+  return Command.Make("server", {
     verbose: Flag.Boolean("verbose").pipe(Flag.withAlias("v")),
     config: Flag.String("config")
   }).pipe(
@@ -52,11 +52,11 @@ const withSubcommands = (() => {
   )
 })()
 
-const withChoices = Command.make("deploy", {
-  env: Flag.choice("env", ["dev", "staging", "prod"]).pipe(
+const withChoices = Command.Make("deploy", {
+  env: Flag.Choice("env", ["dev", "staging", "prod"]).pipe(
     Flag.withDescription("Target environment")
   ),
-  region: Argument.choice("region", ["us-east", "eu-west", "ap-south"]).pipe(
+  region: Argument.Choice("region", ["us-east", "eu-west", "ap-south"]).pipe(
     Argument.withDescription("Deployment region")
   )
 }).pipe(Command.withDescription("Deploy application"))
@@ -78,49 +78,49 @@ const trickyValues = [
   "\u{1F680}"
 ]
 
-const withTrickyChoices = Command.make("deploy", {
-  mode: Flag.choice("mode", trickyValues).pipe(
+const withTrickyChoices = Command.Make("deploy", {
+  mode: Flag.Choice("mode", trickyValues).pipe(
     Flag.withDescription("Deploy mode")
   ),
-  target: Argument.choice("target", ["o'clock", "a:b", "{x,y}", "a\u{1F600}b"]).pipe(
+  target: Argument.Choice("target", ["o'clock", "a:b", "{x,y}", "a\u{1F600}b"]).pipe(
     Argument.withDescription("Deployment target")
   )
 }).pipe(Command.withDescription("Deploy application"))
 
-const withPaths = Command.make("process", {
-  input: Flag.file("input").pipe(Flag.withDescription("Input file")),
-  outDir: Flag.directory("output-dir").pipe(Flag.withDescription("Output directory")),
-  source: Argument.file("source", { mustExist: false }).pipe(
+const withPaths = Command.Make("process", {
+  input: Flag.File("input").pipe(Flag.withDescription("Input file")),
+  outDir: Flag.Directory("output-dir").pipe(Flag.withDescription("Output directory")),
+  source: Argument.File("source", { mustExist: false }).pipe(
     Argument.withDescription("Source file")
   )
 }).pipe(Command.withDescription("Process files"))
 
-const withOptionalDirectoryAndSubcommands = Command.make("example", {
-  directory: Argument.directory("directory").pipe(
+const withOptionalDirectoryAndSubcommands = Command.Make("example", {
+  directory: Argument.Directory("directory").pipe(
     Argument.withDescription("Directory to start in"),
     Argument.optional
   )
 }).pipe(
   Command.withSubcommands([
-    Command.make("serve").pipe(Command.withDescription("Start the server"))
+    Command.Make("serve").pipe(Command.withDescription("Start the server"))
   ])
 )
 
 const nested3Levels = (() => {
-  const leaf = Command.make("action", {
+  const leaf = Command.Make("action", {
     dryRun: Flag.Boolean("dry-run").pipe(Flag.withDescription("Dry run mode"))
   }).pipe(Command.withDescription("Perform action"))
 
-  const mid = Command.make("sub").pipe(
+  const mid = Command.Make("sub").pipe(
     Command.withSubcommands([leaf])
   )
 
-  return Command.make("top").pipe(
+  return Command.Make("top").pipe(
     Command.withSubcommands([mid])
   )
 })()
 
-const emptyCmd = Command.make("noop").pipe(
+const emptyCmd = Command.Make("noop").pipe(
   Command.withDescription("Does nothing")
 )
 
@@ -624,8 +624,8 @@ describe("Fish completions", () => {
   })
 
   it("escapes backslashes in descriptions before quotes", () => {
-    const trailingBackslash = Command.make("deploy", {
-      mode: Flag.choice("mode", ["a"]).pipe(Flag.withDescription("Path like C:\\"))
+    const trailingBackslash = Command.Make("deploy", {
+      mode: Flag.Choice("mode", ["a"]).pipe(Flag.withDescription("Path like C:\\"))
     })
     const script = Fish.generate("deploy", fromCommand(trailingBackslash))
     assert.include(script, `-d 'Path like C:\\\\'`)
@@ -789,19 +789,19 @@ describe("Fish completions", () => {
 describe("Completions", () => {
   it("dispatches to bash generator", () => {
     const desc = fromCommand(simpleCmd)
-    const script = Completions.generate("greet", "bash", desc)
+    const script = Completions.Generate("greet", "bash", desc)
     assert.include(script, "complete -F _greet greet")
   })
 
   it("dispatches to zsh generator", () => {
     const desc = fromCommand(simpleCmd)
-    const script = Completions.generate("greet", "zsh", desc)
+    const script = Completions.Generate("greet", "zsh", desc)
     assert.include(script, "#compdef greet")
   })
 
   it("dispatches to fish generator", () => {
     const desc = fromCommand(simpleCmd)
-    const script = Completions.generate("greet", "fish", desc)
+    const script = Completions.Generate("greet", "fish", desc)
     assert.include(script, "complete -c greet")
   })
 })

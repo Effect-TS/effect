@@ -14,7 +14,7 @@ const FileSystemLayer = FileSystem.layerNoop({})
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
 const CliOutputLayer = CliOutput.layer(
-  CliOutput.defaultFormatter({
+  CliOutput.DefaultFormatter({
     colors: false
   })
 )
@@ -40,7 +40,7 @@ const runCommand = Effect.fnUntraced(
 
 describe("Command help output", () => {
   it("marks omittable flags as not required in structured help", () => {
-    const command = Command.make("app", {
+    const command = Command.Make("app", {
       required: Flag.String("required"),
       optional: Flag.String("optional").pipe(Flag.optional),
       defaulted: Flag.String("defaulted").pipe(Flag.withDefault("output.txt"))
@@ -51,13 +51,13 @@ describe("Command help output", () => {
   })
 
   it("marks omittable arguments as not required in structured help", () => {
-    const requiredVariadic = Command.make("app", {
+    const requiredVariadic = Command.Make("app", {
       files: Argument.String("files").pipe(Argument.variadic({ min: 1 }))
     })
-    const optionalVariadic = Command.make("app", {
+    const optionalVariadic = Command.Make("app", {
       files: Argument.String("files").pipe(Argument.variadic())
     })
-    const defaulted = Command.make("app", {
+    const defaulted = Command.Make("app", {
       output: Argument.String("output").pipe(Argument.withDefault("output.txt"))
     })
 
@@ -110,7 +110,7 @@ describe("Command help output", () => {
 
   it.effect("aligns flag descriptions when flag names are long", () =>
     Effect.gen(function*() {
-      const command = Command.make("tool", {
+      const command = Command.Make("tool", {
         short: Flag.String("short").pipe(Flag.withDescription("Short flag description")),
         veryLong: Flag.String("this-is-a-very-very-long-flag-name").pipe(
           Flag.withDescription("Long flag description")
@@ -132,7 +132,7 @@ describe("Command help output", () => {
 
   it.effect("aligns flag descriptions when flag names contain wide graphemes", () =>
     Effect.gen(function*() {
-      const command = Command.make("tool", {
+      const command = Command.Make("tool", {
         file: Flag.Boolean("ファイル").pipe(Flag.withDescription("Wide flag description")),
         emoji: Flag.Boolean("👩‍💻").pipe(Flag.withDescription("Emoji flag description")),
         verbose: Flag.Boolean("verbose").pipe(Flag.withDescription("ASCII flag description"))
@@ -149,7 +149,7 @@ describe("Command help output", () => {
 
   it.effect("aligns flag descriptions when flag names contain zero-width code points", () =>
     Effect.gen(function*() {
-      const command = Command.make("tool", {
+      const command = Command.Make("tool", {
         combining: Flag.Boolean("e\u0301").pipe(Flag.withDescription("Combining flag description")),
         zeroWidth: Flag.Boolean("a\u200Bb").pipe(Flag.withDescription("Zero-width flag description")),
         ascii: Flag.Boolean("abcd").pipe(Flag.withDescription("ASCII flag description"))
@@ -166,12 +166,12 @@ describe("Command help output", () => {
 
   it.effect("separates long subcommand and argument names from their descriptions", () =>
     Effect.gen(function*() {
-      const child = Command.make("account:set-password", {
+      const child = Command.Make("account:set-password", {
         account: Argument.String("existing-account-identifier").pipe(
           Argument.withDescription("Account to update")
         )
       }).pipe(Command.withDescription("Rewrite the credential hash"))
-      const command = Command.make("demo").pipe(Command.withSubcommands([child]))
+      const command = Command.Make("demo").pipe(Command.withSubcommands([child]))
       const run = Command.runWith(command, { version: "1.0.0" })
 
       yield* run(["--help"])
@@ -189,7 +189,7 @@ describe("Command help output", () => {
 
   it.effect("hides flags marked with withHidden from help output", () =>
     Effect.gen(function*() {
-      const command = Command.make("tool", {
+      const command = Command.Make("tool", {
         visible: Flag.String("visible").pipe(Flag.withDescription("Visible flag")),
         secret: Flag.String("experimental-foo").pipe(
           Flag.withDescription("Should not appear"),
@@ -209,7 +209,7 @@ describe("Command help output", () => {
   it.effect("hidden flag still parses on the command line", () =>
     Effect.gen(function*() {
       let captured: string | undefined
-      const command = Command.make("tool", {
+      const command = Command.Make("tool", {
         secret: Flag.String("experimental-foo").pipe(Flag.withHidden)
       }, (config) =>
         Effect.sync(() => {
@@ -224,7 +224,7 @@ describe("Command help output", () => {
 
   it.effect("hidden flag name does not leak through unrecognized-flag suggestions", () =>
     Effect.gen(function*() {
-      const command = Command.make("tool", {
+      const command = Command.Make("tool", {
         secret: Flag.String("experimental-foo").pipe(Flag.withHidden)
       }, () => Effect.void)
       const run = Command.runWith(command, { version: "1.0.0" })
@@ -240,14 +240,14 @@ describe("Command help output", () => {
 
   it.effect("hides unlisted subcommands from help output", () =>
     Effect.gen(function*() {
-      const visible = Command.make("visible").pipe(
+      const visible = Command.Make("visible").pipe(
         Command.withDescription("A visible subcommand")
       )
-      const secret = Command.make("experimental-foo").pipe(
+      const secret = Command.Make("experimental-foo").pipe(
         Command.withDescription("Should not appear"),
         Command.unlisted
       )
-      const root = Command.make("tool").pipe(
+      const root = Command.Make("tool").pipe(
         Command.withSubcommands([visible, secret])
       )
       const run = Command.runWith(root, { version: "1.0.0" })
@@ -263,7 +263,7 @@ describe("Command help output", () => {
   it.effect("unlisted subcommand still parses on the command line", () =>
     Effect.gen(function*() {
       let invoked = false
-      const secret = Command.make("experimental-foo").pipe(
+      const secret = Command.Make("experimental-foo").pipe(
         Command.unlisted,
         Command.withHandler(() =>
           Effect.sync(() => {
@@ -271,7 +271,7 @@ describe("Command help output", () => {
           })
         )
       )
-      const root = Command.make("tool").pipe(
+      const root = Command.Make("tool").pipe(
         Command.withSubcommands([secret])
       )
       const run = Command.runWith(root, { version: "1.0.0" })
@@ -283,8 +283,8 @@ describe("Command help output", () => {
 
   it.effect("unlisted subcommand name does not leak through unknown-subcommand suggestions", () =>
     Effect.gen(function*() {
-      const secret = Command.make("experimental-foo").pipe(Command.unlisted)
-      const root = Command.make("tool").pipe(
+      const secret = Command.Make("experimental-foo").pipe(Command.unlisted)
+      const root = Command.Make("tool").pipe(
         Command.withSubcommands([secret])
       )
       const run = Command.runWith(root, { version: "1.0.0" })
@@ -300,8 +300,8 @@ describe("Command help output", () => {
 
   it.effect("subcommand group with only unlisted commands disappears entirely", () =>
     Effect.gen(function*() {
-      const secret = Command.make("experimental-foo").pipe(Command.unlisted)
-      const root = Command.make("tool").pipe(
+      const secret = Command.Make("experimental-foo").pipe(Command.unlisted)
+      const root = Command.Make("tool").pipe(
         Command.withSubcommands([secret])
       )
       const run = Command.runWith(root, { version: "1.0.0" })
@@ -315,7 +315,7 @@ describe("Command help output", () => {
 
   it.effect("renders command examples", () =>
     Effect.gen(function*() {
-      const command = Command.make("login").pipe(
+      const command = Command.Make("login").pipe(
         Command.withDescription("Authenticate with Supabase"),
         Command.withExamples([
           { command: "myapp login", description: "Log in with browser OAuth" },
@@ -547,14 +547,14 @@ describe("Command help output", () => {
 
   it.effect("shared flags are visible in subcommand help while local flags stay local", () =>
     Effect.gen(function*() {
-      const root = Command.make("tool", {
+      const root = Command.Make("tool", {
         workspace: Flag.String("workspace")
       }).pipe(
         Command.withSharedFlags({
           model: Flag.String("model")
         }),
         Command.withSubcommands([
-          Command.make("chat", {
+          Command.Make("chat", {
             topic: Flag.String("topic")
           })
         ])
@@ -577,12 +577,12 @@ describe("Command help output", () => {
 
   it.effect("includes inherited shared flags in subcommand completions", () =>
     Effect.gen(function*() {
-      const root = Command.make("tool").pipe(
+      const root = Command.Make("tool").pipe(
         Command.withSharedFlags({
           workspace: Flag.String("workspace").pipe(Flag.withAlias("w"))
         }),
         Command.withSubcommands([
-          Command.make("chat", {
+          Command.Make("chat", {
             topic: Flag.String("topic").pipe(Flag.withAlias("t"))
           })
         ])
@@ -599,18 +599,18 @@ describe("Command help output", () => {
 
   it.effect("renders grouped subcommands", () =>
     Effect.gen(function*() {
-      const ungrouped = Command.make("ungrouped").pipe(
+      const ungrouped = Command.Make("ungrouped").pipe(
         Command.withDescription("This command is not in a group")
       )
-      const init = Command.make("init").pipe(Command.withDescription("Create a new project"))
-      const login = Command.make("login").pipe(Command.withDescription("Authenticate with the platform"))
-      const start = Command.make("start").pipe(Command.withDescription("Start local services"))
-      const stop = Command.make("stop").pipe(Command.withDescription("Stop local services"))
-      const db = Command.make("db").pipe(Command.withDescription("Manage local database"))
-      const projects = Command.make("projects").pipe(Command.withDescription("Manage cloud projects"))
-      const functions = Command.make("functions").pipe(Command.withDescription("Manage edge functions"))
+      const init = Command.Make("init").pipe(Command.withDescription("Create a new project"))
+      const login = Command.Make("login").pipe(Command.withDescription("Authenticate with the platform"))
+      const start = Command.Make("start").pipe(Command.withDescription("Start local services"))
+      const stop = Command.Make("stop").pipe(Command.withDescription("Stop local services"))
+      const db = Command.Make("db").pipe(Command.withDescription("Manage local database"))
+      const projects = Command.Make("projects").pipe(Command.withDescription("Manage cloud projects"))
+      const functions = Command.Make("functions").pipe(Command.withDescription("Manage edge functions"))
 
-      const grouped = Command.make("tool").pipe(
+      const grouped = Command.Make("tool").pipe(
         Command.withSubcommands([
           {
             group: "Quick Start",
@@ -664,12 +664,12 @@ describe("Command help output", () => {
 
   it.effect("renders subcommand aliases in listings", () =>
     Effect.gen(function*() {
-      const plan = Command.make("plan").pipe(
+      const plan = Command.Make("plan").pipe(
         Command.withAlias("p"),
         Command.withDescription("Draft a plan in your editor")
       )
 
-      const root = Command.make("tool").pipe(Command.withSubcommands([plan]))
+      const root = Command.Make("tool").pipe(Command.withSubcommands([plan]))
       const runRoot = Command.runWith(root, { version: "1.0.0" })
 
       yield* runRoot(["--help"])
@@ -694,10 +694,10 @@ describe("Command help output", () => {
 
   it.effect("keeps subcommand flags in aliased completion contexts", () =>
     Effect.gen(function*() {
-      const list = Command.make("list", {
-        format: Flag.choice("format", ["json", "text"])
+      const list = Command.Make("list", {
+        format: Flag.Choice("format", ["json", "text"])
       }).pipe(Command.withAlias("ls"))
-      const root = Command.make("ctl").pipe(Command.withSubcommands([list]))
+      const root = Command.Make("ctl").pipe(Command.withSubcommands([list]))
       const runRoot = Command.runWith(root, { version: "1.0.0" })
 
       yield* runRoot(["--completions", "bash"])

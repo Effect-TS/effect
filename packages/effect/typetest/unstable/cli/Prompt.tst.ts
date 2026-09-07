@@ -8,21 +8,21 @@ declare const objectEvents: Queue.Dequeue<{ readonly tick: number }, never>
 describe("Prompt", () => {
   describe("Theme", () => {
     it("supports context and per-prompt customization", () => {
-      expect(Prompt.makeTheme({ prefix: "!", primaryColor: "primary" })).type.toBe<Prompt.Theme>()
-      expect(Prompt.text).type.toBeCallableWith({
+      expect(Prompt.MakeTheme({ prefix: "!", primaryColor: "primary" })).type.toBe<Prompt.Theme>()
+      expect(Prompt.Text).type.toBeCallableWith({
         message: "Name",
         theme: { prefix: "!", errorColor: "error" }
       })
     })
 
     it("does not expose the replaced prefix option", () => {
-      expect(Prompt.text).type.not.toBeCallableWith({ message: "Name", prefix: "!" })
+      expect(Prompt.Text).type.not.toBeCallableWith({ message: "Name", prefix: "!" })
     })
   })
 
   describe("custom", () => {
     it("without events, process receives Terminal.UserInput", () => {
-      Prompt.custom(
+      Prompt.Custom(
         { count: 0 },
         {
           render: () => Effect.succeed(""),
@@ -36,7 +36,7 @@ describe("Prompt", () => {
     })
 
     it("with events, process receives ProcessInput<A>", () => {
-      Prompt.custom(
+      Prompt.Custom(
         { count: 0 },
         stringEvents,
         {
@@ -51,7 +51,7 @@ describe("Prompt", () => {
     })
 
     it("ProcessInput is a discriminated union narrowed by _tag", () => {
-      Prompt.custom(
+      Prompt.Custom(
         { count: 0 },
         objectEvents,
         {
@@ -70,7 +70,7 @@ describe("Prompt", () => {
     })
 
     it("returns Prompt<Output>", () => {
-      const prompt = Prompt.custom(
+      const prompt = Prompt.Custom(
         0,
         {
           render: () => Effect.succeed(""),
@@ -86,7 +86,7 @@ describe("Prompt", () => {
     })
 
     it("returns Prompt<Output> with events", () => {
-      const prompt = Prompt.custom(
+      const prompt = Prompt.Custom(
         0,
         stringEvents,
         {

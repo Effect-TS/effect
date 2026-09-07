@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Layer, Path, PlatformError, Redacted, Stdio } from "effect"
+import { Effect, FileSystem, Layer, Path, PlatformError, Redacted, Schema, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
 import { Primitive } from "effect/unstable/cli"
 import { ChildProcessSpawner } from "effect/unstable/process"
@@ -202,8 +202,8 @@ describe("Primitive", () => {
     })
   })
 
-  describe("choice", () => {
-    const colorChoice = Primitive.choice([
+  describe("Choice", () => {
+    const colorChoice = Primitive.Choice([
       ["red", "RED"],
       ["green", "GREEN"],
       ["blue", "BLUE"]
@@ -232,7 +232,7 @@ describe("Primitive", () => {
         assert.strictEqual(colorChoice._tag, "Choice")
       })
 
-      const numberChoice = Primitive.choice([
+      const numberChoice = Primitive.Choice([
         ["one", 1],
         ["two", 2],
         ["three", 3]
@@ -247,11 +247,11 @@ describe("Primitive", () => {
     })
   })
 
-  describe("path", () => {
+  describe("Path", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should resolve paths without requiring existence", () =>
         Effect.gen(function*() {
-          const pathPrimitive = Primitive.path("either")
+          const pathPrimitive = Primitive.Path("either")
           const result1 = yield* pathPrimitive.parse("./test.txt")
           const result2 = yield* pathPrimitive.parse("/absolute/path")
           const result3 = yield* pathPrimitive.parse("relative/path")
@@ -263,12 +263,12 @@ describe("Primitive", () => {
         }))
 
       it("should have correct _tag", () => {
-        assert.strictEqual(Primitive.path("either")._tag, "Path")
+        assert.strictEqual(Primitive.Path("either")._tag, "Path")
       })
 
       it.effect("should fail when a required file path does not exist", () =>
         Effect.gen(function*() {
-          const filePath = Primitive.path("file", true)
+          const filePath = Primitive.Path("file", true)
 
           // Test non-existent file - should fail validation
           const error = yield* Effect.flip(
@@ -293,7 +293,7 @@ describe("Primitive", () => {
 
       it.effect("should fail when a required directory path does not exist", () =>
         Effect.gen(function*() {
-          const dirPath = Primitive.path("directory", true)
+          const dirPath = Primitive.Path("directory", true)
 
           // Test non-existent directory - should fail validation
           const error = yield* Effect.flip(
@@ -341,11 +341,11 @@ describe("Primitive", () => {
     })
   })
 
-  describe("keyValuePair", () => {
+  describe("KeyValuePair", () => {
     it.layer(TestLayer)((it) => {
       it.effect("should preserve '=' in URL query parameters", () =>
         Effect.gen(function*() {
-          const url = yield* Primitive.keyValuePair.parse(
+          const url = yield* Primitive.KeyValuePair.parse(
             "DATABASE_URL=postgres://user:pass@host:5432/db?sslmode=require"
           )
           assert.deepStrictEqual(url, {
@@ -355,13 +355,13 @@ describe("Primitive", () => {
 
       it.effect("should preserve trailing '=' in padded values", () =>
         Effect.gen(function*() {
-          const padded = yield* Primitive.keyValuePair.parse("TOKEN=YWJjZA==")
+          const padded = yield* Primitive.KeyValuePair.parse("TOKEN=YWJjZA==")
           assert.deepStrictEqual(padded, { TOKEN: "YWJjZA==" })
         }))
 
       it.effect("should fail when the input is malformed", () =>
         expectInvalidValues(
-          Primitive.keyValuePair,
+          Primitive.KeyValuePair,
           ["invalid", "=value", "key="],
           [
             "Invalid key=value format. Expected format: key=value, got: invalid",
@@ -371,4 +371,28 @@ describe("Primitive", () => {
         ))
     })
   })
+
+  it.effect("file constructors preserve text, parsed content, and schema decoding", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(yield* Primitive.FileText.parse("/config.json"), "{\"enabled\":true}")
+      assert.deepStrictEqual(yield* Primitive.FileParse().parse("/config.json"), { enabled: true })
+      assert.deepStrictEqual(
+        yield* Primitive.FileSchema(Schema.Struct({ enabled: Schema.Boolean })).parse("/config.json"),
+        { enabled: true }
+      )
+      const error = yield* Effect.flip(Primitive.FileSchema(Schema.String).parse("/config.json"))
+      assert.include(error, "string")
+    }).pipe(
+      Effect.provide(FileSystem.layerNoop({
+        exists: () => Effect.succeed(true),
+        stat: () => Effect.succeed({ type: "File" } as FileSystem.File.Info),
+        readFileString: () => Effect.succeed("{\"enabled\":true}")
+      })),
+      Effect.provide(TestLayer)
+    ))
+
+  it.effect("none remains an always-failing sentinel", () =>
+    expectInvalidValues(Primitive.None, ["value"], ["This option does not accept values"]).pipe(
+      Effect.provide(TestLayer)
+    ))
 })

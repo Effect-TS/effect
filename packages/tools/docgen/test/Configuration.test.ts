@@ -84,7 +84,7 @@ const makeTestLayer = (env: Record<string, string> = {}) =>
   Configuration.configProviderLayer.pipe(
     Layer.fresh,
     Layer.provideMerge(Layer.mergeAll(
-      CliOutput.layer(CliOutput.defaultFormatter({ colors: false })),
+      CliOutput.layer(CliOutput.DefaultFormatter({ colors: false })),
       NodeServices.layer,
       Stdio.layerTest({}),
       makeProcess(env),

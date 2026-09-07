@@ -4,7 +4,7 @@ import type { TestActions } from "../services/TestActions.ts"
 import { logAction } from "../services/TestActions.ts"
 
 // Deeply nested admin commands
-const usersList = Command.make("list", {
+const usersList = Command.Make("list", {
   // Optional option with default
   format: Flag.String("format").pipe(
     Flag.withDescription("Output format (json, table, csv)"),
@@ -30,7 +30,7 @@ const usersList = Command.make("list", {
     Command.withDescription("List all users in the system")
   )
 
-const usersCreate = Command.make("create", {
+const usersCreate = Command.Make("create", {
   // Required positional argument
   username: Argument.String("username").pipe(
     Argument.withDescription("Username for the new user")
@@ -60,19 +60,19 @@ const usersCreate = Command.make("create", {
     Command.withDescription("Create a new user account")
   )
 
-const users = Command.make("users").pipe(
+const users = Command.Make("users").pipe(
   Command.withDescription("User management commands"),
   Command.withSubcommands([usersList, usersCreate])
 )
 
-const configSet = Command.make("set", {
+const configSet = Command.Make("set", {
   // Variadic positional arguments
   pairs: Argument.String("key=value").pipe(
     Argument.withDescription("Configuration key-value pairs"),
     Argument.variadic({ min: 1 })
   ),
   // File path option
-  file: Flag.file("config-file").pipe(
+  file: Flag.File("config-file").pipe(
     Flag.withAlias("f"),
     Flag.withDescription("Write to specific config file"),
     Flag.optional
@@ -85,7 +85,7 @@ const configSet = Command.make("set", {
     Command.withDescription("Set configuration values")
   )
 
-const configGet = Command.make("get", {
+const configGet = Command.Make("get", {
   // Single required positional
   key: Argument.String("key").pipe(
     Argument.withDescription("Configuration key to retrieve")
@@ -103,7 +103,7 @@ const configGet = Command.make("get", {
     Command.withDescription("Get configuration value")
   )
 
-const config = Command.make("config").pipe(
+const config = Command.Make("config").pipe(
   Command.withSharedFlags({
     // Parent command options shared with config subcommands
     profile: Flag.String("profile").pipe(
@@ -116,7 +116,7 @@ const config = Command.make("config").pipe(
   Command.withSubcommands([configSet, configGet])
 )
 
-const admin = Command.make("admin").pipe(
+const admin = Command.Make("admin").pipe(
   Command.withSharedFlags({
     // Boolean that can be set to false explicitly
     sudo: Flag.Boolean("sudo").pipe(
@@ -129,12 +129,12 @@ const admin = Command.make("admin").pipe(
 )
 
 // File operations commands
-const copy = Command.make("copy", {
+const copy = Command.Make("copy", {
   // Multiple required positional arguments (do not require actual filesystem presence in tests)
-  source: Argument.file("source", { mustExist: false }).pipe(
+  source: Argument.File("source", { mustExist: false }).pipe(
     Argument.withDescription("Source file or directory")
   ),
-  destination: Argument.file("destination", { mustExist: false }).pipe(
+  destination: Argument.File("destination", { mustExist: false }).pipe(
     Argument.withDescription("Destination path")
   ),
   // Boolean flags with short aliases
@@ -164,7 +164,7 @@ const copy = Command.make("copy", {
     Command.withDescription("Copy files or directories")
   )
 
-const move = Command.make("move", {
+const move = Command.Make("move", {
   // Variadic sources with at least 2 items
   paths: Argument.String("paths").pipe(
     Argument.withDescription("Source path(s) and destination"),
@@ -184,7 +184,7 @@ const move = Command.make("move", {
     Command.withDescription("Move or rename files")
   )
 
-const remove = Command.make("remove", {
+const remove = Command.Make("remove", {
   // Variadic with no upper limit
   files: Argument.String("files").pipe(
     Argument.withDescription("Files to remove"),
@@ -217,7 +217,7 @@ const remove = Command.make("remove", {
   )
 
 // Build command for testing option aliases
-const build = Command.make("build", {
+const build = Command.Make("build", {
   output: Flag.String("output").pipe(
     Flag.withAlias("o"),
     Flag.withDescription("Output directory")
@@ -242,7 +242,7 @@ const build = Command.make("build", {
   )
 
 // Git-style commands for testing subcommands and context sharing
-const gitClone = Command.make("clone", {
+const gitClone = Command.Make("clone", {
   repository: Argument.String("repository").pipe(
     Argument.withDescription("Repository URL or path")
   ),
@@ -258,7 +258,7 @@ const gitClone = Command.make("clone", {
     Command.withDescription("Clone a repository")
   )
 
-const gitAdd = Command.make("add", {
+const gitAdd = Command.Make("add", {
   files: Argument.String("files").pipe(
     Argument.withDescription("Files to add")
   ),
@@ -274,7 +274,7 @@ const gitAdd = Command.make("add", {
     Command.withDescription("Add files to staging")
   )
 
-const gitStatus = Command.make("status", {
+const gitStatus = Command.Make("status", {
   short: Flag.Boolean("short").pipe(
     Flag.withDescription("Show short format"),
     Flag.withDefault(false)
@@ -286,7 +286,7 @@ const gitStatus = Command.make("status", {
     Command.withDescription("Show repository status")
   )
 
-const git = Command.make("git").pipe(
+const git = Command.Make("git").pipe(
   Command.withSharedFlags({
     verbose: Flag.Boolean("verbose").pipe(
       Flag.withDescription("Enable verbose output"),
@@ -303,7 +303,7 @@ const git = Command.make("git").pipe(
 )
 
 // Commands for testing error handling
-const testRequired = Command.make("test-required", {
+const testRequired = Command.Make("test-required", {
   required: Flag.String("required").pipe(
     Flag.withDescription("A required option for testing")
   )
@@ -320,7 +320,7 @@ const testFailing: Command.Command<
   {},
   string,
   TestActions
-> = Command.make("test-failing", {
+> = Command.Make("test-failing", {
   input: Flag.String("input").pipe(
     Flag.withDescription("Input that will cause handler to fail")
   )
@@ -333,7 +333,7 @@ const testFailing: Command.Command<
   )
 
 // Deploy command for testing complex nested structures
-const deployCommand = Command.make("deploy", {
+const deployCommand = Command.Make("deploy", {
   service: Argument.String("service").pipe(
     Argument.withDescription("Service to deploy")
   ),
@@ -362,7 +362,7 @@ const deployCommand = Command.make("deploy", {
     Command.withDescription("Deploy a service")
   )
 
-const app = Command.make("app").pipe(
+const app = Command.Make("app").pipe(
   Command.withSharedFlags({
     env: Flag.String("env").pipe(
       Flag.withDescription("Environment setting"),
@@ -379,7 +379,7 @@ const app = Command.make("app").pipe(
 )
 
 // Service command for nested context sharing tests
-const serviceCommand = Command.make("service").pipe(
+const serviceCommand = Command.Make("service").pipe(
   Command.withSharedFlags({
     name: Flag.String("name").pipe(
       Flag.withDescription("Service name")
@@ -394,7 +394,7 @@ const serviceCommand = Command.make("service").pipe(
   Command.withSubcommands([deployCommand])
 )
 
-const appWithService = Command.make("app-nested").pipe(
+const appWithService = Command.Make("app-nested").pipe(
   Command.withSharedFlags({
     env: Flag.String("env").pipe(
       Flag.withDescription("Environment setting")
@@ -411,7 +411,7 @@ const appWithService = Command.make("app-nested").pipe(
 
 // Main command with global options
 // Note: No handler on root command - running with no args should show help
-export const ComprehensiveCli = Command.make("mycli").pipe(
+export const ComprehensiveCli = Command.Make("mycli").pipe(
   Command.withSharedFlags({
     // Global options available to all subcommands
     debug: Flag.Boolean("debug").pipe(
@@ -419,7 +419,7 @@ export const ComprehensiveCli = Command.make("mycli").pipe(
       Flag.withDescription("Enable debug logging"),
       Flag.withDefault(false)
     ),
-    config: Flag.file("config").pipe(
+    config: Flag.File("config").pipe(
       Flag.withAlias("c"),
       Flag.withDescription("Path to configuration file"),
       Flag.optional
