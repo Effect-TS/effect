@@ -108,7 +108,7 @@ export const groups = Effect.fnUntraced(function*<
       Effect.provideService(HttpServerRequest.HttpServerRequest, serverRequest),
       Effect.orDie
     )
-    return HttpServerResponse.toClientResponse(response)
+    return HttpServerResponse.toClientResponse(response, { request })
   }, Effect.scoped))
 
   return yield* HttpApiClient.makeWith(api, {

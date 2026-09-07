@@ -156,7 +156,7 @@ export const makeUndici = Effect.gen(function*() {
               method: request.method,
               headers: request.headers,
               origin: url.origin,
-              path: url.pathname + url.search + url.hash,
+              path: url.pathname + url.search,
               body,
               // leave timeouts to Effect.timeout etc
               headersTimeout: 60 * 60 * 1000,
@@ -171,7 +171,7 @@ export const makeUndici = Effect.gen(function*() {
             })
         })
       ),
-      Effect.map((response) => new UndiciResponse(request, response))
+      Effect.map((response) => new UndiciResponse(request, response, url.href.split("#")[0]))
     )
   )
 })
@@ -203,16 +203,19 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   readonly [Response.TypeId]: typeof Response.TypeId
   readonly request: HttpClientRequest
   readonly source: Undici.Dispatcher.ResponseData
+  readonly url: string
 
   constructor(
     request: HttpClientRequest,
-    source: Undici.Dispatcher.ResponseData
+    source: Undici.Dispatcher.ResponseData,
+    url: string
   ) {
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
     this[Response.TypeId] = Response.TypeId
     this.request = request
     this.source = source
+    this.url = url
     source.body.on("error", noopErrorHandler)
   }
 
@@ -450,7 +453,7 @@ export const makeNodeHttp = Effect.gen(function*() {
       sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
     ).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
-      Effect.map((_) => new NodeHttpResponse(request, _))
+      Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
     )
   })
 })
@@ -570,10 +573,12 @@ const waitForFinish = (nodeRequest: Http.ClientRequest, request: HttpClientReque
 class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> implements HttpClientResponse, Pipeable {
   readonly [Response.TypeId]: typeof Response.TypeId
   readonly request: HttpClientRequest
+  readonly url: string
 
   constructor(
     request: HttpClientRequest,
-    source: Http.IncomingMessage
+    source: Http.IncomingMessage,
+    url: string
   ) {
     super(source, (cause) =>
       new Error.HttpClientError({
@@ -585,6 +590,7 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
       }))
     this[Response.TypeId] = Response.TypeId
     this.request = request
+    this.url = url
   }
 
   get status() {

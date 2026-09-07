@@ -100,6 +100,8 @@ export interface Field extends Part.Proto {
 /**
  * Returns `true` when a value has the multipart part type identifier.
  *
+ * **Details**
+ *
  * This includes `Field`, `File`, and `PersistedFile` values. Use
  * `isStreamPart` to identify only parsed, streamed parts.
  *

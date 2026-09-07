@@ -147,7 +147,7 @@ const makeXmlHttpRequest = HttpClient.make(
           const onChange = () => {
             if (!sent && xhr.readyState >= 2) {
               sent = true
-              resume(Effect.succeed(new ClientResponseImpl(request, xhr)))
+              resume(Effect.succeed(new ClientResponseImpl(request, xhr, url.href)))
             }
           }
           xhr.onreadystatechange = onChange
@@ -387,10 +387,12 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
 {
   readonly [HttpClientResponse.TypeId]: typeof HttpClientResponse.TypeId
   readonly request: HttpClientRequest.HttpClientRequest
+  private readonly requestUrl: string
 
   constructor(
     request: HttpClientRequest.HttpClientRequest,
-    source: globalThis.XMLHttpRequest
+    source: globalThis.XMLHttpRequest,
+    requestUrl: string
   ) {
     super(source, (cause) =>
       new HttpClientError.HttpClientError({
@@ -401,11 +403,16 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
         })
       }))
     this.request = request
+    this.requestUrl = requestUrl
     this[HttpClientResponse.TypeId] = HttpClientResponse.TypeId
   }
 
   get status() {
     return this.source.status
+  }
+
+  get url() {
+    return (this.source.responseURL || this.requestUrl).split("#")[0]
   }
 
   get formData(): Effect.Effect<FormData, HttpClientError.HttpClientError> {

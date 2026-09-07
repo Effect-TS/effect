@@ -21,7 +21,7 @@ import type { Unify } from "../../Unify.ts"
 import * as Cookies from "./Cookies.ts"
 import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
-import type * as HttpClientRequest from "./HttpClientRequest.ts"
+import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -66,6 +66,11 @@ export const TypeId = "~effect/http/HttpClientResponse"
 export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMessage<Error.HttpClientError>, Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly request: HttpClientRequest.HttpClientRequest
+  /**
+   * The resolved URL, including query parameters and excluding the hash.
+   * Uses the final URL when redirects are followed. Empty if unknown.
+   */
+  readonly url: string
   readonly status: number
   readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.HttpClientError>
@@ -275,6 +280,14 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
 
   get status(): number {
     return this.source.status
+  }
+
+  get url(): string {
+    if (this.source.url) return this.source.url.split("#")[0]
+    const url = HttpClientRequest.toUrl(this.request)
+    if (Option.isNone(url)) return ""
+    url.value.hash = ""
+    return url.value.href
   }
 
   get headers(): Headers.Headers {

@@ -28,7 +28,10 @@ describe("HttpServerResponse", () => {
 
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>
     Effect.gen(function*() {
-      const request = HttpClientRequest.get("http://localhost:3000/todos/1")
+      const request = HttpClientRequest.get("http://localhost:3000/todos/1?existing=1", {
+        urlParams: { value: "a#b" },
+        hash: "fragment"
+      })
       const clientResponse = HttpServerResponse.toClientResponse(
         HttpServerResponse.jsonUnsafe({ foo: "bar" }, { status: 201 }).pipe(
           HttpServerResponse.setHeader("x-test", "ok"),
@@ -40,6 +43,8 @@ describe("HttpServerResponse", () => {
       const response = HttpServerResponse.fromClientResponse(clientResponse)
       const roundTrip = HttpServerResponse.toClientResponse(response, { request })
 
+      assert.strictEqual(clientResponse.url, "http://localhost:3000/todos/1?existing=1&value=a%23b")
+      assert.strictEqual(roundTrip.url, clientResponse.url)
       assert.strictEqual(response.status, 201)
       assert.strictEqual(response.headers["content-type"], "application/json")
       assert.strictEqual(response.headers["x-test"], "ok")
@@ -61,6 +66,7 @@ describe("HttpServerResponse", () => {
 
       const response = HttpServerResponse.fromClientResponse(clientResponse)
       const roundTrip = HttpServerResponse.toClientResponse(response)
+      assert.strictEqual(roundTrip.url, "")
       const text = yield* roundTrip.text.pipe(
         Effect.provideService(TestValue, 420)
       )

@@ -82,6 +82,7 @@ it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.get({ responseMode: "response-only" })
 
+      assert.strictEqual(response.url, "http://localhost:3000/fixture")
       assert.strictEqual(response.status, 200)
       assert.strictEqual(response.headers["x-fixture"], "present")
       assert.strictEqual(yield* response.text, "ok")

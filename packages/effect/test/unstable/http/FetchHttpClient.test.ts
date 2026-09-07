@@ -6,10 +6,11 @@ describe("FetchHttpClient", () => {
   it.effect("sends bodies from Web requests", () =>
     Effect.gen(function*() {
       const request = HttpClientRequest.fromWeb(
-        new Request("https://example.test/", { method: "POST", body: "hello" })
-      )
+        new Request("https://example.test/?existing=1#fragment", { method: "POST", body: "hello" })
+      ).pipe(HttpClientRequest.setUrlParam("value", "a#b"))
       const client = yield* HttpClient.HttpClient
       const response = yield* client.execute(request)
+      assert.strictEqual(response.url, "https://example.test/?existing=1&value=a%23b")
       assert.strictEqual(yield* response.text, "hello")
     }).pipe(
       Effect.provide(FetchHttpClient.layer),
