@@ -254,10 +254,8 @@ const Proto = {
             ? Schema.decodeUnknownEffect(tool.parametersSchema) as any
             : (u: unknown) => Effect.succeed(u)
           const encodeSuccess = Schema.encodeUnknownEffect(tool.successSchema) as any
-          const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as any
-          const encodeAiError = Schema.encodeUnknownEffect(AiError.AiError)
-          const encodeResult = (u: unknown, isFailure: boolean) =>
-            !isFailure ? encodeSuccess(u) : AiError.isAiError(u) ? encodeAiError(u) : encodeFailure(u)
+          const encodeFailure = Schema.encodeUnknownEffect(tool.failureResultSchema()) as any
+          const encodeResult = (u: unknown, isFailure: boolean) => isFailure ? encodeFailure(u) : encodeSuccess(u)
           schemas = {
             context: handler.context,
             handler: handler.handler,

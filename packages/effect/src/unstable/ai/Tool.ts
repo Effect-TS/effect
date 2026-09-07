@@ -22,7 +22,7 @@ import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as Struct from "../../Struct.ts"
 import type * as Types from "../../Types.ts"
-import type * as AiError from "./AiError.ts"
+import * as AiError from "./AiError.ts"
 import type { CodecTransformer } from "./LanguageModel.ts"
 import type * as Prompt from "./Prompt.ts"
 
@@ -254,6 +254,21 @@ export interface Tool<
    * it fails.
    */
   readonly failureSchema: Config["failure"]
+
+  /**
+   * Returns the `Schema` for the result of a failed tool call.
+   *
+   * **Details**
+   *
+   * A failed result is either a value of the tool's `failureSchema`, an
+   * `AiError` raised while handling the call, or an {@link ExecutionFailure}
+   * synthesized when the call was denied or interrupted. The toolkit result
+   * encoder and the `Response` part schemas both use this schema, so failed
+   * results encode and decode consistently.
+   */
+  failureResultSchema(): Schema.Union<
+    readonly [typeof AiError.AiError, typeof ExecutionFailure, Config["failure"]]
+  >
 
   /**
    * A `Context` containing tool annotations which can store metadata about
@@ -1071,6 +1086,9 @@ const Proto = {
   },
   setFailure(this: Any, failureSchema: Schema.Constraint) {
     return clone(this, { failureSchema })
+  },
+  failureResultSchema(this: Any) {
+    return Schema.Union([AiError.AiError, ExecutionFailure, this.failureSchema])
   },
   setNeedsApproval(this: Any, needsApproval: NeedsApproval<any>) {
     return clone(this, { needsApproval })
@@ -2008,6 +2026,18 @@ export const unsafeSecureJsonParse = (text: string): unknown => {
     StackTraceLimit.setStackTraceLimit(prevLimit)
   }
 }
+
+/**
+ * A failure result synthesized by the framework when a tool call was denied
+ * by the user or interrupted before its handler completed.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ExecutionFailure = Schema.Struct({
+  type: Schema.Literals(["execution-denied", "execution-interrupted"]),
+  reason: Schema.String
+}).annotate({ identifier: "ToolExecutionFailure" })
 
 /**
  * Type of the `EmptyParams` schema used for tools with no parameters.

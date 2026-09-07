@@ -185,7 +185,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureResultSchema())
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -277,7 +277,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureResultSchema())
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
@@ -372,7 +372,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureResultSchema())
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
   }
