@@ -144,8 +144,6 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
         })
       }).pipe(Effect.provide(NodeFileSystem.layer)))
 
-    // Proposed policy: reject unsafe number-typed metadata, including optional
-    // fields, instead of rounding or silently treating present values as absent.
     for (const field of ["dev", "ino", "mode", "nlink", "uid", "gid", "rdev", "blocks"] as const) {
       it.effect(`${method} rejects unsafe numeric ${field} with BadArgument`, () =>
         Effect.gen(function*() {

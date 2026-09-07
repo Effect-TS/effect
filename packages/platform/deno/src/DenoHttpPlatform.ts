@@ -55,7 +55,6 @@ export const make = Platform.make({
       file.seekSync(start, Deno.SeekMode.Start)
       body = end === undefined
         ? file.readable
-        // HttpPlatform.make checked both non-negative range bounds as safe integers.
         : file.readable.pipeThrough(new ByteSliceStream(0, end - start - 1))
     }
     return Response.raw(body, {

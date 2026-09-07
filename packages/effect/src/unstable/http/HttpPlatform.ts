@@ -104,7 +104,6 @@ export const make: (impl: {
         : undefined
       const contentLength = bytesToRead === undefined || bytesToRead > available ? available : bytesToRead
       const limit = bytesToRead === undefined ? undefined : offset + contentLength
-      // Calculate with bigint before converting the runtime's numeric range options.
       const start = yield* fileResponseNumber(offset, "offset")
       const end = limit === undefined ? undefined : yield* fileResponseNumber(limit, "end")
       const headers = Headers.set(
@@ -193,7 +192,7 @@ export const layer = Layer.effect(HttpPlatform)(
             bytesToRead: end !== undefined ? end - start : undefined
           }),
           {
-            // HttpBody's optional numeric metadata cannot represent every file size.
+            // Omit unsafe numeric metadata so it cannot overwrite the exact header.
             contentLength: Number.isSafeInteger(length) ? length : undefined,
             headers: Headers.set(headers, "content-length", contentLength.toString()),
             status,

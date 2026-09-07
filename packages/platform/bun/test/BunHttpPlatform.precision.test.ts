@@ -14,7 +14,6 @@ describe("BunHttpPlatform precision", { concurrent: false }, () => {
 
   beforeEach(() => {
     slice.mockClear()
-    // A small Blob double records range arguments without touching a real file.
     vi.spyOn(Bun, "file").mockReturnValue({ slice } as unknown as ReturnType<typeof Bun.file>)
   })
   afterEach(() => vi.restoreAllMocks())

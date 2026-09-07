@@ -299,14 +299,7 @@ export interface FileSystem {
     }
   ) => Sink.Sink<void, Uint8Array, never, PlatformError>
   /**
-   * Get information about a file at `path`.
-   *
-   * **Details**
-   *
-   * Node and Bun fail with `BadArgument` if metadata exposed as a number, such
-   * as `ino` or `dev`, cannot be represented as a safe integer. This also applies
-   * to optional fields. Large inode values can therefore prevent stat and HTTP
-   * file serving even for small files.
+   * Get information about a file at `path`. See `File.Info` for metadata limits.
    */
   readonly stat: (
     path: string
@@ -861,8 +854,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   /**
-   * Get information about the open file. Node and Bun fail with `BadArgument`
-   * for unsafe numeric metadata, as described in `File.Info`.
+   * Get information about the open file. See `File.Info` for metadata limits.
    */
   readonly stat: Effect.Effect<File.Info, PlatformError>
   /**
@@ -914,12 +906,10 @@ export declare namespace File {
    * permissions, and size information. This structure is returned by file
    * stat operations.
    *
-   * Node and Bun preserve `size` and `blksize` exactly. Metadata exposed as
-   * numbers, including `ino` and `dev`, must be safe integers; otherwise the
-   * entire stat operation fails with `BadArgument`. Optional fields are not
-   * silently omitted when their values are unsafe. On filesystems with inode
-   * values above `Number.MAX_SAFE_INTEGER`, even small files can fail to stat
-   * or be served over HTTP.
+   * Node and Bun preserve `size` and `blksize` exactly. Unsafe numeric metadata
+   * (such as `ino` or `dev`) fails the entire stat operation with `BadArgument`,
+   * including optional fields. Inode values above `Number.MAX_SAFE_INTEGER`
+   * can therefore prevent stat and HTTP file serving even for small files.
    *
    * **Example** (Inspecting file information)
    *
