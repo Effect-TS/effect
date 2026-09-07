@@ -63,12 +63,19 @@
     "check": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
+    "alchemy": ">=2.0.0-beta <3",
     "effect": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "alchemy": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@cloudflare/workers-types": "^5.20260822.1"
   },
   "devDependencies": {
+    "alchemy": "2.0.0-beta.76",
     "effect": "workspace:^",
     "esbuild": "^0.25.12",
     "miniflare": "^4.20260730.0"

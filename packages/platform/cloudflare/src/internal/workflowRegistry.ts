@@ -11,6 +11,7 @@ import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Workflow from "effect/unstable/workflow/Workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
+import type { ClusterWorkflowRunOptions } from "../CloudflareDurableObjectPrograms.ts"
 import { makeRegistry } from "./registry.ts"
 
 /** @internal */
@@ -35,10 +36,7 @@ export const registerWorkflow: (name: string, registration: WorkflowRegistration
 export const unregisterWorkflow: (name: string, registration: WorkflowRegistration) => void = registry.unregister
 
 /** @internal */
-export interface WorkflowRunOptions {
-  readonly discard: boolean
-  readonly parent?: { readonly workflowName: string; readonly executionId: string } | undefined
-}
+export type WorkflowRunOptions = ClusterWorkflowRunOptions
 
 /**
  * The transport shared by workflow Durable Object stubs and same-isolate
