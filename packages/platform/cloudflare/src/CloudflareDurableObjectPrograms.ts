@@ -36,9 +36,9 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
  * **Details**
  *
  * A `DurableObjectState` from `cloudflare:workers` satisfies this shape
- * directly. The program only reads the object name, opens SQLite storage,
- * resolves same-Worker class exports, and extends the current event with
- * `waitUntil`.
+ * directly, so pass it as is. The program only reads the object name, opens
+ * SQLite storage, resolves same-Worker class exports, and extends the current
+ * event with `waitUntil`.
  *
  * @category models
  * @since 4.0.0
@@ -46,7 +46,7 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
 export interface DurableObjectProgramState {
   readonly id: { readonly name?: string | undefined }
   readonly storage: DurableObjectStorage
-  readonly exports: Record<string, unknown>
+  readonly exports: object
   readonly waitUntil: (promise: Promise<unknown>) => void
 }
 
@@ -54,7 +54,7 @@ const exportedNamespace = <Stub>(
   state: DurableObjectProgramState,
   className: string
 ): { readonly getByName: (name: string) => Stub } | undefined =>
-  state.exports[className] as
+  (state.exports as Record<string, unknown>)[className] as
     | { readonly getByName: (name: string) => Stub }
     | undefined
 
@@ -100,7 +100,7 @@ export type EntityInvokeResult = {
  * @category models
  * @since 4.0.0
  */
-export interface ClusterEntityProgram {
+export type ClusterEntityProgram = {
   readonly alarm: () => Effect.Effect<void>
   readonly hold: () => Effect.Effect<void>
   readonly invoke: (
@@ -200,7 +200,7 @@ export interface ClusterWorkflowRunOptions {
  * @category models
  * @since 4.0.0
  */
-export interface ClusterWorkflowProgram {
+export type ClusterWorkflowProgram = {
   readonly run: (payload: string, options: ClusterWorkflowRunOptions) => Effect.Effect<string>
   readonly poll: () => Effect.Effect<string | undefined>
   readonly resume: () => Effect.Effect<void>
@@ -306,7 +306,7 @@ export interface DurableQueueItem {
  * @category models
  * @since 4.0.0
  */
-export interface ClusterDurableQueueProgram {
+export type ClusterDurableQueueProgram = {
   readonly offer: (id: string, element: string) => Effect.Effect<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Effect.Effect<DurableQueueItem>
   readonly cancelTake: (takerId: string) => Effect.Effect<void>
@@ -367,7 +367,7 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
  * @category models
  * @since 4.0.0
  */
-export interface ClusterSingletonProgram {
+export type ClusterSingletonProgram = {
   readonly wake: () => Effect.Effect<void>
   readonly alarm: () => Effect.Effect<void>
 }

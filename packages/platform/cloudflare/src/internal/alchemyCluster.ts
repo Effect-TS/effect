@@ -11,18 +11,8 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import type * as Entity from "effect/unstable/cluster/Entity"
+import type { Cluster } from "../AlchemyCloudflareCluster.ts"
 import * as CloudflareCluster from "../CloudflareCluster.ts"
-
-/** @internal */
-export interface ClusterHandle {
-  readonly provide: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, any>
-  readonly wake: (name: string) => () => Effect.Effect<void>
-  readonly entityNamespace: DurableObjectNamespace
-  readonly workflowNamespace: DurableObjectNamespace
-  readonly queueNamespace: DurableObjectNamespace
-  readonly singletonNamespace: DurableObjectNamespace
-  readonly context: Context.Context<never>
-}
 
 /** @internal */
 export interface ClusterHandleOptions {
@@ -60,7 +50,7 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
     Effect.map(Context.omit(Layer.CurrentMemoMap))
   )
 
-  const handle: ClusterHandle = {
+  const handle: Cluster<never> = {
     provide: (effect) => Effect.provideContext(effect, context),
     wake: (name) => () =>
       Effect.promise(() =>
@@ -84,8 +74,8 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
  *
  * @internal
  */
-export const inertClusterHandle = (): ClusterHandle => ({
-  provide: (effect) => effect as Effect.Effect<any, any, any>,
+export const inertClusterHandle = (): Cluster<never> => ({
+  provide: (effect) => effect,
   wake: () => () => Effect.void,
   get entityNamespace() {
     return planTimeOnly("entityNamespace")

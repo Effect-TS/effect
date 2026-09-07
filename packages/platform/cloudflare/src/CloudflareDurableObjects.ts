@@ -17,7 +17,6 @@ import {
   type ClusterSingletonProgram,
   type ClusterWorkflowProgram,
   type ClusterWorkflowRunOptions,
-  type DurableObjectProgramState,
   type DurableQueueItem,
   type EntityDeliveryOptions,
   type EntityInvokeResult,
@@ -25,37 +24,6 @@ import {
   makeClusterEntityProgram,
   makeClusterSingletonProgram,
   makeClusterWorkflowProgram
-} from "./CloudflareDurableObjectPrograms.ts"
-
-export type {
-  /**
-   * Execution options shared with the workflow program.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  ClusterWorkflowRunOptions,
-  /**
-   * Item leased from the durable queue program.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  DurableQueueItem,
-  /**
-   * Delivery options shared with the entity program.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  EntityDeliveryOptions,
-  /**
-   * Result returned by the entity transport program.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  EntityInvokeResult
 } from "./CloudflareDurableObjectPrograms.ts"
 
 const notExposed = (className: string) => () => {
@@ -142,13 +110,6 @@ const blockOnInitialization = (
   })
 }
 
-const programState = (ctx: DurableObjectState): DurableObjectProgramState => ({
-  id: ctx.id,
-  storage: ctx.storage,
-  exports: ctx.exports as Record<string, unknown>,
-  waitUntil: (promise) => ctx.waitUntil(promise)
-})
-
 /**
  * The shared entity class. One instance holds one entity address; the handlers
  * for every `EntityType` are registered at Worker init.
@@ -171,7 +132,7 @@ export class ClusterEntity extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterEntityProgram(programState(ctx)))
+      this.#program = await Effect.runPromise(makeClusterEntityProgram(ctx))
     })
   }
 
@@ -235,7 +196,7 @@ export class ClusterWorkflow extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterWorkflowProgram(programState(ctx)))
+      this.#program = await Effect.runPromise(makeClusterWorkflowProgram(ctx))
     })
   }
 
@@ -303,7 +264,7 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterDurableQueueProgram(programState(ctx)))
+      this.#program = await Effect.runPromise(makeClusterDurableQueueProgram(ctx))
     })
   }
 
@@ -372,7 +333,7 @@ export class ClusterSingleton extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterSingletonProgram(programState(ctx)))
+      this.#program = await Effect.runPromise(makeClusterSingletonProgram(ctx))
     })
   }
 

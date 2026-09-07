@@ -48,12 +48,7 @@ import type { Sharding } from "effect/unstable/cluster/Sharding"
 import type { PersistedQueueFactory } from "effect/unstable/persistence/PersistedQueue"
 import type { WorkflowEngine } from "effect/unstable/workflow/WorkflowEngine"
 import {
-  type ClusterDurableQueueProgram,
-  type ClusterEntityProgram,
-  type ClusterSingletonProgram,
-  type ClusterWorkflowProgram,
   type DurableObjectProgramState,
-  type EntityDeliveryOptions,
   makeClusterDurableQueueProgram,
   makeClusterEntityProgram,
   makeClusterSingletonProgram,
@@ -137,133 +132,26 @@ export interface MakeOptions<ROut, E, RIn> {
   readonly layer: Layer.Layer<ROut, E, RIn>
 }
 
-const programState = (state: Cloudflare.DurableObjectState["Service"]): DurableObjectProgramState => {
-  const raw = state.raw as unknown as {
-    readonly id: { readonly name?: string | undefined }
-    readonly storage: DurableObjectProgramState["storage"]
-    readonly exports: Record<string, unknown>
-    waitUntil(promise: Promise<unknown>): void
-  }
-  return {
-    id: raw.id,
-    storage: raw.storage,
-    exports: raw.exports,
-    waitUntil: (promise) => raw.waitUntil(promise)
-  }
-}
+// One alchemy Durable Object class per cluster program. The outer effect
+// resolves the instance state; the inner effect runs per activation, under
+// alchemy's blockConcurrencyWhile, once the shared isolate init (and so the
+// user's handler registrations) has completed. The program handle is the RPC
+// shape: every method returns an Effect and `alarm` matches alchemy's hook.
+// `fetch` is omitted on purpose: cluster RPCs use the native bindings, so
+// alchemy's default 404 stands in for the Wrangler classes' rejection.
+const durableObject = <Shape extends Record<string, (...args: Array<any>) => Effect.Effect<any>>>(
+  className: string,
+  program: (state: DurableObjectProgramState) => Effect.Effect<Shape>
+) =>
+  Cloudflare.DurableObject<Shape>()(
+    className,
+    Effect.map(Cloudflare.DurableObjectState, (state) => program(state.raw as DurableObjectProgramState))
+  )
 
-interface EntityShape {
-  readonly alarm: () => Effect.Effect<void>
-  readonly hold: () => Effect.Effect<void>
-  readonly invoke: ClusterEntityProgram["invoke"]
-  readonly acknowledge: ClusterEntityProgram["acknowledge"]
-  readonly interrupt: ClusterEntityProgram["interrupt"]
-  readonly reset: ClusterEntityProgram["reset"]
-  readonly deliverReply: ClusterEntityProgram["deliverReply"]
-}
-
-// These classes intentionally omit fetch: Alchemy returns its default 404.
-// Cluster RPCs use native bindings; Wrangler classes keep their fetch rejection.
-const ClusterEntity = Cloudflare.DurableObject<EntityShape>()(
-  "ClusterEntity",
-  Effect.gen(function*() {
-    const state = yield* Cloudflare.DurableObjectState
-    return Effect.gen(function*() {
-      const program = yield* makeClusterEntityProgram(programState(state))
-      return {
-        alarm: () => program.alarm(),
-        hold: () => program.hold(),
-        invoke: (envelopeText: string, discard: boolean, delivery?: EntityDeliveryOptions) =>
-          program.invoke(envelopeText, discard, delivery),
-        acknowledge: program.acknowledge,
-        interrupt: program.interrupt,
-        reset: program.reset,
-        deliverReply: program.deliverReply
-      }
-    })
-  })
-)
-
-interface WorkflowShape {
-  readonly alarm: () => Effect.Effect<void>
-  readonly run: ClusterWorkflowProgram["run"]
-  readonly poll: ClusterWorkflowProgram["poll"]
-  readonly resume: ClusterWorkflowProgram["resume"]
-  readonly interrupt: ClusterWorkflowProgram["interrupt"]
-  readonly interruptUnsafe: ClusterWorkflowProgram["interruptUnsafe"]
-  readonly deferredDone: ClusterWorkflowProgram["deferredDone"]
-  readonly scheduleClock: ClusterWorkflowProgram["scheduleClock"]
-}
-
-const ClusterWorkflow = Cloudflare.DurableObject<WorkflowShape>()(
-  "ClusterWorkflow",
-  Effect.gen(function*() {
-    const state = yield* Cloudflare.DurableObjectState
-    return Effect.gen(function*() {
-      const program = yield* makeClusterWorkflowProgram(programState(state))
-      return {
-        alarm: () => program.alarm(),
-        run: program.run,
-        poll: program.poll,
-        resume: program.resume,
-        interrupt: program.interrupt,
-        interruptUnsafe: program.interruptUnsafe,
-        deferredDone: program.deferredDone,
-        scheduleClock: program.scheduleClock
-      }
-    })
-  })
-)
-
-interface DurableQueueShape {
-  readonly alarm: () => Effect.Effect<void>
-  readonly offer: ClusterDurableQueueProgram["offer"]
-  readonly take: ClusterDurableQueueProgram["take"]
-  readonly cancelTake: ClusterDurableQueueProgram["cancelTake"]
-  readonly complete: ClusterDurableQueueProgram["complete"]
-  readonly fail: ClusterDurableQueueProgram["fail"]
-  readonly release: ClusterDurableQueueProgram["release"]
-  readonly extend: ClusterDurableQueueProgram["extend"]
-}
-
-const ClusterDurableQueue = Cloudflare.DurableObject<DurableQueueShape>()(
-  "ClusterDurableQueue",
-  Effect.gen(function*() {
-    const state = yield* Cloudflare.DurableObjectState
-    return Effect.gen(function*() {
-      const program = yield* makeClusterDurableQueueProgram(programState(state))
-      return {
-        alarm: () => program.alarm(),
-        offer: program.offer,
-        take: program.take,
-        cancelTake: program.cancelTake,
-        complete: program.complete,
-        fail: program.fail,
-        release: program.release,
-        extend: program.extend
-      }
-    })
-  })
-)
-
-interface SingletonShape {
-  readonly alarm: () => Effect.Effect<void>
-  readonly wake: ClusterSingletonProgram["wake"]
-}
-
-const ClusterSingleton = Cloudflare.DurableObject<SingletonShape>()(
-  "ClusterSingleton",
-  Effect.gen(function*() {
-    const state = yield* Cloudflare.DurableObjectState
-    return Effect.gen(function*() {
-      const program = yield* makeClusterSingletonProgram(programState(state))
-      return {
-        alarm: () => program.alarm(),
-        wake: program.wake
-      }
-    })
-  })
-)
+const ClusterEntity = durableObject("ClusterEntity", makeClusterEntityProgram)
+const ClusterWorkflow = durableObject("ClusterWorkflow", makeClusterWorkflowProgram)
+const ClusterDurableQueue = durableObject("ClusterDurableQueue", makeClusterDurableQueueProgram)
+const ClusterSingleton = durableObject("ClusterSingleton", makeClusterSingletonProgram)
 
 const makeUnsafe = Effect.fnUntraced(function*(options: MakeOptions<any, any, any>) {
   // Register the four Durable Object classes on the hosting Worker. At plan
