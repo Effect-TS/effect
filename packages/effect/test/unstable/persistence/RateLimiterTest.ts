@@ -55,7 +55,7 @@ export const suite = (
   name: string,
   layer: Layer.Layer<RateLimiter.RateLimiterStore, unknown>
 ) => {
-  it.layer(layer, { timeout: "30 seconds" })(`RateLimiter token-bucket timing (${name})`, (it) => {
+  it.layer(layer, { timeout: "30 seconds", concurrent: false })(`RateLimiter token-bucket timing (${name})`, (it) => {
     for (const onExceeded of ["fail", "delay"] as const) {
       for (
         const [elapsed, tokens, expected, resetAfter] of [
