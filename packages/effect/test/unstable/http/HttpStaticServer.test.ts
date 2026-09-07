@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -8,7 +9,7 @@ import { HttpEffect, HttpPlatform, HttpServerResponse, HttpStaticServer } from "
 const services = Layer.mergeAll(
   Path.layer,
   FileSystem.layerNoop({
-    stat: () => Effect.succeed({ type: "File", size: FileSystem.Size(10) } as FileSystem.File.Info)
+    stat: () => Effect.succeed({ type: "File", size: ByteSize.bytes(10) } as FileSystem.File.Info)
   }),
   Layer.succeed(
     HttpPlatform.HttpPlatform,

@@ -10,13 +10,13 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import type { SizeInput } from "effect/FileSystem"
 import { dual, type LazyArg } from "effect/Function"
 import * as Latch from "effect/Latch"
 import * as MutableRef from "effect/MutableRef"
@@ -217,10 +217,10 @@ export const toString = <E = Cause.UnknownError>(
   options?: {
     readonly onError?: (error: unknown) => E
     readonly encoding?: BufferEncoding | undefined
-    readonly maxBytes?: SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<string, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
+  const maxBytesNumber = toMaxBytes(options?.maxBytes)
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -269,10 +269,10 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options?: {
     readonly onError?: (error: unknown) => E
-    readonly maxBytes?: SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
+  const maxBytesNumber = toMaxBytes(options?.maxBytes)
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable
@@ -322,7 +322,7 @@ export const toUint8Array = <E = Cause.UnknownError>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options?: {
     readonly onError?: (error: unknown) => E
-    readonly maxBytes?: SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<Uint8Array, E> => Effect.map(toArrayBuffer(readable, options), (buffer) => new Uint8Array(buffer))
 
@@ -447,3 +447,6 @@ class StreamAdapter<E, R> extends Readable {
 }
 
 const defaultOnError = (error: unknown): Cause.UnknownError => new Cause.UnknownError(error)
+
+const toMaxBytes = (maxBytes: ByteSize.Input | undefined): number | undefined =>
+  maxBytes === undefined || maxBytes === Infinity ? undefined : Number(ByteSize.fromInputUnsafe(maxBytes))

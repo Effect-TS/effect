@@ -1,5 +1,6 @@
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
@@ -19,8 +20,8 @@ describe("NodeHttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
-        offset: 6,
-        bytesToRead: 5
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.bytes(5)
       })
 
       assert.strictEqual(response.headers["content-length"], "5")
@@ -33,12 +34,26 @@ describe("NodeHttpPlatform", () => {
       assert.strictEqual(text, "ipsum")
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 
+  it.effect("fileResponse retains the requested content length beyond EOF", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.bytes(100)
+      })
+
+      assert.strictEqual(response.headers["content-length"], "100")
+      assert.strictEqual(response.body._tag, "Raw")
+      const text = yield* readStream((response.body as HttpBody.Raw).body as Readable)
+      assert.strictEqual(text, "ipsum dolar sit amet\n")
+    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+
   it.effect("fileResponse supports zero bytesToRead", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
-        offset: 6,
-        bytesToRead: 0
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.zero
       })
 
       assert.strictEqual(response.headers["content-length"], "0")

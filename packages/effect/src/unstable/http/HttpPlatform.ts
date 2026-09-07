@@ -9,6 +9,7 @@
  *
  * @since 4.0.0
  */
+import * as ByteSize from "../../ByteSize.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
@@ -35,17 +36,17 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
   readonly fileResponse: (
     path: string,
     options?: Response.Options.WithContent & {
-      readonly bytesToRead?: FileSystem.SizeInput | undefined
-      readonly chunkSize?: FileSystem.SizeInput | undefined
-      readonly offset?: FileSystem.SizeInput | undefined
+      readonly bytesToRead?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: ByteSize.Input | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse, PlatformError>
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
     options?: Response.Options.WithContent & {
-      readonly bytesToRead?: FileSystem.SizeInput | undefined
-      readonly chunkSize?: FileSystem.SizeInput | undefined
-      readonly offset?: FileSystem.SizeInput | undefined
+      readonly bytesToRead?: number | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: number | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse>
 }>()("effect/http/HttpPlatform") {}
@@ -74,9 +75,9 @@ export const make: (impl: {
     statusText: string | undefined,
     headers: Headers.Headers,
     options?: {
-      readonly bytesToRead?: FileSystem.SizeInput | undefined
-      readonly chunkSize?: FileSystem.SizeInput | undefined
-      readonly offset?: FileSystem.SizeInput | undefined
+      readonly bytesToRead?: number | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: number | undefined
     }
   ) => Response.HttpServerResponse
 }) => Effect.Effect<
@@ -93,8 +94,10 @@ export const make: (impl: {
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
-      const start = Number(options?.offset ?? 0)
-      const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
+      const start = options?.offset === undefined ? 0 : Number(ByteSize.fromInputUnsafe(options.offset))
+      const end = options?.bytesToRead !== undefined
+        ? start + Number(ByteSize.fromInputUnsafe(options.bytesToRead))
+        : undefined
       const headers = Headers.set(
         options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
         "etag",
@@ -162,9 +165,9 @@ export const layer = Layer.effect(HttpPlatform)(
         )
       },
       fileWebResponse(file, status, statusText, headers, options) {
-        const offset = Number(options?.offset ?? 0)
-        const bytesToRead = options?.bytesToRead !== undefined ? Number(options.bytesToRead) : undefined
-        const chunkSize = options?.chunkSize !== undefined ? Math.max(1, Number(options.chunkSize)) : Infinity
+        const offset = options?.offset ?? 0
+        const bytesToRead = options?.bytesToRead
+        const chunkSize = options?.chunkSize !== undefined ? Math.max(1, options.chunkSize) : Infinity
         const end = offset + (bytesToRead ?? Infinity)
         const stream = end <= offset
           ? Stream.empty

@@ -11,6 +11,7 @@
  *
  * @since 4.0.0
  */
+import * as ByteSize from "../../ByteSize.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
@@ -512,16 +513,17 @@ export const stream = (
 ): Stream => new Stream(body, contentType ?? "application/octet-stream", contentLength)
 
 const fileContentLength = (
-  size: FileSystem.SizeInput,
+  size: ByteSize.ByteSize,
   options?: {
-    readonly bytesToRead?: FileSystem.SizeInput | undefined
-    readonly offset?: FileSystem.SizeInput | undefined
+    readonly bytesToRead?: ByteSize.Input | undefined
+    readonly offset?: ByteSize.Input | undefined
   }
 ): number => {
-  const available = Math.max(0, Number(size) - Number(options?.offset ?? 0))
+  const offset = options?.offset === undefined ? 0 : Number(ByteSize.fromInputUnsafe(options.offset))
+  const available = Math.max(0, Number(size) - offset)
   return options?.bytesToRead === undefined
     ? available
-    : Math.min(available, Math.max(0, Number(options.bytesToRead)))
+    : Math.min(available, Number(ByteSize.fromInputUnsafe(options.bytesToRead)))
 }
 
 /**
@@ -538,9 +540,9 @@ const fileContentLength = (
 export const file = (
   path: string,
   options?: {
-    readonly bytesToRead?: FileSystem.SizeInput | undefined
-    readonly chunkSize?: FileSystem.SizeInput | undefined
-    readonly offset?: FileSystem.SizeInput | undefined
+    readonly bytesToRead?: ByteSize.Input | undefined
+    readonly chunkSize?: number | undefined
+    readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
 ): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
@@ -570,9 +572,9 @@ export const fileFromInfo = (
   path: string,
   info: FileSystem.File.Info,
   options?: {
-    readonly bytesToRead?: FileSystem.SizeInput | undefined
-    readonly chunkSize?: FileSystem.SizeInput | undefined
-    readonly offset?: FileSystem.SizeInput | undefined
+    readonly bytesToRead?: ByteSize.Input | undefined
+    readonly chunkSize?: number | undefined
+    readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
 ): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>

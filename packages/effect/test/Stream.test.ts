@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertExitFailure, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Array,
+  ByteSize,
   Cause,
   Channel,
   Clock,
@@ -726,7 +727,7 @@ describe("Stream", () => {
         let evaluated = false
         const chunks = [new Uint8Array([1, 2]), new Uint8Array([3, 4])]
         const result = yield* Stream.fromIterable(chunks).pipe(
-          Stream.limitBytes(5, () => {
+          Stream.limitBytes("5 B", () => {
             evaluated = true
             return Stream.empty
           }),
@@ -742,7 +743,7 @@ describe("Stream", () => {
         let evaluated = false
         const chunks = [new Uint8Array([1, 2]), new Uint8Array([3, 4])]
         const result = yield* Stream.fromIterable(chunks).pipe(
-          Stream.limitBytes(4, () => {
+          Stream.limitBytes(ByteSize.bytes(4), () => {
             evaluated = true
             return Stream.empty
           }),
@@ -760,7 +761,7 @@ describe("Stream", () => {
         const after = new Uint8Array([7])
         const fallback = new Uint8Array([8, 9])
         const result = yield* Stream.make(first, crossing, after).pipe(
-          Stream.limitBytes(5, () => Stream.succeed(fallback)),
+          Stream.limitBytes(ByteSize.bytes(5), () => Stream.succeed(fallback)),
           Stream.runCollect
         )
 

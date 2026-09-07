@@ -9,6 +9,7 @@
  *
  * @since 4.0.0
  */
+import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { effectify } from "effect/Effect"
@@ -274,16 +275,15 @@ const makeFile = (() => {
       return nodeSync(this.fd)
     }
 
-    seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
-      const offsetSize = FileSystem.Size(offset)
+    seek(offset: bigint, from: FileSystem.SeekMode) {
       return Effect.sync(() => {
         if (from === "start") {
-          this.position = offsetSize
+          this.position = offset
         } else if (from === "current") {
-          this.position = this.position + offsetSize
+          this.position = this.position + offset
         }
 
-        return FileSystem.Size(this.position)
+        return this.position
       })
     }
 
@@ -293,18 +293,16 @@ const makeFile = (() => {
         return Effect.map(
           nodeRead(this.fd, { buffer, position }),
           (bytesRead) => {
-            const sizeRead = FileSystem.Size(bytesRead)
-            this.position = position + sizeRead
-            return sizeRead
+            this.position = position + BigInt(bytesRead)
+            return bytesRead
           }
         )
       })
     }
 
-    readAlloc(size: FileSystem.SizeInput) {
-      const sizeNumber = Number(size)
+    readAlloc(size: number) {
       return Effect.suspend(() => {
-        const buffer = Buffer.allocUnsafeSlow(sizeNumber)
+        const buffer = Buffer.allocUnsafeSlow(size)
         const position = this.position
         return Effect.map(
           nodeReadAlloc(this.fd, { buffer, position }),
@@ -314,7 +312,7 @@ const makeFile = (() => {
             }
 
             this.position = position + BigInt(bytesRead)
-            if (bytesRead === sizeNumber) {
+            if (bytesRead === size) {
               return Option.some(buffer)
             }
 
@@ -326,8 +324,8 @@ const makeFile = (() => {
       })
     }
 
-    truncate(length?: FileSystem.SizeInput) {
-      return Effect.map(nodeTruncate(this.fd, length ? Number(length) : undefined), () => {
+    truncate(length?: number) {
+      return Effect.map(nodeTruncate(this.fd, length || undefined), () => {
         if (!this.append) {
           const len = BigInt(length ?? 0)
           if (this.position > len) {
@@ -343,11 +341,10 @@ const makeFile = (() => {
         return Effect.map(
           nodeWrite(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
           (bytesWritten) => {
-            const sizeWritten = FileSystem.Size(bytesWritten)
             if (!this.append) {
-              this.position = position + sizeWritten
+              this.position = position + BigInt(bytesWritten)
             }
-            return sizeWritten
+            return bytesWritten
           }
         )
       })
@@ -501,8 +498,8 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   nlink: Option.fromNullishOr(stat.nlink),
   uid: Option.fromNullishOr(stat.uid),
   gid: Option.fromNullishOr(stat.gid),
-  size: FileSystem.Size(stat.size),
-  blksize: stat.blksize !== undefined ? Option.some(FileSystem.Size(stat.blksize)) : Option.none(),
+  size: ByteSize.bytes(BigInt(stat.size)),
+  blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(BigInt(stat.blksize))) : Option.none(),
   blocks: Option.fromNullishOr(stat.blocks)
 })
 const stat = (() => {
@@ -533,8 +530,7 @@ const truncate = (() => {
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate")
   )
-  return (path: string, length?: FileSystem.SizeInput) =>
-    nodeTruncate(path, length !== undefined ? Number(length) : undefined)
+  return (path: string, length?: number) => nodeTruncate(path, length)
 })()
 
 // == utimes

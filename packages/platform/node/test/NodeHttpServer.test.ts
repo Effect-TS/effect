@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { ByteSize, Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
@@ -175,7 +175,7 @@ describe("HttpServer", () => {
       ).pipe(
         HttpRouter.serve,
         Layer.build,
-        Effect.provideService(Multipart.MaxFileSize, 100)
+        Effect.provideService(Multipart.MaxFileSize, ByteSize.bytes(100))
       )
       const client = yield* HttpClient.HttpClient
       const formData = new FormData()
@@ -203,7 +203,7 @@ describe("HttpServer", () => {
       ).pipe(
         HttpRouter.serve,
         Layer.build,
-        Effect.provideService(Multipart.MaxFieldSize, 100)
+        Effect.provideService(Multipart.MaxFieldSize, ByteSize.bytes(100))
       )
       const client = yield* HttpClient.HttpClient
       const formData = new FormData()

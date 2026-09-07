@@ -27,7 +27,7 @@ import * as HttpServerResponse from "./HttpServerResponse.ts"
  * **Example** (Serving files from a directory)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem, Layer, Path } from "effect"
+ * import { ByteSize, Effect, FileSystem, Layer, Path } from "effect"
  * import {
  *   HttpEffect,
  *   HttpPlatform,
@@ -39,7 +39,7 @@ import * as HttpServerResponse from "./HttpServerResponse.ts"
  *   stat: () =>
  *     Effect.succeed({
  *       type: "File",
- *       size: FileSystem.Size(20)
+ *       size: ByteSize.bytes(20)
  *     } as FileSystem.File.Info)
  * })
  * const TestHttpPlatform = Layer.succeed(
@@ -119,27 +119,30 @@ export const make: (options: {
         request.headers["if-modified-since"] !== undefined
 
       let fullResponse: HttpServerResponse.HttpServerResponse | undefined
+      const getFullResponse = () =>
+        fullResponse === undefined
+          ? Effect.map(
+            handlePlatformError(request, platform.fileResponse(filePath)),
+            (response) => setFileHeaders(response, filePath)
+          )
+          : Effect.succeed(fullResponse)
       if (shouldEvaluateConditionals) {
-        fullResponse = setFileHeaders(yield* handlePlatformError(request, platform.fileResponse(filePath)), filePath)
+        fullResponse = yield* getFullResponse()
         const conditionalResponse = evaluateConditionalRequest(request, fullResponse)
         if (conditionalResponse !== undefined) {
           return conditionalResponse
         }
-        if (rangeHeader === undefined) {
-          return fullResponse
-        }
       }
 
-      const resolvedFileSize = rangeHeader === undefined
-        ? undefined
-        : fileSize ?? Number((yield* handlePlatformError(request, fileSystem.stat(filePath))).size)
-      const parsedRange = rangeHeader === undefined || resolvedFileSize === undefined
-        ? undefined
-        : parseRange(rangeHeader, resolvedFileSize)
+      if (rangeHeader === undefined) {
+        return yield* getFullResponse()
+      }
+
+      const resolvedFileSize = fileSize ?? Number((yield* handlePlatformError(request, fileSystem.stat(filePath))).size)
+      const parsedRange = parseRange(rangeHeader, resolvedFileSize)
 
       if (parsedRange === undefined) {
-        return fullResponse ??
-          setFileHeaders(yield* handlePlatformError(request, platform.fileResponse(filePath)), filePath)
+        return yield* getFullResponse()
       }
 
       if (parsedRange === "unsatisfiable") {

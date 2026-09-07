@@ -1,5 +1,6 @@
 import * as BunHttpPlatform from "@effect/platform-bun/BunHttpPlatform"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
@@ -20,6 +21,23 @@ describe("BunHttpPlatform", () => {
       assert.deepStrictEqual(
         { sliced: yield* readBody(sliced.body), empty: yield* readBody(empty.body) },
         { sliced: "bc", empty: "" }
+      )
+    }).pipe(Effect.provide(BunHttpPlatform.layer)))
+
+  it.effect("fileResponse supports exact and empty ranges", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const exact = yield* platform.fileResponse(import.meta.filename, {
+        bytesToRead: ByteSize.bytes(6)
+      })
+      const empty = yield* platform.fileResponse(import.meta.filename, {
+        offset: ByteSize.bytes(1),
+        bytesToRead: ByteSize.zero
+      })
+
+      assert.deepStrictEqual(
+        { exact: yield* readBody(exact.body), empty: yield* readBody(empty.body) },
+        { exact: "import", empty: "" }
       )
     }).pipe(Effect.provide(BunHttpPlatform.layer)))
 })
