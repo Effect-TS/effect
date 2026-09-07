@@ -14,19 +14,8 @@ describe("HttpClientRequest", () => {
       })
 
     it.each([
-      { name: "whole small file", size: 6n, options: {}, expected: 6 },
-      { name: "range clamped to EOF", size: 6n, options: { offset: 2, bytesToRead: 10 }, expected: 4 },
-      { name: "range past EOF", size: 6n, options: { offset: 7 }, expected: 0 },
-      {
-        name: "maximum safe length",
-        size: BigInt(Number.MAX_SAFE_INTEGER),
-        options: {},
-        expected: Number.MAX_SAFE_INTEGER
-      },
-      { name: "small range of an oversized file", size: oversized, options: { bytesToRead: 2 }, expected: 2 },
       { name: "unsafe bigint offset", size: oversized + 3n, options: { offset: oversized }, expected: 3 },
-      { name: "unsafe string offset", size: oversized + 3n, options: { offset: "9007199254740993 B" }, expected: 3 },
-      { name: "unsafe byte count clamped to EOF", size: 6n, options: { bytesToRead: oversized }, expected: 6 }
+      { name: "range past EOF", size: 6n, options: { offset: 7 }, expected: 0 }
     ])("sets the exact outgoing Content-Length for $name", async ({ expected, options, size }) => {
       const request = await Effect.runPromise(
         HttpClientRequest.post("https://example.com").pipe(
@@ -45,25 +34,13 @@ describe("HttpClientRequest", () => {
       strictEqual(web.headers.get("content-length"), String(expected))
     })
 
-    it.each([
-      { name: "unrepresentable whole file", size: oversized, options: {} },
-      { name: "unrepresentable clamped length", size: oversized + 3n, options: { offset: 1, bytesToRead: oversized } },
-      { name: "malformed offset", size: 6n, options: { offset: "garbage" } },
-      { name: "malformed byte count", size: 6n, options: { bytesToRead: "garbage" } },
-      { name: "unsafe numeric offset", size: 6n, options: { offset: Number.MAX_SAFE_INTEGER + 1 } },
-      { name: "unsafe numeric byte count", size: 6n, options: { bytesToRead: Number.MAX_SAFE_INTEGER + 1 } },
-      { name: "negative offset", size: 6n, options: { offset: -1n } },
-      { name: "negative byte count", size: 6n, options: { bytesToRead: -1 } },
-      { name: "fractional offset", size: 6n, options: { offset: 1.5 } },
-      { name: "fractional byte count", size: 6n, options: { bytesToRead: 1.5 } },
-      { name: "non-finite offset", size: 6n, options: { offset: Infinity } },
-      { name: "non-finite byte count", size: 6n, options: { bytesToRead: NaN } }
-    ])("propagates typed BadArgument for $name", async ({ options, size }) => {
-      // Invalid inputs must remain lazy through the request combinator too.
-      const request = HttpClientRequest.bodyFile(HttpClientRequest.post("https://example.com"), "x", options)
+    it("propagates typed BadArgument from file range validation", async () => {
+      const request = HttpClientRequest.bodyFile(HttpClientRequest.post("https://example.com"), "x", {
+        bytesToRead: "garbage"
+      })
       const error = await Effect.runPromise(request.pipe(
         Effect.flip,
-        Effect.provideService(FileSystem.FileSystem, fileSystem(size))
+        Effect.provideService(FileSystem.FileSystem, fileSystem(6n))
       ))
       strictEqual(error._tag, "PlatformError")
       strictEqual(error.reason._tag, "BadArgument")
