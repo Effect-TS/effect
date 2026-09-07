@@ -7,16 +7,8 @@
 "@effect/platform-bun": patch
 ---
 
-Add platform-neutral network address modules under `effect/unstable/net`:
+Add `NetAddress` under `effect/unstable/net` for MAC, IP, internet socket, and Unix socket addresses, with checked parsing, schemas, equality, canonical string serialization, and URL formatting. Companion modules `IpInterface` and `IpNetwork` represent IP interfaces and CIDR networks.
 
-- `NetAddress` provides MAC, IP, internet, and Unix socket addresses.
-- `IpInterface` provides IP host addresses that preserve their prefix lengths and host bits.
-- `IpNetwork` provides canonical IPv4 and IPv6 CIDR networks, including containment, overlap, bounds, and address counts.
+HTTP and socket servers now expose `NetAddress.SocketAddress`. Replace TCP `hostname` access with `NetAddress.formatIp(address.address)` and use `UnixPathAddress.path` for Unix sockets. URL helpers bracket IPv6 addresses and reject scoped IPv6. Bun and Deno HTTP server layers can now fail with `ServeError` when listener address conversion fails.
 
-IP address constructors copy their input bytes, including Node.js Buffers, so mutating the input cannot change stored addresses, equality, or hashes.
-
-HTTP and socket servers now expose canonical `NetAddress.SocketAddress` values. TCP addresses use `NetAddress.InetAddress` with an `address` field instead of `hostname`, and Unix addresses use `NetAddress.UnixPathAddress`. IPv6 URL authorities are bracketed. A server bound to `::` now logs `http://[::]:3000` instead of `http://0.0.0.0:3000`, and HTTP test clients use IPv6 loopback for IPv6 unspecified listeners.
-
-Bun continues to resolve listener hostnames before binding. Bun and Deno HTTP server layers can now fail with `ServeError` when their native listener address cannot be converted to a `NetAddress`.
-
-PostgreSQL `inet` now uses `IpInterface`. The `cidr` codec rejects addresses with host bits set and still treats a bare address as a full-width network.
+PostgreSQL `inet` values now use `IpInterface`; `cidr` values use `IpNetwork` and reject addresses with host bits set.

@@ -1,15 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import { Equal, Hash, Option, Result, Schema } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Buffer } from "node:buffer"
+import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
-  if (Result.isFailure(result)) assert.fail("expected Success")
+  assertTrue(Result.isSuccess(result), "expected Success")
   return result.success
 }
 
-const failure = (result: Result.Result<unknown, unknown>): void => {
-  assert.isTrue(Result.isFailure(result))
+const failure = <E>(result: Result.Result<unknown, E>): E => {
+  assertTrue(Result.isFailure(result), "expected Failure")
+  return result.failure
 }
 
 describe("NetAddress", () => {
@@ -230,6 +233,157 @@ describe("NetAddress", () => {
     assert.isTrue(Equal.equals(NetAddress.ipv6Unspecified, ip("::")))
   })
 
+  it("serializes and inspects canonical strings without private bytes", () => {
+    const cases = [
+      [NetAddress.ipv4Loopback, "127.0.0.1"],
+      [NetAddress.ipv6Loopback, "::1"],
+      [NetAddress.macAddressFromStringUnsafe("02:0A:0B:0C:0D:0E"), "02:0a:0b:0c:0d:0e"],
+      [NetAddress.inetAddressFromStringUnsafe("127.0.0.1:80"), "127.0.0.1:80"],
+      [NetAddress.inetAddressFromStringUnsafe("[fe80::1%2]:80"), "[fe80::1%2]:80"],
+      [NetAddress.unixPathAddress("./run/../server.sock"), "./run/../server.sock"]
+    ] as const
+    for (const [address, expected] of cases) {
+      assert.strictEqual(address.toJSON(), expected)
+      assert.strictEqual(JSON.stringify(address), JSON.stringify(expected))
+      assert.strictEqual(JSON.stringify({ address }), JSON.stringify({ address: expected }))
+      assert.strictEqual(inspect(address), expected)
+    }
+  })
+
+  it("preserves the input rejected by the failing operation", () => {
+    const cases = [
+      [NetAddress.ipv4FromString, "01.2.3.4", "01.2.3.4"],
+      [NetAddress.ipv6FromString, "::ffff:192.000.2.1", "192.000.2.1"],
+      [NetAddress.macAddressFromString, "00-11-22-33-44-55", "00-11-22-33-44-55"],
+      [NetAddress.inetAddressFromString, "localhost:80", "localhost"],
+      [NetAddress.inetAddressFromString, "[::ffff:999.0.0.1]:80", "999.0.0.1"],
+      [NetAddress.inetAddressFromString, "[fe80::1%bad]:80", "[fe80::1%bad]:80"]
+    ] as const
+    for (const [parse, input, rejected] of cases) {
+      assert.strictEqual(failure(parse(input)).input, rejected)
+    }
+    assert.deepStrictEqual(failure(NetAddress.inetAddressFromString("127.0.0.1:65536")).input, NetAddress.ipv4Loopback)
+    assert.strictEqual(
+      failure(NetAddress.socketAddressFromInput({ address: "localhost", port: 80 })).input,
+      "localhost"
+    )
+    assert.strictEqual(failure(NetAddress.inetAddressFromIpString("localhost", 80)).input, "localhost")
+    const octets = [256, 0, 0, 1] as const
+    assert.strictEqual(failure(NetAddress.ipv4FromOctets(octets)).input, octets)
+  })
+
+  it("retains the address supplied to checked socket constructors", () => {
+    const ipv4 = NetAddress.ipv4Loopback
+    const ipv6 = NetAddress.ipv6Loopback
+    assert.strictEqual(failure(NetAddress.inetAddressV4(ipv4, -1)).input, ipv4)
+    assert.strictEqual(failure(NetAddress.inetAddressV6(ipv6, -1)).input, ipv6)
+    assert.strictEqual(failure(NetAddress.inetAddressV6(ipv6, 80, { scopeId: -1 })).input, ipv6)
+  })
+
+  it("converts internet addresses to normalized URL values", () => {
+    for (
+      const [input, scheme, expected] of [
+        ["[::]:3000", "https", "https://[::]:3000/"],
+        ["0.0.0.0:3000", "http", "http://0.0.0.0:3000/"],
+        ["[::1]:3000", "ws", "ws://[::1]:3000/"],
+        ["192.0.2.1:80", "http", "http://192.0.2.1/"],
+        ["[::1]:443", "HTTPS", "https://[::1]/"],
+        ["[::1]:0", "http", "http://[::1]:0/"],
+        ["192.0.2.1:65535", "http", "http://192.0.2.1:65535/"]
+      ]
+    ) {
+      const address = NetAddress.inetAddressFromStringUnsafe(input)
+      const url = success(NetAddress.toUrl(address, scheme))
+      assert.instanceOf(url, URL)
+      assert.strictEqual(url.href, expected)
+    }
+    const address = NetAddress.inetAddressFromStringUnsafe("[::]:3000")
+    const url = success(NetAddress.toUrl(address))
+    assert.strictEqual(url.href, "http://[::]:3000/")
+    url.hostname = "127.0.0.1"
+    assert.strictEqual(url.origin, "http://127.0.0.1:3000")
+    assert.strictEqual(success(NetAddress.toUrl(address, undefined)).hostname, "[::]")
+  })
+
+  it("converts bare IP addresses without adding an explicit port", () => {
+    for (
+      const [input, expected] of [
+        ["127.0.0.1", "http://127.0.0.1/"],
+        ["::1", "http://[::1]/"],
+        ["0.0.0.0", "http://0.0.0.0/"],
+        ["::", "http://[::]/"]
+      ]
+    ) {
+      const url = success(NetAddress.toUrl(NetAddress.ipFromStringUnsafe(input)))
+      assert.strictEqual(url.href, expected)
+      assert.strictEqual(url.port, "")
+    }
+    assert.strictEqual(success(NetAddress.toUrl(NetAddress.ipv6Loopback, "https")).href, "https://[::1]/")
+  })
+
+  it("formats URL strings without trailing slashes or default ports", () => {
+    assert.strictEqual(success(NetAddress.formatUrl(NetAddress.ipv4Loopback)), "http://127.0.0.1")
+    assert.strictEqual(success(NetAddress.formatUrl(NetAddress.ipv6Loopback, "https")), "https://[::1]")
+    assert.strictEqual(NetAddress.formatUrlUnsafe(NetAddress.ipv4Loopback), "http://127.0.0.1")
+    assert.strictEqual(NetAddress.formatUrlUnsafe(NetAddress.ipv6Loopback, "https"), "https://[::1]")
+    for (
+      const [input, scheme, expected] of [
+        ["192.0.2.1:80", "http", "http://192.0.2.1"],
+        ["[::1]:443", "HTTPS", "https://[::1]"],
+        ["[::]:3000", "http", "http://[::]:3000"],
+        ["[::1]:0", "http", "http://[::1]:0"],
+        ["127.0.0.1:80", "tcp", "tcp://127.0.0.1:80"]
+      ]
+    ) {
+      assert.strictEqual(success(NetAddress.formatUrl(NetAddress.inetAddressFromStringUnsafe(input), scheme)), expected)
+    }
+    const scoped = NetAddress.inetAddressFromStringUnsafe("[fe80::1%2]:3000")
+    const scopedError = failure(NetAddress.formatUrl(scoped))
+    assert.strictEqual(scopedError.input, scoped)
+    assert.include(scopedError.message, "scoped IPv6")
+    const schemeError = failure(NetAddress.formatUrl(NetAddress.ipv4Loopback, "1http"))
+    assert.strictEqual(schemeError.input, NetAddress.ipv4Loopback)
+    assert.instanceOf(schemeError.cause, TypeError)
+    assert.throws(() => NetAddress.formatUrlUnsafe(scoped), NetAddress.NetAddressError, "scoped IPv6")
+    assert.throws(() => NetAddress.formatUrlUnsafe(NetAddress.ipv4Loopback, "1http"), NetAddress.NetAddressError)
+  })
+
+  it("formats Unix socket paths without encoding or normalizing them", () => {
+    for (
+      const [path, expected] of [
+        ["/tmp/server.sock", "unix:///tmp/server.sock"],
+        ["./run/../server.sock", "unix://./run/../server.sock"],
+        ["/tmp/socket?#%20", "unix:///tmp/socket?#%20"],
+        ["/tmp/socket with spaces.sock", "unix:///tmp/socket with spaces.sock"],
+        ["", "unix://"]
+      ]
+    ) {
+      const address = NetAddress.unixPathAddress(path)
+      assert.strictEqual(NetAddress.formatUnixPath(address), expected)
+      assert.strictEqual(success(NetAddress.formatUrl(address)), expected)
+      assert.strictEqual(NetAddress.formatUrlUnsafe(address, "https"), expected)
+    }
+  })
+
+  it("returns URL conversion errors for scopes and rejected URLs", () => {
+    for (const input of ["[fe80::1%2]:3000", "[::%2]:3000"]) {
+      const scoped = NetAddress.inetAddressFromStringUnsafe(input)
+      const error = failure(NetAddress.toUrl(scoped, "http"))
+      assert.instanceOf(error, NetAddress.NetAddressError)
+      assert.strictEqual(error.input, scoped)
+      assert.include(error.message, "scoped IPv6")
+      assert.isUndefined(error.cause)
+    }
+    const address = NetAddress.inetAddressFromStringUnsafe("127.0.0.1:80")
+    for (const scheme of ["", "1http", "file"]) {
+      const error = failure(NetAddress.toUrl(address, scheme))
+      assert.instanceOf(error, NetAddress.NetAddressError)
+      assert.strictEqual(error.input, address)
+      assert.strictEqual(error.message, "failed to construct URL")
+      assert.instanceOf(error.cause, TypeError)
+    }
+  })
+
   it("constructs immutable address values", () => {
     const ipv4 = success(NetAddress.ipv4FromString("127.0.0.1"))
     const ipv6 = success(NetAddress.ipv6FromString("::1"))
@@ -289,9 +443,10 @@ describe("NetAddress", () => {
 
   it("returns NetAddressError from checked operations", () => {
     const result = NetAddress.ipFromString("localhost")
-    if (Result.isSuccess(result)) assert.fail("expected Failure")
+    assertTrue(Result.isFailure(result), "expected Failure")
     assert.instanceOf(result.failure, NetAddress.NetAddressError)
     assert.strictEqual(result.failure.message, "expected exactly four decimal octets")
+    assert.strictEqual(result.failure.input, "localhost")
   })
 
   describe("socket addresses", () => {
@@ -382,11 +537,11 @@ describe("NetAddress", () => {
         failure(NetAddress.inetAddressFromString(input))
       }
       const invalidPort = NetAddress.inetAddressFromString("127.0.0.1:65536")
-      if (Result.isSuccess(invalidPort)) assert.fail("expected Failure")
+      assertTrue(Result.isFailure(invalidPort), "expected Failure")
       assert.strictEqual(invalidPort.failure.message, "port must be an integer from 0 through 65535")
 
       const missingPort = NetAddress.inetAddressFromString("127.0.0.1")
-      if (Result.isSuccess(missingPort)) assert.fail("expected Failure")
+      assertTrue(Result.isFailure(missingPort), "expected Failure")
       assert.strictEqual(missingPort.failure.message, "expected host:port or [IPv6]:port")
     })
 

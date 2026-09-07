@@ -24,6 +24,7 @@ export interface IpInterface<out A extends NetAddress.IpAddress = NetAddress.IpA
   readonly prefixLength: number
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -100,13 +101,16 @@ const IpInterfaceProto = {
   toString(this: IpInterface): string {
     return format(this)
   },
-  [NodeInspectSymbol](this: IpInterface): string {
+  toJSON(this: IpInterface): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: IpInterface): string {
+    return this.toJSON()
   }
 }
 
-const interfaceError = (message: string): Result.Result<never, NetAddress.NetAddressError> =>
-  Result.fail(new NetAddress.NetAddressError({ message }))
+const interfaceError = (input: unknown, message: string): Result.Result<never, NetAddress.NetAddressError> =>
+  Result.fail(new NetAddress.NetAddressError({ input, message }))
 
 /**
  * Creates an interface address while preserving all address bits.
@@ -120,7 +124,7 @@ export const make = <A extends NetAddress.IpAddress>(
 ): Result.Result<IpInterface<A>, NetAddress.NetAddressError> => {
   const max = NetAddress.width(address)
   if (!Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > max) {
-    return interfaceError(`prefix length must be an integer from 0 through ${max}`)
+    return interfaceError(address, `prefix length must be an integer from 0 through ${max}`)
   }
   const self = Object.assign(Object.create(IpInterfaceProto), { address, prefixLength })
   return Result.succeed(Object.freeze(self))
@@ -138,11 +142,11 @@ const parseAddressWithPrefix = (
     return Result.succeed({ address: input, prefixLength: undefined })
   }
   if (slash <= 0 || slash !== input.lastIndexOf("/") || slash === input.length - 1) {
-    return interfaceError("expected an address and prefix length separated by one slash")
+    return interfaceError(input, "expected an address and prefix length separated by one slash")
   }
   const prefix = input.slice(slash + 1)
   if (!/^(0|[1-9][0-9]*)$/.test(prefix)) {
-    return interfaceError("prefix length must be an unpadded ASCII decimal integer")
+    return interfaceError(input, "prefix length must be an unpadded ASCII decimal integer")
   }
   return Result.succeed({ address: input.slice(0, slash), prefixLength: Number(prefix) })
 }

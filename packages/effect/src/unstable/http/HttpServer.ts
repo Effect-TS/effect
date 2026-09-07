@@ -169,30 +169,17 @@ export const serveEffect: {
 > => HttpServer.use((server) => server.serve(effect, middleware!)) as any)
 
 /**
- * Formats a server address as a display string.
- *
- * **Details**
- *
- * Internet addresses are formatted as `http://host:port`, with IPv6 hosts
- * bracketed; Unix socket addresses are formatted as `unix://path`.
+ * Formats a server address as a display string using {@link NetAddress.formatUrlUnsafe}.
  *
  * **Gotchas**
  *
- * IPv6 scope identifiers are omitted because WHATWG URLs do not support scoped
- * IPv6 hosts.
+ * Throws a `NetAddressError` when URL conversion fails, including for scoped
+ * IPv6 addresses. Unix socket paths are displayed with a `unix://` prefix.
  *
  * @category converting
  * @since 4.0.0
  */
-export const formatAddress = (address: NetAddress.SocketAddress): string => {
-  switch (address._tag) {
-    case "UnixPathAddress":
-      return `unix://${address.path}`
-    case "InetAddressV4":
-    case "InetAddressV6":
-      return `http://${NetAddress.formatUrlHost(address.address)}:${address.port}`
-  }
-}
+export const formatAddress: (address: NetAddress.SocketAddress) => string = NetAddress.formatUrlUnsafe
 
 /**
  * Reads the current server address, formats it with `formatAddress`, and passes
@@ -238,7 +225,7 @@ export const withLogAddress = <A, E, R>(
  * **Details**
  *
  * For internet servers, requests are prefixed with the server URL and unspecified
- * addresses are replaced by the loopback address of the same IP family.
+ * addresses are replaced by IPv4 loopback, including dual-stack `::` listeners.
  *
  * **Gotchas**
  *
@@ -255,14 +242,14 @@ export const makeTestClient: Effect.Effect<
   const server = yield* HttpServer
   const client = yield* HttpClient.HttpClient
   const address = server.address
-  if (address._tag === "UnixPathAddress") {
+  if (NetAddress.isUnixPathAddress(address)) {
     return yield* Effect.die(new Error("HttpServer.layerTestClient: UnixPathAddress not supported"))
   }
-  const host = NetAddress.isUnspecified(address.address)
-    ? NetAddress.isIpv4Address(address.address) ? NetAddress.ipv4Loopback : NetAddress.ipv6Loopback
-    : address.address
-  const url = `http://${NetAddress.formatUrlHost(host)}:${address.port}`
-  return HttpClient.mapRequest(client, ClientRequest.prependUrl(url))
+  const url = yield* Effect.fromResult(NetAddress.toUrl(address)).pipe(Effect.orDie)
+  if (NetAddress.isUnspecified(address.address)) {
+    url.hostname = NetAddress.formatIp(NetAddress.ipv4Loopback)
+  }
+  return HttpClient.mapRequest(client, ClientRequest.prependUrl(url.origin))
 })
 
 /**

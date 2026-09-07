@@ -1,16 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import { Equal, Hash, Result, Schema } from "effect"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as fc from "fast-check"
+import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
-  if (Result.isFailure(result)) assert.fail("expected Success")
+  assertTrue(Result.isSuccess(result), "expected Success")
   return result.success
 }
 
 const failure = <E>(result: Result.Result<unknown, E>): E => {
-  if (Result.isSuccess(result)) assert.fail("expected Failure")
+  assertTrue(Result.isFailure(result), "expected Failure")
   return result.failure
 }
 
@@ -18,6 +20,33 @@ const ip = (input: string): NetAddress.IpAddress => success(NetAddress.ipFromStr
 const network = (input: string): IpNetwork.IpNetwork => success(IpNetwork.fromString(input))
 
 describe("IpNetwork", () => {
+  it("serializes and inspects canonical strings", () => {
+    for (const expected of ["192.0.2.0/24", "2001:db8::/32"]) {
+      const address = IpNetwork.fromStringUnsafe(expected)
+      assert.strictEqual(address.toJSON(), expected)
+      assert.strictEqual(JSON.stringify(address), JSON.stringify(expected))
+      assert.strictEqual(inspect(address), expected)
+    }
+  })
+
+  it("retains the address supplied to checked constructors", () => {
+    const address = NetAddress.ipv4Loopback
+    assert.strictEqual(failure(IpNetwork.make(address, 33)).input, address)
+    assert.strictEqual(failure(IpNetwork.make(address, 8)).input, address)
+    assert.strictEqual(failure(IpNetwork.fromAddress(address, 33)).input, address)
+  })
+
+  it("forwards errors from address and prefix validation", () => {
+    for (const parse of [IpNetwork.fromString, IpNetwork.ipv4FromString]) {
+      assert.strictEqual(failure(parse("1.2.3.4/+24")).input, "1.2.3.4/+24")
+      assert.strictEqual(failure(parse("010.2.3.4/24")).input, "010.2.3.4")
+      assert.deepStrictEqual(failure(parse("1.2.3.4/33")).input, ip("1.2.3.4"))
+    }
+    for (const parse of [IpNetwork.fromString, IpNetwork.ipv6FromString]) {
+      assert.strictEqual(failure(parse("::ffff:192.000.2.1/128")).input, "192.000.2.1")
+    }
+  })
+
   it("constructs immutable canonical networks and preserves family identity", () => {
     const ipv4 = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
     const ipv6 = IpNetwork.makeUnsafe(NetAddress.ipv6Unspecified, 0)
@@ -43,6 +72,7 @@ describe("IpNetwork", () => {
       failure(IpNetwork.fromAddress(ipv4, prefix))
     }
     failure(IpNetwork.make(ipv6, 129))
+    assert.deepStrictEqual(failure(IpNetwork.fromString("10.1.2.3/8")).input, ipv4)
     failure(IpNetwork.make(ipv4, 8))
     failure(IpNetwork.make(ipv6, 32))
 

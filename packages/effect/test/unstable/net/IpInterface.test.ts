@@ -1,16 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import { Equal, Hash, Result, Schema } from "effect"
 import * as IpInterface from "effect/unstable/net/IpInterface"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
+import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
-  if (Result.isFailure(result)) assert.fail("expected Success")
+  assertTrue(Result.isSuccess(result), "expected Success")
   return result.success
 }
 
 const failure = <E>(result: Result.Result<unknown, E>): E => {
-  if (Result.isSuccess(result)) assert.fail("expected Failure")
+  assertTrue(Result.isFailure(result), "expected Failure")
   return result.failure
 }
 
@@ -18,6 +20,31 @@ const ip = (input: string): NetAddress.IpAddress => success(NetAddress.ipFromStr
 const interfaceAddress = (input: string): IpInterface.IpInterface => success(IpInterface.fromString(input))
 
 describe("IpInterface", () => {
+  it("serializes and inspects canonical strings", () => {
+    for (const expected of ["192.0.2.1/24", "2001:db8::1/64"]) {
+      const address = IpInterface.fromStringUnsafe(expected)
+      assert.strictEqual(address.toJSON(), expected)
+      assert.strictEqual(JSON.stringify(address), JSON.stringify(expected))
+      assert.strictEqual(inspect(address), expected)
+    }
+  })
+
+  it("retains the address supplied to checked constructors", () => {
+    const address = NetAddress.ipv4Loopback
+    assert.strictEqual(failure(IpInterface.make(address, 33)).input, address)
+  })
+
+  it("forwards errors from address and prefix validation", () => {
+    for (const parse of [IpInterface.fromString, IpInterface.ipv4FromString]) {
+      assert.strictEqual(failure(parse("1.2.3.4/+24")).input, "1.2.3.4/+24")
+      assert.strictEqual(failure(parse("010.2.3.4/24")).input, "010.2.3.4")
+      assert.deepStrictEqual(failure(parse("1.2.3.4/33")).input, ip("1.2.3.4"))
+    }
+    for (const parse of [IpInterface.fromString, IpInterface.ipv6FromString]) {
+      assert.strictEqual(failure(parse("::ffff:192.000.2.1/128")).input, "192.000.2.1")
+    }
+  })
+
   it("constructs one generic runtime representation", () => {
     const ipv4 = IpInterface.makeUnsafe(NetAddress.ipv4Unspecified, 0)
     const ipv6 = IpInterface.makeUnsafe(NetAddress.ipv6Unspecified, 0)

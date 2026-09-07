@@ -659,14 +659,17 @@ const PGSQL_AF_INET = 2
 const PGSQL_AF_INET6 = 3
 
 const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
-  const text = requireString(value, isCidr ? "cidr" : "inet")
+  const type = isCidr ? "cidr" : "inet"
+  const text = requireString(value, type)
   const parsed = IpInterface.fromString(text)
-  if (Result.isFailure(parsed)) return fail(parsed.failure.message)
+  if (Result.isFailure(parsed)) return fail(`Invalid ${type} value ${JSON.stringify(text)}: ${parsed.failure.message}`)
   const address = parsed.success.address
   const bits = parsed.success.prefixLength
   if (isCidr) {
     const network = IpNetwork.make(address, bits)
-    if (Result.isFailure(network)) return fail(network.failure.message)
+    if (Result.isFailure(network)) {
+      return fail(`Invalid ${type} value ${JSON.stringify(text)}: ${network.failure.message}`)
+    }
   }
   const octets = NetAddress.isIpv4Address(address)
     ? NetAddress.ipv4ToOctets(address)
@@ -698,16 +701,14 @@ const decodeInet = (bytes: Uint8Array, offset: number, size: number): string => 
   const address = family === PGSQL_AF_INET
     ? NetAddress.ipv4FromBytesUnsafe(addressBytes)
     : NetAddress.ipv6FromBytesUnsafe(addressBytes)
-  const interfaceAddress = IpInterface.make(address, bits)
-  if (Result.isFailure(interfaceAddress)) return fail(interfaceAddress.failure.message)
   if (isCidr) {
-    const network = IpNetwork.make(interfaceAddress.success.address, interfaceAddress.success.prefixLength)
+    const network = IpNetwork.make(address, bits)
     if (Result.isFailure(network)) return fail(network.failure.message)
     return IpNetwork.format(network.success)
   }
   return bits === addressSize * 8
     ? NetAddress.formatIp(address)
-    : IpInterface.format(interfaceAddress.success)
+    : IpInterface.format(IpInterface.makeUnsafe(address, bits))
 }
 
 // -----------------------------------------------------------------------------

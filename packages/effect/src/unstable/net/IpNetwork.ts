@@ -26,6 +26,7 @@ export interface IpNetwork<out A extends NetAddress.IpAddress = NetAddress.IpAdd
   readonly prefixLength: number
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -75,13 +76,16 @@ const IpNetworkProto = {
     return isIpNetwork(that) && this.prefixLength === that.prefixLength && Equal.equals(this.address, that.address)
   },
   [Hash.symbol](this: IpNetwork): number {
-    return Hash.combine(Hash.hash(this.address))(Hash.number(this.prefixLength))
+    return Hash.combine(Hash.hash(this.address), Hash.number(this.prefixLength))
   },
   toString(this: IpNetwork): string {
     return format(this)
   },
-  [NodeInspectSymbol](this: IpNetwork): string {
+  toJSON(this: IpNetwork): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: IpNetwork): string {
+    return this.toJSON()
   }
 }
 
@@ -131,7 +135,9 @@ export const make = <A extends NetAddress.IpAddress>(
     const bytes = toBytes(address)
     const masked = maskBytes(bytes, prefixLength)
     if (bytes.some((byte, index) => byte !== masked[index])) {
-      return Result.fail(new NetAddress.NetAddressError({ message: "address has non-zero host bits" }))
+      return Result.fail(
+        new NetAddress.NetAddressError({ input: address, message: "address has non-zero host bits" })
+      )
     }
     return Result.succeed(fromInterfaceValue(value))
   })
