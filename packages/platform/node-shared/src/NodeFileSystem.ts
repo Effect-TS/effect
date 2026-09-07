@@ -301,17 +301,12 @@ const makeFile = (() => {
     }
 
     readAlloc(size: number) {
-      return Effect.flatMap(
-        Effect.try({
-          try: () => {
-            if (!Number.isInteger(size) || size < 0) {
-              throw new RangeError("size must be a non-negative integer")
-            }
-            return Buffer.allocUnsafeSlow(size)
-          },
-          catch: handleBadArgument("readAlloc")
-        }),
-        (buffer) => {
+      return Effect.suspend(() => {
+        try {
+          if (!Number.isInteger(size) || size < 0) {
+            throw new RangeError("size must be a non-negative integer")
+          }
+          const buffer = Buffer.allocUnsafeSlow(size)
           const position = this.position
           return Effect.map(
             nodeReadAlloc(this.fd, { buffer, position }),
@@ -330,8 +325,10 @@ const makeFile = (() => {
               return Option.some(dst)
             }
           )
+        } catch (cause) {
+          return Effect.fail(handleBadArgument("readAlloc")(cause))
         }
-      )
+      })
     }
 
     truncate(length?: number) {
