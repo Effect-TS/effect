@@ -520,22 +520,22 @@ export const make = (
     stream: Effect.fnUntraced(function*(path, options) {
       const file = yield* impl.open(path, { flag: "r" })
       const offset = options?.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
-      if (offset !== undefined) {
+      if (offset) {
         yield* file.seek(offset, "start")
       }
       const bytesToRead = options?.bytesToRead === undefined
         ? undefined
         : ByteSize.fromInputUnsafe(options.bytesToRead)
       let totalBytesRead = BigInt(0)
-      const chunkSize = options?.chunkSize ?? 64 * 1024
-      const readChunk = file.readAlloc(chunkSize)
+      const chunkSize = BigInt(options?.chunkSize ?? 64 * 1024)
+      const readChunk = file.readAlloc(Number(chunkSize))
       return Stream.fromPull(Effect.succeed(
         Effect.flatMap(
           Effect.suspend((): Pull.Pull<Option.Option<Uint8Array>, PlatformError> => {
             if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
               return Cause.done()
             }
-            return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < BigInt(chunkSize)
+            return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
               ? file.readAlloc(Number(bytesToRead - totalBytesRead))
               : readChunk
           }),
@@ -820,7 +820,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * const file: FileSystem.File = {
  *   [FileSystem.FileTypeId]: FileSystem.FileTypeId,
  *   stat: Effect.succeed({ size: ByteSize.bytes(5) } as FileSystem.File.Info),
- *   seek: () => Effect.succeed(ByteSize.zero),
+ *   seek: () => Effect.succeed(BigInt(0)),
  *   sync: Effect.void,
  *   read: (buffer) => Effect.sync(() => {
  *     buffer.set([1, 2, 3, 4, 5])
@@ -853,7 +853,11 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
-  readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<ByteSize.ByteSize, PlatformError>
+  /**
+   * Moves the cursor relative to the start or current position and returns the
+   * signed position. Native reads and writes retain their platform error behavior.
+   */
+  readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint>
   readonly sync: Effect.Effect<void, PlatformError>
   readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>

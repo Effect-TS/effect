@@ -220,7 +220,9 @@ export const toString = <E = Cause.UnknownError>(
     readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<string, E> => {
-  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes) : undefined
+  const maxBytesNumber = options?.maxBytes !== undefined
+    ? options.maxBytes === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(options.maxBytes))
+    : undefined
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -235,14 +237,14 @@ export const toString = <E = Cause.UnknownError>(
     })
 
     let string = ""
-    let bytes = BigInt(0)
+    let bytes = 0
     stream.once("end", () => {
       resume(Effect.succeed(string))
     })
     stream.on("data", (chunk) => {
       string += chunk
-      bytes += BigInt(Buffer.byteLength(chunk))
-      if (maxBytes !== undefined && bytes > maxBytes) {
+      bytes += Buffer.byteLength(chunk)
+      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
@@ -272,12 +274,14 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes) : undefined
+  const maxBytesNumber = options?.maxBytes !== undefined
+    ? options.maxBytes === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(options.maxBytes))
+    : undefined
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable
     const buffers: Array<Uint8Array> = []
-    let bytes = BigInt(0)
+    let bytes = 0
     stream.once("error", (err) => {
       if ("closed" in stream && !stream.closed) {
         stream.destroy()
@@ -295,8 +299,8 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     })
     stream.on("data", (chunk) => {
       buffers.push(chunk)
-      bytes += BigInt(chunk.length)
-      if (maxBytes !== undefined && bytes > maxBytes) {
+      bytes += chunk.length
+      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }

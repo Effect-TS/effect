@@ -176,8 +176,8 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
   nlink: Option.fromNullishOr(info.nlink),
   uid: Option.fromNullishOr(info.uid),
   gid: Option.fromNullishOr(info.gid),
-  size: ByteSize.bytes(info.size),
-  blksize: Option.map(Option.fromNullishOr(info.blksize), ByteSize.bytes),
+  size: ByteSize.bytes(BigInt(info.size)),
+  blksize: Option.map(Option.fromNullishOr(info.blksize), (size) => ByteSize.bytes(BigInt(size))),
   blocks: Option.fromNullishOr(info.blocks)
 })
 
@@ -209,17 +209,13 @@ class FileImpl implements FileSystem.File {
   }
 
   seek(offset: bigint, from: FileSystem.SeekMode) {
-    return Effect.suspend(() => {
-      const position = from === "start" ? offset : this.position + offset
-      if (position < BigInt(0)) {
-        return Effect.fail(PlatformError.badArgument({
-          module: "FileSystem",
-          method: "seek",
-          description: "resulting position must be non-negative"
-        }))
+    return Effect.sync(() => {
+      if (from === "start") {
+        this.position = offset
+      } else {
+        this.position += offset
       }
-      this.position = position
-      return Effect.succeed(ByteSize.bytes(this.position))
+      return this.position
     })
   }
 
@@ -251,32 +247,22 @@ class FileImpl implements FileSystem.File {
   }
 
   readAlloc(size: number) {
-    return Effect.flatMap(
-      Effect.try({
-        try: () => new Uint8Array(size),
-        catch: (cause) =>
-          PlatformError.badArgument({
-            module: "FileSystem",
-            method: "readAlloc",
-            description: cause instanceof Error ? cause.message : String(cause)
-          })
-      }),
-      (buffer) => {
-        return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
-          if (bytesRead === 0) {
-            return Option.none()
-          }
-          return Option.some(bytesRead === size ? buffer : buffer.subarray(0, bytesRead))
-        })
-      }
-    )
+    return Effect.suspend(() => {
+      const buffer = new Uint8Array(size)
+      return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
+        if (bytesRead === 0) {
+          return Option.none()
+        }
+        return Option.some(bytesRead === size ? buffer : buffer.subarray(0, bytesRead))
+      })
+    })
   }
 
-  truncate(length = 0) {
+  truncate(length?: number) {
+    const size = BigInt(length ?? 0)
     return Effect.map(
-      tryPromise("truncate", undefined, () => this.file.truncate(length)),
+      tryPromise("truncate", undefined, () => this.file.truncate(Number(size))),
       () => {
-        const size = BigInt(length)
         if (!this.append && this.position > size) {
           this.position = size
         }

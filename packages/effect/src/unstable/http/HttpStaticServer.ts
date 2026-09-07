@@ -9,7 +9,6 @@
  *
  * @since 4.0.0
  */
-import * as BI from "../../BigInt.ts"
 import * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
@@ -113,7 +112,7 @@ export const make: (options: {
   const serveFile: (
     request: HttpServerRequest.HttpServerRequest,
     filePath: string,
-    fileSize?: ByteSize.ByteSize
+    fileSize?: number
   ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HttpServerError.HttpServerError> = Effect.fnUntraced(
     function*(request, filePath, fileSize) {
       const rangeHeader = request.method === "GET" ? request.headers["range"] : undefined
@@ -141,7 +140,7 @@ export const make: (options: {
 
       const resolvedFileSize = rangeHeader === undefined
         ? undefined
-        : fileSize ?? (yield* handlePlatformError(request, fileSystem.stat(filePath))).size
+        : fileSize ?? Number((yield* handlePlatformError(request, fileSystem.stat(filePath))).size)
 
       if (rangeHeader === undefined || resolvedFileSize === undefined) {
         return yield* getFullResponse()
@@ -168,7 +167,7 @@ export const make: (options: {
           platform.fileResponse(filePath, {
             status: 206,
             offset: ByteSize.bytes(parsedRange.start),
-            bytesToRead: ByteSize.bytes(parsedRange.end - parsedRange.start + BigInt(1))
+            bytesToRead: ByteSize.bytes(parsedRange.end - parsedRange.start + 1)
           })
         ),
         filePath
@@ -201,7 +200,7 @@ export const make: (options: {
           : Effect.fail(toInternalServerError(request, error)),
       onSuccess(info) {
         if (info.type === "File") {
-          return serveFile(request, resolvedPath, info.size)
+          return serveFile(request, resolvedPath, Number(info.size))
         }
         if (info.type === "Directory" && index !== undefined) {
           return serveFile(request, path.join(resolvedPath, index))
@@ -313,18 +312,19 @@ const resolveMimeType = (path: Path.Path, filePath: string, mimeTypes: Record<st
   return mimeTypes[extension.slice(1)] ?? "application/octet-stream"
 }
 
-const parseInteger = (value: string): bigint | undefined => {
+const parseInteger = (value: string): number | undefined => {
   if (!/^\d+$/.test(value)) {
     return undefined
   }
-  return BigInt(value)
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) ? parsed : undefined
 }
 
 const parseRange = (
   header: string,
-  fileSize: ByteSize.ByteSize
+  fileSize: number
 ):
-  | { readonly start: bigint; readonly end: bigint }
+  | { readonly start: number; readonly end: number }
   | "unsatisfiable"
   | undefined =>
 {
@@ -350,12 +350,12 @@ const parseRange = (
     if (suffixLength === undefined) {
       return undefined
     }
-    if (suffixLength === BigInt(0) || ByteSize.isZero(fileSize)) {
+    if (suffixLength === 0 || fileSize === 0) {
       return "unsatisfiable"
     }
     return {
-      start: BI.max(fileSize - suffixLength, BigInt(0)),
-      end: fileSize - BigInt(1)
+      start: Math.max(fileSize - suffixLength, 0),
+      end: fileSize - 1
     }
   }
   const start = parseInteger(startPart)
@@ -368,7 +368,7 @@ const parseRange = (
     }
     return {
       start,
-      end: fileSize - BigInt(1)
+      end: fileSize - 1
     }
   }
   const end = parseInteger(endPart)
@@ -380,7 +380,7 @@ const parseRange = (
   }
   return {
     start,
-    end: BI.min(end, fileSize - BigInt(1))
+    end: Math.min(end, fileSize - 1)
   }
 }
 

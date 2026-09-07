@@ -11,14 +11,12 @@
  *
  * @since 4.0.0
  */
-import * as BI from "../../BigInt.ts"
 import * as ByteSize from "../../ByteSize.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
 import * as Inspectable from "../../Inspectable.ts"
-import * as Option from "../../Option.ts"
 import type * as PlatformError from "../../PlatformError.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
@@ -520,14 +518,11 @@ const fileContentLength = (
     readonly bytesToRead?: ByteSize.ByteSize | undefined
     readonly offset?: ByteSize.ByteSize | undefined
   }
-): number | undefined => {
-  const offset = ByteSize.toBigInt(options?.offset ?? ByteSize.zero)
-  const total = ByteSize.toBigInt(size)
-  const available = BI.max(total - offset, BigInt(0))
-  const selected = options?.bytesToRead === undefined
+): number => {
+  const available = Math.max(0, Number(size) - Number(options?.offset ?? 0))
+  return options?.bytesToRead === undefined
     ? available
-    : BI.min(options.bytesToRead, available)
-  return Option.getOrUndefined(BI.toNumber(selected))
+    : Math.min(available, Math.max(0, Number(options.bytesToRead)))
 }
 
 /**

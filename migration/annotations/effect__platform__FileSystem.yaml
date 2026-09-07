@@ -60,7 +60,7 @@
   note: "Operation option interfaces are inline in the v4 FileSystem service."
 "@effect/platform/FileSystem#Size":
   replacement: "ByteSize.ByteSize"
-  note: "Logical file sizes use the exact non-negative ByteSize value; construct values with ByteSize.bytes or a unit constructor such as ByteSize.mebibytes. Native truncation lengths, in-memory buffer sizes, and read or write counts use number, while signed File.seek offsets use bigint."
+  note: "Logical file sizes use the exact non-negative ByteSize value; construct values with ByteSize.bytes or a unit constructor such as ByteSize.mebibytes. Native truncation lengths, in-memory buffer sizes, and read or write counts use number, while File.seek accepts and returns signed bigint positions without adding a typed failure."
 "@effect/platform/FileSystem#SizeInput":
   replacement: "ByteSize.Input"
   note: "Logical file-size and path-backed range parameters accept ByteSize inputs and normalize them at the API boundary; native truncation lengths, Web File ranges, and in-memory buffer sizes use number."
