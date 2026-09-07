@@ -8,9 +8,7 @@
  */
 import type * as Effect from "./Effect.ts"
 import type * as Fiber from "./Fiber.ts"
-import type * as Inspectable from "./Inspectable.ts"
 import { type EffectTypeId, evaluate, makePrimitiveProto } from "./internal/core.ts"
-import type * as Pipeable from "./Pipeable.ts"
 
 /**
  * Create a low-level `Effect` prototype.
@@ -78,9 +76,10 @@ type AsEffectReturn<Self> = Self extends {
 } ? A
   : never
 
-interface EffectableFromAsEffect extends Pipeable.Pipeable, Inspectable.Inspectable {
-  readonly [EffectTypeId]: AsEffectReturn<this>[typeof EffectTypeId]
-  [Symbol.iterator](): Effect.EffectIterator<AsEffectReturn<this>>
+declare abstract class MixinBase extends Class<any, any, any> {
+  constructor(...args: ReadonlyArray<any>)
+  override readonly [EffectTypeId]: AsEffectReturn<this>[typeof EffectTypeId]
+  override [Symbol.iterator](): Effect.EffectIterator<AsEffectReturn<this>>
 }
 
 /**
@@ -129,10 +128,10 @@ interface EffectableFromAsEffect extends Pipeable.Pipeable, Inspectable.Inspecta
  */
 export const Mixin = <TBase extends abstract new(...args: ReadonlyArray<any>) => object>(
   klass: TBase
-) => {
+): TBase & typeof MixinBase => {
   abstract class Mixed extends klass {
     abstract asEffect(): Effect.Effect<any, any, any>
   }
   Object.defineProperties(Mixed.prototype, Object.getOwnPropertyDescriptors(proto))
-  return Mixed as typeof Mixed & (abstract new(...args: ReadonlyArray<any>) => EffectableFromAsEffect)
+  return Mixed as TBase & typeof MixinBase
 }
