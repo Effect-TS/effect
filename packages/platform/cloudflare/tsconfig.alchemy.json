@@ -4,7 +4,7 @@
   // own project: the alchemy type graph loads bun globals that would clash
   // with the shared tests project's node globals.
   "extends": "../../../tsconfig.base.json",
-  "include": ["examples", "typetest"],
+  "include": ["examples", "typetest/AlchemyCloudflareCluster.tst.ts"],
   "references": [{ "path": "../../../tsconfig.packages.json" }],
   "compilerOptions": {
     "rootDir": ".",

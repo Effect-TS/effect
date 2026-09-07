@@ -185,12 +185,17 @@ isolate-lifetime scope and hands back `provide` for the Worker's handlers, so
 do not wrap the init program in `Effect.provide` for cluster services — that
 would tear the layer down when init returns. The handle also exposes the four
 native namespace bindings (`entityNamespace`, `workflowNamespace`,
-`queueNamespace`, `singletonNamespace`) as escape hatches.
+`queueNamespace`, `singletonNamespace`) as escape hatches. These bindings and
+`context` are runtime-only; reading them during plan evaluation throws a
+diagnostic. During planning, `provide` passes through its Effect and `wake`
+does nothing.
 
 A complete runnable example (one entity, one singleton, one Cron Trigger)
 lives at [`examples/alchemy`](./examples/alchemy).
 
 ### Manual live smoke
+
+The live deployment smoke has not yet been verified.
 
 Alchemy tracks the published `effect` release, so CI covers this integration
 with typechecks only (plus the manual `Alchemy Canary` workflow against the

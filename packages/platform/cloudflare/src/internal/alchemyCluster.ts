@@ -87,9 +87,25 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
 export const inertClusterHandle = (): ClusterHandle => ({
   provide: (effect) => effect as Effect.Effect<any, any, any>,
   wake: () => () => Effect.void,
-  entityNamespace: undefined as unknown as DurableObjectNamespace,
-  workflowNamespace: undefined as unknown as DurableObjectNamespace,
-  queueNamespace: undefined as unknown as DurableObjectNamespace,
-  singletonNamespace: undefined as unknown as DurableObjectNamespace,
-  context: undefined as unknown as Context.Context<never>
+  get entityNamespace() {
+    return planTimeOnly("entityNamespace")
+  },
+  get workflowNamespace() {
+    return planTimeOnly("workflowNamespace")
+  },
+  get queueNamespace() {
+    return planTimeOnly("queueNamespace")
+  },
+  get singletonNamespace() {
+    return planTimeOnly("singletonNamespace")
+  },
+  get context() {
+    return planTimeOnly("context")
+  }
 })
+
+const planTimeOnly = (field: string): never => {
+  throw new Error(
+    `AlchemyCloudflareCluster: '${field}' is only available at runtime, not during plan evaluation`
+  )
+}

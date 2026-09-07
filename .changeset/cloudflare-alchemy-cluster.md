@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"@effect/platform-cloudflare": patch
 ---
 
 Add Alchemy v2 deployment for the Cloudflare cluster to

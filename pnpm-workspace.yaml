@@ -30,10 +30,8 @@ patchedDependencies:
   '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
 
 minimumReleaseAgeExclude:
-  - '@alchemy.run/cloudflare-runtime@2.0.0-beta.76'
-  - '@alchemy.run/floci@2.0.0-beta.76'
-  - '@alchemy.run/node-utils@2.0.0-beta.76'
-  - alchemy@2.0.0-beta.76
+  - '@alchemy.run/*'
+  - alchemy
 
 # alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
 # otherwise join the shared tests compilation and clash with the workspace

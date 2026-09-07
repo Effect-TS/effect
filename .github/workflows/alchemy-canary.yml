@@ -24,6 +24,6 @@ jobs:
           pnpm --dir packages/platform/cloudflare add --save-dev --config.minimumReleaseAge=0 alchemy@beta
           pnpm ls --dir packages/platform/cloudflare alchemy
       - name: Typecheck module, example, and typetests
-        run: pnpm check
+        run: pnpm exec tsc -b packages/platform/cloudflare/tsconfig.alchemy.json
       - name: Run typetests
         run: pnpm test-types --target '>=5.9' AlchemyCloudflareCluster

@@ -91,6 +91,12 @@ export type EntityInvokeResult = {
 /**
  * Effect-valued program for one cluster entity Durable Object instance.
  *
+ * **Gotchas**
+ *
+ * All program methods must keep their error channel `never`: Alchemy encodes
+ * typed failures as envelopes, but the native namespace transport expects
+ * plain results and rejected defects.
+ *
  * @category models
  * @since 4.0.0
  */

@@ -25,6 +25,7 @@ import * as Reply from "effect/unstable/cluster/Reply"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import type { EntityDeliveryOptions } from "../CloudflareDurableObjectPrograms.ts"
 import { encodeName } from "./clusterName.ts"
 import type { EntityKeepAlive } from "./entityKeepAlive.ts"
 import {
@@ -243,11 +244,7 @@ interface RunOptions {
 }
 
 /** @internal */
-export interface DeliveryOptions {
-  readonly deliverAt?: number | undefined
-  readonly primaryKey?: string | null | undefined
-  readonly replyTo?: string | undefined
-}
+export type DeliveryOptions = EntityDeliveryOptions
 
 /** @internal */
 export interface EntityManagerOptions {

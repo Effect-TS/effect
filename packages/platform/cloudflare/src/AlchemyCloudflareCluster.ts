@@ -14,16 +14,17 @@
  * never imports this module; `alchemy` is an optional peer dependency needed
  * only here.
  *
+ * **Example** (Declaring a cluster)
+ *
  * ```ts
  * import * as Cloudflare from "alchemy/Cloudflare"
- * import * as Effect from "effect/Effect"
- * import * as Layer from "effect/Layer"
- * import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
+ * import { Effect, Layer } from "effect"
+ * import { make } from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
  *
  * export default Cloudflare.Worker("MyApp", {
  *   main: import.meta.url
  * }, Effect.gen(function*() {
- *   const cluster = yield* AlchemyCloudflareCluster.make({
+ *   const cluster = yield* make({
  *     entities: [Counter],
  *     layer: Layer.mergeAll(CounterLayer, MaintenanceLayer)
  *   })
@@ -71,6 +72,12 @@ export type ClusterServices = Sharding | WorkflowEngine | PersistedQueueFactory
 
 /**
  * The handle returned by {@link make}.
+ *
+ * **Gotchas**
+ *
+ * Namespace bindings and `context` are available only in the deployed runtime.
+ * Reading them during plan evaluation throws a diagnostic; `provide` and
+ * `wake` remain inert during planning.
  *
  * @category models
  * @since 4.0.0
@@ -155,6 +162,8 @@ interface EntityShape {
   readonly deliverReply: ClusterEntityProgram["deliverReply"]
 }
 
+// These classes intentionally omit fetch: Alchemy returns its default 404.
+// Cluster RPCs use native bindings; Wrangler classes keep their fetch rejection.
 const ClusterEntity = Cloudflare.DurableObject<EntityShape>()(
   "ClusterEntity",
   Effect.gen(function*() {

@@ -20,7 +20,7 @@
     "./packages/platform/deno/**",
     // Compiled by the package's own tsconfig.alchemy.json: the alchemy type
     // graph loads bun globals that clash with this project's node globals.
-    "./packages/platform/cloudflare/typetest/**"
+    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts"
   ],
   "compilerOptions": {
     "rootDir": ".",

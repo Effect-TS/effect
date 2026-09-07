@@ -11,6 +11,7 @@ import * as ShardId from "effect/unstable/cluster/ShardId"
 import * as Headers from "effect/unstable/http/Headers"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import type { EntityInvokeResult } from "../CloudflareDurableObjectPrograms.ts"
 import type { EntityRegistration } from "./entityRegistry.ts"
 
 type EncodedRequest = Extract<Envelope.Encoded, { readonly _tag: "Request" }>
@@ -31,10 +32,10 @@ export const InvokeResult = Schema.Union([
   Schema.Struct({ _tag: Schema.Literal("MailboxFull") }),
   Schema.Struct({ _tag: Schema.Literal("EncodedMessageTooLarge") }),
   Schema.Struct({ _tag: Schema.Literal("AskDeduplicatedToTell") })
-])
+]) satisfies Schema.Codec<EntityInvokeResult>
 
 /** @internal */
-export type InvokeResult = typeof InvokeResult.Type
+export type InvokeResult = EntityInvokeResult
 
 /** @internal */
 export const decodeInvokeResult = (value: unknown): Effect.Effect<InvokeResult> =>
