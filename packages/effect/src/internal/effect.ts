@@ -364,7 +364,7 @@ export const causePrettyErrors = <E>(self: Cause.Cause<E>, options?: {
     errors.push(causePrettyError(error, interrupts[0].annotations, options))
   }
 
-  setStackTraceLimit(prevStackLimit)
+  if (prevStackLimit !== 0) setStackTraceLimit(prevStackLimit)
   return errors
 }
 
