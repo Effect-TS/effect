@@ -822,8 +822,7 @@ export const fileSchema = <A>(
  *
  * **Details**
  *
- * The pair is split at the first `=`, so the value may itself contain `=`
- * characters. Both the key and the value must be non-empty.
+ * Splits at the first `=`. Keys and values must be non-empty; values may contain `=`.
  *
  * **Example** (Parsing key-value pairs)
  *
