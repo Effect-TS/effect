@@ -1629,7 +1629,7 @@ export interface ToolResultPartMetadata extends ProviderMetadata {}
  * @category schemas
  * @since 4.0.0
  */
-export const ToolResultPart: <
+export const ToolResultPart = <
   const Name extends string,
   Success extends Schema.Constraint,
   Failure extends Schema.Constraint
@@ -1637,89 +1637,58 @@ export const ToolResultPart: <
   name: Name,
   success: Success,
   failure: Failure
-) => Schema.decodeTo<
-  Schema.Struct<
-    {
-      readonly "~effect/ai/Response/Part": Schema.Literal<"~effect/ai/Response/Part">
-      readonly result: Schema.Union<readonly [Success, Failure]>
-      readonly providerExecuted: Schema.Boolean
-      readonly metadata: Schema.$Record<
-        Schema.String,
-        Schema.NullOr<Schema.Codec<Schema.Json>>
-      >
-      readonly encodedResult: Schema.toEncoded<Schema.Union<readonly [Success, Failure]>>
-      readonly preliminary: Schema.Boolean
-      readonly id: Schema.String
-      readonly type: Schema.Literal<"tool-result">
-      readonly isFailure: Schema.Boolean
-      readonly name: Schema.Literal<Name>
-    }
-  >,
-  Schema.Struct<
-    {
-      readonly result: Schema.toEncoded<Schema.Union<readonly [Success, Failure]>>
-      readonly providerExecuted: Schema.optional<Schema.Boolean>
-      readonly metadata: Schema.optional<
-        Schema.$Record<Schema.String, Schema.NullOr<Schema.Codec<Schema.Json>>>
-      >
-      readonly preliminary: Schema.optional<Schema.Boolean>
-      readonly id: Schema.String
-      readonly type: Schema.Literal<"tool-result">
-      readonly isFailure: Schema.Boolean
-      readonly name: Schema.Literal<Name>
-    }
-  >
-> = <
-  const Name extends string,
-  Success extends Schema.Constraint,
-  Failure extends Schema.Constraint
->(
-  name: Name,
-  success: Success,
-  failure: Failure
-) => {
+): Schema.Codec<
+  ToolResultPart<Name, Success["Type"], Failure["Type"]>,
+  ToolResultPartEncoded,
+  Success["DecodingServices"] | Failure["DecodingServices"],
+  Success["EncodingServices"] | Failure["EncodingServices"]
+> => {
   const ResultSchema = Schema.Union([success, failure])
-  const Common = {
-    id: Schema.String,
-    type: Schema.Literal("tool-result"),
-    isFailure: Schema.Boolean,
-    name: Schema.Literal(name)
-  }
-  const Decoded = Schema.Struct({
-    ...Common,
-    [PartTypeId]: Schema.Literal(PartTypeId),
-    result: ResultSchema,
-    providerExecuted: Schema.Boolean,
-    metadata: ProviderMetadata,
-    encodedResult: Schema.toEncoded(ResultSchema),
-    preliminary: Schema.Boolean
-  })
-  const Encoded = Schema.Struct({
-    ...Common,
-    result: Schema.toEncoded(ResultSchema),
-    providerExecuted: Schema.optional(Schema.Boolean),
-    metadata: Schema.optional(ProviderMetadata),
-    preliminary: Schema.optional(Schema.Boolean)
-  })
-  return Decoded.pipe(Schema.encodeTo(
-    Encoded,
-    SchemaTransformation.transform({
-      decode: (encoded) => ({
-        ...encoded,
-        [PartTypeId]: PartTypeId,
-        providerExecuted: encoded.providerExecuted ?? false,
-        metadata: encoded.metadata ?? {},
-        encodedResult: encoded.result,
-        preliminary: encoded.preliminary ?? false
-      }),
-      encode: identity
+  const makeSchema = <Result extends Schema.Constraint, const IsFailure extends boolean>(
+    result: Result,
+    isFailure: IsFailure
+  ) => {
+    const BranchResult = Schema.Union([result])
+    const Common = {
+      id: Schema.String,
+      type: Schema.Literal("tool-result"),
+      isFailure: Schema.Literal(isFailure),
+      name: Schema.Literal(name)
+    }
+    const Decoded = Schema.Struct({
+      ...Common,
+      [PartTypeId]: Schema.Literal(PartTypeId),
+      result: BranchResult,
+      providerExecuted: Schema.Boolean,
+      metadata: ProviderMetadata,
+      encodedResult: Schema.toEncoded(ResultSchema),
+      preliminary: Schema.Boolean
     })
-  )).annotate({ identifier: `ToolResultPart(${name})` }) satisfies Schema.Codec<
-    ToolResultPart<Name, Success["Type"], Failure["Type"]>,
-    ToolResultPartEncoded,
-    Success["EncodingServices"] | Failure["EncodingServices"],
-    Success["DecodingServices"] | Failure["DecodingServices"]
-  >
+    const Encoded = Schema.Struct({
+      ...Common,
+      result: Schema.toEncoded(BranchResult),
+      providerExecuted: Schema.optional(Schema.Boolean),
+      metadata: Schema.optional(ProviderMetadata),
+      preliminary: Schema.optional(Schema.Boolean)
+    })
+    return Decoded.pipe(Schema.encodeTo(
+      Encoded,
+      SchemaTransformation.transform({
+        decode: (encoded) => ({
+          ...encoded,
+          [PartTypeId]: PartTypeId,
+          providerExecuted: encoded.providerExecuted ?? false,
+          metadata: encoded.metadata ?? {},
+          encodedResult: encoded.result,
+          preliminary: encoded.preliminary ?? false
+        }),
+        encode: identity
+      })
+    ))
+  }
+  return Schema.Union([makeSchema(success, false), makeSchema(failure, true)]).annotate({
+    identifier: `ToolResultPart(${name})`
+  })
 }
 
 /**
