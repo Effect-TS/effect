@@ -15,6 +15,7 @@ import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
+import * as ErrorReporter from "../../ErrorReporter.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
@@ -1583,27 +1584,31 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               }]
             })
           ),
-          Effect.withErrorReporting,
           Effect.provideContext(
             services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
           ),
           Effect.tapCause(Effect.logError),
-          Effect.catch((error) => {
-            if (AiError.isAiError(error)) {
-              const reason = (error as AiError.AiError).reason
-              return reason._tag === "ToolParameterValidationError"
-                ? Effect.fail(new InvalidParams({ message: reason.message }))
-                : Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+          Effect.catchCause((cause) => {
+            const failure = Cause.findError(cause)
+            let message = INTERNAL_TOOL_ERROR_MESSAGE
+            if (Result.isSuccess(failure)) {
+              const error = failure.success
+              if (AiError.isAiError(error)) {
+                const reason = (error as AiError.AiError).reason
+                if (reason._tag === "ToolParameterValidationError") {
+                  return Effect.fail(new InvalidParams({ message: reason.message }))
+                }
+              } else if (isDeclaredFailure(error) && error instanceof Error) {
+                message = error.message
+              }
+            } else if (!Cause.hasDies(cause)) {
+              return Effect.failCause(failure.failure)
             }
-            if (isDeclaredFailure(error)) {
-              const message = error instanceof Error
-                ? error.message
-                : INTERNAL_TOOL_ERROR_MESSAGE
-              return Effect.succeed(toolErrorResult(message))
-            }
-            return Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
-          }),
-          Effect.catchDefect(() => Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE)))
+            return ErrorReporter.report(cause).pipe(
+              Effect.provideContext(services),
+              Effect.as(toolErrorResult(message))
+            )
+          })
         )
       }
     })
