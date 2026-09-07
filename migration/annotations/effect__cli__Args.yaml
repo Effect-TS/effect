@@ -15,9 +15,9 @@
   note: "Argument constructors now take the name as a required first parameter."
 "@effect/cli/Args#Args.FormatArgsConfig":
   replacement: "Primitive.FileParseOptions"
-  note: "Pass the name separately and use the format option with Argument.fileParse or Argument.fileSchema."
+  note: "Pass the name separately and use the format option with Argument.FileParse or Argument.FileSchema."
 "@effect/cli/Args#Args.PathArgsConfig":
-  replacement: "Argument.path(name, { pathType, mustExist })"
+  replacement: "Argument.Path(name, { pathType, mustExist })"
   note: "Path options are inline; map exists=yes to mustExist=true and either to omission. exists=no has no exact replacement."
 "@effect/cli/Args#Args.Variance":
   replacement: "Argument.Argument"
@@ -35,11 +35,17 @@
   replacement: "Argument.between"
   note: "Use the moved combinator; v4 validates bounds when constructing the parameter."
 "@effect/cli/Args#boolean":
-  replacement: "Flag.Boolean / Argument.choiceWithValue"
+  replacement: "Flag.Boolean / Argument.ChoiceWithValue"
   note: "Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices."
+"@effect/cli/Args#date":
+  replacement: "Argument.Date"
+  note: "Use the renamed constructor and pass the argument name explicitly."
 "@effect/cli/Args#fileContent":
-  replacement: "Argument.file + Argument.mapEffect"
+  replacement: "Argument.File + Argument.mapEffect"
   note: "Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains."
+"@effect/cli/Args#float":
+  replacement: "Argument.Finite"
+  note: "Use the renamed constructor; it rejects non-finite numbers."
 "@effect/cli/Args#getHelp":
   replacement: "none"
   note: "Per-argument help introspection was removed; Command generates help internally."
@@ -55,6 +61,9 @@
 "@effect/cli/Args#getUsage":
   replacement: "none"
   note: "The public Usage tree was removed; Command generates a usage string internally."
+"@effect/cli/Args#integer":
+  replacement: "Argument.Int"
+  note: "Use the renamed constructor and pass the argument name explicitly."
 "@effect/cli/Args#isArgs":
   replacement: "Param.isParam(value) && value.kind === Param.argumentKind"
   note: "Arguments now use the shared Param representation and an explicit kind discriminator."
@@ -91,12 +100,3 @@
 "@effect/cli/Args#withSchema":
   replacement: "Argument.withSchema"
   note: "Use the moved combinator with a v4 Schema constraint decoder."
-"@effect/cli/Args#date":
-  replacement: "Argument.Date"
-  note: "Use the renamed constructor and pass the argument name explicitly."
-"@effect/cli/Args#float":
-  replacement: "Argument.Finite"
-  note: "Use the renamed constructor; it rejects non-finite numbers."
-"@effect/cli/Args#integer":
-  replacement: "Argument.Int"
-  note: "Use the renamed constructor and pass the argument name explicitly."

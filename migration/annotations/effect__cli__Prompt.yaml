@@ -5,19 +5,19 @@
   replacement: "Prompt.All.Return"
   note: "The collection result helper remains under Prompt.All."
 "@effect/cli/Prompt#date":
-  replacement: "Prompt.date"
+  replacement: "Prompt.Date"
   note: "Use the moved constructor."
 "@effect/cli/Prompt#file":
-  replacement: "Prompt.file"
+  replacement: "Prompt.File"
   note: "Use the moved constructor; v4 also supports a default selected path."
 "@effect/cli/Prompt#flatMap":
   replacement: "Prompt.flatMap"
   note: "Use the moved combinator."
 "@effect/cli/Prompt#float":
-  replacement: "Prompt.float"
+  replacement: "Prompt.Float"
   note: "Use the moved constructor; v4 also supports a default value."
 "@effect/cli/Prompt#integer":
-  replacement: "Prompt.integer"
+  replacement: "Prompt.Integer"
   note: "Use the moved constructor; v4 also supports a default value."
 "@effect/cli/Prompt#map":
   replacement: "Prompt.map"
@@ -35,5 +35,5 @@
   replacement: "Prompt.isPrompt"
   note: "The public type-id symbol was removed; use the runtime guard."
 "@effect/cli/Prompt#text":
-  replacement: "Prompt.text"
+  replacement: "Prompt.Text"
   note: "Use the moved constructor."

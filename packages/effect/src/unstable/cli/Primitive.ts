@@ -14,7 +14,7 @@ import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
 import { identity } from "../../Function.ts"
-import * as Path from "../../Path.ts"
+import * as Path_ from "../../Path.ts"
 import * as Redacted_ from "../../Redacted.ts"
 import * as Schema from "../../Schema.ts"
 import type { Formatter } from "../../SchemaIssue.ts"
@@ -215,7 +215,7 @@ export const Boolean: Primitive<boolean> = makeSchemaPrimitive(
  * @since 4.0.0
  */
 export const Finite: Primitive<number> = makeSchemaPrimitive(
-  "Float",
+  "Finite",
   Schema.Finite
 )
 
@@ -259,7 +259,7 @@ export const Finite: Primitive<number> = makeSchemaPrimitive(
  * @since 4.0.0
  */
 export const Int: Primitive<number> = makeSchemaPrimitive(
-  "Integer",
+  "Int",
   Schema.Int
 )
 
@@ -376,7 +376,7 @@ export const String: Primitive<string> = makePrimitive("String", (value) => Effe
  *
  * type LogLevel = "debug" | "info" | "warn" | "error"
  *
- * const logLevelPrimitive = Primitive.choice<LogLevel>([
+ * const logLevelPrimitive = Primitive.Choice<LogLevel>([
  *   ["debug", "debug"],
  *   ["info", "info"],
  *   ["warn", "warn"],
@@ -394,7 +394,7 @@ export const String: Primitive<string> = makePrimitive("String", (value) => Effe
  * @category constructors
  * @since 4.0.0
  */
-export const choice = <A>(
+export const Choice = <A>(
   choices: ReadonlyArray<readonly [string, A]>
 ): Primitive<A> => {
   const choiceMap = new Map(choices)
@@ -417,13 +417,13 @@ export const choice = <A>(
  * import { Primitive } from "effect/unstable/cli"
  *
  * // Only accept files
- * const filePath = Primitive.path("file", true)
+ * const filePath = Primitive.Path("file", true)
  *
  * // Only accept directories
- * const dirPath = Primitive.path("directory", true)
+ * const dirPath = Primitive.Path("directory", true)
  *
  * // Accept either files or directories
- * const anyPath = Primitive.path("either", false)
+ * const anyPath = Primitive.Path("either", false)
  *
  * const tags = [filePath._tag, dirPath._tag, anyPath._tag] // => ["Path", "Path", "Path"]
  * ```
@@ -464,7 +464,7 @@ export type PathType = "file" | "directory" | "either"
  * )
  *
  * const program = Effect.gen(function*() {
- *   const filePrimitive = Primitive.path("file", true)
+ *   const filePrimitive = Primitive.Path("file", true)
  *   const filePath = yield* filePrimitive.parse("./package.json")
  *   return filePath.endsWith("/package.json")
  * }).pipe(Effect.provide(services))
@@ -475,7 +475,7 @@ export type PathType = "file" | "directory" | "either"
  * @category constructors
  * @since 4.0.0
  */
-export const path = (
+export const Path = (
   pathType: PathType,
   mustExist?: boolean
 ): Primitive<string> => {
@@ -483,7 +483,7 @@ export const path = (
     "Path",
     Effect.fnUntraced(function*(value) {
       const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
+      const path = yield* Path_.Path
 
       // Resolve the path to absolute
       const absolutePath = path.isAbsolute(value) ? value : path.resolve(value)
@@ -600,7 +600,7 @@ export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
  * )
  *
  * const readConfigFile = Effect.gen(function*() {
- *   const content = yield* Primitive.fileText.parse("./package.json")
+ *   const content = yield* Primitive.FileText.parse("./package.json")
  *   return JSON.parse(content) as { private: boolean }
  * }).pipe(Effect.provide(services))
  *
@@ -610,11 +610,11 @@ export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const fileText: Primitive<string> = makePrimitive(
+export const FileText: Primitive<string> = makePrimitive(
   "FileText",
   Effect.fnUntraced(function*(filePath) {
     const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
+    const path = yield* Path_.Path
 
     // Resolve to absolute path
     const absolutePath = path.isAbsolute(filePath)
@@ -707,7 +707,7 @@ const fileParsers: Record<string, (content: string) => unknown> = {
  *   )
  * )
  *
- * const jsonFilePrimitive = Primitive.fileParse({ format: "json" })
+ * const jsonFilePrimitive = Primitive.FileParse({ format: "json" })
  *
  * const loadConfig = Effect.gen(function*() {
  *   const config = yield* jsonFilePrimitive.parse("./package.json")
@@ -720,7 +720,7 @@ const fileParsers: Record<string, (content: string) => unknown> = {
  * @category constructors
  * @since 4.0.0
  */
-export const fileParse = (options?: FileParseOptions): Primitive<unknown> => {
+export const FileParse = (options?: FileParseOptions): Primitive<unknown> => {
   return makePrimitive(
     "FileParse",
     Effect.fnUntraced(function*(filePath) {
@@ -729,7 +729,7 @@ export const fileParse = (options?: FileParseOptions): Primitive<unknown> => {
       if (parser === undefined) {
         return yield* Effect.fail(`Unsupported file format: ${fileFormat}`)
       }
-      const content = yield* fileText.parse(filePath)
+      const content = yield* FileText.parse(filePath)
       return yield* Effect.try({
         try: () => parser(content),
         catch: (error) => `Failed to parse '.${fileFormat}' file content: ${error}`
@@ -786,7 +786,7 @@ export type FileSchemaOptions = Struct.Simplify<
  *   private: Schema.Boolean
  * })
  *
- * const jsonConfigPrimitive = Primitive.fileSchema(ConfigSchema, {
+ * const jsonConfigPrimitive = Primitive.FileSchema(ConfigSchema, {
  *   format: "json"
  * })
  *
@@ -800,7 +800,7 @@ export type FileSchemaOptions = Struct.Simplify<
  * @category constructors
  * @since 4.0.0
  */
-export const fileSchema = <A>(
+export const FileSchema = <A>(
   schema: Schema.ConstraintDecoder<A, Environment>,
   options?: FileSchemaOptions | undefined
 ): Primitive<A> => {
@@ -808,7 +808,7 @@ export const fileSchema = <A>(
   return makePrimitive(
     "FileSchema",
     Effect.fnUntraced(function*(filePath) {
-      const content = yield* fileParse(options).parse(filePath)
+      const content = yield* FileParse(options).parse(filePath)
       return yield* Effect.mapError(
         decode(content),
         (error) => options?.errorFormatter?.(error.issue) ?? error.toString()
@@ -849,9 +849,9 @@ export const fileSchema = <A>(
  * )
  *
  * const parseKeyValue = Effect.all([
- *   Primitive.keyValuePair.parse("name=john"),
- *   Primitive.keyValuePair.parse("port=3000"),
- *   Primitive.keyValuePair.parse("debug=true")
+ *   Primitive.KeyValuePair.parse("name=john"),
+ *   Primitive.KeyValuePair.parse("port=3000"),
+ *   Primitive.KeyValuePair.parse("debug=true")
  * ])
  *
  * const result = await Effect.runPromise(parseKeyValue.pipe(Effect.provide(CliTestLayer)))
@@ -861,7 +861,7 @@ export const fileSchema = <A>(
  * @category constructors
  * @since 4.0.0
  */
-export const keyValuePair: Primitive<Record<string, string>> = makePrimitive(
+export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
   "KeyValuePair",
   Effect.fnUntraced(function*(value) {
     const separator = value.indexOf("=")
@@ -914,7 +914,7 @@ export const keyValuePair: Primitive<Record<string, string>> = makePrimitive(
  *
  * const program = Effect.gen(function*() {
  *   // This will always fail - useful for boolean flags
- *   return yield* Primitive.none.parse("any-value")
+ *   return yield* Primitive.None.parse("any-value")
  * })
  *
  * await Effect.runPromise(Effect.flip(program).pipe(Effect.provide(CliTestLayer))) // => "This option does not accept values"
@@ -923,7 +923,7 @@ export const keyValuePair: Primitive<Record<string, string>> = makePrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const none: Primitive<never> = makePrimitive("None", () => Effect.fail("This option does not accept values"))
+export const None: Primitive<never> = makePrimitive("None", () => Effect.fail("This option does not accept values"))
 
 /**
  * Gets a human-readable type name for a primitive.
@@ -942,9 +942,9 @@ export const none: Primitive<never> = makePrimitive("None", () => Effect.fail("T
  * Primitive.getTypeName(Primitive.Int) // => "integer"
  * Primitive.getTypeName(Primitive.Boolean) // => "boolean"
  * Primitive.getTypeName(Primitive.Date) // => "date"
- * Primitive.getTypeName(Primitive.keyValuePair) // => "key=value"
+ * Primitive.getTypeName(Primitive.KeyValuePair) // => "key=value"
  *
- * const logLevelChoice = Primitive.choice([
+ * const logLevelChoice = Primitive.Choice([
  *   ["debug", "debug"],
  *   ["info", "info"]
  * ])
@@ -960,9 +960,9 @@ export const getTypeName = <A>(primitive: Primitive<A>): string => {
       return "boolean"
     case "String":
       return "string"
-    case "Integer":
+    case "Int":
       return "integer"
-    case "Float":
+    case "Finite":
       return "number"
     case "Date":
       return "date"

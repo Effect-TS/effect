@@ -18,7 +18,7 @@ import type { OpenAPISpec } from "effect/unstable/httpapi/OpenApi"
 import * as OpenApiGenerator from "./OpenApiGenerator.ts"
 import * as OpenApiPatch from "./OpenApiPatch.ts"
 
-const spec = Flag.fileParse("spec").pipe(
+const spec = Flag.FileParse("spec").pipe(
   Flag.withAlias("s"),
   Flag.withDescription("The OpenAPI spec file to generate output from")
 )
@@ -29,7 +29,7 @@ const name = Flag.String("name").pipe(
   Flag.withDefault("Client")
 )
 
-const format = Flag.choice("format", ["httpclient", "httpclient-type-only", "httpapi"] as const).pipe(
+const format = Flag.Choice("format", ["httpclient", "httpclient-type-only", "httpapi"] as const).pipe(
   Flag.withAlias("f"),
   Flag.withDescription(
     "Output format to generate: httpclient | httpclient-type-only | httpapi (default: httpclient)"

@@ -47,7 +47,7 @@ const create = Command.make(
       // valid input
       Argument.withSchema(Schema.NonEmptyString)
     ),
-    priority: Flag.choice("priority", ["low", "normal", "high"]).pipe(
+    priority: Flag.Choice("priority", ["low", "normal", "high"]).pipe(
       Flag.withDescription("Priority for the new task"),
       Flag.withDefault("normal")
     ),
@@ -88,7 +88,7 @@ const create = Command.make(
 const list = Command.make(
   "list",
   {
-    status: Flag.choice("status", ["open", "done", "all"]).pipe(
+    status: Flag.Choice("status", ["open", "done", "all"]).pipe(
       Flag.withDescription("Filter tasks by status"),
       Flag.withDefault("open")
     ),

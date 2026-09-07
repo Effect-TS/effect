@@ -20,32 +20,32 @@
   replacement: "Flag.Boolean + Flag.withDefault"
   note: "Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias."
 "@effect/cli/Options#choice":
-  replacement: "Flag.choice"
+  replacement: "Flag.Choice"
   note: "Use the moved constructor."
 "@effect/cli/Options#choiceWithValue":
-  replacement: "Flag.choiceWithValue"
+  replacement: "Flag.ChoiceWithValue"
   note: "Use the moved constructor."
 "@effect/cli/Options#date":
   replacement: "Flag.Date"
   note: "Use the moved constructor."
 "@effect/cli/Options#directory":
-  replacement: "Flag.directory"
+  replacement: "Flag.Directory"
   note: "Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement."
 "@effect/cli/Options#file":
-  replacement: "Flag.file"
+  replacement: "Flag.File"
   note: "Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement."
 "@effect/cli/Options#fileContent":
-  replacement: "Flag.file + Flag.mapEffect"
+  replacement: "Flag.File + Flag.mapEffect"
   note: "Parse a path and read it with FileSystem.readFile; no binary-content flag constructor remains."
 "@effect/cli/Options#fileParse":
-  replacement: "Flag.fileParse"
+  replacement: "Flag.FileParse"
   note: "Pass the old format as an options field; v4 returns parsed content rather than a path/content tuple."
 "@effect/cli/Options#fileSchema":
-  replacement: "Flag.fileSchema"
+  replacement: "Flag.FileSchema"
   note: "Pass the old format as an options field and use a v4 Schema constraint decoder."
 "@effect/cli/Options#fileText":
-  replacement: "Flag.file + Flag.mapEffect"
-  note: "Flag.fileText returns content only; read after Flag.file when the path/content tuple must be preserved."
+  replacement: "Flag.File + Flag.mapEffect"
+  note: "Flag.FileText returns content only; read after Flag.File when the path/content tuple must be preserved."
 "@effect/cli/Options#filterMap":
   replacement: "Flag.filterMap"
   note: "Use the moved combinator and replace the fixed message with an onNone function."
@@ -71,7 +71,7 @@
   replacement: "Param.isParam(value) && value.kind === Param.flagKind"
   note: "Flags now use the shared Param representation and an explicit kind discriminator."
 "@effect/cli/Options#keyValueMap":
-  replacement: "Flag.keyValuePair"
+  replacement: "Flag.KeyValuePair"
   note: "Renamed and now returns Record<string, string> rather than HashMap."
 "@effect/cli/Options#map":
   replacement: "Flag.map"
@@ -84,7 +84,7 @@
   note: "Use the moved combinator; onError now returns a string rather than HelpDoc."
 "@effect/cli/Options#none":
   replacement: "omit the config entry"
-  note: "V4 Flag.none is an always-failing sentinel, not v3's empty successful option set."
+  note: "V4 Flag.None is an always-failing sentinel, not v3's empty successful option set."
 "@effect/cli/Options#optional":
   replacement: "Flag.optional"
   note: "Use the moved combinator; it still returns Option."

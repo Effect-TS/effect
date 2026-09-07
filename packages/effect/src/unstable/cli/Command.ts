@@ -1904,7 +1904,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
             ]
             const wizardResult = yield* Wizard.run(command, { commandPath, prefix })
             yield* Console.log(Wizard.renderCompletion(wizardResult.displayArgs))
-            const shouldRun = yield* Prompt.run(Prompt.toggle({
+            const shouldRun = yield* Prompt.run(Prompt.Toggle({
               message: "Run this command?",
               initial: true,
               active: "yes",

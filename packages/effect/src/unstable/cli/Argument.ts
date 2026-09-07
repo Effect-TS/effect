@@ -33,7 +33,7 @@ import type * as Primitive from "./Primitive.ts"
  * `Boolean` is intentionally omitted from Argument constructors. Positional
  * boolean arguments are ambiguous in CLI design since there is no flag name to
  * negate (for example, `--no-verbose`). Use Flag.Boolean instead, or use
- * Argument.choice with explicit "true" / "false" strings if needed.
+ * Argument.Choice with explicit "true" / "false" strings if needed.
  *
  * @category models
  * @since 4.0.0
@@ -86,17 +86,17 @@ export const Int = (name: string): Argument<number> => Param.Int(Param.argumentK
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const inputFile = Argument.file("input", { mustExist: true }) // Must exist
- * const outputFile = Argument.file("output", { mustExist: false }) // Must not exist
+ * const inputFile = Argument.File("input", { mustExist: true }) // Must exist
+ * const outputFile = Argument.File("output", { mustExist: false }) // Must not exist
  * const kinds = [inputFile.kind, outputFile.kind] // => ["argument", "argument"]
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const file = (name: string, options?: {
+export const File = (name: string, options?: {
   readonly mustExist?: boolean | undefined
-}): Argument<string> => Param.file(Param.argumentKind, name, options)
+}): Argument<string> => Param.File(Param.argumentKind, name, options)
 
 /**
  * Creates a positional directory path argument.
@@ -106,16 +106,16 @@ export const file = (name: string, options?: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const workspace = Argument.directory("workspace", { mustExist: true }) // Must exist
+ * const workspace = Argument.Directory("workspace", { mustExist: true }) // Must exist
  * workspace.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const directory = (name: string, options?: {
+export const Directory = (name: string, options?: {
   readonly mustExist?: boolean | undefined
-}): Argument<string> => Param.directory(Param.argumentKind, name, options)
+}): Argument<string> => Param.Directory(Param.argumentKind, name, options)
 
 /**
  * Creates a positional float argument.
@@ -159,17 +159,17 @@ export const Date = (name: string): Argument<globalThis.Date> => Param.Date(Para
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const environment = Argument.choice("environment", ["dev", "staging", "prod"])
+ * const environment = Argument.Choice("environment", ["dev", "staging", "prod"])
  * environment.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const choice = <const Choices extends ReadonlyArray<string>>(
+export const Choice = <const Choices extends ReadonlyArray<string>>(
   name: string,
   choices: Choices
-): Argument<Choices[number]> => Param.choice(Param.argumentKind, name, choices)
+): Argument<Choices[number]> => Param.Choice(Param.argumentKind, name, choices)
 
 /**
  * Creates a positional path argument.
@@ -179,17 +179,17 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const configPath = Argument.path("config")
+ * const configPath = Argument.Path("config")
  * configPath.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const path = (name: string, options?: {
+export const Path = (name: string, options?: {
   pathType?: "file" | "directory" | "either"
   mustExist?: boolean
-}): Argument<string> => Param.path(Param.argumentKind, name, options)
+}): Argument<string> => Param.Path(Param.argumentKind, name, options)
 
 /**
  * Creates a positional redacted argument that obscures its value.
@@ -216,14 +216,14 @@ export const Redacted = (name: string): Argument<Redacted_.Redacted<string>> => 
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const config = Argument.fileText("config-file")
+ * const config = Argument.FileText("config-file")
  * config.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const fileText = (name: string): Argument<string> => Param.fileText(Param.argumentKind, name)
+export const FileText = (name: string): Argument<string> => Param.FileText(Param.argumentKind, name)
 
 /**
  * Creates a positional argument that reads a file and parses its content.
@@ -239,17 +239,17 @@ export const fileText = (name: string): Argument<string> => Param.fileText(Param
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const config = Argument.fileParse("config", { format: "json" })
+ * const config = Argument.FileParse("config", { format: "json" })
  * config.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const fileParse = (
+export const FileParse = (
   name: string,
   options?: Primitive.FileParseOptions | undefined
-): Argument<unknown> => Param.fileParse(Param.argumentKind, name, options)
+): Argument<unknown> => Param.FileParse(Param.argumentKind, name, options)
 
 /**
  * Creates a positional argument that reads and validates file content using a schema.
@@ -265,18 +265,18 @@ export const fileParse = (
  *   host: Schema.String
  * })
  *
- * const config = Argument.fileSchema("config", ConfigSchema)
+ * const config = Argument.FileSchema("config", ConfigSchema)
  * config.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const fileSchema = <A>(
+export const FileSchema = <A>(
   name: string,
   schema: Schema.ConstraintDecoder<A, Environment>,
   options?: Primitive.FileSchemaOptions | undefined
-): Argument<A> => Param.fileSchema(Param.argumentKind, name, schema, options)
+): Argument<A> => Param.FileSchema(Param.argumentKind, name, schema, options)
 
 /**
  * Creates an empty sentinel argument that always fails to parse.
@@ -287,14 +287,14 @@ export const fileSchema = <A>(
  * import { Argument } from "effect/unstable/cli"
  *
  * // Used as a placeholder or default in combinators
- * const noArg = Argument.none
+ * const noArg = Argument.None
  * noArg.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const none: Argument<never> = Param.none(Param.argumentKind)
+export const None: Argument<never> = Param.None(Param.argumentKind)
 
 // -------------------------------------------------------------------------------------
 // combinators
@@ -396,7 +396,7 @@ export const withFallbackConfig: {
  * import { Argument, Prompt } from "effect/unstable/cli"
  *
  * const filename = Argument.String("filename").pipe(
- *   Argument.withFallbackPrompt(Prompt.text({ message: "Filename" }))
+ *   Argument.withFallbackPrompt(Prompt.Text({ message: "Filename" }))
  * )
  * filename.kind // => "argument"
  * ```
@@ -679,7 +679,7 @@ export const withSchema: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const logLevel = Argument.choiceWithValue("level", [
+ * const logLevel = Argument.ChoiceWithValue("level", [
  *   ["debug", 0],
  *   ["info", 1],
  *   ["warn", 2],
@@ -691,10 +691,10 @@ export const withSchema: {
  * @category constructors
  * @since 4.0.0
  */
-export const choiceWithValue = <const Choices extends ReadonlyArray<readonly [string, any]>>(
+export const ChoiceWithValue = <const Choices extends ReadonlyArray<readonly [string, any]>>(
   name: string,
   choices: Choices
-): Argument<Choices[number][1]> => Param.choiceWithValue(Param.argumentKind, name, choices)
+): Argument<Choices[number][1]> => Param.ChoiceWithValue(Param.argumentKind, name, choices)
 
 // -------------------------------------------------------------------------------------
 // metadata
@@ -817,7 +817,7 @@ export const orElse: {
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const source = Argument.file("source").pipe(
+ * const source = Argument.File("source").pipe(
  *   Argument.orElseResult(() => Argument.String("url"))
  * )
  * // Returns Result<string, string>

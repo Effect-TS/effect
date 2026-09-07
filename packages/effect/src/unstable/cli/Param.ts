@@ -532,7 +532,7 @@ export const Date = <const Kind extends ParamKind>(
  *   readonly _tag: "Cat"
  * }
  *
- * const animal = Param.choiceWithValue(Param.flagKind, "animal", [
+ * const animal = Param.ChoiceWithValue(Param.flagKind, "animal", [
  *   ["dog", { _tag: "Dog" }],
  *   ["cat", { _tag: "Cat" }]
  * ])
@@ -542,13 +542,13 @@ export const Date = <const Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const choiceWithValue = <
+export const ChoiceWithValue = <
   const Kind extends ParamKind,
   const Choices extends ReadonlyArray<readonly [string, any]>
 >(kind: Kind, name: string, choices: Choices): Param<Kind, Choices[number][1]> =>
   makeSingle({
     name,
-    primitiveType: Primitive.choice(choices),
+    primitiveType: Primitive.Choice(choices),
     kind
   })
 
@@ -561,7 +561,7 @@ export const choiceWithValue = <
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const logLevel = Param.choice(Param.flagKind, "log-level", [
+ * const logLevel = Param.Choice(Param.flagKind, "log-level", [
  *   "debug",
  *   "info",
  *   "warn",
@@ -573,12 +573,12 @@ export const choiceWithValue = <
  * @category constructors
  * @since 4.0.0
  */
-export const choice = <
+export const Choice = <
   const Kind extends ParamKind,
   const Choices extends ReadonlyArray<string>
 >(kind: Kind, name: string, choices: Choices): Param<Kind, Choices[number]> => {
   const mappedChoices = choices.map((value) => [value, value] as const)
-  return choiceWithValue(kind, name, mappedChoices)
+  return ChoiceWithValue(kind, name, mappedChoices)
 }
 
 /**
@@ -590,13 +590,13 @@ export const choice = <
  * import { Param } from "effect/unstable/cli"
  *
  * // Basic path parameter
- * const outputPath = Param.path(Param.flagKind, "output")
+ * const outputPath = Param.Path(Param.flagKind, "output")
  *
  * // Path that must exist
- * const inputPath = Param.path(Param.flagKind, "input", { mustExist: true })
+ * const inputPath = Param.Path(Param.flagKind, "input", { mustExist: true })
  *
  * // File-only path
- * const configFile = Param.path(Param.flagKind, "config", {
+ * const configFile = Param.Path(Param.flagKind, "config", {
  *   pathType: "file",
  *   mustExist: true,
  *   typeName: "config-file"
@@ -607,7 +607,7 @@ export const choice = <
  * @category constructors
  * @since 4.0.0
  */
-export const path = <Kind extends ParamKind>(
+export const Path = <Kind extends ParamKind>(
   kind: Kind,
   name: string,
   options?: {
@@ -619,7 +619,7 @@ export const path = <Kind extends ParamKind>(
   makeSingle({
     name,
     kind,
-    primitiveType: Primitive.path(options?.pathType ?? "either", options?.mustExist),
+    primitiveType: Primitive.Path(options?.pathType ?? "either", options?.mustExist),
     typeName: options?.typeName
   })
 
@@ -637,10 +637,10 @@ export const path = <Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Basic directory parameter
- * const outputDir = Param.directory(Param.flagKind, "output-dir")
+ * const outputDir = Param.Directory(Param.flagKind, "output-dir")
  *
  * // Directory that must exist
- * const sourceDir = Param.directory(Param.flagKind, "source", { mustExist: true })
+ * const sourceDir = Param.Directory(Param.flagKind, "source", { mustExist: true })
  *
  * // Usage: --output-dir /path/to/dir --source /existing/dir
  * const kinds = [outputDir.kind, sourceDir.kind] // => ["flag", "flag"]
@@ -649,14 +649,14 @@ export const path = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const directory = <Kind extends ParamKind>(
+export const Directory = <Kind extends ParamKind>(
   kind: Kind,
   name: string,
   options?: {
     readonly mustExist?: boolean | undefined
   }
 ): Param<Kind, string> =>
-  path(kind, name, {
+  Path(kind, name, {
     pathType: "directory",
     typeName: "directory",
     mustExist: options?.mustExist
@@ -676,10 +676,10 @@ export const directory = <Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Basic file parameter
- * const outputFile = Param.file(Param.flagKind, "output")
+ * const outputFile = Param.File(Param.flagKind, "output")
  *
  * // File that must exist
- * const inputFile = Param.file(Param.flagKind, "input", { mustExist: true })
+ * const inputFile = Param.File(Param.flagKind, "input", { mustExist: true })
  *
  * // Usage: --output result.txt --input existing-file.txt
  * const kinds = [outputFile.kind, inputFile.kind] // => ["flag", "flag"]
@@ -688,14 +688,14 @@ export const directory = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const file = <Kind extends ParamKind>(
+export const File = <Kind extends ParamKind>(
   kind: Kind,
   name: string,
   options?: {
     readonly mustExist?: boolean | undefined
   }
 ): Param<Kind, string> =>
-  path(kind, name, {
+  Path(kind, name, {
     pathType: "file",
     typeName: "file",
     mustExist: options?.mustExist
@@ -742,10 +742,10 @@ export const Redacted = <Kind extends ParamKind>(
  * import { Param } from "effect/unstable/cli"
  *
  * // Read a config file as string
- * const configContent = Param.fileText(Param.flagKind, "config")
+ * const configContent = Param.FileText(Param.flagKind, "config")
  *
  * // Read a template file as argument
- * const templateContent = Param.fileText(Param.argumentKind, "template")
+ * const templateContent = Param.FileText(Param.argumentKind, "template")
  *
  * // Usage: --config config.txt (reads file content into string)
  * const kinds = [configContent.kind, templateContent.kind] // => ["flag", "argument"]
@@ -754,10 +754,10 @@ export const Redacted = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const fileText = <Kind extends ParamKind>(kind: Kind, name: string): Param<Kind, string> =>
+export const FileText = <Kind extends ParamKind>(kind: Kind, name: string): Param<Kind, string> =>
   makeSingle({
     name,
-    primitiveType: Primitive.fileText,
+    primitiveType: Primitive.FileText,
     kind
   })
 
@@ -776,10 +776,10 @@ export const fileText = <Kind extends ParamKind>(kind: Kind, name: string): Para
  *
  * // Will use the extension of the file passed on the command line to determine
  * // the parser to use
- * const config = Param.fileParse(Param.flagKind, "config")
+ * const config = Param.FileParse(Param.flagKind, "config")
  *
  * // Will use the JSON parser
- * const jsonConfig = Param.fileParse(Param.flagKind, "json-config", {
+ * const jsonConfig = Param.FileParse(Param.flagKind, "json-config", {
  *   format: "json"
  * })
  * const kinds = [config.kind, jsonConfig.kind] // => ["flag", "flag"]
@@ -788,14 +788,14 @@ export const fileText = <Kind extends ParamKind>(kind: Kind, name: string): Para
  * @category constructors
  * @since 4.0.0
  */
-export const fileParse = <Kind extends ParamKind>(
+export const FileParse = <Kind extends ParamKind>(
   kind: Kind,
   name: string,
   options?: Primitive.FileParseOptions | undefined
 ): Param<Kind, unknown> =>
   makeSingle({
     name,
-    primitiveType: Primitive.fileParse(options),
+    primitiveType: Primitive.FileParse(options),
     kind
   })
 
@@ -813,12 +813,12 @@ export const fileParse = <Kind extends ParamKind>(
  *   host: Schema.String
  * })
  *
- * const config = Param.fileSchema(Param.flagKind, "config", configSchema, {
+ * const config = Param.FileSchema(Param.flagKind, "config", configSchema, {
  *   format: "json"
  * })
  *
  * // Parse YAML file
- * const yamlConfig = Param.fileSchema(Param.flagKind, "config", configSchema, {
+ * const yamlConfig = Param.FileSchema(Param.flagKind, "config", configSchema, {
  *   format: "yaml"
  * })
  *
@@ -829,7 +829,7 @@ export const fileParse = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const fileSchema = <Kind extends ParamKind, A>(
+export const FileSchema = <Kind extends ParamKind, A>(
   kind: Kind,
   name: string,
   schema: Schema.ConstraintDecoder<A, Environment>,
@@ -837,7 +837,7 @@ export const fileSchema = <Kind extends ParamKind, A>(
 ): Param<Kind, A> =>
   makeSingle({
     name,
-    primitiveType: Primitive.fileSchema(schema, options),
+    primitiveType: Primitive.FileSchema(schema, options),
     kind
   })
 
@@ -859,10 +859,10 @@ export const fileSchema = <Kind extends ParamKind, A>(
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const env = Param.keyValuePair(Param.flagKind, "env")
+ * const env = Param.KeyValuePair(Param.flagKind, "env")
  * // --env FOO=bar --env BAZ=qux will parse to { FOO: "bar", BAZ: "qux" }
  *
- * const props = Param.keyValuePair(Param.flagKind, "property")
+ * const props = Param.KeyValuePair(Param.flagKind, "property")
  * // --property name=value --property debug=true
  * const kinds = [env.kind, props.kind] // => ["flag", "flag"]
  * ```
@@ -870,7 +870,7 @@ export const fileSchema = <Kind extends ParamKind, A>(
  * @category constructors
  * @since 4.0.0
  */
-export const keyValuePair = <Kind extends ParamKind>(
+export const KeyValuePair = <Kind extends ParamKind>(
   kind: Kind,
   name: string
 ): Param<Kind, Record<string, string>> =>
@@ -878,7 +878,7 @@ export const keyValuePair = <Kind extends ParamKind>(
     variadic(
       makeSingle({
         name,
-        primitiveType: Primitive.keyValuePair,
+        primitiveType: Primitive.KeyValuePair,
         kind
       }),
       { min: 1 }
@@ -899,7 +899,7 @@ export const keyValuePair = <Kind extends ParamKind>(
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const disabledDebugParam = Param.none(Param.flagKind)
+ * const disabledDebugParam = Param.None(Param.flagKind)
  *
  * const makeDebugParam = (enableDebug: boolean) =>
  *   enableDebug ? Param.String(Param.flagKind, "debug") : disabledDebugParam
@@ -911,10 +911,10 @@ export const keyValuePair = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const none = <Kind extends ParamKind>(kind: Kind): Param<Kind, never> =>
+export const None = <Kind extends ParamKind>(kind: Kind): Param<Kind, never> =>
   makeSingle({
     name: "__none__",
-    primitiveType: Primitive.none,
+    primitiveType: Primitive.None,
     kind
   })
 
@@ -1833,7 +1833,7 @@ export const withSchema: {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const config = Param.file(Param.flagKind, "config").pipe(
+ * const config = Param.File(Param.flagKind, "config").pipe(
  *   Param.orElse(() => Param.String(Param.flagKind, "config-url"))
  * )
  * config.kind // => "flag"
@@ -1873,7 +1873,7 @@ export const orElse: {
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const configSource = Param.file(Param.flagKind, "config").pipe(
+ * const configSource = Param.File(Param.flagKind, "config").pipe(
  *   Param.orElseResult(() => Param.String(Param.flagKind, "config-url"))
  * )
  * // Returns Result<string, string>

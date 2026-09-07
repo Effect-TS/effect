@@ -139,10 +139,10 @@ export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.fl
  * import { Flag } from "effect/unstable/cli"
  *
  * // simple enum like choice mapping directly to string union
- * const color = Flag.choice("color", ["red", "green", "blue"])
+ * const color = Flag.Choice("color", ["red", "green", "blue"])
  *
  * // choice with custom value mapping
- * const logLevel = Flag.choiceWithValue("log-level", [
+ * const logLevel = Flag.ChoiceWithValue("log-level", [
  *   ["debug", "Debug" as const],
  *   ["info", "Info" as const],
  *   ["error", "Error" as const]
@@ -153,10 +153,10 @@ export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.fl
  * @category constructors
  * @since 4.0.0
  */
-export const choiceWithValue = <const Choice extends ReadonlyArray<readonly [string, any]>>(
+export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [string, any]>>(
   name: string,
   choices: Choice
-): Flag<Choice[number][1]> => Param.choiceWithValue(Param.flagKind, name, choices)
+): Flag<Choice[number][1]> => Param.ChoiceWithValue(Param.flagKind, name, choices)
 
 /**
  * Creates a flag that accepts one of the provided string choices and returns
@@ -171,15 +171,15 @@ export const choiceWithValue = <const Choice extends ReadonlyArray<readonly [str
  *
  * An empty choices array compiles, but no input value can parse successfully.
  *
- * @see {@link choiceWithValue} for mapping accepted strings to different typed values
+ * @see {@link ChoiceWithValue} for mapping accepted strings to different typed values
  *
  * @category constructors
  * @since 4.0.0
  */
-export const choice = <const Choices extends ReadonlyArray<string>>(
+export const Choice = <const Choices extends ReadonlyArray<string>>(
   name: string,
   choices: Choices
-): Flag<Choices[number]> => Param.choice(Param.flagKind, name, choices)
+): Flag<Choices[number]> => Param.Choice(Param.flagKind, name, choices)
 
 /**
  * Creates a path flag that accepts file system path input with validation options.
@@ -190,16 +190,16 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  * import { Flag } from "effect/unstable/cli"
  *
  * // Basic path flag
- * const pathFlag = Flag.path("config-path")
+ * const pathFlag = Flag.Path("config-path")
  *
  * // File-only path that must exist
- * const fileFlag = Flag.path("input-file", {
+ * const fileFlag = Flag.Path("input-file", {
  *   pathType: "file",
  *   mustExist: true
  * })
  *
  * // Directory path with custom type name
- * const dirFlag = Flag.path("output-dir", {
+ * const dirFlag = Flag.Path("output-dir", {
  *   pathType: "directory",
  *   typeName: "OUTPUT_DIRECTORY"
  * })
@@ -209,11 +209,11 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  * @category constructors
  * @since 4.0.0
  */
-export const path = (name: string, options?: {
+export const Path = (name: string, options?: {
   readonly pathType?: "file" | "directory" | "either" | undefined
   readonly mustExist?: boolean | undefined
   readonly typeName?: string | undefined
-}): Flag<string> => Param.path(Param.flagKind, name, options)
+}): Flag<string> => Param.Path(Param.flagKind, name, options)
 
 /**
  * Creates a file path flag that accepts file paths with optional existence validation.
@@ -224,11 +224,11 @@ export const path = (name: string, options?: {
  * import { Flag } from "effect/unstable/cli"
  *
  * // Basic file flag
- * const inputFlag = Flag.file("input")
+ * const inputFlag = Flag.File("input")
  * // Usage: --input ./data.json
  *
  * // File that must exist
- * const configFlag = Flag.file("config", { mustExist: true })
+ * const configFlag = Flag.File("config", { mustExist: true })
  * // Usage: --config ./config.yaml (file must exist)
  * const kinds = [inputFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
@@ -236,9 +236,9 @@ export const path = (name: string, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const file = (name: string, options?: {
+export const File = (name: string, options?: {
   readonly mustExist?: boolean | undefined
-}): Flag<string> => Param.file(Param.flagKind, name, options)
+}): Flag<string> => Param.File(Param.flagKind, name, options)
 
 /**
  * Creates a directory path flag that accepts directory paths with optional existence validation.
@@ -249,11 +249,11 @@ export const file = (name: string, options?: {
  * import { Flag } from "effect/unstable/cli"
  *
  * // Basic directory flag
- * const outputFlag = Flag.directory("output")
+ * const outputFlag = Flag.Directory("output")
  * // Usage: --output ./build
  *
  * // Directory that must exist
- * const sourceFlag = Flag.directory("source", { mustExist: true })
+ * const sourceFlag = Flag.Directory("source", { mustExist: true })
  * // Usage: --source ./src (directory must exist)
  * const kinds = [outputFlag.kind, sourceFlag.kind] // => ["flag", "flag"]
  * ```
@@ -261,9 +261,9 @@ export const file = (name: string, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const directory = (name: string, options?: {
+export const Directory = (name: string, options?: {
   readonly mustExist?: boolean | undefined
-}): Flag<string> => Param.directory(Param.flagKind, name, options)
+}): Flag<string> => Param.Directory(Param.flagKind, name, options)
 
 /**
  * Creates a string flag whose parsed value is wrapped in `Redacted.Redacted` so
@@ -324,7 +324,7 @@ export const Redacted = (name: string): Flag<Redacted_.Redacted<string>> => Para
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const config = Flag.fileText("config-file")
+ * const config = Flag.FileText("config-file")
  * // --config-file ./app.json will read the file content
  * config.kind // => "flag"
  * ```
@@ -332,7 +332,7 @@ export const Redacted = (name: string): Flag<Redacted_.Redacted<string>> => Para
  * @category constructors
  * @since 4.0.0
  */
-export const fileText = (name: string): Flag<string> => Param.fileText(Param.flagKind, name)
+export const FileText = (name: string): Flag<string> => Param.FileText(Param.flagKind, name)
 
 /**
  * Creates a flag that reads and parses the content of the specified file.
@@ -349,20 +349,20 @@ export const fileText = (name: string): Flag<string> => Param.fileText(Param.fla
  *
  * // Will use the extension of the file passed on the command line to determine
  * // the parser to use
- * const config = Flag.fileParse("config")
+ * const config = Flag.FileParse("config")
  *
  * // Will use the JSON parser
- * const jsonConfig = Flag.fileParse("json-config", { format: "json" })
+ * const jsonConfig = Flag.FileParse("json-config", { format: "json" })
  * const kinds = [config.kind, jsonConfig.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const fileParse = (
+export const FileParse = (
   name: string,
   options?: Primitive.FileParseOptions | undefined
-): Flag<unknown> => Param.fileParse(Param.flagKind, name, options)
+): Flag<unknown> => Param.FileParse(Param.flagKind, name, options)
 
 /**
  * Creates a flag that reads and validates file content using the specified
@@ -379,18 +379,18 @@ export const fileParse = (
  *   host: Schema.String
  * })
  *
- * const config = Flag.fileSchema("config", ConfigSchema, { format: "json" })
+ * const config = Flag.FileSchema("config", ConfigSchema, { format: "json" })
  * config.kind // => "flag"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const fileSchema = <A>(
+export const FileSchema = <A>(
   name: string,
   schema: Schema.ConstraintDecoder<A, Environment>,
   options?: Primitive.FileSchemaOptions | undefined
-): Flag<A> => Param.fileSchema(Param.flagKind, name, schema, options)
+): Flag<A> => Param.FileSchema(Param.flagKind, name, schema, options)
 
 /**
  * Creates a flag that parses key=value pairs.
@@ -410,7 +410,7 @@ export const fileSchema = <A>(
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const env = Flag.keyValuePair("env")
+ * const env = Flag.KeyValuePair("env")
  * // --env FOO=bar --env BAZ=qux will parse to { FOO: "bar", BAZ: "qux" }
  * env.kind // => "flag"
  * ```
@@ -418,7 +418,7 @@ export const fileSchema = <A>(
  * @category constructors
  * @since 4.0.0
  */
-export const keyValuePair = (name: string): Flag<Record<string, string>> => Param.keyValuePair(Param.flagKind, name)
+export const KeyValuePair = (name: string): Flag<Record<string, string>> => Param.KeyValuePair(Param.flagKind, name)
 
 /**
  * Creates an empty sentinel flag that always fails to parse.
@@ -430,16 +430,16 @@ export const keyValuePair = (name: string): Flag<Record<string, string>> => Para
  * import { Flag } from "effect/unstable/cli"
  *
  * const makeValueFlag = (includeValue: boolean) =>
- *   includeValue ? Flag.String("value") : Flag.none
+ *   includeValue ? Flag.String("value") : Flag.None
  *
- * makeValueFlag(true) === Flag.none // => false
- * makeValueFlag(false) === Flag.none // => true
+ * makeValueFlag(true) === Flag.None // => false
+ * makeValueFlag(false) === Flag.None // => true
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const none: Flag<never> = Param.none(Param.flagKind)
+export const None: Flag<never> = Param.None(Param.flagKind)
 
 // -------------------------------------------------------------------------------------
 // combinators
@@ -486,7 +486,7 @@ export const withAlias: {
  *   Flag.withDescription("The port number to listen on")
  * )
  *
- * const configFlag = Flag.file("config").pipe(
+ * const configFlag = Flag.File("config").pipe(
  *   Flag.withDescription("Path to the configuration file")
  * )
  * const kinds = [portFlag.kind, configFlag.kind] // => ["flag", "flag"]
@@ -670,7 +670,7 @@ export const withFallbackConfig: {
  * import { Flag, Prompt } from "effect/unstable/cli"
  *
  * const name = Flag.String("name").pipe(
- *   Flag.withFallbackPrompt(Prompt.text({ message: "Name" }))
+ *   Flag.withFallbackPrompt(Prompt.Text({ message: "Name" }))
  * )
  * name.kind // => "flag"
  * ```
@@ -839,7 +839,7 @@ export const mapTryCatch: {
  * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
- * const sourceFlag = Flag.atLeast(Flag.file("source"), 2)
+ * const sourceFlag = Flag.atLeast(Flag.File("source"), 2)
  * // Requires at least 2 source files
  * // Usage: --source file1.ts --source file2.ts
  *
@@ -1005,7 +1005,7 @@ export const filter: {
  *
  * // Multiple input sources with fallback
  * const configFlag = Flag.orElse(
- *   Flag.file("config"),
+ *   Flag.File("config"),
  *   () => Flag.String("config-url")
  * )
  * const kinds = [valueFlag.kind, configFlag.kind] // => ["flag", "flag"]

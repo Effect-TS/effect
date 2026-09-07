@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `10b108c390` (`10b108c390b2897259a98dcef259f24f94f713f2`)
+Head: `origin/main` (`26e0085d098f6e526c085c357b8d82ee068b6518`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5088,9 +5088,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.Args.BaseArgsConfig` -> `name: string`: Argument constructors now take the name as a required first parameter.
 
-- `Args.Args.FormatArgsConfig` -> `Primitive.FileParseOptions`: Pass the name separately and use the format option with Argument.fileParse or Argument.fileSchema.
+- `Args.Args.FormatArgsConfig` -> `Primitive.FileParseOptions`: Pass the name separately and use the format option with Argument.FileParse or Argument.FileSchema.
 
-- `Args.Args.PathArgsConfig` -> `Argument.path(name, { pathType, mustExist })`: Path options are inline; map exists=yes to mustExist=true and either to omission. exists=no has no exact replacement.
+- `Args.Args.PathArgsConfig` -> `Argument.Path(name, { pathType, mustExist })`: Path options are inline; map exists=yes to mustExist=true and either to omission. exists=no has no exact replacement.
 
 - `Args.Args.Variance` -> `Argument.Argument`: The separate variance artifact was removed; Argument inherits the shared Param variance.
 
@@ -5104,11 +5104,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.between` -> `Argument.between`: Use the moved combinator; v4 validates bounds when constructing the parameter.
 
-- `Args.boolean` -> `Flag.Boolean / Argument.choiceWithValue`: Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices.
+- `Args.boolean` -> `Flag.Boolean / Argument.ChoiceWithValue`: Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices.
 
 - `Args.date` -> `Argument.Date`: Use the renamed constructor and pass the argument name explicitly.
 
-- `Args.fileContent` -> `Argument.file + Argument.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains.
+- `Args.fileContent` -> `Argument.File + Argument.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains.
 
 - `Args.float` -> `Argument.Finite`: Use the renamed constructor; it rejects non-finite numbers.
 
@@ -5300,7 +5300,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CommandDirective.UserDefined` -> `none`: The user-defined intermediate directive was removed.
 
-- `CommandDirective.builtIn` -> `GlobalFlag.action`: Define a custom action flag; v4 runners no longer return built-in directives.
+- `CommandDirective.builtIn` -> `GlobalFlag.Action`: Define a custom action flag; v4 runners no longer return built-in directives.
 
 - `CommandDirective.isBuiltIn` -> `none`: Intermediate built-in directives were removed.
 
@@ -5398,23 +5398,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
 
-- `Options.choice` -> `Flag.choice`: Use the moved constructor.
+- `Options.choice` -> `Flag.Choice`: Use the moved constructor.
 
-- `Options.choiceWithValue` -> `Flag.choiceWithValue`: Use the moved constructor.
+- `Options.choiceWithValue` -> `Flag.ChoiceWithValue`: Use the moved constructor.
 
 - `Options.date` -> `Flag.Date`: Use the moved constructor.
 
-- `Options.directory` -> `Flag.directory`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
+- `Options.directory` -> `Flag.Directory`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
 
-- `Options.file` -> `Flag.file`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
+- `Options.file` -> `Flag.File`: Use mustExist=true for exists=yes and omit it for either; exists=no has no exact replacement.
 
-- `Options.fileContent` -> `Flag.file + Flag.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content flag constructor remains.
+- `Options.fileContent` -> `Flag.File + Flag.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content flag constructor remains.
 
-- `Options.fileParse` -> `Flag.fileParse`: Pass the old format as an options field; v4 returns parsed content rather than a path/content tuple.
+- `Options.fileParse` -> `Flag.FileParse`: Pass the old format as an options field; v4 returns parsed content rather than a path/content tuple.
 
-- `Options.fileSchema` -> `Flag.fileSchema`: Pass the old format as an options field and use a v4 Schema constraint decoder.
+- `Options.fileSchema` -> `Flag.FileSchema`: Pass the old format as an options field and use a v4 Schema constraint decoder.
 
-- `Options.fileText` -> `Flag.file + Flag.mapEffect`: Flag.fileText returns content only; read after Flag.file when the path/content tuple must be preserved.
+- `Options.fileText` -> `Flag.File + Flag.mapEffect`: Flag.FileText returns content only; read after Flag.File when the path/content tuple must be preserved.
 
 - `Options.filterMap` -> `Flag.filterMap`: Use the moved combinator and replace the fixed message with an onNone function.
 
@@ -5432,7 +5432,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.isOptions` -> `Param.isParam(value) && value.kind === Param.flagKind`: Flags now use the shared Param representation and an explicit kind discriminator.
 
-- `Options.keyValueMap` -> `Flag.keyValuePair`: Renamed and now returns Record\<string, string\> rather than HashMap.
+- `Options.keyValueMap` -> `Flag.KeyValuePair`: Renamed and now returns Record\<string, string\> rather than HashMap.
 
 - `Options.map` -> `Flag.map`: Use the moved combinator.
 
@@ -5440,7 +5440,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.mapTryCatch` -> `Flag.mapTryCatch`: Use the moved combinator; onError now returns a string rather than HelpDoc.
 
-- `Options.none` -> `omit the config entry`: V4 Flag.none is an always-failing sentinel, not v3's empty successful option set.
+- `Options.none` -> `omit the config entry`: V4 Flag.None is an always-failing sentinel, not v3's empty successful option set.
 
 - `Options.optional` -> `Flag.optional`: Use the moved combinator; it still returns Option.
 
@@ -5486,17 +5486,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Primitive.boolean` -> `Primitive.Boolean`: Boolean is now a singleton value; defaults belong on Flag.Boolean or withDefault.
 
-- `Primitive.choice` -> `Primitive.choice`: Use the moved constructor.
+- `Primitive.choice` -> `Primitive.Choice`: Use the moved constructor.
 
 - `Primitive.date` -> `Primitive.Date`: Date is now a singleton Primitive value.
-
-- `Primitive.float` -> `Primitive.Finite`: Finite is now a singleton Primitive value and rejects non-finite numbers.
 
 - `Primitive.getChoices` -> `none`: Choice introspection is internal in v4; retain alternatives in application code when needed.
 
 - `Primitive.getHelp` -> `none`: Primitive-level help generation was removed from the public API.
-
-- `Primitive.integer` -> `Primitive.Int`: Int is now a singleton Primitive value.
 
 - `Primitive.isBool` -> `none`: The boolean Primitive predicate is internal in v4.
 
@@ -5518,15 +5514,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.PromptTypeId` -> `Prompt.isPrompt`: The public type-id symbol was removed; use the runtime guard.
 
-- `Prompt.date` -> `Prompt.date`: Use the moved constructor.
+- `Prompt.date` -> `Prompt.Date`: Use the moved constructor.
 
-- `Prompt.file` -> `Prompt.file`: Use the moved constructor; v4 also supports a default selected path.
+- `Prompt.file` -> `Prompt.File`: Use the moved constructor; v4 also supports a default selected path.
 
-- `Prompt.float` -> `Prompt.float`: Use the moved constructor; v4 also supports a default value.
+- `Prompt.float` -> `Prompt.Float`: Use the moved constructor; v4 also supports a default value.
 
-- `Prompt.integer` -> `Prompt.integer`: Use the moved constructor; v4 also supports a default value.
+- `Prompt.integer` -> `Prompt.Integer`: Use the moved constructor; v4 also supports a default value.
 
-- `Prompt.text` -> `Prompt.text`: Use the moved constructor.
+- `Prompt.text` -> `Prompt.Text`: Use the moved constructor.
 
 ### `@effect/cli/ValidationError`
 
@@ -7909,8 +7905,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Model.BooleanFromNumber` -> `effect/Schema#BooleanFromBit`: Use the core 0 | 1 to boolean schema; Model.BooleanSqlite is the ready-made model field.
 
 - `Model.Class` -> `effect/unstable/schema/Model#Class`: Moved; model variants remain select, insert, update, json, jsonCreate, and jsonUpdate.
-
-- `Model.Date`: TODO: needs guidance
 
 - `Model.DateTimeFromDate` -> `effect/Schema#DateTimeUtcFromDate`: Moved to core Schema and retains Date to DateTime.Utc conversion.
 

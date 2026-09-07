@@ -32,12 +32,12 @@ const srcLink = Flag.String("srcLink").pipe(
   Flag.optional
 )
 
-const srcDir = Flag.directory("src", { mustExist: true }).pipe(
+const srcDir = Flag.Directory("src", { mustExist: true }).pipe(
   Flag.withFallbackConfig(Config.String("src").pipe(Config.withDefault("src"))),
   Flag.withDescription("The directory in which docgen will search for TypeScript files to parse")
 )
 
-const outDir = Flag.directory("out").pipe(
+const outDir = Flag.Directory("out").pipe(
   Flag.withFallbackConfig(Config.String("out").pipe(Config.withDefault("docs"))),
   Flag.withDescription("The directory to which docgen will generate its output markdown documents")
 )
@@ -116,7 +116,7 @@ const parseCompilerOptionsFlag = (name: string, description: string) =>
     )
   )
 
-const parseCompilerOptionsFile = Flag.file("parse-tsconfig-file", { mustExist: true }).pipe(
+const parseCompilerOptionsFile = Flag.File("parse-tsconfig-file", { mustExist: true }).pipe(
   Flag.withDescription("The TypeScript TSConfig file to use for parsing source files"),
   Flag.optional
 )
@@ -126,7 +126,7 @@ const parseCompilerOptionsInline = parseCompilerOptionsFlag(
   "The TypeScript compiler options to use for parsing source files"
 ).pipe(Flag.optional)
 
-const examplesCompilerOptionsFile = Flag.file("examples-tsconfig-file", { mustExist: true }).pipe(
+const examplesCompilerOptionsFile = Flag.File("examples-tsconfig-file", { mustExist: true }).pipe(
   Flag.withDescription("The TypeScript TSConfig file to use for examples"),
   Flag.optional
 )

@@ -2,7 +2,7 @@
   replacement: "Primitive.Boolean"
   note: "Boolean is now a singleton value; defaults belong on Flag.Boolean or withDefault."
 "@effect/cli/Primitive#choice":
-  replacement: "Primitive.choice"
+  replacement: "Primitive.Choice"
   note: "Use the moved constructor."
 "@effect/cli/Primitive#date":
   replacement: "Primitive.Date"
