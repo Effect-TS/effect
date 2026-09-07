@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual } from "@effect/vitest/utils"
-import { Effect, Schema } from "effect"
+import { assertInclude, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { Effect, Result, Schema } from "effect"
 import { Response, Tool, Toolkit } from "effect/unstable/ai"
 
 describe("Response", () => {
@@ -27,7 +27,7 @@ describe("Response", () => {
       it.effect(`encodes a ${branch} with the ${branch} schema`, () =>
         Effect.gen(function*() {
           const schema = Response.ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
-          const encoded = yield* Schema.encodeEffect(schema)({ ...part, encodedResult })
+          const encoded = yield* Schema.encodeEffect(schema)(part)
 
           deepStrictEqual(encoded, {
             type: "tool-result",
@@ -39,6 +39,18 @@ describe("Response", () => {
             preliminary: false,
             metadata: {}
           }, "encoded tool result")
+        }))
+
+      it.effect(`rejects an encodedResult from the other branch for a ${branch}`, () =>
+        Effect.gen(function*() {
+          const schema = Response.ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+          const result = yield* Schema.encodeEffect(schema)({
+            ...part,
+            encodedResult: isFailure ? 404 : "404"
+          }).pipe(Effect.result)
+
+          assertTrue(Result.isFailure(result), "rejects cross-branch encodedResult")
+          assertInclude(result.failure.message, "[\"encodedResult\"]")
         }))
 
       it.effect(`preserves a ${branch} encodedResult through an AllParts JSON round trip`, () =>
