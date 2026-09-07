@@ -40,7 +40,6 @@
  * @since 4.0.0
  */
 import * as Cloudflare from "alchemy/Cloudflare"
-import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Entity from "effect/unstable/cluster/Entity"
@@ -55,6 +54,7 @@ import {
   makeClusterWorkflowProgram
 } from "./CloudflareDurableObjectPrograms.ts"
 import { inertClusterHandle, makeClusterHandle } from "./internal/alchemyCluster.ts"
+import type { Cluster } from "./internal/cluster.ts"
 
 /**
  * The services `make` builds on top of the user layer: the cluster `Sharding`
@@ -65,53 +65,21 @@ import { inertClusterHandle, makeClusterHandle } from "./internal/alchemyCluster
  */
 export type ClusterServices = Sharding | WorkflowEngine | PersistedQueueFactory
 
-/**
- * The handle returned by {@link make}.
- *
- * **Gotchas**
- *
- * Namespace bindings and `context` are available only in the deployed runtime.
- * Reading them during plan evaluation throws a diagnostic; `provide` and
- * `wake` remain inert during planning.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Cluster<in R = never> {
+export type {
   /**
-   * Attaches the built cluster context to a user Effect, for the Worker's
-   * `fetch` handler and other entrypoints. Only provides the already-built
-   * Context; it does not open a new Scope.
+   * The handle returned by {@link make}.
+   *
+   * **Gotchas**
+   *
+   * Namespace bindings and `context` are available only in the deployed runtime.
+   * Reading them during plan evaluation throws a diagnostic; `provide` and
+   * `wake` remain inert during planning.
+   *
+   * @category models
+   * @since 4.0.0
    */
-  readonly provide: <A, E, R2>(effect: Effect.Effect<A, E, R2>) => Effect.Effect<A, E, Exclude<R2, R>>
-  /**
-   * A handler that wakes the named singleton, for `Cloudflare.Workers.cron`.
-   * The name is the singleton name without the `Singleton/` prefix, and the
-   * returned handler is already context-provided.
-   */
-  readonly wake: (name: string) => () => Effect.Effect<void>
-  /**
-   * The native namespace binding of the cluster entity class.
-   */
-  readonly entityNamespace: DurableObjectNamespace
-  /**
-   * The native namespace binding of the workflow class.
-   */
-  readonly workflowNamespace: DurableObjectNamespace
-  /**
-   * The native namespace binding of the durable queue class.
-   */
-  readonly queueNamespace: DurableObjectNamespace
-  /**
-   * The native namespace binding of the singleton class.
-   */
-  readonly singletonNamespace: DurableObjectNamespace
-  /**
-   * The Context built from the cluster layer and the user layer into the
-   * isolate-lifetime Scope.
-   */
-  readonly context: Context.Context<R>
-}
+  Cluster
+} from "./internal/cluster.ts"
 
 /**
  * The entity definitions and handler layer the cluster is built from.

@@ -11,8 +11,8 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import type * as Entity from "effect/unstable/cluster/Entity"
-import type { Cluster } from "../AlchemyCloudflareCluster.ts"
 import * as CloudflareCluster from "../CloudflareCluster.ts"
+import type { Cluster } from "./cluster.ts"
 
 /** @internal */
 export interface ClusterHandleOptions {
