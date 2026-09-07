@@ -818,10 +818,8 @@ export type FailureEncoded<T> = T extends Tool<
   : never
 
 /**
- * A utility type for the actual failure value that can appear in tool results.
- * This always includes an {@link ExecutionFailure}, which is produced when a
- * tool call is denied or interrupted. When `failureMode` is `"return"`, it
- * also includes `AiError`.
+ * A tool's failure type, plus {@link ExecutionFailure} in both failure modes
+ * and `AiError` in `"return"` mode.
  *
  * @category utility types
  * @since 4.0.0
@@ -855,12 +853,7 @@ export type FailureResultEncoded<T> = T extends Tool<
   : never
 
 /**
- * A utility type to extract the type of the tool call result whether it
- * succeeds or fails.
- *
- * **Details**
- *
- * The result is either a success or a {@link FailureResult}.
+ * A tool's success or {@link FailureResult} type.
  *
  * @category utility types
  * @since 4.0.0
@@ -868,12 +861,7 @@ export type FailureResultEncoded<T> = T extends Tool<
 export type Result<T> = Success<T> | FailureResult<T>
 
 /**
- * A utility type to extract the encoded type of the tool call result whether
- * it succeeds or fails.
- *
- * **Details**
- *
- * The result is either an encoded success or a {@link FailureResultEncoded}.
+ * The encoded form of {@link Result}.
  *
  * @category utility types
  * @since 4.0.0
@@ -2005,8 +1993,7 @@ export const unsafeSecureJsonParse = (text: string): unknown => {
 }
 
 /**
- * A failure result synthesized by the framework when a tool call was denied
- * by the user or interrupted before its handler completed.
+ * Schema for denied or interrupted tool calls.
  *
  * @category schemas
  * @since 4.0.0
@@ -2017,19 +2004,12 @@ export const ExecutionFailure = Schema.Struct({
 }).annotate({ identifier: "ToolExecutionFailure" })
 
 /**
- * Returns the `Schema` for the result of a failed tool call.
+ * Returns the failure schema shared by `Toolkit` and `Response`.
  *
  * **Details**
  *
- * A failed result is an `AiError` raised while handling the call, a value of
- * the tool's `failureSchema`, or an {@link ExecutionFailure} synthesized when
- * the call was denied or interrupted. `AiError` comes first so it is always
- * reconstructed on decoding, and the tool's own schema comes before
- * `ExecutionFailure` so a user failure keeps all of its fields even when it
- * has the same shape.
- *
- * `Toolkit` result encoding and the `Response` part schemas both use this
- * schema, so failed results encode and decode consistently.
+ * `AiError` comes first to restore error instances. The user schema precedes
+ * {@link ExecutionFailure} to preserve user fields.
  *
  * @category schemas
  * @since 4.0.0

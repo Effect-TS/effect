@@ -2108,28 +2108,7 @@ export const UrlSourcePart: Schema.Struct<{
 // =============================================================================
 
 /**
- * Schema for HTTP request details associated with an AI response.
- *
- * **Details**
- *
- * Captures comprehensive information about the HTTP request made to the
- * AI provider, enabling inspection of request metadata for debugging and
- * observability purposes.
- *
- * **Example** (Describing an HTTP request)
- *
- * ```ts import.meta.vitest
- * import type { Response } from "effect/unstable/ai"
- *
- * const requestDetails: typeof Response.HttpRequestDetails.Type = {
- *   method: "POST",
- *   url: "https://api.openai.com/v1/responses",
- *   urlParams: [],
- *   hash: undefined,
- *   headers: { "Content-Type": "application/json" }
- * }
- * const result = [requestDetails.method, requestDetails.urlParams] // => ["POST", []]
- * ```
+ * Alias of {@link AiError.HttpRequestDetails}.
  *
  * @category schemas
  * @since 4.0.0
@@ -2137,28 +2116,7 @@ export const UrlSourcePart: Schema.Struct<{
 export const HttpRequestDetails = AiError.HttpRequestDetails
 
 /**
- * Schema for HTTP response details associated with an AI response.
- *
- * **Details**
- *
- * Captures essential information about the HTTP response received from
- * the AI provider, including status codes and headers for debugging and
- * observability purposes.
- *
- * **Example** (Describing an HTTP response)
- *
- * ```ts import.meta.vitest
- * import type { Response } from "effect/unstable/ai"
- *
- * const responseDetails: typeof Response.HttpResponseDetails.Type = {
- *   status: 200,
- *   headers: {
- *     "Content-Type": "application/json",
- *     "X-Request-Id": "req_abc123"
- *   }
- * }
- * const result = [responseDetails.status, responseDetails.headers["X-Request-Id"]] // => [200, "req_abc123"]
- * ```
+ * Alias of {@link AiError.HttpResponseDetails}.
  *
  * @category schemas
  * @since 4.0.0

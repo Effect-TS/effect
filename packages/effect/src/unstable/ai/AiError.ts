@@ -22,13 +22,7 @@ import * as Schema from "../../Schema.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
 
 /**
- * Schema for HTTP request details associated with an AI response.
- *
- * **Details**
- *
- * Captures comprehensive information about the HTTP request made to the
- * AI provider, enabling inspection of request metadata for debugging and
- * observability purposes.
+ * Schema for HTTP requests to an AI provider.
  *
  * **Example** (Describing an HTTP request)
  *
@@ -63,13 +57,7 @@ export const HttpRequestDetails = Schema.Struct({
 }).annotate({ identifier: "HttpRequestDetails" })
 
 /**
- * Schema for HTTP response details associated with an AI response.
- *
- * **Details**
- *
- * Captures essential information about the HTTP response received from
- * the AI provider, including status codes and headers for debugging and
- * observability purposes.
+ * Schema for HTTP responses from an AI provider.
  *
  * **Example** (Describing an HTTP response)
  *
