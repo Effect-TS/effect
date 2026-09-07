@@ -22,6 +22,36 @@ describe("Effectable.Mixin", () => {
     expect<ConstructorParameters<typeof EffectBox>>().type.toBe<[value: number]>()
   })
 
+  it("rejects unknown properties", () => {
+    expect(new EffectBox(1)).type.not.toHaveProperty("typo")
+  })
+
+  it("supports abstract base classes", () => {
+    abstract class AbstractBox {
+      constructor(readonly value: number) {}
+      abstract double(): number
+    }
+
+    class ConcreteBox extends Effectable.Mixin(AbstractBox) {
+      double() {
+        return this.value * 2
+      }
+      override asEffect() {
+        return Effect.succeed(this.double())
+      }
+    }
+
+    expect<ConstructorParameters<typeof ConcreteBox>>().type.toBe<[value: number]>()
+    expect(new ConcreteBox(1)).type.toBeAssignableTo<AbstractBox>()
+    expect(new ConcreteBox(1)).type.toBeAssignableTo<Effect.Effect<number>>()
+    // @ts-expect-error does not implement inherited abstract member double
+    class MissingDouble extends Effectable.Mixin(AbstractBox) {
+      override asEffect() {
+        return Effect.succeed(this.value)
+      }
+    }
+  })
+
   it("instances are Effects of the asEffect success type and original class instances", () => {
     expect<Effect.Success<EffectBox>>().type.toBe<string>()
     expect(new EffectBox(1)).type.toBeAssignableTo<Effect.Effect<string>>()

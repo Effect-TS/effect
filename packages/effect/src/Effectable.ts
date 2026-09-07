@@ -84,22 +84,6 @@ interface EffectableFromAsEffect extends Pipeable.Pipeable, Inspectable.Inspecta
 }
 
 /**
- * Constructor type for classes whose instances behave as `Effect` values.
- *
- * **When to use**
- *
- * Use as the constructor-side type when a class value should be known to create
- * instances that can be evaluated by Effect.
- *
- * @see {@link Class} for the base constructor
- * @see {@link Mixin} for wrapping an existing class constructor
- *
- * @category models
- * @since 4.0.0
- */
-export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) => EffectableFromAsEffect
-
-/**
  * Returns a subclass of the provided class that inserts the Effect prototype
  * into the inheritance chain.
  *
@@ -112,8 +96,11 @@ export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) =>
  *
  * Pass the class to wrap, then implement `asEffect` on the final class. The
  * returned class is abstract, and the success, error, and service types are
- * inferred from the concrete `asEffect` return type. The original constructor
- * and instance members are preserved.
+ * inferred from the concrete `asEffect` return type. Concrete and abstract base
+ * classes are supported. Constructor parameters and instance members are
+ * preserved, except that Effect's prototype members shadow base prototype
+ * members with the same name: `pipe`, `toString`, `toJSON`, `[Symbol.iterator]`,
+ * and `[Symbol.for("nodejs.util.inspect.custom")]`.
  *
  * **Example** (Evaluating a mixed-in class)
  *
@@ -140,15 +127,12 @@ export type EffectableConstructor = abstract new(...args: ReadonlyArray<any>) =>
  * @category constructors
  * @since 4.0.0
  */
-export const Mixin = <TBase extends new(...args: ReadonlyArray<any>) => any>(
+export const Mixin = <TBase extends abstract new(...args: ReadonlyArray<any>) => object>(
   klass: TBase
 ) => {
   abstract class Mixed extends klass {
     abstract asEffect(): Effect.Effect<any, any, any>
   }
-  Object.setPrototypeOf(
-    Mixed.prototype,
-    Object.create(klass.prototype, Object.getOwnPropertyDescriptors(proto))
-  )
-  return Mixed as typeof Mixed & EffectableConstructor
+  Object.defineProperties(Mixed.prototype, Object.getOwnPropertyDescriptors(proto))
+  return Mixed as typeof Mixed & (abstract new(...args: ReadonlyArray<any>) => EffectableFromAsEffect)
 }

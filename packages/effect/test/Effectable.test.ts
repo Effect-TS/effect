@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Effectable } from "effect"
+import { Context, Effect, Effectable, Exit } from "effect"
 
 describe("Effectable", () => {
   describe("Mixin", () => {
@@ -21,6 +21,52 @@ describe("Effectable", () => {
         const effectValue = yield* new EffectBox(1)
         assert.strictEqual(effectValue, 1)
       }))
+
+    it.effect("propagates failures", () =>
+      Effect.gen(function*() {
+        class FailingBox extends Effectable.Mixin(Box) {
+          override asEffect() {
+            return Effect.fail(this.value)
+          }
+        }
+
+        assert.deepStrictEqual(yield* Effect.exit(new FailingBox(1)), Exit.fail(1))
+      }))
+
+    it.effect("uses provided services", () =>
+      Effect.gen(function*() {
+        class Multiplier extends Context.Service<Multiplier, number>()("Multiplier") {}
+        class ServiceBox extends Effectable.Mixin(Box) {
+          override asEffect() {
+            return Effect.map(Multiplier, (multiplier) => this.value * multiplier)
+          }
+        }
+
+        const value = yield* new ServiceBox(2).pipe(Effect.provideService(Multiplier, 3))
+        assert.strictEqual(value, 6)
+      }))
+
+    it("shadows base prototype methods without modifying them", () => {
+      class PrintableBox extends Box {
+        override toString() {
+          return "Box"
+        }
+        toJSON(): unknown {
+          return { _id: "Box" }
+        }
+      }
+      class PrintableEffectBox extends Effectable.Mixin(PrintableBox) {
+        override asEffect() {
+          return Effect.succeed(this.value)
+        }
+      }
+
+      const box = new PrintableEffectBox(1)
+      assert.deepStrictEqual(box.toJSON(), { _id: "Effect", op: "Effectable" })
+      assert.deepStrictEqual(JSON.parse(box.toString()), box.toJSON())
+      assert.strictEqual(new PrintableBox(1).toString(), "Box")
+      assert.deepStrictEqual(new PrintableBox(1).toJSON(), { _id: "Box" })
+    })
 
     it("inserts the Effect prototype between the subclass and original class", () => {
       const box = new EffectBox(1)
