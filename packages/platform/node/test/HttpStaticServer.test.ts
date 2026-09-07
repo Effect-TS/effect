@@ -180,19 +180,49 @@ describe("HttpStaticServer", () => {
   })
 
   const unsafeRangeInteger = (BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)).toString()
+
   it.each([
     `bytes=${unsafeRangeInteger}-`,
+    `bytes=${unsafeRangeInteger}-${unsafeRangeInteger}`
+  ])("returns 416 for a range start above Number.MAX_SAFE_INTEGER: %s", async (range) => {
+    await withStaticFiles(async ({ handler }) => {
+      const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
+      const response = await handler(
+        new Request("http://localhost/range.txt", { headers: { Range: range } })
+      )
+
+      assert.strictEqual(response.status, 416)
+      assert.strictEqual(response.headers.get("content-range"), `bytes */${fullBody.length}`)
+      assert.strictEqual(await response.text(), "")
+    })
+  })
+
+  it.each([
     `bytes=0-${unsafeRangeInteger}`,
     `bytes=-${unsafeRangeInteger}`
-  ])("ignores range integers above Number.MAX_SAFE_INTEGER: %s", async (range) => {
+  ])("returns the whole file as 206 for range ends and suffixes above Number.MAX_SAFE_INTEGER: %s", async (range) => {
     await withStaticFiles(async ({ handler }) => {
       const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
       const response = await handler(new Request("http://localhost/range.txt", { headers: { Range: range } }))
 
-      assert.strictEqual(response.status, 200)
-      assert.strictEqual(response.headers.get("content-range"), null)
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers.get("content-range"), `bytes 0-${fullBody.length - 1}/${fullBody.length}`)
       assert.strictEqual(response.headers.get("content-length"), String(fullBody.length))
       assert.strictEqual(await response.text(), fullBody)
+    })
+  })
+
+  it("clamps a range end above Number.MAX_SAFE_INTEGER while preserving a nonzero start", async () => {
+    await withStaticFiles(async ({ handler }) => {
+      const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
+      const response = await handler(
+        new Request("http://localhost/range.txt", { headers: { Range: `bytes=5-${unsafeRangeInteger}` } })
+      )
+
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers.get("content-range"), `bytes 5-${fullBody.length - 1}/${fullBody.length}`)
+      assert.strictEqual(response.headers.get("content-length"), String(fullBody.length - 5))
+      assert.strictEqual(await response.text(), fullBody.slice(5))
     })
   })
 

@@ -309,8 +309,7 @@ const parseInteger = (value: string): bigint | undefined => {
   if (!/^\d+$/.test(value)) {
     return undefined
   }
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) ? BigInt(parsed) : undefined
+  return BigInt(value)
 }
 
 const parseRange = (

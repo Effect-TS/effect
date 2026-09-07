@@ -48,20 +48,36 @@ describe("HttpPlatform", () => {
       Effect.provideService(FileSystem.FileSystem, {} as any)
     ))
 
-  it.effect("retains the requested Web file content length beyond EOF", () =>
-    Effect.gen(function*() {
-      const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 10 })
-      assert.strictEqual(response.body._tag, "Stream")
-      if (response.body._tag === "Stream") {
-        assert.strictEqual(response.body.contentLength, 10)
-        const bytes = yield* Stream.mkUint8Array(response.body.stream)
-        assert.deepStrictEqual(Array.from(bytes), [2, 3, 4])
-      }
-    }).pipe(
-      Effect.provide(HttpPlatform.layer),
-      Effect.provideService(FileSystem.FileSystem, {} as any)
-    ))
+  for (
+    const { name, offset, bytesToRead, expected } of [
+      { name: "clamps bytesToRead beyond EOF", offset: 1, bytesToRead: 10, expected: [2, 3, 4] },
+      { name: "returns an empty body at EOF", offset: 4, bytesToRead: undefined, expected: [] },
+      { name: "returns an empty body past EOF", offset: 9, bytesToRead: undefined, expected: [] },
+      { name: "clamps bytesToRead at EOF", offset: 4, bytesToRead: 10, expected: [] },
+      { name: "clamps bytesToRead past EOF", offset: 9, bytesToRead: 10, expected: [] }
+    ]
+  ) {
+    it.effect(`fileWebResponse ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileWebResponse(file, { offset, bytesToRead })
+        assert.strictEqual(response.body._tag, "Stream")
+        if (response.body._tag === "Stream") {
+          const bytes = yield* Stream.mkUint8Array(response.body.stream)
+          assert.deepStrictEqual(
+            {
+              contentLength: response.body.contentLength,
+              header: response.headers["content-length"],
+              body: Array.from(bytes)
+            },
+            { contentLength: expected.length, header: String(expected.length), body: expected }
+          )
+        }
+      }).pipe(
+        Effect.provide(HttpPlatform.layer),
+        Effect.provideService(FileSystem.FileSystem, {} as any)
+      ))
+  }
 
   it.effect("honors Web file chunk size", () =>
     Effect.gen(function*() {

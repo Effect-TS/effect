@@ -94,14 +94,19 @@ export const make: (impl: {
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
-      const offset = options?.offset === undefined ? ByteSize.zero : yield* fileResponseSize(options.offset, "offset")
-      const limit = options?.bytesToRead !== undefined
-        ? offset + (yield* fileResponseSize(options.bytesToRead, "bytesToRead"))
+      const requestedOffset = options?.offset === undefined
+        ? ByteSize.zero
+        : yield* fileResponseSize(options.offset, "offset")
+      const offset = requestedOffset > info.size ? info.size : requestedOffset
+      const available = info.size - offset
+      const bytesToRead = options?.bytesToRead !== undefined
+        ? yield* fileResponseSize(options.bytesToRead, "bytesToRead")
         : undefined
+      const contentLength = bytesToRead === undefined || bytesToRead > available ? available : bytesToRead
+      const limit = bytesToRead === undefined ? undefined : offset + contentLength
       // Calculate with bigint before converting the runtime's numeric range options.
       const start = yield* fileResponseNumber(offset, "offset")
       const end = limit === undefined ? undefined : yield* fileResponseNumber(limit, "end")
-      const contentLength = (limit ?? info.size) - offset
       const headers = Headers.set(
         options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
         "etag",
@@ -197,10 +202,13 @@ export const layer = Layer.effect(HttpPlatform)(
         )
       },
       fileWebResponse(file, status, statusText, headers, options) {
-        const offset = options?.offset ?? 0
-        const bytesToRead = options?.bytesToRead
+        const offset = Math.min(Math.max(options?.offset ?? 0, 0), file.size)
+        const available = file.size - offset
+        const contentLength = options?.bytesToRead === undefined
+          ? available
+          : Math.min(Math.max(options.bytesToRead, 0), available)
         const chunkSize = options?.chunkSize !== undefined ? Math.max(1, options.chunkSize) : Infinity
-        const end = offset + (bytesToRead ?? Infinity)
+        const end = offset + contentLength
         const stream = end <= offset
           ? Stream.empty
           : Stream.fromReadableStream({
@@ -227,7 +235,7 @@ export const layer = Layer.effect(HttpPlatform)(
             Stream.map((chunk) => chunk.bytes)
           )
         return Response.stream(stream, {
-          contentLength: bytesToRead ?? file.size - offset,
+          contentLength,
           headers,
           status,
           statusText
