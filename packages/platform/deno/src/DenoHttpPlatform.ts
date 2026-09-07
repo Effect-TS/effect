@@ -44,7 +44,7 @@ export const make = Platform.make({
   compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     let body: ReadableStream<Uint8Array>
-    if (contentLength === 0) {
+    if (contentLength === BigInt(0)) {
       body = new ReadableStream<Uint8Array>({
         start(controller) {
           controller.close()
@@ -55,7 +55,8 @@ export const make = Platform.make({
       file.seekSync(start, Deno.SeekMode.Start)
       body = end === undefined
         ? file.readable
-        : file.readable.pipeThrough(new ByteSliceStream(0, contentLength - 1))
+        // HttpPlatform.make checked both non-negative range bounds as safe integers.
+        : file.readable.pipeThrough(new ByteSliceStream(0, end - start - 1))
     }
     return Response.raw(body, {
       headers: {

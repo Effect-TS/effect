@@ -10,6 +10,9 @@
  * Stats use bigint values to preserve `size` and `blksize` exactly. Metadata
  * exposed as numbers, including `dev`, `ino`, and `blocks`, must be safe
  * integers; otherwise `stat` fails with `BadArgument`, even for optional fields.
+ * On filesystems with inode values above `Number.MAX_SAFE_INTEGER`, this can
+ * prevent stat and HTTP file serving even for small files. The failure preserves
+ * the distinction between unavailable metadata and an unrepresentable value.
  * Writes also fail with `BadArgument` when their position is not a safe integer.
  *
  * @since 4.0.0

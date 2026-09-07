@@ -67,7 +67,7 @@ export const make: (impl: {
     headers: Headers.Headers,
     start: number,
     end: number | undefined,
-    contentLength: number
+    contentLength: bigint
   ) => Response.HttpServerResponse
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
@@ -94,14 +94,14 @@ export const make: (impl: {
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
-      const offset = options?.offset === undefined ? BigInt("0") : ByteSize.fromInputUnsafe(options.offset)
+      const offset = options?.offset === undefined ? ByteSize.zero : yield* fileResponseSize(options.offset, "offset")
       const limit = options?.bytesToRead !== undefined
-        ? offset + ByteSize.fromInputUnsafe(options.bytesToRead)
+        ? offset + (yield* fileResponseSize(options.bytesToRead, "bytesToRead"))
         : undefined
       // Calculate with bigint before converting the runtime's numeric range options.
       const start = yield* fileResponseNumber(offset, "offset")
       const end = limit === undefined ? undefined : yield* fileResponseNumber(limit, "end")
-      const contentLength = yield* fileResponseNumber((limit ?? info.size) - offset, "contentLength")
+      const contentLength = (limit ?? info.size) - offset
       const headers = Headers.set(
         options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
         "etag",
@@ -141,6 +141,17 @@ export const make: (impl: {
   })
 })
 
+const fileResponseSize = (input: ByteSize.Input, field: string): Effect.Effect<ByteSize.ByteSize, PlatformError> => {
+  const size = ByteSize.fromInput(input)
+  return Option.isSome(size)
+    ? Effect.succeed(size.value)
+    : Effect.fail(badArgument({
+      module: "HttpPlatform",
+      method: "fileResponse",
+      description: `Invalid ${field}: ${input}`
+    }))
+}
+
 const fileResponseNumber = (value: bigint, field: string): Effect.Effect<number, PlatformError> => {
   const number = Number(value)
   return Number.isSafeInteger(number)
@@ -170,12 +181,19 @@ export const layer = Layer.effect(HttpPlatform)(
       platform: "web",
       compression: internal.compressionWeb,
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
+        const length = Number(contentLength)
         return Response.stream(
           fs.stream(path, {
             offset: start,
             bytesToRead: end !== undefined ? end - start : undefined
           }),
-          { contentLength, headers, status, statusText }
+          {
+            // HttpBody's optional numeric metadata cannot represent every file size.
+            contentLength: Number.isSafeInteger(length) ? length : undefined,
+            headers: Headers.set(headers, "content-length", contentLength.toString()),
+            status,
+            statusText
+          }
         )
       },
       fileWebResponse(file, status, statusText, headers, options) {

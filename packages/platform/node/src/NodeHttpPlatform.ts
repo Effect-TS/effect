@@ -78,7 +78,7 @@ export const make = Platform.make({
   platform: "node",
   compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
-    const stream = contentLength === 0
+    const stream = contentLength === BigInt(0)
       ? Readable.from([])
       : Fs.createReadStream(path, { start, end: end === undefined ? undefined : end - 1 })
     return ServerResponse.raw(stream, {
