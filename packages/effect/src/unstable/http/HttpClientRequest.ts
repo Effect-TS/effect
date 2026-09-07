@@ -830,6 +830,13 @@ export const bodyStream: {
 /**
  * Creates a file-backed request body from a filesystem path and sets it on the request.
  *
+ * **Details**
+ *
+ * Uses {@link HttpBody.file} to validate ranges lazily and calculate the EOF-clamped content length with exact
+ * bigint arithmetic. Invalid range inputs or a final length above `Number.MAX_SAFE_INTEGER` fail with
+ * `PlatformError` / `BadArgument`. Larger sizes, offsets, and byte counts are valid when the final length is
+ * representable as a safe integer. The request's Content-Length header contains that exact length.
+ *
  * @category combinators
  * @since 4.0.0
  */

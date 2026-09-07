@@ -17,7 +17,8 @@ import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
 import * as Inspectable from "../../Inspectable.ts"
-import type * as PlatformError from "../../PlatformError.ts"
+import * as Option from "../../Option.ts"
+import * as PlatformError from "../../PlatformError.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import type { ParseOptions } from "../../SchemaAST.ts"
@@ -512,19 +513,44 @@ export const stream = (
   contentLength?: number
 ): Stream => new Stream(body, contentType ?? "application/octet-stream", contentLength)
 
-const fileContentLength = (
+const fileRangeSize = (
+  input: ByteSize.Input,
+  field: string,
+  method: string
+): Effect.Effect<ByteSize.ByteSize, PlatformError.PlatformError> => {
+  const size = ByteSize.fromInput(input)
+  return Option.isSome(size)
+    ? Effect.succeed(size.value)
+    : Effect.fail(PlatformError.badArgument({
+      module: "HttpBody",
+      method,
+      description: `Invalid ${field}: ${input}`
+    }))
+}
+
+const fileContentLength = Effect.fnUntraced(function*(
   size: ByteSize.ByteSize,
+  method: string,
   options?: {
     readonly bytesToRead?: ByteSize.Input | undefined
     readonly offset?: ByteSize.Input | undefined
   }
-): number => {
-  const offset = options?.offset === undefined ? 0 : Number(ByteSize.fromInputUnsafe(options.offset))
-  const available = Math.max(0, Number(size) - offset)
-  return options?.bytesToRead === undefined
-    ? available
-    : Math.min(available, Number(ByteSize.fromInputUnsafe(options.bytesToRead)))
-}
+): Effect.fn.Return<number, PlatformError.PlatformError> {
+  const offset = options?.offset === undefined ? ByteSize.zero : yield* fileRangeSize(options.offset, "offset", method)
+  const bytesToRead = options?.bytesToRead === undefined
+    ? undefined
+    : yield* fileRangeSize(options.bytesToRead, "bytesToRead", method)
+  const available = offset >= size ? BigInt("0") : size - offset
+  const length = bytesToRead === undefined || bytesToRead > available ? available : bytesToRead
+  if (length > BigInt(Number.MAX_SAFE_INTEGER)) {
+    return yield* Effect.fail(PlatformError.badArgument({
+      module: "HttpBody",
+      method,
+      description: `Content length exceeds Number.MAX_SAFE_INTEGER: ${length}`
+    }))
+  }
+  return Number(length)
+})
 
 /**
  * Creates a streaming HTTP body for a file path.
@@ -533,6 +559,15 @@ const fileContentLength = (
  *
  * The effect requires `FileSystem`, stats the file to set the selected content length, and can fail with
  * `PlatformError`.
+ *
+ * Range validation and file access are deferred until the effect runs. Numeric range inputs must be
+ * non-negative safe integers; bigint and byte-size strings can represent larger values. Malformed strings,
+ * negative values, and non-finite, fractional, or unsafe numbers fail with `PlatformError` / `BadArgument`.
+ *
+ * The selected length is calculated exactly with bigint arithmetic and clamped to the bytes available after
+ * `offset` (zero at or past EOF). Since `Stream.contentLength` is a number, a final length above
+ * `Number.MAX_SAFE_INTEGER` fails with `BadArgument`. Larger sizes, offsets, and byte counts are valid when
+ * the final clamped length is representable; the resulting Content-Length header preserves that exact length.
  *
  * @category constructors
  * @since 4.0.0
@@ -549,12 +584,13 @@ export const file = (
   Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
-      Effect.map(fs.stat(path), (info) =>
-        stream(
-          fs.stream(path, options),
-          options?.contentType,
-          fileContentLength(info.size, options)
-        ))
+      Effect.flatMap(fs.stat(path), (info) =>
+        Effect.map(fileContentLength(info.size, "file", options), (contentLength) =>
+          stream(
+            fs.stream(path, options),
+            options?.contentType,
+            contentLength
+          )))
   )
 
 /**
@@ -564,6 +600,11 @@ export const file = (
  *
  * The effect requires `FileSystem`, uses the provided file size to determine the selected content length, and can
  * fail with `PlatformError`.
+ *
+ * Like {@link file}, this constructor validates ranges lazily and calculates the EOF-clamped length with exact
+ * bigint arithmetic. Invalid range inputs and final lengths above `Number.MAX_SAFE_INTEGER` fail with
+ * `PlatformError` / `BadArgument`. Larger sizes, offsets, and byte counts remain valid when the final length
+ * is representable as a safe integer, preserving the exact Content-Length header.
  *
  * @category constructors
  * @since 4.0.0
@@ -578,12 +619,13 @@ export const fileFromInfo = (
     readonly contentType?: string | undefined
   }
 ): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.map(
+  Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
-      stream(
-        fs.stream(path, options),
-        options?.contentType,
-        fileContentLength(info.size, options)
-      )
+      Effect.map(fileContentLength(info.size, "fileFromInfo", options), (contentLength) =>
+        stream(
+          fs.stream(path, options),
+          options?.contentType,
+          contentLength
+        ))
   )
