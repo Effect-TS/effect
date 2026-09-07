@@ -28,3 +28,18 @@ allowBuilds:
 
 patchedDependencies:
   '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
+
+minimumReleaseAgeExclude:
+  - '@alchemy.run/*'
+  - alchemy
+  - '@effect/platform-bun@4.0.0-rc.116'
+  - '@effect/platform-node-shared@4.0.0-rc.116'
+  - '@effect/platform-node@4.0.0-rc.116'
+  - '@effect/sql-mysql2@4.0.0-rc.116'
+  - '@effect/sql-pg@4.0.0-rc.116'
+
+# alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
+# otherwise join the shared tests compilation and clash with the workspace
+# @types/node globals.
+overrides:
+  '@types/ssh2>@types/node': ^26.2.0
