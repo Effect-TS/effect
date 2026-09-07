@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
@@ -233,6 +234,7 @@ export type ClusterWorkflowProgram = {
  * @since 4.0.0
  */
 export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const clock = yield* Clock.Clock
   const sql = state.storage.sql
   ensureWorkflowStorage(sql)
   let name: string | undefined
@@ -257,7 +259,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
       name,
       sql,
       alarm: state.storage,
-      now: () => Date.now(),
+      now: () => clock.currentTimeMillisUnsafe(),
       waitUntil: (promise) => state.waitUntil(promise),
       getStub: (stubName) => {
         const namespace = exportedNamespace<WorkflowStub>(state, "ClusterWorkflow")
@@ -336,13 +338,14 @@ export type ClusterDurableQueueProgram = {
  * @since 4.0.0
  */
 export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const clock = yield* Clock.Clock
   if (state.id.name !== undefined && decodeName(state.id.name) === undefined) {
     return yield* Effect.die(new Error("ClusterDurableQueue requires a canonical queue Durable Object name"))
   }
   const runtime = makeQueueRuntime({
     sql: state.storage.sql,
     alarm: state.storage,
-    now: () => Date.now()
+    now: () => clock.currentTimeMillisUnsafe()
   })
   const expiry = earliestLeaseExpiry(state.storage.sql)
   if (expiry !== undefined) {
@@ -392,6 +395,7 @@ export type ClusterSingletonProgram = {
  * @since 4.0.0
  */
 export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const clock = yield* Clock.Clock
   const sql = state.storage.sql
   ensureSingletonStorage(sql)
   if (state.id.name !== undefined) {
@@ -427,7 +431,7 @@ export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: Du
     runtime = makeSingletonRuntime({
       sql,
       alarm: state.storage,
-      now: () => Date.now(),
+      now: () => clock.currentTimeMillisUnsafe(),
       run
     })
     return runtime
@@ -438,7 +442,9 @@ export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: Du
   const program: ClusterSingletonProgram = {
     wake: () => Effect.promise(() => getRuntime().wake()),
     alarm: () =>
-      loadSingletonState(sql).wakeAt === undefined ? Effect.void : Effect.promise(() => getRuntime().runAlarm())
+      Effect.suspend(() =>
+        loadSingletonState(sql).wakeAt === undefined ? Effect.void : Effect.promise(() => getRuntime().runAlarm())
+      )
   }
   return program
 })

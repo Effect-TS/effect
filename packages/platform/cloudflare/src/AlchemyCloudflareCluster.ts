@@ -34,7 +34,7 @@
  *   return {
  *     fetch: cluster.provide(handler)
  *   }
- * }))
+ * }).pipe(Effect.provide(Cloudflare.Workers.CronEventSourceLive)))
  * ```
  *
  * @since 4.0.0
