@@ -1,9 +1,57 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema } from "effect"
-import { Response } from "effect/unstable/ai"
+import { Response, Tool, Toolkit } from "effect/unstable/ai"
 
 describe("Response", () => {
+  describe("tool results with overlapping success and failure types", () => {
+    const tool = Tool.make("ResultEncoding", {
+      success: Schema.Number,
+      failure: Schema.NumberFromString,
+      failureMode: "return"
+    })
+
+    for (const isFailure of [false, true]) {
+      const branch = isFailure ? "failure" : "success"
+      const encodedResult = isFailure ? "404" : 404
+      const part = Response.makePart("tool-result", {
+        id: "tool-123",
+        name: "ResultEncoding",
+        isFailure,
+        result: 404,
+        encodedResult,
+        providerExecuted: false,
+        preliminary: false
+      })
+
+      it.effect(`encodes a ${branch} with the ${branch} schema`, () =>
+        Effect.gen(function*() {
+          const schema = Response.ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
+          const encoded = yield* Schema.encodeEffect(schema)({ ...part, encodedResult })
+
+          deepStrictEqual(encoded, {
+            type: "tool-result",
+            id: "tool-123",
+            name: "ResultEncoding",
+            isFailure,
+            result: encodedResult,
+            providerExecuted: false,
+            preliminary: false,
+            metadata: {}
+          }, "encoded tool result")
+        }))
+
+      it.effect(`preserves a ${branch} encodedResult through an AllParts JSON round trip`, () =>
+        Effect.gen(function*() {
+          const schema = Response.AllParts(Toolkit.make(tool))
+          const encoded = yield* Schema.encodeEffect(schema)(part)
+          const decoded = yield* Schema.decodeUnknownEffect(schema)(JSON.parse(JSON.stringify(encoded)))
+
+          deepStrictEqual(decoded, part, "decoded tool result")
+        }))
+    }
+  })
+
   it.effect("decodes response metadata with omitted optional fields", () =>
     Effect.gen(function*() {
       const encoded: Response.ResponseMetadataPartEncoded = {
