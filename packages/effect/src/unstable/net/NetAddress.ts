@@ -24,6 +24,7 @@ export interface Ipv4Address extends Equal.Equal, Hash.Hash {
   readonly _tag: "Ipv4Address"
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -36,6 +37,7 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
   readonly _tag: "Ipv6Address"
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -56,6 +58,7 @@ export interface MacAddress extends Equal.Equal, Hash.Hash {
   readonly _tag: "MacAddress"
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 const getBytes = (self: IpAddress | MacAddress): Uint8Array => (self as any).bytes
@@ -72,6 +75,7 @@ export interface InetAddressV4 extends Equal.Equal, Hash.Hash {
   readonly port: number
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -87,6 +91,7 @@ export interface InetAddressV6 extends Equal.Equal, Hash.Hash {
   readonly scopeId: number
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -108,6 +113,7 @@ export interface UnixPathAddress extends Equal.Equal, Hash.Hash {
   readonly path: string
   readonly [TypeId]: typeof TypeId
   toString(): string
+  toJSON(): string
 }
 
 /**
@@ -144,13 +150,22 @@ export declare namespace SocketAddress {
 }
 
 /**
- * A checked network-address operation failure.
+ * A checked network-address operation failure retaining the address or supplied input.
+ *
+ * **Details**
+ *
+ * Address-based operations retain the address value. Parsing and numeric
+ * construction retain the supplied string or array. Composed operations forward
+ * errors from the failing operation unchanged. Failures from external operations
+ * retain the original exception in `cause` when available.
  *
  * @category errors
  * @since 4.0.0
  */
 export class NetAddressError extends Data.TaggedError("NetAddressError")<{
   readonly message: string
+  readonly input: unknown
+  readonly cause?: unknown
 }> {}
 
 const isAddress = (u: unknown): u is IpAddress | MacAddress | SocketAddress => hasProperty(u, TypeId)
@@ -247,8 +262,11 @@ const Ipv4Proto = {
   toString(this: Ipv4Address): string {
     return formatIp(this)
   },
-  [NodeInspectSymbol](this: Ipv4Address): string {
+  toJSON(this: Ipv4Address): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: Ipv4Address): string {
+    return this.toJSON()
   }
 }
 
@@ -264,8 +282,11 @@ const Ipv6Proto = {
   toString(this: Ipv6Address): string {
     return formatIp(this)
   },
-  [NodeInspectSymbol](this: Ipv6Address): string {
+  toJSON(this: Ipv6Address): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: Ipv6Address): string {
+    return this.toJSON()
   }
 }
 
@@ -281,8 +302,11 @@ const MacProto = {
   toString(this: MacAddress): string {
     return formatMacAddress(this)
   },
-  [NodeInspectSymbol](this: MacAddress): string {
+  toJSON(this: MacAddress): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: MacAddress): string {
+    return this.toJSON()
   }
 }
 
@@ -309,7 +333,7 @@ const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
 }
 
 const makeMac = (bytes: Uint8Array): MacAddress => {
-  const self = Object.assign(Object.create(MacProto), { bytes: bytes.slice() })
+  const self = Object.assign(Object.create(MacProto), { bytes: new Uint8Array(bytes) })
   return Object.freeze(self)
 }
 
@@ -369,8 +393,8 @@ export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
  */
 export const ipv4Broadcast: Ipv4Address = makeIpv4(new Uint8Array([255, 255, 255, 255]))
 
-const addressError = (message: string): Result.Result<never, NetAddressError> =>
-  Result.fail(new NetAddressError({ message }))
+const addressError = (input: unknown, message: string): Result.Result<never, NetAddressError> =>
+  Result.fail(new NetAddressError({ input, message }))
 
 /**
  * Creates an IPv4 address from four checked octets.
@@ -382,7 +406,7 @@ export const ipv4FromOctets = (
   octets: readonly [number, number, number, number]
 ): Result.Result<Ipv4Address, NetAddressError> => {
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
-    return addressError("octets must be integers from 0 through 255")
+    return addressError(octets, "octets must be integers from 0 through 255")
   }
   return Result.succeed(makeIpv4(new Uint8Array(octets)))
 }
@@ -397,7 +421,7 @@ export const ipv6FromSegments = (
   segments: readonly [number, number, number, number, number, number, number, number]
 ): Result.Result<Ipv6Address, NetAddressError> => {
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
-    return addressError("segments must be integers from 0 through 65535")
+    return addressError(segments, "segments must be integers from 0 through 65535")
   }
   const bytes = new Uint8Array(16)
   for (let index = 0; index < 8; index++) {
@@ -417,7 +441,7 @@ export const macAddressFromOctets = (
   octets: readonly [number, number, number, number, number, number]
 ): Result.Result<MacAddress, NetAddressError> => {
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
-    return addressError("octets must be integers from 0 through 255")
+    return addressError(octets, "octets must be integers from 0 through 255")
   }
   return Result.succeed(makeMac(new Uint8Array(octets)))
 }
@@ -430,7 +454,7 @@ export const macAddressFromOctets = (
  */
 export const macAddressFromString = (input: string): Result.Result<MacAddress, NetAddressError> => {
   if (!/^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(input)) {
-    return addressError("expected six two-digit hexadecimal octets separated by colons")
+    return addressError(input, "expected six two-digit hexadecimal octets separated by colons")
   }
   return Result.succeed(makeMac(new Uint8Array(input.split(":").map((part) => Number.parseInt(part, 16)))))
 }
@@ -456,34 +480,34 @@ export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.
 export const ipv4FromString = (input: string): Result.Result<Ipv4Address, NetAddressError> => {
   const parts = input.split(".")
   if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) {
-    return addressError("expected exactly four decimal octets")
+    return addressError(input, "expected exactly four decimal octets")
   }
   if (parts.some((part) => part.length > 1 && part[0] === "0")) {
-    return addressError("leading zeroes are not allowed")
+    return addressError(input, "leading zeroes are not allowed")
   }
   const octets = parts.map(Number)
   if (octets.some((part) => part > 255)) {
-    return addressError("octets must be at most 255")
+    return addressError(input, "octets must be at most 255")
   }
   return ipv4FromOctets([octets[0], octets[1], octets[2], octets[3]])
 }
 
 const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, NetAddressError> => {
   if (input.includes("[") || input.includes("]") || input.includes("%")) {
-    return addressError("brackets and zone identifiers are not valid in a bare IPv6 address")
+    return addressError(input, "brackets and zone identifiers are not valid in a bare IPv6 address")
   }
   const halves = input.split("::")
-  if (halves.length > 2) return addressError("only one compression marker is allowed")
+  if (halves.length > 2) return addressError(input, "only one compression marker is allowed")
   const head = halves[0] === "" ? [] : halves[0].split(":")
   const tail = halves.length === 2 && halves[1] !== "" ? halves[1].split(":") : []
   if (head.some((part) => part === "") || tail.some((part) => part === "")) {
-    return addressError("empty segments are only valid in the compression marker")
+    return addressError(input, "empty segments are only valid in the compression marker")
   }
   const trailing = tail.length > 0 ? tail[tail.length - 1] : head.length > 0 ? head[head.length - 1] : ""
   let embedded: ReadonlyArray<number> | undefined
   if (trailing.includes(".")) {
     if (halves.length === 2 && tail.length === 0) {
-      return addressError("embedded IPv4 syntax must be trailing")
+      return addressError(input, "embedded IPv4 syntax must be trailing")
     }
     const parsed = Result.map(ipv4FromString(trailing), (address) => {
       const octets = ipv4ToOctets(address)
@@ -497,6 +521,7 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
   const explicit = head.length + tail.length + (embedded ? 2 : 0)
   if (halves.length === 1 ? explicit !== 8 : explicit >= 8) {
     return addressError(
+      input,
       halves.length === 1 ? "expected eight segments" : "compression must replace at least one segment"
     )
   }
@@ -505,7 +530,7 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
   const parsedHead = head.map(parse)
   const parsedTail = tail.map(parse)
   if (parsedHead.some((part) => part === undefined) || parsedTail.some((part) => part === undefined)) {
-    return addressError("segments must contain one through four hexadecimal digits")
+    return addressError(input, "segments must contain one through four hexadecimal digits")
   }
   return Result.succeed([
     ...parsedHead as ReadonlyArray<number>,
@@ -848,8 +873,11 @@ const InetV4Proto = {
   toString(this: InetAddressV4): string {
     return formatInet(this)
   },
-  [NodeInspectSymbol](this: InetAddressV4): string {
+  toJSON(this: InetAddressV4): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: InetAddressV4): string {
+    return this.toJSON()
   }
 }
 
@@ -869,15 +897,15 @@ const InetV6Proto = {
   toString(this: InetAddressV6): string {
     return formatInet(this)
   },
-  [NodeInspectSymbol](this: InetAddressV6): string {
+  toJSON(this: InetAddressV6): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: InetAddressV6): string {
+    return this.toJSON()
   }
 }
 
-const checkPort = (port: number): Result.Result<number, NetAddressError> =>
-  Number.isInteger(port) && port >= 0 && port <= 0xffff
-    ? Result.succeed(port)
-    : addressError("port must be an integer from 0 through 65535")
+const checkPort = (port: number): boolean => Number.isInteger(port) && port >= 0 && port <= 0xffff
 
 /**
  * Creates a checked IPv4 internet address.
@@ -886,12 +914,13 @@ const checkPort = (port: number): Result.Result<number, NetAddressError> =>
  * @since 4.0.0
  */
 export const inetAddressV4 = (address: Ipv4Address, port: number): Result.Result<InetAddressV4, NetAddressError> => {
-  return Result.map(checkPort(port), () => {
-    const self = Object.create(InetV4Proto)
-    self.address = address
-    self.port = port
-    return Object.freeze(self)
-  })
+  if (!checkPort(port)) {
+    return addressError(address, "port must be an integer from 0 through 65535")
+  }
+  const self = Object.create(InetV4Proto)
+  self.address = address
+  self.port = port
+  return Result.succeed(Object.freeze(self))
 }
 
 /**
@@ -905,17 +934,18 @@ export const inetAddressV6 = (
   port: number,
   options?: { readonly scopeId?: number | undefined }
 ): Result.Result<InetAddressV6, NetAddressError> => {
-  return Result.flatMap(checkPort(port), () => {
-    const scopeId = options?.scopeId ?? 0
-    if (!Number.isInteger(scopeId) || scopeId < 0 || scopeId > 0xffffffff) {
-      return addressError("scopeId must be an unsigned 32-bit integer")
-    }
-    const self = Object.create(InetV6Proto)
-    self.address = address
-    self.port = port
-    self.scopeId = scopeId
-    return Result.succeed(Object.freeze(self))
-  })
+  if (!checkPort(port)) {
+    return addressError(address, "port must be an integer from 0 through 65535")
+  }
+  const scopeId = options?.scopeId ?? 0
+  if (!Number.isInteger(scopeId) || scopeId < 0 || scopeId > 0xffffffff) {
+    return addressError(address, "scopeId must be an unsigned 32-bit integer")
+  }
+  const self = Object.create(InetV6Proto)
+  self.address = address
+  self.port = port
+  self.scopeId = scopeId
+  return Result.succeed(Object.freeze(self))
 }
 
 /**
@@ -982,7 +1012,7 @@ export const inetAddressFromString = (input: string): Result.Result<InetAddress,
   if (bracketed) {
     const end = input.indexOf("]")
     if (end < 0 || input[end + 1] !== ":" || input.indexOf("]", end + 1) !== -1) {
-      return addressError("expected [IPv6]:port")
+      return addressError(input, "expected [IPv6]:port")
     }
     host = input.slice(1, end)
     portText = input.slice(end + 2)
@@ -990,31 +1020,31 @@ export const inetAddressFromString = (input: string): Result.Result<InetAddress,
     if (scopeSeparator !== -1) {
       const scopeText = host.slice(scopeSeparator + 1)
       if (host.indexOf("%", scopeSeparator + 1) !== -1 || !/^\d+$/.test(scopeText)) {
-        return addressError("scope identifier must be decimal")
+        return addressError(input, "scope identifier must be decimal")
       }
       scopeId = Number(scopeText)
       if (!Number.isInteger(scopeId) || scopeId > 0xffffffff) {
-        return addressError("scope identifier must be an unsigned 32-bit integer")
+        return addressError(input, "scope identifier must be an unsigned 32-bit integer")
       }
       host = host.slice(0, scopeSeparator)
     }
   } else {
     const separator = input.lastIndexOf(":")
     if (separator < 0) {
-      return addressError("expected host:port or [IPv6]:port")
+      return addressError(input, "expected host:port or [IPv6]:port")
     }
     if (input.indexOf(":") !== separator) {
-      return addressError("IPv6 addresses must be bracketed")
+      return addressError(input, "IPv6 addresses must be bracketed")
     }
     host = input.slice(0, separator)
     portText = input.slice(separator + 1)
   }
   if (!/^(0|[1-9]\d*)$/.test(portText)) {
-    return addressError("port must be an unpadded decimal integer")
+    return addressError(input, "port must be an unpadded decimal integer")
   }
   return Result.flatMap(ipFromString(host), (address): Result.Result<InetAddress, NetAddressError> => {
     if (bracketed !== isIpv6Address(address)) {
-      return addressError("only IPv6 addresses use brackets")
+      return addressError(input, "only IPv6 addresses use brackets")
     }
     return isIpv6Address(address)
       ? inetAddressV6(address, Number(portText), { scopeId })
@@ -1052,6 +1082,73 @@ export const formatInet = (self: InetAddress): string => {
 export const formatUrlHost = (self: IpAddress): string => isIpv4Address(self) ? formatIp(self) : `[${formatIp(self)}]`
 
 /**
+ * Converts an IP address or internet socket address to a WHATWG `URL`.
+ *
+ * **Details**
+ *
+ * Defaults to the HTTP scheme and uses standard URL normalization, including
+ * IPv6 brackets and omission of default ports. Bare IP addresses have no
+ * explicit port; internet socket addresses retain their port, including zero.
+ * Unspecified addresses are preserved.
+ *
+ * **Gotchas**
+ *
+ * Returns a `NetAddressError` for scoped IPv6 addresses or inputs that the URL
+ * constructor rejects. Supply the scheme without a trailing colon, for example
+ * `"https"`.
+ *
+ * @category conversions
+ * @since 4.0.0
+ */
+export const toUrl = (self: IpAddress | InetAddress, scheme: string = "http"): Result.Result<URL, NetAddressError> => {
+  if (self._tag === "InetAddressV6" && self.scopeId !== 0) {
+    return addressError(self, "scoped IPv6 addresses are not supported by WHATWG URLs")
+  }
+  return Result.try({
+    try: () => new URL(`${scheme}://${isInetAddress(self) ? formatInet(self) : formatUrlHost(self)}`),
+    catch: (cause) => new NetAddressError({ input: self, message: "failed to construct URL", cause })
+  })
+}
+
+/**
+ * Formats an IP or socket address as a URL display string.
+ *
+ * **Details**
+ *
+ * Defaults to HTTP, brackets IPv6 addresses, and omits default ports and the
+ * trailing slash. Custom schemes such as `"tcp"` retain their scheme and host.
+ * Unix socket addresses use {@link formatUnixPath}, preserving the raw path
+ * with a `unix://` prefix regardless of the supplied scheme.
+ *
+ * **Gotchas**
+ *
+ * Returns a `NetAddressError` when URL conversion fails, including for scoped
+ * IPv6 addresses.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatUrl = (
+  self: IpAddress | SocketAddress,
+  scheme: string = "http"
+): Result.Result<string, NetAddressError> =>
+  isUnixPathAddress(self)
+    ? Result.succeed(formatUnixPath(self))
+    : Result.map(toUrl(self, scheme), (url) => `${url.protocol}//${url.host}`)
+
+/**
+ * Formats an IP or socket address as a URL display string,
+ * throwing a `NetAddressError` when conversion fails.
+ *
+ * @see {@link formatUrl} for the checked version and formatting behavior.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const formatUrlUnsafe = (self: IpAddress | SocketAddress, scheme: string = "http"): string =>
+  Result.getOrThrow(formatUrl(self, scheme))
+
+/**
  * Formats a hostname or numeric IP address for use as a URL authority host.
  *
  * @category encoding
@@ -1067,13 +1164,16 @@ const UnixPathProto = {
     return isUnixPathAddress(that) && this.path === that.path
   },
   [Hash.symbol](this: UnixPathAddress): number {
-    return Hash.combine(Hash.string("UnixPathAddress"))(Hash.string(this.path))
+    return Hash.combine(Hash.string("UnixPathAddress"), Hash.string(this.path))
   },
   toString(this: UnixPathAddress): string {
     return this.path
   },
-  [NodeInspectSymbol](this: UnixPathAddress): string {
+  toJSON(this: UnixPathAddress): string {
     return this.toString()
+  },
+  [NodeInspectSymbol](this: UnixPathAddress): string {
+    return this.toJSON()
   }
 }
 
@@ -1088,6 +1188,19 @@ export const unixPathAddress = (path: string): UnixPathAddress => {
   self.path = path
   return Object.freeze(self)
 }
+
+/**
+ * Formats a Unix-domain socket path as a readable `unix://path` display string.
+ *
+ * **Details**
+ *
+ * Preserves the raw path without URL encoding or normalization. The resulting
+ * string is intended for display.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatUnixPath = (self: UnixPathAddress): string => `unix://${self.path}`
 
 /**
  * Converts a `SocketAddress.Input` to a concrete socket address.
@@ -1108,16 +1221,16 @@ export const socketAddressFromInput = (
   if (hasProperty(input, "path")) {
     return typeof input.path === "string"
       ? Result.succeed(unixPathAddress(input.path))
-      : addressError("path must be a string")
+      : addressError(input, "path must be a string")
   }
   if (!hasProperty(input, "address") || !hasProperty(input, "port")) {
-    return addressError("expected an address and port or a Unix path")
+    return addressError(input, "expected an address and port or a Unix path")
   }
   const address = typeof input.address === "string"
     ? ipFromString(input.address)
     : isIpAddress(input.address)
     ? Result.succeed(input.address)
-    : addressError("address must be an IP address or numeric IP string")
+    : addressError(input, "address must be an IP address or numeric IP string")
   return Result.flatMap(address, (address) => inetAddress(address, input.port as number))
 }
 

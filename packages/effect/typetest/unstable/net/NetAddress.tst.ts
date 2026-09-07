@@ -52,6 +52,30 @@ describe("NetAddress", () => {
     })
   })
 
+  it("converts internet addresses to URLs and exposes rejected inputs", () => {
+    const address = NetAddress.inetAddressUnsafe(NetAddress.ipv6Unspecified, 80)
+    expect(NetAddress.toUrl(address)).type.toBe<Result.Result<URL, NetAddress.NetAddressError>>()
+    expect(NetAddress.toUrl(address, undefined)).type.toBe<Result.Result<URL, NetAddress.NetAddressError>>()
+    expect(NetAddress.toUrl(address, "https")).type.toBe<Result.Result<URL, NetAddress.NetAddressError>>()
+    const unix = NetAddress.unixPathAddress("server.sock")
+    expect(NetAddress.toUrl(NetAddress.ipv4Loopback)).type.toBe<Result.Result<URL, NetAddress.NetAddressError>>()
+    expect(NetAddress.toUrl(NetAddress.ipv6Loopback, "https")).type.toBe<
+      Result.Result<URL, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.toUrl).type.not.toBeCallableWith(unix)
+    expect(NetAddress.toUrl).type.not.toBeCallableWith(unix, "http")
+    expect(NetAddress.formatUrl(address)).type.toBe<Result.Result<string, NetAddress.NetAddressError>>()
+    expect(NetAddress.formatUrl(NetAddress.ipv4Loopback, "https")).type.toBe<
+      Result.Result<string, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.formatUrl(unix)).type.toBe<Result.Result<string, NetAddress.NetAddressError>>()
+    expect(NetAddress.formatUrlUnsafe(address)).type.toBe<string>()
+    expect(NetAddress.formatUrlUnsafe(NetAddress.ipv4Loopback, "https")).type.toBe<string>()
+    expect(NetAddress.formatUrlUnsafe(unix)).type.toBe<string>()
+    expect(NetAddress.formatUnixPath(unix)).type.toBe<string>()
+    expect(new NetAddress.NetAddressError({ input: address, message: "invalid" }).input).type.toBe<unknown>()
+  })
+
   it("narrows address unions", () => {
     const address = null as unknown as NetAddress.SocketAddress
     if (NetAddress.isUnixPathAddress(address)) {
@@ -61,6 +85,27 @@ describe("NetAddress", () => {
     } else {
       expect(address.address).type.toBe<NetAddress.Ipv6Address>()
     }
+  })
+
+  it("preserves named schema types when annotating codecs", () => {
+    expect(Schema.MacAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.MacAddressFromString>()
+    expect(Schema.Ipv4AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4AddressFromString>()
+    expect(Schema.Ipv6AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv6AddressFromString>()
+    expect(Schema.IpAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.IpAddressFromString>()
+    expect(Schema.Ipv4InterfaceFromString.annotate({ identifier: "custom" })).type.toBe<
+      Schema.Ipv4InterfaceFromString
+    >()
+    expect(Schema.Ipv6InterfaceFromString.annotate({ identifier: "custom" })).type.toBe<
+      Schema.Ipv6InterfaceFromString
+    >()
+    expect(Schema.IpInterfaceFromString.annotate({ identifier: "custom" })).type.toBe<Schema.IpInterfaceFromString>()
+    expect(Schema.Ipv4NetworkFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4NetworkFromString>()
+    expect(Schema.Ipv6NetworkFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv6NetworkFromString>()
+    expect(Schema.IpNetworkFromString.annotate({ identifier: "custom" })).type.toBe<Schema.IpNetworkFromString>()
+    expect(Schema.InetAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.InetAddressFromString>()
+    expect(Schema.UnixPathAddressFromString.annotate({ identifier: "custom" })).type.toBe<
+      Schema.UnixPathAddressFromString
+    >()
   })
 
   it("exposes string transformation schemas", () => {

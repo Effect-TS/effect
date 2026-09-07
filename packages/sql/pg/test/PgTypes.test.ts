@@ -287,6 +287,23 @@ describe("PgTypes", () => {
     assert.strictEqual(PgTypes.decode(expected, PgTypes.OID.cidr, 1), "2001:db8::/32")
   })
 
+  it("includes the input and column type in network encoding errors", () => {
+    for (
+      const [type, input, reason] of [
+        ["inet", "010.1.2.3/24", "leading zeroes are not allowed"],
+        ["cidr", "010.1.2.3/24", "leading zeroes are not allowed"],
+        ["inet", "192.0.2.1/33", "prefix length must be an integer from 0 through 32"],
+        ["cidr", "10.1.2.3/8", "address has non-zero host bits"],
+        ["cidr", "2001:db8::1/32", "address has non-zero host bits"]
+      ] as const
+    ) {
+      const result = PgTypesResult.encode(input, PgTypes.OID[type])
+      if (Result.isSuccess(result)) assert.fail("expected Failure")
+      assert.strictEqual(result.failure._tag, "PgTypesCodecError")
+      assert.strictEqual(result.failure.message, `Invalid ${type} value ${JSON.stringify(input)}: ${reason}`)
+    }
+  })
+
   it("uses shared canonical parsing for inet and cidr", () => {
     assert.deepStrictEqual(
       PgTypes.encode("10.1.2.3", PgTypes.OID.cidr),
