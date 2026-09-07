@@ -185,6 +185,17 @@ const makeToolkitTestClient = Effect.fnUntraced(function*(
   return client
 })
 
+const makeReportingToolkitTestClient = Effect.fnUntraced(function*() {
+  const reported: Array<Cause.Cause<unknown>> = []
+  const client = yield* makeToolkitTestClient(
+    testToolkitHandlers,
+    ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
+      reported.push(cause)
+    })])
+  )
+  return { client, reported }
+})
+
 const toolResultText = (result: McpSchema.CallToolResult): string => {
   const content = result.content[0]
   assertTrue(content?.type === "text", "Expected text tool-result content")
@@ -440,7 +451,7 @@ describe("McpServer", () => {
 
     it.effect("keeps void tool results successful", () =>
       Effect.gen(function*() {
-        const client = yield* makeToolkitTestClient()
+        const { client, reported } = yield* makeReportingToolkitTestClient()
 
         const result = yield* client["tools/call"]({
           name: "UntypedTool",
@@ -454,6 +465,7 @@ describe("McpServer", () => {
             content: []
           })
         )
+        assert.deepStrictEqual(reported, [])
       }))
 
     it.effect("carries object tool results as structured content", () =>
@@ -498,7 +510,7 @@ describe("McpServer", () => {
 
     it.effect("returns schema-validated messages for declared handler failures", () =>
       Effect.gen(function*() {
-        const client = yield* makeToolkitTestClient()
+        const { client, reported } = yield* makeReportingToolkitTestClient()
 
         const result = yield* client["tools/call"]({
           name: "PublicFailureTool",
@@ -508,6 +520,9 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, "Public failure")
+        assert.lengthOf(reported, 1)
+        assert.isTrue(Cause.hasFails(reported[0]))
+        assert.strictEqual(Cause.squash(reported[0]), publicFailure)
       }))
 
     it.effect("returns a generic message for non-validation AiError failures", () =>
@@ -526,7 +541,7 @@ describe("McpServer", () => {
 
     it.effect("returns a generic message for handler defects", () =>
       Effect.gen(function*() {
-        const client = yield* makeToolkitTestClient()
+        const { client, reported } = yield* makeReportingToolkitTestClient()
 
         const result = yield* client["tools/call"]({
           name: "DefectTool",
@@ -536,48 +551,25 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, INTERNAL_TOOL_ERROR_MESSAGE)
+        assert.lengthOf(reported, 1)
+        assert.isTrue(Cause.hasDies(reported[0]))
+        assert.strictEqual(Cause.squash(reported[0]), privateDefect)
       }))
 
-    it.effect("reports tool failures before converting them to public results", () =>
+    it.effect("reports response serialization defects before returning a generic message", () =>
       Effect.gen(function*() {
-        const reported: Array<Cause.Cause<unknown>> = []
-        const reporter = ErrorReporter.make(({ cause }) => {
-          reported.push(cause)
-        })
-        const client = yield* makeToolkitTestClient(
-          testToolkitHandlers,
-          ErrorReporter.layer([reporter])
-        )
+        const { client, reported } = yield* makeReportingToolkitTestClient()
 
-        const success = yield* client["tools/call"]({
-          name: "UntypedTool",
-          arguments: {}
-        })
-        assert.strictEqual(success.isError, false)
-        assert.lengthOf(reported, 0)
-
-        const publicFailureResult = yield* client["tools/call"]({
-          name: "PublicFailureTool",
-          arguments: {}
-        })
-        assert.strictEqual(toolResultText(publicFailureResult), "Public failure")
-
-        const defectResult = yield* client["tools/call"]({
-          name: "DefectTool",
-          arguments: {}
-        })
-        assert.strictEqual(toolResultText(defectResult), INTERNAL_TOOL_ERROR_MESSAGE)
-
-        const serializationResult = yield* client["tools/call"]({
+        const result = yield* client["tools/call"]({
           name: "UnserializableResultTool",
           arguments: {}
         })
-        assert.strictEqual(toolResultText(serializationResult), INTERNAL_TOOL_ERROR_MESSAGE)
 
-        assert.lengthOf(reported, 3)
-        assert.strictEqual(Cause.squash(reported[0]), publicFailure)
-        assert.strictEqual(Cause.squash(reported[1]), privateDefect)
-        assert.instanceOf(Cause.squash(reported[2]), TypeError)
+        assert.strictEqual(result.isError, true)
+        assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
+        assert.lengthOf(reported, 1)
+        assert.isTrue(Cause.hasDies(reported[0]))
+        assert.instanceOf(Cause.squash(reported[0]), TypeError)
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>
