@@ -23,7 +23,6 @@ import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import type * as Redacted from "../../Redacted.ts"
-import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
@@ -863,7 +862,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
     const reader: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
-      const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
       const ws = yield* Scope.provide(acquire, scope)
       if ("binaryType" in ws) {
         ;(ws as { binaryType: string }).binaryType = "arraybuffer"
@@ -887,7 +885,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           readonly cleanup: () => void
         }
         | undefined
-      let flushScheduled = false
 
       function pauseWebSocket() {
         if (!pausable || paused) return
@@ -910,7 +907,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       }
 
       function deliver() {
-        flushScheduled = false
         if (waiter === undefined || buffer.length === 0) return
         const resume = waiter
         waiter = undefined
@@ -922,12 +918,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         if (highWaterMark !== undefined) {
           bufferSize += typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength
         }
-        if (waiter !== undefined) {
-          if (!flushScheduled) {
-            flushScheduled = true
-            dispatcher.scheduleTask(deliver, 0)
-          }
-        }
+        if (waiter !== undefined) deliver()
         if (pausable && bufferSize >= highWaterMark!) {
           pauseWebSocket()
         } else if (!pausable && !waiter && highWaterMark !== undefined && bufferSize > highWaterMark) {
