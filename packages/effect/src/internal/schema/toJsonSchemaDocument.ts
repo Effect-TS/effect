@@ -487,11 +487,12 @@ function compileJsonSchema(
       case "Union": {
         const types = representation.types.map((type, index) => recur(type, [...path, "types", index]))
         if (types.length === 0) return { not: {} }
-        if (representation.mode === "anyOf" && types.length > 1) {
+        const mode = representation.options?.mode ?? "anyOf"
+        if (mode === "anyOf" && types.length > 1) {
           const compacted = compactEnums(types)
           if (compacted !== undefined) return compacted
         }
-        return representation.mode === "anyOf" ? { anyOf: types } : { oneOf: types }
+        return mode === "anyOf" ? { anyOf: types } : { oneOf: types }
       }
     }
   }

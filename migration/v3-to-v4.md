@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `agent/bob/738d126b22f9` (`b4773df70eb78ac7c222b236ff5a0605e6632ac6`)
+Head: `HEAD` (`303c58f2c1b9d9f2e25ad4554b80af193852fbec`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14939,7 +14939,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ArbitraryAnnotationId` -> `Schema.Annotations.ToArbitrary`: Symbol annotation IDs were removed. Declarations use the toCodecArbitrary annotation; filters use arbitraryConstraint.
 
-- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed; control asynchronous parsing with ParseOptions.concurrency.
+- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed. They have no direct replacement. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
 
 - `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation.
 
@@ -14955,9 +14955,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ComposeTransformation` -> `SchemaAST.Encoding`: The marker transformation was replaced by explicit SchemaAST.Link encoding chains.
 
-- `SchemaAST.ConcurrencyAnnotation` -> `SchemaAST.ParseOptions["concurrency"]`: Concurrency is now a parse option rather than its own annotation type.
+- `SchemaAST.ConcurrencyAnnotation` -> `SchemaAST.ParseOptions`: Per-schema concurrency annotations were removed. Pass concurrency in runtime ParseOptions when creating or calling a decoder, encoder, or constructor. It applies independently to each tuple, array, struct, record, or struct-with-rest node and does not make Union candidates concurrent.
 
-- `SchemaAST.ConcurrencyAnnotationId` -> `Schema.Annotations.Bottom["parseOptions"]`: Symbol annotation IDs were removed; put concurrency inside the parseOptions annotation.
+- `SchemaAST.ConcurrencyAnnotationId` -> `SchemaAST.ParseOptions`: The annotation ID was removed. Pass concurrency in runtime ParseOptions; product parsing follows Effect.forEach concurrency semantics while Union candidates remain sequential.
 
 - `SchemaAST.Declaration` -> `SchemaAST.Declaration`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
 
@@ -15033,9 +15033,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseJsonSchemaId` -> `Schema.UnknownFromJsonString`: Use the built-in JSON string codec instead of checking the old schema ID.
 
-- `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
+- `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
 
-- `SchemaAST.ParseOptionsAnnotationId` -> `Schema.Annotations.Bottom["parseOptions"]`: Symbol annotation IDs were removed; use the parseOptions key.
+- `SchemaAST.ParseOptionsAnnotationId` -> `none`: Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas.
 
 - `SchemaAST.PrettyAnnotationId` -> `Schema.overrideToFormatter`: The symbol annotation was removed; attach custom formatters with Schema.overrideToFormatter.
 
@@ -15071,7 +15071,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.TransformationKind` -> `SchemaTransformation.Transformation`: Transformation implementations moved to SchemaTransformation and are stored on SchemaAST.Link.
 
-- `SchemaAST.TupleType` -> `SchemaAST.Arrays`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
+- `SchemaAST.TupleType` -> `SchemaAST.Arrays`: Use Arrays(isMutable, elements, rest, annotations?, checks?, encoding?, context?, encodingChecks?).
 
 - `SchemaAST.Type` -> `SchemaAST.AST`: The tuple-element Type wrapper was removed; optionality and mutability moved to Context.
 
@@ -15079,13 +15079,13 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.TypeConstructorAnnotationId` -> `Schema.Annotations.Declaration["toCodec"]`: Symbol annotation IDs were removed; use declaration codec annotation keys.
 
-- `SchemaAST.TypeLiteral` -> `SchemaAST.Objects`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
+- `SchemaAST.TypeLiteral` -> `SchemaAST.Objects`: Use Objects(propertySignatures, indexSignatures, annotations?, checks?, encoding?, context?, encodingChecks?). Output key order is unspecified.
 
 - `SchemaAST.TypeLiteralTransformation` -> `SchemaAST.Encoding`: Object transformations are encoding links; use Schema.encodeKeys for key mappings.
 
 - `SchemaAST.UndefinedKeyword` -> `SchemaAST.Undefined`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
-- `SchemaAST.Union` -> `SchemaAST.Union`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
+- `SchemaAST.Union` -> `SchemaAST.Union`: Pass member ASTs and an optional options object: new SchemaAST.Union(types, { mode: 'oneOf' }). Read options?.mode ?? 'anyOf' instead of a direct mode field.
 
 - `SchemaAST.UniqueSymbol` -> `SchemaAST.UniqueSymbol`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
 
@@ -15111,13 +15111,13 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getAnnotation` -> `SchemaAST.resolveAt`: Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription.
 
-- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed; read ParseOptions.concurrency when controlling asynchronous parsing.
+- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
 
 - `SchemaAST.getBrandAnnotation` -> `SchemaAST.resolveAt("brands")`: Resolve the string-keyed brands annotation.
 
 - `SchemaAST.getCompiler` -> `none`: The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API.
 
-- `SchemaAST.getConcurrencyAnnotation` -> `SchemaAST.resolveAt("parseOptions")`: Resolve parseOptions and read concurrency from it.
+- `SchemaAST.getConcurrencyAnnotation` -> `SchemaAST.ParseOptions`: Concurrency is no longer read from schema annotations. Pass it in runtime ParseOptions when creating or calling a parser. It applies to product children, not Union candidates.
 
 - `SchemaAST.getDecodingFallbackAnnotation` -> `none`: Fallbacks are encoding middleware in v4, not readable annotations; attach them with Schema.catchDecoding.
 
@@ -15143,7 +15143,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getParseIssueTitleAnnotation` -> `none`: Issue-title callbacks were removed; use message or expected annotations and SchemaIssue formatters.
 
-- `SchemaAST.getParseOptionsAnnotation` -> `SchemaAST.resolveAt("parseOptions")`: Resolve the string-keyed parseOptions annotation.
+- `SchemaAST.getParseOptionsAnnotation` -> `none`: Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas.
 
 - `SchemaAST.getPropertySignatures` -> `SchemaAST.Objects.propertySignatures`: Narrow to Objects and read propertySignatures directly.
 

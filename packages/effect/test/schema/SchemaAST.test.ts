@@ -665,6 +665,15 @@ describe("SchemaAST", () => {
     })
   })
 
+  describe("Union options", () => {
+    it("preserves the complete options object through recur and flip", () => {
+      const unionOptions: SchemaAST.UnionOptions = { mode: "oneOf" }
+      const union = new SchemaAST.Union([Schema.NumberFromString.ast, Schema.String.ast], unionOptions)
+      strictEqual(union.recur(SchemaAST.toEncoded).options, unionOptions)
+      strictEqual(union.flip(SchemaAST.flip).options, unionOptions)
+    })
+  })
+
   describe("IndexSignature", () => {
     it("accepts valid parameters on both type and encoded side", () => {
       doesNotThrow(() => new SchemaAST.IndexSignature(Schema.String.ast, Schema.Number.ast))

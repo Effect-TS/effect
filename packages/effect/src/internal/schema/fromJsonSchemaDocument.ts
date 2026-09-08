@@ -634,7 +634,9 @@ function translateJsonSchemaMultiDocument(
     right: SchemaRepresentation.Union,
     path: Path
   ): ImportedJsonSchemaRepresentation | undefined {
-    if (left.mode !== "anyOf" || right.mode !== "anyOf") return undefined
+    if ((left.options?.mode ?? "anyOf") !== "anyOf" || (right.options?.mode ?? "anyOf") !== "anyOf") {
+      return undefined
+    }
     const rightByValue = new Map<string | number | boolean | null, ImportedJsonSchemaRepresentation>()
     for (const type of right.types) {
       const representation = type as ImportedJsonSchemaRepresentation
@@ -909,7 +911,7 @@ function translateJsonSchemaMultiDocument(
         representation,
         types.length === 1
           ? types[0]
-          : { _tag: "Union", types, mode: "anyOf", checks: [] },
+          : { _tag: "Union", types, checks: [] },
         [...path, "enum"]
       )
     }
@@ -957,7 +959,7 @@ function translateJsonSchemaMultiDocument(
         const union: ImportedJsonSchemaRepresentation = {
           _tag: "Union",
           types: members.map((member, index) => recur(member, [...path, mode, index])),
-          mode,
+          ...(mode === "oneOf" ? { options: { mode } } : {}),
           checks: []
         }
         representation = combine(union, representation, [...path, mode])
@@ -976,7 +978,6 @@ function translateJsonSchemaMultiDocument(
       return {
         _tag: "Union",
         types: types.map((type) => on({ ...schema, type }, path)),
-        mode: "anyOf",
         checks: []
       }
     }

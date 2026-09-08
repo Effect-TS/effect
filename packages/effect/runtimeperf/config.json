@@ -1043,6 +1043,45 @@
               "size": 32
             },
             {
+              "name": "array-32-suspended-concurrency-4",
+              "export": "array32SuspendedConcurrent4",
+              "scenario": "array-32-suspended-concurrency-4",
+              "family": "arrays",
+              "astTags": [
+                "Arrays",
+                "String",
+                "Transformation"
+              ],
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "object-32-suspended-concurrency-4",
+              "export": "object32SuspendedConcurrent4",
+              "scenario": "object-32-suspended-concurrency-4",
+              "family": "objects",
+              "astTags": [
+                "Objects",
+                "String",
+                "Transformation"
+              ],
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "record-32-suspended-concurrency-4",
+              "export": "record32SuspendedConcurrent4",
+              "scenario": "record-32-suspended-concurrency-4",
+              "family": "records",
+              "astTags": [
+                "Objects",
+                "String",
+                "Transformation"
+              ],
+              "path": "valid",
+              "size": 32
+            },
+            {
               "name": "literal-2-valid-last",
               "export": "literal2ValidLast",
               "scenario": "literal-2-valid-last",
@@ -1103,17 +1142,6 @@
               ],
               "path": "valid",
               "size": 2
-            },
-            {
-              "name": "property-order-original",
-              "export": "propertyOrderOriginal",
-              "scenario": "property-order-original",
-              "family": "parse-options",
-              "astTags": [
-                "Objects"
-              ],
-              "path": "valid",
-              "size": 3
             },
             {
               "name": "recursive-tree-depth-16-valid",

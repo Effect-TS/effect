@@ -102,7 +102,7 @@ function toCodecJsonASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => S
       if (sortedTypes !== ast.types) {
         return new SchemaAST.Union(
           sortedTypes,
-          ast.mode,
+          ast.options,
           ast.annotations,
           ast.checks,
           ast.encoding,
@@ -226,7 +226,7 @@ function toCodecStringTreeASTStep(
       if (sortedTypes !== ast.types) {
         return new SchemaAST.Union(
           sortedTypes,
-          ast.mode,
+          ast.options,
           ast.annotations,
           ast.checks,
           ast.encoding,
@@ -253,7 +253,7 @@ const nullToString = new SchemaAST.Link(
 )
 
 const booleanToString = new SchemaAST.Link(
-  new SchemaAST.Union([new SchemaAST.Literal("true"), new SchemaAST.Literal("false")], "anyOf"),
+  new SchemaAST.Union([new SchemaAST.Literal("true"), new SchemaAST.Literal("false")]),
   new InternalTransformation.Transformation(
     SchemaGetter.transform((s) => s === "true"),
     SchemaGetter.String()
@@ -294,7 +294,7 @@ const toCodecArrayFromSingleAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempot
           ),
           SchemaAST.string
         ],
-        "anyOf"
+        { mode: "anyOf" }
       ),
       out,
       arrayFromSingleTransformation

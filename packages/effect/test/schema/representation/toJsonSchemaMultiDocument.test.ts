@@ -541,7 +541,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
           {
             _tag: "Union",
             types: [StringRepresentation, { _tag: "Boolean", checks: [] }],
-            mode: "oneOf",
+            options: { mode: "oneOf" },
             checks: []
           }
         ],

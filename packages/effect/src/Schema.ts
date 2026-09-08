@@ -115,8 +115,8 @@ export type ConstructorDefault = "no-default" | "with-default"
  *
  * **When to use**
  *
- * Use when passing `disableChecks: true` to skip validation when you trust the data.
- * - Pass `parseOptions` to control error reporting behavior.
+ * Use when passing `disableChecks: true` to skip validation when you trust the
+ * data. Pass `parseOptions` to control parsing behavior.
  *
  * @see {@link BottomWithoutNew.makeEffect}
  * @see {@link BottomWithoutNew.make}
@@ -3354,6 +3354,9 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  *
  * The resulting schema's `Type` is a readonly object type with the fields'
  * decoded types. The `Encoded` form mirrors the field schemas' encoded types.
+ * Declared fields may be inherited and are copied to own properties in the
+ * output. The `__proto__` field is accepted only when it is an own property.
+ * Parsing does not guarantee that output keys retain their input order.
  *
  * **Example** (Defining a basic struct)
  *
@@ -3768,8 +3771,9 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  *
  * When decoded or encoded key transformations produce the same property key,
  * sequential parsing applies selected own properties in selection order, so
- * the later selected property overwrites the earlier value. With concurrency
- * greater than `1`, completion order determines which value is retained.
+ * the later selected property overwrites the earlier value. Dynamic key
+ * selection always examines own properties. Finite literal keys are declared
+ * fields and may therefore be inherited. Output key order is not guaranteed.
  *
  * **Example** (Defining a string-keyed record of numbers)
  *
@@ -4698,7 +4702,7 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
     ): Union<Simplify<Readonly<To>>> {
       const members = f(this.members)
       return makeUnion(
-        SchemaAST.union(members, this.ast.mode, options?.unsafePreserveChecks ? this.ast.checks : undefined),
+        SchemaAST.union(members, this.ast.options, options?.unsafePreserveChecks ? this.ast.checks : undefined),
         members
       )
     }
@@ -4730,9 +4734,9 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
  */
 export function Union<const Members extends ReadonlyArray<Constraint>>(
   members: Members,
-  options?: { mode?: "anyOf" | "oneOf" }
+  options?: SchemaAST.UnionOptions
 ): Union<Members> {
-  return makeUnion(SchemaAST.union(members, options?.mode ?? "anyOf", undefined), members)
+  return makeUnion(SchemaAST.union(members, options, undefined), members)
 }
 /**
  * Type-level representation returned by {@link Literals}.
@@ -4774,7 +4778,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
  */
 export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(literals: L): Literals<L> {
   const members = literals.map(Literal) as { readonly [K in keyof L]: Literal<L[K]> }
-  return make(SchemaAST.union(members, "anyOf", undefined), {
+  return make(SchemaAST.union(members, undefined, undefined), {
     literals,
     members,
     mapMembers<To extends ReadonlyArray<Constraint>>(
@@ -13640,6 +13644,10 @@ export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fi
       S["~encoded.optionality"]
     >
 {
+  /**
+   * `make`, `makeOption`, and `makeEffect` preserve an existing instance of
+   * this class. Use `new` when a distinct instance is required.
+   */
   readonly "Type": Self
   readonly "Encoded": S["Encoded"]
   readonly "DecodingServices": S["DecodingServices"]
@@ -13774,7 +13782,7 @@ function makeClass<
       return getClassSchema(this).rebuild(ast)
     }
     static make(input: S["~type.make.in"], options?: MakeOptions): Self {
-      return new this(input, options)
+      return SchemaParser.make(getClassSchema(this) as any)(input ?? {}, options) as Self
     }
     static makeOption(input: S["~type.make.in"], options?: MakeOptions): Option_.Option<Self> {
       return SchemaParser.makeOption(getClassSchema(this) as any)(input ?? {}, options) as any
@@ -15027,8 +15035,8 @@ export declare namespace Annotations {
   }
   /**
    * Base annotations shared by all composite schema nodes. Extends
-   * {@link Documentation} with error messages, branding, parse options, and
-   * arbitrary generation hooks. {@link Declaration} and other annotation
+   * {@link Documentation} with error messages, branding, and arbitrary
+   * generation hooks. {@link Declaration} and other annotation
    * interfaces build on top of this.
    *
    * @category models
@@ -15066,7 +15074,6 @@ export declare namespace Annotations {
      * filter/refinement instead.
      */
     readonly identifier?: string | undefined
-    readonly parseOptions?: SchemaAST.ParseOptions | undefined
     /**
      * Accumulated brands when multiple brands are added with `Schema.brand`.
      */
