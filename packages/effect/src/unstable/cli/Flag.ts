@@ -166,10 +166,10 @@ export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [str
  * @category constructors
  * @since 4.0.0
  */
-export const Literals = <const Choices extends ReadonlyArray<string>>(
+export const Literals = <const Literals extends ReadonlyArray<string>>(
   name: string,
-  choices: Choices
-): Flag<Choices[number]> => Param.Literals(Param.flagKind, name, choices)
+  literals: Literals
+): Flag<Literals[number]> => Param.Literals(Param.flagKind, name, literals)
 
 /**
  * Creates a path flag that accepts file system path input with validation options.
