@@ -737,24 +737,27 @@ export const wrapActivityResult = <A, E, R>(
 ): Effect.Effect<A, E, R | WorkflowInstance> =>
   Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
-    const registration = adoptActivityUnsafe(context, instance) ?? registerActivityUnsafe(instance)
-    return Effect.onExit(effect, (exit) => {
-      releaseActivityUnsafe(registration)
-      const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
-      if (
-        Exit.isSuccess(exit) &&
-        isResult(exit.value) &&
-        exit.value._tag === "Suspended" &&
-        exit.value.cause
-      ) {
-        instance.cause = instance.cause
-          ? Cause.combine(instance.cause, exit.value.cause)
-          : exit.value.cause
+    return Effect.acquireUseRelease(
+      Effect.sync(() => adoptActivityUnsafe(context, instance) ?? registerActivityUnsafe(instance)),
+      () => effect,
+      (registration, exit) => {
+        releaseActivityUnsafe(registration)
+        const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
+        if (
+          Exit.isSuccess(exit) &&
+          isResult(exit.value) &&
+          exit.value._tag === "Suspended" &&
+          exit.value.cause
+        ) {
+          instance.cause = instance.cause
+            ? Cause.combine(instance.cause, exit.value.cause)
+            : exit.value.cause
+        }
+        return isSuspended && instance.activityState.count > 0
+          ? waitForZero(instance)
+          : Effect.void
       }
-      return isSuspended && instance.activityState.count > 0
-        ? waitForZero(instance)
-        : Effect.void
-    })
+    )
   })
 
 interface ActivityRegistration {
