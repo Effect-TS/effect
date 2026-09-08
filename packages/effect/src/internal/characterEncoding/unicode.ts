@@ -2,6 +2,9 @@ import { charsToString, concat, empty } from "./types.ts"
 import type { Decoder, Encoder, Options } from "./types.ts"
 
 const textEncoder = new TextEncoder()
+const nativeBuffer = (globalThis as {
+  Buffer?: { from: (text: string, encoding: "utf16le") => Uint8Array<ArrayBuffer> }
+}).Buffer
 
 export const encoder = (encoding: string, options: Options): Encoder => {
   let pending = ""
@@ -11,6 +14,13 @@ export const encoder = (encoding: string, options: Options): Encoder => {
   const convert = (text: string): Uint8Array => {
     if (utf8) return textEncoder.encode(text)
     if (!utf32) {
+      if (!bigEndian && nativeBuffer !== undefined) {
+        const buffer = nativeBuffer.from(text, "utf16le")
+        // Return a plain Uint8Array without exposing unrelated bytes in a Buffer pool.
+        return buffer.byteOffset === 0 && buffer.byteLength === buffer.buffer.byteLength
+          ? new Uint8Array(buffer.buffer)
+          : new Uint8Array(buffer)
+      }
       const output = new Uint8Array(text.length * 2)
       const view = new DataView(output.buffer)
       for (let i = 0; i < text.length; i++) view.setUint16(i * 2, text.charCodeAt(i), !bigEndian)

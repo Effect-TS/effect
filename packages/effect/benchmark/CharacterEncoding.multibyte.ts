@@ -78,7 +78,7 @@ console.log(
     duration,
     size,
     chunkSize,
-    baseline: "4ad6253ca"
+    baseline: process.env.ENCODING_BASELINE_REV ?? "4ad6253ca"
   })
 )
 
