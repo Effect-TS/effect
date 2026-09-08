@@ -351,13 +351,18 @@ export class McpServer extends Context.Service<McpServer, {
               enqueued = true
               Queue.offerUnsafe(notificationsQueue, queued)
             }
-            const acknowledge = notifications.write({
-              clientId: 0,
-              requestId: message.id,
-              _tag: "Exit",
-              exit: Exit.void
-            })
-            return enqueued ? Effect.andThen(Deferred.await(delivered), acknowledge) : acknowledge
+            // write resumes the caller synchronously, so defer it until delivery completes.
+            const acknowledge = Effect.suspend(() =>
+              notifications.write({
+                clientId: 0,
+                requestId: message.id,
+                _tag: "Exit",
+                exit: Exit.void
+              })
+            )
+            return enqueued && queued.requestContext !== undefined
+              ? Effect.andThen(Deferred.await(delivered), acknowledge)
+              : acknowledge
           })
         ))
     })
