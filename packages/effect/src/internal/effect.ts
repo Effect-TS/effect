@@ -4916,12 +4916,14 @@ const forEachSequential = <A, B, E, R>(
 export const resolveConcurrency = (concurrency: Concurrency | undefined): number =>
   concurrency === "unbounded" ? Number.POSITIVE_INFINITY : Math.max(1, concurrency ?? 1)
 
-/** @internal */
-export const iterateEager = <S, A>() =>
-<X, E, R, E2>(options: {
+type IterateOptions<S, A, X, E, R, E2> = {
   readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
   readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
-}): (
+}
+
+/** @internal */
+export const iterateEager = <S, A>() =>
+<X, E, R, E2>(options: IterateOptions<S, A, X, E, R, E2>): (
   initialState: S,
   items: ReadonlyArray<A>,
   start?: number,
@@ -4953,10 +4955,7 @@ export const iterateEager = <S, A>() =>
   return runSequential
 }
 
-const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: {
-  readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
-  readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
-}) => {
+const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, X, E, R, E2>) => {
   const onItem = options.onItem
   const step = options.step
   return (
@@ -5101,11 +5100,8 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: {
 }
 
 /** @internal */
-export const iterateConcurrent = <S, A>() =>
-<X, E, R, E2>(options: {
-  readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
-  readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
-}) => iterateConcurrentImpl<S, A, X, E, R, E2>(options)
+export const iterateConcurrent = <S, A>() => <X, E, R, E2>(options: IterateOptions<S, A, X, E, R, E2>) =>
+  iterateConcurrentImpl<S, A, X, E, R, E2>(options)
 
 const forEachConcurrent = iterateConcurrentImpl({
   onItem(
