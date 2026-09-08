@@ -188,6 +188,64 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  it.effect("should honor the legacy HTTP session log level when delivering notifications", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(
+        Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "Emit", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              Effect.gen(function*() {
+                yield* server.notifications["notifications/message"]({ level: "warning", data: "filtered" })
+                yield* server.notifications["notifications/message"]({ level: "error", data: "delivered" })
+                return new McpSchema.CallToolResult({ content: [] })
+              })
+          })
+        )).pipe(Layer.provideMerge(makeServerLayer({
+          name: "SessionLogLevel",
+          protocols: [McpProtocol.v2025_11_25]
+        })))
+      )
+      const initialized = yield* harness.post({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "legacy", version: "1.0.0" }
+        }
+      })
+      const sessionId = initialized.headers.get("mcp-session-id")
+      assert.isNotNull(sessionId)
+      const headers = { "mcp-session-id": sessionId, "mcp-protocol-version": "2025-11-25" }
+      const configured = yield* harness.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "logging/setLevel",
+        params: { level: "error" }
+      }, headers)
+      assert.strictEqual(configured.status, 200)
+      const response = makeMcpSseReader(
+        yield* harness.post({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: { name: "Emit" }
+        }, headers)
+      )
+      yield* Effect.addFinalizer(() => response.cancel)
+      const messages = yield* response.drain()
+      assert.deepStrictEqual(
+        messages.filter((message) => message.method === "notifications/message").map(
+          (message) => message.params
+        ),
+        [{ level: "error", data: "delivered" }]
+      )
+      assert.deepInclude(messages.at(-1), { id: 3, result: { content: [] } })
+    }))
+
   for (const transport of ["http", "stdio"] as const) {
     it.effect(`should reject stateless requests inside a legacy ${transport} batch`, () =>
       Effect.gen(function*() {
