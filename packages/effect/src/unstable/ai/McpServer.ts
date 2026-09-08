@@ -1160,9 +1160,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
               )
               : undefined
             const waiting = requestId === undefined ? undefined : reverseRequestClients.get(requestId)
-            const reverseKey = waiting?.find((key) =>
-              session === undefined || key.profile === session.negotiatedProfile
-            )
+            const reverseKey = waiting?.find((key) => !isHttp || key.profile === session?.negotiatedProfile)
             if (reverseKey !== undefined && requestId !== undefined) {
               const remaining = waiting!.filter((key) => key !== reverseKey)
               if (remaining.length === 0) reverseRequestClients.delete(requestId)
@@ -1582,7 +1580,6 @@ const layerMcpProtocolHttp = (options: {
                   }
                   if (
                     !isInitialize &&
-                    isRequest &&
                     admission.protocol?.runtime._tag !== "Stateless" &&
                     sessionId === undefined
                   ) {

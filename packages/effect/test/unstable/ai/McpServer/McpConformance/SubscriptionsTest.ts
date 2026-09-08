@@ -22,6 +22,7 @@ import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import type * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { type JsonRpcMessage, makeMcpStdioHarness, type McpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
@@ -103,56 +104,6 @@ const assertAcknowledged = (
   assert.notProperty(message, "id")
   assert.strictEqual(subscriptionIdOf(message), id)
   assert.deepStrictEqual(paramsOf(message).notifications, notifications)
-}
-
-const makeSseReader = (response: Response) => {
-  assert.match(response.headers.get("content-type") ?? "", /^text\/event-stream(?:;|$)/)
-  const body = response.body
-  assert.isNotNull(body)
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let pending = ""
-  const takeOrEnd = Effect.fnUntraced(function*() {
-    while (true) {
-      const boundary = pending.indexOf("\n\n")
-      if (boundary !== -1) {
-        const event = pending.slice(0, boundary)
-        pending = pending.slice(boundary + 2)
-        const data = event.split("\n")
-          .filter((line) => line.startsWith("data:"))
-          .map((line) => line.slice(5).trimStart())
-          .join("\n")
-        if (data.length > 0) {
-          return JSON.parse(data) as JsonRpcMessage
-        }
-        continue
-      }
-      const chunk = yield* Effect.promise(() => reader.read())
-      if (chunk.done) {
-        return undefined
-      }
-      pending += decoder.decode(chunk.value, { stream: true }).replaceAll("\r\n", "\n")
-    }
-  })
-  const take = Effect.fnUntraced(function*() {
-    const message = yield* takeOrEnd()
-    assert.isDefined(message)
-    return message
-  })
-  return {
-    take,
-    drain: Effect.fnUntraced(function*() {
-      const messages: Array<JsonRpcMessage> = []
-      while (true) {
-        const message = yield* takeOrEnd()
-        if (message === undefined) {
-          return messages
-        }
-        messages.push(message)
-      }
-    }),
-    cancel: Effect.promise(() => reader.cancel())
-  }
 }
 
 const httpMetadata = (protocol: McpProtocol.ProtocolAdapter) => ({
@@ -620,7 +571,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
           const firstResponse = yield* harness.post(httpListenRequest(protocol, id), httpHeaders(protocol))
           const server = yield* Deferred.await(serverReady)
-          const first = makeSseReader(firstResponse)
+          const first = makeMcpSseReader(firstResponse)
           assertAcknowledged(yield* first.take(), id, { toolsListChanged: true })
           yield* server.addTool(makeTool("http-subscription-event"))
           const notification = yield* first.take()
@@ -637,7 +588,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             httpHeaders(protocol)
           )
           const server = yield* Deferred.await(serverReady)
-          const subscription = makeSseReader(response)
+          const subscription = makeMcpSseReader(response)
           assertAcknowledged(
             yield* subscription.take(),
             "overflowing-http-subscription",
