@@ -55,7 +55,7 @@ export const addEqualityTesters = () => {
 }
 
 /** @internal */
-const testOptions = (timeout?: number | Rstest.TestOptions): Rs.TestOptions =>
+const testOptions = (timeout?: number | Rstest.TestOptions): Rstest.TestOptions =>
   typeof timeout === "number" ? { timeout } : timeout ?? {}
 
 type TestAPI = Rs.TestAPIs["fails"]
@@ -63,8 +63,7 @@ type TestAPI = Rs.TestAPIs["fails"]
 type Modifier = "skip" | "only" | "fails"
 
 // Rstest exposes these options as modifiers instead of `TestOptions` fields.
-const testApi = (it: Rs.TestAPIs, timeout?: number | Rstest.TestOptions, modifier?: Modifier): TestAPI => {
-  const options = typeof timeout === "object" ? timeout : {}
+const testApi = (it: Rs.TestAPIs, options: Rstest.TestOptions, modifier?: Modifier): TestAPI => {
   let api: TestAPI = it
   if (options.concurrent !== undefined) {
     api = options.concurrent ? api.concurrent : api.sequential
@@ -167,21 +166,22 @@ const makeTester = <R>(
     self: Rstest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, Effect.asVoid, runTest(ctx))
 
-  const test = (modifier?: Modifier): Rstest.Test<R> => (name, self, timeout) =>
-    testApi(it, timeout, modifier)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+  const test = (modifier?: Modifier): Rstest.Test<R> => (name, self, timeout) => {
+    const options = testOptions(timeout)
+    return testApi(it, options, modifier)(name, options, (ctx) => run(ctx, [ctx], self))
+  }
 
-  const each: Rstest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
-    testApi(it, timeout).for(cases)(
-      name,
-      testOptions(timeout),
-      (args, ctx) => run(ctx, [args], self)
-    )
+  const each: Rstest.Tester<R>["each"] = (cases) => (name, self, timeout) => {
+    const options = testOptions(timeout)
+    return testApi(it, options).for(cases)(name, options, (args, ctx) => run(ctx, [args], self))
+  }
 
   const prop: Rstest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     const arbitrary = makeArbitrary(arbitraries)
-    return testApi(it, timeout)(
+    const options = testOptions(timeout)
+    return testApi(it, options)(
       name,
-      testOptions(timeout),
+      options,
       (ctx) =>
         runCheck(
           ctx,
@@ -210,9 +210,10 @@ const makeTester = <R>(
 /** @internal */
 export const prop: Rstest.Methods["prop"] = (name, arbitraries, self, timeout) => {
   const arbitrary = makeArbitrary(arbitraries)
-  return testApi(Rs.it, timeout)(
+  const options = testOptions(timeout)
+  return testApi(Rs.it, options)(
     name,
-    testOptions(timeout),
+    options,
     (ctx) =>
       runCheck(
         ctx,
@@ -297,12 +298,12 @@ export const layer = <R, E>(
         })),
       hookTimeout(options?.timeout)
     )
-    // Rstest abandons a timed-out `beforeAll` and gives suite hooks no abort
-    // signal, so stop an unfinished build before closing its scope.
+    // Rstest gives timed-out setup no abort signal. Request interruption without
+    // delaying scope closure on uninterruptible setup. Verified with child-runner probes.
     Rs.afterAll(
       () =>
         runPromise(Effect.andThen(
-          setup === undefined ? Effect.void : Fiber.interrupt(setup),
+          setup === undefined ? Effect.void : Effect.forkDetach(Fiber.interrupt(setup), { startImmediately: true }),
           Scope.close(scope, Exit.void)
         )),
       hookTimeout(options?.timeout)
