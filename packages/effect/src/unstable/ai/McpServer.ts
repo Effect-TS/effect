@@ -94,6 +94,7 @@ interface QueuedServerNotification {
   readonly targetClientId?: number | undefined
   readonly delivered: Deferred.Deferred<void>
   readonly requestContext?: McpRequestContext["Service"] | undefined
+  readonly requestHeaders?: Headers.Headers | undefined
 }
 
 const internalState = new WeakMap<object, {
@@ -333,7 +334,8 @@ export class McpServer extends Context.Service<McpServer, {
             const queued = {
               notification,
               delivered,
-              requestContext: Context.getOrUndefined(fiber.context, McpRequestContext)
+              requestContext: Context.getOrUndefined(fiber.context, McpRequestContext),
+              requestHeaders: Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers
             }
             let enqueued = false
             if (message.tag.includes("list_changed")) {
@@ -1205,7 +1207,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
   })
 
   yield* Queue.take(internalState.get(server)!.notifications).pipe(
-    Effect.flatMap(Effect.fnUntraced(function*({ delivered, notification, targetClientId, requestContext }) {
+    Effect.flatMap(Effect.fnUntraced(function*(queued) {
+      const { delivered, notification, targetClientId, requestContext, requestHeaders } = queued
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
         yield* PubSub.publish(serverNotifications, { notification, targetClientId })
       }
@@ -1268,7 +1271,14 @@ const runWithRuntime = Effect.fnUntraced(function*(
             ) {
               return
             }
-          } else if (!runtime.canDeliver(clientId, Headers.empty, notification, defaultLogLevel)) {
+          } else if (
+            !runtime.canDeliver(
+              clientId,
+              requestContext?.clientId === clientId ? requestHeaders ?? Headers.empty : Headers.empty,
+              notification,
+              defaultLogLevel
+            )
+          ) {
             return
           }
           const rpc = selectedProtocol.serverNotificationRpcs.requests.get(projected.tag)
