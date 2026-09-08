@@ -23,7 +23,6 @@ import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import type * as Redacted from "../../Redacted.ts"
-import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
@@ -840,8 +839,13 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  * the socket to open. Implementations exposing `pause`/`resume` (the `ws`
  * package) remain flowing until buffered frames reach the configured
  * `highWaterMark` (64 KiB by default). Draining the buffer resumes the
- * transport. Incoming frames that arrive in the same tick are coalesced into
- * one batch. Implementations without pause (browsers) buffer incoming frames,
+ * transport. Available frames are delivered immediately to a waiting consumer.
+ * Frames that accumulate while the consumer is busy are drained as a batch on
+ * the next pull. A fast consumer may receive singleton batches even under
+ * sustained traffic. Blob conversions preserve arrival order, so later frames
+ * wait for an earlier conversion to finish.
+ *
+ * Implementations without pause (browsers) buffer incoming frames,
  * optionally failing the socket with a `SocketReadError` when `highWaterMark`
  * bytes are exceeded (default unbounded). Message boundaries survive: each
  * pulled batch contains one element per frame.
@@ -863,7 +867,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
     const reader: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
-      const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
       const ws = yield* Scope.provide(acquire, scope)
       if ("binaryType" in ws) {
         ;(ws as { binaryType: string }).binaryType = "arraybuffer"
@@ -898,7 +901,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           readonly cleanup: () => void
         }
         | undefined
-      let flushScheduled = false
 
       function pauseWebSocket() {
         if (!pausable || paused || disposed || error !== undefined) return
@@ -923,7 +925,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       }
 
       function deliver() {
-        flushScheduled = false
         if (waiter === undefined || buffer.length === 0) return
         const resume = waiter
         waiter = undefined
@@ -937,10 +938,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           bufferSize += typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength
         }
         if (waiter !== undefined) {
-          if (!flushScheduled) {
-            flushScheduled = true
-            dispatcher.scheduleTask(deliver, 0)
-          }
+          deliver()
         }
         checkBufferLimit()
       }
