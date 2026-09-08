@@ -130,7 +130,7 @@ test("effect tests accept non-void success values", () => {
   expect(it.live).type.toBeCallableWith("non-void", () => Effect.succeed(42))
 })
 
-test("Effect tests accept Vitest selection and concurrency options", () => {
+test("effect tests accept selection and concurrency options", () => {
   const options = { concurrent: false, skip: false, only: false, todo: false, fails: true }
   expect(it.effect).type.toBeCallableWith("effect", () => Effect.void, options)
   expect(it.live).type.toBeCallableWith("live", () => Effect.void, options)

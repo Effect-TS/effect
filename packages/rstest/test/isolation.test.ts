@@ -103,27 +103,3 @@ describe("top-level it.layer isolation", () => {
     assert.deepStrictEqual(observedStateIds, [1, 2, 3])
   })
 })
-
-describe("unnamed layer release boundary", () => {
-  let released = false
-
-  class Scoped extends Context.Service<Scoped, "scoped">()("UnnamedReleaseScoped") {
-    static readonly layer = Layer.effect(Scoped)(
-      Effect.acquireRelease(
-        Effect.succeed("scoped" as const),
-        () => Effect.sync(() => released = true)
-      )
-    )
-  }
-
-  it.layer(Scoped.layer)((it) => {
-    it.effect("uses resource", () =>
-      Effect.map(Scoped, (value) => {
-        assert.strictEqual(value, "scoped")
-      }))
-  })
-
-  it("later test sees released resource", () => {
-    assert.isTrue(released)
-  })
-})

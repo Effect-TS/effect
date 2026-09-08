@@ -35,7 +35,8 @@ const checkConcurrency = (
 for (const [name, makeLayer] of [["layer", layer], ["it.layer", it.layer]] as const) {
   describe(name, () => {
     for (const concurrent of [false, true]) {
-      ;(concurrent ? describe.concurrent : describe.sequential)(`enclosing suite concurrent=${concurrent}`, () => {
+      const suite = concurrent ? describe.concurrent : describe.sequential
+      suite(`enclosing suite concurrent=${concurrent}`, () => {
         makeLayer(Layer.empty)("named layer inherits by default", (it) => {
           checkConcurrency(it, concurrent)
         })

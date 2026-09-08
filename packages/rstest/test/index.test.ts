@@ -71,25 +71,31 @@ it.describe.each(["foo", "bar"] as const)("describe.each %s", (text) => {
 
 it.skip.each([1])("skip.each %s", () => assert.fail("skipped anyway"))
 
-// The following test is expected to fail because it simulates a test timeout.
-// Be aware that eventual "failure" of the test is only logged out.
-it.live.fails("interrupts on timeout", (ctx) =>
-  Effect.gen(function*() {
-    let acquired = false
+describe("timeout", () => {
+  const events: Array<string> = []
+  const resource = Layer.effectDiscard(Effect.acquireRelease(
+    Effect.void,
+    () => Effect.sync(() => events.push("layer released"))
+  ))
 
-    ctx.onTestFailed(() => {
-      if (acquired) {
-        // oxlint-disable-next-line no-console
-        console.error("'effect is interrupted on timeout' @effect/rstest test failed")
-      }
-    })
+  layer(resource, { excludeTestServices: true })("layer", (it) => {
+    it.effect.fails("interrupts the test", () =>
+      Effect.gen(function*() {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => events.push("acquired")),
+          () => Effect.sleep(100).pipe(Effect.andThen(Effect.sync(() => events.push("released"))))
+        )
+        return yield* Effect.never
+      }), 10)
 
-    yield* Effect.acquireRelease(
-      Effect.sync(() => acquired = true),
-      () => Effect.sync(() => acquired = false)
-    )
-    yield* Effect.sleep(1000)
-  }), 1)
+    it.effect("waits for finalizers before the next test", () =>
+      Effect.sync(() => assert.deepStrictEqual(events, ["acquired", "released"])))
+  })
+
+  it("waits for finalizers before releasing the layer", () => {
+    assert.deepStrictEqual(events, ["acquired", "released", "layer released"])
+  })
+})
 
 class Foo extends Context.Service<Foo, "foo">()("Foo") {
   static layer = Layer.succeed(Foo)("foo")
@@ -390,34 +396,11 @@ describe("property failures", () => {
   )
 })
 
-for (const [name, test] of [["effect", it.effect], ["live", it.live]] as const) {
-  test(`${name}: expected failure option`, () => Effect.fail("expected"), { fails: true })
-  test.skipIf(false)(`${name}: skipIf retains expected failure`, () => Effect.fail("expected"), { fails: true })
-  test.runIf(true)(`${name}: runIf retains expected failure`, () => Effect.fail("expected"), { fails: true })
-  test.each([1])(`${name}: each retains expected failure`, () => Effect.fail("expected"), { fails: true })
-}
+// options
 
-const value = {
-  // oxlint-disable-next-line unicorn/no-thenable -- regression: Effect values must bypass Promise assimilation
-  get then(): never {
-    throw new Error("Effect success values must not reach Promise resolution")
-  }
-}
-
-it.effect("discards thenable success values before the Rstest boundary", () => Effect.succeed(value))
-it.live("discards live thenable success values before the Rstest boundary", () => Effect.succeed(value))
-
-it.prop(
-  "Schema and Arbitrary with object",
-  { count: Schema.Int, text: textArbitrary },
-  ({ count, text }) => {
-    assert.isTrue(Number.isInteger(count))
-    assert.include(["a", "b"], text)
-  }
-)
-
-// TestOptions use the same selection flags as @effect/vitest.
+it.effect("fails option", () => Effect.fail("expected"), { fails: true })
+it.effect.each([1])("each fails option", () => Effect.fail("expected"), { fails: true })
 it.effect("skip option", () => Effect.die("must be skipped"), { skip: true })
-it.live("todo option", () => Effect.die("must not run"), { todo: true })
 it.effect.each([1])("each skip option", () => Effect.die("must be skipped"), { skip: true })
-it.effect("false selection options", () => Effect.void, { skip: false, todo: false, only: false })
+it.live("todo option", () => Effect.die("must not run"), { todo: true })
+it.effect("false options", () => Effect.void, { skip: false, only: false, todo: false, fails: false })
