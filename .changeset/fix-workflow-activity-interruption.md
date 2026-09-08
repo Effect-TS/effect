@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix interrupted workflow activity acquisition leaking its activity count and potentially blocking subsequent durable suspension. Preserve the wrapped operation's interruption behavior.
+Fix activity count leaks when workflow activity acquisition is interrupted, which could block later workflow suspension.
