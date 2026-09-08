@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `agent/bob/738d126b22f9` (`bedb58fb927d290e4656c97803915c3341059274`)
+Head: `agent/bob/738d126b22f9` (`b785b7cad17e0d416c4bda7984c667a5da0723aa`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5106,7 +5106,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.boolean` -> `Flag.Boolean / Argument.ChoiceWithValue`: Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices.
 
-- `Args.choice` -> `Argument.Choice`: Use the renamed constructor and pass the argument name explicitly.
+- `Args.choice` -> `Argument.Literals`: Use the renamed constructor and pass the argument name explicitly.
 
 - `Args.date` -> `Argument.Date`: Use the renamed constructor and pass the argument name explicitly.
 
@@ -5414,7 +5414,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
 
-- `Options.choice` -> `Flag.Choice`: Use the moved constructor.
+- `Options.choice` -> `Flag.Literals`: Use the moved constructor.
 
 - `Options.choiceWithValue` -> `Flag.ChoiceWithValue`: Use the moved constructor.
 
@@ -5456,7 +5456,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.mapTryCatch` -> `Flag.mapTryCatch`: Use the moved combinator; onError now returns a string rather than HelpDoc.
 
-- `Options.none` -> `omit the config entry`: V4 Flag.None is an always-failing sentinel, not v3's empty successful option set.
+- `Options.none` -> `omit the config entry`: V4 Flag.Never is an always-failing sentinel, not v3's empty successful option set.
 
 - `Options.optional` -> `Flag.optional`: Use the moved combinator; it still returns Option.
 
@@ -5542,7 +5542,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.file` -> `Prompt.File`: Use the moved constructor; v4 also supports a default selected path.
 
-- `Prompt.float` -> `Prompt.Float`: Use the moved constructor; v4 also supports a default value.
+- `Prompt.float` -> `Prompt.Number`: Use the moved constructor; v4 also supports a default value.
 
 - `Prompt.hidden` -> `Prompt.Hidden`: Use the renamed constructor.
 
@@ -5556,7 +5556,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.select` -> `Prompt.Select`: Use the renamed constructor.
 
-- `Prompt.text` -> `Prompt.Text`: Use the moved constructor.
+- `Prompt.text` -> `Prompt.String`: Use the moved constructor.
 
 - `Prompt.toggle` -> `Prompt.Toggle`: Use the renamed constructor.
 
