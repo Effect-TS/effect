@@ -2,10 +2,16 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
+import * as Tool from "effect/unstable/ai/Tool"
+import * as Toolkit from "effect/unstable/ai/Toolkit"
+import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
+import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 import type { McpTestPeer } from "./McpTestPeer.ts"
 
@@ -76,6 +82,94 @@ export const suite = (
 ) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Elicitation", () => {
+      for (const responseSession of ["missing", "unknown", "unrelated", "owner"] as const) {
+        // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
+        // A reverse response must belong to the session that requested the input.
+        it.effect(`MUST preserve elicitation response ownership with a ${responseSession} HTTP session`, () =>
+          Effect.gen(function*() {
+            const toolkit = Toolkit.make(Tool.make("Approve", {
+              parameters: Tool.EmptyParams,
+              success: Schema.Struct({ approved: Schema.Boolean }),
+              dependencies: [McpSchema.McpServerClient]
+            }))
+            const registration = McpServer.toolkit(toolkit).pipe(Layer.provide(
+              toolkit.toLayer({
+                Approve: () =>
+                  McpServer.elicit({
+                    message: "Approve this operation",
+                    schema: Schema.Struct({ approved: Schema.Boolean })
+                  }).pipe(Effect.orDie)
+              })
+            ))
+            const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+              makeServerLayer({ name: "ElicitationSessionConformance", protocols: [protocol] })
+            )))
+            const initialize = Effect.fnUntraced(function*() {
+              const response = yield* harness.post({
+                jsonrpc: "2.0",
+                id: "initialize",
+                method: "initialize",
+                params: {
+                  protocolVersion: protocol.protocolVersion,
+                  capabilities: { elicitation: {} },
+                  clientInfo: { name: "approval-client", version: "1.0.0" }
+                }
+              })
+              yield* readMcpHttpResponse(response)
+              const sessionId = response.headers.get("Mcp-Session-Id")
+              assert.isNotNull(sessionId)
+              yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, {
+                "Mcp-Session-Id": sessionId,
+                "Mcp-Protocol-Version": protocol.protocolVersion
+              })
+              return sessionId
+            })
+            const owner = yield* initialize()
+            const other = responseSession === "unrelated" ? yield* initialize() : undefined
+            const response = yield* harness.post({
+              jsonrpc: "2.0",
+              id: "approval-tool",
+              method: "tools/call",
+              params: { name: "Approve", arguments: {} }
+            }, { "Mcp-Session-Id": owner, "Mcp-Protocol-Version": protocol.protocolVersion })
+            const stream = makeMcpSseReader(response)
+            yield* Effect.addFinalizer(() => stream.cancel)
+            const reverse = yield* stream.take()
+            assert.strictEqual(reverse.method, "elicitation/create")
+            assert.isDefined(reverse.id)
+            const sessionId = responseSession === "owner" ? owner : responseSession === "unknown" ? "unknown" : other
+            const injected = yield* harness.post(
+              {
+                jsonrpc: "2.0",
+                id: reverse.id,
+                result: { action: "accept", content: { approved: true } }
+              },
+              sessionId === undefined ? {} : {
+                "Mcp-Session-Id": sessionId,
+                "Mcp-Protocol-Version": protocol.protocolVersion
+              }
+            )
+            if (responseSession !== "owner") {
+              const legitimate = yield* harness.post({
+                jsonrpc: "2.0",
+                id: reverse.id,
+                result: { action: "accept", content: { approved: false } }
+              }, { "Mcp-Session-Id": owner, "Mcp-Protocol-Version": protocol.protocolVersion })
+              assert.strictEqual(legitimate.status, 202)
+            }
+            const completed = yield* stream.take()
+            assert.strictEqual(completed.id, "approval-tool")
+            const result = yield* Schema.decodeUnknownEffect(McpSchema.CallToolResult)(completed.result)
+            assert.deepStrictEqual(result.content, [{
+              type: "text",
+              text: JSON.stringify({ approved: responseSession === "owner" })
+            }])
+            if (responseSession === "missing") assert.strictEqual(injected.status, 400)
+            if (responseSession === "unknown") assert.strictEqual(injected.status, 404)
+            if (responseSession === "owner") assert.strictEqual(injected.status, 202)
+          }))
+      }
+
       // https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
       describe("Capabilities", () => {
         it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
