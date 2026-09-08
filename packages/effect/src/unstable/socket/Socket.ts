@@ -880,6 +880,17 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       let buffer: Array<Uint8Array | string> = []
       let bufferSize = 0
       let error: SocketError | undefined
+      let disposed = false
+      interface PendingMessage {
+        size: number
+        data: Uint8Array | string | undefined
+        error: SocketError | undefined
+        next: PendingMessage | undefined
+      }
+      let pending: PendingMessage | undefined
+      let pendingTail: PendingMessage | undefined
+      let pendingSize = 0
+      let drainingPending = false
       let waiter: ReadResume | undefined
       let openWaiter:
         | {
@@ -890,22 +901,24 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       let flushScheduled = false
 
       function pauseWebSocket() {
-        if (!pausable || paused) return
-        ws.pause()
+        if (!pausable || paused || disposed || error !== undefined) return
         paused = true
+        ws.pause()
       }
 
       function resumeWebSocket() {
         if (!pausable || !paused) return
-        ws.resume()
         paused = false
+        ws.resume()
       }
 
       function takeBuffer(): NonEmptyReadonlyArray<Uint8Array | string> {
         const chunk = buffer
         buffer = []
         bufferSize = 0
-        if (error === undefined) resumeWebSocket()
+        if (!disposed && error === undefined && (highWaterMark === undefined || pendingSize < highWaterMark)) {
+          resumeWebSocket()
+        }
         return chunk as unknown as NonEmptyReadonlyArray<Uint8Array | string>
       }
 
@@ -918,6 +931,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       }
 
       function push(data: Uint8Array | string) {
+        if (disposed) return
         buffer.push(data)
         if (highWaterMark !== undefined) {
           bufferSize += typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength
@@ -928,9 +942,15 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
             dispatcher.scheduleTask(deliver, 0)
           }
         }
-        if (pausable && bufferSize >= highWaterMark!) {
+        checkBufferLimit()
+      }
+
+      function checkBufferLimit() {
+        if (disposed || error !== undefined || highWaterMark === undefined) return
+        const size = bufferSize + pendingSize
+        if (pausable && size >= highWaterMark) {
           pauseWebSocket()
-        } else if (!pausable && !waiter && highWaterMark !== undefined && bufferSize > highWaterMark) {
+        } else if (!pausable && (!waiter || pending !== undefined) && size > highWaterMark) {
           fail(
             new SocketError({
               reason: new SocketReadError({
@@ -949,22 +969,87 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           cleanup()
           resume(Effect.fail(error))
         }
-        if (waiter !== undefined) {
+        if (waiter !== undefined && (buffer.length > 0 || pending === undefined)) {
           const resume = waiter
           waiter = undefined
           resume(buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
         }
       }
 
+      function drainPending() {
+        if (disposed || drainingPending) return
+        drainingPending = true
+        try {
+          while (pending !== undefined) {
+            const message = pending
+            if (message.error !== undefined) {
+              pending = pendingTail = undefined
+              pendingSize = 0
+              fail(message.error)
+              return
+            }
+            if (message.data === undefined) return
+            pending = message.next
+            if (pending === undefined) pendingTail = undefined
+            pendingSize -= message.size
+            push(message.data)
+          }
+          if (error !== undefined) fail(error)
+        } finally {
+          drainingPending = false
+        }
+      }
+
       function onMessage(event: WebSocketEvent) {
+        if (disposed || error !== undefined) return
         const data = event.data as Uint8Array | ArrayBuffer | Blob | string
-        if (typeof Blob !== "undefined" && data instanceof Blob) {
-          data.arrayBuffer().then((buf) => push(new Uint8Array(buf)), (cause) => {
-            fail(new SocketError({ reason: new SocketReadError({ cause }) }))
-          })
+        const blob = typeof Blob !== "undefined" && data instanceof Blob
+        const frame = blob
+          ? undefined
+          : data instanceof ArrayBuffer
+          ? new Uint8Array(data)
+          : data as Uint8Array | string
+        if (!blob && pending === undefined) {
+          push(frame!)
           return
         }
-        push(data instanceof ArrayBuffer ? new Uint8Array(data) : data as Uint8Array | string)
+        // Only asynchronous Blob conversion needs an ordered queue. Later frames
+        // retain their place and count toward backpressure while it is pending.
+        // As before, Blob bytes are counted once conversion completes.
+        const message: PendingMessage = {
+          size: highWaterMark === undefined || blob ? 0 : typeof frame === "string"
+            ? encoder.encode(frame).byteLength
+            : frame!.byteLength,
+          data: frame,
+          error: undefined,
+          next: undefined
+        }
+        if (pendingTail === undefined) pending = message
+        else pendingTail.next = message
+        pendingTail = message
+        pendingSize += message.size
+        if (blob) {
+          const onFailure = (cause: unknown) => {
+            if (disposed || pending === undefined) return
+            message.error = new SocketError({ reason: new SocketReadError({ cause }) })
+            drainPending()
+          }
+          try {
+            data.arrayBuffer().then((buf) => {
+              if (disposed || pending === undefined) return
+              message.data = new Uint8Array(buf)
+              if (highWaterMark !== undefined) {
+                message.size = buf.byteLength
+                pendingSize += message.size
+              }
+              drainPending()
+              checkBufferLimit()
+            }, onFailure)
+          } catch (cause) {
+            onFailure(cause)
+          }
+        }
+        checkBufferLimit()
       }
       function onError(event: WebSocketEvent) {
         fail(
@@ -985,6 +1070,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       yield* Scope.addFinalizer(
         scope,
         Effect.sync(() => {
+          disposed = true
+          pending = pendingTail = undefined
+          pendingSize = 0
           // resume a pull blocked in another fiber before detaching
           fail(closeError(1006))
           ws.removeEventListener("message", onMessage)
@@ -1047,7 +1135,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       return {
         pull: Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
           if (buffer.length > 0) return resume(Effect.succeed(takeBuffer()))
-          if (error !== undefined) return resume(Effect.fail(error))
+          if (error !== undefined && pending === undefined) return resume(Effect.fail(error))
           waiter = resume
           return Effect.sync(() => {
             if (waiter === resume) waiter = undefined
