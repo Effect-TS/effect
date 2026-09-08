@@ -152,6 +152,19 @@ jobs:
       - name: Test
         run: ${{ matrix.command }}
 
+  rstest:
+    name: Test (Rstest)
+    runs-on: namespace-profile-linux-small
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Test @effect/rstest
+        run: pnpm --filter @effect/rstest test
+
   doctest:
     name: Test (Documentation)
     runs-on: namespace-profile-linux-small
