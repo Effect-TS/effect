@@ -9,7 +9,7 @@
 import * as Arr from "./Array.ts"
 import * as Data from "./Data.ts"
 import * as Effect from "./Effect.ts"
-import * as Registry from "./internal/characterEncoding/registry.ts"
+import { normalize } from "./internal/characterEncoding/label.ts"
 import { concat } from "./internal/characterEncoding/types.ts"
 import * as Stream from "./Stream.ts"
 
@@ -37,7 +37,7 @@ export interface Options {
  */
 export class CharacterEncodingError extends Data.TaggedError("CharacterEncodingError")<{
   readonly encoding: string
-  readonly operation: "encode" | "decode"
+  readonly operation: "encode" | "decode" | "resolve"
   readonly message: string
   readonly cause: unknown
 }> {}
@@ -68,7 +68,7 @@ export interface Decoder {
   readonly end: () => string
 }
 
-const attempt = <A>(encoding: string, operation: "encode" | "decode", f: () => A): A => {
+const attempt = <A>(encoding: string, operation: "encode" | "decode" | "resolve", f: () => A): A => {
   try {
     return f()
   } catch (cause) {
@@ -78,46 +78,97 @@ const attempt = <A>(encoding: string, operation: "encode" | "decode", f: () => A
 }
 
 /**
- * Supported canonical encoding names. Common iconv-lite aliases are accepted
- * by conversion functions. This list excludes aliases and non-character codecs.
+ * An explicitly imported codec. Factories must return fresh conversion state.
+ * Mapping data belongs to codec modules, never to this module. Factory methods
+ * are low-level hooks; use makeEncoderUnsafe / makeDecoderUnsafe for typed errors
+ * and lifecycle checks.
  *
- * @category encodings
+ * @category models
  * @since 4.0.0
  */
-export const encodings: ReadonlyArray<string> = Registry.names
-
-/**
- * Tests whether a label resolves to a supported character encoding.
- *
- * @category encodings
- * @since 4.0.0
- */
-export const encodingExists = (encoding: string): boolean => {
-  try {
-    Registry.normalize(encoding)
-    return true
-  } catch {
-    return false
-  }
+export interface Encoding {
+  readonly name: string
+  readonly aliases: ReadonlyArray<string>
+  readonly makeEncoder: (options: Options) => Encoder
+  readonly makeDecoder: (options: Options) => Decoder
 }
 
 /**
- * Creates a fresh incremental encoder, throwing on unsupported labels.
+ * A registry containing only explicitly supplied encodings and their aliases.
+ * Resolving a name does not construct codec lookup tables.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Registry {
+  readonly encodings: ReadonlyArray<Encoding>
+  readonly encodingExists: (label: string) => boolean
+  readonly resolveUnsafe: (label: string) => Encoding
+  readonly resolve: (label: string) => Effect.Effect<Encoding, CharacterEncodingError>
+}
+
+/**
+ * Builds an isolated registry without importing any codecs. Conflicting
+ * normalized names or aliases throw CharacterEncodingError; repeated references
+ * to the same encoding are allowed. Unknown names are never loaded implicitly.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const makeEncoderUnsafe = (encoding: string, options: Options = {}): Encoder => {
-  const encoder = attempt(encoding, "encode", () => Registry.encoder(encoding, options))
+export const makeRegistry = (encodings: Iterable<Encoding>): Registry => {
+  const entries = Object.freeze([...new Set(encodings)])
+  const labels = new Map<string, Encoding>()
+  for (const encoding of entries) {
+    for (const label of [encoding.name, ...encoding.aliases]) {
+      attempt(label, "resolve", () => {
+        const key = normalize(label)
+        if (key.length === 0) throw new RangeError("Empty encoding label")
+        const previous = labels.get(key)
+        if (previous !== undefined && previous !== encoding) {
+          throw new RangeError(`Conflicting encoding alias: ${label}`)
+        }
+        labels.set(key, encoding)
+      })
+    }
+  }
+  const resolveUnsafe = (label: string): Encoding =>
+    attempt(label, "resolve", () => {
+      const encoding = labels.get(normalize(label))
+      if (encoding === undefined) throw new RangeError(`Unknown encoding: ${label}`)
+      return encoding
+    })
+  return Object.freeze({
+    encodings: entries,
+    encodingExists: (label: string) => {
+      try {
+        return labels.has(normalize(label))
+      } catch {
+        return false
+      }
+    },
+    resolveUnsafe,
+    resolve: (label: string) =>
+      Effect.try({ try: () => resolveUnsafe(label), catch: (error) => error as CharacterEncodingError })
+  })
+}
+
+/**
+ * Creates a fresh incremental encoder from an explicitly imported codec.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeEncoderUnsafe = (encoding: Encoding, options: Options = {}): Encoder => {
+  const encoder = attempt(encoding.name, "encode", () => encoding.makeEncoder(options))
   let ended = false
   return {
     write: (text) =>
-      attempt(encoding, "encode", () => {
+      attempt(encoding.name, "encode", () => {
         if (ended) throw new Error("Encoder already ended")
         return encoder.write(text)
       }),
     end: () =>
-      attempt(encoding, "encode", () => {
+      attempt(encoding.name, "encode", () => {
         if (ended) throw new Error("Encoder already ended")
         ended = true
         return encoder.end()
@@ -126,22 +177,22 @@ export const makeEncoderUnsafe = (encoding: string, options: Options = {}): Enco
 }
 
 /**
- * Creates a fresh incremental decoder, throwing on unsupported labels.
+ * Creates a fresh incremental decoder from an explicitly imported codec.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const makeDecoderUnsafe = (encoding: string, options: Options = {}): Decoder => {
-  const decoder = attempt(encoding, "decode", () => Registry.decoder(encoding, options))
+export const makeDecoderUnsafe = (encoding: Encoding, options: Options = {}): Decoder => {
+  const decoder = attempt(encoding.name, "decode", () => encoding.makeDecoder(options))
   let ended = false
   return {
     write: (bytes) =>
-      attempt(encoding, "decode", () => {
+      attempt(encoding.name, "decode", () => {
         if (ended) throw new Error("Decoder already ended")
         return decoder.write(bytes)
       }),
     end: () =>
-      attempt(encoding, "decode", () => {
+      attempt(encoding.name, "decode", () => {
         if (ended) throw new Error("Decoder already ended")
         ended = true
         return decoder.end()
@@ -155,7 +206,7 @@ export const makeDecoderUnsafe = (encoding: string, options: Options = {}): Deco
  * @category encoding
  * @since 4.0.0
  */
-export const encodeUnsafe = (text: string, encoding: string, options?: Options): Uint8Array => {
+export const encodeUnsafe = (text: string, encoding: Encoding, options?: Options): Uint8Array => {
   const encoder = makeEncoderUnsafe(encoding, options)
   return concat(encoder.write(text), encoder.end())
 }
@@ -166,7 +217,7 @@ export const encodeUnsafe = (text: string, encoding: string, options?: Options):
  * @category decoding
  * @since 4.0.0
  */
-export const decodeUnsafe = (bytes: Uint8Array, encoding: string, options?: Options): string => {
+export const decodeUnsafe = (bytes: Uint8Array, encoding: Encoding, options?: Options): string => {
   const decoder = makeDecoderUnsafe(encoding, options)
   return decoder.write(bytes) + decoder.end()
 }
@@ -179,7 +230,7 @@ export const decodeUnsafe = (bytes: Uint8Array, encoding: string, options?: Opti
  */
 export const encode = (
   text: string,
-  encoding: string,
+  encoding: Encoding,
   options?: Options
 ): Effect.Effect<Uint8Array, CharacterEncodingError> =>
   Effect.try({ try: () => encodeUnsafe(text, encoding, options), catch: (error) => error as CharacterEncodingError })
@@ -192,7 +243,7 @@ export const encode = (
  */
 export const decode = (
   bytes: Uint8Array,
-  encoding: string,
+  encoding: Encoding,
   options?: Options
 ): Effect.Effect<string, CharacterEncodingError> =>
   Effect.try({ try: () => decodeUnsafe(bytes, encoding, options), catch: (error) => error as CharacterEncodingError })
@@ -233,7 +284,7 @@ const transform = <I, O, E, R>(
  * @since 4.0.0
  */
 export const encodeStream =
-  (encoding: string, options?: Options) =>
+  (encoding: Encoding, options?: Options) =>
   <E, R>(self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
     transform(self, () => makeEncoderUnsafe(encoding, options), !options?.fatal)
 
@@ -246,7 +297,7 @@ export const encodeStream =
  * @since 4.0.0
  */
 export const decodeStream =
-  (encoding: string, options?: Options) =>
+  (encoding: Encoding, options?: Options) =>
   <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
     transform(self, () => makeDecoderUnsafe(encoding, options), !options?.fatal)
 
@@ -258,7 +309,7 @@ export const decodeStream =
  * @since 4.0.0
  */
 export const transcodeStream =
-  (from: string, to: string, options?: { readonly decode?: Options; readonly encode?: Options }) =>
+  (from: Encoding, to: Encoding, options?: { readonly decode?: Options; readonly encode?: Options }) =>
   <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
     transform(self, () => {
       const decoder = makeDecoderUnsafe(from, options?.decode)

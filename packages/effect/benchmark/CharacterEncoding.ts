@@ -1,5 +1,6 @@
 import * as C from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
+import * as All from "effect/encoding/All"
 import * as Stream from "effect/Stream"
 import type * as IconvLite from "iconv-lite"
 import { strict as assert } from "node:assert"
@@ -107,20 +108,21 @@ for (
   ]
 ) {
   const text = phrase.repeat(Math.ceil(size / Buffer.byteLength(phrase)))
+  const codec = All.resolveUnsafe(encoding)
   const input = iconv.encode(text, encoding)
   const encodeNative = new Native("UTF-8", encoding)
   const decodeNative = new Native(encoding, "UTF-8")
-  assert.deepEqual(C.encodeUnsafe(text, encoding), Uint8Array.from(input))
+  assert.deepEqual(C.encodeUnsafe(text, codec), Uint8Array.from(input))
   assert.deepEqual(encodeNative.convert(text), input)
-  assert.equal(C.decodeUnsafe(input, encoding), text)
+  assert.equal(C.decodeUnsafe(input, codec), text)
   assert.equal(decodeNative.convert(input).toString("utf8"), text)
   await compare(`${encoding}/encode`, Buffer.byteLength(text), false, [
-    () => C.encodeUnsafe(text, encoding),
+    () => C.encodeUnsafe(text, codec),
     () => iconv.encode(text, encoding),
     () => encodeNative.convert(text)
   ])
   await compare(`${encoding}/decode`, input.length, false, [
-    () => C.decodeUnsafe(input, encoding),
+    () => C.decodeUnsafe(input, codec),
     () => iconv.decode(input, encoding),
     () => decodeNative.convert(input).toString("utf8")
   ])
@@ -130,7 +132,7 @@ for (
   for (let i = 0; i < input.length; i += chunkSize) chunks.push(input.subarray(i, i + chunkSize))
   const target = encoding === "utf8" ? "utf16le" : "utf8"
   const expected = iconv.encode(text, target)
-  const converted = Stream.fromIterable(chunks).pipe(C.transcodeStream(encoding, target))
+  const converted = Stream.fromIterable(chunks).pipe(C.transcodeStream(codec, All.resolveUnsafe(target)))
   const collected = await Effect.runPromise(Stream.runCollect(converted))
   assert.deepEqual(Buffer.concat(collected), expected)
   assert.deepEqual(await nodeStream(chunks, [iconv.decodeStream(encoding), iconv.encodeStream(target)], true), expected)
