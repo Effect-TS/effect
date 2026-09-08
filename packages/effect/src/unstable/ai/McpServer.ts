@@ -93,6 +93,7 @@ interface QueuedServerNotification {
   readonly notification: McpCore.ServerNotification
   readonly targetClientId?: number | undefined
   readonly delivered: Deferred.Deferred<void>
+  readonly requestContext?: McpRequestContext["Service"] | undefined
 }
 
 const internalState = new WeakMap<object, {
@@ -320,7 +321,7 @@ export class McpServer extends Context.Service<McpServer, {
       spanPrefix: "McpServer/Notifications",
       onFromClient: (options) =>
         Deferred.make<void>().pipe(Effect.flatMap((delivered) =>
-          Effect.suspend((): Effect.Effect<void> => {
+          Effect.withFiber((fiber): Effect.Effect<void> => {
             const message = options.message
             if (message._tag !== "Request") {
               return Effect.void
@@ -329,7 +330,11 @@ export class McpServer extends Context.Service<McpServer, {
             if (notification === undefined) {
               return Effect.void
             }
-            const queued = { notification, delivered }
+            const queued = {
+              notification,
+              delivered,
+              requestContext: Context.getOrUndefined(fiber.context, McpRequestContext)
+            }
             let enqueued = false
             if (message.tag.includes("list_changed")) {
               if (!listChangedHandles.has(message.tag)) {
@@ -1190,7 +1195,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   })
 
   yield* Queue.take(internalState.get(server)!.notifications).pipe(
-    Effect.flatMap(Effect.fnUntraced(function*({ delivered, notification, targetClientId }) {
+    Effect.flatMap(Effect.fnUntraced(function*({ delivered, notification, targetClientId, requestContext }) {
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
         yield* PubSub.publish(serverNotifications, { notification, targetClientId })
       }
@@ -1228,7 +1233,21 @@ const runWithRuntime = Effect.fnUntraced(function*(
           if (projected === undefined) {
             return
           }
-          if (!runtime.canDeliver(clientId, Headers.empty, notification, defaultLogLevel)) {
+          if (notification._tag === "LoggingMessage" && selectedProtocol.runtime._tag === "Stateless") {
+            const metadata = requestContext?.requestMetadata
+            const level = Predicate.hasProperty(metadata, "io.modelcontextprotocol/logLevel")
+              ? metadata["io.modelcontextprotocol/logLevel"]
+              : undefined
+
+            if (
+              requestContext?.clientId !== clientId ||
+              !isLoggingLevel(level) ||
+              McpSchema.LoggingLevel.literals.indexOf(notification.level) <
+                McpSchema.LoggingLevel.literals.indexOf(level)
+            ) {
+              return
+            }
+          } else if (!runtime.canDeliver(clientId, Headers.empty, notification, defaultLogLevel)) {
             return
           }
           const rpc = selectedProtocol.serverNotificationRpcs.requests.get(projected.tag)

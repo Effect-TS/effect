@@ -1,9 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
+import * as McpServer from "effect/unstable/ai/McpServer"
+import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
+import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
@@ -236,6 +243,77 @@ export const statelessModernSuite = (
     })
 
     describe("Logging > Stateless modern", () => {
+      // https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging#per-request-log-level
+      for (const source of ["background", "another request"] as const) {
+        it.effect(`MUST not deliver logs from ${source} on an HTTP subscription stream`, () =>
+          Effect.gen(function*() {
+            const serverReady = yield* Deferred.make<McpServer.McpServer["Service"]>()
+            const harness = yield* makeHttpHarness(
+              Layer.effectDiscard(
+                Effect.gen(function*() {
+                  const server = yield* McpServer.McpServer
+                  yield* server.addTool({
+                    tool: new McpSchema.Tool({ name: "EmitLogs", inputSchema: { type: "object" } }),
+                    annotations: Context.empty(),
+                    handle: () =>
+                      server.notifications["notifications/message"]({ level: "error", data: "private-log" }).pipe(
+                        Effect.as(new McpSchema.CallToolResult({ content: [] }))
+                      )
+                  })
+                  yield* Deferred.succeed(serverReady, server)
+                })
+              ).pipe(Layer.provideMerge(makeServerLayer({ name: "LoggingConformance", protocols: [protocol] })))
+            )
+            const response = yield* harness.post({
+              jsonrpc: "2.0",
+              id: "logs-forbidden",
+              method: "subscriptions/listen",
+              params: {
+                notifications: { toolsListChanged: true },
+                _meta: {
+                  "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+                  "io.modelcontextprotocol/clientCapabilities": {}
+                }
+              }
+            }, {
+              "MCP-Protocol-Version": protocol.protocolVersion,
+              "Mcp-Method": "subscriptions/listen"
+            })
+            const stream = makeMcpSseReader(response)
+            yield* Effect.addFinalizer(() => stream.cancel)
+            assert.strictEqual((yield* stream.take()).method, "notifications/subscriptions/acknowledged")
+            const server = yield* Deferred.await(serverReady)
+            if (source === "background") {
+              yield* server.notifications["notifications/message"]({ level: "error", data: "private-log" })
+            } else {
+              const result = yield* harness.post({
+                jsonrpc: "2.0",
+                id: "originating-request",
+                method: "tools/call",
+                params: {
+                  name: "EmitLogs",
+                  arguments: {},
+                  _meta: {
+                    "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+                    "io.modelcontextprotocol/clientCapabilities": {},
+                    "io.modelcontextprotocol/logLevel": "warning"
+                  }
+                }
+              }, {
+                "MCP-Protocol-Version": protocol.protocolVersion,
+                "Mcp-Method": "tools/call",
+                "Mcp-Name": "EmitLogs"
+              })
+              const completed = yield* readMcpHttpResponse(result)
+              assert.deepInclude(completed, { id: "originating-request" })
+              assert.property(completed, "result")
+            }
+            // Delivery is acknowledged before publishing the sentinel, so no timing window is needed.
+            yield* server.notifications["notifications/tools/list_changed"]({})
+            assert.strictEqual((yield* stream.take()).method, "notifications/tools/list_changed")
+          }))
+      }
+
       // https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging#capabilities
       it.effect("should advertise logging when request-scoped log filtering is supported", () =>
         Effect.gen(function*() {
