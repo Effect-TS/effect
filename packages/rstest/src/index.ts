@@ -24,11 +24,11 @@ export * from "@rstest/core"
 export type API = Rs.TestAPIs
 
 /**
- * Named `Vitest` for source compatibility with `@effect/vitest`.
+ * Effect test helper types.
  *
  * @since 4.0.0
  */
-export namespace Vitest {
+export namespace Rstest {
   /**
    * @since 4.0.0
    */
@@ -74,15 +74,15 @@ export namespace Vitest {
   /**
    * @since 4.0.0
    */
-  export interface Tester<R> extends Vitest.Test<R> {
-    skip: Vitest.Test<R>
-    skipIf: (condition: unknown) => Vitest.Test<R>
-    runIf: (condition: unknown) => Vitest.Test<R>
-    only: Vitest.Test<R>
+  export interface Tester<R> extends Rstest.Test<R> {
+    skip: Rstest.Test<R>
+    skipIf: (condition: unknown) => Rstest.Test<R>
+    runIf: (condition: unknown) => Rstest.Test<R>
+    only: Rstest.Test<R>
     each: <T>(
       cases: ReadonlyArray<T>
     ) => <A, E>(name: string, self: TestFunction<A, E, R, Array<T>>, timeout?: number | TestOptions) => void
-    fails: Vitest.Test<R>
+    fails: Rstest.Test<R>
 
     /**
      * Runs an Effectful property test using Schema or Arbitrary inputs.
@@ -128,7 +128,7 @@ export namespace Vitest {
    * @since 4.0.0
    */
   export interface MethodsNonLive<R = never> extends API {
-    readonly effect: Vitest.Tester<R | Scope.Scope>
+    readonly effect: Rstest.Tester<R | Scope.Scope>
     /**
      * Rstest's `it` has no `describe`, so it is attached here to keep `it.describe.each(...)` working.
      *
@@ -143,10 +143,10 @@ export namespace Vitest {
       readonly concurrent?: boolean
       readonly timeout?: Duration.Input
     }) => {
-      (f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
+      (f: (it: Rstest.MethodsNonLive<R | R2>) => void): void
       (
         name: string,
-        f: (it: Vitest.MethodsNonLive<R | R2>) => void
+        f: (it: Rstest.MethodsNonLive<R | R2>) => void
       ): void
     }
 
@@ -187,29 +187,41 @@ export namespace Vitest {
    * @since 4.0.0
    */
   export interface Methods<R = never> extends MethodsNonLive<R> {
-    readonly live: Vitest.Tester<Scope.Scope | R>
+    readonly live: Rstest.Tester<Scope.Scope | R>
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
       readonly concurrent?: boolean
       readonly memoMap?: Layer.MemoMap
       readonly timeout?: Duration.Input
       readonly excludeTestServices?: boolean
     }) => {
-      (f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
+      (f: (it: Rstest.MethodsNonLive<R | R2>) => void): void
       (
         name: string,
-        f: (it: Vitest.MethodsNonLive<R | R2>) => void
+        f: (it: Rstest.MethodsNonLive<R | R2>) => void
       ): void
     }
   }
 }
 
 /**
- * Runner-neutral alias for the Effect helper types. `Vitest` remains available
- * for source compatibility; the runner's own `Rstest` type is unchanged.
+ * Rstest runner utilities.
  *
  * @since 4.0.0
  */
-export type { Vitest as EffectTest }
+export type Rstest = Rs.Rstest
+
+/**
+ * Runner-neutral alias for the Effect helper types.
+ *
+ * @since 4.0.0
+ */
+export type { Rstest as EffectTest }
+
+/**
+ * @since 4.0.0
+ * @deprecated Use `Rstest` instead.
+ */
+export type { Rstest as Vitest }
 
 /**
  * @since 4.0.0
@@ -219,12 +231,12 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
 /**
  * @since 4.0.0
  */
-export const effect: Vitest.Tester<Scope.Scope> = internal.effect
+export const effect: Rstest.Tester<Scope.Scope> = internal.effect
 
 /**
  * @since 4.0.0
  */
-export const live: Vitest.Tester<Scope.Scope> = internal.live
+export const live: Rstest.Tester<Scope.Scope> = internal.live
 
 /**
  * Share a `Layer` between multiple tests, optionally wrapping
@@ -279,8 +291,8 @@ export const layer: <R, E>(
     readonly excludeTestServices?: boolean
   }
 ) => {
-  (f: (it: Vitest.MethodsNonLive<R>) => void): void
-  (name: string, f: (it: Vitest.MethodsNonLive<R>) => void): void
+  (f: (it: Rstest.MethodsNonLive<R>) => void): void
+  (name: string, f: (it: Rstest.MethodsNonLive<R>) => void): void
 } = internal.layer
 
 /**
@@ -294,21 +306,21 @@ export const flakyTest: <A, E, R>(
 /**
  * @since 4.0.0
  */
-export const prop: Vitest.Methods["prop"] = internal.prop
+export const prop: Rstest.Methods["prop"] = internal.prop
 
 /**
  * @since 4.0.0
  */
-export const it: Vitest.Methods = internal.makeMethods(Rs.it)
+export const it: Rstest.Methods = internal.makeMethods(Rs.it)
 
 /**
  * @since 4.0.0
  */
-export const makeMethods: (it: Rs.TestAPIs) => Vitest.Methods = internal.makeMethods
+export const makeMethods: (it: Rs.TestAPIs) => Rstest.Methods = internal.makeMethods
 
 /**
  * Returns `void` because Rstest's `describe` does not return a `SuiteCollector`.
  *
  * @since 4.0.0
  */
-export const describeWrapped: (name: string, f: (it: Vitest.Methods) => void) => void = internal.describeWrapped
+export const describeWrapped: (name: string, f: (it: Rstest.Methods) => void) => void = internal.describeWrapped

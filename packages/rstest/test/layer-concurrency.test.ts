@@ -1,8 +1,8 @@
-import { assert, describe, it, layer, type Vitest } from "@effect/rstest"
+import { assert, describe, it, layer, type Rstest } from "@effect/rstest"
 import { Effect, Layer } from "effect"
 
 const checkConcurrency = (
-  it: Vitest.MethodsNonLive,
+  it: Rstest.MethodsNonLive,
   concurrent: boolean,
   options?: { readonly concurrent: boolean }
 ) => {
