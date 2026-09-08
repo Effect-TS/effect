@@ -99,6 +99,7 @@ interface QueuedServerNotification {
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
+  readonly notificationDelivery: { consumers: number }
 }>()
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
 type ServerNotificationRequest<
@@ -315,6 +316,7 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
+    const notificationDelivery = { consumers: 0 }
     const listChangedHandles = new Map<string, any>()
     const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
@@ -361,7 +363,7 @@ export class McpServer extends Context.Service<McpServer, {
                 exit: Exit.void
               })
             )
-            return enqueued && queued.requestContext !== undefined
+            return enqueued && queued.requestContext !== undefined && notificationDelivery.consumers > 0
               ? Effect.andThen(Deferred.await(delivered), acknowledge)
               : acknowledge
           })
@@ -625,7 +627,7 @@ export class McpServer extends Context.Service<McpServer, {
         }
       })
     })
-    internalState.set(service, { core: internalCore, notifications: notificationsQueue })
+    internalState.set(service, { core: internalCore, notifications: notificationsQueue, notificationDelivery })
     return service
   })
 
@@ -1205,7 +1207,17 @@ const runWithRuntime = Effect.fnUntraced(function*(
       })
   })
 
-  yield* Queue.take(internalState.get(server)!.notifications).pipe(
+  const { notificationDelivery, notifications } = internalState.get(server)!
+  yield* Effect.acquireRelease(
+    Effect.sync(() => {
+      notificationDelivery.consumers++
+    }),
+    () =>
+      Effect.sync(() => {
+        notificationDelivery.consumers--
+      })
+  )
+  yield* Queue.take(notifications).pipe(
     Effect.flatMap(Effect.fnUntraced(function*(queued) {
       const { delivered, notification, targetClientId, requestContext, requestHeaders } = queued
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
