@@ -167,6 +167,14 @@ export class ServerRuntime extends Context.Service<ServerRuntime, ServerRuntimeS
 ) {}
 
 /** @internal */
+export const selectStatefulProtocol = <Protocol extends PublicMcpProtocol.AnyProtocolAdapter>(
+  protocols: ReadonlyArray<Protocol>,
+  offeredVersion: unknown
+): Protocol | undefined =>
+  protocols.find((protocol) => protocol.runtime._tag === "Stateful" && protocol.protocolVersion === offeredVersion) ??
+    protocols.find((protocol) => protocol.runtime._tag === "Stateful")
+
+/** @internal */
 export const make = Effect.fnUntraced(function*(
   protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>
 ) {
@@ -188,10 +196,6 @@ export const make = Effect.fnUntraced(function*(
     statelessProtocol = protocol
   }
   const registry = yield* McpProtocolRegistry.make(protocols)
-  const selectStatefulProtocol = (offeredVersion: string) =>
-    registry.protocols.find((protocol) =>
-      protocol.runtime._tag === "Stateful" && protocol.protocolVersion === offeredVersion
-    ) ?? statefulProtocol
   const protocolForInternalTag = (tag: string): PublicMcpProtocol.AnyProtocolAdapter => {
     for (const protocol of registry.protocols) {
       const routed = registry.routeClientRequest(protocol, {
@@ -231,7 +235,7 @@ export const make = Effect.fnUntraced(function*(
             statelessProtocol ?? registry.protocols[0]
         } else if (request.tag === "initialize") {
           const requestedVersion = (request.payload as any)?.protocolVersion
-          protocol = selectStatefulProtocol(requestedVersion)
+          protocol = selectStatefulProtocol(registry.protocols, requestedVersion)
           if (protocol === undefined) {
             return yield* new McpProtocol.ProtocolError({
               code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,

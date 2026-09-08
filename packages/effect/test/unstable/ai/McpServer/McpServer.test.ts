@@ -1268,6 +1268,32 @@ describe("McpServer", () => {
   })
 
   describe("stdio", () => {
+    it.effect("should accept batches after falling back to a stateful protocol", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_03_26, [
+          McpProtocol.v2026_07_28,
+          McpProtocol.v2025_03_26
+        ])
+        const initialized = yield* fixture.sendRequest("initialize", {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "fallback-client", version: "1.0.0" }
+        }, 1)
+        assert.deepInclude(initialized.result, { protocolVersion: "2025-03-26" })
+        yield* fixture.sendNotification("notifications/initialized")
+        yield* fixture.takeFrame
+        yield* fixture.sendRaw([
+          { jsonrpc: "2.0", id: 2, method: "ping" },
+          { jsonrpc: "2.0", id: 3, method: "ping" }
+        ])
+        const batch = yield* fixture.takeFrame
+        assert(Array.isArray(batch))
+        assert.sameDeepMembers(batch, [
+          { jsonrpc: "2.0", id: 2, result: {} },
+          { jsonrpc: "2.0", id: 3, result: {} }
+        ])
+      }))
+
     it.effect("should preserve the June wire transcript when requests use stdio", () =>
       Effect.gen(function*() {
         const stdin = yield* Queue.unbounded<Uint8Array>()
