@@ -1,6 +1,6 @@
 import { MysqlClient } from "@effect/sql-mysql2"
 import { assert, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Layer, Redacted, Schedule, Schema } from "effect"
+import { Cause, Effect, Exit, Fiber, Layer, Redacted, Schedule, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 import { MysqlContainer } from "./utils.ts"
@@ -20,7 +20,37 @@ const layer = PersistedQueue.layer.pipe(
   Layer.provideMerge(client)
 )
 
+const assertPrecisionDiagnostic = (cause: Cause.Cause<unknown>, tableName: string) => {
+  const error = Cause.squash(cause)
+  assert.instanceOf(error, Error)
+  assert.strictEqual(
+    (error as Error).message,
+    `PersistedQueue: MySQL table ${tableName} requires DATETIME(6) for visible_at, acquired_at, created_at and updated_at. ` +
+      "The timestamp precision migration may have failed after being recorded as applied. " +
+      "Repair these columns before restarting the queue store."
+  )
+}
+
 it.layer(layer, { timeout: "60 seconds", concurrent: false })("PersistedQueue MySQL retry precision", (it) => {
+  for (const column of ["visible_at", "acquired_at", "created_at", "updated_at"]) {
+    for (const precision of [0, 3]) {
+      it.effect(`rejects a partial upgrade with ${column} at precision ${precision}`, () =>
+        Effect.gen(function*() {
+          const sql = yield* MysqlClient.MysqlClient
+          const tableName = `partial_${column}_${precision}`
+          yield* sql`CREATE TABLE ${sql(tableName)} LIKE retry_precision`
+          yield* sql`ALTER TABLE ${sql(tableName)} MODIFY ${sql(column)} DATETIME(${sql.literal(String(precision))}) ${
+            sql.literal(column === "acquired_at" ? "NULL" : "NOT NULL")
+          }`
+          yield* sql`CREATE TABLE ${sql(`${tableName}_migrations`)} LIKE retry_precision_migrations`
+          yield* sql`INSERT INTO ${sql(`${tableName}_migrations`)} SELECT * FROM retry_precision_migrations`
+          const startup = yield* PersistedQueue.makeStoreSql({ tableName }).pipe(Effect.exit)
+          assert.isTrue(Exit.isFailure(startup))
+          if (Exit.isFailure(startup)) assertPrecisionDiagnostic(startup.cause, tableName)
+        }))
+    }
+  }
+
   it.effect(
     "rejects or repairs an applied precision migration with old columns before delivering retries",
     () =>
@@ -54,7 +84,10 @@ it.layer(layer, { timeout: "60 seconds", concurrent: false })("PersistedQueue My
           pollInterval: "10 millis"
         }).pipe(Effect.exit)
         // Refusing unsafe startup is valid; a repaired store must honor the delay.
-        if (Exit.isFailure(startup)) return
+        if (Exit.isFailure(startup)) {
+          assertPrecisionDiagnostic(startup.cause, "interrupted_upgrade")
+          return
+        }
         const factory = yield* PersistedQueue.makeFactory.pipe(
           Effect.provideService(PersistedQueue.PersistedQueueStore, startup.value)
         )
