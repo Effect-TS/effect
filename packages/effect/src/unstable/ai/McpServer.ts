@@ -1604,6 +1604,16 @@ const layerMcpProtocolHttp = (options: {
             Effect.matchEffect(Schema.decodeEffect(Schema.UnknownFromJsonString)(body), {
               onFailure: () => Effect.succeed(parseErrorResponse()),
               onSuccess: (input) => {
+                const response = Effect.map(httpEffect, (response) => {
+                  const isSubscription = Predicate.hasProperty(input, "method") &&
+                    input.method === "subscriptions/listen"
+                  // Completed responses may already contain notifications followed by the result.
+                  const hasMultipleMessages = response.body._tag === "Uint8Array" &&
+                    response.body.body.subarray(0, -1).includes(10)
+                  return isSubscription || response.body._tag === "Stream" || hasMultipleMessages
+                    ? toServerSentEvents(response)
+                    : response
+                })
                 if (!Array.isArray(input)) {
                   const hasId = Predicate.hasProperty(input, "id")
                   const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
@@ -1663,16 +1673,6 @@ const layerMcpProtocolHttp = (options: {
                       error: new MethodNotFound({ message: `Method not found: ${input.method}` })
                     }, { status: 404 }))
                   }
-                  const isSubscription = Predicate.hasProperty(input, "method") &&
-                    input.method === "subscriptions/listen"
-                  const response = Effect.map(httpEffect, (response) => {
-                    // Completed responses may already contain notifications followed by the result.
-                    const hasMultipleMessages = response.body._tag === "Uint8Array" &&
-                      response.body.body.subarray(0, -1).includes(10)
-                    return isSubscription || response.body._tag === "Stream" || hasMultipleMessages
-                      ? toServerSentEvents(response)
-                      : response
-                  })
                   return !isRequest || !hasId
                     ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
                     : response
@@ -1701,8 +1701,8 @@ const layerMcpProtocolHttp = (options: {
                   Predicate.hasProperty(message, "method") && Predicate.hasProperty(message, "id")
                 )
                 return expectsResponse
-                  ? httpEffect
-                  : Effect.catchCause(httpEffect, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
+                  ? response
+                  : Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
               }
             })
         })

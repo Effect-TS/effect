@@ -209,6 +209,51 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  it.effect("should frame HTTP batch notifications and results as separate SSE events", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(
+        Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "Emit", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              server.notifications["notifications/message"]({ level: "error", data: "batch-log" }).pipe(
+                Effect.as(new McpSchema.CallToolResult({ content: [] }))
+              )
+          })
+        )).pipe(Layer.provideMerge(makeServerLayer({
+          name: "BatchNotificationFraming",
+          protocols: [McpProtocol.v2025_03_26]
+        })))
+      )
+      const initialized = yield* harness.post({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-03-26",
+          capabilities: {},
+          clientInfo: { name: "legacy", version: "1.0.0" }
+        }
+      })
+      const sessionId = initialized.headers.get("mcp-session-id")
+      assert.isNotNull(sessionId)
+      const response = yield* harness.post([{
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "Emit" }
+      }], { "mcp-session-id": sessionId, "mcp-protocol-version": "2025-03-26" })
+      assert.strictEqual(response.status, 200)
+      const reader = makeMcpSseReader(response)
+      yield* Effect.addFinalizer(() => reader.cancel)
+      const messages: ReadonlyArray<unknown> = yield* reader.drain()
+      assert.deepStrictEqual(messages, [
+        { jsonrpc: "2.0", method: "notifications/message", params: { level: "error", data: "batch-log" } },
+        [{ jsonrpc: "2.0", id: 2, result: { content: [] } }]
+      ])
+    }))
+
   it.effect("should honor the legacy HTTP session log level when delivering notifications", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(
