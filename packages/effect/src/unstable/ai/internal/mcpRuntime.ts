@@ -41,6 +41,9 @@ const modernVersionClaim = (input: unknown): { readonly present: boolean; readon
     : { present: false, value: undefined }
 }
 
+/** @internal */
+export const hasRequestProtocolVersion = (input: unknown): boolean => modernVersionClaim(input).present
+
 const routingName = (input: unknown): string | undefined => {
   const request = asRecord(input)
   const params = asRecord(request?.params)

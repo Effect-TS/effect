@@ -1428,6 +1428,7 @@ const mcpStdioSerialization = (
               if (
                 !acceptsBatch ||
                 frame.length === 0 ||
+                frame.some(McpRuntime.hasRequestProtocolVersion) ||
                 frame.some(isInitializeJsonRpcMessage)
               ) {
                 decoded.push({
@@ -1664,6 +1665,7 @@ const layerMcpProtocolHttp = (options: {
                 const admission = runtime.admitHttp(request.headers, input)
                 if (
                   admission._tag === "Rejected" ||
+                  input.some(McpRuntime.hasRequestProtocolVersion) ||
                   input.some(isInitializeJsonRpcMessage) ||
                   admission.binding === undefined
                 ) {
