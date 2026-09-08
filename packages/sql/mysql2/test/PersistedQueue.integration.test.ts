@@ -1,6 +1,6 @@
 import { MysqlClient } from "@effect/sql-mysql2"
 import { assert, it } from "@effect/vitest"
-import { Effect, Latch, Layer, Redacted, Schedule, Schema } from "effect"
+import { Cause, Effect, Exit, Fiber, Latch, Layer, Redacted, Schedule, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 import { Reactivity } from "effect/unstable/reactivity"
@@ -23,6 +23,154 @@ const layer = PersistedQueue.layer.pipe(
 )
 
 it.layer(layer, { timeout: "60 seconds", concurrent: false })("PersistedQueue MySQL retry precision", (it) => {
+  for (const scenario of ["failed_alter", "interrupt_owner", "interrupt_waiter", "timeout"] as const) {
+    it.effect(`releases upgrade ownership before pool reuse after ${scenario}`, () =>
+      Effect.gen(function*() {
+        const sql = yield* MysqlClient.MysqlClient
+        const observer = yield* MysqlClient.make(sql.config).pipe(Effect.provide(Reactivity.layer))
+        const tableName = `lock_${scenario}`
+        yield* sql`CREATE TABLE ${sql(tableName)} LIKE retry_precision`
+        yield* sql`ALTER TABLE ${sql(tableName)} MODIFY visible_at DATETIME NOT NULL`
+        yield* sql`CREATE TABLE ${sql(`${tableName}_migrations`)} LIKE retry_precision_migrations`
+        yield* sql`INSERT INTO ${sql(`${tableName}_migrations`)} SELECT * FROM retry_precision_migrations`
+        yield* sql`INSERT INTO ${sql(tableName)}
+          (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+          VALUES ('retained', 'lifecycle', '42', 'pending', 0, '2026-01-01', '2026-01-01', '2026-01-01')`
+        const [{ name }] = yield* observer<{ name: string }>`SELECT
+          SHA2(CONCAT('effect/PersistedQueue/precision:', DATABASE(), ':', ${tableName}), 256) AS name`
+        const [{ id }] = yield* sql<{ id: number }>`SELECT CONNECTION_ID() AS id`
+        const waiting = Latch.makeUnsafe()
+        const owning = Latch.makeUnsafe()
+        let reservationReleased = false
+        let workStarted = false
+        // The extra finalizer runs immediately before the underlying reservation
+        // returns its connection to the pool, after the inner lock scope closes.
+        const reserve = sql.reserve.pipe(Effect.flatMap((connection) =>
+          Effect.gen(function*() {
+            yield* Effect.addFinalizer(() =>
+              observer<{ owner: number | null }>`SELECT IS_USED_LOCK(${name}) AS owner`.pipe(
+                Effect.orDie,
+                Effect.tap(([{ owner }]) =>
+                  Effect.sync(() => {
+                    assert.notStrictEqual(owner, id)
+                    reservationReleased = true
+                  })
+                )
+              )
+            )
+            return new Proxy(connection, {
+              get(target, key, receiver) {
+                if (key === "execute") {
+                  return (
+                    query: string,
+                    params: ReadonlyArray<unknown>,
+                    transform: Parameters<typeof connection.execute>[2]
+                  ) =>
+                    /GET_LOCK/.test(query)
+                      ? Effect.andThen(waiting.open, connection.execute(query, params, transform))
+                      : connection.execute(query, params, transform)
+                }
+                return Reflect.get(target, key, receiver)
+              }
+            })
+          })
+        ))
+        const tracked: SqlClient.SqlClient = new Proxy(sql, {
+          get(target, key, receiver) {
+            if (key === "reserve") return reserve
+            if (key === "withoutTransforms") return () => tracked
+            return Reflect.get(target, key, receiver)
+          }
+        })
+        const start = Effect.gen(function*() {
+          const store = yield* PersistedQueue.makeStoreSql({ tableName, pollInterval: 5 })
+          workStarted = true
+          const factory = yield* PersistedQueue.makeFactory.pipe(
+            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+          )
+          const queue = yield* factory.make({ name: "lifecycle", schema: Schema.Number })
+          return yield* queue.take(Effect.succeed)
+        }).pipe(Effect.provideService(SqlClient.SqlClient, tracked), Effect.scoped)
+        const intercept: Statement.Transformer = (statement, constructor) => {
+          const [query] = statement.compile()
+          if (!/^\s*ALTER TABLE/.test(query)) return Effect.succeed(statement)
+          if (scenario === "failed_alter") {
+            return Effect.succeed(constructor`ALTER TABLE ${constructor(tableName)} MODIFY missing_column DATETIME(6)`)
+          }
+          return Effect.andThen(owning.open, Effect.never)
+        }
+
+        if (scenario === "failed_alter") {
+          const exit = yield* start.pipe(Effect.provideService(Statement.CurrentTransformer, intercept), Effect.exit)
+          assert.isTrue(Exit.isFailure(exit))
+          if (Exit.isFailure(exit)) {
+            assert.include(
+              String(Cause.squash(exit.cause)),
+              `Failed to upgrade MySQL persisted queue table ${tableName}`
+            )
+          }
+        } else if (scenario === "interrupt_owner") {
+          const fiber = yield* start.pipe(
+            Effect.provideService(Statement.CurrentTransformer, intercept),
+            Effect.forkScoped
+          )
+          yield* owning.await
+          const [{ owner }] = yield* observer<{ owner: number }>`SELECT IS_USED_LOCK(${name}) AS owner`
+          assert.strictEqual(owner, id)
+          yield* Fiber.interrupt(fiber)
+          const exit = yield* Fiber.await(fiber)
+          assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+        } else {
+          yield* Effect.scoped(Effect.gen(function*() {
+            yield* Effect.acquireRelease(
+              observer<{ acquired: number }>`SELECT GET_LOCK(${name}, 0) AS acquired`.pipe(
+                Effect.tap(([{ acquired }]) => Effect.sync(() => assert.strictEqual(acquired, 1)))
+              ),
+              () => observer`SELECT RELEASE_LOCK(${name})`.pipe(Effect.orDie)
+            )
+            if (scenario === "timeout") {
+              const exit = yield* start.pipe(Effect.exit)
+              assert.isTrue(Exit.isFailure(exit))
+              if (Exit.isFailure(exit)) {
+                assert.include(
+                  String(Cause.squash(exit.cause)),
+                  `Timed out waiting to upgrade MySQL persisted queue table ${tableName}`
+                )
+              }
+            } else {
+              const fiber = yield* start.pipe(Effect.forkScoped)
+              yield* waiting.await
+              const interrupter = yield* Fiber.interrupt(fiber).pipe(Effect.forkScoped)
+              // GET_LOCK is uninterruptible until ownership is known. Releasing
+              // the blocker lets cancellation finalize any newly acquired lock.
+              yield* Effect.sleep(50)
+              assert.isUndefined(interrupter.pollUnsafe())
+              yield* observer`SELECT RELEASE_LOCK(${name})`
+              yield* Fiber.join(interrupter)
+              const exit = yield* Fiber.await(fiber)
+              assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+            }
+          }))
+        }
+
+        assert.isTrue(reservationReleased)
+        assert.isFalse(workStarted)
+        const [{ free }] = yield* observer<{ free: number }>`SELECT IS_FREE_LOCK(${name}) AS free`
+        assert.strictEqual(free, 1)
+        // Reuse the same physical connection, rather than hiding a leaked lock
+        // by closing its pool and opening a new connection.
+        const [{ reused }] = yield* sql<{ reused: number }>`SELECT CONNECTION_ID() AS reused`
+        assert.strictEqual(reused, id)
+        assert.deepStrictEqual(yield* sql`SELECT state, attempts FROM ${sql(tableName)} WHERE id = 'retained'`, [
+          { state: "pending", attempts: 0 }
+        ])
+        assert.strictEqual(yield* start, 42)
+        assert.isTrue(workStarted)
+        const [{ free: afterRestart }] = yield* observer<{ free: number }>`SELECT IS_FREE_LOCK(${name}) AS free`
+        assert.strictEqual(afterRestart, 1)
+      }).pipe(TestClock.withLive), { timeout: scenario === "timeout" ? 45_000 : 10_000 })
+  }
+
   for (const legacy of [false, true]) {
     it.effect(
       legacy ? "concurrent startups perform only one precision ALTER" : "correct tables skip precision ALTER",
