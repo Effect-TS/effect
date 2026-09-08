@@ -25,9 +25,12 @@ export class MultiByte {
   readonly astral = new Map<number, number>()
   readonly encodeSequences = new Map<number, Array<{ readonly text: string; readonly code: number }>>()
   readonly mapping: Mapping
+  private maxEncodeBytes = 1
+  private maxDecodeUnits = 1
 
   constructor(mapping: Mapping) {
     this.mapping = mapping
+    if (mapping.ranges) this.maxEncodeBytes = 4
     for (const chunk of mapping.table) {
       const address = parseInt(String(chunk[0]), 16)
       const bytes: Array<number> = []
@@ -70,14 +73,25 @@ export class MultiByte {
         if (this.encodeTable[unicode] === -1) this.encodeTable[unicode] = code
       } else if (!this.astral.has(unicode)) this.astral.set(unicode, code)
     }
-    const visit = (index: number, prefix: number): void => {
+    const visit = (index: number, prefix: number, depth: number, encode = true): void => {
       const table = this.nodes[index]
       for (let i = 0; i < 256; i++) {
         const code = prefix * 256 + i
-        if (skips.has(code)) continue
         const unicode = table[i]
+        // Derive allocation bounds from the table, including decode-only entries.
+        if (unicode >= 0 || (unicode <= sequence && unicode > branch)) {
+          this.maxEncodeBytes = Math.max(this.maxEncodeBytes, depth)
+          const units = unicode >= 0 ? (unicode > 0xffff ? 2 : 1) : this.sequences[sequence - unicode].length
+          this.maxDecodeUnits = Math.max(this.maxDecodeUnits, Math.ceil(units / depth))
+        }
+        const encodable = encode && !skips.has(code)
+        if (unicode <= branch) {
+          // Even an encoder-skipped subtree remains reachable by the decoder.
+          visit(branch - unicode, code, depth + 1, encodable)
+          continue
+        }
+        if (!encodable) continue
         if (unicode >= 0) set(unicode, code)
-        else if (unicode <= branch) visit(branch - unicode, code)
         else if (unicode <= sequence) {
           const text = this.sequences[sequence - unicode]
           const first = text.codePointAt(0)!
@@ -87,18 +101,62 @@ export class MultiByte {
         }
       }
     }
-    visit(0, 0)
-    for (const [char, code] of Object.entries(mapping.encodeAdd ?? {})) set(char.codePointAt(0)!, code)
+    visit(0, 0, 1)
+    for (const [char, code] of Object.entries(mapping.encodeAdd ?? {})) {
+      set(char.codePointAt(0)!, code)
+      this.maxEncodeBytes = Math.max(this.maxEncodeBytes, code > 0xffffff ? 4 : code > 0xffff ? 3 : code > 255 ? 2 : 1)
+    }
+  }
+
+  private encoderSimple(options: Options): Encoder {
+    // No sequence lookups or GB18030 range handling in the common table-only path.
+    const table = this.encodeTable
+    const astral = this.astral
+    const capacity = this.maxEncodeBytes
+    let lead = -1
+    const convert = (chunk: string, final: boolean): Uint8Array => {
+      const text = lead === -1 ? chunk : String.fromCharCode(lead) + chunk
+      lead = -1
+      const output = new Uint8Array(text.length * capacity)
+      let offset = 0
+      for (let i = 0; i < text.length; i++) {
+        const start = i
+        let unicode = text.charCodeAt(i)
+        if (unicode >= 0xd800 && unicode <= 0xdbff) {
+          if (!final && i + 1 === text.length) {
+            lead = unicode
+            break
+          }
+          const trail = text.charCodeAt(i + 1)
+          if (trail >= 0xdc00 && trail <= 0xdfff) {
+            unicode = 0x10000 + (unicode - 0xd800) * 1024 + trail - 0xdc00
+            i++
+          }
+        }
+        let code = unicode <= 0xffff ? table[unicode] : astral.get(unicode) ?? -1
+        if (code === -1) {
+          if (options.fatal) throw new RangeError(`Unrepresentable character at UTF-16 offset ${start}`)
+          code = 63
+        }
+        if (code > 0xffffff) output[offset++] = code >>> 24
+        if (code > 0xffff) output[offset++] = code >>> 16
+        if (code > 0xff) output[offset++] = code >>> 8
+        output[offset++] = code
+      }
+      return output.subarray(0, offset)
+    }
+    return { write: (text) => convert(text, false), end: () => convert("", true) }
   }
 
   encoder(options: Options): Encoder {
+    if (!this.mapping.ranges && this.encodeSequences.size === 0) return this.encoderSimple(options)
     let pending = ""
     const table = this.encodeTable
     const ranges = this.mapping.ranges
     const convert = (chunk: string, final: boolean): Uint8Array => {
       const text = pending + chunk
       pending = ""
-      const output = new Uint8Array(text.length * 4)
+      const output = new Uint8Array(text.length * this.maxEncodeBytes)
       let offset = 0
       for (let i = 0; i < text.length;) {
         const start = i
@@ -167,7 +225,7 @@ export class MultiByte {
     const convert = (chunk: Uint8Array, final: boolean): string => {
       const bytes = concat(pending, chunk)
       pending = empty
-      const chars = new Uint16Array(bytes.length * 2)
+      const chars = new Uint16Array(bytes.length * this.maxDecodeUnits)
       let output = 0
       let start = 0
       const append = (unicode: number) => {
