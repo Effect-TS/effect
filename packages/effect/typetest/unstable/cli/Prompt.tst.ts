@@ -6,6 +6,24 @@ declare const stringEvents: Queue.Dequeue<string, never>
 declare const objectEvents: Queue.Dequeue<{ readonly tick: number }, never>
 
 describe("Prompt", () => {
+  it("numeric option types match their constructors", () => {
+    const intOptions: Prompt.IntOptions = { message: "Count", min: 0, incrementBy: 2 }
+    const numberOptions: Prompt.NumberOptions = { ...intOptions, precision: 3 }
+    expect(Prompt.Int).type.toBeCallableWith(intOptions)
+    expect(Prompt.Number).type.toBeCallableWith(numberOptions)
+    expect<Parameters<typeof Prompt.Int>[0]>().type.toBe<Prompt.IntOptions>()
+    expect<Parameters<typeof Prompt.Number>[0]>().type.toBe<Prompt.NumberOptions>()
+    expect<Prompt.NumberOptions>().type.toBeAssignableTo<Prompt.IntOptions>()
+  })
+
+  it("TextOptions remains shared by text controls", () => {
+    const options: Prompt.TextOptions = { message: "Value" }
+    expect(Prompt.String).type.toBeCallableWith(options)
+    expect(Prompt.Hidden).type.toBeCallableWith(options)
+    expect(Prompt.Password).type.toBeCallableWith(options)
+    expect<Prompt.ListOptions>().type.toBeAssignableTo<Prompt.TextOptions>()
+  })
+
   describe("Theme", () => {
     it("supports context and per-prompt customization", () => {
       expect(Prompt.makeTheme({ prefix: "!", primaryColor: "primary" })).type.toBe<Prompt.Theme>()

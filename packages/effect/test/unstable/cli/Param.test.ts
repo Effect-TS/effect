@@ -29,10 +29,22 @@ const TestLayer = Layer.mergeAll(
 describe("Param", () => {
   it.effect("Never remains an always-failing flag sentinel", () =>
     Effect.gen(function*() {
-      const missing = yield* Effect.flip(Flag.Never.parse({ flags: {}, arguments: [] }))
-      assert.instanceOf(missing, CliError.MissingOption)
-      const supplied = yield* Effect.flip(Flag.Never.parse({ flags: { __none__: ["value"] }, arguments: [] }))
-      assert.instanceOf(supplied, CliError.InvalidValue)
+      for (const sentinel of [Flag.Never, Param.Never(Param.flagKind)]) {
+        const missing = yield* Effect.flip(sentinel.parse({ flags: {}, arguments: [] }))
+        assert.instanceOf(missing, CliError.MissingOption)
+        const supplied = yield* Effect.flip(sentinel.parse({ flags: { __never__: ["value"] }, arguments: [] }))
+        assert.instanceOf(supplied, CliError.InvalidValue)
+      }
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("Never remains an always-failing argument sentinel", () =>
+    Effect.gen(function*() {
+      for (const sentinel of [Argument.Never, Param.Never(Param.argumentKind)]) {
+        const missing = yield* Effect.flip(sentinel.parse({ flags: {}, arguments: [] }))
+        assert.instanceOf(missing, CliError.MissingArgument)
+        const supplied = yield* Effect.flip(sentinel.parse({ flags: {}, arguments: ["value"] }))
+        assert.instanceOf(supplied, CliError.InvalidValue)
+      }
     }).pipe(Effect.provide(TestLayer)))
 
   describe("boolean", () => {

@@ -391,8 +391,12 @@ describe("Primitive", () => {
       Effect.provide(TestLayer)
     ))
 
-  it.effect("none remains an always-failing sentinel", () =>
-    expectInvalidValues(Primitive.None, ["value"], ["This option does not accept values"]).pipe(
+  it("Never has the matching primitive tag", () => {
+    assert.strictEqual(Primitive.Never._tag, "Never")
+  })
+
+  it.effect("Never remains an always-failing sentinel", () =>
+    expectInvalidValues(Primitive.Never, ["value"], ["This option does not accept values"]).pipe(
       Effect.provide(TestLayer)
     ))
 })

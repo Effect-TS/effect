@@ -22,7 +22,7 @@ describe("CLI constructors", () => {
     expect(Primitive.FileSchema(Schema.Struct({ enabled: Schema.Boolean }))).type.toBe<
       Primitive.Primitive<{ readonly enabled: boolean }>
     >()
-    expect(Primitive.None).type.toBe<Primitive.Primitive<never>>()
+    expect(Primitive.Never).type.toBe<Primitive.Primitive<never>>()
     expect(Primitive.KeyValuePair).type.toBe<Primitive.Primitive<Record<string, string>>>()
   })
   it("Flag preserves constructor results and inference", () => {
@@ -47,7 +47,7 @@ describe("CLI constructors", () => {
     expect(Argument.FileSchema("value", Schema.Struct({ enabled: Schema.Boolean }))).type.toBe<
       Argument.Argument<{ readonly enabled: boolean }>
     >()
-    expect(Argument.None).type.toBe<Argument.Argument<never>>()
+    expect(Argument.Never).type.toBe<Argument.Argument<never>>()
     expect(Argument.ChoiceWithValue("value", [["dev", 1], ["prod", 2]] as const)).type.toBe<Argument.Argument<1 | 2>>()
     expect(Argument.File("value")).type.toBe<Argument.Argument<string>>()
     expect(Argument.Directory("value")).type.toBe<Argument.Argument<string>>()
@@ -62,7 +62,8 @@ describe("CLI constructors", () => {
     expect(Param.FileSchema(Param.flagKind, "value", Schema.Struct({ enabled: Schema.Boolean }))).type.toBe<
       Param.Param<"flag", { readonly enabled: boolean }>
     >()
-    expect(Param.None(Param.flagKind)).type.toBe<Param.Param<"flag", never>>()
+    expect(Param.Never(Param.flagKind)).type.toBe<Param.Param<"flag", never>>()
+    expect(Param.Never(Param.argumentKind)).type.toBe<Param.Param<"argument", never>>()
     expect(Param.ChoiceWithValue(Param.flagKind, "value", [["dev", 1], ["prod", 2]] as const)).type.toBe<
       Param.Param<"flag", 1 | 2>
     >()
