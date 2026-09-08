@@ -59,7 +59,7 @@ describe("Command arguments", () => {
         name: Argument.String("name"),
         count: Argument.Int("count"),
         ratio: Argument.Finite("ratio"),
-        env: Argument.Choice("env", ["dev", "prod"]),
+        env: Argument.Literals("env", ["dev", "prod"]),
         config: Argument.File("config", { mustExist: false }),
         workspace: Argument.Directory("workspace", { mustExist: false }),
         startDate: Argument.Date("start-date"),
@@ -133,7 +133,7 @@ describe("Command arguments", () => {
     Effect.gen(function*() {
       const testCommand = Command.make("test", {
         count: Argument.Int("count"),
-        env: Argument.Choice("env", ["dev", "prod"])
+        env: Argument.Literals("env", ["dev", "prod"])
       }, (config) => Effect.succeed(config))
 
       // Test invalid integer - should display help and error

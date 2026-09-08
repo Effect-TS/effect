@@ -9,14 +9,14 @@ describe("Prompt", () => {
   describe("Theme", () => {
     it("supports context and per-prompt customization", () => {
       expect(Prompt.makeTheme({ prefix: "!", primaryColor: "primary" })).type.toBe<Prompt.Theme>()
-      expect(Prompt.Text).type.toBeCallableWith({
+      expect(Prompt.String).type.toBeCallableWith({
         message: "Name",
         theme: { prefix: "!", errorColor: "error" }
       })
     })
 
     it("does not expose the replaced prefix option", () => {
-      expect(Prompt.Text).type.not.toBeCallableWith({ message: "Name", prefix: "!" })
+      expect(Prompt.String).type.not.toBeCallableWith({ message: "Name", prefix: "!" })
     })
   })
 

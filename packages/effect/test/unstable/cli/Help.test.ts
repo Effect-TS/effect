@@ -695,7 +695,7 @@ describe("Command help output", () => {
   it.effect("keeps subcommand flags in aliased completion contexts", () =>
     Effect.gen(function*() {
       const list = Command.make("list", {
-        format: Flag.Choice("format", ["json", "text"])
+        format: Flag.Literals("format", ["json", "text"])
       }).pipe(Command.withAlias("ls"))
       const root = Command.make("ctl").pipe(Command.withSubcommands([list]))
       const runRoot = Command.runWith(root, { version: "1.0.0" })

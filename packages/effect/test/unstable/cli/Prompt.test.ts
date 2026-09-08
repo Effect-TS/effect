@@ -165,20 +165,20 @@ describe("Prompt.Int", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.Float", () => {
+describe("Prompt.Number", () => {
   it.effect("preserves a leading zero in the fractional part", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputText("0.05")
       yield* MockTerminal.inputKey("enter")
 
-      const value = yield* Prompt.run(Prompt.Float({ message: "Rate" }))
+      const value = yield* Prompt.run(Prompt.Number({ message: "Rate" }))
 
       assert.strictEqual(value, 0.05)
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("renders appended input without literal parsed", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Float({ message: "Rate" })
+      const prompt = Prompt.Number({ message: "Rate" })
 
       yield* MockTerminal.inputText("12.5")
       yield* MockTerminal.inputKey("enter")
@@ -196,7 +196,7 @@ describe("Prompt.Float", () => {
 
   it.effect("clears the current input on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Float({ message: "Rate" })
+      const prompt = Prompt.Number({ message: "Rate" })
 
       yield* MockTerminal.inputText("12.5")
       yield* MockTerminal.inputKey("u", { ctrl: true })
@@ -208,12 +208,12 @@ describe("Prompt.Float", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.Text", () => {
+describe("Prompt.String", () => {
   it.effect("renders the default prompt theme", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.Text({ message: "Name" }))
+      yield* Prompt.run(Prompt.String({ message: "Name" }))
 
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.include(frames[0] ?? "", "? Name")
@@ -223,7 +223,7 @@ describe("Prompt.Text", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.Text({ message: "Name" })).pipe(
+      yield* Prompt.run(Prompt.String({ message: "Name" })).pipe(
         Effect.provideService(
           Prompt.Theme,
           Prompt.makeTheme({
@@ -245,7 +245,7 @@ describe("Prompt.Text", () => {
       yield* MockTerminal.inputText("A")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.Text({
+      yield* Prompt.run(Prompt.String({
         message: "Name",
         theme: { primaryColor: `${escape}[35m` }
       })).pipe(
@@ -276,7 +276,7 @@ describe("Prompt.Text", () => {
       yield* MockTerminal.inputText("ok")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.Text({
+      yield* Prompt.run(Prompt.String({
         message: "Name",
         validate: (value) => value === "bad" ? Effect.fail("Try again") : Effect.succeed(value),
         theme: { errorColor: `${escape}[35m` }
@@ -292,7 +292,7 @@ describe("Prompt.Text", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.Text({
+      yield* Prompt.run(Prompt.String({
         message: "Name",
         theme: { prefix: "", pointerSmall: "" }
       }))
@@ -303,7 +303,7 @@ describe("Prompt.Text", () => {
 
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -317,7 +317,7 @@ describe("Prompt.Text", () => {
 
   it.effect("clears the current input on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -333,7 +333,7 @@ describe("Prompt.Text", () => {
 
   it.effect("moves the cursor to the beginning on ctrl-a", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -349,7 +349,7 @@ describe("Prompt.Text", () => {
 
   it.effect("moves the cursor to the end on ctrl-e", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Text({
+      const prompt = Prompt.String({
         message: "Name"
       })
 
@@ -366,7 +366,7 @@ describe("Prompt.Text", () => {
 
   it.effect("does not insert characters for unsupported ctrl key combinations", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Text({
+      const prompt = Prompt.String({
         message: "Name"
       })
 
@@ -381,7 +381,7 @@ describe("Prompt.Text", () => {
 
   it.effect("does not render or submit the cleared default value", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })

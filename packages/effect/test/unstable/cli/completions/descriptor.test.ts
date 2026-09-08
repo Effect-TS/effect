@@ -98,7 +98,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts choice flags with values", () => {
       const cmd = Command.make("test", {
-        color: Flag.Choice("color", ["red", "green", "blue"])
+        color: Flag.Literals("color", ["red", "green", "blue"])
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.flags.length, 1)
@@ -218,7 +218,7 @@ describe("CommandDescriptor", () => {
 
     it("extracts choice arguments", () => {
       const cmd = Command.make("test", {
-        env: Argument.Choice("env", ["dev", "staging", "prod"])
+        env: Argument.Literals("env", ["dev", "staging", "prod"])
       })
       const desc = fromCommand(cmd)
       assert.strictEqual(desc.arguments.length, 1)

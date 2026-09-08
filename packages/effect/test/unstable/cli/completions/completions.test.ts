@@ -53,10 +53,10 @@ const withSubcommands = (() => {
 })()
 
 const withChoices = Command.make("deploy", {
-  env: Flag.Choice("env", ["dev", "staging", "prod"]).pipe(
+  env: Flag.Literals("env", ["dev", "staging", "prod"]).pipe(
     Flag.withDescription("Target environment")
   ),
-  region: Argument.Choice("region", ["us-east", "eu-west", "ap-south"]).pipe(
+  region: Argument.Literals("region", ["us-east", "eu-west", "ap-south"]).pipe(
     Argument.withDescription("Deployment region")
   )
 }).pipe(Command.withDescription("Deploy application"))
@@ -79,10 +79,10 @@ const trickyValues = [
 ]
 
 const withTrickyChoices = Command.make("deploy", {
-  mode: Flag.Choice("mode", trickyValues).pipe(
+  mode: Flag.Literals("mode", trickyValues).pipe(
     Flag.withDescription("Deploy mode")
   ),
-  target: Argument.Choice("target", ["o'clock", "a:b", "{x,y}", "a\u{1F600}b"]).pipe(
+  target: Argument.Literals("target", ["o'clock", "a:b", "{x,y}", "a\u{1F600}b"]).pipe(
     Argument.withDescription("Deployment target")
   )
 }).pipe(Command.withDescription("Deploy application"))
@@ -625,7 +625,7 @@ describe("Fish completions", () => {
 
   it("escapes backslashes in descriptions before quotes", () => {
     const trailingBackslash = Command.make("deploy", {
-      mode: Flag.Choice("mode", ["a"]).pipe(Flag.withDescription("Path like C:\\"))
+      mode: Flag.Literals("mode", ["a"]).pipe(Flag.withDescription("Path like C:\\"))
     })
     const script = Fish.generate("deploy", fromCommand(trailingBackslash))
     assert.include(script, `-d 'Path like C:\\\\'`)

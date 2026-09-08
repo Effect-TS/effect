@@ -26,21 +26,21 @@ describe("CLI constructors", () => {
     expect(Primitive.KeyValuePair).type.toBe<Primitive.Primitive<Record<string, string>>>()
   })
   it("Flag preserves constructor results and inference", () => {
-    expect(Flag.Choice("value", ["dev", "prod"] as const)).type.toBe<Flag.Flag<"dev" | "prod">>()
+    expect(Flag.Literals("value", ["dev", "prod"] as const)).type.toBe<Flag.Flag<"dev" | "prod">>()
     expect(Flag.Path("value")).type.toBe<Flag.Flag<string>>()
     expect(Flag.FileText("value")).type.toBe<Flag.Flag<string>>()
     expect(Flag.FileParse("value")).type.toBe<Flag.Flag<unknown>>()
     expect(Flag.FileSchema("value", Schema.Struct({ enabled: Schema.Boolean }))).type.toBe<
       Flag.Flag<{ readonly enabled: boolean }>
     >()
-    expect(Flag.None).type.toBe<Flag.Flag<never>>()
+    expect(Flag.Never).type.toBe<Flag.Flag<never>>()
     expect(Flag.ChoiceWithValue("value", [["dev", 1], ["prod", 2]] as const)).type.toBe<Flag.Flag<1 | 2>>()
     expect(Flag.File("value")).type.toBe<Flag.Flag<string>>()
     expect(Flag.Directory("value")).type.toBe<Flag.Flag<string>>()
     expect(Flag.KeyValuePair("value")).type.toBe<Flag.Flag<Record<string, string>>>()
   })
   it("Argument preserves constructor results and inference", () => {
-    expect(Argument.Choice("value", ["dev", "prod"] as const)).type.toBe<Argument.Argument<"dev" | "prod">>()
+    expect(Argument.Literals("value", ["dev", "prod"] as const)).type.toBe<Argument.Argument<"dev" | "prod">>()
     expect(Argument.Path("value")).type.toBe<Argument.Argument<string>>()
     expect(Argument.FileText("value")).type.toBe<Argument.Argument<string>>()
     expect(Argument.FileParse("value")).type.toBe<Argument.Argument<unknown>>()
@@ -53,7 +53,7 @@ describe("CLI constructors", () => {
     expect(Argument.Directory("value")).type.toBe<Argument.Argument<string>>()
   })
   it("Param preserves constructor results and inference", () => {
-    expect(Param.Choice(Param.flagKind, "value", ["dev", "prod"] as const)).type.toBe<
+    expect(Param.Literals(Param.flagKind, "value", ["dev", "prod"] as const)).type.toBe<
       Param.Param<"flag", "dev" | "prod">
     >()
     expect(Param.Path(Param.flagKind, "value")).type.toBe<Param.Param<"flag", string>>()
@@ -74,12 +74,12 @@ describe("CLI constructors", () => {
     expect(Prompt.Confirm({ message: "Value" })).type.toBe<Prompt.Prompt<boolean>>()
     expect(Prompt.Date({ message: "Value" })).type.toBe<Prompt.Prompt<Date>>()
     expect(Prompt.File({ message: "Value" })).type.toBe<Prompt.Prompt<string>>()
-    expect(Prompt.Float({ message: "Value" })).type.toBe<Prompt.Prompt<number>>()
+    expect(Prompt.Number({ message: "Value" })).type.toBe<Prompt.Prompt<number>>()
     expect(Prompt.Hidden({ message: "Value" })).type.toBe<Prompt.Prompt<Redacted.Redacted<string>>>()
     expect(Prompt.Int({ message: "Value" })).type.toBe<Prompt.Prompt<number>>()
     expect(Prompt.List({ message: "Value" })).type.toBe<Prompt.Prompt<Array<string>>>()
     expect(Prompt.Password({ message: "Value" })).type.toBe<Prompt.Prompt<Redacted.Redacted<string>>>()
-    expect(Prompt.Text({ message: "Value" })).type.toBe<Prompt.Prompt<string>>()
+    expect(Prompt.String({ message: "Value" })).type.toBe<Prompt.Prompt<string>>()
     expect(Prompt.Toggle({ message: "Value" })).type.toBe<Prompt.Prompt<boolean>>()
     expect(Prompt.Select({ message: "Value", choices: [{ title: "Development", value: "dev" }] })).type.toBe<
       Prompt.Prompt<"dev">

@@ -375,7 +375,7 @@ describe("Command", () => {
       Effect.gen(function*() {
         let invoked = false
         const command = Command.make("demo", {
-          size: Flag.Choice("size", ["small", "medium", "large"])
+          size: Flag.Literals("size", ["small", "medium", "large"])
         }, () =>
           Effect.sync(() => {
             invoked = true
@@ -2134,14 +2134,14 @@ describe("Command", () => {
     it.effect("should let local short aliases override global short aliases on the selected command", () =>
       Effect.gen(function*() {
         const Output = GlobalFlag.Setting("output")({
-          flag: Flag.Choice("output", ["pretty", "json", "yaml"] as const).pipe(
+          flag: Flag.Literals("output", ["pretty", "json", "yaml"] as const).pipe(
             Flag.withAlias("o"),
             Flag.withDefault("pretty")
           )
         })
         const captured: Array<"summary" | "json" | "csv"> = []
         const report = Command.make("report", {
-          output: Flag.Choice("output", ["summary", "json", "csv"] as const).pipe(
+          output: Flag.Literals("output", ["summary", "json", "csv"] as const).pipe(
             Flag.withAlias("o"),
             Flag.withDefault("summary")
           )
@@ -2163,7 +2163,7 @@ describe("Command", () => {
     it.effect("should let local flags override scoped global flags from another command branch", () =>
       Effect.gen(function*() {
         const Region = GlobalFlag.Setting("region")({
-          flag: Flag.Choice("region", ["us", "eu"] as const).pipe(Flag.withDefault("us"))
+          flag: Flag.Literals("region", ["us", "eu"] as const).pipe(Flag.withDefault("us"))
         })
         const captured: Array<string> = []
         let deployInvoked = false
@@ -2294,10 +2294,10 @@ describe("Command", () => {
     it.effect("should include flag choices in help doc descriptions", () =>
       Effect.gen(function*() {
         const command = Command.make("tool", {
-          mode: Flag.Choice("mode", ["dev", "prod"]).pipe(
+          mode: Flag.Literals("mode", ["dev", "prod"]).pipe(
             Flag.withDescription("Execution mode")
           ),
-          format: Flag.Choice("format", ["json", "yaml"])
+          format: Flag.Literals("format", ["json", "yaml"])
         })
 
         const helpDoc = toImpl(command).buildHelpDoc(["tool"])
@@ -2323,7 +2323,7 @@ describe("Command", () => {
     it.effect("should render flag choices in formatted help output", () =>
       Effect.gen(function*() {
         const command = Command.make("tool", {
-          mode: Flag.Choice("mode", ["dev", "prod"]).pipe(
+          mode: Flag.Literals("mode", ["dev", "prod"]).pipe(
             Flag.withDescription("Execution mode")
           )
         })
