@@ -332,7 +332,7 @@ export function toCodeDocument(
 
   function unionOptionsRuntime(options: NonNullable<SchemaRepresentation.Union["options"]>): string {
     if (!Object.hasOwn(options, "mode")) return "{}"
-    return `{ "mode": ${options.mode === undefined ? "undefined" : format(options.mode)} }`
+    return `{ mode: ${options.mode === undefined ? "undefined" : format(options.mode)} }`
   }
 
   function compileCheck(

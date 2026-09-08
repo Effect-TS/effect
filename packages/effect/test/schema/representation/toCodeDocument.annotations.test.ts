@@ -37,7 +37,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         representations: [EmptyUnionRepresentation],
         references: {}
       }).codes,
-      [{ runtime: `Schema.Union([], { "mode": "anyOf" })`, Type: "never" }]
+      [{ runtime: `Schema.Union([], { mode: "anyOf" })`, Type: "never" }]
     )
   })
 
@@ -539,7 +539,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     })
 
     assert.deepStrictEqual(output.codes[0], {
-      runtime: `Schema.Union([Schema.Literal("a")], { "mode": "anyOf" })`,
+      runtime: `Schema.Union([Schema.Literal("a")], { mode: "anyOf" })`,
       Type: `"a"`
     })
   })
@@ -565,7 +565,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
 
     assert.deepStrictEqual(output.codes, [
       { runtime: "Schema.Union([Schema.String], {})", Type: "string" },
-      { runtime: `Schema.Union([Schema.Number], { "mode": undefined })`, Type: "number" }
+      { runtime: `Schema.Union([Schema.Number], { mode: undefined })`, Type: "number" }
     ])
   })
 
