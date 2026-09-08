@@ -32,7 +32,7 @@ import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
-import type { SqlError } from "../sql/SqlError.ts"
+import { LockTimeoutError, SqlError, UnknownError } from "../sql/SqlError.ts"
 import * as Redis from "./Redis.ts"
 
 /**
@@ -1325,19 +1325,75 @@ export const makeStoreSql: (
   yield* sql.onDialectOrElse({
     mysql: () =>
       Effect.gen(function*() {
-        const [{ count }] = yield* sql<{ count: number }>`
+        const needsUpgrade = sql<{ count: number }>`
           SELECT COUNT(*) AS count FROM information_schema.columns
           WHERE table_schema = DATABASE() AND table_name = ${tableName}
           AND column_name IN ('visible_at', 'acquired_at', 'created_at', 'updated_at')
           AND DATETIME_PRECISION = 6
-        `
-        if (Number(count) < 4) {
-          yield* sql`ALTER TABLE ${tableNameSql}
-            MODIFY COLUMN visible_at DATETIME(6) NOT NULL,
-            MODIFY COLUMN acquired_at DATETIME(6) NULL,
-            MODIFY COLUMN created_at DATETIME(6) NOT NULL,
-            MODIFY COLUMN updated_at DATETIME(6) NOT NULL`
-        }
+        `.pipe(Effect.map(([{ count }]) => Number(count) < 4))
+        if (!(yield* needsUpgrade)) return
+
+        yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* sql.reserve
+          yield* Effect.gen(function*() {
+            // Named locks are connection-scoped, survive DDL's implicit commit,
+            // and have a 64-character limit. Include the database in their key.
+            const [{ name }] = yield* sql<{ name: string }>`SELECT
+              SHA2(CONCAT('effect/PersistedQueue/precision:', DATABASE(), ':', ${tableName}), 256) AS name`
+            yield* Effect.acquireRelease(
+              Effect.gen(function*() {
+                const [{ acquired }] = yield* connection.execute(
+                  "SELECT GET_LOCK(?, 30) AS acquired",
+                  [name],
+                  undefined
+                )
+                if (Number(acquired) !== 1) {
+                  return yield* Effect.fail(
+                    new SqlError({
+                      reason: acquired === 0
+                        ? new LockTimeoutError({
+                          cause: acquired,
+                          message:
+                            `Timed out waiting to upgrade MySQL persisted queue table ${tableName} to DATETIME(6); retry store startup.`,
+                          operation: "GET_LOCK"
+                        })
+                        : new UnknownError({
+                          cause: acquired,
+                          message:
+                            `Could not acquire the precision upgrade lock for MySQL persisted queue table ${tableName}.`,
+                          operation: "GET_LOCK"
+                        })
+                    })
+                  )
+                }
+              }),
+              // acquireRelease masks interruption while GET_LOCK is pending:
+              // ownership is known before release is registered. Release runs
+              // before the reserved connection returns to its pool on any exit.
+              () => connection.execute("SELECT RELEASE_LOCK(?)", [name], undefined).pipe(Effect.orDie)
+            )
+            // A different process may have repaired the table while we waited.
+            if (!(yield* needsUpgrade)) return
+            yield* sql`ALTER TABLE ${tableNameSql}
+              MODIFY COLUMN visible_at DATETIME(6) NOT NULL,
+              MODIFY COLUMN acquired_at DATETIME(6) NULL,
+              MODIFY COLUMN created_at DATETIME(6) NOT NULL,
+              MODIFY COLUMN updated_at DATETIME(6) NOT NULL`.pipe(
+              Effect.mapError((cause) =>
+                new SqlError({
+                  reason: new UnknownError({
+                    message:
+                      `Failed to upgrade MySQL persisted queue table ${tableName} to DATETIME(6); check ALTER permissions and table locks, then retry store startup.`,
+                    operation: "ALTER TABLE",
+                    cause
+                  })
+                })
+              )
+            )
+            // Pin statements to the reservation without beginning a transaction:
+            // ALTER TABLE commits implicitly, but must keep named-lock ownership.
+          }).pipe(Effect.provideService(sql.transactionService, [connection, 0]))
+        }))
       }),
     orElse: () => Effect.void
   })
