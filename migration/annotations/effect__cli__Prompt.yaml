@@ -26,7 +26,7 @@
   replacement: "Prompt.Hidden"
   note: "Use the renamed constructor."
 "@effect/cli/Prompt#integer":
-  replacement: "Prompt.Integer"
+  replacement: "Prompt.Int"
   note: "Use the moved constructor; v4 also supports a default value."
 "@effect/cli/Prompt#list":
   replacement: "Prompt.List"

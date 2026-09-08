@@ -1104,7 +1104,7 @@ export const Hidden = (
  * @category constructors
  * @since 4.0.0
  */
-export const Integer = (options: IntegerOptions): Prompt<number> => {
+export const Int = (options: IntegerOptions): Prompt<number> => {
   const opts: IntegerOptionsReq = {
     default: 0,
     min: Number.NEGATIVE_INFINITY,

@@ -142,7 +142,7 @@ const promptParam = Effect.fnUntraced(
 
     const count = !metadata.isVariadic
       ? 1
-      : yield* Prompt.run(Prompt.Integer({
+      : yield* Prompt.run(Prompt.Int({
         message: `${renderParamLabel(single)} count`,
         default: Option.getOrElse(metadata.variadicMin, () => 0),
         min: Option.getOrElse(metadata.variadicMin, () => 0),
@@ -212,7 +212,7 @@ const promptSingle = (
     case "Finite":
       return Effect.map(Prompt.run(Prompt.Float({ message })), (value) => commandLineArg(String(value)))
     case "Int":
-      return Effect.map(Prompt.run(Prompt.Integer({ message })), (value) => commandLineArg(String(value)))
+      return Effect.map(Prompt.run(Prompt.Int({ message })), (value) => commandLineArg(String(value)))
     case "Redacted":
       return Effect.map(
         Prompt.run(Prompt.Password({ message })),
