@@ -76,7 +76,7 @@ describe("CLI constructors", () => {
     expect(Prompt.File({ message: "Value" })).type.toBe<Prompt.Prompt<string>>()
     expect(Prompt.Float({ message: "Value" })).type.toBe<Prompt.Prompt<number>>()
     expect(Prompt.Hidden({ message: "Value" })).type.toBe<Prompt.Prompt<Redacted.Redacted<string>>>()
-    expect(Prompt.Integer({ message: "Value" })).type.toBe<Prompt.Prompt<number>>()
+    expect(Prompt.Int({ message: "Value" })).type.toBe<Prompt.Prompt<number>>()
     expect(Prompt.List({ message: "Value" })).type.toBe<Prompt.Prompt<Array<string>>>()
     expect(Prompt.Password({ message: "Value" })).type.toBe<Prompt.Prompt<Redacted.Redacted<string>>>()
     expect(Prompt.Text({ message: "Value" })).type.toBe<Prompt.Prompt<string>>()

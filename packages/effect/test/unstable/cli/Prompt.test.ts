@@ -130,10 +130,10 @@ describe("Prompt.all", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.Integer", () => {
+describe("Prompt.Int", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Integer({ message: "Count", default: 42 })
+      const prompt = Prompt.Int({ message: "Count", default: 42 })
 
       yield* MockTerminal.inputKey("enter")
 
@@ -143,7 +143,7 @@ describe("Prompt.Integer", () => {
 
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Integer({ message: "Count", default: 4 })
+      const prompt = Prompt.Int({ message: "Count", default: 4 })
 
       yield* MockTerminal.inputText("2")
       yield* MockTerminal.inputKey("enter")
@@ -154,7 +154,7 @@ describe("Prompt.Integer", () => {
 
   it.effect("clears the default value on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.Integer({ message: "Count", default: 42 })
+      const prompt = Prompt.Int({ message: "Count", default: 42 })
 
       yield* MockTerminal.inputKey("u", { ctrl: true })
       yield* MockTerminal.inputText("7")
