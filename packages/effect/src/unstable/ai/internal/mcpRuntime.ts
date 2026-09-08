@@ -214,14 +214,14 @@ export const make = Effect.fnUntraced(function*(
     protocolForInternalTag,
     routeClientRequest: registry.routeClientRequest,
     prepareRequest: Effect.fnUntraced(function*(clientId, headers, request) {
-      const binding = stateful?.resolve(clientId, headers)
+      const metadata = typeof request.payload === "object" && request.payload !== null && "_meta" in request.payload
+        ? request.payload._meta
+        : undefined
+      const hasStatelessVersion = typeof metadata === "object" && metadata !== null &&
+        "io.modelcontextprotocol/protocolVersion" in metadata
+      const binding = hasStatelessVersion ? undefined : stateful?.resolve(clientId, headers)
       let protocol: PublicMcpProtocol.AnyProtocolAdapter | undefined = binding?.protocol
       if (protocol === undefined) {
-        const metadata = typeof request.payload === "object" && request.payload !== null && "_meta" in request.payload
-          ? request.payload._meta
-          : undefined
-        const hasStatelessVersion = typeof metadata === "object" && metadata !== null &&
-          "io.modelcontextprotocol/protocolVersion" in metadata
         const offeredVersion = hasStatelessVersion &&
             typeof metadata["io.modelcontextprotocol/protocolVersion"] === "string"
           ? metadata["io.modelcontextprotocol/protocolVersion"]
@@ -251,9 +251,6 @@ export const make = Effect.fnUntraced(function*(
       if (statelessDescriptor === undefined) {
         return yield* Effect.die("MCP stateless runtime invariant failed")
       }
-      const metadata = typeof request.payload === "object" && request.payload !== null && "_meta" in request.payload
-        ? request.payload._meta
-        : undefined
       const requestedVersion = typeof metadata === "object" && metadata !== null &&
           "io.modelcontextprotocol/protocolVersion" in metadata &&
           typeof metadata["io.modelcontextprotocol/protocolVersion"] === "string"
