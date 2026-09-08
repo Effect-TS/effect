@@ -9,8 +9,8 @@ class YieldOnce extends Scheduler.MixedScheduler {
   constructor(readonly atBoundary: () => boolean) {
     super()
   }
-  override shouldYield(): boolean {
-    if (this.yielded || !this.atBoundary()) return false
+  override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+    if (this.yielded || !this.atBoundary()) return super.shouldYield(fiber)
     this.yielded = true
     return true
   }
@@ -92,6 +92,7 @@ describe("Workflow.wrapActivityResult", () => {
           yield* Fiber.join(cancellation)
           assert.strictEqual(completed, masked)
           assert.strictEqual(instance.activityState.count, 0)
+          yield* instance.activityState.latch.await
         }).pipe(Effect.ensuring(release.open))
       }))
   }
