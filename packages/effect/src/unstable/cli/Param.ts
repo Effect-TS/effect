@@ -458,13 +458,10 @@ export const Int = <const Kind extends ParamKind>(
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * // Create a finite number flag
  * const rateFlag = Param.Finite(Param.flagKind, "rate")
  *
- * // Create a finite number argument
  * const thresholdArg = Param.Finite(Param.argumentKind, "threshold")
  *
- * // Usage in CLI: --rate 0.95 or as positional argument: 3.14159
  * const kinds = [rateFlag.kind, thresholdArg.kind] // => ["flag", "argument"]
  * ```
  *
@@ -887,12 +884,7 @@ export const KeyValuePair = <Kind extends ParamKind>(
   )
 
 /**
- * Creates an empty sentinel parameter that always fails to parse.
- *
- * **When to use**
- *
- * Use when you need an empty CLI parameter sentinel for optional parameter
- * construction or internal combinators.
+ * A parameter that always fails to parse.
  *
  * **Example** (Creating sentinel parameters)
  *

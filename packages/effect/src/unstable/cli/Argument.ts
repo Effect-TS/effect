@@ -30,10 +30,7 @@ import type * as Primitive from "./Primitive.ts"
  *
  * **Gotchas**
  *
- * `Boolean` is intentionally omitted from Argument constructors. Positional
- * boolean arguments are ambiguous in CLI design since there is no flag name to
- * negate (for example, `--no-verbose`). Use Flag.Boolean instead, or use
- * Argument.Literals with explicit "true" / "false" strings if needed.
+ * For booleans, use `Flag.Boolean` or `Argument.Literals` with "true" and "false".
  *
  * @category models
  * @since 4.0.0
@@ -118,9 +115,9 @@ export const Directory = (name: string, options?: {
 }): Argument<string> => Param.Directory(Param.argumentKind, name, options)
 
 /**
- * Creates a positional float argument.
+ * Creates a positional argument that parses finite numbers.
  *
- * **Example** (Creating a float argument)
+ * **Example** (Parsing a finite number)
  *
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
@@ -279,14 +276,13 @@ export const FileSchema = <A>(
 ): Argument<A> => Param.FileSchema(Param.argumentKind, name, schema, options)
 
 /**
- * Creates an empty sentinel argument that always fails to parse.
+ * An argument that always fails to parse.
  *
  * **Example** (Creating a sentinel argument)
  *
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * // Used as a placeholder or default in combinators
  * const noArg = Argument.Never
  * noArg.kind // => "argument"
  * ```

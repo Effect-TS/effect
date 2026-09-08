@@ -159,17 +159,7 @@ export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [str
 ): Flag<Choice[number][1]> => Param.ChoiceWithValue(Param.flagKind, name, choices)
 
 /**
- * Creates a flag that accepts one of the provided string choices and returns
- * the selected string.
- *
- * **When to use**
- *
- * Use when you need to define a named CLI flag with fixed string choices and no
- * custom value mapping.
- *
- * **Gotchas**
- *
- * An empty choices array compiles, but no input value can parse successfully.
+ * Accepts one of the provided strings. An empty array rejects all input.
  *
  * @see {@link ChoiceWithValue} for mapping accepted strings to different typed values
  *
@@ -421,8 +411,7 @@ export const FileSchema = <A>(
 export const KeyValuePair = (name: string): Flag<Record<string, string>> => Param.KeyValuePair(Param.flagKind, name)
 
 /**
- * Creates an empty sentinel flag that always fails to parse.
- * This is useful for creating placeholder flags or for combinators.
+ * A flag that always fails to parse.
  *
  * **Example** (Creating sentinel flags)
  *

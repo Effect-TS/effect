@@ -2,40 +2,26 @@
 "effect": patch
 ---
 
-Rename CLI value and control constructors to PascalCase. Scalar value constructor names align with `Schema` and `Config`. Combinators, guards, runners, layers, and factories such as `Command.make`, `CliConfig.make`, `Param.makeSingle`, `Prompt.makeTheme`, `Prompt.succeed`, `Completions.generate`, and `CliOutput.defaultFormatter` keep their lowercase names.
+Rename CLI constructors to PascalCase, aligning scalar names with `Schema` and `Config`. This is a breaking change; parsing behavior is unchanged.
 
-This is a breaking API cleanup for the Effect 4 release candidate, covering constructor names and public completion descriptor tags.
+In `Primitive`, `Param`, `Flag`, and `Argument`, capitalize existing constructor names, with these exceptions:
 
-The value constructor renames apply to these modules:
+| Previous  | New        | Modules               |
+| --------- | ---------- | --------------------- |
+| `integer` | `Int`      | All four              |
+| `float`   | `Finite`   | All four              |
+| `none`    | `Never`    | All four              |
+| `choice`  | `Literals` | Param, Flag, Argument |
 
-| Previous name     | New name          | Modules                          |
-| ----------------- | ----------------- | -------------------------------- |
-| `string`          | `String`          | Primitive, Param, Flag, Argument |
-| `boolean`         | `Boolean`         | Primitive, Param, Flag           |
-| `integer`         | `Int`             | Primitive, Param, Flag, Argument |
-| `float`           | `Finite`          | Primitive, Param, Flag, Argument |
-| `date`            | `Date`            | Primitive, Param, Flag, Argument |
-| `redacted`        | `Redacted`        | Primitive, Param, Flag, Argument |
-| `choice`          | `Choice`          | Primitive                        |
-| `choice`          | `Literals`        | Param, Flag, Argument            |
-| `choiceWithValue` | `ChoiceWithValue` | Param, Flag, Argument            |
-| `path`            | `Path`            | Primitive, Param, Flag, Argument |
-| `file`            | `File`            | Param, Flag, Argument            |
-| `directory`       | `Directory`       | Param, Flag, Argument            |
-| `fileText`        | `FileText`        | Primitive, Param, Flag, Argument |
-| `fileParse`       | `FileParse`       | Primitive, Param, Flag, Argument |
-| `fileSchema`      | `FileSchema`      | Primitive, Param, Flag, Argument |
-| `keyValuePair`    | `KeyValuePair`    | Primitive, Param, Flag           |
-| `none`            | `Never`           | Primitive, Param, Flag, Argument |
+`Primitive.choice` becomes `Primitive.Choice`; `choiceWithValue` becomes `ChoiceWithValue` where available.
 
-`Argument` has no `Boolean` or `KeyValuePair` constructor. `Primitive` has no `File`, `Directory`, or `ChoiceWithValue` constructor; use `Primitive.Path` with a path type, or `Primitive.Choice` with key/value pairs.
+In `Prompt`, capitalize control constructors except `text` → `String`, `integer` → `Int`, and `float` → `Number`. Rename public types `IntegerOptions` → `IntOptions` and `FloatOptions` → `NumberOptions`. Shared `TextOptions` is unchanged. `Prompt.Number` retains its existing parser, without a finite-number restriction.
 
-In `Prompt`: `text` -> `String`, `integer` -> `Int`, `float` -> `Number`, `date` -> `Date`, `file` -> `File`, `confirm` -> `Confirm`, `toggle` -> `Toggle`, `select` -> `Select`, `multiSelect` -> `MultiSelect`, `autoComplete` -> `AutoComplete`, `list` -> `List`, `password` -> `Password`, `hidden` -> `Hidden`, and `custom` -> `Custom`. `Prompt.Int` matches the integer constructor name in the value-parser modules. `Prompt.Number` keeps its own numeric parser and does not enforce `Schema.Finite`. `Prompt.succeed` remains lowercase, following `Effect.succeed`.
+In `GlobalFlag`, rename `action` → `Action` and `setting` → `Setting`. Factories and combinators, including `Command.make` and `Prompt.succeed`, keep their names.
 
-In `GlobalFlag`: `action` -> `Action` and `setting` -> `Setting`, alongside the existing types of the same name.
+Update public `_tag` matches and completion descriptors:
 
-The public `_tag` values also change: `Primitive.Int._tag` changes from `"Integer"` to `"Int"`, and `Primitive.Finite._tag` changes from `"Float"` to `"Finite"`. Both `Completions.FlagType` and `Completions.ArgumentType` make the same breaking changes from `"Integer"`/`"Float"` to `"Int"`/`"Finite"`. Update custom completion descriptors and any switches or pattern matches on those tags. Parsing behavior, help labels, and generated completion scripts are unchanged.
+- `Primitive`: `"Integer"` → `"Int"`, `"Float"` → `"Finite"`, `"None"` → `"Never"`.
+- `Completions.FlagType` and `Completions.ArgumentType`: `"Integer"` → `"Int"`, `"Float"` → `"Finite"`.
 
-The sentinel constructors are consistently named `Never` in `Primitive`, `Param`, `Flag`, and `Argument`. The public `Primitive.Never._tag` changes from `"None"` to `"Never"`; update switches or pattern matches on that tag. The internal parameter name changes from `"__none__"` to `"__never__"`. These sentinels still always fail.
-
-Prompt also renames the exported option types `IntegerOptions` to `IntOptions` and `FloatOptions` to `NumberOptions`. `NumberOptions` still extends `IntOptions`; their fields and behavior are unchanged. Shared `TextOptions` retains its name for String, Hidden, Password, and List.
+Sentinels still always fail; their internal parameter name is now `"__never__"`. Help labels and completion scripts are unchanged.

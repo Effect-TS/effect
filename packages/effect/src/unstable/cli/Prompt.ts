@@ -372,12 +372,7 @@ export interface IntOptions extends ThemeOptions {
 }
 
 /**
- * Options for a floating-point number prompt.
- *
- * **Details**
- *
- * In addition to the numeric bounds and step settings from `IntOptions`,
- * the prompt can be configured with a display precision.
+ * Options for `Number`, extending `IntOptions` with display precision.
  *
  * @category options
  * @since 4.0.0

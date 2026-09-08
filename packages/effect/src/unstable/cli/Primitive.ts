@@ -882,11 +882,7 @@ export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
 )
 
 /**
- * Creates a sentinel primitive that always fails to parse a value.
- *
- * **When to use**
- *
- * Use when you need a CLI primitive for flags that do not accept values.
+ * A primitive that always fails to parse.
  *
  * **Example** (Rejecting option values)
  *
@@ -913,7 +909,6 @@ export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
  * )
  *
  * const program = Effect.gen(function*() {
- *   // This will always fail - useful for boolean flags
  *   return yield* Primitive.Never.parse("any-value")
  * })
  *
