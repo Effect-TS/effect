@@ -139,7 +139,7 @@ export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.fl
  * import { Flag } from "effect/unstable/cli"
  *
  * // simple enum like choice mapping directly to string union
- * const color = Flag.Choice("color", ["red", "green", "blue"])
+ * const color = Flag.Literals("color", ["red", "green", "blue"])
  *
  * // choice with custom value mapping
  * const logLevel = Flag.ChoiceWithValue("log-level", [
@@ -176,10 +176,10 @@ export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [str
  * @category constructors
  * @since 4.0.0
  */
-export const Choice = <const Choices extends ReadonlyArray<string>>(
+export const Literals = <const Choices extends ReadonlyArray<string>>(
   name: string,
   choices: Choices
-): Flag<Choices[number]> => Param.Choice(Param.flagKind, name, choices)
+): Flag<Choices[number]> => Param.Literals(Param.flagKind, name, choices)
 
 /**
  * Creates a path flag that accepts file system path input with validation options.
@@ -430,16 +430,16 @@ export const KeyValuePair = (name: string): Flag<Record<string, string>> => Para
  * import { Flag } from "effect/unstable/cli"
  *
  * const makeValueFlag = (includeValue: boolean) =>
- *   includeValue ? Flag.String("value") : Flag.None
+ *   includeValue ? Flag.String("value") : Flag.Never
  *
- * makeValueFlag(true) === Flag.None // => false
- * makeValueFlag(false) === Flag.None // => true
+ * makeValueFlag(true) === Flag.Never // => false
+ * makeValueFlag(false) === Flag.Never // => true
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const None: Flag<never> = Param.None(Param.flagKind)
+export const Never: Flag<never> = Param.None(Param.flagKind)
 
 // -------------------------------------------------------------------------------------
 // combinators
@@ -670,7 +670,7 @@ export const withFallbackConfig: {
  * import { Flag, Prompt } from "effect/unstable/cli"
  *
  * const name = Flag.String("name").pipe(
- *   Flag.withFallbackPrompt(Prompt.Text({ message: "Name" }))
+ *   Flag.withFallbackPrompt(Prompt.String({ message: "Name" }))
  * )
  * name.kind // => "flag"
  * ```

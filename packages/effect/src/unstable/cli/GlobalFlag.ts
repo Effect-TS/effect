@@ -219,7 +219,7 @@ export const Wizard: Action<boolean> = Action({
  * @since 4.0.0
  */
 export const Completions: Action<Option.Option<"bash" | "zsh" | "fish">> = Action({
-  flag: Flag.Choice("completions", ["bash", "zsh", "fish", "sh"] as const)
+  flag: Flag.Literals("completions", ["bash", "zsh", "fish", "sh"] as const)
     .pipe(
       Flag.optional,
       Flag.map((v) => Option.map(v, (s) => s === "sh" ? "bash" : s)),

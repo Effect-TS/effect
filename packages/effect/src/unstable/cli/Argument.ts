@@ -33,7 +33,7 @@ import type * as Primitive from "./Primitive.ts"
  * `Boolean` is intentionally omitted from Argument constructors. Positional
  * boolean arguments are ambiguous in CLI design since there is no flag name to
  * negate (for example, `--no-verbose`). Use Flag.Boolean instead, or use
- * Argument.Choice with explicit "true" / "false" strings if needed.
+ * Argument.Literals with explicit "true" / "false" strings if needed.
  *
  * @category models
  * @since 4.0.0
@@ -159,17 +159,17 @@ export const Date = (name: string): Argument<globalThis.Date> => Param.Date(Para
  * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
- * const environment = Argument.Choice("environment", ["dev", "staging", "prod"])
+ * const environment = Argument.Literals("environment", ["dev", "staging", "prod"])
  * environment.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const Choice = <const Choices extends ReadonlyArray<string>>(
+export const Literals = <const Choices extends ReadonlyArray<string>>(
   name: string,
   choices: Choices
-): Argument<Choices[number]> => Param.Choice(Param.argumentKind, name, choices)
+): Argument<Choices[number]> => Param.Literals(Param.argumentKind, name, choices)
 
 /**
  * Creates a positional path argument.
@@ -396,7 +396,7 @@ export const withFallbackConfig: {
  * import { Argument, Prompt } from "effect/unstable/cli"
  *
  * const filename = Argument.String("filename").pipe(
- *   Argument.withFallbackPrompt(Prompt.Text({ message: "Filename" }))
+ *   Argument.withFallbackPrompt(Prompt.String({ message: "Filename" }))
  * )
  * filename.kind // => "argument"
  * ```

@@ -16,7 +16,8 @@ The value constructor renames apply to these modules:
 | `float`           | `Finite`          | Primitive, Param, Flag, Argument |
 | `date`            | `Date`            | Primitive, Param, Flag, Argument |
 | `redacted`        | `Redacted`        | Primitive, Param, Flag, Argument |
-| `choice`          | `Choice`          | Primitive, Param, Flag, Argument |
+| `choice`          | `Choice`          | Primitive                        |
+| `choice`          | `Literals`        | Param, Flag, Argument            |
 | `choiceWithValue` | `ChoiceWithValue` | Param, Flag, Argument            |
 | `path`            | `Path`            | Primitive, Param, Flag, Argument |
 | `file`            | `File`            | Param, Flag, Argument            |
@@ -25,11 +26,12 @@ The value constructor renames apply to these modules:
 | `fileParse`       | `FileParse`       | Primitive, Param, Flag, Argument |
 | `fileSchema`      | `FileSchema`      | Primitive, Param, Flag, Argument |
 | `keyValuePair`    | `KeyValuePair`    | Primitive, Param, Flag           |
-| `none`            | `None`            | Primitive, Param, Flag, Argument |
+| `none`            | `None`            | Primitive, Param, Argument       |
+| `none`            | `Never`           | Flag                             |
 
 `Argument` has no `Boolean` or `KeyValuePair` constructor. `Primitive` has no `File`, `Directory`, or `ChoiceWithValue` constructor; use `Primitive.Path` with a path type, or `Primitive.Choice` with key/value pairs.
 
-In `Prompt`: `text` -> `Text`, `integer` -> `Int`, `float` -> `Float`, `date` -> `Date`, `file` -> `File`, `confirm` -> `Confirm`, `toggle` -> `Toggle`, `select` -> `Select`, `multiSelect` -> `MultiSelect`, `autoComplete` -> `AutoComplete`, `list` -> `List`, `password` -> `Password`, `hidden` -> `Hidden`, and `custom` -> `Custom`. `Prompt.Int` matches the integer constructor name in the value-parser modules. `Prompt.Text` retains its interactive control name, while `String` identifies the corresponding value parser in `Flag` and `Argument`. `Prompt.Float` keeps its own numeric parser and does not enforce `Schema.Finite`. `Prompt.succeed` remains lowercase, following `Effect.succeed`.
+In `Prompt`: `text` -> `String`, `integer` -> `Int`, `float` -> `Number`, `date` -> `Date`, `file` -> `File`, `confirm` -> `Confirm`, `toggle` -> `Toggle`, `select` -> `Select`, `multiSelect` -> `MultiSelect`, `autoComplete` -> `AutoComplete`, `list` -> `List`, `password` -> `Password`, `hidden` -> `Hidden`, and `custom` -> `Custom`. `Prompt.Int` matches the integer constructor name in the value-parser modules. `Prompt.Number` keeps its own numeric parser and does not enforce `Schema.Finite`. `Prompt.succeed` remains lowercase, following `Effect.succeed`.
 
 In `GlobalFlag`: `action` -> `Action` and `setting` -> `Setting`, alongside the existing types of the same name.
 

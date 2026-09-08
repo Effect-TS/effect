@@ -210,7 +210,7 @@ const promptSingle = (
     case "Date":
       return Effect.map(Prompt.run(Prompt.Date({ message })), (date) => commandLineArg(date.toISOString()))
     case "Finite":
-      return Effect.map(Prompt.run(Prompt.Float({ message })), (value) => commandLineArg(String(value)))
+      return Effect.map(Prompt.run(Prompt.Number({ message })), (value) => commandLineArg(String(value)))
     case "Int":
       return Effect.map(Prompt.run(Prompt.Int({ message })), (value) => commandLineArg(String(value)))
     case "Redacted":
@@ -219,7 +219,7 @@ const promptSingle = (
         (value) => commandLineArg(Redacted.value(value), "<redacted>")
       )
     default:
-      return Effect.map(Prompt.run(Prompt.Text({ message })), commandLineArg)
+      return Effect.map(Prompt.run(Prompt.String({ message })), commandLineArg)
   }
 }
 

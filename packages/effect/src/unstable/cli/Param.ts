@@ -561,7 +561,7 @@ export const ChoiceWithValue = <
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const logLevel = Param.Choice(Param.flagKind, "log-level", [
+ * const logLevel = Param.Literals(Param.flagKind, "log-level", [
  *   "debug",
  *   "info",
  *   "warn",
@@ -573,7 +573,7 @@ export const ChoiceWithValue = <
  * @category constructors
  * @since 4.0.0
  */
-export const Choice = <
+export const Literals = <
   const Kind extends ParamKind,
   const Choices extends ReadonlyArray<string>
 >(kind: Kind, name: string, choices: Choices): Param<Kind, Choices[number]> => {

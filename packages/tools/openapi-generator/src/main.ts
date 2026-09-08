@@ -29,7 +29,7 @@ const name = Flag.String("name").pipe(
   Flag.withDefault("Client")
 )
 
-const format = Flag.Choice("format", ["httpclient", "httpclient-type-only", "httpapi"] as const).pipe(
+const format = Flag.Literals("format", ["httpclient", "httpclient-type-only", "httpapi"] as const).pipe(
   Flag.withAlias("f"),
   Flag.withDescription(
     "Output format to generate: httpclient | httpclient-type-only | httpapi (default: httpclient)"

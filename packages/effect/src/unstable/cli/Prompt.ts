@@ -1051,11 +1051,11 @@ export const flatMap: {
  * @category constructors
  * @since 4.0.0
  */
-export const Float = (options: FloatOptions): Prompt<number> => {
+export const Number = (options: FloatOptions): Prompt<number> => {
   const opts: FloatOptionsReq = {
     default: 0,
-    min: Number.NEGATIVE_INFINITY,
-    max: Number.POSITIVE_INFINITY,
+    min: globalThis.Number.NEGATIVE_INFINITY,
+    max: globalThis.Number.POSITIVE_INFINITY,
     incrementBy: 1,
     decrementBy: 1,
     precision: 2,
@@ -1107,8 +1107,8 @@ export const Hidden = (
 export const Int = (options: IntegerOptions): Prompt<number> => {
   const opts: IntegerOptionsReq = {
     default: 0,
-    min: Number.NEGATIVE_INFINITY,
-    max: Number.POSITIVE_INFINITY,
+    min: globalThis.Number.NEGATIVE_INFINITY,
+    max: globalThis.Number.POSITIVE_INFINITY,
     incrementBy: 1,
     decrementBy: 1,
     validate: (n) => {
@@ -1143,7 +1143,7 @@ export const Int = (options: IntegerOptions): Prompt<number> => {
  * @since 4.0.0
  */
 export const List = (options: ListOptions): Prompt<Array<string>> =>
-  Text(options).pipe(
+  String(options).pipe(
     map((output) => output.split(options.delimiter || ","))
   )
 
@@ -1363,7 +1363,7 @@ export const succeed = <A>(value: A): Prompt<A> => {
  * @category constructors
  * @since 4.0.0
  */
-export const Text = (
+export const String = (
   options: TextOptions
 ): Prompt<string> => basePrompt(options, "text")
 
@@ -1972,7 +1972,7 @@ abstract class DatePart {
   }
 
   toString() {
-    return String(this.date)
+    return globalThis.String(this.date)
   }
 }
 
@@ -2004,7 +2004,7 @@ class Milliseconds extends DatePart {
   }
 
   setValue(value: string): void {
-    this.date.setMilliseconds(Number.parseInt(value.slice(-this.token.length)))
+    this.date.setMilliseconds(globalThis.Number.parseInt(value.slice(-this.token.length)))
   }
 
   override toString() {
@@ -2023,7 +2023,7 @@ class Seconds extends DatePart {
   }
 
   setValue(value: string): void {
-    this.date.setSeconds(Number.parseInt(value.slice(-2)))
+    this.date.setSeconds(globalThis.Number.parseInt(value.slice(-2)))
   }
 
   override toString() {
@@ -2044,7 +2044,7 @@ class Minutes extends DatePart {
   }
 
   setValue(value: string): void {
-    this.date.setMinutes(Number.parseInt(value.slice(-2)))
+    this.date.setMinutes(globalThis.Number.parseInt(value.slice(-2)))
   }
 
   override toString() {
@@ -2065,7 +2065,7 @@ class Hours extends DatePart {
   }
 
   setValue(value: string): void {
-    this.date.setHours(Number.parseInt(value.slice(-2)))
+    this.date.setHours(globalThis.Number.parseInt(value.slice(-2)))
   }
 
   override toString() {
@@ -2088,7 +2088,7 @@ class Day extends DatePart {
   }
 
   setValue(value: string): void {
-    this.date.setDate(Number.parseInt(value.slice(-2)))
+    this.date.setDate(globalThis.Number.parseInt(value.slice(-2)))
   }
 
   override toString() {
@@ -2137,7 +2137,7 @@ class Month extends DatePart {
   }
 
   setValue(value: string): void {
-    const month = Number.parseInt(value.slice(-2)) - 1
+    const month = globalThis.Number.parseInt(value.slice(-2)) - 1
     this.date.setMonth(month < 0 ? 0 : month)
   }
 
@@ -2166,7 +2166,7 @@ class Year extends DatePart {
   }
 
   setValue(value: string): void {
-    this.date.setFullYear(Number.parseInt(value.slice(-4)))
+    this.date.setFullYear(globalThis.Number.parseInt(value.slice(-4)))
   }
 
   override toString() {
@@ -3016,8 +3016,8 @@ const defaultIntProcessor = (input: string, state: NumberState) => {
     }))
   }
 
-  const parsed = Number.parseInt(state.value + input)
-  if (Number.isNaN(parsed)) {
+  const parsed = globalThis.Number.parseInt(state.value + input)
+  if (globalThis.Number.isNaN(parsed)) {
     return Effect.succeed(Action.Beep())
   } else {
     return Effect.succeed(Action.NextFrame({
@@ -3036,8 +3036,8 @@ const defaultFloatProcessor = (input: string, state: NumberState) => {
     }))
   }
 
-  const parsed = Number.parseFloat(state.value + input)
-  if (Number.isNaN(parsed)) {
+  const parsed = globalThis.Number.parseFloat(state.value + input)
+  if (globalThis.Number.isNaN(parsed)) {
     return Effect.succeed(Action.Beep())
   } else {
     return Effect.succeed(Action.NextFrame({
@@ -3080,7 +3080,7 @@ const handleProcessInteger = (options: IntegerOptionsReq) => {
             ...state,
             value: state.value === "" || state.value === "-"
               ? `${options.incrementBy}`
-              : `${Number.parseInt(state.value) + options.incrementBy}`,
+              : `${globalThis.Number.parseInt(state.value) + options.incrementBy}`,
             error: Option.none()
           }
         }))
@@ -3092,15 +3092,15 @@ const handleProcessInteger = (options: IntegerOptionsReq) => {
             ...state,
             value: state.value === "" || state.value === "-"
               ? `-${options.decrementBy}`
-              : `${Number.parseInt(state.value) - options.decrementBy}`,
+              : `${globalThis.Number.parseInt(state.value) - options.decrementBy}`,
             error: Option.none()
           }
         }))
       }
       case "enter":
       case "return": {
-        const parsed = Number.parseInt(state.value)
-        if (Number.isNaN(parsed)) {
+        const parsed = globalThis.Number.parseInt(state.value)
+        if (globalThis.Number.isNaN(parsed)) {
           return Effect.succeed(Action.NextFrame({
             state: {
               ...state,
@@ -3153,7 +3153,7 @@ const handleProcessFloat = (options: FloatOptionsReq) => {
             ...state,
             value: state.value === "" || state.value === "-"
               ? `${options.incrementBy}`
-              : `${Number.parseFloat(state.value) + options.incrementBy}`,
+              : `${globalThis.Number.parseFloat(state.value) + options.incrementBy}`,
             error: Option.none()
           }
         }))
@@ -3165,15 +3165,15 @@ const handleProcessFloat = (options: FloatOptionsReq) => {
             ...state,
             value: state.value === "" || state.value === "-"
               ? `-${options.decrementBy}`
-              : `${Number.parseFloat(state.value) - options.decrementBy}`,
+              : `${globalThis.Number.parseFloat(state.value) - options.decrementBy}`,
             error: Option.none()
           }
         }))
       }
       case "enter":
       case "return": {
-        const parsed = Number.parseFloat(state.value)
-        if (Number.isNaN(parsed)) {
+        const parsed = globalThis.Number.parseFloat(state.value)
+        if (globalThis.Number.isNaN(parsed)) {
           return Effect.succeed(Action.NextFrame({
             state: {
               ...state,

@@ -20,7 +20,7 @@
   replacement: "Prompt.flatMap"
   note: "Use the moved combinator."
 "@effect/cli/Prompt#float":
-  replacement: "Prompt.Float"
+  replacement: "Prompt.Number"
   note: "Use the moved constructor; v4 also supports a default value."
 "@effect/cli/Prompt#hidden":
   replacement: "Prompt.Hidden"
@@ -56,7 +56,7 @@
   replacement: "Prompt.Select"
   note: "Use the renamed constructor."
 "@effect/cli/Prompt#text":
-  replacement: "Prompt.Text"
+  replacement: "Prompt.String"
   note: "Use the moved constructor."
 "@effect/cli/Prompt#toggle":
   replacement: "Prompt.Toggle"

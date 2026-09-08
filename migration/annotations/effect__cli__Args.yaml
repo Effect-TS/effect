@@ -38,7 +38,7 @@
   replacement: "Flag.Boolean / Argument.ChoiceWithValue"
   note: "Positional booleans were removed as ambiguous; prefer a boolean flag or explicit true/false positional choices."
 "@effect/cli/Args#choice":
-  replacement: "Argument.Choice"
+  replacement: "Argument.Literals"
   note: "Use the renamed constructor and pass the argument name explicitly."
 "@effect/cli/Args#date":
   replacement: "Argument.Date"

@@ -20,7 +20,7 @@
   replacement: "Flag.Boolean + Flag.withDefault"
   note: "Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias."
 "@effect/cli/Options#choice":
-  replacement: "Flag.Choice"
+  replacement: "Flag.Literals"
   note: "Use the moved constructor."
 "@effect/cli/Options#choiceWithValue":
   replacement: "Flag.ChoiceWithValue"
@@ -84,7 +84,7 @@
   note: "Use the moved combinator; onError now returns a string rather than HelpDoc."
 "@effect/cli/Options#none":
   replacement: "omit the config entry"
-  note: "V4 Flag.None is an always-failing sentinel, not v3's empty successful option set."
+  note: "V4 Flag.Never is an always-failing sentinel, not v3's empty successful option set."
 "@effect/cli/Options#optional":
   replacement: "Flag.optional"
   note: "Use the moved combinator; it still returns Option."
