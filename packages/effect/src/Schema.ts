@@ -115,8 +115,8 @@ export type ConstructorDefault = "no-default" | "with-default"
  *
  * **When to use**
  *
- * Use when passing `disableChecks: true` to skip validation when you trust the data.
- * - Pass `parseOptions` to control error reporting behavior.
+ * Use when passing `disableChecks: true` to skip validation when you trust the
+ * data. Pass `parseOptions` to control parsing behavior.
  *
  * @see {@link BottomWithoutNew.makeEffect}
  * @see {@link BottomWithoutNew.make}

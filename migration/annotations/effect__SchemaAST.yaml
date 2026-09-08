@@ -18,7 +18,7 @@
   note: "The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model."
 "effect/SchemaAST#BatchingAnnotation":
   replacement: "none"
-  note: "Per-schema batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations."
+  note: "Per-schema batching annotations were removed. They have no direct replacement. ParseOptions.concurrency controls product child parsing only; configure request batching separately."
 "effect/SchemaAST#BatchingAnnotationId":
   replacement: "none"
   note: "Symbol annotation IDs were removed and batching is no longer a schema annotation."
@@ -53,11 +53,11 @@
   replacement: "SchemaAST.Encoding"
   note: "The marker transformation was replaced by explicit SchemaAST.Link encoding chains."
 "effect/SchemaAST#ConcurrencyAnnotation":
-  replacement: "none"
-  note: "Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations."
+  replacement: "SchemaAST.ParseOptions"
+  note: "Per-schema concurrency annotations were removed. Pass concurrency in runtime ParseOptions when creating or calling a decoder, encoder, or constructor. It applies independently to each tuple, array, struct, record, or struct-with-rest node and does not make Union candidates concurrent."
 "effect/SchemaAST#ConcurrencyAnnotationId":
-  replacement: "none"
-  note: "Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations."
+  replacement: "SchemaAST.ParseOptions"
+  note: "The annotation ID was removed. Pass concurrency in runtime ParseOptions; product parsing follows Effect.forEach concurrency semantics while Union candidates remain sequential."
 "effect/SchemaAST#Declaration":
   replacement: "SchemaAST.Declaration"
   note: "The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model."
@@ -117,7 +117,7 @@
   note: "Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription."
 "effect/SchemaAST#getBatchingAnnotation":
   replacement: "none"
-  note: "Batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations."
+  note: "Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately."
 "effect/SchemaAST#getBrandAnnotation":
   replacement: "SchemaAST.resolveAt(\"brands\")"
   note: "Resolve the string-keyed brands annotation."
@@ -125,8 +125,8 @@
   replacement: "none"
   note: "The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API."
 "effect/SchemaAST#getConcurrencyAnnotation":
-  replacement: "none"
-  note: "Schema parsing concurrency and its annotations were removed. Use Effect concurrency combinators around independent parsing operations."
+  replacement: "SchemaAST.ParseOptions"
+  note: "Concurrency is no longer read from schema annotations. Pass it in runtime ParseOptions when creating or calling a parser. It applies to product children, not Union candidates."
 "effect/SchemaAST#getDecodingFallbackAnnotation":
   replacement: "none"
   note: "Fallbacks are encoding middleware in v4, not readable annotations; attach them with Schema.catchDecoding."
@@ -330,7 +330,7 @@
   note: "Use the built-in JSON string codec instead of checking the old schema ID."
 "effect/SchemaAST#ParseOptions":
   replacement: "SchemaAST.ParseOptions"
-  note: "Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. The concurrency and propertyOrder options were removed. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser."
+  note: "Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser."
 "effect/SchemaAST#ParseOptionsAnnotationId":
   replacement: "none"
   note: "Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas."

@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
+Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `HEAD` (`0599ae282fdbe57c89260a95ba1ad52be786238d`)
+Head: `HEAD` (`303c58f2c1b9d9f2e25ad4554b80af193852fbec`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14939,7 +14939,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ArbitraryAnnotationId` -> `Schema.Annotations.ToArbitrary`: Symbol annotation IDs were removed. Declarations use the toCodecArbitrary annotation; filters use arbitraryConstraint.
 
-- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations.
+- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed. They have no direct replacement. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
 
 - `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation.
 
@@ -14955,9 +14955,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ComposeTransformation` -> `SchemaAST.Encoding`: The marker transformation was replaced by explicit SchemaAST.Link encoding chains.
 
-- `SchemaAST.ConcurrencyAnnotation` -> `none`: Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations.
+- `SchemaAST.ConcurrencyAnnotation` -> `SchemaAST.ParseOptions`: Per-schema concurrency annotations were removed. Pass concurrency in runtime ParseOptions when creating or calling a decoder, encoder, or constructor. It applies independently to each tuple, array, struct, record, or struct-with-rest node and does not make Union candidates concurrent.
 
-- `SchemaAST.ConcurrencyAnnotationId` -> `none`: Schema parsing concurrency was removed. Composite schemas parse children sequentially; use Effect concurrency combinators around independent parsing operations.
+- `SchemaAST.ConcurrencyAnnotationId` -> `SchemaAST.ParseOptions`: The annotation ID was removed. Pass concurrency in runtime ParseOptions; product parsing follows Effect.forEach concurrency semantics while Union candidates remain sequential.
 
 - `SchemaAST.Declaration` -> `SchemaAST.Declaration`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
 
@@ -15033,7 +15033,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseJsonSchemaId` -> `Schema.UnknownFromJsonString`: Use the built-in JSON string codec instead of checking the old schema ID.
 
-- `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. The concurrency and propertyOrder options were removed. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
+- `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
 
 - `SchemaAST.ParseOptionsAnnotationId` -> `none`: Parse options are no longer schema annotations. Pass options when creating or calling a decoder or encoder; there is no annotation-based override for nested schemas.
 
@@ -15111,13 +15111,13 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getAnnotation` -> `SchemaAST.resolveAt`: Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription.
 
-- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. Composite schemas parse children sequentially; use Effect combinators to coordinate independent parsing operations.
+- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
 
 - `SchemaAST.getBrandAnnotation` -> `SchemaAST.resolveAt("brands")`: Resolve the string-keyed brands annotation.
 
 - `SchemaAST.getCompiler` -> `none`: The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API.
 
-- `SchemaAST.getConcurrencyAnnotation` -> `none`: Schema parsing concurrency and its annotations were removed. Use Effect concurrency combinators around independent parsing operations.
+- `SchemaAST.getConcurrencyAnnotation` -> `SchemaAST.ParseOptions`: Concurrency is no longer read from schema annotations. Pass it in runtime ParseOptions when creating or calling a parser. It applies to product children, not Union candidates.
 
 - `SchemaAST.getDecodingFallbackAnnotation` -> `none`: Fallbacks are encoding middleware in v4, not readable annotations; attach them with Schema.catchDecoding.
 

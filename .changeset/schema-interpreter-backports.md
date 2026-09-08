@@ -14,7 +14,7 @@ Align Schema construction and parsing semantics, simplify parse options, accept 
 
 - `propertyOrder` has been removed from `ParseOptions` because preserving input order required a separate, rarely used object reconstruction path. Schema parsing no longer guarantees that decoded object keys follow their input order. Remove the option and apply any required presentation or serialization order after parsing.
 
-- `concurrency` has been removed from `ParseOptions` because its scope across nested composite schemas and Union candidates was ambiguous. Composite schema children are now parsed sequentially. There is no equivalent option for concurrent children within one schema; remove the option and combine independent parser calls with Effect concurrency operators instead.
+- `concurrency` now applies only to product children: tuple elements, array elements, struct fields, record entries, and structs with rest. It follows `Effect.forEach` semantics, defaults to sequential execution, and applies independently at every nested product. Union candidates remain sequential because speculative candidate evaluation can run transformations that are not selected. Existing product parsing can keep the option. Replace code that relied on concurrent Union candidates with explicitly coordinated parser calls. With concurrent Record key transformations, completion order determines the retained value when transformed keys collide.
 
 - `onExcessProperty: "preserve"` has been removed because it allowed unvalidated values absent from the schema type to cross the parsing boundary. Model additional properties with `Record` or `StructWithRest`; `"ignore"` and `"error"` remain available.
 

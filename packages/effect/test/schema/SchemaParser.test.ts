@@ -1,6 +1,27 @@
 import { describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Option, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser } from "effect"
-import { assertSchemaIssueError, assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
+import {
+  Cause,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Option,
+  Ref,
+  Result,
+  Schema,
+  SchemaGetter,
+  SchemaIssue,
+  SchemaParser,
+  SchemaTransformation
+} from "effect"
+import {
+  assertFalse,
+  assertSchemaIssueError,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "../utils/assert.ts"
 
 describe("SchemaParser", () => {
   describe("sequential parsing", () => {
@@ -40,6 +61,280 @@ describe("SchemaParser", () => {
           }))
       }
     }
+  })
+
+  describe("product concurrency", () => {
+    const cases = [
+      {
+        name: "Struct",
+        make: (item: Schema.Codec<string>) => Schema.Struct({ a: item, b: item, c: item }),
+        input: { a: "a", b: "b", c: "c" }
+      },
+      { name: "Tuple", make: (item: Schema.Codec<string>) => Schema.Tuple([item, item, item]), input: ["a", "b", "c"] },
+      { name: "Array", make: (item: Schema.Codec<string>) => Schema.Array(item), input: ["a", "b", "c"] },
+      {
+        name: "Record",
+        make: (item: Schema.Codec<string>) => Schema.Record(Schema.String, item),
+        input: { a: "a", b: "b", c: "c" }
+      }
+    ]
+
+    for (const { input, make, name } of cases) {
+      it.effect(`${name} uses Effect.forEach bounded concurrency when decoding and encoding`, () =>
+        Effect.gen(function*() {
+          for (const operation of ["decode", "encode"] as const) {
+            const started = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
+            const releases = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
+            const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+              const index = value.charCodeAt(0) - 97
+              return Deferred.succeed(started[index], undefined).pipe(
+                Effect.andThen(Deferred.await(releases[index])),
+                Effect.as(value)
+              )
+            })
+            const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
+            const parse = operation === "decode"
+              ? SchemaParser.decodeUnknownEffect(schema)
+              : SchemaParser.encodeUnknownEffect(schema)
+            const fiber = yield* parse(input, { concurrency: 2 }).pipe(Effect.forkChild)
+
+            yield* Deferred.await(started[0])
+            yield* Deferred.await(started[1])
+            assertFalse(yield* Deferred.isDone(started[2]))
+
+            yield* Deferred.succeed(releases[0], undefined)
+            yield* Deferred.await(started[2])
+            yield* Deferred.succeed(releases[1], undefined)
+            yield* Deferred.succeed(releases[2], undefined)
+
+            deepStrictEqual(yield* Fiber.join(fiber), input)
+          }
+        }))
+    }
+
+    it.effect(`supports concurrency: "unbounded"`, () =>
+      Effect.gen(function*() {
+        const started = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
+        const release = yield* Deferred.make<void>()
+        const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+          const index = value.charCodeAt(0) - 97
+          return Deferred.succeed(started[index], undefined).pipe(
+            Effect.andThen(Deferred.await(release)),
+            Effect.as(value)
+          )
+        })
+        const schema = Schema.Array(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
+        const fiber = yield* SchemaParser.decodeUnknownEffect(schema)(["a", "b", "c"], {
+          concurrency: "unbounded"
+        }).pipe(Effect.forkChild)
+
+        yield* Effect.forEach(started, Deferred.await, { discard: true })
+        yield* Deferred.succeed(release, undefined)
+        deepStrictEqual(yield* Fiber.join(fiber), ["a", "b", "c"])
+      }))
+
+    it.effect("uses the first concurrent failure to complete and interrupts pending children", () =>
+      Effect.gen(function*() {
+        const firstStarted = yield* Deferred.make<void>()
+        const firstInterrupted = yield* Deferred.make<void>()
+        const first = Schema.String.pipe(Schema.decode({
+          decode: SchemaGetter.transformOrFail(() =>
+            Deferred.succeed(firstStarted, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(firstInterrupted, undefined).pipe(Effect.asVoid))
+            )
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const second = Schema.String.pipe(Schema.decode({
+          decode: SchemaGetter.transformOrFail(() =>
+            Deferred.await(firstStarted).pipe(
+              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue({ message: "second failed" })))
+            )
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+
+        const exit = yield* SchemaParser.decodeUnknownEffect(Schema.Tuple([first, second]))(["a", "b"], {
+          concurrency: 2
+        }).pipe(Effect.exit)
+
+        assertTrue(Exit.isFailure(exit))
+        assertTrue(yield* Deferred.isDone(firstInterrupted))
+        if (Exit.isFailure(exit)) {
+          const error = Cause.findError(exit.cause)
+          assertTrue(Result.isSuccess(error))
+          if (Result.isSuccess(error)) {
+            strictEqual(error.success._tag, "Composite")
+            if (error.success._tag === "Composite") {
+              strictEqual(error.success.issues[0]._tag, "Pointer")
+              if (error.success.issues[0]._tag === "Pointer") {
+                deepStrictEqual(error.success.issues[0].path, [1])
+              }
+            }
+          }
+        }
+      }))
+
+    it.effect(`accumulates concurrent errors in completion order with errors: "all"`, () =>
+      Effect.gen(function*() {
+        const releaseFirst = yield* Deferred.make<void>()
+        const secondCompleted = yield* Deferred.make<void>()
+        const failing = (effect: Effect.Effect<void>) =>
+          Schema.String.pipe(Schema.decode({
+            decode: SchemaGetter.transformOrFail(() =>
+              effect.pipe(Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue())))
+            ),
+            encode: SchemaGetter.passthrough()
+          }))
+        const schema = Schema.Tuple([
+          failing(Deferred.await(releaseFirst)),
+          failing(Deferred.succeed(secondCompleted, undefined).pipe(Effect.asVoid))
+        ])
+        const fiber = yield* SchemaParser.decodeUnknownEffect(schema)(["a", "b"], {
+          concurrency: 2,
+          errors: "all"
+        }).pipe(Effect.exit, Effect.forkChild)
+
+        yield* Deferred.await(secondCompleted)
+        yield* Effect.yieldNow
+        yield* Deferred.succeed(releaseFirst, undefined)
+        const exit = yield* Fiber.join(fiber)
+
+        assertTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          const error = Cause.findError(exit.cause)
+          assertTrue(Result.isSuccess(error))
+          if (Result.isSuccess(error)) {
+            strictEqual(error.success._tag, "Composite")
+            if (error.success._tag === "Composite") {
+              deepStrictEqual(
+                error.success.issues.map((issue) => issue._tag === "Pointer" ? issue.path : []),
+                [[1], [0]]
+              )
+            }
+          }
+        }
+      }))
+
+    it.effect("uses completion order for colliding transformed Record keys", () =>
+      Effect.gen(function*() {
+        const releaseFirst = yield* Deferred.make<void>()
+        const secondCompleted = yield* Deferred.make<void>()
+        const value = Schema.String.pipe(Schema.decode({
+          decode: SchemaGetter.transformOrFail((value) =>
+            value === "first"
+              ? Deferred.await(releaseFirst).pipe(Effect.as(value))
+              : Deferred.succeed(secondCompleted, undefined).pipe(Effect.as(value))
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const schema = Schema.Record(
+          Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel())),
+          value
+        )
+        const fiber = yield* SchemaParser.decodeUnknownEffect(schema)({ a_b: "first", aB: "second" }, {
+          concurrency: 2
+        }).pipe(Effect.forkChild)
+
+        yield* Deferred.await(secondCompleted)
+        yield* Effect.yieldNow
+        yield* Deferred.succeed(releaseFirst, undefined)
+        deepStrictEqual(yield* Fiber.join(fiber), { aB: "first" })
+      }))
+
+    it.effect("applies the concurrency limit independently to nested products", () =>
+      Effect.gen(function*() {
+        const started = yield* Ref.make(0)
+        const allStarted = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const item = Schema.String.pipe(Schema.decode({
+          decode: SchemaGetter.transformOrFail((value) =>
+            Ref.updateAndGet(started, (n) => n + 1).pipe(
+              Effect.tap((n) => n === 4 ? Deferred.succeed(allStarted, undefined) : Effect.void),
+              Effect.andThen(Deferred.await(release)),
+              Effect.as(value)
+            )
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const schema = Schema.Array(Schema.Array(item))
+        const input = [["a", "b"], ["c", "d"]]
+        const fiber = yield* SchemaParser.decodeUnknownEffect(schema)(input, { concurrency: 2 }).pipe(Effect.forkChild)
+
+        yield* Deferred.await(allStarted)
+        strictEqual(yield* Ref.get(started), 4)
+        yield* Deferred.succeed(release, undefined)
+        deepStrictEqual(yield* Fiber.join(fiber), input)
+      }))
+
+    it.effect("keeps Union member evaluation sequential", () =>
+      Effect.gen(function*() {
+        const firstStarted = yield* Deferred.make<void>()
+        const releaseFirst = yield* Deferred.make<void>()
+        const secondStarted = yield* Deferred.make<void>()
+        const first = Schema.String.pipe(Schema.decode({
+          decode: SchemaGetter.transformOrFail(() =>
+            Deferred.succeed(firstStarted, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseFirst)),
+              Effect.as("first")
+            )
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const second = Schema.String.pipe(Schema.decode({
+          decode: SchemaGetter.transformOrFail(() =>
+            Deferred.succeed(secondStarted, undefined).pipe(Effect.as("second"))
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const fiber = yield* SchemaParser.decodeUnknownEffect(Schema.Union([first, second]))("value", {
+          concurrency: "unbounded"
+        }).pipe(Effect.forkChild)
+
+        yield* Deferred.await(firstStarted)
+        yield* Effect.yieldNow
+        assertFalse(yield* Deferred.isDone(secondStarted))
+        yield* Deferred.succeed(releaseFirst, undefined)
+        strictEqual(yield* Fiber.join(fiber), "first")
+        assertFalse(yield* Deferred.isDone(secondStarted))
+      }))
+
+    it("keeps synchronous product parsers eager", () => {
+      const result = SchemaParser.decodeUnknownEffect(Schema.Array(Schema.String))(["a", "b"], {
+        concurrency: "unbounded"
+      })
+      assertTrue(Exit.isExit(result))
+      if (Exit.isSuccess(result)) {
+        deepStrictEqual(result.value, ["a", "b"])
+      }
+    })
+
+    it.effect("applies concurrency to constructor defaults", () =>
+      Effect.gen(function*() {
+        const firstStarted = yield* Deferred.make<void>()
+        const secondStarted = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const field = (value: string, started: Deferred.Deferred<void>) =>
+          Schema.String.pipe(Schema.withConstructorDefault(
+            Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Deferred.await(release)),
+              Effect.as(value)
+            )
+          ))
+        const schema = Schema.Struct({
+          a: field("a", firstStarted),
+          b: field("b", secondStarted)
+        })
+        const fiber = yield* SchemaParser.makeEffect(schema)({}, {
+          parseOptions: { concurrency: 2 }
+        }).pipe(Effect.forkChild)
+
+        yield* Deferred.await(firstStarted)
+        yield* Deferred.await(secondStarted)
+        yield* Deferred.succeed(release, undefined)
+        deepStrictEqual(yield* Fiber.join(fiber), { a: "a", b: "b" })
+      }))
   })
 
   const makeMixedCause = () =>

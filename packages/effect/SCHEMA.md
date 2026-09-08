@@ -1675,8 +1675,10 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-Transformed keys are applied sequentially in selection order, so the later
-selected property wins if a transformation produces a duplicate key.
+When parsing sequentially, transformed keys are applied in selection order, so
+the later selected property wins if a transformation produces a duplicate key.
+With concurrency greater than `1`, completion order determines which value is
+retained.
 
 **Example** (Keeping the later selected value)
 
@@ -6128,6 +6130,46 @@ and `additionalProperties`, because matching keys cannot be determined without e
 Opaque declarations and checks provide code through their `toCode` callbacks. `toCodeDocument` does not accept a
 reviver option. To generate code from persisted JSON, first reconstruct the schemas with `fromRepresentation` or
 `fromRepresentations`, then create a new live representation so the revivers can restore the callbacks.
+
+# Parsing Options
+
+## Concurrent Product Parsing
+
+The `concurrency` parse option controls how many children of a product schema may parse at the same time. It uses the
+same semantics as `Effect.forEach`: `undefined` and `1` are sequential, a number greater than `1` sets a bound, and
+`"unbounded"` removes the bound. Synchronous children remain eager and do not require a fiber.
+
+The option applies to tuple elements, array elements, struct fields, record entries, and structs with rest. It applies
+independently at every nested product. For example, with `concurrency: 2`, two outer array elements may each parse two
+inner elements concurrently. The option is runtime-only; it is not stored in the schema AST or its representation.
+
+Union members remain sequential. A product inside the union member currently being evaluated still receives the
+option.
+
+**Example** (Decoding array elements concurrently)
+
+```ts
+import { Effect, Schema, SchemaGetter } from "effect"
+
+const item = Schema.String.pipe(Schema.decode({
+  decode: SchemaGetter.transformOrFail((value) => Effect.sleep("10 millis").pipe(Effect.as(value))),
+  encode: SchemaGetter.passthrough()
+}))
+
+const program = Schema.decodeUnknownEffect(Schema.Array(item))(
+  ["a", "b", "c"],
+  { concurrency: 2 }
+)
+
+const result = await Effect.runPromise(program)
+// ["a", "b", "c"]
+```
+
+Tuple and array results retain their element positions, as the result of `Effect.forEach` does. Other observable work
+follows completion order. With `errors: "first"`, the first observed child failure terminates the product and interrupts
+the remaining children. With `errors: "all"`, issues are accumulated as children complete. If transformed record keys
+collide, the last assignment to complete wins. Concurrent work may already have performed effects when another child
+fails or the parser interrupts it.
 
 # Error Handling and Formatting
 

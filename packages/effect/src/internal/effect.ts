@@ -4859,10 +4859,7 @@ export const forEach: {
   }
 ): Effect.Effect<any, E, R> =>
   suspend(() => {
-    const concurrencyOption = options?.concurrency ?? 1
-    const concurrency = concurrencyOption === "unbounded"
-      ? Number.POSITIVE_INFINITY
-      : Math.max(1, concurrencyOption)
+    const concurrency = resolveConcurrency(options?.concurrency)
 
     if (concurrency === 1) {
       return forEachSequential(iterable, f, options)
@@ -4916,6 +4913,10 @@ const forEachSequential = <A, B, E, R>(
   })
 
 /** @internal */
+export const resolveConcurrency = (concurrency: Concurrency | undefined): number =>
+  concurrency === "unbounded" ? Number.POSITIVE_INFINITY : Math.max(1, concurrency ?? 1)
+
+/** @internal */
 export const iterateEager = <S, A>() =>
 <X, E, R, E2>(options: {
   readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
@@ -4952,7 +4953,7 @@ export const iterateEager = <S, A>() =>
   return runSequential
 }
 
-const iterateConcurrent = <S, A, X, E, R, E2>(options: {
+const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: {
   readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
   readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
 }) => {
@@ -4961,10 +4962,10 @@ const iterateConcurrent = <S, A, X, E, R, E2>(options: {
   return (
     state: S,
     items: ReadonlyArray<A>,
-    opts: { readonly concurrency: number }
+    opts: { readonly concurrency: number; readonly end?: number | undefined }
   ): Effect.Effect<void, E | E2, R> | undefined => {
     let index = 0
-    const end = items.length
+    const end = opts.end ?? items.length
     const concurrency = opts.concurrency
     let done = false
     let parentFiber: Fiber.Fiber<any, any> | undefined
@@ -5099,7 +5100,14 @@ const iterateConcurrent = <S, A, X, E, R, E2>(options: {
   }
 }
 
-const forEachConcurrent = iterateConcurrent({
+/** @internal */
+export const iterateConcurrent = <S, A>() =>
+<X, E, R, E2>(options: {
+  readonly onItem: (state: S, item: A, index: number) => Effect.Effect<X, E, R>
+  readonly step: (state: NoInfer<S>, item: A, exit: Exit.Exit<X, E>, index: number) => Exit.Exit<void, E2> | void
+}) => iterateConcurrentImpl<S, A, X, E, R, E2>(options)
+
+const forEachConcurrent = iterateConcurrentImpl({
   onItem(
     state: {
       readonly f: (a: any, i: number) => Effect.Effect<any, any, any>

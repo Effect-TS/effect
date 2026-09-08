@@ -162,6 +162,32 @@ export const object32SuspendedMiddleValid = decodeParserCase(
   true
 )
 
+const suspendedArrayInput = Array.from({ length: 32 }, (_, index) => `value${index}`)
+const suspendedObjectAllFields = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, suspendedString])
+)
+
+export const array32SuspendedConcurrent4 = decodeParserCase(
+  Schema.Array(suspendedString),
+  suspendedArrayInput,
+  true,
+  { concurrency: 4 }
+)
+
+export const object32SuspendedConcurrent4 = decodeParserCase(
+  Schema.Struct(suspendedObjectAllFields),
+  suspendedObjectInput,
+  true,
+  { concurrency: 4 }
+)
+
+export const record32SuspendedConcurrent4 = decodeParserCase(
+  Schema.Record(Schema.String, suspendedString),
+  suspendedObjectInput,
+  true,
+  { concurrency: 4 }
+)
+
 const literal2 = Schema.Literals(["value0", "value1"])
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
 const homogeneousUnion100 = Schema.Union(

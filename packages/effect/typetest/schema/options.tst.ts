@@ -1,12 +1,13 @@
 import { Schema, SchemaParser } from "effect"
-import type { SchemaAST, SchemaRepresentation } from "effect"
+import type { SchemaAST, SchemaRepresentation, Types } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("runtime and structural options", () => {
-  it("removes order, concurrency, and unvalidated preservation", () => {
+  it("supports product concurrency without order or unvalidated preservation", () => {
     expect<SchemaAST.ParseOptions["onExcessProperty"]>().type.toBe<"ignore" | "error" | undefined>()
     expect<Extract<SchemaAST.ParseOptions["onExcessProperty"], "preserve">>().type.toBe<never>()
-    expect<Extract<keyof SchemaAST.ParseOptions, "propertyOrder" | "concurrency">>().type.toBe<never>()
+    expect<SchemaAST.ParseOptions["concurrency"]>().type.toBe<Types.Concurrency | undefined>()
+    expect<Extract<keyof SchemaAST.ParseOptions, "propertyOrder">>().type.toBe<never>()
     expect<Schema.Annotations.Bottom<string, readonly []>["parseOptions"]>().type.toBe<unknown>()
 
     const schema = Schema.Struct({ a: Schema.String })

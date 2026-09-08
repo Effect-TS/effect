@@ -17,7 +17,7 @@ import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
 import { identity, memoize, memoizeIdempotent } from "./Function.ts"
-import { effectIsExit, iterateEager } from "./internal/effect.ts"
+import { effectIsExit, iterateConcurrent, iterateEager, resolveConcurrency } from "./internal/effect.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
@@ -30,6 +30,7 @@ import * as SchemaGetter from "./SchemaGetter.ts"
 import * as SchemaIssue from "./SchemaIssue.ts"
 import type * as SchemaParser from "./SchemaParser.ts"
 import * as SchemaTransformation from "./SchemaTransformation.ts"
+import type * as Types from "./Types.ts"
 
 /**
  * Discriminated union of all AST node types.
@@ -453,10 +454,9 @@ export type Encoding = readonly [Link, ...Array<Link>]
  * **Details**
  *
  * Pass to `Schema.decodeUnknown`, `Schema.encode`, and related APIs to customize
- * error reporting, excess property handling, and check execution. Options apply
- * throughout the parse; schema annotations do not override them. Composite
- * schemas parse their children sequentially, including asynchronous
- * transformations and middleware.
+ * error reporting, excess property handling, check execution, and product
+ * concurrency. Options apply throughout the parse; schema annotations do not
+ * override them.
  *
  * - `errors` — `"first"` (default) stops at the first error; `"all"` collects
  *   every error.
@@ -464,6 +464,9 @@ export type Encoding = readonly [Link, ...Array<Link>]
  *   `"error"` fails.
  * - `disableChecks` — skips validation checks while still applying defaults and
  *   transformations.
+ * - `concurrency` — controls concurrent parsing of tuple elements, array
+ *   elements, struct fields, and record entries using the same semantics as
+ *   `Effect.forEach`; the default is sequential.
  * - `reportInput` — includes rejected input values in value-bearing schema
  *   issues.
  *
@@ -507,6 +510,31 @@ export interface ParseOptions {
    * transformations.
    */
   readonly disableChecks?: boolean | undefined
+
+  /**
+   * Controls how many children of a product schema may parse concurrently.
+   *
+   * **Details**
+   *
+   * This option has the same concurrency semantics as {@link Effect.forEach}.
+   * It applies to tuples, arrays, structs, records, and structs with rest. Each
+   * nested product applies the limit independently. Union members remain
+   * sequential, though products inside the current union member still receive
+   * the option.
+   *
+   * Array and tuple outputs retain their element order. Other observable work,
+   * including issue accumulation and colliding transformed record keys, follows
+   * effect completion order when concurrency is greater than `1`.
+   *
+   * **Gotchas**
+   *
+   * With `errors: "first"`, the first observed child failure interrupts the
+   * remaining children and may not belong to the earliest product position.
+   * Concurrent children may perform effects before another child fails.
+   *
+   * @default undefined
+   */
+  readonly concurrency?: Types.Concurrency | undefined
 
   /**
    * Whether schema issues should retain and report rejected input values.
@@ -2290,7 +2318,11 @@ export const Arrays: new(
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
       }
-      const eff = parseArray(state, input, 0, ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen))
+      const end = ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
+      const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
+      const eff = concurrency === 1
+        ? parseArray(state, input, 0, end)
+        : parseArrayConcurrent(state, input, { concurrency, end })
       if (eff) yield* eff
 
       // ---------------------------------------------
@@ -2348,7 +2380,7 @@ export const Arrays: new(
     return "array"
   }
 }
-const parseArray = iterateEager<{
+type ArrayParserState = {
   readonly ast: AST
   readonly input: unknown
   readonly len: number
@@ -2360,12 +2392,14 @@ const parseArray = iterateEager<{
   readonly options: ParseOptions
   readonly output: Array<unknown>
   issues: Array<SchemaIssue.Issue> | undefined
-}, unknown>()({
-  onItem(s, item, i) {
+}
+
+const parseArrayOptions = {
+  onItem(s: ArrayParserState, item: unknown, i: number) {
     const value = i < s.len ? item : InternalParser.missing
     return s.getParser(s.tailThreshold, i).parser(value, s.options)
   },
-  step(s, item, exit, i) {
+  step(s: ArrayParserState, item: unknown, exit: Exit.Exit<unknown, SchemaIssue.Issue>, i: number) {
     if (exit._tag === "Failure") {
       return wrapPropertyKeyIssue(s, s.ast, i, exit)
     }
@@ -2388,7 +2422,10 @@ const parseArray = iterateEager<{
       }
     }
   }
-})
+}
+
+const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
+const parseArrayConcurrent = iterateConcurrent<ArrayParserState, unknown>()(parseArrayOptions)
 
 const wrapPropertyKeyIssue = (
   s: {
@@ -2772,6 +2809,13 @@ export const Objects: new(
         ? finishIndex(s, key, key, inputValue, result)
         : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
     }
+    const parseIndexes = indexCount
+      ? iterateConcurrent<ObjectParserState, readonly [key: PropertyKey, index: Index]>()({
+        onItem: (s, [key, index]) =>
+          index.is.parameter === string ? parseStringIndex(s, key, index) : parseIndex(s, key, index),
+        step: (_s, _item, exit) => exit._tag === "Failure" ? exit : undefined
+      })
+      : undefined
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
@@ -2812,6 +2856,7 @@ export const Objects: new(
       }
       const errorsAllOption = options.errors === "all"
       const onExcessPropertyError = options.onExcessProperty === "error"
+      const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
 
       // ---------------------------------------------
       // handle excess properties
@@ -2854,14 +2899,16 @@ export const Objects: new(
       // handle property signatures
       // ---------------------------------------------
       if (hasProperties) {
-        const eff = parseProperties(state, properties!)
+        const eff = concurrency === 1
+          ? parseProperties(state, properties!)
+          : parsePropertiesConcurrent(state, properties!, { concurrency })
         if (eff) yield* eff
       }
 
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (indexCount) {
+      if (indexCount && concurrency === 1) {
         for (let i = 0; i < indexCount; i++) {
           const index = indexes![i]
           const parse = index.is.parameter === string ? parseStringIndex : parseIndex
@@ -2874,6 +2921,19 @@ export const Objects: new(
             else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
           }
         }
+      } else if (parseIndexes) {
+        const keyPairs = Arr.empty<readonly [PropertyKey, Index]>()
+        for (let i = 0; i < indexCount; i++) {
+          const index = indexes![i]
+          const keys = indexKeys?.[i] ?? (index.is.parameter === string
+            ? Object.keys(record)
+            : getIndexSignatureKeys(record, index.is.parameter, options))
+          for (let j = 0; j < keys.length; j++) {
+            keyPairs.push([keys[j], index])
+          }
+        }
+        const eff = parseIndexes(state, keyPairs, { concurrency })
+        if (eff) yield* eff
       }
 
       if (state.issues) {
@@ -2909,7 +2969,8 @@ export const Objects: new(
       if (input === InternalParser.missing) return InternalParser.missingExit
       if (
         options.errors === "all" ||
-        options.onExcessProperty !== undefined
+        options.onExcessProperty !== undefined ||
+        (options.concurrency !== undefined && resolveConcurrency(options.concurrency) !== 1)
       ) {
         return fallback(input, options)
       }
@@ -3034,8 +3095,8 @@ function stepProperty(
   }
 }
 
-const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
-  onItem(s, p) {
+const parsePropertiesOptions = {
+  onItem(s: ObjectParserState, p: ParsedProperty) {
     if (!hasPropertySignature(s.input, p.name)) {
       return p.parser(InternalParser.missing, s.options)
     }
@@ -3044,7 +3105,10 @@ const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
     return p.parser(value, s.options)
   },
   step: stepProperty
-})
+}
+
+const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
+const parsePropertiesConcurrent = iterateConcurrent<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {
   if (!a) return b
