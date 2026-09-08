@@ -188,6 +188,69 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  for (const transport of ["http", "stdio"] as const) {
+    it.effect(`should reject stateless requests inside a legacy ${transport} batch`, () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const protocols = [McpProtocol.v2026_07_28, McpProtocol.v2025_03_26] as const
+        const registrations = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "Count", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              Ref.update(calls, (n) => n + 1).pipe(
+                Effect.as(new McpSchema.CallToolResult({ content: [] }))
+              )
+          })
+        ))
+        const batch = [{
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "Count",
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }, { jsonrpc: "2.0", id: 3, method: "ping" }]
+        if (transport === "stdio") {
+          const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_03_26, protocols, registrations)
+          yield* fixture.initialize()
+          yield* fixture.takeFrame
+          yield* fixture.sendRaw(batch)
+          assert.deepInclude(yield* fixture.takeFrame, {
+            id: null,
+            error: { code: -32600, message: "JSON-RPC batches are not supported" }
+          })
+        } else {
+          const harness = yield* makeHttpHarness(registrations.pipe(Layer.provideMerge(makeServerLayer({
+            name: "BatchAdmission",
+            protocols
+          }))))
+          const initialized = yield* harness.post({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-03-26",
+              capabilities: {},
+              clientInfo: { name: "legacy", version: "1.0.0" }
+            }
+          })
+          const sessionId = initialized.headers.get("mcp-session-id")
+          assert.isNotNull(sessionId)
+          const response = yield* harness.post(batch, {
+            "mcp-session-id": sessionId,
+            "mcp-protocol-version": "2025-03-26"
+          })
+          assert.strictEqual(response.status, 400)
+        }
+        assert.strictEqual(yield* Ref.get(calls), 0)
+      }))
+  }
+
   it.effect("should isolate request notifications across mixed HTTP protocols", () =>
     Effect.gen(function*() {
       const holding = yield* Deferred.make<void>()
