@@ -409,6 +409,8 @@ for (const [name, test] of [["effect", it.effect], ["live", it.live]] as const) 
   describe(`${name} modifier precedence`, () => {
     test.skip("skip overrides skip: false", () => Effect.die("must be skipped"), { skip: false })
     test.fails("fails overrides fails: false", () => Effect.fail("expected"), { fails: false })
+    test.fails("skip option skips an expected failure", () => Effect.void, { skip: true })
+    test.skip("skip precedes todo", () => Effect.die("must be skipped"), { todo: true })
     test.skipIf(true)("skipIf(true) overrides skip: false", () => Effect.die("must be skipped"), { skip: false })
     test.runIf(false)("runIf(false) overrides skip: false", () => Effect.die("must be skipped"), { skip: false })
     test.skipIf(false)("skipIf(false) preserves skip: true", () => Effect.die("must be skipped"), { skip: true })
