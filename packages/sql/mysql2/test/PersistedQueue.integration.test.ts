@@ -1,7 +1,10 @@
 import { MysqlClient } from "@effect/sql-mysql2"
 import { assert, it } from "@effect/vitest"
-import { Effect, Layer, Redacted, Schedule, Schema } from "effect"
+import { Effect, Latch, Layer, Redacted, Schedule, Schema } from "effect"
+import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
+import { Reactivity } from "effect/unstable/reactivity"
+import { SqlClient, Statement } from "effect/unstable/sql"
 import { MysqlContainer } from "./utils.ts"
 
 // SET timestamp is session-local. One connection ensures the queue's SQL and
@@ -20,6 +23,85 @@ const layer = PersistedQueue.layer.pipe(
 )
 
 it.layer(layer, { timeout: "60 seconds", concurrent: false })("PersistedQueue MySQL retry precision", (it) => {
+  for (const legacy of [false, true]) {
+    it.effect(
+      legacy ? "concurrent startups perform only one precision ALTER" : "correct tables skip precision ALTER",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* MysqlClient.MysqlClient
+          const tableName = legacy ? "concurrent_precision" : "correct_precision"
+          yield* sql`CREATE TABLE ${sql(tableName)} LIKE retry_precision`
+          yield* sql`CREATE TABLE ${sql(`${tableName}_migrations`)} LIKE retry_precision_migrations`
+          yield* sql`INSERT INTO ${sql(`${tableName}_migrations`)} SELECT * FROM retry_precision_migrations`
+          if (legacy) {
+            yield* sql`ALTER TABLE ${sql(tableName)} MODIFY visible_at DATETIME NOT NULL`
+          }
+          const clients = yield* Effect.forEach(
+            [0, 1],
+            () => MysqlClient.make(sql.config).pipe(Effect.provide(Reactivity.layer))
+          )
+          const attempts: Array<string> = []
+          const observe: Statement.Transformer = (statement) => {
+            const [query] = statement.compile()
+            if (!/^\s*ALTER TABLE\b/i.test(query) || !query.includes(tableName)) return Effect.succeed(statement)
+            attempts.push(query)
+            // Hold the first ALTER before execution to let the other independent
+            // startup read the old schema. A coordinated implementation may block
+            // that startup before its check, so this delay must not await it.
+            return Effect.as(Effect.sleep(250), statement)
+          }
+          yield* Effect.forEach(clients, (client) =>
+            PersistedQueue.makeStoreSql({ tableName }).pipe(
+              Effect.provideService(SqlClient.SqlClient, client),
+              Effect.provideService(Statement.CurrentTransformer, observe),
+              Effect.scoped
+            ), { concurrency: 2 })
+          const columns = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM information_schema.columns
+          WHERE table_schema = DATABASE() AND table_name = ${tableName}
+          AND column_name IN ('visible_at', 'acquired_at', 'created_at', 'updated_at') AND datetime_precision = 6`
+          assert.strictEqual(Number(columns[0].count), 4)
+          assert.strictEqual(attempts.length, legacy ? 1 : 0, JSON.stringify(attempts))
+        }).pipe(TestClock.withLive),
+      { timeout: 10_000 }
+    )
+  }
+
+  it.effect("cleanup uses the default 30-day TTL without deleting newer or pending rows", () =>
+    Effect.gen(function*() {
+      const sql = yield* MysqlClient.MysqlClient
+      const store = yield* PersistedQueue.makeStoreSql({ tableName: "cleanup_month" })
+      yield* sql`SET timestamp = 1800000000.95`
+      yield* Effect.addFinalizer(() => sql`SET timestamp = DEFAULT`.pipe(Effect.orDie))
+      for (
+        const [id, state, days] of [
+          ["old", "completed", 31],
+          ["boundary", "completed", 30],
+          ["new", "completed", 29],
+          ["pending", "pending", 31],
+          ["failed", "failed", 31]
+        ] as const
+      ) {
+        yield* sql`INSERT INTO cleanup_month
+          (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+          VALUES (${id}, 'cleanup', '42', ${state}, 1, NOW(6), NOW(6), DATE_SUB(NOW(6), INTERVAL ${days} DAY))`
+      }
+      const completed = Latch.makeUnsafe()
+      // Observe successful completion so layerCleanup's warning handler cannot
+      // hide a rejected large negative MICROSECOND interval from this test.
+      yield* Layer.build(PersistedQueue.layerCleanup()).pipe(
+        Effect.provideService(PersistedQueue.PersistedQueueStore, {
+          ...store,
+          cleanup: (options) => store.cleanup(options).pipe(Effect.tap(() => completed.open))
+        })
+      )
+      yield* completed.await.pipe(Effect.timeout("5 seconds"))
+      assert.deepStrictEqual(yield* sql`SELECT id FROM cleanup_month ORDER BY id`, [
+        { id: "failed" },
+        { id: "new" },
+        { id: "pending" }
+      ])
+    }).pipe(TestClock.withLive), { timeout: 10_000 })
+
   for (const column of ["visible_at", "acquired_at", "created_at", "updated_at"]) {
     it.effect(`upgrades ${column} when it was left below microsecond precision`, () =>
       Effect.gen(function*() {
