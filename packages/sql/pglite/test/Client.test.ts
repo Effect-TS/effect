@@ -14,7 +14,8 @@ const Migrations = Layer.effectDiscard(
   })
 )
 
-describe("PgliteClient", () => {
+// Avoid overlapping PGlite startup with SQL assertions in other tests.
+describe("PgliteClient", { concurrent: false }, () => {
   layer(ClientLayer, { timeout: "30 seconds" })((it) => {
     it.effect("basic insert/select", () =>
       Effect.gen(function*() {
@@ -123,7 +124,12 @@ describe("PgliteClient", () => {
   describe("fromClient", () => {
     layer(
       PgliteClient.layerFrom(Effect.gen(function*() {
-        const pg = new Pglite.PGlite()
+        const pg = yield* Effect.acquireRelease(
+          Effect.sync(() => new Pglite.PGlite()),
+          (pg) => Effect.promise(() => pg.close())
+        )
+        // Charge startup to the layer hook timeout, not the first query's test timeout.
+        yield* Effect.promise(() => pg.waitReady)
         return yield* PgliteClient.fromClient({ liveClient: pg })
       })),
       { timeout: "30 seconds" }
