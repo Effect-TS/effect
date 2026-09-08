@@ -1,0 +1,6 @@
+{"node":"v24.20.0","esbuild":"0.28.2","rolldown":"1.2.7"}
+{"entry":"operators-only","esbuild":{"bytes":14199,"gzip":5202,"mappingModules":0},"rolldown":{"bytes":13290,"gzip":4796,"mappingModules":0}}
+{"entry":"utf8-only","esbuild":{"bytes":16987,"gzip":6326,"mappingModules":0},"rolldown":{"bytes":16028,"gzip":5831,"mappingModules":0}}
+{"entry":"cp1251-only","esbuild":{"bytes":16646,"gzip":6333,"mappingModules":1},"rolldown":{"bytes":15711,"gzip":5904,"mappingModules":1}}
+{"entry":"restricted-registry","esbuild":{"bytes":97801,"gzip":33229,"mappingModules":1},"rolldown":{"bytes":94242,"gzip":30731,"mappingModules":1}}
+{"entry":"all-encodings","esbuild":{"bytes":484458,"gzip":292691,"mappingModules":89},"rolldown":{"bytes":481040,"gzip":289117,"mappingModules":89}}

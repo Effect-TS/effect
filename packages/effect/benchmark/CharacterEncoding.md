@@ -10,18 +10,20 @@ placement is an explicit review question for this draft.
 ```ts
 import * as CharacterEncoding from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
+import * as Utf8 from "effect/encoding/Utf8"
+import * as Windows1251 from "effect/encoding/Windows1251"
 import * as Stream from "effect/Stream"
 
 const program = Effect.gen(function*() {
-  const bytes = yield* CharacterEncoding.encode("Привет", "windows-1251")
-  const text = yield* CharacterEncoding.decode(bytes, "windows-1251")
+  const bytes = yield* CharacterEncoding.encode("Привет", Windows1251.encoding)
+  const text = yield* CharacterEncoding.decode(bytes, Windows1251.encoding)
   return text
 })
 
 // Chunks are converted on demand. A multibyte character may straddle chunks.
 const source = Stream.make(Uint8Array.of(0xcf), Uint8Array.of(0xf0, 0xe8))
 const utf8 = source.pipe(
-  CharacterEncoding.transcodeStream("windows-1251", "utf8", {
+  CharacterEncoding.transcodeStream(Windows1251.encoding, Utf8.encoding, {
     decode: { fatal: true },
     encode: { fatal: true }
   })
@@ -39,6 +41,59 @@ surrogate pairs across chunks, flush on normal completion, and do not flush on
 upstream failure or cancellation. Source errors and requirements are preserved.
 Memory is proportional to an upstream batch and codec tables, not the whole input.
 Streams may emit empty chunks while awaiting a complete character.
+
+## Explicit codecs and optional registries
+
+`CharacterEncoding` imports no codecs or mapping tables. Every conversion takes
+an `Encoding` descriptor from an explicit import, not a globally resolved string.
+Each of the 94 codec modules imports only its own mapping data and shared codec
+machinery. Unicode codecs need no legacy mapping data.
+
+The selected mapping data loads with its module. The larger typed lookup arrays
+and decoding tries are constructed lazily on first conversion and cached by the
+descriptor; every encoder/decoder still receives fresh incremental state.
+There are no dynamic imports or asynchronous loading requirements.
+
+For runtime labels, build a registry from exactly the codecs the application needs:
+
+```ts
+const registry = CharacterEncoding.makeRegistry([
+  Utf8.encoding,
+  Windows1251.encoding
+])
+
+const program = Effect.gen(function*() {
+  const encoding = yield* registry.resolve("windows-1251")
+  return yield* CharacterEncoding.encode("Привет", encoding)
+})
+
+registry.resolveUnsafe("cp1251") // Same descriptor as Windows1251.encoding
+registry.encodingExists("cp932") // false: not included in this registry
+```
+
+Registries are isolated and include normalized aliases only for their supplied
+codecs. Unknown labels fail with `CharacterEncodingError` and operation `resolve`;
+conflicting aliases throw when constructing a registry. Resolution never loads
+additional codecs or constructs lookup tables.
+
+Applications deliberately supporting all encodings can opt in:
+
+```ts
+import * as All from "effect/encoding/All"
+
+const encoding = All.resolveUnsafe("Shift_JIS")
+const decoded = CharacterEncoding.decode(bytes, encoding)
+```
+
+`All` imports every codec and exposes `registry`, `encodings`, `resolve`,
+`resolveUnsafe`, and `encodingExists`. Do not import it in a selective entry point.
+The core operators never import `All` back. Neither the ordinary codec modules
+nor `All` are re-exported from the core operators.
+
+This provides selective bundling by keeping unused mappings outside the import
+graph, rather than expecting a bundler to infer encodings from string arguments.
+The first draft's string-taking conversion API and core `encodings` /
+`encodingExists` exports have been replaced by these explicit codec and registry APIs.
 
 ## Scope and compatibility
 
@@ -60,10 +115,10 @@ Streams may emit empty chunks while awaiting a complete character.
   transliteration, and node-iconv's wider set of stateful encodings are **not**
   implemented. Unknown encodings fail explicitly. This is not a drop-in
   compatibility-complete replacement for either benchmark baseline.
-- Mapping data is statically importable for portable synchronous conversion;
-  codec lookup tables are constructed lazily and cached. Importing this module
-  includes mapping data for all supported encodings; per-encoding entry points
-  and bundle-size optimization remain review topics.
+- Mapping data is statically imported only through selected codec modules;
+  codec lookup tables are constructed lazily and cached. Importing `All` opts
+  into all mapping data. Further compression and sharing of overlapping multibyte
+  tables remain optimization topics.
 
 ## Provenance and regeneration
 
@@ -108,7 +163,8 @@ Defaults: approximately 64 KiB of UTF-8 source text, 4,093-byte stream chunks,
 those settings. Throughput is MiB/s of input bytes; for string input this means
 its UTF-8 byte length, consistently across providers. All text is representable
 in the target encoding; performance measurements do not exercise replacement or
-error paths. Reused codecs are warmed, so these are not cold-start measurements.
+error paths. Reused codecs are warmed, so these are not cold-start measurements. Effect codec
+labels are resolved once outside timing; timed conversion uses explicit descriptors.
 
 Raw synchronous measurements use the Unsafe API; they do not measure repeatedly
 starting an Effect runtime. Streaming results include Effect's runtime overhead
@@ -119,7 +175,7 @@ performance measurements. The benchmark consumes output lengths during timing;
 some runtime codecs can return strings backed by input memory, so high throughput
 does not necessarily mean every character was scanned in JavaScript.
 
-## Local results (2026-09-08)
+## Local results (2026-09-08, explicit-codec API)
 
 Node 24.20.0 on macOS ARM64, using the default settings above. Baseline here is
 the supplied iconv-lite 1.0.0-alpha.2 checkout and node-iconv 3.0.1. Values are
@@ -128,27 +184,33 @@ iconv-lite, not the ratio of independent medians.
 
 | Workload             | Effect | iconv-lite alpha | node-iconv | Paired change |
 | -------------------- | -----: | ---------------: | ---------: | ------------: |
-| utf8/encode          |    493 |              496 |        200 |         -0.4% |
-| utf8/decode          |   1283 |             1299 |        269 |         -0.8% |
-| utf8->utf16le/stream |    302 |              326 |        364 |         -6.3% |
-| utf16le/encode       |    493 |              514 |        230 |         -4.1% |
-| utf16le/decode       |   2014 |             1984 |        402 |         +1.5% |
-| cp1251/encode        |    764 |              620 |        259 |        +22.7% |
-| cp1251/decode        |    801 |              222 |        206 |       +261.9% |
-| cp1251->utf8/stream  |    221 |              270 |        222 |        -17.1% |
-| cp932/encode         |    423 |              496 |        214 |        -14.6% |
-| cp932/decode         |    204 |              275 |        226 |        -25.9% |
-| cp932->utf8/stream   |    129 |              171 |        229 |        -23.2% |
-| gb18030/encode       |    276 |              292 |        187 |         -6.4% |
-| gb18030/decode       |    177 |              217 |        212 |        -18.5% |
+| utf8/encode          |    488 |              489 |        198 |         -0.3% |
+| utf8/decode          |   1275 |             1274 |        263 |         -0.8% |
+| utf8->utf16le/stream |    299 |              332 |        355 |         -8.5% |
+| utf16le/encode       |    486 |              509 |        224 |         -4.2% |
+| utf16le/decode       |   1974 |             1977 |        397 |         -0.1% |
+| cp1251/encode        |    755 |              603 |        254 |        +24.5% |
+| cp1251/decode        |    798 |              222 |        207 |       +259.4% |
+| cp1251->utf8/stream  |    216 |              145 |        217 |        +46.5% |
+| cp932/encode         |    413 |              485 |        210 |        -14.7% |
+| cp932/decode         |    199 |              266 |        225 |        -24.5% |
+| cp932->utf8/stream   |    128 |              172 |        230 |        -24.2% |
+| gb18030/encode       |    269 |              285 |        182 |         -6.2% |
+| gb18030/decode       |    175 |              212 |        212 |        -17.3% |
 
 These results are mixed, not an across-the-board win: Unicode codec throughput
 is near the alpha baseline, single-byte encode/decode is faster in this corpus,
-and multibyte codecs and the streaming pipelines still trail iconv-lite. Effect
+and multibyte codecs and most streaming pipelines still trail iconv-lite. Effect
 streaming offers typed errors, cancellation and scoped composition, but those
 capabilities do not automatically make conversion faster. The host is shared
 and some samples have substantial outliers. Further optimization and broader
 corpora are needed before claiming general performance parity.
+
+In this rerun, the alpha CP1251 streaming baseline dropped from about 270 MiB/s
+in the first draft to 145 MiB/s, while Effect remained near 216 MiB/s. Its apparent
+relative win should not be attributed to the explicit-codec change; the stable
+baseline still outperforms Effect on that workload. Raw samples are retained to
+make this variability visible.
 
 ### Published iconv-lite 0.7.3 comparison
 
@@ -156,19 +218,19 @@ Same settings, measured separately:
 
 | Workload             | Effect | iconv-lite 0.7.3 | node-iconv | Paired change |
 | -------------------- | -----: | ---------------: | ---------: | ------------: |
-| utf8/encode          |    491 |              500 |        197 |         -1.6% |
-| utf8/decode          |   1267 |              406 |        260 |        211.8% |
-| utf8->utf16le/stream |    306 |              349 |        371 |        -12.0% |
-| utf16le/encode       |    491 |            16864 |        231 |        -97.0% |
-| utf16le/decode       |   2047 |            44146 |        401 |        -95.3% |
-| cp1251/encode        |    730 |              681 |        251 |          7.4% |
-| cp1251/decode        |    814 |              540 |        209 |         51.7% |
-| cp1251->utf8/stream  |    222 |              241 |        223 |         -7.1% |
-| cp932/encode         |    421 |              499 |        214 |        -15.2% |
-| cp932/decode         |    197 |              264 |        223 |        -25.3% |
-| cp932->utf8/stream   |    133 |              171 |        236 |        -24.8% |
-| gb18030/encode       |    275 |              291 |        189 |         -5.4% |
-| gb18030/decode       |    178 |              221 |        211 |        -18.8% |
+| utf8/encode          |    482 |              481 |        194 |         -0.0% |
+| utf8/decode          |   1271 |              409 |        264 |       +214.9% |
+| utf8->utf16le/stream |    303 |              357 |        364 |        -14.0% |
+| utf16le/encode       |    467 |            15182 |        217 |        -96.9% |
+| utf16le/decode       |   1924 |            42859 |        379 |        -95.5% |
+| cp1251/encode        |    752 |              749 |        251 |         +0.6% |
+| cp1251/decode        |    808 |              534 |        208 |        +51.3% |
+| cp1251->utf8/stream  |    217 |              241 |        221 |        -10.2% |
+| cp932/encode         |    408 |              478 |        204 |        -15.0% |
+| cp932/decode         |    196 |              268 |        225 |        -26.8% |
+| cp932->utf8/stream   |    130 |              175 |        228 |        -25.7% |
+| gb18030/encode       |    268 |              288 |        186 |         -6.1% |
+| gb18030/decode       |    173 |              212 |        201 |        -18.3% |
 
 The stable baseline is especially fast for UTF-16, using Node's raw Buffer
 conversion rather than the alpha's TextEncoder/TextDecoder backend. This is a
@@ -177,3 +239,33 @@ decoding semantics also differ as described above; the timed corpus is valid.
 
 Raw samples: [alpha comparison](./CharacterEncoding.alpha-results.jsonl) and
 [published 0.7.3 comparison](./CharacterEncoding.stable-results.jsonl).
+
+## Selective bundle verification
+
+Run `node packages/effect/benchmark/CharacterEncoding.bundle.ts` from the repository
+root. This bundles five virtual entry points using esbuild 0.28.2 and Rolldown
+1.2.7, checks their imported mapping-module counts, and executes the resulting
+ESM bundles to verify conversion. UTF-8 needs zero legacy tables; CP1251 and a
+restricted UTF-8/CP1251 registry import exactly windows1251Data.ts; All imports
+all 89 mapping modules (81 single-byte plus eight multibyte).
+
+Browser-targeted, minified ESM, UTF-8 output, no source maps; sizes include the
+operators and retained Effect infrastructure, not just mapping data. Gzip uses
+Node's default gzip settings. Measurements use Node 24.20.0 on macOS ARM64.
+
+| Entry point         | Mapping modules | esbuild bytes (gzip) | Rolldown bytes (gzip) |
+| ------------------- | --------------: | -------------------: | --------------------: |
+| operators-only      |               0 |         14199 (5202) |          13290 (4796) |
+| utf8-only           |               0 |         16987 (6326) |          16028 (5831) |
+| cp1251-only         |               1 |         16646 (6333) |          15711 (5904) |
+| restricted-registry |               1 |        97801 (33229) |         94242 (30731) |
+| all-encodings       |              89 |      484458 (292691) |       481040 (289117) |
+
+The restricted registry retains Effect infrastructure for its typed `resolve`
+method even when this entry point calls `resolveUnsafe`, explaining the step up
+from the direct codec entry points. These are standalone decoder bundle sizes,
+not whole application sizes; an application already using Effect may share that
+infrastructure. The five cases expose different API capabilities, so they are
+not interchangeable workloads. Importing All is an intentional size trade-off.
+
+[Raw bundle results](./CharacterEncoding.bundle-results.jsonl).
