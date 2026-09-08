@@ -92,6 +92,14 @@ class ControlledBlob extends Blob {
   }
 }
 
+const browserWebSocket = (ws: TestWebSocket): Socket.WebSocketLike => ({
+  readyState: ws.readyState,
+  addEventListener: ws.addEventListener.bind(ws),
+  removeEventListener: ws.removeEventListener.bind(ws),
+  close: ws.close.bind(ws),
+  send: ws.send.bind(ws)
+})
+
 const stubSocket = (pull: Socket.Reader["pull"]) => {
   let upgraded = false
   const socket = Socket.make({
@@ -344,6 +352,39 @@ describe("Socket", () => {
         }))
     }
 
+    for (const type of ["close", "error"] as const) {
+      for (const refill of [false, true]) {
+        it.effect(`preserves buffered frames when resume emits ${type}${refill ? " after a refill" : ""}`, () =>
+          Effect.gen(function*() {
+            const ws = new TestWebSocket(Latch.makeUnsafe(false))
+            ws.readyState = 1
+            const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 4 })
+            const { pull } = yield* socket.reader
+            const event = { code: 1006, reason: "resume failed" }
+            const error = new Socket.SocketError({
+              reason: type === "close"
+                ? new Socket.SocketCloseError({ code: 1006, closeReason: "resume failed" })
+                : new Socket.SocketReadError({ cause: event })
+            })
+            ws.dispatch("message", { data: "full" })
+            assert.isTrue(ws.isPaused)
+            ws.onResume = () => {
+              ws.onResume = undefined
+              if (refill) ws.dispatch("message", { data: "x" })
+              ws.dispatch(type, event)
+            }
+
+            assert.deepStrictEqual(yield* pull, ["full"])
+            if (refill) assert.deepStrictEqual(yield* pull, ["x"])
+            assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+            assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+            assert.strictEqual(ws.pauseCount, 1)
+            assert.strictEqual(ws.resumeCount, 1)
+            assert.isFalse(ws.isPaused)
+          }))
+      }
+    }
+
     it.effect("pauses at the highWaterMark and resumes after draining", () =>
       Effect.gen(function*() {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
@@ -486,6 +527,153 @@ describe("Socket", () => {
       }))
 
     describe("Blob frames", () => {
+      it.effect("counts queued text and converted Blob bytes while preserving transport backpressure", () =>
+        Effect.gen(function*() {
+          const ws = new TestWebSocket(Latch.makeUnsafe(false))
+          ws.readyState = 1
+          const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 4 })
+          const { pull } = yield* socket.reader
+          const first = new ControlledBlob()
+          const second = new ControlledBlob(new Uint8Array([2, 3, 4, 5]))
+
+          ws.dispatch("message", { data: "a" })
+          ws.dispatch("message", { data: first })
+          ws.dispatch("message", { data: second })
+          assert.strictEqual(ws.pauseCount, 0)
+          ws.dispatch("message", { data: "€" })
+          assert.strictEqual(ws.pauseCount, 1)
+          assert.deepStrictEqual(yield* pull, ["a"])
+          assert.strictEqual(ws.resumeCount, 1)
+
+          const reader = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Effect.promise(() => second.succeed())
+          assert.isUndefined(reader.pollUnsafe())
+          assert.strictEqual(ws.pauseCount, 2)
+          assert.isTrue(ws.isPaused)
+
+          yield* Effect.promise(() => first.succeed())
+          assert.deepStrictEqual(yield* Fiber.join(reader), [new Uint8Array([1])])
+          assert.strictEqual(ws.resumeCount, 1)
+          assert.isTrue(ws.isPaused)
+          assert.deepStrictEqual(yield* pull, [new Uint8Array([2, 3, 4, 5]), "€"])
+          assert.strictEqual(ws.resumeCount, 2)
+          assert.isFalse(ws.isPaused)
+        }))
+
+      for (const overflow of [false, true]) {
+        for (const waiting of [false, true]) {
+          it.effect(`enforces browser limits behind a Blob (${overflow ? "overflow" : "at limit"}, ${waiting ? "waiting" : "busy"})`, () =>
+            Effect.gen(function*() {
+              const ws = new TestWebSocket(Latch.makeUnsafe(false))
+              ws.readyState = 1
+              const socket = yield* Socket.fromWebSocket(Effect.succeed(browserWebSocket(ws)), { highWaterMark: 3 })
+              const { pull } = yield* socket.reader
+              const blob = new ControlledBlob(new Uint8Array())
+              const reader = waiting ? yield* pull.pipe(Effect.forkChild({ startImmediately: true })) : undefined
+              ws.dispatch("message", { data: blob })
+              ws.dispatch("message", { data: "€" })
+              if (overflow) ws.dispatch("message", { data: new Uint8Array([1]) })
+              if (reader !== undefined) assert.isUndefined(reader.pollUnsafe())
+
+              yield* Effect.promise(() => blob.succeed())
+              const frames = [...(reader === undefined ? yield* pull : yield* Fiber.join(reader))]
+              if (reader !== undefined) frames.push(...(yield* pull))
+              assert.deepStrictEqual(
+                frames,
+                overflow ? [new Uint8Array(), "€", new Uint8Array([1])] : [new Uint8Array(), "€"]
+              )
+              if (overflow) {
+                const error = new Socket.SocketError({
+                  reason: new Socket.SocketReadError({ cause: new Error("Socket highWaterMark of 3 bytes exceeded") })
+                })
+                assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+              } else {
+                const next = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
+                assert.isUndefined(next.pollUnsafe())
+                ws.dispatch("message", { data: "next" })
+                assert.deepStrictEqual(yield* Fiber.join(next), ["next"])
+              }
+              assert.strictEqual(ws.pauseCount, 0)
+              assert.strictEqual(ws.resumeCount, 0)
+            }))
+        }
+      }
+
+      it.effect("stops at a rejected Blob even when later frames have converted", () =>
+        Effect.gen(function*() {
+          const ws = new TestWebSocket(Latch.makeUnsafe(false))
+          ws.readyState = 1
+          const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
+          const { pull } = yield* socket.reader
+          const first = new ControlledBlob()
+          const second = new ControlledBlob(new Uint8Array([2]))
+          const late = new ControlledBlob(new Uint8Array([3]))
+          const cause = new Error("first conversion failed")
+          const error = new Socket.SocketError({ reason: new Socket.SocketReadError({ cause }) })
+
+          ws.dispatch("message", { data: "before" })
+          ws.dispatch("message", { data: first })
+          ws.dispatch("message", { data: second })
+          ws.dispatch("message", { data: late })
+          ws.dispatch("message", { data: "after" })
+          yield* Effect.promise(() => second.succeed())
+          yield* Effect.promise(() => first.fail(cause))
+
+          assert.deepStrictEqual(yield* pull, ["before"])
+          assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+          yield* Effect.promise(() => late.succeed())
+          assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+        }))
+
+      for (const pending of [false, true]) {
+        it.effect(`reports a synchronous Blob conversion throw ${pending ? "after an earlier Blob" : "after buffered text"}`, () =>
+          Effect.gen(function*() {
+            const ws = new TestWebSocket(Latch.makeUnsafe(false))
+            ws.readyState = 1
+            const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
+            const { pull } = yield* socket.reader
+            const cause = new Error("arrayBuffer threw")
+            const blob = new class extends Blob {
+              override arrayBuffer(): Promise<ArrayBuffer> {
+                throw cause
+              }
+            }()
+            const first = new ControlledBlob()
+            ws.dispatch("message", { data: pending ? first : "before" })
+            ws.dispatch("message", { data: blob })
+            if (pending) yield* Effect.promise(() => first.succeed())
+
+            assert.deepStrictEqual(yield* pull, pending ? [new Uint8Array([1])] : ["before"])
+            const error = new Socket.SocketError({ reason: new Socket.SocketReadError({ cause }) })
+            assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+          }))
+      }
+
+      for (const type of ["close", "error"] as const) {
+        it.effect(`retains ${type} failure when a pending Blob later rejects`, () =>
+          Effect.gen(function*() {
+            const ws = new TestWebSocket(Latch.makeUnsafe(false))
+            ws.readyState = 1
+            const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
+            const { pull } = yield* socket.reader
+            const blob = new ControlledBlob()
+            const reader = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
+            const event = { code: 1006, reason: "connection lost" }
+            const error = new Socket.SocketError({
+              reason: type === "close"
+                ? new Socket.SocketCloseError({ code: 1006, closeReason: "connection lost" })
+                : new Socket.SocketReadError({ cause: event })
+            })
+            ws.dispatch("message", { data: blob })
+            ws.dispatch(type, event)
+            assert.isUndefined(reader.pollUnsafe())
+            yield* Effect.promise(() => blob.fail(new Error("later conversion failure")))
+
+            assert.deepStrictEqual(yield* Fiber.await(reader), Exit.fail(error))
+            assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(error))
+          }))
+      }
+
       it.effect("does not let text or ArrayBuffer frames overtake a pending Blob conversion", () =>
         Effect.gen(function*() {
           const { flush, scheduler } = manualScheduler()
@@ -651,13 +839,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         // Browser WebSockets do not expose transport pause/resume methods.
-        const browser: Socket.WebSocketLike = {
-          readyState: 1,
-          addEventListener: ws.addEventListener.bind(ws),
-          removeEventListener: ws.removeEventListener.bind(ws),
-          close: ws.close.bind(ws),
-          send: ws.send.bind(ws)
-        }
+        const browser = browserWebSocket(ws)
         const socket = yield* Socket.fromWebSocket(Effect.succeed(browser), { highWaterMark: 3 })
         const { pull } = yield* socket.reader
 
