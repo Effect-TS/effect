@@ -22,6 +22,35 @@ const bytes = (chunks: ReadonlyArray<Uint8Array>) => {
 }
 
 describe("CharacterEncoding", () => {
+  it("preserves raw UTF-16 units and returns plain, isolated Uint8Arrays", () => {
+    const codec = All.resolveUnsafe("utf16le")
+    const text = String.fromCharCode(...Array.from({ length: 65536 }, (_, i) => i))
+    assert.deepEqual(C.encodeUnsafe(text, codec), Uint8Array.from(Iconv.encode(text, "utf16le")))
+    for (const value of ["", "A", "\ud800", "\udc00", "😀", "A\ud800B", "漢字".repeat(8192)]) {
+      const result = C.encodeUnsafe(value, codec)
+      assert.deepEqual(result, Uint8Array.from(Iconv.encode(value, "utf16le")))
+      assert.equal(Object.getPrototypeOf(result), Uint8Array.prototype)
+      assert.equal(result.byteOffset, 0)
+      assert.equal(result.buffer.byteLength, result.length)
+    }
+    assert.throws(() => C.encodeUnsafe("A\ud800B", codec, { fatal: true }), C.CharacterEncodingError)
+  })
+
+  it("preserves UTF-16LE chunk state, strict validation and BOM handling", () => {
+    const codec = All.resolveUnsafe("utf16le")
+    for (const addBOM of [false, true]) {
+      const encoder = C.makeEncoderUnsafe(codec, { fatal: true, addBOM })
+      const result = bytes([encoder.write("A\ud83d"), encoder.write(""), encoder.write("\ude00B"), encoder.end()])
+      assert.deepEqual(result, Uint8Array.from(Iconv.encode("A😀B", "utf16le", { addBOM })))
+      assert.equal(C.decodeUnsafe(result, codec), "A😀B")
+    }
+    const strict = C.makeEncoderUnsafe(codec, { fatal: true })
+    strict.write("\ud800")
+    assert.throws(() => strict.end(), C.CharacterEncodingError)
+    const replacement = C.makeEncoderUnsafe(codec)
+    assert.deepEqual(bytes([replacement.write("\ud800"), replacement.end()]), Uint8Array.of(0, 0xd8))
+  })
+
   it("sizes multibyte encoder buffers from mappings and encode-only additions", () => {
     const codec = new MultiByte({ table: [["41", "A"], ["8140", "漢"]], encodeAdd: { "€": 0x8fa1a1 } })
     const encoder = codec.encoder({})
