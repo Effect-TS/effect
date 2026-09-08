@@ -2,33 +2,35 @@
 "effect": patch
 ---
 
-Rename the constructors in `effect/unstable/cli` to PascalCase, matching `Schema` and `Config`. Combinators, guards, runners, layers, and factories such as `Command.make`, `CliConfig.make`, `Param.makeSingle`, `Prompt.makeTheme`, `Prompt.succeed`, `Completions.generate`, and `CliOutput.defaultFormatter` keep their names.
+Rename CLI value and control constructors to PascalCase. Scalar value constructor names align with `Schema` and `Config`. Combinators, guards, runners, layers, and factories such as `Command.make`, `CliConfig.make`, `Param.makeSingle`, `Prompt.makeTheme`, `Prompt.succeed`, `Completions.generate`, and `CliOutput.defaultFormatter` keep their lowercase names.
 
-This is a breaking naming cleanup for the Effect 4 release candidate.
+This is a breaking API cleanup for the Effect 4 release candidate, covering constructor names and public completion descriptor tags.
 
-In `Primitive`, `Param`, `Flag`, and `Argument`:
+The value constructor renames apply to these modules:
 
-- `string` -> `String`
-- `boolean` -> `Boolean`
-- `integer` -> `Int`
-- `float` -> `Finite`
-- `date` -> `Date`
-- `redacted` -> `Redacted`
-- `choice` -> `Choice`
-- `choiceWithValue` -> `ChoiceWithValue`
-- `path` -> `Path`
-- `file` -> `File`
-- `directory` -> `Directory`
-- `fileText` -> `FileText`
-- `fileParse` -> `FileParse`
-- `fileSchema` -> `FileSchema`
-- `keyValuePair` -> `KeyValuePair`
-- `none` -> `None`
+| Previous name     | New name          | Modules                          |
+| ----------------- | ----------------- | -------------------------------- |
+| `string`          | `String`          | Primitive, Param, Flag, Argument |
+| `boolean`         | `Boolean`         | Primitive, Param, Flag           |
+| `integer`         | `Int`             | Primitive, Param, Flag, Argument |
+| `float`           | `Finite`          | Primitive, Param, Flag, Argument |
+| `date`            | `Date`            | Primitive, Param, Flag, Argument |
+| `redacted`        | `Redacted`        | Primitive, Param, Flag, Argument |
+| `choice`          | `Choice`          | Primitive, Param, Flag, Argument |
+| `choiceWithValue` | `ChoiceWithValue` | Param, Flag, Argument            |
+| `path`            | `Path`            | Primitive, Param, Flag, Argument |
+| `file`            | `File`            | Param, Flag, Argument            |
+| `directory`       | `Directory`       | Param, Flag, Argument            |
+| `fileText`        | `FileText`        | Primitive, Param, Flag, Argument |
+| `fileParse`       | `FileParse`       | Primitive, Param, Flag, Argument |
+| `fileSchema`      | `FileSchema`      | Primitive, Param, Flag, Argument |
+| `keyValuePair`    | `KeyValuePair`    | Primitive, Param, Flag           |
+| `none`            | `None`            | Primitive, Param, Flag, Argument |
 
-There is no `Argument.Boolean`, since positional booleans are not supported.
+`Argument` has no `Boolean` or `KeyValuePair` constructor. `Primitive` has no `File`, `Directory`, or `ChoiceWithValue` constructor; use `Primitive.Path` with a path type, or `Primitive.Choice` with key/value pairs.
 
-In `Prompt`: `text` -> `Text`, `integer` -> `Integer`, `float` -> `Float`, `date` -> `Date`, `file` -> `File`, `confirm` -> `Confirm`, `toggle` -> `Toggle`, `select` -> `Select`, `multiSelect` -> `MultiSelect`, `autoComplete` -> `AutoComplete`, `list` -> `List`, `password` -> `Password`, `hidden` -> `Hidden`, and `custom` -> `Custom`. `Prompt.Float` keeps its own numeric parser and does not enforce `Schema.Finite`.
+In `Prompt`: `text` -> `Text`, `integer` -> `Integer`, `float` -> `Float`, `date` -> `Date`, `file` -> `File`, `confirm` -> `Confirm`, `toggle` -> `Toggle`, `select` -> `Select`, `multiSelect` -> `MultiSelect`, `autoComplete` -> `AutoComplete`, `list` -> `List`, `password` -> `Password`, `hidden` -> `Hidden`, and `custom` -> `Custom`. These names retain the existing interactive control vocabulary: `Text` and `Integer` describe controls, while `String` and `Int` identify the corresponding value parsers in `Flag` and `Argument`. `Prompt.Float` keeps its own numeric parser and does not enforce `Schema.Finite`. `Prompt.succeed` remains lowercase, following `Effect.succeed`.
 
 In `GlobalFlag`: `action` -> `Action` and `setting` -> `Setting`, alongside the existing types of the same name.
 
-The `Primitive` tags follow the new names: `Primitive.Int._tag` is `"Int"` and `Primitive.Finite._tag` is `"Finite"`. The `Completions.CompletionType` union uses the same tags. Parsing behavior, help labels, and completion output are unchanged.
+The public `_tag` values also change: `Primitive.Int._tag` changes from `"Integer"` to `"Int"`, and `Primitive.Finite._tag` changes from `"Float"` to `"Finite"`. Both `Completions.FlagType` and `Completions.ArgumentType` make the same breaking changes from `"Integer"`/`"Float"` to `"Int"`/`"Finite"`. Update custom completion descriptors and any switches or pattern matches on those tags. Parsing behavior, help labels, and generated completion scripts are unchanged.
