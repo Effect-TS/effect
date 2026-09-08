@@ -554,9 +554,6 @@ importers:
       iconv-lite:
         specifier: ^0.7.0
         version: 0.7.3
-      js-md4:
-        specifier: ^0.3.2
-        version: 0.3.2
     devDependencies:
       '@testcontainers/mssqlserver':
         specifier: ^12.1.0

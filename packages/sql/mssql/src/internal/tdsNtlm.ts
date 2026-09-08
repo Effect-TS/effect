@@ -1,6 +1,6 @@
-import md4 from "js-md4"
 import { Buffer } from "node:buffer"
 import { createHmac, randomBytes } from "node:crypto"
+import { md4 } from "./md4.ts"
 import { ProtocolError } from "./tdsPacket.ts"
 
 const signature = Buffer.from("NTLMSSP\0", "ascii")
@@ -10,7 +10,7 @@ const hmac = (key: Buffer, data: Buffer): Buffer => createHmac("md5", key).updat
 
 export const responseKey = (username: string, domain: string, password: string): Buffer =>
   hmac(
-    Buffer.from(md4.arrayBuffer(Buffer.from(password, "utf16le"))),
+    Buffer.from(md4(Buffer.from(password, "utf16le"))),
     Buffer.from(username.toUpperCase() + domain, "utf16le")
   )
 
