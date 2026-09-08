@@ -2,8 +2,8 @@
 "effect": patch
 ---
 
-Preserve sub-second MySQL and SQLite persisted queue retry delays. MySQL uses microsecond timestamps and intervals; SQLite uses millisecond timestamps and rounds delays up to its clock precision while retaining compatibility with existing rows.
+Preserve sub-second retry delays in the SQL persisted queue store. Retry deadlines were rounded up to whole seconds, and MySQL and SQLite compared them against whole-second clocks, so a 500 ms retry could be redelivered within a few milliseconds of failing.
 
-SQLite now stores `visible_at`, `acquired_at`, `created_at`, and `updated_at` as `YYYY-MM-DD HH:MM:SS.mmm` instead of `YYYY-MM-DD HH:MM:SS`. Existing whole-second rows remain compatible and require no migration. Older versions can also read the new rows, but rolling back can defer their eligibility to the next whole-second boundary, adding up to one second of delay before normal polling. This delays delivery rather than making it early.
+MySQL now stores queue timestamps as `DATETIME(6)`. Existing tables are altered at store startup, which can rebuild the table and block writes for the duration on large queues.
 
-Existing MySQL queue timestamp columns are migrated to DATETIME(6) at store startup. This can rebuild the table and hold locks that block writes for the duration, so plan startup accordingly for large queues. Startup now fails with a diagnostic if a previously recorded migration left timestamp columns without the required precision; repair those columns before restarting the store.
+SQLite now stores `visible_at`, `acquired_at`, `created_at` and `updated_at` as `YYYY-MM-DD HH:MM:SS.mmm`. Existing whole-second rows keep working without a migration. Rolling back to an older version reads the new rows up to one second late, never early.

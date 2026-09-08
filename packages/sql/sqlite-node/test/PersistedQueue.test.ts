@@ -79,13 +79,10 @@ it.layer(layer, { concurrent: false })("PersistedQueue SQLite retry precision", 
         yield* queue.take(() =>
           Effect.gen(function*() {
             // Use SQLite's real clock. TestClock cannot advance SQLite's 'now'.
-            // A short poll interval exposes early eligibility hidden by 1s polling.
-            while (true) {
-              const rows = yield* sql<{ phase: number }>`SELECT
-            CAST(substr(strftime('%f', 'now'), 4) AS INTEGER) AS phase`
-              if (rows[0].phase >= 850 && rows[0].phase < 900) break
-              yield* Effect.sleep(5)
-            }
+            // Fail late in the second, where whole-second rounding redelivered early.
+            const rows = yield* sql<{ phase: number }>`SELECT
+              CAST(substr(strftime('%f', 'now'), 4) AS INTEGER) AS phase`
+            yield* Effect.sleep((1880 - rows[0].phase) % 1000)
             failedAt = Date.now()
             return yield* Effect.fail("boom")
           })

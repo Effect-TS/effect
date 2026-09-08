@@ -1315,30 +1315,28 @@ export const makeStoreSql: (
 
   yield* Effect.orDie(
     Migrator.make({})({
-      loader: sqlMigrations(tableName, sql),
+      loader: sqlMigrations(tableName),
       table: `${tableName}_migrations`
     })
   )
 
+  // Tables created before DATETIME(6) round sub-second deadlines to whole
+  // seconds, so upgrade them at startup.
   yield* sql.onDialectOrElse({
     mysql: () =>
       Effect.gen(function*() {
-        // MySQL DDL implicitly commits the migration marker before ALTER TABLE
-        // runs. A failed ALTER can therefore leave an applied but unsafe schema.
-        const columns = yield* sql<{ name: string; fractional_digits: number }>`
-          SELECT COLUMN_NAME AS name, DATETIME_PRECISION AS fractional_digits
-          FROM information_schema.columns
+        const [{ count }] = yield* sql<{ count: number }>`
+          SELECT COUNT(*) AS count FROM information_schema.columns
           WHERE table_schema = DATABASE() AND table_name = ${tableName}
           AND column_name IN ('visible_at', 'acquired_at', 'created_at', 'updated_at')
+          AND DATETIME_PRECISION = 6
         `
-        if (columns.length !== 4 || columns.some((column) => Number(column.fractional_digits) !== 6)) {
-          return yield* Effect.die(
-            new Error(
-              `PersistedQueue: MySQL table ${tableName} requires DATETIME(6) for visible_at, acquired_at, created_at and updated_at. ` +
-                "The timestamp precision migration may have failed after being recorded as applied. " +
-                "Repair these columns before restarting the queue store."
-            )
-          )
+        if (Number(count) < 4) {
+          yield* sql`ALTER TABLE ${tableNameSql}
+            MODIFY COLUMN visible_at DATETIME(6) NOT NULL,
+            MODIFY COLUMN acquired_at DATETIME(6) NULL,
+            MODIFY COLUMN created_at DATETIME(6) NOT NULL,
+            MODIFY COLUMN updated_at DATETIME(6) NOT NULL`
         }
       }),
     orElse: () => Effect.void
@@ -1350,38 +1348,24 @@ export const makeStoreSql: (
     mssql: () => sql.literal("SYSDATETIME()"),
     mysql: () => sql.literal("NOW(6)"),
     pg: () => sql.literal("NOW()"),
-    // sqlite
-    // Keep the same sortable format as legacy rows, adding milliseconds.
+    // sqlite, in the same sortable format as rows written before milliseconds
     orElse: () => sql.literal("strftime('%Y-%m-%d %H:%M:%f', 'now')")
   })
 
-  // `seconds` is a whole number, possibly negative
-  const secondsOffset = (seconds: number) => {
-    const s = sql.literal(seconds.toString())
-    return sql.onDialectOrElse({
-      pg: () => sql`${sqlNow} + INTERVAL '${s} seconds'`,
-      mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} SECOND)`,
-      mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
-      orElse: () => sql`strftime('%Y-%m-%d %H:%M:%f', ${sqlNow}, '${s} seconds')`
-    })
-  }
-  const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
-  const secondsFromNow = (seconds: number) =>
+  // `millis` is a whole number, possibly negative. MSSQL rounds to whole
+  // seconds away from zero because DATEADD only accepts a 32-bit count.
+  const millisOffset = (millis: number) =>
     sql.onDialectOrElse({
-      // Preserve sub-second delays without rounding the deadline down.
-      mysql: () =>
-        sql`DATE_ADD(${sqlNow}, INTERVAL ${
-          sql.literal(String(Math.max(Math.ceil(seconds * 1_000_000), 0)))
-        } MICROSECOND)`,
-      // SQLite's clock and timestamp formatter have millisecond precision.
-      // Round up so a fractional-millisecond delay never becomes zero.
-      sqlite: () =>
-        sql`strftime('%Y-%m-%d %H:%M:%f', ${sqlNow}, ${
-          String(Math.max(Math.ceil(seconds * 1000), 0) / 1000) + " seconds"
-        })`,
-      orElse: () => secondsOffset(Math.max(Math.ceil(seconds), 0))
+      pg: () => sql`${sqlNow} + INTERVAL '${sql.literal(String(millis))} milliseconds'`,
+      mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${sql.literal(String(millis * 1000))} MICROSECOND)`,
+      mssql: () =>
+        sql`DATEADD(SECOND, ${sql.literal(String(Math.sign(millis) * Math.ceil(Math.abs(millis) / 1000)))}, ${sqlNow})`,
+      orElse: () => sql`strftime('%Y-%m-%d %H:%M:%f', ${sqlNow}, '${sql.literal(String(millis / 1000))} seconds')`
     })
-  const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
+  const wholeMillis = (duration: Duration.Duration) => Math.ceil(Duration.toMillis(duration))
+  const fromNow = (duration: Duration.Duration) => millisOffset(wholeMillis(duration))
+  const ago = (duration: Duration.Duration) => millisOffset(-wholeMillis(duration))
+  const expiresAt = ago(lockExpiration)
 
   const offer = sql.onDialectOrElse({
     pg: () => (id: string, name: string, element: string) =>
@@ -1471,7 +1455,7 @@ export const makeStoreSql: (
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
-        secondsFromNow(Duration.toSeconds(delay))
+        fromNow(delay)
       }, last_failure = ${Cause.pretty(cause)}
         WHERE sequence = ${sequence}
         AND acquired_by = ${workerIdSql}
@@ -1661,13 +1645,13 @@ export const makeStoreSql: (
   })
 
   const cleanupBatch = sql.onDialectOrElse({
-    pg: () => (state: string, seconds: number) =>
+    pg: () => (state: string, timeToLive: Duration.Duration) =>
       sql<{ readonly count: number }>`
         WITH deleted_entries AS (
           DELETE FROM ${tableNameSql}
           WHERE sequence IN (
             SELECT sequence FROM ${tableNameSql}
-            WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+            WHERE state = ${state} AND updated_at <= ${ago(timeToLive)}
             LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
           )
           RETURNING 1
@@ -1676,11 +1660,11 @@ export const makeStoreSql: (
       `.pipe(Effect.map((rows) => rows[0].count)),
     mysql: () =>
       Effect.fnUntraced(
-        function*(state: string, seconds: number) {
+        function*(state: string, timeToLive: Duration.Duration) {
           const connection = yield* sql.reserve
           const [statement, parameters] = sql`
             DELETE FROM ${tableNameSql}
-            WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+            WHERE state = ${state} AND updated_at <= ${ago(timeToLive)}
             LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
           `.compile()
           yield* connection.execute(statement, parameters, undefined)
@@ -1689,19 +1673,19 @@ export const makeStoreSql: (
         },
         Effect.scoped
       ),
-    mssql: () => (state: string, seconds: number) =>
+    mssql: () => (state: string, timeToLive: Duration.Duration) =>
       sql<{ readonly sequence: number }>`
         DELETE TOP (${sql.literal(String(sqlCleanupBatchSize))}) FROM ${tableNameSql}
         OUTPUT DELETED.sequence
-        WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+        WHERE state = ${state} AND updated_at <= ${ago(timeToLive)}
       `.pipe(Effect.map((rows) => rows.length)),
     // sqlite
-    orElse: () => (state: string, seconds: number) =>
+    orElse: () => (state: string, timeToLive: Duration.Duration) =>
       sql<{ readonly deleted: number }>`
         DELETE FROM ${tableNameSql}
         WHERE sequence IN (
           SELECT sequence FROM ${tableNameSql}
-          WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+          WHERE state = ${state} AND updated_at <= ${ago(timeToLive)}
           LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
         )
         RETURNING 1 AS deleted
@@ -1709,7 +1693,7 @@ export const makeStoreSql: (
   })
 
   const cleanupState = (state: string, timeToLive: Duration.Duration) =>
-    cleanupBatch(state, Duration.toSeconds(timeToLive)).pipe(
+    cleanupBatch(state, timeToLive).pipe(
       Effect.repeat({
         while: (deletedCount) => deletedCount === sqlCleanupBatchSize,
         schedule: Schedule.spaced(Duration.millis(10))
@@ -1819,7 +1803,7 @@ export const makeStoreSql: (
   })
 })
 
-const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
+const sqlMigrations = (tableName: string) =>
   Migrator.fromRecord({
     "0001_create_table": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -1835,10 +1819,10 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
             completed BOOLEAN NOT NULL,
             attempts INT NOT NULL DEFAULT 0,
             last_failure TEXT NULL,
-            acquired_at DATETIME NULL,
+            acquired_at DATETIME(6) NULL,
             acquired_by VARCHAR(36) NULL,
-            created_at DATETIME NOT NULL,
-            updated_at DATETIME NOT NULL
+            created_at DATETIME(6) NOT NULL,
+            updated_at DATETIME(6) NOT NULL
           )`,
         pg: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
@@ -1959,13 +1943,13 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
               MODIFY COLUMN element MEDIUMTEXT NOT NULL,
               MODIFY COLUMN last_failure MEDIUMTEXT NULL,
               ADD COLUMN state VARCHAR(10) NULL,
-              ADD COLUMN visible_at DATETIME NULL`
+              ADD COLUMN visible_at DATETIME(6) NULL`
             yield* sql`UPDATE ${tableNameSql}
               SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                   visible_at = updated_at`
             yield* sql`ALTER TABLE ${tableNameSql}
               MODIFY COLUMN state VARCHAR(10) NOT NULL,
-              MODIFY COLUMN visible_at DATETIME NOT NULL,
+              MODIFY COLUMN visible_at DATETIME(6) NOT NULL,
               DROP COLUMN completed`
           }),
         mssql: () =>
@@ -2048,21 +2032,6 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
           sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
             WHERE state = 'pending'`
       })
-    }),
-    ...client.onDialectOrElse({
-      mysql: () => ({
-        "0003_mysql_timestamp_precision": Effect.gen(function*() {
-          const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-          // Apply to existing tables too. All timestamps written with NOW(6) must
-          // retain their precision, including acquisition and cleanup timestamps.
-          yield* sql`ALTER TABLE ${sql(tableName)}
-            MODIFY COLUMN visible_at DATETIME(6) NOT NULL,
-            MODIFY COLUMN acquired_at DATETIME(6) NULL,
-            MODIFY COLUMN created_at DATETIME(6) NOT NULL,
-            MODIFY COLUMN updated_at DATETIME(6) NOT NULL`
-        })
-      }),
-      orElse: () => ({})
     })
   })
 
