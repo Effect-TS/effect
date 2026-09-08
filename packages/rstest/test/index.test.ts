@@ -404,3 +404,14 @@ it.effect("skip option", () => Effect.die("must be skipped"), { skip: true })
 it.effect.each([1])("each skip option", () => Effect.die("must be skipped"), { skip: true })
 it.live("todo option", () => Effect.die("must not run"), { todo: true })
 it.effect("false options", () => Effect.void, { skip: false, only: false, todo: false, fails: false })
+
+for (const [name, test] of [["effect", it.effect], ["live", it.live]] as const) {
+  describe(`${name} modifier precedence`, () => {
+    test.skip("skip overrides skip: false", () => Effect.die("must be skipped"), { skip: false })
+    test.fails("fails overrides fails: false", () => Effect.fail("expected"), { fails: false })
+    test.skipIf(true)("skipIf(true) overrides skip: false", () => Effect.die("must be skipped"), { skip: false })
+    test.runIf(false)("runIf(false) overrides skip: false", () => Effect.die("must be skipped"), { skip: false })
+    test.skipIf(false)("skipIf(false) preserves skip: true", () => Effect.die("must be skipped"), { skip: true })
+    test.runIf(true)("runIf(true) preserves skip: true", () => Effect.die("must be skipped"), { skip: true })
+  })
+}
