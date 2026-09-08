@@ -24,6 +24,9 @@
     "database"
   ],
   "sideEffects": [],
+  "imports": {
+    "#tds/*": "./src/internal/*.ts"
+  },
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
@@ -62,12 +65,14 @@
   },
   "devDependencies": {
     "@testcontainers/mssqlserver": "^12.1.0",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "tedious": "^20.0.0"
   },
   "peerDependencies": {
     "effect": "workspace:^"
   },
   "dependencies": {
-    "tedious": "^20.0.0"
+    "iconv-lite": "^0.7.0",
+    "js-md4": "^0.3.2"
   }
 }
