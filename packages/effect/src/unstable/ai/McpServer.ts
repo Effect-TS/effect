@@ -1429,8 +1429,7 @@ const mcpStdioSerialization = (
               }
             } else if (isInitializeJsonRpcMessage(frame)) {
               const offered = getJsonRpcProtocolVersion(frame)
-              selectedProtocol = protocols.find((protocol) => protocol.protocolVersion === offered) ??
-                protocols[0]
+              selectedProtocol = McpRuntime.selectStatefulProtocol(protocols, offered)
             }
             decoded.push(...parser.decode(JSON.stringify(frame)))
           }
