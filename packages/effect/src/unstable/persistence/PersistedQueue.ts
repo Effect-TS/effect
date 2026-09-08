@@ -1320,6 +1320,30 @@ export const makeStoreSql: (
     })
   )
 
+  yield* sql.onDialectOrElse({
+    mysql: () =>
+      Effect.gen(function*() {
+        // MySQL DDL implicitly commits the migration marker before ALTER TABLE
+        // runs. A failed ALTER can therefore leave an applied but unsafe schema.
+        const columns = yield* sql<{ name: string; fractional_digits: number }>`
+          SELECT COLUMN_NAME AS name, DATETIME_PRECISION AS fractional_digits
+          FROM information_schema.columns
+          WHERE table_schema = DATABASE() AND table_name = ${tableName}
+          AND column_name IN ('visible_at', 'acquired_at', 'created_at', 'updated_at')
+        `
+        if (columns.length !== 4 || columns.some((column) => Number(column.fractional_digits) !== 6)) {
+          return yield* Effect.die(
+            new Error(
+              `PersistedQueue: MySQL table ${tableName} requires DATETIME(6) for visible_at, acquired_at, created_at and updated_at. ` +
+                "The timestamp precision migration may have failed after being recorded as applied. " +
+                "Repair these columns before restarting the queue store."
+            )
+          )
+        }
+      }),
+    orElse: () => Effect.void
+  })
+
   const sqlNow = sql.onDialectOrElse({
     // GETDATE() rounds to 1/300s and can land in the future, hiding freshly
     // written visible_at values from the poll query
@@ -1327,7 +1351,8 @@ export const makeStoreSql: (
     mysql: () => sql.literal("NOW(6)"),
     pg: () => sql.literal("NOW()"),
     // sqlite
-    orElse: () => sql.literal("CURRENT_TIMESTAMP")
+    // Keep the same sortable format as legacy rows, adding milliseconds.
+    orElse: () => sql.literal("strftime('%Y-%m-%d %H:%M:%f', 'now')")
   })
 
   // `seconds` is a whole number, possibly negative
@@ -1337,7 +1362,7 @@ export const makeStoreSql: (
       pg: () => sql`${sqlNow} + INTERVAL '${s} seconds'`,
       mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} SECOND)`,
       mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
-      orElse: () => sql`datetime(${sqlNow}, '${s} seconds')`
+      orElse: () => sql`strftime('%Y-%m-%d %H:%M:%f', ${sqlNow}, '${s} seconds')`
     })
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
@@ -1348,6 +1373,12 @@ export const makeStoreSql: (
         sql`DATE_ADD(${sqlNow}, INTERVAL ${
           sql.literal(String(Math.max(Math.ceil(seconds * 1_000_000), 0)))
         } MICROSECOND)`,
+      // SQLite's clock and timestamp formatter have millisecond precision.
+      // Round up so a fractional-millisecond delay never becomes zero.
+      sqlite: () =>
+        sql`strftime('%Y-%m-%d %H:%M:%f', ${sqlNow}, ${
+          String(Math.max(Math.ceil(seconds * 1000), 0) / 1000) + " seconds"
+        })`,
       orElse: () => secondsOffset(Math.max(Math.ceil(seconds), 0))
     })
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
