@@ -72,7 +72,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "iconv-lite": "^0.7.0",
-    "js-md4": "^0.3.2"
+    "iconv-lite": "^0.7.0"
   }
 }
