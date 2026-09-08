@@ -150,8 +150,8 @@ const makeTester = <R>(
     self: Rstest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, Effect.asVoid, runTest(ctx))
 
-  const test = (defaults?: Rstest.TestOptions): Rstest.Test<R> => (name, self, timeout) => {
-    const options = { ...defaults, ...testOptions(timeout) }
+  const test = (modifiers?: Rstest.TestOptions): Rstest.Test<R> => (name, self, timeout) => {
+    const options = { ...testOptions(timeout), ...modifiers }
     return testApi(it, options)(name, options, (ctx) => run(ctx, [ctx], self))
   }
 
@@ -182,8 +182,8 @@ const makeTester = <R>(
 
   return Object.assign(test(), {
     skip: test({ skip: true }),
-    skipIf: (condition: unknown) => test({ skip: Boolean(condition) }),
-    runIf: (condition: unknown) => test({ skip: !condition }),
+    skipIf: (condition: unknown) => test(condition ? { skip: true } : undefined),
+    runIf: (condition: unknown) => test(condition ? undefined : { skip: true }),
     only: test({ only: true }),
     fails: test({ fails: true }),
     each,
