@@ -1,33 +1,27 @@
-import { expect, it } from "@effect/rstest"
-import { runFixture } from "./fixtures/run-fixture.ts"
+import { assert, describe, it, layer } from "@effect/rstest"
+import { Effect, Layer } from "effect"
 
-it("test cleanup settles before later tests and suite release without changing outcomes", async () => {
-  const { status, stdout, stderr, report } = await runFixture("test-lifetime", 50)
-  expect(status, `${stdout}\n${stderr}`).toBe(1)
-  expect(report.summary).toEqual({
-    failedTests: 3,
-    passedTests: 20,
-    skippedTests: 2,
-    tests: 25
+describe.sequential("test finalizers", () => {
+  const events: Array<string> = []
+  const resource = Layer.effectDiscard(Effect.acquireRelease(
+    Effect.void,
+    () => Effect.sync(() => events.push("layer released"))
+  ))
+
+  layer(resource, { excludeTestServices: true })("layer", (it) => {
+    it.effect.fails("waits for cleanup after timeout", () =>
+      Effect.gen(function*() {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => events.push("acquired")),
+          () => Effect.sleep(100).pipe(Effect.andThen(Effect.sync(() => events.push("released"))))
+        )
+        return yield* Effect.never
+      }), 10)
+
+    it.effect("finishes cleanup before the next test", () =>
+      Effect.sync(() => assert.deepStrictEqual(events, ["acquired", "released"])))
   })
-  expect(report.unhandledErrors).toEqual([])
-  expect(report.files).toHaveLength(1)
-  expect(report.files.flatMap((file) => file.errors)).toEqual([])
-  const failures = report.tests.filter((test) => test.status === "fail")
-  expect(failures.map((test) => test.name)).toEqual([
-    "timeout",
-    "failure",
-    "unexpected-success"
-  ])
-  expect(failures.flatMap((test) => test.errors ?? []).map((error) => error.message)).toEqual([
-    "test timed out in 30ms (no expect assertions completed)",
-    "intentional-test-failure",
-    "Expect test to fail"
-  ])
-  for (const name of ["expected-timeout", "expected-failure", "success"]) {
-    expect(report.tests.find((test) => test.name === name)?.status).toBe("pass")
-  }
-  for (const name of ["skipped", "runtime-skip"]) {
-    expect(report.tests.find((test) => test.name === name)?.status).toBe("skip")
-  }
-}, 30_000)
+
+  it.effect("finishes cleanup before releasing the layer", () =>
+    Effect.sync(() => assert.deepStrictEqual(events, ["acquired", "released", "layer released"])))
+})

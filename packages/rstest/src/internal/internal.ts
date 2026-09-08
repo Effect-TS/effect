@@ -255,27 +255,6 @@ export const layer = <R, E>(
     Effect.runSync
   )
   let setupFiber: Fiber.Fiber<unknown, unknown> | undefined
-  const buildContext = () =>
-    runPromise(Effect.withFiber((fiber) => {
-      setupFiber = fiber
-      return Effect.asVoid(contextEffect)
-    }))
-  let closed = false
-  const closeScope = (ctx?: Rs.TestContext) => {
-    if (closed) {
-      return Promise.resolve()
-    }
-    closed = true
-    // Suite hooks have no AbortSignal. Stop timed-out setup before releasing
-    // resources that the setup fiber may still be using.
-    return runPromise(
-      Effect.andThen(
-        setupFiber !== undefined ? Fiber.interrupt(setupFiber) : Effect.void,
-        Scope.close(scope, Exit.void)
-      ),
-      ctx
-    )
-  }
 
   const makeIt = (it: Rs.TestAPIs): Rstest.Vitest.MethodsNonLive<R> =>
     makeItProxy(it, {
@@ -305,11 +284,20 @@ export const layer = <R, E>(
 
   const register = (f: (it: Rstest.Vitest.MethodsNonLive<R>) => void) => {
     Rs.beforeAll(
-      buildContext,
+      () =>
+        runPromise(Effect.withFiber((fiber) => {
+          setupFiber = fiber
+          return Effect.asVoid(contextEffect)
+        })),
       hookTimeout(options?.timeout)
     )
     Rs.afterAll(
-      () => closeScope(),
+      // Suite hooks have no AbortSignal. Stop unfinished setup before closing its scope.
+      () =>
+        runPromise(Effect.andThen(
+          setupFiber !== undefined ? Fiber.interrupt(setupFiber) : Effect.void,
+          Scope.close(scope, Exit.void)
+        )),
       hookTimeout(options?.timeout)
     )
     return f(makeIt(Rs.it))

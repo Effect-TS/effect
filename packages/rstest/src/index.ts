@@ -226,6 +226,10 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * Share a `Layer` between multiple tests, optionally wrapping
  * the tests in a `describe` block if a name is provided.
  *
+ * Named layers accept `concurrent` to override inherited suite concurrency.
+ * Anonymous layers always inherit the enclosing suite's concurrency.
+ * Use `ctx.expect` in concurrent tests for test-local snapshots and assertion counts.
+ *
  * @since 4.0.0
  *
  * ```ts

@@ -1,4 +1,4 @@
-import { it, layer } from "@effect/rstest"
+import { type EffectTest, it, layer, type Vitest } from "@effect/rstest"
 import { Context, Effect, Layer, Schema } from "effect"
 import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
 import { describe, expect, test } from "tstyche"
@@ -123,4 +123,14 @@ describe("property testing", () => {
       }
     )
   })
+})
+
+test("effect tests accept non-void success values", () => {
+  expect(it.effect).type.toBeCallableWith("non-void", () => Effect.succeed(false))
+  expect(it.live).type.toBeCallableWith("non-void", () => Effect.succeed(42))
+})
+
+test("neutral namespace retains compatibility", () => {
+  expect<EffectTest.Methods>().type.toBe<Vitest.Methods>()
+  expect<EffectTest.Tester<never>>().type.toBe<Vitest.Tester<never>>()
 })

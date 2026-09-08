@@ -14,7 +14,10 @@ it.live(
 )
 
 describeWrapped("describeWrapped", (it) => {
-  it.effect("provides the enhanced test API", () => Effect.sync(() => expect(typeof it.layer).toEqual("function")))
+  it.effect("provides test services", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(yield* Clock.currentTimeMillis, 0)
+    }))
 })
 
 it("throws fails when the thunk does not throw", () => {
@@ -386,3 +389,29 @@ describe("property failures", () => {
     { fails: true, timeout: 10, arbitrary: { runs: 1, maxDiscards: 0, seed: "property-timeout" } }
   )
 })
+
+for (const [name, test] of [["effect", it.effect], ["live", it.live]] as const) {
+  test(`${name}: expected failure option`, () => Effect.fail("expected"), { fails: true })
+  test.skipIf(false)(`${name}: skipIf retains expected failure`, () => Effect.fail("expected"), { fails: true })
+  test.runIf(true)(`${name}: runIf retains expected failure`, () => Effect.fail("expected"), { fails: true })
+  test.each([1])(`${name}: each retains expected failure`, () => Effect.fail("expected"), { fails: true })
+}
+
+const value = {
+  // oxlint-disable-next-line unicorn/no-thenable -- regression: Effect values must bypass Promise assimilation
+  get then(): never {
+    throw new Error("Effect success values must not reach Promise resolution")
+  }
+}
+
+it.effect("discards thenable success values before the Rstest boundary", () => Effect.succeed(value))
+it.live("discards live thenable success values before the Rstest boundary", () => Effect.succeed(value))
+
+it.prop(
+  "Schema and Arbitrary with object",
+  { count: Schema.Int, text: textArbitrary },
+  ({ count, text }) => {
+    assert.isTrue(Number.isInteger(count))
+    assert.include(["a", "b"], text)
+  }
+)
