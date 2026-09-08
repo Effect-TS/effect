@@ -9,7 +9,7 @@ import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
-import { makeMcpSseReader, readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
+import { makeMcpSseReader } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
@@ -304,9 +304,11 @@ export const statelessModernSuite = (
                 "Mcp-Method": "tools/call",
                 "Mcp-Name": "EmitLogs"
               })
-              const completed = yield* readMcpHttpResponse(result)
-              assert.deepInclude(completed, { id: "originating-request" })
-              assert.property(completed, "result")
+              const body = yield* Effect.promise(() => result.text())
+              const logOffset = body.indexOf("\"method\":\"notifications/message\"")
+              const resultOffset = body.indexOf("\"id\":\"originating-request\"")
+              assert.isAtLeast(logOffset, 0)
+              assert.isAbove(resultOffset, logOffset)
             }
             // Delivery is acknowledged before publishing the sentinel, so no timing window is needed.
             yield* server.notifications["notifications/tools/list_changed"]({})
