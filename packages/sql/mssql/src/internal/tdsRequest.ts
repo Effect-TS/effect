@@ -278,12 +278,25 @@ const encodeValue = (p: Parameter, collation: Buffer): { info: Buffer; body: Buf
     if (!isNull) {
       const d = date(value)
       if (d.getUTCFullYear() < 1 || d.getUTCFullYear() > 9999) throw new ProtocolError("Date outside SQL Server range")
-      const days = Math.floor((d.getTime() + 62135596800000) / 86400000)
+      let days = Math.floor((d.getTime() + 62135596800000) / 86400000)
       const time = ((d.getTime() % 86400000) + 86400000) % 86400000
       const parts: Array<Buffer> = []
       if (name !== "Date") {
+        // The result decoder uses tedious's plural spelling. Accept the legacy
+        // singular spelling too, which tedious's input encoder used.
+        const temporal = d as Date & { nanosecondsDelta?: unknown; nanosecondDelta?: unknown }
+        const delta = temporal.nanosecondsDelta ?? temporal.nanosecondDelta ?? 0
+        if (typeof delta !== "number" || !Number.isFinite(delta) || delta < 0 || delta >= 0.001) {
+          throw new ProtocolError("Invalid sub-millisecond time fraction")
+        }
+        let ticks = Math.round(time * 10 ** (scale - 3) + delta * 10 ** scale)
+        if (ticks === 86400 * 10 ** scale) {
+          ticks = 0
+          if (name !== "Time") days++
+        }
+        if (days > 3652058) throw new ProtocolError("Rounded date outside SQL Server range")
         const t = Buffer.alloc(timeSize)
-        t.writeUIntLE(Math.floor(time * 10 ** scale / 1000), 0, timeSize)
+        t.writeUIntLE(ticks, 0, timeSize)
         parts.push(t)
       }
       if (name !== "Time") {

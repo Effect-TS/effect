@@ -2,7 +2,9 @@ import * as Packet from "#tds/tdsPacket"
 import { describe, expect, it } from "@effect/vitest"
 import { Buffer } from "node:buffer"
 
-describe("TDS packets", () => {
+// Exhaustive synchronous fragmentation loops must not starve concurrently
+// scheduled tests in the same worker (notably on busy Bun CI runners).
+describe("TDS packets", { concurrent: false }, () => {
   it("encodes Security Token and UTF-8 feature extensions with byte lengths and indirect offsets", () => {
     const data = Packet.login({
       server: "localhost",

@@ -38,7 +38,7 @@ const baseline = Effect.acquireRelease(
   (conn) => Effect.sync(() => conn.close())
 )
 
-const tediousQuery = (conn: Tedious.Connection, query: string, parameter: boolean) =>
+const tediousQuery = (conn: Tedious.Connection, query: string, parameter: boolean | string) =>
   Effect.callback<ReadonlyArray<any>, Error>((resume) => {
     const request = new Tedious.Request(query, (error, _count, rows) => {
       if (error) {
@@ -62,7 +62,8 @@ const tediousQuery = (conn: Tedious.Connection, query: string, parameter: boolea
         return row
       })))
     })
-    if (parameter) request.addParameter("value", Tedious.TYPES.Float, 42)
+    if (typeof parameter === "string") request.addParameter("value", Tedious.TYPES.NVarChar, parameter)
+    else if (parameter) request.addParameter("value", Tedious.TYPES.Float, 42)
     conn.execSql(request)
     return Effect.sync(() => {
       conn.cancel()
@@ -115,6 +116,7 @@ const program = Effect.scoped(Effect.gen(function*() {
       parameter: false
     },
     { name: "large-unicode", sql: "SELECT REPLICATE(CAST(N'λ' AS nvarchar(max)), 10000) AS text", parameter: false },
+    { name: "large-unicode-parameter", sql: "SELECT @value AS text", parameter: "λ".repeat(10000) },
     {
       name: "transaction-insert-rollback",
       sql: "DECLARE @t TABLE(value float); INSERT INTO @t VALUES(@value)",
@@ -124,7 +126,11 @@ const program = Effect.scoped(Effect.gen(function*() {
   for (const workload of workloads) {
     const nativeQuery = native.query(
       workload.sql,
-      workload.parameter ? [{ name: "value", type: TYPES.Float, value: 42 }] : []
+      typeof workload.parameter === "string"
+        ? [{ name: "value", type: TYPES.NVarChar, value: workload.parameter }]
+        : workload.parameter
+        ? [{ name: "value", type: TYPES.Float, value: 42 }]
+        : []
     )
       .pipe(Effect.map((result) => result.rows))
     const baselineQuery = tediousQuery(tedious, workload.sql, workload.parameter)

@@ -98,6 +98,8 @@ export class Session {
   private packetSize: number
   private readonly closedListeners = new Set<() => void>()
   private readonly semaphore = Semaphore.makeUnsafe(1)
+  private readonly writes: Array<Buffer> = []
+  private writing = false
 
   readonly config: Config
   private readonly connected: (result: Effect.Effect<Session, SqlError>) => void
@@ -252,17 +254,46 @@ export class Session {
   }
 
   private write(data: Buffer): void {
-    try {
-      ;(this.tls ?? this.socket).write(data)
-    } catch (error) {
-      this.fail(error)
+    if (this.closed) return
+    this.writes.push(data)
+    if (this.writing) return
+    this.writing = true
+    const drain = (): void => {
+      const data = this.writes.shift()
+      if (data === undefined || this.closed) {
+        this.writing = false
+        return
+      }
+      let offset = 0
+      const next = (): void => {
+        if (this.closed) return
+        // Some Node-compatible runtimes do not implement setMaxSendFragment.
+        // Await each TLS write so _writev cannot combine packets into a record
+        // larger than SQL Server's negotiated receive size. Queue whole messages
+        // so cancellation cannot insert ATTENTION inside an unfinished request.
+        const end = this.tls ? Math.min(offset + this.packetSize, data.length) : data.length
+        const chunk = data.subarray(offset, end)
+        offset = end
+        try {
+          ;(this.tls ?? this.socket).write(chunk, (error) => {
+            if (error) this.fail(error)
+            else if (offset < data.length) next()
+            else drain()
+          })
+        } catch (error) {
+          this.fail(error)
+        }
+      }
+      next()
     }
+    drain()
   }
 
   private fail(cause: unknown): void {
     if (this.closed) return
     const connecting = this.state !== "ready"
     this.state = "closed"
+    this.writes.length = 0
     this.loginPayload.fill(0)
     clearTimeout(this.connectTimer)
     this.tls?.destroy()
@@ -358,13 +389,40 @@ export class Session {
 
   private startTls(): void {
     this.state = "handshake"
+    let buffered: Buffer = Buffer.alloc(0)
+    let applicationData = false
     this.bridge = new Duplex({
       read() {},
       write: (chunk: Buffer, _encoding, callback) => {
-        this.socket.write(
-          this.state === "handshake" ? Packet.encode(Packet.PRELOGIN, chunk, this.packetSize) : chunk,
-          callback
-        )
+        if (applicationData && buffered.length === 0) {
+          this.socket.write(chunk, callback)
+          return
+        }
+        // secureConnect can precede the final outgoing handshake records on
+        // resumed sessions in Node-compatible runtimes. Frame complete TLS
+        // records, retaining the TDS wrapper until application traffic begins.
+        buffered = buffered.length === 0 ? chunk : Buffer.concat([buffered, chunk])
+        const output: Array<Buffer> = []
+        const handshake: Array<Buffer> = []
+        const flushHandshake = () => {
+          if (handshake.length === 0) return
+          output.push(Packet.encode(Packet.PRELOGIN, Buffer.concat(handshake), this.packetSize))
+          handshake.length = 0
+        }
+        while (buffered.length >= 5) {
+          const length = 5 + buffered.readUInt16BE(3)
+          if (buffered.length < length) break
+          const record = buffered.subarray(0, length)
+          buffered = buffered.subarray(length)
+          if (this.state !== "handshake" && record[0] === 23) applicationData = true
+          if (applicationData) {
+            flushHandshake()
+            output.push(record)
+          } else handshake.push(record)
+        }
+        flushHandshake()
+        if (output.length === 0) callback()
+        else this.socket.write(Buffer.concat(output), callback)
       }
     })
     this.bridge.on("error", (error) => this.fail(error))

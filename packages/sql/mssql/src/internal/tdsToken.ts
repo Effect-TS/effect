@@ -295,10 +295,14 @@ export const value = (r: Reader, c: Column, maxValueSize: number): unknown => {
     case 0x2b: {
       const timeLength = c.scale <= 2 ? 3 : c.scale <= 4 ? 4 : 5
       sized(data, [timeLength + (type === 0x29 ? 0 : type === 0x2a ? 3 : 5)])
-      const time = data.readUIntLE(0, timeLength) / 10 ** c.scale * 1000
+      const ticks = data.readUIntLE(0, timeLength) * 10 ** (7 - c.scale)
+      if (ticks >= 864000000000) throw new ProtocolError("Time outside SQL Server range")
       const days = type === 0x29 ? 0 : data.readUIntLE(timeLength, 3)
+      if (days > 3652058) throw new ProtocolError("Date outside SQL Server range")
       // DATETIMEOFFSET's date/time fields are already UTC on the wire.
-      return new Date((type === 0x29 ? 0 : dateEpoch) + days * 86400000 + Math.floor(time))
+      const date = new Date((type === 0x29 ? 0 : dateEpoch) + days * 86400000 + Math.floor(ticks / 10000))
+      Object.defineProperty(date, "nanosecondsDelta", { value: (ticks % 10000) / 1e7, enumerable: false })
+      return date
     }
     case 0xa7:
     case 0xaf:

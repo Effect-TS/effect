@@ -36,6 +36,36 @@ afterAll(async () => {
 }, 60000)
 
 describe("native TDS / SQL Server", () => {
+  it.effect("preserves 100ns temporal fractions and rounds reduced scales across midnight", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const session = yield* Connection.make(config)
+      const result = yield* session.query(`SELECT
+        CAST('12:34:56.1234567' AS time(7)) AS t,
+        CAST('2024-02-29T12:34:56.1234567' AS datetime2(7)) AS dt,
+        CAST('2024-02-29T12:34:56.1234567+02:00' AS datetimeoffset(7)) AS dto`)
+      const row = result.rows[0] as Record<string, MssqlTypes.DateWithNanosecondsDelta>
+      expect(row.t.toISOString()).toBe("1970-01-01T12:34:56.123Z")
+      expect(row.dt.toISOString()).toBe("2024-02-29T12:34:56.123Z")
+      expect(row.dto.toISOString()).toBe("2024-02-29T10:34:56.123Z")
+      for (const [name, type] of [["t", TYPES.Time], ["dt", TYPES.DateTime2], ["dto", TYPES.DateTimeOffset]] as const) {
+        expect(row[name].nanosecondsDelta).toBe(0.0004567)
+        expect(Object.keys(row[name])).not.toContain("nanosecondsDelta")
+        const roundtrip = yield* session.query("SELECT DATEPART(NANOSECOND, @value) AS fraction", [{
+          name: "value",
+          type,
+          value: row[name],
+          options: { scale: 7 }
+        }])
+        expect(roundtrip.rows).toEqual([{ fraction: 123456700 }])
+      }
+      const rounded = yield* session.query("SELECT @value AS value", [{
+        name: "value",
+        type: TYPES.DateTime2,
+        value: new Date("2024-02-29T23:59:59.999Z"),
+        options: { scale: 0 }
+      }])
+      expect(rounded.rows[0].value.toISOString()).toBe("2024-03-01T00:00:00.000Z")
+    })))
   it.effect("roundtrips decimal, money, legacy LOB, XML, and ANSI parameters", () =>
     Effect.scoped(Effect.gen(function*() {
       const session = yield* Connection.make(config)

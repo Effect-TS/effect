@@ -45,4 +45,18 @@ describe("TDS request encoding", () => {
     expect(() => parameter(Request.TYPES.TVP, value)).toThrow("does not match")
     expect(() => parameter(Request.TYPES.TVP, { ...value, rows: [["invalid"]] })).toThrow("integer")
   })
+
+  it("rounds temporal scales, carries midnight, and preserves sub-millisecond fractions", () => {
+    for (const type of [Request.TYPES.Time, Request.TYPES.DateTime2, Request.TYPES.DateTimeOffset]) {
+      expect(parameter(type, new Date("2024-01-01T23:59:59.999Z"), { scale: 0 }))
+        .toEqual(parameter(type, new Date("2024-01-02T00:00:00Z"), { scale: 0 }))
+      const value = Object.assign(new Date("2024-01-01T00:00:00.123Z"), { nanosecondsDelta: 0.0004567 })
+      const bytes = parameter(type, value, { scale: 7 })
+      const timeOffset = bytes.length - (type.name === "Time" ? 5 : type.name === "DateTime2" ? 8 : 10)
+      expect(bytes.readUIntLE(timeOffset, 5)).toBe(1234567)
+      expect(() => parameter(type, Object.assign(new Date(), { nanosecondsDelta: NaN }))).toThrow("fraction")
+    }
+    expect(() => parameter(Request.TYPES.DateTime2, new Date("9999-12-31T23:59:59.999Z"), { scale: 0 }))
+      .toThrow("Rounded date")
+  })
 })

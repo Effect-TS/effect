@@ -32,6 +32,11 @@ Use `MssqlTypes` from `@effect/sql-mssql` for procedure parameter descriptors an
 `parameterTypes`. These are native descriptors, not the objects exported by tedious.
 SQL `bigint` results remain strings; decimal and numeric results remain JavaScript
 numbers, which can lose precision. Exact decimal input can be supplied as a string.
+`time`, `datetime2`, and `datetimeoffset` results retain sub-millisecond precision
+in a non-enumerable `nanosecondsDelta` property, compatible with tedious. Despite
+the property's name, it is measured in seconds. Passing the Date back as a native
+temporal parameter preserves the fraction at the requested scale. Lower scales
+round values, including rollover at midnight.
 
 For Azure SQL, provide `accessToken` as an Effect returning a redacted access
 token for the SQL service. It runs for each new pooled connection, allowing the
