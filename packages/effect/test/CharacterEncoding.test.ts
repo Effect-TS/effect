@@ -5,6 +5,7 @@ import * as All from "effect/encoding/All"
 import * as Utf8 from "effect/encoding/Utf8"
 import * as Windows1251 from "effect/encoding/Windows1251"
 import { make } from "effect/internal/characterEncoding/codec"
+import { MultiByte } from "effect/internal/characterEncoding/multiByte"
 import * as Stream from "effect/Stream"
 import * as Iconv from "iconv-lite"
 import { strict as assert } from "node:assert"
@@ -21,6 +22,54 @@ const bytes = (chunks: ReadonlyArray<Uint8Array>) => {
 }
 
 describe("CharacterEncoding", () => {
+  it("sizes multibyte encoder buffers from mappings and encode-only additions", () => {
+    const codec = new MultiByte({ table: [["41", "A"], ["8140", "漢"]], encodeAdd: { "€": 0x8fa1a1 } })
+    const encoder = codec.encoder({})
+    const output = encoder.write("A漢€")
+    assert.deepEqual(output, Uint8Array.of(0x41, 0x81, 0x40, 0x8f, 0xa1, 0xa1))
+    assert.equal(output.buffer.byteLength, 9)
+    assert.deepEqual(encoder.end(), new Uint8Array())
+  })
+
+  it("preserves astral mappings, split surrogates, replacement and strict failures in the simple encoder", () => {
+    const codec = new MultiByte({ table: [["41", "A"], ["8140", "😀"]] })
+    const encoder = codec.encoder({ fatal: true })
+    assert.deepEqual(encoder.write("\ud83d"), new Uint8Array())
+    assert.deepEqual(encoder.write(""), new Uint8Array())
+    assert.deepEqual(encoder.write("\ude00A"), Uint8Array.of(0x81, 0x40, 0x41))
+    assert.deepEqual(encoder.end(), new Uint8Array())
+    const replacement = codec.encoder({})
+    assert.deepEqual(replacement.write("\ud800A\udc00"), Uint8Array.of(63, 65, 63))
+    assert.deepEqual(replacement.write("\ud800"), new Uint8Array())
+    assert.deepEqual(replacement.end(), Uint8Array.of(63))
+    const strict = codec.encoder({ fatal: true })
+    strict.write("\ud800")
+    assert.throws(() => strict.end(), RangeError)
+    assert.throws(() => codec.encoder({ fatal: true }).write("€"), RangeError)
+  })
+
+  it("includes decode-only entries and skipped subtrees in decoder capacity bounds", () => {
+    for (const skip of [0x81, 0x8140]) {
+      const codec = new MultiByte({ table: [["8140", "\u0ffeABC"]], encodeSkipVals: [skip] })
+      const decoder = codec.decoder({})
+      assert.equal(decoder.write(Uint8Array.of(0x81)), "")
+      assert.equal(decoder.write(Uint8Array.of(0x40, 0xff)), "ABC�")
+      assert.equal(decoder.end(), "")
+      assert.deepEqual(codec.encoder({}).write("ABC"), Uint8Array.of(63, 63, 63))
+    }
+    const astral = new MultiByte({ table: [["41", "😀"]] })
+    assert.equal(astral.decoder({}).write(Uint8Array.of(0x41, 0x41)), "😀😀")
+  })
+
+  it("retains multi-character sequence buffering with mapping-derived capacities", () => {
+    const codec = new MultiByte({ table: [["41", "A"], ["8140", "\u0ffeABC"]] })
+    const encoder = codec.encoder({})
+    assert.deepEqual(encoder.write("AB"), new Uint8Array())
+    assert.deepEqual(encoder.write("CA"), Uint8Array.of(0x81, 0x40))
+    assert.deepEqual(encoder.end(), Uint8Array.of(0x41))
+    assert.equal(codec.decoder({}).write(Uint8Array.of(0x81, 0x40)), "ABC")
+  })
+
   it("constructs shared codec machinery once, lazily, with independent conversion state", () => {
     let constructions = 0
     const codec = make("testutf8", [], () => {
