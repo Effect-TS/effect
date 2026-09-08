@@ -14,6 +14,23 @@ const row = Buffer.from([0xd1, 42, 0, 0, 0, 255, 255, 255, 255])
 const nbcRow = Buffer.from([0xd2, 1, 7, 0, 0, 0])
 
 describe("TDS tokens", () => {
+  it("decodes fragmented feature acknowledgements and rejects duplicate IDs", () => {
+    const data = Buffer.from([0xae, 2, 0, 0, 0, 0, 10, 1, 0, 0, 0, 1, 255])
+    for (let split = 0; split <= data.length; split++) {
+      const parser = new TokenParser()
+      const tokens: Array<Token> = []
+      parser.push(data.subarray(0, split), (token) => tokens.push(token))
+      parser.push(data.subarray(split), (token) => tokens.push(token))
+      parser.end()
+      expect(tokens).toEqual([{
+        _tag: "FeatureAck",
+        features: new Map([[2, Buffer.alloc(0)], [10, Buffer.from([1])]])
+      }])
+    }
+    expect(() => new TokenParser().push(Buffer.from([0xae, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 255]), () => {})).toThrow(
+      "Duplicate"
+    )
+  })
   it("handles every split through metadata, ROW, NBCROW, and DONE", () => {
     const data = Buffer.concat([metadata, row, nbcRow, done])
     for (let i = 0; i <= data.length; i++) {

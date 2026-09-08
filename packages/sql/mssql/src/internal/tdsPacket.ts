@@ -135,18 +135,19 @@ export class MessageParser {
 }
 
 /** MS-TDS 2.2.6.5: VERSION, ENCRYPTION, INSTOPT, THREADID, MARS. */
-export const prelogin = (encrypt: boolean): Buffer => {
+export const prelogin = (encrypt: boolean, fedAuth = false): Buffer => {
   const entries = [
     Buffer.from([0, 0, 0, 0, 0, 0]),
     Buffer.from([encrypt ? 1 : 2]),
     Buffer.from([0]),
     Buffer.alloc(4),
-    Buffer.from([0])
+    Buffer.from([0]),
+    ...(fedAuth ? [Buffer.from([1])] : [])
   ]
   const header = Buffer.alloc(entries.length * 5 + 1)
   let offset = header.length
   for (let i = 0; i < entries.length; i++) {
-    header[i * 5] = i
+    header[i * 5] = i === 5 ? 6 : i // FEDAUTHREQUIRED is option 0x06
     header.writeUInt16BE(offset, i * 5 + 1)
     header.writeUInt16BE(entries[i].length, i * 5 + 3)
     offset += entries[i].length
@@ -155,8 +156,9 @@ export const prelogin = (encrypt: boolean): Buffer => {
   return Buffer.concat([header, ...entries])
 }
 
-export const preloginEncryption = (data: Buffer): number => {
+export const preloginOptions = (data: Buffer): { encryption: number; fedAuthRequired: boolean } => {
   let encryption: number | undefined
+  let fedAuth: number | undefined
   let offset = 0
   const ranges: Array<readonly [number, number]> = []
   while (offset < data.length && data[offset] !== 0xff) {
@@ -169,6 +171,12 @@ export const preloginEncryption = (data: Buffer): number => {
       if (size !== 1 || encryption !== undefined) throw new ProtocolError("Invalid PRELOGIN encryption option")
       encryption = data[start]
     }
+    if (data[offset] === 6) {
+      if (size !== 1 || fedAuth !== undefined || data[start] > 1) {
+        throw new ProtocolError("Invalid PRELOGIN FEDAUTHREQUIRED option")
+      }
+      fedAuth = data[start]
+    }
     offset += 5
   }
   if (offset >= data.length) throw new ProtocolError("Missing PRELOGIN terminator")
@@ -176,8 +184,10 @@ export const preloginEncryption = (data: Buffer): number => {
     if (start <= offset) throw new ProtocolError("PRELOGIN option overlaps header")
   }
   if (encryption === undefined || encryption > 3) throw new ProtocolError("Missing or invalid PRELOGIN encryption")
-  return encryption
+  return { encryption, fedAuthRequired: fedAuth === 1 }
 }
+
+export const preloginEncryption = (data: Buffer): number => preloginOptions(data).encryption
 
 export interface LoginOptions {
   readonly server: string
@@ -187,10 +197,18 @@ export interface LoginOptions {
   readonly applicationName?: string | undefined
   readonly packetSize?: number | undefined
   readonly sspi?: Buffer | undefined
+  readonly accessToken?: string | undefined
+  readonly fedAuthEcho?: boolean | undefined
 }
 
-/** SQL authentication LOGIN7, TDS 7.4, without optional feature extensions. */
+/** TDS 7.4 LOGIN7 with UTF-8 support and optional Security Token FedAuth. */
 export const login = (options: LoginOptions): Buffer => {
+  if (
+    options.accessToken !== undefined &&
+    (options.sspi || options.accessToken.length === 0 || options.accessToken.length > 60000)
+  ) {
+    throw new ProtocolError("Invalid federated authentication token or conflicting SSPI authentication")
+  }
   const header = Buffer.alloc(94)
   header.writeUInt32LE(0x74000004, 4)
   header.writeUInt32LE(options.packetSize ?? 4096, 8)
@@ -198,11 +216,11 @@ export const login = (options: LoginOptions): Buffer => {
   header[24] = 0xe0 // little endian, ASCII, IEEE, database notification, fatal database error
   header[25] = 0x03 // fatal language error and ODBC session semantics
   if (options.sspi) header[25] |= 0x80
-  header[27] = 0x08 // unknown collation handling
+  header[27] = 0x18 // unknown collation handling and feature extensions
   const fields = [
     [36, "effect"],
-    [40, options.sspi ? "" : options.username ?? ""],
-    [44, options.sspi ? "" : options.password ?? ""],
+    [40, options.sspi || options.accessToken !== undefined ? "" : options.username ?? ""],
+    [44, options.sspi || options.accessToken !== undefined ? "" : options.password ?? ""],
     [48, options.applicationName ?? "@effect/sql-mssql"],
     [52, options.server],
     [56, ""],
@@ -233,6 +251,28 @@ export const login = (options: LoginOptions): Buffer => {
     parts.push(options.sspi)
     offset += options.sspi.length
   }
+  // ibExtension points to a DWORD containing the absolute FeatureExt offset.
+  if (offset > 65535) throw new ProtocolError("LOGIN7 variable fields exceed offset limit")
+  header.writeUInt16LE(offset, 56)
+  header.writeUInt16LE(4, 58)
+  const pointer = Buffer.alloc(4)
+  pointer.writeUInt32LE(offset + 4)
+  parts.push(pointer)
+  offset += 4
+  if (options.accessToken !== undefined) {
+    const token = Buffer.from(options.accessToken, "utf16le")
+    const feature = Buffer.alloc(10)
+    feature[0] = 2
+    feature.writeUInt32LE(token.length + 5, 1)
+    feature[5] = 2 | (options.fedAuthEcho ? 1 : 0)
+    feature.writeUInt32LE(token.length, 6)
+    parts.push(feature, token)
+    offset += feature.length + token.length
+  }
+  const utf8 = Buffer.from([0x0a, 1, 0, 0, 0, 1, 0xff])
+  parts.push(utf8)
+  offset += utf8.length
+  if (offset > 131071) throw new ProtocolError("LOGIN7 exceeds protocol length limit")
   header.writeUInt32LE(offset, 0)
   return Buffer.concat(parts, offset)
 }

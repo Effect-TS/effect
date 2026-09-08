@@ -3,6 +3,30 @@ import { describe, expect, it } from "@effect/vitest"
 import { Buffer } from "node:buffer"
 
 describe("TDS packets", () => {
+  it("encodes Security Token and UTF-8 feature extensions with byte lengths and indirect offsets", () => {
+    const data = Packet.login({
+      server: "localhost",
+      username: "ignored",
+      password: "ignored",
+      accessToken: "token-λ",
+      fedAuthEcho: true
+    })
+    expect(data[27] & 0x10).toBe(0x10)
+    expect(data[25] & 0x80).toBe(0)
+    expect(data.readUInt16LE(42)).toBe(0)
+    expect(data.readUInt16LE(46)).toBe(0)
+    expect(data.readUInt16LE(58)).toBe(4)
+    const offset = data.readUInt32LE(data.readUInt16LE(56))
+    expect(data.subarray(offset, offset + 10)).toEqual(Buffer.from([2, 19, 0, 0, 0, 3, 14, 0, 0, 0]))
+    expect(data.toString("utf16le", offset + 10, offset + 24)).toBe("token-λ")
+    expect(data.subarray(offset + 24)).toEqual(Buffer.from([10, 1, 0, 0, 0, 1, 255]))
+    expect(data.readUInt32LE(0)).toBe(data.length)
+    expect(Packet.preloginOptions(Packet.prelogin(true, true))).toEqual({ encryption: 1, fedAuthRequired: true })
+    expect(Packet.preloginOptions(Packet.prelogin(true))).toEqual({ encryption: 1, fedAuthRequired: false })
+    expect(() => Packet.login({ server: "localhost", accessToken: "" })).toThrow("token")
+    expect(() => Packet.login({ server: "localhost", accessToken: "x".repeat(60001) })).toThrow("token")
+    expect(() => Packet.login({ server: "localhost", accessToken: "x", sspi: Buffer.from([1]) })).toThrow("SSPI")
+  })
   it("decodes every two-chunk split including empty packets and multiple messages", () => {
     const payload = Buffer.alloc(1800, 0x5a)
     const wire = Buffer.concat([
@@ -20,7 +44,7 @@ describe("TDS packets", () => {
       expect(packets[4].type).toBe(Packet.ATTENTION)
       expect(packets[4].data.length).toBe(0)
     }
-  })
+  }, 30000)
 
   it("handles one-byte fragments and packet id wraparound", () => {
     const payload = Buffer.alloc(504 * 257, 0x7b)

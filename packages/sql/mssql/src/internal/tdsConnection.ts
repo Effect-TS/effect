@@ -86,6 +86,7 @@ export class Session {
   private pending: Pending | undefined
   private loginAck = false
   private loginDone = false
+  private fedAuthAck = false
   private loginError: SqlError | undefined
   private route: RoutingChange | undefined
   private readonly loginPayload: Buffer
@@ -104,6 +105,9 @@ export class Session {
     this.config = config
     this.connected = connected
     this.packetSize = config.packetSize ?? 4096
+    if (config.accessToken !== undefined && (config.encrypt === false || config.authType === "ntlm")) {
+      throw new Packet.ProtocolError("Federated authentication requires TLS and cannot be combined with NTLM")
+    }
     if (config.authType === "ntlm" && !config.domain) throw new Packet.ProtocolError("NTLM requires a domain")
     this.loginPayload = Packet.login(config.authType === "ntlm" ? { ...config, sspi: Ntlm.negotiate() } : config)
     if (!Number.isInteger(this.packetSize) || this.packetSize < 512 || this.packetSize > 32767) {
@@ -144,7 +148,10 @@ export class Session {
     })
     this.socket.once(
       "connect",
-      () => this.socket.write(Packet.encode(Packet.PRELOGIN, Packet.prelogin(config.encrypt ?? true)))
+      () =>
+        this.socket.write(
+          Packet.encode(Packet.PRELOGIN, Packet.prelogin(config.encrypt ?? true, config.accessToken !== undefined))
+        )
     )
   }
 
@@ -256,6 +263,7 @@ export class Session {
     if (this.closed) return
     const connecting = this.state !== "ready"
     this.state = "closed"
+    this.loginPayload.fill(0)
     clearTimeout(this.connectTimer)
     this.tls?.destroy()
     this.bridge?.destroy()
@@ -285,7 +293,11 @@ export class Session {
     if (this.state === "prelogin") {
       const message = this.messages.push(packet)
       if (!message) return
-      const encryption = Packet.preloginEncryption(message)
+      const { encryption, fedAuthRequired } = Packet.preloginOptions(message)
+      if (this.config.accessToken !== undefined) {
+        const featureOffset = this.loginPayload.readUInt32LE(this.loginPayload.readUInt16LE(56))
+        this.loginPayload[featureOffset + 5] = 2 | (fedAuthRequired ? 1 : 0)
+      }
       if (encryption === 1 || encryption === 3) this.startTls()
       else if (this.config.encrypt !== false) throw new Packet.ProtocolError("Server refused required encryption")
       else if (encryption === 2) this.sendLogin()
@@ -318,6 +330,9 @@ export class Session {
         return
       }
       if (!this.loginAck || !this.loginDone) throw new Packet.ProtocolError("Incomplete LOGIN7 response")
+      if (this.config.accessToken !== undefined && !this.fedAuthAck) {
+        throw new Packet.ProtocolError("Missing federated authentication acknowledgement")
+      }
       this.state = "ready"
       clearTimeout(this.connectTimer)
       this.connected(Effect.succeed(this))
@@ -381,6 +396,17 @@ export class Session {
   private onToken(token: Token): void {
     const pending = this.pending
     switch (token._tag) {
+      case "FeatureAck": {
+        if (this.state !== "login") throw new Packet.ProtocolError("Unexpected feature acknowledgement")
+        const fedAuth = token.features.get(2)
+        if (fedAuth !== undefined) {
+          if (this.config.accessToken === undefined || this.fedAuthAck || fedAuth.length !== 0) {
+            throw new Packet.ProtocolError("Invalid federated authentication acknowledgement")
+          }
+          this.fedAuthAck = true
+        }
+        break
+      }
       case "LoginAck":
         if (token.version !== 0x74000004) throw new Packet.ProtocolError("Server did not negotiate TDS 7.4")
         this.loginAck = true
