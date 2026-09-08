@@ -54,49 +54,36 @@ export const addEqualityTesters = () => {
   ])
 }
 
-/** @internal */
-const testOptions = (timeout?: number | Rstest.TestOptions): Rstest.TestOptions =>
+type TestOptions = Rstest.TestOptions & {
+  readonly arbitrary?: Arbitrary.CheckOptions | undefined
+}
+
+const testOptions = (timeout?: number | TestOptions): TestOptions =>
   typeof timeout === "number" ? { timeout } : timeout ?? {}
 
 type TestAPI = Rs.TestAPIs["fails"]
 
-type Modifier = "skip" | "only" | "fails"
-
 // Rstest exposes these options as modifiers instead of `TestOptions` fields.
-const testApi = (it: Rs.TestAPIs, options: Rstest.TestOptions, modifier?: Modifier): TestAPI => {
+const testApi = (it: Rs.TestAPIs, options: TestOptions): TestAPI => {
   let api: TestAPI = it
   if (options.concurrent !== undefined) {
     api = options.concurrent ? api.concurrent : api.sequential
   }
-  if (modifier === "only" || options.only) {
+  if (options.only) {
     api = api.only
-  } else if (modifier === "skip" || options.skip) {
+  } else if (options.skip) {
     api = api.skip
   } else if (options.todo) {
     api = api.todo
   }
-  return modifier === "fails" || options.fails ? api.fails : api
+  return options.fails ? api.fails : api
 }
 
-const hookTimeout = (timeout?: Duration.Input) =>
-  timeout === undefined ? undefined : Duration.toMillis(Duration.fromInputUnsafe(timeout))
-
-type PropertyTimeout =
-  | number
-  | Rstest.TestOptions & {
-    readonly arbitrary?: Arbitrary.CheckOptions | undefined
-  }
+const hookTimeout = (timeout?: Duration.Input) => timeout === undefined ? undefined : Duration.toMillis(timeout)
 
 type ArbitraryInput = Schema.Schema<any> | Arbitrary.Arbitrary<unknown>
 
 type Arbitraries = Array<ArbitraryInput> | { [K in string]: ArbitraryInput }
-
-const propertyTestOptions = (
-  timeout: PropertyTimeout | undefined
-): Exclude<PropertyTimeout, number> | undefined => typeof timeout === "number" ? undefined : timeout
-
-const checkOptions = (timeout: PropertyTimeout | undefined): Arbitrary.CheckOptions | undefined =>
-  propertyTestOptions(timeout)?.arbitrary
 
 const compileArbitraryInput = (input: ArbitraryInput): Arbitrary.Arbitrary<any> =>
   Arbitrary.isArbitrary(input) ? input : Arbitrary.schema(input)
@@ -142,9 +129,6 @@ const makeItProxy = <Methods extends object>(
   overrides: Methods
 ): Methods & Rs.TestAPIs =>
   new Proxy(it as Methods & Rs.TestAPIs, {
-    apply(target, thisArg, argArray) {
-      return Reflect.apply(target, thisArg, argArray)
-    },
     get(target, property, receiver) {
       if (Object.hasOwn(overrides, property)) {
         return Reflect.get(overrides, property)
@@ -166,9 +150,9 @@ const makeTester = <R>(
     self: Rstest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, Effect.asVoid, runTest(ctx))
 
-  const test = (modifier?: Modifier): Rstest.Test<R> => (name, self, timeout) => {
-    const options = testOptions(timeout)
-    return testApi(it, options, modifier)(name, options, (ctx) => run(ctx, [ctx], self))
+  const test = (defaults?: Rstest.TestOptions): Rstest.Test<R> => (name, self, timeout) => {
+    const options = { ...defaults, ...testOptions(timeout) }
+    return testApi(it, options)(name, options, (ctx) => run(ctx, [ctx], self))
   }
 
   const each: Rstest.Tester<R>["each"] = (cases) => (name, self, timeout) => {
@@ -191,17 +175,17 @@ const makeTester = <R>(
               mapEffect(Effect.suspend(() => self(values as any, ctx))),
               (value) => (value as unknown) !== false
             ),
-          checkOptions(timeout)
+          options.arbitrary
         )
     )
   }
 
   return Object.assign(test(), {
-    skip: test("skip"),
-    skipIf: (condition: unknown) => test(condition ? "skip" : undefined),
-    runIf: (condition: unknown) => test(condition ? undefined : "skip"),
-    only: test("only"),
-    fails: test("fails"),
+    skip: test({ skip: true }),
+    skipIf: (condition: unknown) => test({ skip: Boolean(condition) }),
+    runIf: (condition: unknown) => test({ skip: !condition }),
+    only: test({ only: true }),
+    fails: test({ fails: true }),
     each,
     prop
   })
@@ -219,7 +203,7 @@ export const prop: Rstest.Methods["prop"] = (name, arbitraries, self, timeout) =
         ctx,
         arbitrary,
         (values) => (self(values as any, ctx) as unknown) !== false,
-        checkOptions(timeout)
+        options.arbitrary
       )
   )
 }
@@ -251,11 +235,9 @@ export const layer = <R, E>(
   ]
 ) => {
   const excludeTestServices = options?.excludeTestServices ?? false
-  const withTestEnv = excludeTestServices
-    ? layer_ as Layer.Layer<R, E>
-    : Layer.provideMerge(layer_, TestEnv)
-  const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
-  const scope = Effect.runSync(Scope.make())
+  const withTestEnv = excludeTestServices ? layer_ : Layer.provideMerge(layer_, TestEnv)
+  const memoMap = options?.memoMap ?? Layer.makeMemoMapUnsafe()
+  const scope = Scope.makeUnsafe()
   const contextEffect = Layer.buildWithMemoMap(withTestEnv, memoMap, scope).pipe(
     Effect.orDie,
     Effect.cached,
@@ -289,6 +271,7 @@ export const layer = <R, E>(
     })
 
   const suite = (f: (it: Rstest.MethodsNonLive<R>) => void) => {
+    const timeout = hookTimeout(options?.timeout)
     let setup: Fiber.Fiber<unknown, unknown> | undefined
     Rs.beforeAll(
       () =>
@@ -296,7 +279,7 @@ export const layer = <R, E>(
           setup = fiber
           return Effect.asVoid(contextEffect)
         })),
-      hookTimeout(options?.timeout)
+      timeout
     )
     // Rstest abandons timed-out setup without aborting it, leaving the build running.
     // Request interruption, but close the scope without waiting for uninterruptible
@@ -307,7 +290,7 @@ export const layer = <R, E>(
           setup === undefined ? Effect.void : Effect.forkDetach(Fiber.interrupt(setup), { startImmediately: true }),
           Scope.close(scope, Exit.void)
         )),
-      hookTimeout(options?.timeout)
+      timeout
     )
     f(makeIt(Rs.it))
   }
@@ -334,17 +317,7 @@ export const flakyTest = <A, E, R>(
     self,
     Effect.scoped,
     Effect.sandbox,
-    Effect.retry(
-      pipe(
-        Schedule.recurs(10),
-        Schedule.while((_) =>
-          Effect.succeed(Duration.isLessThanOrEqualTo(
-            Duration.fromInputUnsafe(_.elapsed),
-            Duration.fromInputUnsafe(timeout)
-          ))
-        )
-      )
-    ),
+    Effect.retry(Schedule.upTo(Schedule.recurs(10), { duration: timeout })),
     Effect.orDie
   )
 
