@@ -9,7 +9,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import { flow, pipe } from "effect/Function"
+import { constVoid, flow, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import type * as Schema from "effect/Schema"
@@ -35,13 +35,10 @@ const runPromise: <E, A>(
 
 /** @internal */
 const runTest = (ctx?: Rs.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
-  let settlement: Promise<void> | undefined
-  // Rstest does not await timed-out callbacks. Await finalizers before the next
-  // sequential test or suite teardown; native afterEach hooks run before this.
-  ctx?.onTestFinished(() => settlement, 0)
   const result = runPromise(effect, ctx)
-  // Do not rethrow failures already handled by the runner (including .fails).
-  settlement = result.then(() => {}, () => {})
+  // Rstest abandons a timed-out test promise. Wait for the interrupted fiber and
+  // its finalizers before the next test or the suite teardown runs.
+  ctx?.onTestFinished(() => result.then(constVoid, constVoid))
   return result
 }
 
@@ -61,18 +58,17 @@ export const addEqualityTesters = () => {
 const testOptions = (timeout?: number | Rstest.TestOptions): Rs.TestOptions =>
   typeof timeout === "number" ? { timeout } : timeout ?? {}
 
-// Rstest exposes these options through modifiers instead of its options object.
-const testApi = (
-  it: Rs.TestAPIs,
-  timeout?: number | Rstest.TestOptions,
-  modifier?: "skip" | "only" | "fails"
-): Rs.TestAPIs["fails"] => {
+type TestAPI = Rs.TestAPIs["fails"]
+
+type Modifier = "skip" | "only" | "fails"
+
+// Rstest exposes these options as modifiers instead of `TestOptions` fields.
+const testApi = (it: Rs.TestAPIs, timeout?: number | Rstest.TestOptions, modifier?: Modifier): TestAPI => {
   const options = typeof timeout === "object" ? timeout : {}
-  let api: Rs.TestAPIs["fails"] = it
+  let api: TestAPI = it
   if (options.concurrent !== undefined) {
     api = options.concurrent ? api.concurrent : api.sequential
   }
-  // Match Vitest's selection precedence when options and modifiers are combined.
   if (modifier === "only" || options.only) {
     api = api.only
   } else if (modifier === "skip" || options.skip) {
@@ -164,27 +160,15 @@ const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
   it: Rs.TestAPIs = Rs.it
 ): Rstest.Tester<R> => {
-  // rstest test callbacks must return `MaybePromise<void>`
+  // Rstest test callbacks return `MaybePromise<void>`
   const run = <A, E, TestArgs extends Array<unknown>>(
     ctx: Rs.TestContext & object,
     args: TestArgs,
     self: Rstest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, Effect.asVoid, runTest(ctx))
 
-  const f: Rstest.Test<R> = (name, self, timeout) =>
-    testApi(it, timeout)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
-
-  const skip: Rstest.Tester<R>["skip"] = (name, self, timeout) =>
-    testApi(it, timeout, "skip")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
-
-  const skipIf: Rstest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    testApi(it, timeout, condition ? "skip" : undefined)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
-
-  const runIf: Rstest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    testApi(it, timeout, condition ? undefined : "skip")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
-
-  const only: Rstest.Tester<R>["only"] = (name, self, timeout) =>
-    testApi(it, timeout, "only")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+  const test = (modifier?: Modifier): Rstest.Test<R> => (name, self, timeout) =>
+    testApi(it, timeout, modifier)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const each: Rstest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
     testApi(it, timeout).for(cases)(
@@ -192,9 +176,6 @@ const makeTester = <R>(
       testOptions(timeout),
       (args, ctx) => run(ctx, [args], self)
     )
-
-  const fails: Rstest.Tester<R>["fails"] = (name, self, timeout) =>
-    testApi(it, timeout, "fails")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const prop: Rstest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     const arbitrary = makeArbitrary(arbitraries)
@@ -215,7 +196,15 @@ const makeTester = <R>(
     )
   }
 
-  return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop })
+  return Object.assign(test(), {
+    skip: test("skip"),
+    skipIf: (condition: unknown) => test(condition ? "skip" : undefined),
+    runIf: (condition: unknown) => test(condition ? undefined : "skip"),
+    only: test("only"),
+    fails: test("fails"),
+    each,
+    prop
+  })
 }
 
 /** @internal */
@@ -271,7 +260,6 @@ export const layer = <R, E>(
     Effect.cached,
     Effect.runSync
   )
-  let setupFiber: Fiber.Fiber<unknown, unknown> | undefined
 
   const makeIt = (it: Rs.TestAPIs): Rstest.MethodsNonLive<R> =>
     makeItProxy(it, {
@@ -299,39 +287,41 @@ export const layer = <R, E>(
       }
     })
 
-  const register = (f: (it: Rstest.MethodsNonLive<R>) => void) => {
+  const suite = (f: (it: Rstest.MethodsNonLive<R>) => void) => {
+    let setup: Fiber.Fiber<unknown, unknown> | undefined
     Rs.beforeAll(
       () =>
         runPromise(Effect.withFiber((fiber) => {
-          setupFiber = fiber
+          setup = fiber
           return Effect.asVoid(contextEffect)
         })),
       hookTimeout(options?.timeout)
     )
+    // Rstest abandons a timed-out `beforeAll` and gives suite hooks no abort
+    // signal, so stop an unfinished build before closing its scope.
     Rs.afterAll(
-      // Suite hooks have no AbortSignal. Stop unfinished setup before closing its scope.
       () =>
         runPromise(Effect.andThen(
-          setupFiber !== undefined ? Fiber.interrupt(setupFiber) : Effect.void,
+          setup === undefined ? Effect.void : Fiber.interrupt(setup),
           Scope.close(scope, Exit.void)
         )),
       hookTimeout(options?.timeout)
     )
-    return f(makeIt(Rs.it))
+    f(makeIt(Rs.it))
   }
 
   if (args.length === 1) {
-    // rstest has no `getCurrentSuite()` to enumerate the block's tests, so an empty
-    // suite (omitted from test paths) scopes the layer lifecycle instead
-    return Rs.describe("", () => register(args[0]))
+    // Rstest cannot enumerate the tests of the enclosing suite, so an empty suite
+    // name (omitted from test paths) scopes the layer lifecycle instead.
+    return Rs.describe("", () => suite(args[0]))
   }
 
-  const describe = options?.concurrent === true ?
-    Rs.describe.concurrent
-    : options?.concurrent === false ?
-    Rs.describe.sequential
-    : Rs.describe
-  return describe(args[0], () => register(args[1]))
+  const describe = options?.concurrent === undefined
+    ? Rs.describe
+    : options.concurrent
+    ? Rs.describe.concurrent
+    : Rs.describe.sequential
+  return describe(args[0], () => suite(args[1]))
 }
 
 /** @internal */

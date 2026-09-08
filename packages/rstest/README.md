@@ -288,7 +288,7 @@ it.live("it.live displays a log", () =>
 
 Both `it.effect` and `it.live` provide a fresh `Scope` and close it after each test. Test bodies can therefore use scoped resources directly. Do not wrap the test body in `Effect.scoped`, because the test runner already manages its scope.
 
-The test fiber receives Rstest's abort signal. After a timeout, an `onTestFinished` barrier waits for the fiber and its finalizers before later sequential tests and suite teardown. The timeout remains a runner failure. The barrier has no second deadline: a finalizer that never completes can hold suite completion. It does not serialize explicitly concurrent tests. Native `afterEach` hooks run before this barrier and may observe unfinished cleanup after a timeout.
+The test fiber receives Rstest's abort signal. After a timeout, an `onTestFinished` barrier waits for the fiber and its finalizers before later sequential tests and suite teardown. The timeout remains a runner failure. The barrier uses the runner's hook timeout, so a finalizer that never completes is reported as a hook timeout. It does not serialize explicitly concurrent tests. Native `afterEach` hooks run before this barrier and may observe unfinished cleanup after a timeout.
 
 Successful Effect values are discarded before Promise resolution, including thenables. Failures and expected-failure modifiers retain their runner outcomes.
 
