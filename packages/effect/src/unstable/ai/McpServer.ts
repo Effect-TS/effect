@@ -1218,7 +1218,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
           runtime.disconnect(clientId)
         }
       }
-      const deliveryClientIds = targetClientId === undefined
+      const requestNotification = notification._tag === "LoggingMessage" || notification._tag === "Progress"
+      const deliveryClientIds = requestNotification && requestContext !== undefined
+        ? [requestContext.clientId]
+        : targetClientId === undefined
         ? isHttp ? clientProtocols.keys() : runtime.deliveryClientIds()
         : [targetClientId]
       for (const clientId of deliveryClientIds) {
@@ -1234,13 +1237,21 @@ const runWithRuntime = Effect.fnUntraced(function*(
         if (!patchedProtocol.supportsNotifications) {
           continue
         }
-        const selectedProtocol = clientProtocols.get(clientId)
+        const selectedProtocol = requestNotification && requestContext !== undefined
+          ? runtime.selectProtocol(requestContext.protocolVersion)
+          : clientProtocols.get(clientId)
         if (!selectedProtocol) {
           continue
         }
         yield* Effect.gen(function*() {
           const projected = yield* selectedProtocol.projectNotification(notification)
           if (projected === undefined) {
+            return
+          }
+          if (
+            notification._tag === "Progress" && selectedProtocol.runtime._tag === "Stateless" &&
+            requestContext?.requestMetadata?.progressToken !== notification.progressToken
+          ) {
             return
           }
           if (notification._tag === "LoggingMessage" && selectedProtocol.runtime._tag === "Stateless") {
