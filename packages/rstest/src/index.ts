@@ -37,7 +37,7 @@ export namespace Rstest {
   }
 
   /**
-   * Rstest test options plus the selection and concurrency flags from `@effect/vitest`.
+   * Options for Effect tests.
    *
    * @since 4.0.0
    */
@@ -130,7 +130,7 @@ export namespace Rstest {
   export interface MethodsNonLive<R = never> extends API {
     readonly effect: Rstest.Tester<R | Scope.Scope>
     /**
-     * Rstest's `it` has no `describe`, so it is attached here to keep `it.describe.each(...)` working.
+     * Groups related tests.
      *
      * @since 4.0.0
      */
@@ -202,26 +202,6 @@ export namespace Rstest {
     }
   }
 }
-
-/**
- * Rstest runner utilities.
- *
- * @since 4.0.0
- */
-export type Rstest = Rs.Rstest
-
-/**
- * Runner-neutral alias for the Effect helper types.
- *
- * @since 4.0.0
- */
-export type { Rstest as EffectTest }
-
-/**
- * @since 4.0.0
- * @deprecated Use `Rstest` instead.
- */
-export type { Rstest as Vitest }
 
 /**
  * @since 4.0.0

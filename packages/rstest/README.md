@@ -355,7 +355,7 @@ it.effect("retrying until success or timeout", () => it.flakyTest(flaky, "5 seco
 Rstest is intentionally Vitest-compatible, so `@effect/rstest` follows `@effect/vitest` closely. The differences forced by the runner are:
 
 - **Runner re-exports**: the package re-exports `@rstest/core` instead of `vitest`, so `describe`, `expect`, `assert`, hooks and the `rs` utilities all come from Rstest.
-- **Type namespaces**: use `Rstest.Methods`, `Rstest.Tester`, and the other Effect helper types. `EffectTest` remains an alias, and `Vitest` is a deprecated compatibility alias. The standalone `Rstest` type retains the runner utilities from `@rstest/core`.
+- **Type namespaces**: use `Rstest.Methods`, `Rstest.Tester`, and the other Effect helper types.
 - **`it.describe`**: Rstest's `it` does not expose `describe`, so the enhanced `it` attaches the runner's `describe` to keep `it.describe.each(...)` working.
 - **`describeWrapped` returns `void`**: Rstest's `describe` does not return a `SuiteCollector`, and its suite callback receives no arguments, so `describeWrapped(name, f)` passes the enhanced global `it` to `f` and returns `void`.
 - **Unnamed `layer(...)((it) => ...)` blocks**: Rstest has no `getCurrentSuite()` API, so the block's tests cannot be enumerated. An empty nested `describe` is used as the lifecycle boundary instead. Rstest omits the empty suite name from test paths, while its `beforeAll` / `afterAll` hooks build the layer before the block and release it before a later test in the enclosing suite runs.

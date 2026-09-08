@@ -174,10 +174,9 @@ const makeTester = <R>(
   const f: Rstest.Test<R> = (name, self, timeout) =>
     testApi(it, timeout)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
-  const skip: Rstest.Tester<R>["only"] = (name, self, timeout) =>
+  const skip: Rstest.Tester<R>["skip"] = (name, self, timeout) =>
     testApi(it, timeout, "skip")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
-  // rstest types the condition as `boolean`, `@effect/vitest` accepts `unknown`
   const skipIf: Rstest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
     testApi(it, timeout, condition ? "skip" : undefined)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
