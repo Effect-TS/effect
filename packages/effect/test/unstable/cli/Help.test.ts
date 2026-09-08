@@ -41,9 +41,9 @@ const runCommand = Effect.fnUntraced(
 describe("Command help output", () => {
   it("marks omittable flags as not required in structured help", () => {
     const command = Command.make("app", {
-      required: Flag.string("required"),
-      optional: Flag.string("optional").pipe(Flag.optional),
-      defaulted: Flag.string("defaulted").pipe(Flag.withDefault("output.txt"))
+      required: Flag.String("required"),
+      optional: Flag.String("optional").pipe(Flag.optional),
+      defaulted: Flag.String("defaulted").pipe(Flag.withDefault("output.txt"))
     })
     const help = toImpl(command).buildHelpDoc(["app"])
 
@@ -52,13 +52,13 @@ describe("Command help output", () => {
 
   it("marks omittable arguments as not required in structured help", () => {
     const requiredVariadic = Command.make("app", {
-      files: Argument.string("files").pipe(Argument.variadic({ min: 1 }))
+      files: Argument.String("files").pipe(Argument.variadic({ min: 1 }))
     })
     const optionalVariadic = Command.make("app", {
-      files: Argument.string("files").pipe(Argument.variadic())
+      files: Argument.String("files").pipe(Argument.variadic())
     })
     const defaulted = Command.make("app", {
-      output: Argument.string("output").pipe(Argument.withDefault("output.txt"))
+      output: Argument.String("output").pipe(Argument.withDefault("output.txt"))
     })
 
     assert.deepStrictEqual(
@@ -111,8 +111,8 @@ describe("Command help output", () => {
   it.effect("aligns flag descriptions when flag names are long", () =>
     Effect.gen(function*() {
       const command = Command.make("tool", {
-        short: Flag.string("short").pipe(Flag.withDescription("Short flag description")),
-        veryLong: Flag.string("this-is-a-very-very-long-flag-name").pipe(
+        short: Flag.String("short").pipe(Flag.withDescription("Short flag description")),
+        veryLong: Flag.String("this-is-a-very-very-long-flag-name").pipe(
           Flag.withDescription("Long flag description")
         )
       })
@@ -133,9 +133,9 @@ describe("Command help output", () => {
   it.effect("aligns flag descriptions when flag names contain wide graphemes", () =>
     Effect.gen(function*() {
       const command = Command.make("tool", {
-        file: Flag.boolean("ファイル").pipe(Flag.withDescription("Wide flag description")),
-        emoji: Flag.boolean("👩‍💻").pipe(Flag.withDescription("Emoji flag description")),
-        verbose: Flag.boolean("verbose").pipe(Flag.withDescription("ASCII flag description"))
+        file: Flag.Boolean("ファイル").pipe(Flag.withDescription("Wide flag description")),
+        emoji: Flag.Boolean("👩‍💻").pipe(Flag.withDescription("Emoji flag description")),
+        verbose: Flag.Boolean("verbose").pipe(Flag.withDescription("ASCII flag description"))
       })
       const run = Command.runWith(command, { version: "1.0.0" })
 
@@ -150,9 +150,9 @@ describe("Command help output", () => {
   it.effect("aligns flag descriptions when flag names contain zero-width code points", () =>
     Effect.gen(function*() {
       const command = Command.make("tool", {
-        combining: Flag.boolean("e\u0301").pipe(Flag.withDescription("Combining flag description")),
-        zeroWidth: Flag.boolean("a\u200Bb").pipe(Flag.withDescription("Zero-width flag description")),
-        ascii: Flag.boolean("abcd").pipe(Flag.withDescription("ASCII flag description"))
+        combining: Flag.Boolean("e\u0301").pipe(Flag.withDescription("Combining flag description")),
+        zeroWidth: Flag.Boolean("a\u200Bb").pipe(Flag.withDescription("Zero-width flag description")),
+        ascii: Flag.Boolean("abcd").pipe(Flag.withDescription("ASCII flag description"))
       })
       const run = Command.runWith(command, { version: "1.0.0" })
 
@@ -167,7 +167,7 @@ describe("Command help output", () => {
   it.effect("separates long subcommand and argument names from their descriptions", () =>
     Effect.gen(function*() {
       const child = Command.make("account:set-password", {
-        account: Argument.string("existing-account-identifier").pipe(
+        account: Argument.String("existing-account-identifier").pipe(
           Argument.withDescription("Account to update")
         )
       }).pipe(Command.withDescription("Rewrite the credential hash"))
@@ -190,8 +190,8 @@ describe("Command help output", () => {
   it.effect("hides flags marked with withHidden from help output", () =>
     Effect.gen(function*() {
       const command = Command.make("tool", {
-        visible: Flag.string("visible").pipe(Flag.withDescription("Visible flag")),
-        secret: Flag.string("experimental-foo").pipe(
+        visible: Flag.String("visible").pipe(Flag.withDescription("Visible flag")),
+        secret: Flag.String("experimental-foo").pipe(
           Flag.withDescription("Should not appear"),
           Flag.withHidden
         )
@@ -210,7 +210,7 @@ describe("Command help output", () => {
     Effect.gen(function*() {
       let captured: string | undefined
       const command = Command.make("tool", {
-        secret: Flag.string("experimental-foo").pipe(Flag.withHidden)
+        secret: Flag.String("experimental-foo").pipe(Flag.withHidden)
       }, (config) =>
         Effect.sync(() => {
           captured = config.secret
@@ -225,7 +225,7 @@ describe("Command help output", () => {
   it.effect("hidden flag name does not leak through unrecognized-flag suggestions", () =>
     Effect.gen(function*() {
       const command = Command.make("tool", {
-        secret: Flag.string("experimental-foo").pipe(Flag.withHidden)
+        secret: Flag.String("experimental-foo").pipe(Flag.withHidden)
       }, () => Effect.void)
       const run = Command.runWith(command, { version: "1.0.0" })
 
@@ -548,14 +548,14 @@ describe("Command help output", () => {
   it.effect("shared flags are visible in subcommand help while local flags stay local", () =>
     Effect.gen(function*() {
       const root = Command.make("tool", {
-        workspace: Flag.string("workspace")
+        workspace: Flag.String("workspace")
       }).pipe(
         Command.withSharedFlags({
-          model: Flag.string("model")
+          model: Flag.String("model")
         }),
         Command.withSubcommands([
           Command.make("chat", {
-            topic: Flag.string("topic")
+            topic: Flag.String("topic")
           })
         ])
       )
@@ -579,11 +579,11 @@ describe("Command help output", () => {
     Effect.gen(function*() {
       const root = Command.make("tool").pipe(
         Command.withSharedFlags({
-          workspace: Flag.string("workspace").pipe(Flag.withAlias("w"))
+          workspace: Flag.String("workspace").pipe(Flag.withAlias("w"))
         }),
         Command.withSubcommands([
           Command.make("chat", {
-            topic: Flag.string("topic").pipe(Flag.withAlias("t"))
+            topic: Flag.String("topic").pipe(Flag.withAlias("t"))
           })
         ])
       )
@@ -695,7 +695,7 @@ describe("Command help output", () => {
   it.effect("keeps subcommand flags in aliased completion contexts", () =>
     Effect.gen(function*() {
       const list = Command.make("list", {
-        format: Flag.choice("format", ["json", "text"])
+        format: Flag.Literals("format", ["json", "text"])
       }).pipe(Command.withAlias("ls"))
       const root = Command.make("ctl").pipe(Command.withSubcommands([list]))
       const runRoot = Command.runWith(root, { version: "1.0.0" })

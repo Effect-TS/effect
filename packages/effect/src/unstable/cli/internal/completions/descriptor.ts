@@ -20,10 +20,10 @@ const toFlagType = (single: Param.Single<"flag", unknown>): Completions.FlagType
   switch (tag) {
     case "Boolean":
       return { _tag: "Boolean" }
-    case "Integer":
-      return { _tag: "Integer" }
-    case "Float":
-      return { _tag: "Float" }
+    case "Int":
+      return { _tag: "Int" }
+    case "Finite":
+      return { _tag: "Finite" }
     case "Date":
       return { _tag: "Date" }
     case "Choice": {
@@ -44,10 +44,10 @@ const toFlagType = (single: Param.Single<"flag", unknown>): Completions.FlagType
 const toArgumentType = (single: Param.Single<"argument", unknown>): Completions.ArgumentType => {
   const tag = single.primitiveType._tag
   switch (tag) {
-    case "Integer":
-      return { _tag: "Integer" }
-    case "Float":
-      return { _tag: "Float" }
+    case "Int":
+      return { _tag: "Int" }
+    case "Finite":
+      return { _tag: "Finite" }
     case "Date":
       return { _tag: "Date" }
     case "Choice": {

@@ -49,7 +49,7 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
 
-describe("Prompt.date", () => {
+describe("Prompt.Date", () => {
   it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
     Effect.gen(function*() {
       const initial = DateTime.toDateUtc(DateTime.makeZonedUnsafe(
@@ -58,7 +58,7 @@ describe("Prompt.date", () => {
       ))
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))
+      yield* Prompt.run(Prompt.Date({ message: "When", initial, dateMask: "YY Do A" }))
       const output = (yield* MockTerminal.displayLines).map(String).join("\n")
 
       assert.include(output, "24 11th PM")
@@ -72,7 +72,7 @@ describe("Prompt.date", () => {
       yield* MockTerminal.inputText("5")
       yield* MockTerminal.inputKey("enter")
 
-      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "MM-DD" }))
+      const result = yield* Prompt.run(Prompt.Date({ message: "When", initial, dateMask: "MM-DD" }))
 
       assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
     }).pipe(Effect.provide(TestLayer)))
@@ -86,7 +86,7 @@ describe("Prompt.date", () => {
       yield* MockTerminal.inputText("5")
       yield* MockTerminal.inputKey("enter")
 
-      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD-MM" }))
+      const result = yield* Prompt.run(Prompt.Date({ message: "When", initial, dateMask: "DD-MM" }))
 
       assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
     }).pipe(Effect.provide(TestLayer)))
@@ -97,7 +97,7 @@ describe("Prompt.date", () => {
       yield* MockTerminal.inputText("15")
       yield* MockTerminal.inputKey("enter")
 
-      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD" }))
+      const result = yield* Prompt.run(Prompt.Date({ message: "When", initial, dateMask: "DD" }))
 
       assert.deepStrictEqual(result, new Date(2024, 0, 15, 12))
     }).pipe(Effect.provide(TestLayer)))
@@ -110,7 +110,7 @@ describe("Prompt.date", () => {
       yield* MockTerminal.inputText("5")
       yield* MockTerminal.inputKey("enter")
 
-      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD" }))
+      const result = yield* Prompt.run(Prompt.Date({ message: "When", initial, dateMask: "DD" }))
 
       assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
     }).pipe(Effect.provide(TestLayer)))
@@ -130,10 +130,10 @@ describe("Prompt.all", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.integer", () => {
+describe("Prompt.Int", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.integer({ message: "Count", default: 42 })
+      const prompt = Prompt.Int({ message: "Count", default: 42 })
 
       yield* MockTerminal.inputKey("enter")
 
@@ -143,7 +143,7 @@ describe("Prompt.integer", () => {
 
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.integer({ message: "Count", default: 4 })
+      const prompt = Prompt.Int({ message: "Count", default: 4 })
 
       yield* MockTerminal.inputText("2")
       yield* MockTerminal.inputKey("enter")
@@ -154,7 +154,7 @@ describe("Prompt.integer", () => {
 
   it.effect("clears the default value on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.integer({ message: "Count", default: 42 })
+      const prompt = Prompt.Int({ message: "Count", default: 42 })
 
       yield* MockTerminal.inputKey("u", { ctrl: true })
       yield* MockTerminal.inputText("7")
@@ -165,20 +165,20 @@ describe("Prompt.integer", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.float", () => {
+describe("Prompt.Number", () => {
   it.effect("preserves a leading zero in the fractional part", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputText("0.05")
       yield* MockTerminal.inputKey("enter")
 
-      const value = yield* Prompt.run(Prompt.float({ message: "Rate" }))
+      const value = yield* Prompt.run(Prompt.Number({ message: "Rate" }))
 
       assert.strictEqual(value, 0.05)
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("renders appended input without literal parsed", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.float({ message: "Rate" })
+      const prompt = Prompt.Number({ message: "Rate" })
 
       yield* MockTerminal.inputText("12.5")
       yield* MockTerminal.inputKey("enter")
@@ -196,7 +196,7 @@ describe("Prompt.float", () => {
 
   it.effect("clears the current input on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.float({ message: "Rate" })
+      const prompt = Prompt.Number({ message: "Rate" })
 
       yield* MockTerminal.inputText("12.5")
       yield* MockTerminal.inputKey("u", { ctrl: true })
@@ -208,12 +208,12 @@ describe("Prompt.float", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.text", () => {
+describe("Prompt.String", () => {
   it.effect("renders the default prompt theme", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({ message: "Name" }))
+      yield* Prompt.run(Prompt.String({ message: "Name" }))
 
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.include(frames[0] ?? "", "? Name")
@@ -223,7 +223,7 @@ describe("Prompt.text", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({ message: "Name" })).pipe(
+      yield* Prompt.run(Prompt.String({ message: "Name" })).pipe(
         Effect.provideService(
           Prompt.Theme,
           Prompt.makeTheme({
@@ -245,7 +245,7 @@ describe("Prompt.text", () => {
       yield* MockTerminal.inputText("A")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({
+      yield* Prompt.run(Prompt.String({
         message: "Name",
         theme: { primaryColor: `${escape}[35m` }
       })).pipe(
@@ -276,7 +276,7 @@ describe("Prompt.text", () => {
       yield* MockTerminal.inputText("ok")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({
+      yield* Prompt.run(Prompt.String({
         message: "Name",
         validate: (value) => value === "bad" ? Effect.fail("Try again") : Effect.succeed(value),
         theme: { errorColor: `${escape}[35m` }
@@ -292,7 +292,7 @@ describe("Prompt.text", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({
+      yield* Prompt.run(Prompt.String({
         message: "Name",
         theme: { prefix: "", pointerSmall: "" }
       }))
@@ -303,7 +303,7 @@ describe("Prompt.text", () => {
 
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -317,7 +317,7 @@ describe("Prompt.text", () => {
 
   it.effect("clears the current input on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -333,7 +333,7 @@ describe("Prompt.text", () => {
 
   it.effect("moves the cursor to the beginning on ctrl-a", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -349,7 +349,7 @@ describe("Prompt.text", () => {
 
   it.effect("moves the cursor to the end on ctrl-e", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.text({
+      const prompt = Prompt.String({
         message: "Name"
       })
 
@@ -366,7 +366,7 @@ describe("Prompt.text", () => {
 
   it.effect("does not insert characters for unsupported ctrl key combinations", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.text({
+      const prompt = Prompt.String({
         message: "Name"
       })
 
@@ -381,7 +381,7 @@ describe("Prompt.text", () => {
 
   it.effect("does not render or submit the cleared default value", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.text({
+      const prompt = Prompt.String({
         message: "Name",
         default: "Jane"
       })
@@ -401,13 +401,13 @@ describe("Prompt.text", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.select", () => {
+describe("Prompt.Select", () => {
   it.effect("renders a per-prompt theme across redraws", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("down")
       yield* MockTerminal.inputKey("enter")
 
-      const result = yield* Prompt.run(Prompt.select({
+      const result = yield* Prompt.run(Prompt.Select({
         message: "Pick item",
         theme: {
           prefix: "!",
@@ -430,7 +430,7 @@ describe("Prompt.select", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.select({
+      yield* Prompt.run(Prompt.Select({
         message: "Pick item",
         theme: {
           primaryColor: `${escape}[35m`,
@@ -452,7 +452,7 @@ describe("Prompt.select", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.select({
+      yield* Prompt.run(Prompt.Select({
         message: "Pick item",
         theme: {
           descriptionSeparator: "",
@@ -475,7 +475,7 @@ describe("Prompt.select", () => {
       yield* MockTerminal.inputKey("down")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.select({
+      yield* Prompt.run(Prompt.Select({
         message: "Pick item",
         maxPerPage: 2,
         theme: { arrowUp: "", arrowDown: "vvv" },
@@ -492,13 +492,13 @@ describe("Prompt.select", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.password", () => {
+describe("Prompt.Password", () => {
   it.effect("renders the password mask from the prompt theme", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputText("abc")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.password({ message: "Password" })).pipe(
+      yield* Prompt.run(Prompt.Password({ message: "Password" })).pipe(
         Effect.provideService(Prompt.Theme, Prompt.makeTheme({ passwordMask: "•" }))
       )
 
@@ -513,7 +513,7 @@ describe("Prompt.password", () => {
       yield* MockTerminal.inputKey("left")
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.password({
+      yield* Prompt.run(Prompt.Password({
         message: "Password",
         theme: { passwordMask: "**" }
       }))
@@ -524,7 +524,7 @@ describe("Prompt.password", () => {
 
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.password({
+      const prompt = Prompt.Password({
         message: "Password",
         default: "secret"
       })
@@ -538,7 +538,7 @@ describe("Prompt.password", () => {
 
   it.effect("does not submit the cleared default value", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.password({
+      const prompt = Prompt.Password({
         message: "Password",
         default: "secret"
       })
@@ -551,12 +551,12 @@ describe("Prompt.password", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.toggle", () => {
+describe("Prompt.Toggle", () => {
   it.effect("renders the separator from the prompt theme", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.toggle({
+      yield* Prompt.run(Prompt.Toggle({
         message: "Enabled",
         theme: { toggleSeparator: "|" }
       }))
@@ -570,7 +570,7 @@ describe("Prompt.toggle", () => {
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.toggle({
+      yield* Prompt.run(Prompt.Toggle({
         message: "Enabled",
         theme: { toggleSeparator: "" }
       }))
@@ -581,10 +581,10 @@ describe("Prompt.toggle", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.autoComplete", () => {
+describe("Prompt.AutoComplete", () => {
   it.effect("filters choices as you type", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick fruit",
         choices: [
           { title: "Apple", value: "apple" },
@@ -610,7 +610,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("removes the last character on backspace", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick item",
         choices: [
           { title: "Alpha", value: "alpha" },
@@ -639,7 +639,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("clears the filter input on ctrl-u", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick item",
         choices: [
           { title: "Alpha", value: "alpha" },
@@ -668,7 +668,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("renders empty message and beeps on submit with no matches", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick pet",
         choices: [
           { title: "Cat", value: "cat" },
@@ -695,7 +695,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("beeps when submitting a disabled choice", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick mode",
         choices: [
           { title: "Slow", value: "slow", disabled: true },
@@ -716,7 +716,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("renders empty message with no choices", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick option",
         choices: []
       })
@@ -733,7 +733,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("keeps `j` and `k` in the filter query instead of moving the cursor", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick a branch",
         choices: [
           { title: "feat/jira-fetch-tool", value: "feat/jira-fetch-tool" },
@@ -759,7 +759,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("filters a query that merely contains a `k`", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick a branch",
         choices: [
           { title: "main", value: "main" },
@@ -785,7 +785,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("moves the cursor with ctrl-n and ctrl-p", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick item",
         choices: [
           { title: "Alpha", value: "alpha" },
@@ -805,7 +805,7 @@ describe("Prompt.autoComplete", () => {
 
   it.effect("moves the cursor up with ctrl-k", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.autoComplete({
+      const prompt = Prompt.AutoComplete({
         message: "Pick item",
         choices: [
           { title: "Alpha", value: "alpha" },
@@ -824,7 +824,7 @@ describe("Prompt.autoComplete", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.file", () => {
+describe("Prompt.File", () => {
   const FilePromptLayer = Layer.mergeAll(
     FileSystem.layerNoop({
       exists: () => Effect.succeed(true),
@@ -847,7 +847,7 @@ describe("Prompt.file", () => {
 
   it.effect("starts from the default value so it can be submitted", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         default: "/workspace/banana.txt"
       })
@@ -860,7 +860,7 @@ describe("Prompt.file", () => {
 
   it.effect("filters files as you type", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         startingPath: "/workspace"
       })
@@ -883,7 +883,7 @@ describe("Prompt.file", () => {
 
   it.effect("removes the last character on backspace", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         startingPath: "/workspace"
       })
@@ -923,7 +923,7 @@ describe("Prompt.file", () => {
 
   it.effect("keeps `j` in the filter query instead of moving the cursor", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         startingPath: "/workspace"
       })
@@ -945,7 +945,7 @@ describe("Prompt.file", () => {
 
   it.effect("keeps `k` in the filter query instead of moving the cursor", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         startingPath: "/workspace"
       })
@@ -967,7 +967,7 @@ describe("Prompt.file", () => {
 
   it.effect("moves the cursor with ctrl-n and ctrl-p", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         startingPath: "/workspace"
       })
@@ -983,7 +983,7 @@ describe("Prompt.file", () => {
 
   it.effect("moves the cursor up with ctrl-k", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.file({
+      const prompt = Prompt.File({
         message: "Pick file",
         startingPath: "/workspace"
       })
@@ -998,10 +998,10 @@ describe("Prompt.file", () => {
     }).pipe(Effect.provide(FilePromptLayer)))
 })
 
-describe("Prompt.multiSelect", () => {
+describe("Prompt.MultiSelect", () => {
   it.effect("renders paging and checkbox symbols from the prompt theme", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         maxPerPage: 3,
         theme: {
@@ -1029,7 +1029,7 @@ describe("Prompt.multiSelect", () => {
 
   it.effect("aligns choices when checkbox symbols have different widths", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         theme: { checkboxOn: "[x]", checkboxOff: "" },
         choices: [
@@ -1052,7 +1052,7 @@ describe("Prompt.multiSelect", () => {
 
   it.effect("does not allow a disabled multi-select choice to be selected", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         choices: [{ title: "Unavailable", value: "unavailable", disabled: true }]
       })
@@ -1070,7 +1070,7 @@ describe("Prompt.multiSelect", () => {
 
   it.effect("does not select disabled choices when selecting all", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         choices: [
           { title: "Available", value: "available" },
@@ -1089,7 +1089,7 @@ describe("Prompt.multiSelect", () => {
 
   it.effect("does not select disabled choices when inverting the selection", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         choices: [
           { title: "Available", value: "available" },
@@ -1107,7 +1107,7 @@ describe("Prompt.multiSelect", () => {
 
   it.effect("ignores disabled preselected choices when validating and submitting", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         choices: [
           { title: "Available", value: "available", selected: true },
@@ -1129,7 +1129,7 @@ describe("Prompt.multiSelect", () => {
 
   it.effect("underlines the active label", () =>
     Effect.gen(function*() {
-      const prompt = Prompt.multiSelect({
+      const prompt = Prompt.MultiSelect({
         message: "Pick items",
         choices: [
           { title: "Alpha", value: "alpha" },
@@ -1160,7 +1160,7 @@ describe("Prompt.multiSelect", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
-describe("Prompt.custom", () => {
+describe("Prompt.Custom", () => {
   for (const transition of ["NextFrame", "Submit"] as const) {
     it.effect(`keeps the previous frame visible while rendering ${transition}`, () =>
       Effect.gen(function*() {
@@ -1168,7 +1168,7 @@ describe("Prompt.custom", () => {
         const resume = yield* Deferred.make<void>()
         const calls: Array<string> = []
         const clear = `${escape}[2K\r`
-        const prompt = Prompt.custom<number, number>(0, {
+        const prompt = Prompt.Custom<number, number>(0, {
           render: (state, action) =>
             Effect.gen(function*() {
               calls.push(`render ${state} ${action._tag}`)
@@ -1223,7 +1223,7 @@ describe("Prompt.custom", () => {
     Effect.gen(function*() {
       const eventQueue = yield* Queue.make<string>()
 
-      const prompt = Prompt.custom(
+      const prompt = Prompt.Custom(
         { count: 0 },
         Queue.asDequeue(eventQueue),
         {
@@ -1265,7 +1265,7 @@ describe("Prompt.custom", () => {
     Effect.gen(function*() {
       const eventQueue = yield* Queue.make<string>()
 
-      const prompt = Prompt.custom(
+      const prompt = Prompt.Custom(
         { keys: 0 },
         Queue.asDequeue(eventQueue),
         {
@@ -1297,7 +1297,7 @@ describe("Prompt.custom", () => {
     Effect.gen(function*() {
       const eventQueue = yield* Queue.make<string>()
 
-      const prompt = Prompt.custom(
+      const prompt = Prompt.Custom(
         { captured: "" },
         Queue.asDequeue(eventQueue),
         {
