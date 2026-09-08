@@ -1171,7 +1171,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
               )
               : undefined
             const waiting = requestId === undefined ? undefined : reverseRequestClients.get(requestId)
-            const reverseKey = waiting?.find((key) => !isHttp || key.profile === session?.negotiatedProfile)
+            const reverseKey = waiting?.find((key) =>
+              isHttp ? key.profile === session?.negotiatedProfile : key.clientId === clientId
+            )
+            if (request._tag === "Exit" && reverseKey === undefined) {
+              return Effect.void
+            }
             if (reverseKey !== undefined && requestId !== undefined) {
               const remaining = waiting!.filter((key) => key !== reverseKey)
               if (remaining.length === 0) reverseRequestClients.delete(requestId)

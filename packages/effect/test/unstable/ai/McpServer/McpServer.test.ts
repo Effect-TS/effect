@@ -207,6 +207,93 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  it.effect("should match reverse responses to their originating connection", () =>
+    Effect.gen(function*() {
+      const outbound = yield* Queue.unbounded<{
+        readonly clientId: number
+        readonly message: RpcMessage.FromServerEncoded
+      }>()
+      const disconnects = yield* Queue.unbounded<number>()
+      type Receive = (
+        clientId: number,
+        message: RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded
+      ) => Effect.Effect<void>
+      const ready = yield* Deferred.make<Receive>()
+      const transport = yield* RpcServer.Protocol.make((write) =>
+        // MCP also receives reverse replies through the ordinary RPC client-message boundary.
+        Deferred.succeed(ready, write as Receive).pipe(Effect.as({
+          disconnects,
+          send: (clientId, message) => Queue.offer(outbound, { clientId, message }).pipe(Effect.asVoid),
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set([1, 2])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: true,
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+        }))
+      )
+      const toolkit = Toolkit.make(Tool.make("Approve", {
+        success: Schema.Struct({ approved: Schema.Boolean }),
+        dependencies: [McpSchema.McpServerClient]
+      }))
+      yield* Layer.build(
+        McpServer.toolkit(toolkit).pipe(
+          Layer.provide(toolkit.toLayer({
+            Approve: () =>
+              McpServer.elicit({
+                message: "Approve",
+                schema: Schema.Struct({ approved: Schema.Boolean })
+              }).pipe(Effect.orDie)
+          })),
+          Layer.provide(
+            McpServer.layer({
+              name: "ResponseOwnership",
+              version: "1.0.0",
+              protocols: [McpProtocol.v2025_11_25]
+            }).pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, transport)))
+          )
+        )
+      )
+      const send = yield* Deferred.await(ready)
+      for (const clientId of [1, 2]) {
+        yield* send(clientId, {
+          _tag: "Request",
+          id: clientId,
+          tag: "initialize",
+          payload: {
+            protocolVersion: "2025-11-25",
+            capabilities: { elicitation: { form: {} } },
+            clientInfo: { name: `client-${clientId}`, version: "1.0.0" }
+          },
+          headers: []
+        })
+        assert.strictEqual((yield* Queue.take(outbound)).message._tag, "Exit")
+      }
+      yield* send(1, { _tag: "Request", id: 10, tag: "tools/call", payload: { name: "Approve" }, headers: [] })
+      const reverse = yield* Queue.take(outbound)
+      assert.strictEqual(reverse.clientId, 1)
+      if (reverse.message._tag !== "Request") return assert.fail("Expected an elicitation request")
+      assert.strictEqual(reverse.message.tag, "elicitation/create")
+      const requestId = reverse.message.id
+      for (const clientId of [2, 1]) {
+        yield* send(clientId, {
+          _tag: "Exit",
+          requestId,
+          exit: { _tag: "Success", value: { action: "accept", content: { approved: clientId === 1 } } }
+        })
+      }
+      const result = yield* Queue.take(outbound)
+      assert.strictEqual(result.clientId, 1)
+      assert.deepInclude(result.message, { _tag: "Exit", requestId: 10 })
+      if (result.message._tag !== "Exit" || result.message.exit._tag !== "Success") {
+        return assert.fail("Expected the tool to complete")
+      }
+      const decoded = yield* Schema.decodeUnknownEffect(McpSchema.CallToolResult)(result.message.exit.value)
+      assert.deepStrictEqual(decoded.structuredContent, { approved: true })
+    }))
+
   describe("direct service", () => {
     it.effect("should fail when a resource URI is unknown", () =>
       Effect.gen(function*() {
