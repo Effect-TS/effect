@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `cbf07b5a63^` (`8cdaafed996088d41316db144bd048735c5a2187`)
+Head: `agent/bob/738d126b22f9` (`bedb58fb927d290e4656c97803915c3341059274`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5546,7 +5546,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.hidden` -> `Prompt.Hidden`: Use the renamed constructor.
 
-- `Prompt.integer` -> `Prompt.Integer`: Use the moved constructor; v4 also supports a default value.
+- `Prompt.integer` -> `Prompt.Int`: Use the moved constructor; v4 also supports a default value.
 
 - `Prompt.list` -> `Prompt.List`: Use the renamed constructor.
 
