@@ -1315,7 +1315,7 @@ export const makeStoreSql: (
 
   yield* Effect.orDie(
     Migrator.make({})({
-      loader: sqlMigrations(tableName),
+      loader: sqlMigrations(tableName, sql),
       table: `${tableName}_migrations`
     })
   )
@@ -1324,7 +1324,7 @@ export const makeStoreSql: (
     // GETDATE() rounds to 1/300s and can land in the future, hiding freshly
     // written visible_at values from the poll query
     mssql: () => sql.literal("SYSDATETIME()"),
-    mysql: () => sql.literal("NOW()"),
+    mysql: () => sql.literal("NOW(6)"),
     pg: () => sql.literal("NOW()"),
     // sqlite
     orElse: () => sql.literal("CURRENT_TIMESTAMP")
@@ -1341,7 +1341,15 @@ export const makeStoreSql: (
     })
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
-  const secondsFromNow = (seconds: number) => secondsOffset(Math.max(Math.ceil(seconds), 0))
+  const secondsFromNow = (seconds: number) =>
+    sql.onDialectOrElse({
+      // Preserve sub-second delays without rounding the deadline down.
+      mysql: () =>
+        sql`DATE_ADD(${sqlNow}, INTERVAL ${
+          sql.literal(String(Math.max(Math.ceil(seconds * 1_000_000), 0)))
+        } MICROSECOND)`,
+      orElse: () => secondsOffset(Math.max(Math.ceil(seconds), 0))
+    })
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
   const offer = sql.onDialectOrElse({
@@ -1780,7 +1788,7 @@ export const makeStoreSql: (
   })
 })
 
-const sqlMigrations = (tableName: string) =>
+const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
   Migrator.fromRecord({
     "0001_create_table": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -2009,6 +2017,21 @@ const sqlMigrations = (tableName: string) =>
           sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
             WHERE state = 'pending'`
       })
+    }),
+    ...client.onDialectOrElse({
+      mysql: () => ({
+        "0003_mysql_timestamp_precision": Effect.gen(function*() {
+          const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+          // Apply to existing tables too. All timestamps written with NOW(6) must
+          // retain their precision, including acquisition and cleanup timestamps.
+          yield* sql`ALTER TABLE ${sql(tableName)}
+            MODIFY COLUMN visible_at DATETIME(6) NOT NULL,
+            MODIFY COLUMN acquired_at DATETIME(6) NULL,
+            MODIFY COLUMN created_at DATETIME(6) NOT NULL,
+            MODIFY COLUMN updated_at DATETIME(6) NOT NULL`
+        })
+      }),
+      orElse: () => ({})
     })
   })
 
