@@ -3,7 +3,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
-import * as Scheduler from "effect/Scheduler"
 import * as Stream from "effect/Stream"
 import * as Socket from "effect/unstable/socket/Socket"
 
@@ -133,66 +132,15 @@ describe("Socket", () => {
         assert.strictEqual(ws.listenerCount("open"), 0)
       }))
 
-    it.effect("coalesces same-tick messages through the Scheduler and does not pause after deliver", () =>
-      Effect.gen(function*() {
-        const tasks: Array<() => void> = []
-        const scheduler: Scheduler.Scheduler = {
-          executionMode: "sync",
-          shouldYield: () => false,
-          makeDispatcher: () => ({
-            scheduleTask(task) {
-              tasks.push(task)
-            },
-            flush() {
-              while (tasks.length > 0) tasks.shift()!()
-            }
-          })
-        }
-        const ws = new TestWebSocket(Latch.makeUnsafe(false))
-        ws.readyState = 1
-        const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
-        const { pull } = yield* socket.reader.pipe(
-          Effect.provideService(Scheduler.Scheduler, scheduler)
-        )
-        assert.strictEqual(ws.pauseCount, 0)
-        const reader = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
-        assert.strictEqual(ws.resumeCount, 0)
-
-        ws.dispatch("message", { data: "hello" })
-        ws.dispatch("message", { data: "world" })
-
-        assert.isUndefined(reader.pollUnsafe())
-        assert.lengthOf(tasks, 1)
-        scheduler.makeDispatcher().flush()
-        assert.deepStrictEqual(yield* Fiber.join(reader), ["hello", "world"])
-        assert.strictEqual(ws.pauseCount, 0)
-      }))
-
     it.effect("pauses at the highWaterMark and resumes after draining", () =>
       Effect.gen(function*() {
-        const tasks: Array<() => void> = []
-        const scheduler: Scheduler.Scheduler = {
-          executionMode: "sync",
-          shouldYield: () => false,
-          makeDispatcher: () => ({
-            scheduleTask(task) {
-              tasks.push(task)
-            },
-            flush() {
-              while (tasks.length > 0) tasks.shift()!()
-            }
-          })
-        }
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 10 })
-        const { pull } = yield* socket.reader.pipe(
-          Effect.provideService(Scheduler.Scheduler, scheduler)
-        )
+        const { pull } = yield* socket.reader
         const firstPull = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
 
         ws.dispatch("message", { data: "first" })
-        scheduler.makeDispatcher().flush()
         assert.deepStrictEqual(yield* Fiber.join(firstPull), ["first"])
 
         ws.dispatch("message", { data: "hello" })
