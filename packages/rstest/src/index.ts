@@ -37,11 +37,15 @@ export namespace Vitest {
   }
 
   /**
-   * Rstest test options plus `fails`, which is applied through the `it.fails` modifier.
+   * Rstest test options plus the selection and concurrency flags from `@effect/vitest`.
    *
    * @since 4.0.0
    */
   export type TestOptions = Rs.TestOptions & {
+    readonly concurrent?: boolean | undefined
+    readonly skip?: boolean | undefined
+    readonly only?: boolean | undefined
+    readonly todo?: boolean | undefined
     readonly fails?: boolean | undefined
   }
 

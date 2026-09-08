@@ -61,9 +61,27 @@ export const addEqualityTesters = () => {
 const testOptions = (timeout?: number | Rstest.Vitest.TestOptions): Rs.TestOptions =>
   typeof timeout === "number" ? { timeout } : timeout ?? {}
 
-// rstest ignores `fails` in the options object, it only honours the `it.fails` modifier
-const testApi = (it: Rs.TestAPIs, timeout?: number | Rstest.Vitest.TestOptions): Rs.TestAPIs["fails"] =>
-  typeof timeout === "object" && timeout.fails === true ? it.fails : it
+// Rstest exposes these options through modifiers instead of its options object.
+const testApi = (
+  it: Rs.TestAPIs,
+  timeout?: number | Rstest.Vitest.TestOptions,
+  modifier?: "skip" | "only" | "fails"
+): Rs.TestAPIs["fails"] => {
+  const options = typeof timeout === "object" ? timeout : {}
+  let api: Rs.TestAPIs["fails"] = it
+  if (options.concurrent !== undefined) {
+    api = options.concurrent ? api.concurrent : api.sequential
+  }
+  // Match Vitest's selection precedence when options and modifiers are combined.
+  if (modifier === "only" || options.only) {
+    api = api.only
+  } else if (modifier === "skip" || options.skip) {
+    api = api.skip
+  } else if (options.todo) {
+    api = api.todo
+  }
+  return modifier === "fails" || options.fails ? api.fails : api
+}
 
 const hookTimeout = (timeout?: Duration.Input) =>
   timeout === undefined ? undefined : Duration.toMillis(Duration.fromInputUnsafe(timeout))
@@ -157,17 +175,17 @@ const makeTester = <R>(
     testApi(it, timeout)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const skip: Rstest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    testApi(it, timeout).skip(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout, "skip")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   // rstest types the condition as `boolean`, `@effect/vitest` accepts `unknown`
   const skipIf: Rstest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    testApi(it, timeout).skipIf(Boolean(condition))(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout, condition ? "skip" : undefined)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const runIf: Rstest.Vitest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    testApi(it, timeout).runIf(Boolean(condition))(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout, condition ? undefined : "skip")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const only: Rstest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    testApi(it, timeout).only(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout, "only")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const each: Rstest.Vitest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
     testApi(it, timeout).for(cases)(
@@ -177,7 +195,7 @@ const makeTester = <R>(
     )
 
   const fails: Rstest.Vitest.Tester<R>["fails"] = (name, self, timeout) =>
-    it.fails(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout, "fails")(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const prop: Rstest.Vitest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     const arbitrary = makeArbitrary(arbitraries)

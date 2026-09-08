@@ -415,3 +415,9 @@ it.prop(
     assert.include(["a", "b"], text)
   }
 )
+
+// TestOptions use the same selection flags as @effect/vitest.
+it.effect("skip option", () => Effect.die("must be skipped"), { skip: true })
+it.live("todo option", () => Effect.die("must not run"), { todo: true })
+it.effect.each([1])("each skip option", () => Effect.die("must be skipped"), { skip: true })
+it.effect("false selection options", () => Effect.void, { skip: false, todo: false, only: false })

@@ -3,7 +3,8 @@ import { Effect, Layer } from "effect"
 
 const checkConcurrency = (
   it: Vitest.MethodsNonLive,
-  concurrent: boolean
+  concurrent: boolean,
+  options?: { readonly concurrent: boolean }
 ) => {
   let running = 0
   let release!: () => void
@@ -27,7 +28,7 @@ const checkConcurrency = (
         } finally {
           running--
         }
-      }))
+      }), options)
   }
 }
 
@@ -48,6 +49,10 @@ for (const [name, makeLayer] of [["layer", layer], ["it.layer", it.layer]] as co
 
           it.layer(Layer.empty, { concurrent })("nested layer overrides parent", (it) => {
             checkConcurrency(it, concurrent)
+          })
+
+          describe("test options override layer", () => {
+            checkConcurrency(it, concurrent, { concurrent })
           })
         })
 

@@ -134,3 +134,11 @@ test("neutral namespace retains compatibility", () => {
   expect<EffectTest.Methods>().type.toBe<Vitest.Methods>()
   expect<EffectTest.Tester<never>>().type.toBe<Vitest.Tester<never>>()
 })
+
+test("Effect tests accept Vitest selection and concurrency options", () => {
+  const options = { concurrent: false, skip: false, only: false, todo: false, fails: true }
+  expect(it.effect).type.toBeCallableWith("effect", () => Effect.void, options)
+  expect(it.live).type.toBeCallableWith("live", () => Effect.void, options)
+  expect(it.effect.each([1])).type.toBeCallableWith("each", () => Effect.void, options)
+  expect(it.effect).type.not.toBeCallableWith("effect", () => Effect.void, { concurrent: "false" })
+})
