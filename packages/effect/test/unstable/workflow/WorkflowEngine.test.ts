@@ -1,9 +1,87 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
+import { Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Scheduler, Schema, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
 describe("WorkflowEngine", () => {
+  it.effect("interrupted activity acquisition does not block a later durable deferred", () =>
+    Effect.gen(function*() {
+      const observations: Array<{
+        yieldedAfterAcquisition: boolean
+        bodyEntered: boolean
+        childInterrupted: boolean
+        countAfterInterrupt: number
+        waiterSettled: boolean
+        waiterSettledAfterCancellation: boolean
+      }> = []
+      const Repro = Workflow.make("WorkflowEngine/InterruptedActivityAcquisition", {
+        payload: {},
+        idempotencyKey: () => "repro"
+      })
+      const layer = Repro.toLayer(() =>
+        Effect.gen(function*() {
+          const instance = yield* WorkflowEngine.WorkflowInstance
+          let yieldedAfterAcquisition = false
+          let bodyEntered = false
+          class AcquisitionScheduler extends Scheduler.MixedScheduler {
+            override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+              // Yield at the first runtime boundary after acquisition, before the
+              // returned onExit has installed its release. No counter mutation.
+              if (!yieldedAfterAcquisition && instance.activityState.count > 0) {
+                yieldedAfterAcquisition = true
+                return true
+              }
+              return super.shouldYield(fiber)
+            }
+          }
+          const child = yield* Activity.make({
+            name: "candidate",
+            execute: Effect.sync(() => {
+              bodyEntered = true
+            }).pipe(Effect.andThen(Effect.never))
+          }).pipe(
+            Effect.provideService(Scheduler.Scheduler, new AcquisitionScheduler()),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Fiber.interrupt(child)
+          const childInterrupted = Exit.hasInterrupts(yield* Fiber.await(child))
+          const countAfterInterrupt = instance.activityState.count
+          const waiter = yield* DurableDeferred.await(DurableDeferred.make("unresolved")).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          for (let turn = 0; turn < 100; turn++) yield* Effect.yieldNow
+          const waiterSettled = waiter.pollUnsafe() !== undefined
+          const cancellation = yield* Fiber.interrupt(waiter).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          for (let turn = 0; turn < 100; turn++) yield* Effect.yieldNow
+          observations.push({
+            yieldedAfterAcquisition,
+            bodyEntered,
+            childInterrupted,
+            countAfterInterrupt,
+            waiterSettled,
+            waiterSettledAfterCancellation: waiter.pollUnsafe() !== undefined
+          })
+          // Repair only after observing the failure, so the leaked count cannot
+          // strand the waiter's uninterruptible finalizer during test teardown.
+          instance.activityState.count = 0
+          instance.activityState.latch.openUnsafe()
+          yield* Fiber.join(cancellation)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Repro.execute({}).pipe(Effect.provide(layer))
+      assert.deepStrictEqual(observations, [{
+        yieldedAfterAcquisition: true,
+        bodyEntered: false,
+        childInterrupted: true,
+        countAfterInterrupt: 0,
+        waiterSettled: true,
+        waiterSettledAfterCancellation: true
+      }])
+    }))
+
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
     payload: { value: Schema.Number },
     success: Schema.Number,
