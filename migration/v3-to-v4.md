@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
 
-Head: `agent/bob/738d126b22f9` (`b785b7cad17e0d416c4bda7984c667a5da0723aa`)
+Head: `agent/bob/738d126b22f9` (`b4773df70eb78ac7c222b236ff5a0605e6632ac6`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5142,7 +5142,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.mapEffect`: TODO: needs guidance
 
-- `Args.none` -> `omit the config entry`: V4 Argument.None is an always-failing sentinel, not v3's empty successful argument set.
+- `Args.none` -> `omit the config entry`: V4 Argument.Never is an always-failing sentinel, not v3's empty successful argument set.
 
 - `Args.optional` -> `Argument.optional`: Use the moved combinator; it still returns Option.
 
@@ -5527,6 +5527,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Prompt.All.Return` -> `Prompt.All.Return`: The collection result helper remains under Prompt.All.
 
 - `Prompt.Prompt` -> `Prompt.Prompt`: The model moved to effect/unstable/cli; quitting now fails with Terminal.QuitError.
+
+- `Prompt.Prompt.FloatOptions` -> `Prompt.NumberOptions`: Use the renamed public options type for Prompt.Number; it still extends the integer options type, now IntOptions.
+
+- `Prompt.Prompt.IntegerOptions` -> `Prompt.IntOptions`: Use the renamed public options type for Prompt.Int; option fields are preserved.
 
 - `Prompt.Prompt.Variance` -> `Prompt.Prompt`: The named variance artifact was removed; use Prompt\<Output\>.
 
