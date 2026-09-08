@@ -503,6 +503,23 @@ describe("McpServer", () => {
     }))
 
   describe("direct service", () => {
+    it.effect("should complete notification-emitting tools without a running transport", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "Emit", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            server.notifications["notifications/message"]({ level: "error", data: "diagnostic" }).pipe(
+              Effect.as(new McpSchema.CallToolResult({ content: [] }))
+            )
+        })
+        const result = yield* server.callTool({ name: "Emit" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+        assert.deepStrictEqual(result.content, [])
+      }))
+
     it.effect("should fail when a resource URI is unknown", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
