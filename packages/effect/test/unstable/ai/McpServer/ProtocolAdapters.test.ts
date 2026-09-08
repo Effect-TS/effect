@@ -662,7 +662,7 @@ const initialize = Effect.fnUntraced(function*(
     return yield* readJsonRpcResponse(response)
   })
 
-  return { initializeResult: body.result, protocolVersion, request }
+  return { initializeResult: body.result, protocolVersion, request, sessionId }
 })
 
 const resultOf = (message: JsonRpcResponse): Record<string, unknown> => {
@@ -716,6 +716,25 @@ describe("McpServer protocol adapters", () => {
       assert.strictEqual(response.status, 200)
       assert.isNotNull(response.headers.get("Mcp-Session-Id"))
       assert.strictEqual(resultOf(message).protocolVersion, "2025-11-25")
+    }))
+
+  // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#backward-compatibility
+  it.effect("should ignore a recognized legacy session when dispatching a modern request", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const legacy = yield* initialize(fixture.post, "2025-11-25")
+      const body = modernRequest(19, "server/discover")
+      const withoutSession = yield* fixture.post(body, modernHeaders("server/discover"))
+      const expected = resultOf(yield* readJsonRpcResponse(withoutSession))
+      const withSession = yield* fixture.post(body, {
+        ...modernHeaders("server/discover"),
+        "Mcp-Session-Id": legacy.sessionId
+      })
+      const actual = yield* readJsonRpcResponse(withSession)
+
+      assert.deepStrictEqual(resultOf(actual), expected)
+      assert.isNull(withSession.headers.get("Mcp-Session-Id"))
+      assert.deepStrictEqual(resultOf(yield* legacy.request("ping", {})), {})
     }))
 
   it.effect("should discover the modern server without initialization or a session", () =>

@@ -988,8 +988,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
               Effect.flatMap((prepared) => {
                 const session = prepared.binding
                 const selectedProtocol = prepared.protocol
-                // Selection happens before dated payload decoding. Once a
-                // session exists, all later messages reuse its pinned adapter.
+                // Select before dated payload decoding: legacy requests use
+                // their session's adapter; modern requests carry their own version.
                 clientProtocols.set(clientId, selectedProtocol)
                 if (prepared.profile !== undefined) {
                   clientProfiles.set(clientId, prepared.profile)
