@@ -199,17 +199,15 @@ describe("HttpServerRequest", () => {
       })
 
       const decoded = yield* HttpServerRequest.schemaBodyJson(schema, {
-        onExcessProperty: "preserve",
+        onExcessProperty: "ignore",
         reviver: (key, value) => key === "status" ? "revived" : value
       }).pipe(
         Effect.provideService(HttpServerRequest.HttpServerRequest, request)
       )
-      const decodedRecord = decoded as Record<string, unknown>
-
       assert.strictEqual(decoded.status, "revived")
       assert.strictEqual(decoded.name, "svc")
-      assert.strictEqual(decodedRecord.sha, "abc")
-      assert.strictEqual(decodedRecord.version, "1.0.0")
+      assert.isFalse("sha" in decoded)
+      assert.isFalse("version" in decoded)
     }))
 
   it("remoteAddress defaults to none for web requests", () => {

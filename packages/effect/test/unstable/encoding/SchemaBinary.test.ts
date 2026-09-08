@@ -1680,7 +1680,7 @@ describe("SchemaBinary", () => {
       assert.strictEqual(error.message.match(/Missing key/g)?.length, 2)
     })
 
-    it("ignores excess-property and property-order options at the binary boundary", () => {
+    it("ignores excess-property options at the binary boundary", () => {
       const Writer = Schema.Struct({ extra: Schema.String, known: Schema.Number })
       const Reader = Schema.Struct({ known: Schema.Number })
       const bytes = encode(Writer, { extra: "drop", known: 1 })
@@ -1690,7 +1690,7 @@ describe("SchemaBinary", () => {
         { known: 1 }
       )
       assert.deepStrictEqual(
-        SchemaBinary.parser(Reader, { onExcessProperty: "preserve", propertyOrder: "original" }).feedSync(bytes),
+        SchemaBinary.parser(Reader, { onExcessProperty: "error" }).feedSync(bytes),
         [{ known: 1 }]
       )
     })

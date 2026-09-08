@@ -226,11 +226,24 @@ describe("JSON Schema round-trip laws", () => {
       )
     })
 
-    it("preserves pattern indexes", () => {
+    it("preserves pattern constraints but imports unmatched keys as modeled extras", () => {
+      const schema = Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite)
       assertRepresentationRoundTrip(
-        Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite),
-        [{}, { A: 1 }, { A: "a" }, { a: 1 }, { a: "a" }, []]
+        schema,
+        [{}, { A: 1 }, { A: "a" }, []]
       )
+      const emitted = Schema.toJsonSchemaDocument(schema)
+      const imported = SchemaRepresentation.fromJsonSchemaDocument(emitted, {
+        patterns: "apply"
+      }) as unknown as Schema.ConstraintDecoder<unknown>
+      const validate = compile(emitted)
+      for (const input of [{ a: 1 }, { a: "a" }]) {
+        assert.strictEqual(validate(input), true)
+        assert.deepStrictEqual(Schema.decodeUnknownSync(schema)(input), {})
+        assert.deepStrictEqual(Schema.decodeUnknownSync(imported)(input), input)
+        assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })(input)))
+        assert.isTrue(Exit.isSuccess(Schema.decodeUnknownExit(imported, { onExcessProperty: "error" })(input)))
+      }
     })
 
     it("preserves pattern and string indexes", () => {

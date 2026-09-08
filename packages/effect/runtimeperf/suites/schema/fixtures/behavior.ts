@@ -189,19 +189,6 @@ export const taggedWithFallbackValid = decodeParserCase(
   true
 )
 
-const propertyOrderSchema = Schema.Struct({
-  a: Schema.String,
-  b: Schema.String
-})
-const propertyOrderInput = { extra: "extra", b: "b", a: "a" }
-
-export const propertyOrderOriginal = decodeCase(
-  propertyOrderSchema,
-  propertyOrderInput,
-  true,
-  { onExcessProperty: "preserve", propertyOrder: "original" }
-)
-
 const recursiveTree = Schema.Struct({
   value: Schema.String,
   children: Schema.Array(Schema.suspend(() => recursiveTree))

@@ -1105,17 +1105,6 @@
               "size": 2
             },
             {
-              "name": "property-order-original",
-              "export": "propertyOrderOriginal",
-              "scenario": "property-order-original",
-              "family": "parse-options",
-              "astTags": [
-                "Objects"
-              ],
-              "path": "valid",
-              "size": 3
-            },
-            {
               "name": "recursive-tree-depth-16-valid",
               "export": "recursiveTreeDepth16Valid",
               "scenario": "recursive-tree-depth-16-valid",

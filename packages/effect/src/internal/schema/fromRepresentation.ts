@@ -316,7 +316,7 @@ function revivePersisted(
       }
       case "Union": {
         const members = representation.types.map((member, index) => recur(member, [...path, "types", index]))
-        return finishStructural(Schema.Union(members, { mode: representation.mode }), representation, path)
+        return finishStructural(Schema.Union(members, representation.options), representation, path)
       }
     }
   }

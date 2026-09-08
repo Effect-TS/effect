@@ -909,25 +909,12 @@ Failure(Cause([Fail(SchemaError: Custom message
 */
 ```
 
-### Preserve unexpected keys
+### Handling unexpected keys
 
-You can preserve unexpected keys by setting `onExcessProperty` to `preserve`.
-
-**Example** (Preserving unexpected keys)
-
-```ts
-import { Schema } from "effect"
-
-const schema = Schema.Struct({
-  a: Schema.String
-})
-
-console.log(String(Schema.decodeUnknownExit(schema)({ a: "a", b: "b" }, { onExcessProperty: "preserve" })))
-/*
-Output:
-Success({"b":"b","a":"a"})
-*/
-```
+Unexpected keys are ignored by default. Set `onExcessProperty` to `error` to
+reject them. To retain additional keys, describe and validate them with
+`Schema.Record` or `Schema.StructWithRest` so they are represented in the
+schema's type.
 
 ### Index Signatures
 
@@ -1688,12 +1675,10 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-When parsing sequentially, transformed keys are applied in selection order, so
-the later selected property wins if a transformation produces a duplicate key.
-With concurrency greater than `1`, completion order determines which value is
-retained.
+Transformed keys are applied sequentially in selection order, so the later
+selected property wins if a transformation produces a duplicate key.
 
-**Example** (Keeping the later selected value when parsing sequentially)
+**Example** (Keeping the later selected value)
 
 ```ts
 import { Schema, SchemaTransformation } from "effect"

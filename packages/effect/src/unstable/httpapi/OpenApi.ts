@@ -424,7 +424,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
             content.forEach((map, encoding) => {
               map.forEach((schemas, contentType) => {
                 const asts = Array.from(schemas, SchemaAST.getAST)
-                const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts, "anyOf")
+                const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
 
                 pathOps.push({
                   _tag: "schema",
@@ -585,7 +585,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
           const content: OpenApiSpecContent = {}
           for (const [contentType, { encoding, schemas }] of schemasByContentType) {
             const asts = schemas.map(SchemaAST.getAST)
-            const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts, "anyOf")
+            const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
             pathOps.push({
               _tag: "schema",
               ast: toEncodingAST(ast, encoding._tag),

@@ -26,7 +26,7 @@ const NumberRepresentation: SchemaRepresentation.Representation = {
 const EmptyUnionRepresentation: SchemaRepresentation.Representation = {
   _tag: "Union",
   types: [],
-  mode: "anyOf",
+  options: { mode: "anyOf" },
   checks: []
 }
 
@@ -293,7 +293,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
             { _tag: "Literal", literal: "a", checks: [] },
             { _tag: "Literal", literal: "b", checks: [] }
           ],
-          mode: "anyOf",
+          options: { mode: "anyOf" },
           checks: []
         }),
         { type: "string", enum: ["a", "b"] }
@@ -308,7 +308,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
             { _tag: "Literal", literal: "a", checks: [] },
             { _tag: "Literal", literal: 1, checks: [] }
           ],
-          mode: "anyOf",
+          options: { mode: "anyOf" },
           checks: []
         }),
         {
@@ -485,7 +485,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         compile({
           _tag: "Union",
           types: [StringRepresentation],
-          mode: "anyOf",
+          options: { mode: "anyOf" },
           checks: []
         }),
         { anyOf: [{ type: "string" }] }
@@ -661,7 +661,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
             parameter: {
               _tag: "Union",
               types: [template, pattern],
-              mode: "anyOf",
+              options: { mode: "anyOf" },
               checks: []
             },
             type: StringRepresentation
@@ -724,7 +724,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
               { _tag: "Literal", literal: "a", checks: [] },
               { _tag: "Literal", literal: "b", checks: [] }
             ],
-            mode: "anyOf",
+            options: { mode: "anyOf" },
             checks: []
           }
         ],

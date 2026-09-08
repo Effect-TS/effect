@@ -181,7 +181,7 @@ describe("SchemaRepresentation.toJson", () => {
           },
           checks: []
         }],
-        mode: "anyOf",
+        options: { mode: "anyOf" },
         checks: []
       },
       {
@@ -191,7 +191,7 @@ describe("SchemaRepresentation.toJson", () => {
           annotations: { title: "nested" },
           checks: []
         }],
-        mode: "anyOf",
+        options: { mode: "anyOf" },
         checks: []
       }
     )

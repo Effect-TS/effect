@@ -228,9 +228,28 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     assert.isFalse(Schema.is(schema)(true))
   })
 
+  it("revives Union options through live and JSON representation roundtrips", () => {
+    const representation = {
+      _tag: "Union",
+      types: [{ _tag: "String", checks: [] }, { _tag: "Number", checks: [] }],
+      options: { mode: "oneOf" },
+      checks: []
+    } as const satisfies SchemaRepresentation.Representation
+    const document = { representation, references: {} }
+    const revived = SchemaRepresentation.fromRepresentation(document, { revivers: [] })
+    assert.strictEqual(revived.ast._tag, "Union")
+    if (revived.ast._tag === "Union") assert.deepStrictEqual(revived.ast.options, representation.options)
+    const fromJson = SchemaRepresentation.fromRepresentation(
+      SchemaRepresentation.fromJson(SchemaRepresentation.toJson(document)),
+      { revivers: [] }
+    )
+    assert.strictEqual(fromJson.ast._tag, "Union")
+    if (fromJson.ast._tag === "Union") assert.deepStrictEqual(fromJson.ast.options, representation.options)
+  })
+
   it("revives an empty Union as Never", () => {
     const schema = SchemaRepresentation.fromRepresentation({
-      representation: { _tag: "Union", types: [], mode: "anyOf", checks: [] },
+      representation: { _tag: "Union", types: [], options: { mode: "anyOf" }, checks: [] },
       references: {}
     }, { revivers: [] })
     assert.isFalse(Schema.is(schema)(undefined))

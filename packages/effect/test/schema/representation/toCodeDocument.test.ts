@@ -1357,7 +1357,7 @@ describe("toCodeDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.Union([Schema.String, Schema.Number], { mode: "oneOf" })`,
+            `Schema.Union([Schema.String, Schema.Number], { "mode": "oneOf" })`,
             "string | number"
           )
         }
@@ -1368,7 +1368,7 @@ describe("toCodeDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.Union([Schema.String, Schema.Number], { mode: "oneOf" }).annotate({ "description": "aa" })`,
+            `Schema.Union([Schema.String, Schema.Number], { "mode": "oneOf" }).annotate({ "description": "aa" })`,
             "string | number"
           )
         }

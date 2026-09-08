@@ -293,8 +293,7 @@ describe("fromJsonSchemaDocument", () => {
                   "value": 1
                 }
               }
-            ],
-            "mode": "anyOf"
+            ]
           },
           "references": {}
         }
@@ -325,8 +324,7 @@ describe("fromJsonSchemaDocument", () => {
                   "value": 1
                 }
               }
-            ],
-            "mode": "anyOf"
+            ]
           },
           "references": {}
         }
@@ -353,8 +351,7 @@ describe("fromJsonSchemaDocument", () => {
                 "_tag": "Null",
                 "checks": []
               }
-            ],
-            "mode": "anyOf"
+            ]
           },
           "references": {}
         }
@@ -398,11 +395,9 @@ describe("fromJsonSchemaDocument", () => {
                     "value": 2
                   }
                 }
-              ],
-              "mode": "anyOf"
+              ]
             }
-          ],
-          "mode": "anyOf"
+          ]
         },
         "references": {}
       }
@@ -542,8 +537,7 @@ describe("fromJsonSchemaDocument", () => {
                 }
               ]
             }
-          ],
-          "mode": "anyOf"
+          ]
         },
         "references": {}
       }
@@ -586,11 +580,10 @@ describe("fromJsonSchemaDocument", () => {
                     "value": 2
                   }
                 }
-              ],
-              "mode": "anyOf"
+              ]
             }
           ],
-          "mode": "oneOf"
+          "options": { "mode": "oneOf" }
         },
         "references": {}
       }
@@ -731,7 +724,7 @@ describe("fromJsonSchemaDocument", () => {
               ]
             }
           ],
-          "mode": "oneOf"
+          "options": { "mode": "oneOf" }
         },
         "references": {}
       }
@@ -2416,8 +2409,7 @@ describe("fromJsonSchemaDocument", () => {
               "_tag": "Null",
               "checks": []
             }
-          ],
-          "mode": "anyOf"
+          ]
         },
         "references": {}
       }
@@ -2445,8 +2437,7 @@ describe("fromJsonSchemaDocument", () => {
               "_tag": "Null",
               "checks": []
             }
-          ],
-          "mode": "anyOf"
+          ]
         },
         "references": {}
       }
@@ -4031,8 +4022,7 @@ describe("fromJsonSchemaDocument", () => {
                     "value": "b"
                   }
                 }
-              ],
-              "mode": "anyOf"
+              ]
             },
             "references": {}
           }
@@ -4509,8 +4499,7 @@ describe("fromJsonSchemaDocument", () => {
                     "value": 2
                   }
                 }
-              ],
-              "mode": "anyOf"
+              ]
             },
             "references": {}
           }

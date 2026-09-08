@@ -1292,7 +1292,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         const members = ast.types.map((member) => recur(member, path, constraint))
         if (members.length === 0) throw arbitraryError("a union with no members", path)
         let generate = (state: Model.GenerationState): Model.Generation<unknown> => Model.generateUnion(members, state)
-        if (ast.mode === "oneOf") {
+        if (ast.options?.mode === "oneOf") {
           const parse = SchemaParser.run<unknown, never>(ast)
           const validate = (value: unknown) => optionComputation(parse(value))
           generate = (state) => Model.filterMapGeneration(Model.generateUnion(members, state), validate)

@@ -393,7 +393,7 @@ export interface Objects extends Keyword<"Objects"> {
  */
 export interface Union extends Keyword<"Union"> {
   readonly types: ReadonlyArray<Representation>
-  readonly mode: "anyOf" | "oneOf"
+  readonly options?: SchemaAST.UnionOptions | undefined
 }
 
 /**
@@ -2614,7 +2614,9 @@ const UnionSchema = Schema.Struct({
   _tag: Schema.tag("Union"),
   ...KeywordFields,
   types: RepresentationsSchema,
-  mode: Schema.Literals(["anyOf", "oneOf"])
+  options: Schema.optionalKey(Schema.Struct({
+    mode: Schema.optionalKey(Schema.Literals(["anyOf", "oneOf"]))
+  }))
 })
 const ReferenceSchema = Schema.Struct({
   _tag: Schema.tag("Reference"),
