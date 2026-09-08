@@ -3,6 +3,7 @@ import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
@@ -33,6 +34,7 @@ import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
@@ -186,6 +188,91 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  it.effect("should isolate request notifications across mixed HTTP protocols", () =>
+    Effect.gen(function*() {
+      const holding = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
+      const harness = yield* makeHttpHarness(
+        Layer.effectDiscard(Effect.gen(function*() {
+          const server = yield* McpServer.McpServer
+          for (const name of ["Hold", "Emit"]) {
+            yield* server.addTool({
+              tool: new McpSchema.Tool({ name, inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () =>
+                (name === "Hold"
+                  ? Deferred.succeed(holding, undefined).pipe(Effect.andThen(Deferred.await(release)))
+                  : Effect.gen(function*() {
+                    yield* server.notifications["notifications/message"]({ level: "error", data: "request-log" })
+                    yield* server.notifications["notifications/progress"]({ progressToken: "token", progress: 1 })
+                  })).pipe(Effect.as(new McpSchema.CallToolResult({ content: [] })))
+            })
+          }
+          yield* Deferred.succeed(ready, server)
+        })).pipe(Layer.provideMerge(makeServerLayer({
+          name: "NotificationOwnership",
+          protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25]
+        })))
+      )
+      const server = yield* Deferred.await(ready)
+      const initialized = yield* harness.post({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "legacy", version: "1.0.0" }
+        }
+      })
+      const sessionId = initialized.headers.get("mcp-session-id")
+      assert.isNotNull(sessionId)
+      const held = yield* harness.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "Hold" }
+      }, { "mcp-session-id": sessionId, "mcp-protocol-version": "2025-11-25" }).pipe(Effect.forkChild)
+      yield* Deferred.await(holding)
+      const postModern = (id: number, method: string, params: Record<string, unknown>) =>
+        harness.post({
+          jsonrpc: "2.0",
+          id,
+          method,
+          params: {
+            ...params,
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/logLevel": "warning",
+              progressToken: "token"
+            }
+          }
+        }, { "mcp-protocol-version": "2026-07-28", "mcp-method": method, "mcp-name": "Emit" })
+      const subscription = makeMcpSseReader(
+        yield* postModern(3, "subscriptions/listen", {
+          notifications: { toolsListChanged: true }
+        })
+      )
+      yield* Effect.addFinalizer(() => subscription.cancel)
+      assert.strictEqual((yield* subscription.take()).method, "notifications/subscriptions/acknowledged")
+      const response = makeMcpSseReader(yield* postModern(4, "tools/call", { name: "Emit" }))
+      yield* Effect.addFinalizer(() => response.cancel)
+      const messages = yield* response.drain()
+      assert.deepStrictEqual(messages.map((message) => message.method ?? message.id), [
+        "notifications/message",
+        "notifications/progress",
+        4
+      ])
+      yield* Deferred.succeed(release, undefined)
+      const unrelated = yield* Fiber.join(held)
+      assert.match(unrelated.headers.get("content-type") ?? "", /^application\/json/)
+      assert.deepInclude(yield* Effect.promise(() => unrelated.json()), { id: 2, result: { content: [] } })
+      yield* server.notifications["notifications/tools/list_changed"]({})
+      assert.strictEqual((yield* subscription.take()).method, "notifications/tools/list_changed")
+    }))
+
   it.effect("should match reverse responses to their originating connection", () =>
     Effect.gen(function*() {
       const outbound = yield* Queue.unbounded<{
@@ -1214,6 +1301,37 @@ describe("McpServer", () => {
   })
 
   describe("stdio", () => {
+    it.effect("should deliver stateless request notifications over stdio", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
+        yield* fixture.server.addTool({
+          tool: new McpSchema.Tool({ name: "Emit", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.gen(function*() {
+              yield* fixture.server.notifications["notifications/message"]({ level: "info", data: "filtered" })
+              yield* fixture.server.notifications["notifications/message"]({ level: "error", data: "delivered" })
+              yield* fixture.server.notifications["notifications/progress"]({ progressToken: "token", progress: 1 })
+              return new McpSchema.CallToolResult({ content: [] })
+            })
+        })
+        yield* fixture.initialize()
+        yield* fixture.takeFrame
+        yield* fixture.sendRequest("tools/call", {
+          name: "Emit",
+          _meta: { "io.modelcontextprotocol/logLevel": "warning", progressToken: "token" }
+        }, 2)
+        assert.deepInclude(yield* fixture.takeFrame, {
+          method: "notifications/message",
+          params: { level: "error", data: "delivered" }
+        })
+        assert.deepInclude(yield* fixture.takeFrame, {
+          method: "notifications/progress",
+          params: { progressToken: "token", progress: 1 }
+        })
+        assert.deepInclude(yield* fixture.takeFrame, { id: 2 })
+      }))
+
     it.effect("should accept batches after falling back to a stateful protocol", () =>
       Effect.gen(function*() {
         const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_03_26, [
