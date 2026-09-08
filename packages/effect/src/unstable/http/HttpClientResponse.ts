@@ -103,7 +103,7 @@ export const schemaJson = <
   schema: Schema.ConstraintCodec<A, I, RD, unknown>,
   options?: (ParseOptions & HttpIncomingMessage.JsonOptions) | undefined
 ) => {
-  const decode = Schema.decodeEffect(Schema.toCodecJson(schema).annotate({ options }))
+  const decode = Schema.decodeEffect(Schema.toCodecJson(schema), options)
   const decodeBody = HttpIncomingMessage.schemaBodyJson(Schema.Unknown, options)
   return (
     self: HttpClientResponse
@@ -134,7 +134,7 @@ export const schemaNoBody = <
   schema: Schema.Codec<A, I, RD, RE>,
   options?: ParseOptions | undefined
 ) => {
-  const decode = Schema.decodeEffect(schema.annotate({ options }))
+  const decode = Schema.decodeEffect(schema, options)
   return (self: HttpClientResponse): Effect.Effect<A, Schema.SchemaError, RD> =>
     decode({
       status: self.status,
