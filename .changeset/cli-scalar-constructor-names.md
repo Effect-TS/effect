@@ -26,8 +26,7 @@ The value constructor renames apply to these modules:
 | `fileParse`       | `FileParse`       | Primitive, Param, Flag, Argument |
 | `fileSchema`      | `FileSchema`      | Primitive, Param, Flag, Argument |
 | `keyValuePair`    | `KeyValuePair`    | Primitive, Param, Flag           |
-| `none`            | `None`            | Primitive, Param, Argument       |
-| `none`            | `Never`           | Flag                             |
+| `none`            | `Never`           | Primitive, Param, Flag, Argument |
 
 `Argument` has no `Boolean` or `KeyValuePair` constructor. `Primitive` has no `File`, `Directory`, or `ChoiceWithValue` constructor; use `Primitive.Path` with a path type, or `Primitive.Choice` with key/value pairs.
 
@@ -36,3 +35,7 @@ In `Prompt`: `text` -> `String`, `integer` -> `Int`, `float` -> `Number`, `date`
 In `GlobalFlag`: `action` -> `Action` and `setting` -> `Setting`, alongside the existing types of the same name.
 
 The public `_tag` values also change: `Primitive.Int._tag` changes from `"Integer"` to `"Int"`, and `Primitive.Finite._tag` changes from `"Float"` to `"Finite"`. Both `Completions.FlagType` and `Completions.ArgumentType` make the same breaking changes from `"Integer"`/`"Float"` to `"Int"`/`"Finite"`. Update custom completion descriptors and any switches or pattern matches on those tags. Parsing behavior, help labels, and generated completion scripts are unchanged.
+
+The sentinel constructors are consistently named `Never` in `Primitive`, `Param`, `Flag`, and `Argument`. The public `Primitive.Never._tag` changes from `"None"` to `"Never"`; update switches or pattern matches on that tag. The internal parameter name changes from `"__none__"` to `"__never__"`. These sentinels still always fail.
+
+Prompt also renames the exported option types `IntegerOptions` to `IntOptions` and `FloatOptions` to `NumberOptions`. `NumberOptions` still extends `IntOptions`; their fields and behavior are unchanged. Shared `TextOptions` retains its name for String, Hidden, Password, and List.

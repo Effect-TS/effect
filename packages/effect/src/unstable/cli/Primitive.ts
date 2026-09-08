@@ -914,7 +914,7 @@ export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
  *
  * const program = Effect.gen(function*() {
  *   // This will always fail - useful for boolean flags
- *   return yield* Primitive.None.parse("any-value")
+ *   return yield* Primitive.Never.parse("any-value")
  * })
  *
  * await Effect.runPromise(Effect.flip(program).pipe(Effect.provide(CliTestLayer))) // => "This option does not accept values"
@@ -923,7 +923,7 @@ export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const None: Primitive<never> = makePrimitive("None", () => Effect.fail("This option does not accept values"))
+export const Never: Primitive<never> = makePrimitive("Never", () => Effect.fail("This option does not accept values"))
 
 /**
  * Gets a human-readable type name for a primitive.
@@ -980,7 +980,7 @@ export const getTypeName = <A>(primitive: Primitive<A>): string => {
       return "file"
     case "KeyValuePair":
       return "key=value"
-    case "None":
+    case "Never":
       return "none"
     default:
       return "value"

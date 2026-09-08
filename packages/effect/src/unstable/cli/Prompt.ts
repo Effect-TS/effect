@@ -337,7 +337,7 @@ export interface DateOptions extends ThemeOptions {
  * @category options
  * @since 4.0.0
  */
-export interface IntegerOptions extends ThemeOptions {
+export interface IntOptions extends ThemeOptions {
   /**
    * The message to display in the prompt.
    */
@@ -376,13 +376,13 @@ export interface IntegerOptions extends ThemeOptions {
  *
  * **Details**
  *
- * In addition to the numeric bounds and step settings from `IntegerOptions`,
+ * In addition to the numeric bounds and step settings from `IntOptions`,
  * the prompt can be configured with a display precision.
  *
  * @category options
  * @since 4.0.0
  */
-export interface FloatOptions extends IntegerOptions {
+export interface NumberOptions extends IntOptions {
   /**
    * The precision to use for the floating point value (defaults to `2`).
    */
@@ -1051,8 +1051,8 @@ export const flatMap: {
  * @category constructors
  * @since 4.0.0
  */
-export const Number = (options: FloatOptions): Prompt<number> => {
-  const opts: FloatOptionsReq = {
+export const Number = (options: NumberOptions): Prompt<number> => {
+  const opts: NumberOptionsReq = {
     default: 0,
     min: globalThis.Number.NEGATIVE_INFINITY,
     max: globalThis.Number.POSITIVE_INFINITY,
@@ -1104,8 +1104,8 @@ export const Hidden = (
  * @category constructors
  * @since 4.0.0
  */
-export const Int = (options: IntegerOptions): Prompt<number> => {
-  const opts: IntegerOptionsReq = {
+export const Int = (options: IntOptions): Prompt<number> => {
+  const opts: IntOptionsReq = {
     default: 0,
     min: globalThis.Number.NEGATIVE_INFINITY,
     max: globalThis.Number.POSITIVE_INFINITY,
@@ -2902,8 +2902,8 @@ const handleMultiSelectRender = <A>(options: SelectOptionsReq<A>) => {
   }
 }
 
-interface IntegerOptionsReq extends OptionsReq<IntegerOptions> {}
-interface FloatOptionsReq extends OptionsReq<FloatOptions> {}
+interface IntOptionsReq extends OptionsReq<IntOptions> {}
+interface NumberOptionsReq extends OptionsReq<NumberOptions> {}
 
 interface NumberState {
   readonly cursor: number
@@ -2911,7 +2911,7 @@ interface NumberState {
   readonly error: Option.Option<string>
 }
 
-const handleNumberClear = (options: IntegerOptionsReq) => {
+const handleNumberClear = (options: IntOptionsReq) => {
   return Effect.fnUntraced(function*(state: NumberState, _: Action<NumberState, number>) {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
@@ -2968,7 +2968,7 @@ const renderNumberOutput = (
   state: NumberState,
   leadingSymbol: string,
   trailingSymbol: string,
-  options: IntegerOptionsReq,
+  options: IntOptionsReq,
   theme: Theme,
   renderOptions?: RenderOptions | undefined,
   submitted: boolean = false
@@ -2977,7 +2977,7 @@ const renderNumberOutput = (
   return renderPrompt(value, options.message, leadingSymbol, trailingSymbol, renderOptions)
 }
 
-const renderNumberNextFrame = Effect.fnUntraced(function*(state: NumberState, options: IntegerOptionsReq) {
+const renderNumberNextFrame = Effect.fnUntraced(function*(state: NumberState, options: IntOptionsReq) {
   const figures = yield* getTheme(options)
   const leadingSymbol = annotateSymbol(figures.prefix, figures.primaryColor)
   const trailingSymbol = annotateSymbol(figures.pointerSmall, figures.mutedColor)
@@ -2986,7 +2986,7 @@ const renderNumberNextFrame = Effect.fnUntraced(function*(state: NumberState, op
   return promptMsg + errorMsg
 })
 
-const renderNumberSubmission = Effect.fnUntraced(function*(nextState: NumberState, options: IntegerOptionsReq) {
+const renderNumberSubmission = Effect.fnUntraced(function*(nextState: NumberState, options: IntOptionsReq) {
   const figures = yield* getTheme(options)
   const leadingSymbol = annotateSymbol(figures.tick, figures.successColor)
   const trailingSymbol = annotateSymbol(figures.ellipsis, figures.mutedColor)
@@ -3054,7 +3054,7 @@ const defaultFloatProcessor = (input: string, state: NumberState) => {
   }
 }
 
-const handleRenderInteger = (options: IntegerOptionsReq) => {
+const handleRenderInteger = (options: IntOptionsReq) => {
   return (state: NumberState, action: Action<NumberState, number>) => {
     return Action.$match(action, {
       Beep: () => Effect.succeed(renderBeep),
@@ -3064,7 +3064,7 @@ const handleRenderInteger = (options: IntegerOptionsReq) => {
   }
 }
 
-const handleProcessInteger = (options: IntegerOptionsReq) => {
+const handleProcessInteger = (options: IntOptionsReq) => {
   return (input: Terminal.UserInput, state: NumberState) => {
     if (input.key.ctrl && input.key.name === "u") {
       return processNumberClear(state)
@@ -3127,7 +3127,7 @@ const handleProcessInteger = (options: IntegerOptionsReq) => {
   }
 }
 
-const handleRenderFloat = (options: FloatOptionsReq) => {
+const handleRenderFloat = (options: NumberOptionsReq) => {
   return (state: NumberState, action: Action<NumberState, number>) => {
     return Action.$match(action, {
       Beep: () => Effect.succeed(renderBeep),
@@ -3137,7 +3137,7 @@ const handleRenderFloat = (options: FloatOptionsReq) => {
   }
 }
 
-const handleProcessFloat = (options: FloatOptionsReq) => {
+const handleProcessFloat = (options: NumberOptionsReq) => {
   return (input: Terminal.UserInput, state: NumberState) => {
     if (input.key.ctrl && input.key.name === "u") {
       return processNumberClear(state)

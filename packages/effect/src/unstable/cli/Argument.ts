@@ -287,14 +287,14 @@ export const FileSchema = <A>(
  * import { Argument } from "effect/unstable/cli"
  *
  * // Used as a placeholder or default in combinators
- * const noArg = Argument.None
+ * const noArg = Argument.Never
  * noArg.kind // => "argument"
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export const None: Argument<never> = Param.None(Param.argumentKind)
+export const Never: Argument<never> = Param.Never(Param.argumentKind)
 
 // -------------------------------------------------------------------------------------
 // combinators

@@ -439,7 +439,7 @@ export const KeyValuePair = (name: string): Flag<Record<string, string>> => Para
  * @category constructors
  * @since 4.0.0
  */
-export const Never: Flag<never> = Param.None(Param.flagKind)
+export const Never: Flag<never> = Param.Never(Param.flagKind)
 
 // -------------------------------------------------------------------------------------
 // combinators

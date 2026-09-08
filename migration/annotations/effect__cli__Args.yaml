@@ -90,7 +90,7 @@
   note: "Use the moved combinator."
 "@effect/cli/Args#none":
   replacement: "omit the config entry"
-  note: "V4 Argument.None is an always-failing sentinel, not v3's empty successful argument set."
+  note: "V4 Argument.Never is an always-failing sentinel, not v3's empty successful argument set."
 "@effect/cli/Args#optional":
   replacement: "Argument.optional"
   note: "Use the moved combinator; it still returns Option."

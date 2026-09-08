@@ -899,7 +899,7 @@ export const KeyValuePair = <Kind extends ParamKind>(
  * ```ts import.meta.vitest
  * import { Param } from "effect/unstable/cli"
  *
- * const disabledDebugParam = Param.None(Param.flagKind)
+ * const disabledDebugParam = Param.Never(Param.flagKind)
  *
  * const makeDebugParam = (enableDebug: boolean) =>
  *   enableDebug ? Param.String(Param.flagKind, "debug") : disabledDebugParam
@@ -911,10 +911,10 @@ export const KeyValuePair = <Kind extends ParamKind>(
  * @category constructors
  * @since 4.0.0
  */
-export const None = <Kind extends ParamKind>(kind: Kind): Param<Kind, never> =>
+export const Never = <Kind extends ParamKind>(kind: Kind): Param<Kind, never> =>
   makeSingle({
-    name: "__none__",
-    primitiveType: Primitive.None,
+    name: "__never__",
+    primitiveType: Primitive.Never,
     kind
   })
 
