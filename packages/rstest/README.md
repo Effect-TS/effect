@@ -292,7 +292,7 @@ The test fiber receives Rstest's abort signal. After a timeout, an `onTestFinish
 
 Successful Effect values are discarded before Promise resolution, including thenables. Failures and expected-failure modifiers retain their runner outcomes.
 
-Shared-layer teardown requests interruption of unfinished setup and closes the layer scope without waiting for setup to finish. Uninterruptible setup can continue after teardown; resources registered with the closed scope are released immediately. Teardown retains the layer's hook timeout, so cleanup exceeding that deadline can outlive the hook. Setup-timeout behavior has been checked with temporary child-runner probes and has no committed regression coverage.
+Shared-layer teardown requests interruption of unfinished setup and closes the layer scope without waiting for setup to finish. Uninterruptible setup can continue after teardown; resources registered with the closed scope are released immediately. Teardown retains the layer's hook timeout, so cleanup exceeding that deadline can outlive the hook.
 
 Named layers accept `{ concurrent: true }` or `{ concurrent: false }` to override inherited suite concurrency. Anonymous layers inherit the enclosing suite's concurrency. Nested named layers can override it again. Use the callback's `ctx.expect` for assertions in concurrent tests.
 

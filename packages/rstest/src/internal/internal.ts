@@ -36,8 +36,8 @@ const runPromise: <E, A>(
 /** @internal */
 const runTest = (ctx?: Rs.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
   const result = runPromise(effect, ctx)
-  // Rstest abandons a timed-out test promise. Wait for the interrupted fiber and
-  // its finalizers before the next test or the suite teardown runs.
+  // Rstest abandons timed-out test promises. Wait for cleanup before later
+  // sequential tests and suite teardown, bounded by the runner's hook timeout.
   ctx?.onTestFinished(() => result.then(constVoid, constVoid))
   return result
 }
@@ -149,7 +149,7 @@ const makeItProxy = <Methods extends object>(
       if (Object.hasOwn(overrides, property)) {
         return Reflect.get(overrides, property)
       }
-      // do not bind: binding would strip rstest's static helpers (e.g. `it.each`)
+      // Binding would strip Rstest's static helpers, such as `it.each`.
       return Reflect.get(target, property, receiver)
     }
   })
@@ -159,7 +159,7 @@ const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
   it: Rs.TestAPIs = Rs.it
 ): Rstest.Tester<R> => {
-  // Rstest test callbacks return `MaybePromise<void>`
+  // Discard success values to match Rstest's void callbacks and avoid thenable assimilation.
   const run = <A, E, TestArgs extends Array<unknown>>(
     ctx: Rs.TestContext & object,
     args: TestArgs,
@@ -298,8 +298,9 @@ export const layer = <R, E>(
         })),
       hookTimeout(options?.timeout)
     )
-    // Rstest gives timed-out setup no abort signal. Request interruption without
-    // delaying scope closure on uninterruptible setup. Verified with child-runner probes.
+    // Rstest abandons timed-out setup without aborting it, leaving the build running.
+    // Request interruption, but close the scope without waiting for uninterruptible
+    // setup. Resources registered after closure are released immediately.
     Rs.afterAll(
       () =>
         runPromise(Effect.andThen(
@@ -312,8 +313,7 @@ export const layer = <R, E>(
   }
 
   if (args.length === 1) {
-    // Rstest cannot enumerate the tests of the enclosing suite, so an empty suite
-    // name (omitted from test paths) scopes the layer lifecycle instead.
+    // An unnamed suite gives the layer its own hooks without changing test paths.
     return Rs.describe("", () => suite(args[0]))
   }
 
