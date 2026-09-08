@@ -77,5 +77,8 @@ timeouts. Live SQL tests cover TLS, SQL authentication, scalar/LOB/TVP codecs,
 procedures, output parameters, errors, transactions and public adapter behavior.
 Existing persistence/cache/queue integration tests also run against the container.
 
-Windows-domain NTLM interoperability and Extended Protection, Azure/Entra
-authentication, and other SQL Server versions remain outside verified coverage.
+Security Token FedAuth also has TLS peer tests, including required acknowledgements,
+echo flags and per-connection token acquisition. These do not establish live Azure
+interoperability. Windows-domain NTLM, Extended Protection, live Azure SQL,
+automatic Azure credential flows, and other SQL Server versions remain outside
+verified coverage.

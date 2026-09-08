@@ -69,6 +69,7 @@ export type Token =
   | { readonly _tag: "ReturnStatus"; readonly value: number }
   | { readonly _tag: "ReturnValue"; readonly name: string; readonly value: unknown }
   | { readonly _tag: "Sspi"; readonly data: Buffer }
+  | { readonly _tag: "FeatureAck"; readonly features: ReadonlyMap<number, Buffer> }
   | { readonly _tag: "Ignored" }
 
 const fixedSizes: Readonly<Record<number, number>> = {
@@ -454,9 +455,14 @@ export class TokenParser {
       case 0xee:
         r.take(r.u32())
         return { _tag: "Ignored" }
-      case 0xae:
-        while (r.u8() !== 0xff) r.take(r.u32())
-        return { _tag: "Ignored" }
+      case 0xae: {
+        const features = new Map<number, Buffer>()
+        for (let id = r.u8(); id !== 0xff; id = r.u8()) {
+          if (features.has(id)) throw new ProtocolError("Duplicate feature acknowledgement")
+          features.set(id, Buffer.from(r.take(r.u32())))
+        }
+        return { _tag: "FeatureAck", features }
+      }
       default:
         throw new ProtocolError(`Unexpected TDS token 0x${kind.toString(16)}`)
     }

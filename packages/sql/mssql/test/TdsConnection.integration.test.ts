@@ -2,10 +2,12 @@ import * as Connection from "#tds/tdsConnection"
 import { TYPES } from "#tds/tdsRequest"
 import { MssqlClient, MssqlTypes, Procedure } from "@effect/sql-mssql"
 import { describe, expect, it } from "@effect/vitest"
+import { MSSQLServerContainer } from "@testcontainers/mssqlserver"
 import { Effect, Fiber, Redacted } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
+import { afterAll, beforeAll } from "vitest"
 
-const config: Connection.Config = {
+let config: Connection.Config = {
   server: process.env.MSSQL_HOST ?? "127.0.0.1",
   port: Number(process.env.MSSQL_PORT ?? 14339),
   username: "sa",
@@ -13,6 +15,25 @@ const config: Connection.Config = {
   encrypt: true,
   trustServer: true
 }
+
+let container: { stop: () => Promise<unknown> } | undefined
+beforeAll(async () => {
+  if (process.env.MSSQL_PORT) return
+  const started = await new MSSQLServerContainer("mcr.microsoft.com/mssql/server:2022-latest")
+    .acceptLicense().start()
+  container = started
+  config = {
+    ...config,
+    server: started.getHost(),
+    port: started.getPort(),
+    database: started.getDatabase(),
+    username: started.getUsername(),
+    password: started.getPassword()
+  }
+}, 120000)
+afterAll(async () => {
+  await container?.stop()
+}, 60000)
 
 describe("native TDS / SQL Server", () => {
   it.effect("roundtrips decimal, money, legacy LOB, XML, and ANSI parameters", () =>
@@ -176,7 +197,12 @@ describe("native TDS / SQL Server", () => {
 
   it.effect("runs through the public pooled adapter with nested transactions", () =>
     Effect.scoped(Effect.gen(function*() {
-      const sql = yield* MssqlClient.make({ ...config, password: Redacted.make(config.password!), maxConnections: 1 })
+      const sql = yield* MssqlClient.make({
+        ...config,
+        accessToken: undefined,
+        password: Redacted.make(config.password!),
+        maxConnections: 1
+      })
       const table = `effect_native_public_${process.pid}`
       const procedureName = `effect_native_answer_${process.pid}`
       yield* Effect.addFinalizer(() =>

@@ -17,7 +17,7 @@ npm install effect@rc @effect/sql-mssql@rc
 
 ## Native driver
 
-The driver supports encrypted SQL authentication, NTLMv2, named-instance discovery,
+The driver supports encrypted SQL authentication, NTLMv2, access-token FedAuth, named-instance discovery,
 server-directed routing, parameterized queries, stored procedures with output
 parameters, table-valued parameters, and nested transactions using savepoints.
 Interrupted or timed-out requests send ATTENTION and drain its acknowledgement
@@ -33,9 +33,19 @@ Use `MssqlTypes` from `@effect/sql-mssql` for procedure parameter descriptors an
 SQL `bigint` results remain strings; decimal and numeric results remain JavaScript
 numbers, which can lose precision. Exact decimal input can be supplied as a string.
 
+For Azure SQL, provide `accessToken` as an Effect returning a redacted access
+token for the SQL service. It runs for each new pooled connection, allowing the
+application's credential provider to refresh expired tokens. Token acquisition
+is bounded by `connectTimeout`, and requires TLS. The driver does not acquire
+credentials from Azure CLI, managed identity, or environment variables itself.
+`authType: "azure-active-directory-access-token"` is optional when `accessToken`
+is provided. The token must target the Azure SQL service, not Azure management APIs.
+
 Compatibility limits of this implementation:
 
-- Azure/Entra authentication is not implemented; unsupported `authType` values fail explicitly.
+- Security Token FedAuth has encrypted protocol tests, but has not been verified
+  against live Azure SQL. Automatic Azure credential flows and ADAL/FEDAUTHINFO
+  negotiation are not implemented; other Azure `authType` values fail explicitly.
 - NTLMv2 has protocol/vector tests, but has not been verified against a live Windows
   domain. Extended Protection/channel binding is not implemented.
 - Streaming queries remain unsupported. Results are buffered, with a 16 MiB per-token

@@ -213,11 +213,13 @@ export interface MssqlClientConfig {
    */
   readonly trustServer?: boolean | undefined
   readonly port?: number | undefined
-  /** Authentication method: `default` (SQL credentials) or `ntlm` (requires `domain`). */
+  /** Authentication method: `default`, `ntlm` (requires `domain`), or `azure-active-directory-access-token` (requires `accessToken`). */
   readonly authType?: string | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
+  /** Effect obtaining a fresh Azure SQL access token for each physical connection. Requires TLS. */
+  readonly accessToken?: Effect.Effect<Redacted.Redacted, SqlError> | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly cancelTimeout?: Duration.Input | undefined
   /** Time before requesting cancellation. Defaults to 15 seconds; zero disables the request timer. Cancellation is drained before reuse. */
@@ -287,7 +289,10 @@ export const make = (
     let pool: Pool.Pool<MssqlConnection, SqlError>
 
     const makeConnection = Effect.gen(function*() {
-      if (options.authType && options.authType !== "default" && options.authType !== "ntlm") {
+      if (
+        options.authType && options.authType !== "default" && options.authType !== "ntlm" &&
+        options.authType !== "azure-active-directory-access-token"
+      ) {
         return yield* Effect.fail(
           new SqlError({
             reason: new AuthenticationError({
@@ -298,6 +303,33 @@ export const make = (
           })
         )
       }
+      if (
+        (options.authType === "azure-active-directory-access-token" && options.accessToken === undefined) ||
+        (options.accessToken !== undefined && (options.authType === "ntlm" || options.encrypt === false))
+      ) {
+        return yield* Effect.fail(
+          new SqlError({
+            reason: new AuthenticationError({
+              cause: undefined,
+              message: "Access-token authentication requires an accessToken effect, TLS, and no NTLM authentication",
+              operation: "connect"
+            })
+          })
+        )
+      }
+      const accessToken = options.accessToken === undefined ? undefined : yield* options.accessToken.pipe(
+        Effect.timeout(options.connectTimeout ?? Duration.seconds(15)),
+        Effect.map(Redacted.value),
+        Effect.mapError((cause) =>
+          new SqlError({
+            reason: new AuthenticationError({
+              cause,
+              message: "Failed to obtain SQL access token",
+              operation: "connect"
+            })
+          })
+        )
+      )
       const mapError = (error: SqlError) =>
         new SqlError({
           reason: classifyError(
@@ -312,7 +344,8 @@ export const make = (
         port: options.port,
         instanceName: options.instanceName,
         multiSubnetFailover: options.multiSubnetFailover,
-        authType: options.authType as "default" | "ntlm" | undefined,
+        authType: options.authType === "ntlm" ? "ntlm" : "default",
+        accessToken,
         domain: options.domain,
         maxRetriesOnTransientErrors: options.maxRetriesOnTransientErrors,
         connectionRetryIntervalMs: options.connectionRetryInterval
