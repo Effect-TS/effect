@@ -56,15 +56,18 @@ changes, not the ratio of independent medians.
 
 | Workload                  | Native operations/s | Tedious operations/s | Paired change |
 | ------------------------- | ------------------: | -------------------: | ------------: |
-| Parameterized SELECT      |               2,265 |                2,044 |        +10.8% |
-| 100 rows × 3 columns      |               1,186 |                1,062 |         +9.3% |
-| 100 rows × 20 columns     |               1,057 |                  966 |        +11.6% |
-| Large Unicode result      |                 856 |                  919 |         −0.7% |
-| Begin / insert / rollback |                 351 |                  319 |        +11.0% |
-| DONEPROC tokens           |           9,037,162 |            4,951,068 |        +83.5% |
+| Parameterized SELECT      |               2,202 |                1,963 |        +12.2% |
+| 100 rows × 3 columns      |               1,114 |                  968 |        +19.6% |
+| 100 rows × 20 columns     |               1,065 |                  966 |        +10.2% |
+| Large Unicode result      |               1,107 |                1,031 |         +7.2% |
+| Large Unicode parameter   |               1,085 |                  982 |        +10.4% |
+| Begin / insert / rollback |                 358 |                  316 |        +11.3% |
+| DONEPROC tokens           |           9,540,062 |            5,086,195 |        +87.2% |
 
-Samples contain substantial outliers. A codec run briefly overlapped the tail
-of the live run, and unrelated host activity was not controlled. Treat these
+These samples were rerun after the TLS write-queue changes, with the live and
+codec benchmarks run sequentially. The large parameter sends and returns 10,000
+Unicode characters, exercising multi-packet requests. Unrelated host activity
+was not controlled, and samples vary materially. Treat these
 numbers as directional evidence and rerun longer, isolated trials before making
 release claims. No latency percentiles, memory/GC measurements, remote-server
 results, or concurrent pool load are established by this harness.

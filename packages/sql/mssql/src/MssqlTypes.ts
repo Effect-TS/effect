@@ -35,6 +35,19 @@ export type ParameterOptions = internal.ParameterOptions
 export type Table = internal.Table
 
 /**
+ * A decoded Time, DateTime2 or DateTimeOffset value retaining its sub-millisecond
+ * fraction. For compatibility, `nanosecondsDelta` is a fraction of a second,
+ * despite its name, and is non-enumerable. Passing the value back as a temporal
+ * parameter preserves that fraction at the parameter's declared scale.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface DateWithNanosecondsDelta extends globalThis.Date {
+  readonly nanosecondsDelta: number
+}
+
+/**
  * The SQL Server TinyInt parameter type.
  *
  * @category constructors

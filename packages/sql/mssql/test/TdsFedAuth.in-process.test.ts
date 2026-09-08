@@ -24,6 +24,8 @@ const peer = (ack: Buffer, echo = true) =>
         maxVersion: "TLSv1.2",
         requestCert: false
       }, (socket) => {
+        sockets.add(socket)
+        socket.on("close", () => sockets.delete(socket))
         const state = states.get(socket.remotePort!)!
         state.secure = true
         const packets = new Packet.PacketParser()
@@ -43,6 +45,10 @@ const peer = (ack: Buffer, echo = true) =>
               socket.write(Packet.encode(Packet.RESPONSE, Buffer.concat([loginAck, ack, done])))
             } else socket.write(Packet.encode(Packet.RESPONSE, done))
           }))
+      })
+      tlsServer.on("connection", (socket) => {
+        sockets.add(socket)
+        socket.on("close", () => sockets.delete(socket))
       })
       await new Promise<void>((resolve, reject) => {
         tlsServer.once("error", reject)
@@ -68,18 +74,32 @@ const peer = (ack: Buffer, echo = true) =>
           socket.write(state.applicationData ? data : Packet.encode(Packet.PRELOGIN, data)))
         const packets = new Packet.PacketParser()
         let prelogin = true
+        let incoming = Buffer.alloc(0)
         socket.on("data", (data: Buffer) => {
-          if (state.secure) {
-            backend.write(data)
-            return
+          incoming = Buffer.concat([incoming, data])
+          // A resumed client's final wrapped handshake and first raw TLS
+          // application record may share a TCP read, before secure fires here.
+          while (incoming.length >= 5) {
+            const wrapped = incoming[0] === Packet.PRELOGIN
+            const length = wrapped ? incoming.readUInt16BE(2) : 5 + incoming.readUInt16BE(3)
+            if (incoming.length < length) {
+              return
+            }
+            const record = incoming.subarray(0, length)
+            incoming = incoming.subarray(length)
+            if (!wrapped) {
+              expect(record[0]).toBe(23)
+              backend.write(record)
+              continue
+            }
+            packets.push(record, (packet) => {
+              if (prelogin) {
+                prelogin = false
+                expect(Packet.preloginOptions(packet.data).fedAuthRequired).toBe(true)
+                socket.write(Packet.encode(Packet.RESPONSE, Packet.prelogin(true, echo)))
+              } else backend.write(packet.data)
+            })
           }
-          packets.push(data, (packet) => {
-            if (prelogin) {
-              prelogin = false
-              expect(Packet.preloginOptions(packet.data).fedAuthRequired).toBe(true)
-              socket.write(Packet.encode(Packet.RESPONSE, Packet.prelogin(true, echo)))
-            } else backend.write(packet.data)
-          })
         })
       })
       try {
