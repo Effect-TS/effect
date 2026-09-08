@@ -304,11 +304,16 @@ export const statelessModernSuite = (
                 "Mcp-Method": "tools/call",
                 "Mcp-Name": "EmitLogs"
               })
-              const body = yield* Effect.promise(() => result.text())
-              const logOffset = body.indexOf("\"method\":\"notifications/message\"")
-              const resultOffset = body.indexOf("\"id\":\"originating-request\"")
-              assert.isAtLeast(logOffset, 0)
-              assert.isAbove(resultOffset, logOffset)
+              const originatingStream = makeMcpSseReader(result)
+              yield* Effect.addFinalizer(() => originatingStream.cancel)
+              assert.deepInclude(yield* originatingStream.take(), {
+                method: "notifications/message",
+                params: { level: "error", data: "private-log" }
+              })
+              const completed = yield* originatingStream.take()
+              assert.deepInclude(completed, { id: "originating-request" })
+              assert.property(completed, "result")
+              assert.deepStrictEqual(yield* originatingStream.drain(), [])
             }
             // Delivery is acknowledged before publishing the sentinel, so no timing window is needed.
             yield* server.notifications["notifications/tools/list_changed"]({})

@@ -1627,10 +1627,14 @@ const layerMcpProtocolHttp = (options: {
                   }
                   const isSubscription = Predicate.hasProperty(input, "method") &&
                     input.method === "subscriptions/listen"
-                  const response = Effect.map(httpEffect, (response) =>
-                    isSubscription || response.body._tag === "Stream"
+                  const response = Effect.map(httpEffect, (response) => {
+                    // Completed responses may already contain notifications followed by the result.
+                    const hasMultipleMessages = response.body._tag === "Uint8Array" &&
+                      response.body.body.subarray(0, -1).includes(10)
+                    return isSubscription || response.body._tag === "Stream" || hasMultipleMessages
                       ? toServerSentEvents(response)
-                      : response)
+                      : response
+                  })
                   return !isRequest || !hasId
                     ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
                     : response
@@ -1674,7 +1678,17 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
     contentType: serialization.contentType,
     includesFraming: true,
     codecFor: serialization.codecFor,
-    makeUnsafe: serialization.makeUnsafe
+    makeUnsafe: () => {
+      const parser = serialization.makeUnsafe()
+      return {
+        decode: parser.decode,
+        encode: (response) => {
+          const encoded = parser.encode(response)
+          // Preserve message boundaries when the HTTP transport joins buffered chunks.
+          return typeof encoded === "string" ? `${encoded}\n` : encoded
+        }
+      }
+    }
   })
 })()
 
@@ -1720,7 +1734,8 @@ function mcpJsonRpcSerialization(options?: {
 const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse) => {
   const encoder = new TextEncoder()
   const decoder = new TextDecoder()
-  const frame = (data: Uint8Array) => encoder.encode(`data: ${decoder.decode(data)}\n\n`)
+  const frame = (data: Uint8Array) =>
+    encoder.encode(decoder.decode(data).trimEnd().split("\n").map((message) => `data: ${message}\n\n`).join(""))
   const options = {
     status: response.status,
     statusText: response.statusText,
