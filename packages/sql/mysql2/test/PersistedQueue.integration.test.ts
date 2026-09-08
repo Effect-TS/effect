@@ -1,6 +1,7 @@
 import { MysqlClient } from "@effect/sql-mysql2"
 import { assert, it } from "@effect/vitest"
-import { Effect, Layer, Redacted, Schedule, Schema } from "effect"
+import { Effect, Exit, Fiber, Layer, Redacted, Schedule, Schema } from "effect"
+import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 import { MysqlContainer } from "./utils.ts"
 
@@ -20,6 +21,69 @@ const layer = PersistedQueue.layer.pipe(
 )
 
 it.layer(layer, { timeout: "60 seconds", concurrent: false })("PersistedQueue MySQL retry precision", (it) => {
+  it.effect(
+    "rejects or repairs an applied precision migration with old columns before delivering retries",
+    () =>
+      Effect.gen(function*() {
+        const sql = yield* MysqlClient.MysqlClient
+        yield* sql`CREATE TABLE interrupted_upgrade LIKE retry_precision`
+        yield* sql`ALTER TABLE interrupted_upgrade
+        MODIFY visible_at DATETIME NOT NULL, MODIFY acquired_at DATETIME NULL,
+        MODIFY created_at DATETIME NOT NULL, MODIFY updated_at DATETIME NOT NULL`
+        yield* sql`CREATE TABLE interrupted_upgrade_migrations LIKE retry_precision_migrations`
+        yield* sql`INSERT INTO interrupted_upgrade_migrations
+        SELECT * FROM retry_precision_migrations WHERE migration_id < 3`
+
+        // Independently reproduce MySQL's implicit commit before failing DDL:
+        // the marker survives rollback while the timestamp columns stay unchanged.
+        const ddl = yield* Effect.gen(function*() {
+          yield* sql`INSERT INTO interrupted_upgrade_migrations (migration_id, name)
+          VALUES (3, 'mysql_timestamp_precision')`
+          yield* sql`ALTER TABLE interrupted_upgrade MODIFY missing_column DATETIME(6)`
+        }).pipe(sql.withTransaction, Effect.exit)
+        assert.isTrue(Exit.isFailure(ddl))
+        const markers = yield* sql`SELECT migration_id FROM interrupted_upgrade_migrations WHERE migration_id = 3`
+        assert.strictEqual(markers.length, 1)
+        const columns = yield* sql<{ fractional_digits: number }>`SELECT DATETIME_PRECISION AS fractional_digits
+        FROM information_schema.columns WHERE table_schema = DATABASE()
+        AND table_name = 'interrupted_upgrade' AND column_name = 'visible_at'`
+        assert.strictEqual(columns[0].fractional_digits, 0)
+
+        const startup = yield* PersistedQueue.makeStoreSql({
+          tableName: "interrupted_upgrade",
+          pollInterval: "10 millis"
+        }).pipe(Effect.exit)
+        // Refusing unsafe startup is valid; a repaired store must honor the delay.
+        if (Exit.isFailure(startup)) return
+        const factory = yield* PersistedQueue.makeFactory.pipe(
+          Effect.provideService(PersistedQueue.PersistedQueueStore, startup.value)
+        )
+        const queue = yield* factory.make({
+          name: "interrupted",
+          schema: Schema.Number,
+          retrySchedule: Schedule.spaced(500)
+        })
+        yield* sql`SET timestamp = 1800000000`
+        yield* Effect.addFinalizer(() => sql`SET timestamp = DEFAULT`.pipe(Effect.orDie))
+        yield* queue.offer(42)
+        assert.strictEqual(
+          yield* queue.take(() => sql`SET timestamp = 1800000000.9`.pipe(Effect.andThen(Effect.fail("boom")))).pipe(
+            Effect.flip
+          ),
+          "boom"
+        )
+        // Only 100 ms after failure. DATETIME(0) rounds the intended .4 deadline
+        // down to the whole second, allowing the queue to redeliver here.
+        yield* sql`SET timestamp = 1800000001`
+        const fiber = yield* queue.take((_, { attempts }) => Effect.succeed(attempts)).pipe(Effect.forkScoped)
+        yield* Effect.sleep(100)
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* sql`SET timestamp = 1800000002`
+        assert.strictEqual(yield* Fiber.join(fiber), 2)
+      }).pipe(TestClock.withLive),
+    { timeout: 10_000 }
+  )
+
   it.effect("upgrades an existing queue once and preserves its rows and indexes", () =>
     Effect.gen(function*() {
       const sql = yield* MysqlClient.MysqlClient
@@ -141,6 +205,23 @@ it.layer(layer, { timeout: "60 seconds", concurrent: false })("PersistedQueue My
           assert.strictEqual(rows[0].attempts, 1)
           assert.strictEqual(rows[0].state, "pending")
           assert.strictEqual(Number(rows[0].delay_us), delay * 1000)
+
+          if (delay > 0) {
+            // Let MySQL compute the boundary from its stored deadline, avoiding
+            // floating-point conversion of epoch seconds in JavaScript.
+            const boundary = yield* sql<{ timestamp: string }>`SELECT
+              CAST(UNIX_TIMESTAMP(visible_at) - 0.000001 AS CHAR) AS timestamp
+              FROM retry_precision WHERE queue_name = ${`retry-precision-${delay}-${phase}`}`
+            yield* sql`SET timestamp = ${boundary[0].timestamp}`
+            const remaining = yield* sql<{ microseconds: number }>`SELECT
+              TIMESTAMPDIFF(MICROSECOND, NOW(6), visible_at) AS microseconds
+              FROM retry_precision WHERE queue_name = ${`retry-precision-${delay}-${phase}`}`
+            assert.strictEqual(Number(remaining[0].microseconds), 1)
+            const eligible = yield* sql`SELECT sequence FROM retry_precision
+              WHERE queue_name = ${`retry-precision-${delay}-${phase}`}
+              AND state = 'pending' AND visible_at <= NOW(6)`
+            assert.deepStrictEqual(eligible, [])
+          }
 
           yield* sql`SET timestamp = ${timestamp + Math.ceil(delay / 1000)}`
           assert.strictEqual(yield* queue.take((_, { attempts }) => Effect.succeed(attempts)), 2)
