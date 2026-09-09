@@ -136,6 +136,32 @@ describe("NodeHttpCompression", () => {
     )
   })
 
+  it.effect("preserves the Content-Type of file responses when compressed with Brotli", () =>
+    Effect.gen(function*() {
+      const directory = Fs.mkdtempSync(Path.join(Os.tmpdir(), "effect-http-compression-"))
+      yield* Effect.addFinalizer(() => Effect.sync(() => Fs.rmSync(directory, { recursive: true })))
+      const path = Path.join(directory, "index.html")
+      const contents = `<!doctype html><html><body>${"<p>Hello world</p>".repeat(100)}</body></html>`
+      Fs.writeFileSync(path, contents)
+
+      yield* HttpRouter.add("GET", "/file", HttpServerResponse.file(path)).pipe(
+        (self) => HttpRouter.serve(self, { middleware: HttpMiddleware.compression() }),
+        Layer.build
+      )
+
+      const uncompressed = yield* HttpClient.get("/file", { headers: { "accept-encoding": "identity" } })
+      assert.strictEqual(uncompressed.status, 200)
+      assert.strictEqual(uncompressed.headers["content-encoding"], undefined)
+      assert.strictEqual(uncompressed.headers["content-type"], "text/html")
+      assert.strictEqual(yield* uncompressed.text, contents)
+
+      const compressed = yield* HttpClient.get("/file", { headers: { "accept-encoding": "br" } })
+      assert.strictEqual(compressed.status, 200)
+      assert.strictEqual(compressed.headers["content-encoding"], "br")
+      assert.strictEqual(yield* compressed.text, contents)
+      assert.strictEqual(compressed.headers["content-type"], uncompressed.headers["content-type"])
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect("closes compressed file bodies for HEAD requests", () =>
     Effect.gen(function*() {
       const directory = Fs.mkdtempSync(Path.join(Os.tmpdir(), "effect-http-compression-"))
