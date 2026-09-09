@@ -793,9 +793,9 @@ export const batched = dual<
  * )
  * ```
  *
- * @category constructors
  * @see {@link consolePrettyBrowser} for browser-specific implementation
  * @see {@link consolePrettyTty} for the TTY-mode implementation
+ * @category constructors
  * @since 4.0.0
  */
 export const consolePretty: (
@@ -831,8 +831,8 @@ export const consolePretty: (
  * )
  * ```
  *
- * @category constructors
  * @see {@link consolePretty} for the platform-independent implementation
+ * @category constructors
  * @since 4.0.0
  */
 export const consolePrettyBrowser: (
@@ -883,8 +883,8 @@ export const consolePrettyBrowser: (
  * )
  * ```
  *
- * @category constructors
  * @see {@link consolePretty} for the platform-independent implementation
+ * @category constructors
  * @since 4.0.0
  */
 export const consolePrettyTty: (
