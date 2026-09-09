@@ -1,3 +1,6 @@
 "@effect/ai/IdGenerator#make":
   replacement: "IdGenerator.make"
   note: "Moved to effect/unstable/ai/IdGenerator with the same configurable alphabet, prefix, separator, and size behavior. Invalid configuration now fails with Cause.IllegalArgumentError."
+"@effect/ai/IdGenerator#IdGenerator":
+  replacement: "effect/unstable/ai/IdGenerator#IdGenerator"
+  note: "Use the same-name IdGenerator interface for the service value and the Context.Service constant for the key. Implementations now include the ~@effect/ai/IdGenerator TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

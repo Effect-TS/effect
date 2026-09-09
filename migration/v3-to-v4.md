@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`6985be0cf461f0997f28f6798f469d01a2b46ca3`)
 
-Head: `HEAD` (`f57836b4418ea7c7d399f51bc1adad3fc0c08e98`)
+Head: `64d1ca59563e1524f6dc8f33b8286f8ab2ce4030` (`64d1ca59563e1524f6dc8f33b8286f8ab2ce4030`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -767,6 +767,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ## API Reference
 
 ### `@effect/ai-anthropic/AnthropicClient`
+
+- `AnthropicClient.AnthropicClient` -> `@effect/ai-anthropic/AnthropicClient#AnthropicClient`: Use the same-name AnthropicClient interface for the service value and the Context.Service constant for the key. Implementations now include the \~@effect/ai-anthropic/AnthropicClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `AnthropicClient.CitationsDelta` -> `Generated.BetaCitationsDelta`: The client-local stream schema moved to the regenerated v4 Anthropic schema surface; re-check its Type/Encoded shape.
 
@@ -4004,6 +4006,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenAiClient.LogProbs` -> `Generated.LogProb`: The client-local log-probability schema moved to the regenerated v4 OpenAI schema surface and changed shape.
 
+- `OpenAiClient.OpenAiClient` -> `@effect/ai-openai/OpenAiClient#OpenAiClient`: Use the same-name OpenAiClient interface for the service value and the Context.Service constant for the key. Implementations now include the \~@effect/ai-openai/OpenAiClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 - `OpenAiClient.ResponseCodeInterpreterCallCodeDeltaEvent` -> `Generated.ResponseCodeInterpreterCallCodeDeltaEvent`: The event schema moved out of OpenAiClient into the regenerated OpenAI schema surface; re-check its v4 Type/Encoded shape.
 
 - `OpenAiClient.ResponseCodeInterpreterCallCodeDoneEvent` -> `Generated.ResponseCodeInterpreterCallCodeDoneEvent`: The event schema moved out of OpenAiClient into the regenerated OpenAI schema surface; re-check its v4 Type/Encoded shape.
@@ -4878,6 +4882,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenRouterClient.ChatStreamingResponseChunk` -> `OpenRouterClient.ChatStreamingResponseChunkData`: The standalone streaming chunk schema was replaced by the decoded data type from Generated.ChatStreamingResponse.
 
+- `OpenRouterClient.OpenRouterClient` -> `@effect/ai-openrouter/OpenRouterClient#OpenRouterClient`: Use the same-name OpenRouterClient interface for the service value and the Context.Service constant for the key. Implementations now include the \~@effect/ai-openrouter/OpenRouterClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 - `OpenRouterClient.Service` -> `OpenRouterClient.Service`: Still exported in v4; adapt to the regenerated client, revised request and response schemas, and the new streaming result tuple.
 
 ### `@effect/ai-openrouter/OpenRouterConfig`
@@ -4912,13 +4918,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `AiError.UnknownError` -> `AiError.make + AiError.UnknownError`: UnknownError is now a semantic reason rather than a top-level error. Put module and method on AiError.make and inspect reason.\_tag when handling the outer AiError.
 
+### `@effect/ai/Chat`
+
+- `Chat.Chat` -> `effect/unstable/ai/Chat#Chat`: Use the same-name Chat interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/ai/Chat TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `Chat.Persistence` -> `effect/unstable/ai/Chat#Persistence`: Use the same-name Persistence interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/ai/Chat/Persisted TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 ### `@effect/ai/EmbeddingModel`
+
+- `EmbeddingModel.EmbeddingModel` -> `effect/unstable/ai/EmbeddingModel#EmbeddingModel`: Use the same-name EmbeddingModel interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/unstable/ai/EmbeddingModel TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `EmbeddingModel.Result`: TODO: needs guidance
 
 - `EmbeddingModel.makeDataLoader` -> `EmbeddingModel.make + RequestResolver.setDelay + RequestResolver.batchN`: The dedicated data-loader constructor was removed. EmbeddingModel.make batches concurrent embed requests through its resolver; compose the exposed resolver with setDelay and optional batchN for the old window and maximum-batch behavior.
 
 ### `@effect/ai/IdGenerator`
+
+- `IdGenerator.IdGenerator` -> `effect/unstable/ai/IdGenerator#IdGenerator`: Use the same-name IdGenerator interface for the service value and the Context.Service constant for the key. Implementations now include the \~@effect/ai/IdGenerator TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `IdGenerator.make` -> `IdGenerator.make`: Moved to effect/unstable/ai/IdGenerator with the same configurable alphabet, prefix, separator, and size behavior. Invalid configuration now fails with Cause.IllegalArgumentError.
 
@@ -4928,6 +4944,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `LanguageModel.ExtractContext` -> `LanguageModel.ExtractServices`: Renamed in effect/unstable/ai/LanguageModel. ExtractServices infers toolkit handler, result-decoding, and effectful-toolkit service requirements.
 
+- `LanguageModel.LanguageModel` -> `effect/unstable/ai/LanguageModel#LanguageModel`: Use the same-name LanguageModel interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/unstable/ai/LanguageModel TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `LanguageModel.Service` -> `effect/unstable/ai/LanguageModel#Service`: The retained Service interface now includes the \~effect/unstable/ai/LanguageModel TypeId. Prefer LanguageModel for service annotations and LanguageModel.make for provider implementations.
+
 ### `@effect/ai/McpSchema`
 
 - `McpSchema.ContentBlock` -> `McpSchema.ContentBlock`: Moved to effect/unstable/ai/McpSchema. It remains the MCP content-block union, but v4 exports it as a const schema rather than a Schema.Union subclass. Binary image, audio, and blob data still use Uint8Array values with base64 wire encoding.
@@ -4936,11 +4956,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `McpSchema.McpError` -> `McpSchema.McpError`: Moved, but changed from a constructable base class to a union schema of standard tagged protocol errors plus McpErrorBase. Use McpErrorBase to construct a generic MCP error.
 
+- `McpSchema.McpServerClient` -> `effect/unstable/ai/McpSchema#McpServerClient`: Use the same-name McpServerClient interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/ai/McpSchema/McpServerClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 - `McpSchema.ParamAnnotation` -> `McpSchema.isParam / Param.name`: The public symbol annotation was removed. Detect parameter wrappers with McpSchema.isParam and read the narrowed Param.name instead of inspecting AST annotations.
 
 - `McpSchema.param` -> `McpSchema.param`: Moved to effect/unstable/ai/McpSchema. V4 wraps the schema and exposes Param.name and Param.schema instead of attaching a public symbol annotation.
 
 ### `@effect/ai/McpServer`
+
+- `McpServer.McpServer` -> `effect/unstable/ai/McpServer#McpServer`: Use the same-name McpServer interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/ai/McpServer TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it still runs over a caller-provided RpcServer.Protocol.
 
@@ -5029,6 +5053,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Response.toolResultPart` -> `Response.toolResultPart`: Moved to effect/unstable/ai/Response; providerName was removed and decoded tool results now require preliminary, normally false.
 
 - `Response.urlSourcePart` -> `Response.makePart("source", { ...params, sourceType: "url" })`: The lowercase convenience constructor was removed. The UrlSourcePart model remains, and the generic constructor now requires the URL source discriminator.
+
+### `@effect/ai/Tokenizer`
+
+- `Tokenizer.Tokenizer` -> `effect/unstable/ai/Tokenizer#Tokenizer`: Use the same-name Tokenizer interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/ai/Tokenizer TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 ### `@effect/ai/Tool`
 
@@ -5742,7 +5770,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `MessageStorage.Encoded` -> `effect/unstable/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases. Custom drivers now implement batched resetAddresses, and unprocessedMessages receives optional limit and address filters.
 
-- `MessageStorage.make` -> `effect/unstable/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type. Custom service implementations must also provide resetAddresses for batched mailbox resets.
+- `MessageStorage.MemoryDriver` -> `effect/unstable/cluster/MessageStorage#MemoryDriver`: Use the same-name MemoryDriver interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/MessageStorage/MemoryDriver TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `MessageStorage.MessageStorage` -> `effect/unstable/cluster/MessageStorage#MessageStorage`: Use the same-name MessageStorage interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/MessageStorage TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `MessageStorage.make` -> `effect/unstable/cluster/MessageStorage#make`: Moved into core Effect. Use the same-name service interfaces instead of Context service type projections. Custom service implementations must also provide resetAddresses for batched mailbox resets.
 
 - `MessageStorage.makeEncoded` -> `effect/unstable/cluster/MessageStorage#makeEncoded`: Moved into core Effect. Custom encoded drivers must replace resetAddress with resetAddresses and may use the new limit and addresses options passed to unprocessedMessages.
 
@@ -5764,15 +5796,25 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RunnerAddress.TypeId` -> `none`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
 
+### `@effect/cluster/RunnerHealth`
+
+- `RunnerHealth.RunnerHealth` -> `effect/unstable/cluster/RunnerHealth#RunnerHealth`: Use the same-name RunnerHealth interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/RunnerHealth TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 ### `@effect/cluster/RunnerStorage`
+
+- `RunnerStorage.RunnerStorage` -> `effect/unstable/cluster/RunnerStorage#RunnerStorage`: Use the same-name RunnerStorage interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/RunnerStorage TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `RunnerStorage.makeMemory` -> `effect/unstable/cluster/RunnerStorage#makeMemory`: Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation.
 
 ### `@effect/cluster/Runners`
 
-- `Runners.make` -> `effect/unstable/cluster/Runners#make`: Moved into core Effect. Its options now require codecFor; pass the codec used by the remote runner transport, such as RpcSerialization.json.codecFor for JSON. Context service projections now use Service instead of Type.
+- `Runners.RpcClientProtocol` -> `effect/unstable/cluster/Runners#RpcClientProtocol`: Use the same-name RpcClientProtocol interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/Runners/RpcClientProtocol TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
-- `Runners.makeNoop` -> `effect/unstable/cluster/Runners#makeNoop`: Moved into core Effect; it returns the Context.Service implementation through the Service projection instead of Type.
+- `Runners.Runners` -> `effect/unstable/cluster/Runners#Runners`: Use the same-name Runners interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/Runners TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `Runners.make` -> `effect/unstable/cluster/Runners#make`: Moved into core Effect. Its options now require codecFor; pass the codec used by the remote runner transport, such as RpcSerialization.json.codecFor for JSON. Use the same-name service interfaces instead of Context service type projections.
+
+- `Runners.makeNoop` -> `effect/unstable/cluster/Runners#makeNoop`: Moved into core Effect; it returns the Context.Service implementation as a directly nameable interface instead of the old Type projection.
 
 ### `@effect/cluster/ShardId`
 
@@ -5780,13 +5822,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `ShardId.TypeId` -> `none`: The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.
 
+### `@effect/cluster/Sharding`
+
+- `Sharding.Sharding` -> `effect/unstable/cluster/Sharding#Sharding`: Use the same-name Sharding interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/Sharding TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 ### `@effect/cluster/ShardingConfig`
 
-- `ShardingConfig.config` -> `effect/unstable/cluster/ShardingConfig#config`: Moved into core Effect; its Context service value type now uses the Service property instead of Type.
+- `ShardingConfig.ShardingConfig` -> `effect/unstable/cluster/ShardingConfig#ShardingConfig`: Use the same-name ShardingConfig interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/cluster/ShardingConfig TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
-- `ShardingConfig.defaults` -> `effect/unstable/cluster/ShardingConfig#defaults`: Moved into core Effect; service type projections now use Service instead of Type. V4 also defaults maxResidentEntities to 10,000 and unprocessedMessageBatchSize to 1,024.
+- `ShardingConfig.config` -> `effect/unstable/cluster/ShardingConfig#config`: Moved into core Effect; use the ShardingConfig interface for the service value type.
 
-- `ShardingConfig.layer` -> `effect/unstable/cluster/ShardingConfig#layer`: Moved into core Effect with the same shallow default merge; service type projections now use Service instead of Type.
+- `ShardingConfig.defaults` -> `effect/unstable/cluster/ShardingConfig#defaults`: Moved into core Effect; use the ShardingConfig interface for service value types. V4 also defaults maxResidentEntities to 10,000 and unprocessedMessageBatchSize to 1,024.
+
+- `ShardingConfig.layer` -> `effect/unstable/cluster/ShardingConfig#layer`: Moved into core Effect with the same shallow default merge; use the ShardingConfig interface for service value types.
 
 ### `@effect/cluster/ShardingRegistrationEvent`
 
@@ -5801,6 +5849,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `SingletonAddress.TypeId` -> `none`: The singleton-address marker is private in v4. Use the exported SingletonAddress class and schema.
 
 ### `@effect/cluster/Snowflake`
+
+- `Snowflake.Generator` -> `effect/unstable/cluster/Snowflake#Generator`: Moved into core Effect and changed to Context.Service; its unsafeNext method was renamed to nextUnsafe.
+
+- `Snowflake.Snowflake.Generator` -> `effect/unstable/cluster/Snowflake#Snowflake.Generator`: The generator shape now includes the \~effect/cluster/Snowflake/Generator TypeId. Use the module make constructor and the top-level Generator interface and service key.
 
 - `Snowflake.TypeId` -> `effect/unstable/cluster/Snowflake#TypeId`: Moved into core Effect; the public marker is now the string literal \~effect/cluster/Snowflake.
 
@@ -5818,9 +5870,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/experimental/DevTools/Client`
 
-- `Client.Client` -> `effect/unstable/devtools/DevToolsClient#DevToolsClient`: Client was renamed to the DevToolsClient Context.Service class.
+- `Client.Client` -> `effect/unstable/devtools/DevToolsClient#DevToolsClient`: Client was renamed to the DevToolsClient Context.Service value and same-name interface.
 
-- `Client.ClientImpl` -> `effect/unstable/devtools/DevToolsClient#DevToolsClient["Service"]`: Use the service shape from DevToolsClient; unsafeAddSpan was replaced by sendUnsafe.
+- `Client.ClientImpl` -> `effect/unstable/devtools/DevToolsClient#DevToolsClient`: Use the service shape from DevToolsClient; unsafeAddSpan was replaced by sendUnsafe.
 
 - `Client.layer` -> `effect/unstable/devtools/DevToolsClient#layer`: Import layer from the v4 unstable DevToolsClient module.
 
@@ -5892,19 +5944,27 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventJournal.ErrorTypeId` -> `none`: The v4 error marker is private; narrow with EventJournalError instead.
 
+- `EventJournal.EventJournal` -> `effect/unstable/eventlog/EventJournal#EventJournal`: Use the same-name EventJournal interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/eventlog/EventJournal TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 - `EventJournal.RemoteIdTypeId` -> `effect/unstable/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
 - `EventJournal.makeEntryId` -> `effect/unstable/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
 
-- `EventJournal.makeMemory` -> `effect/unstable/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
+- `EventJournal.makeMemory` -> `effect/unstable/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation as a directly nameable interface.
 
 - `EventJournal.makeRemoteId` -> `effect/unstable/eventlog/EventJournal#makeRemoteIdUnsafe`: The unchecked RemoteId constructor was renamed to makeRemoteIdUnsafe.
 
 ### `@effect/experimental/EventLog`
 
+- `EventLog.EventLog` -> `effect/unstable/eventlog/EventLog#EventLog`: Use the same-name EventLog interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/eventlog/EventLog TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 - `EventLog.Handlers` -> `effect/unstable/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId.
 
 - `EventLog.HandlersTypeId` -> `effect/unstable/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
+
+- `EventLog.Identity` -> `effect/unstable/eventlog/EventLog#Identity`: Use the same-name Identity interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/eventlog/EventLog/Identity TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `EventLog.Registry` -> `effect/unstable/eventlog/EventLog#Registry`: Use the same-name Registry interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/unstable/eventlog/EventLog/Registry TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `EventLog.SchemaTypeId` -> `effect/unstable/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
 
@@ -5913,6 +5973,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `EventLog.layer` -> `effect/unstable/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
 
 - `EventLog.layerIdentityKvs` -> `none`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
+
+### `@effect/experimental/EventLogEncryption`
+
+- `EventLogEncryption.EventLogEncryption` -> `effect/unstable/eventlog/EventLogEncryption#EventLogEncryption`: Use the same-name EventLogEncryption interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/eventlog/EventLogEncryption TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 ### `@effect/experimental/EventLogRemote`
 
@@ -5958,6 +6022,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/experimental/EventLogServer`
 
+- `EventLogServer.Storage` -> `effect/unstable/eventlog/EventLogServerEncrypted#Storage`: Use the encrypted server Storage service, which is storeId- and session-aware.
+
 - `EventLogServer.makeHandler` -> `effect/unstable/eventlog/EventLogServerEncrypted#layer + effect/unstable/rpc/RpcServer#layerProtocolSocketServer`: Compose the encrypted server layer with the generic RPC socket server; there is no per-socket handler factory.
 
 - `EventLogServer.makeHandlerHttp` -> `effect/unstable/eventlog/EventLogServerEncrypted#layer + effect/unstable/rpc/RpcServer#makeProtocolWithHttpEffectWebsocket`: Use the returned httpEffect for upgrades and provide its protocol to the encrypted server layer.
@@ -5971,6 +6037,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/experimental/PersistedQueue`
 
 - `PersistedQueue.ErrorTypeId` -> `effect/unstable/persistence/PersistedQueue#ErrorTypeId`: Retained as a string brand; the runtime marker now uses the persistence module path.
+
+- `PersistedQueue.PersistedQueueFactory` -> `effect/unstable/persistence/PersistedQueue#PersistedQueueFactory`: Use the same-name PersistedQueueFactory interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/persistence/PersistedQueue/PersistedQueueFactory TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `PersistedQueue.PersistedQueueStore` -> `effect/unstable/persistence/PersistedQueue#PersistedQueueStore`: Use the same-name PersistedQueueStore interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/persistence/PersistedQueue/PersistedQueueStore TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `PersistedQueue.TypeId` -> `effect/unstable/persistence/PersistedQueue#TypeId`: Import TypeId from the v4 unstable PersistedQueue module; it is now a string brand.
 
@@ -5986,7 +6056,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/experimental/Persistence`
 
-- `Persistence.BackingPersistence` -> `effect/unstable/persistence/Persistence#BackingPersistence`: Use the v4 BackingPersistence Context.Service class.
+- `Persistence.BackingPersistence` -> `effect/unstable/persistence/Persistence#BackingPersistence`: Use the v4 BackingPersistence Context.Service value and same-name interface.
 
 - `Persistence.BackingPersistenceTypeId` -> `none`: The BackingPersistence brand is no longer publicly exported in v4.
 
@@ -5998,7 +6068,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Persistence.PersistenceParseError` -> `effect/Schema#SchemaError`: Persistence parsing failures now use the core SchemaError type.
 
-- `Persistence.ResultPersistence` -> `effect/unstable/persistence/Persistence#Persistence`: ResultPersistence was renamed to Persistence and is now a Context.Service class.
+- `Persistence.ResultPersistence` -> `effect/unstable/persistence/Persistence#Persistence`: ResultPersistence was renamed to Persistence and is now a Context.Service value and same-name interface.
 
 - `Persistence.ResultPersistence.Key` -> `effect/unstable/persistence/Persistable#Persistable`: Persistable is the v4 schema-backed persistence key contract.
 
@@ -6038,6 +6108,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RateLimiter.RateLimiterError` -> `effect/unstable/persistence/RateLimiter#RateLimiterError`: The retained name is now a wrapper error class whose reason is RateLimitExceeded or RateLimitStoreError.
 
+- `RateLimiter.RateLimiterStore` -> `RateLimiter.RateLimiterStore`: Use the Context.Service value and same-name interface from effect/unstable/persistence/RateLimiter. Custom tokenBucket implementations must return [remaining, elapsedMillis] instead of a number, preserving fractional counts and elapsed refill time.
+
 - `RateLimiter.TypeId` -> `effect/unstable/persistence/RateLimiter#TypeId`: Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
 
 - `RateLimiter.makeSleep` -> `effect/unstable/persistence/RateLimiter#sleep`: The accessor Effect was replaced by sleep; obtain the RateLimiter service and pass it to sleep directly or with its curried overload.
@@ -6054,7 +6126,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Reactivity.Reactivity` -> `effect/unstable/reactivity/Reactivity#Reactivity`: Use the v4 Reactivity Context.Service; unsafe methods were renamed with an Unsafe suffix.
 
-- `Reactivity.Reactivity.Service` -> `effect/unstable/reactivity/Reactivity#Reactivity["Service"]`: The named namespace member was removed; derive the service shape from the Context.Service class.
+- `Reactivity.Reactivity.Service` -> `effect/unstable/reactivity/Reactivity#Reactivity`: The named namespace member was removed; use the directly exported Reactivity interface.
 
 - `Reactivity.make` -> `effect/unstable/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
 
@@ -6131,6 +6203,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/opentelemetry/OtlpResource`
 
 - `OtlpResource.unsafeServiceName` -> `OtlpResource.serviceNameUnsafe`: Moved to effect/unstable/observability/OtlpResource and renamed to follow the v4 unsafe-suffix convention.
+
+### `@effect/opentelemetry/OtlpSerialization`
+
+- `OtlpSerialization.OtlpSerialization` -> `effect/unstable/observability/OtlpSerialization#OtlpSerialization`: Use the same-name OtlpSerialization interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/observability/OtlpSerialization TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 ### `@effect/opentelemetry/OtlpTracer`
 
@@ -6322,9 +6398,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `NodeHttpClient.Dispatcher` -> `NodeHttpClient.Dispatcher`: The identifier remains but is now a Context.Service class; use Dispatcher["Service"] for the concrete Undici dispatcher type.
 
-- `NodeHttpClient.HttpAgent` -> `NodeHttpClient.HttpAgent`: The identifier remains but is now a Context.Service class; use HttpAgent["Service"] for the concrete http/https agent pair.
-
-- `NodeHttpClient.HttpAgentTypeId` -> `none`: The public marker was removed; the HttpAgent Context.Service class supplies service identity.
+- `NodeHttpClient.HttpAgentTypeId` -> `none`: The public marker was removed; HttpAgent implementations now include a private TypeId.
 
 - `NodeHttpClient.UndiciRequestOptions` -> `NodeHttpClient.UndiciOptions`: The required Context.Tag became a defaulted Context.Reference\<Partial\<Dispatcher.RequestOptions\>\>; override it with Effect.provideService.
 
@@ -6490,7 +6564,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CommandExecutor.ProcessTypeId` -> `none`: The ChildProcessHandle marker is internal in v4; use the ChildProcessHandle interface.
 
-- `CommandExecutor.TypeId` -> `none`: The Context.Service class replaces the public executor type-id alias.
+- `CommandExecutor.TypeId` -> `none`: The Context.Service value and same-name interface replaces the public executor type-id alias.
 
 - `CommandExecutor.makeExecutor` -> `ChildProcessSpawner.make`: Use the renamed constructor; it derives output helpers from a spawn implementation.
 
@@ -6526,7 +6600,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/Etag`
 
-- `Etag.GeneratorTypeId` -> `Etag.Generator`: The standalone generator brand was removed; Generator is now a Context.Service class.
+- `Etag.Generator` -> `effect/unstable/http/Etag#Generator`: Use the same-name Generator interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/http/Etag/Generator TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `Etag.GeneratorTypeId` -> `Etag.Generator`: The standalone generator brand was removed; Generator is now a Context.Service value and same-name interface.
 
 - `Etag.layer` -> `Etag.layer`: Retained; it still provides the strong metadata-based ETag Generator service.
 
@@ -6577,6 +6653,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed, bytesToRead and offset accept ByteSize inputs, and chunkSize uses number.
 
 - `FileSystem.TiB` -> `ByteSize.tebibytes`: Use the ByteSize binary unit constructor.
+
+- `FileSystem.WatchBackend` -> `effect/FileSystem#WatchBackend`: Use the same-name WatchBackend interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/FileSystem/WatchBackend TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `FileSystem.WatchEventCreate` -> `FileSystem.WatchEvent.Create`: The constructor was removed; construct a tagged object with \_tag: "Create" and path.
 
@@ -7126,9 +7204,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpPlatform`
 
-- `HttpPlatform.HttpPlatform` -> `HttpPlatform.HttpPlatform`: The service is now a Context.Service class; use its Service member for the implementation type. Path-backed offset and bytesToRead accept ByteSize.Input, while chunkSize and all Web File range options use number.
+- `HttpPlatform.HttpPlatform` -> `HttpPlatform.HttpPlatform`: The service is now a Context.Service value and same-name interface; use its Service member for the implementation type. Path-backed offset and bytesToRead accept ByteSize.Input, while chunkSize and all Web File range options use number.
 
-- `HttpPlatform.TypeId` -> `none`: The public type id was removed; use the HttpPlatform Context.Service class.
+- `HttpPlatform.TypeId` -> `none`: The public type id was removed; use the HttpPlatform Context.Service value and same-name interface.
 
 - `HttpPlatform.layer` -> `HttpPlatform.layer`: Retained as the default file-response layer.
 
@@ -7206,13 +7284,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServer.Address` -> `effect/unstable/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
 
-- `HttpServer.HttpServer` -> `HttpServer.HttpServer`: The interface and tag became one Context.Service class; use its Service member for implementations.
+- `HttpServer.HttpServer` -> `HttpServer.HttpServer`: The interface and tag became one Context.Service value and same-name interface; use the same-name interface for implementations.
 
 - `HttpServer.ServeOptions` -> `none`: The unused respond option model was removed with no shared v4 counterpart.
 
 - `HttpServer.TcpAddress` -> `effect/unstable/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
 
-- `HttpServer.TypeId` -> `none`: The public TypeId was removed; HttpServer is now a Context.Service class.
+- `HttpServer.TypeId` -> `none`: The public TypeId was removed; HttpServer is now a Context.Service value and same-name interface.
 
 - `HttpServer.UnixAddress` -> `effect/unstable/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
@@ -7492,6 +7570,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `SocketServer.ErrorTypeId` -> `SocketServer.ErrorTypeId`: The API moved to effect/unstable/socket/SocketServer and retains this name.
 
+- `SocketServer.SocketServer` -> `effect/unstable/socket/SocketServer#SocketServer`: Use the same-name SocketServer interface for the service value and the Context.Service constant for the key. Implementations now include the \~@effect/platform/SocketServer TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
 - `SocketServer.TcpAddress` -> `effect/unstable/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
 
 - `SocketServer.UnixAddress` -> `effect/unstable/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
@@ -7510,7 +7590,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/Transferable`
 
-- `Transferable.CollectorService` -> `Transferable.Collector["Service"]`: The collector interface is now the service type of the Transferable.Collector Context.Service class.
+- `Transferable.Collector` -> `effect/unstable/workers/Transferable#Collector`: Use the same-name Collector interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/workers/Transferable/Collector TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `Transferable.CollectorService` -> `Transferable.Collector`: The collector interface is now the service type of the Transferable.Collector Context.Service value and same-name interface.
 
 - `Transferable.Uint8Array` -> `Transferable.Uint8Array`: The transferable Uint8Array schema remains in the moved module.
 
@@ -7552,9 +7634,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Worker.BackingWorker` -> `Worker.Worker`: The low-level backing worker became the primary Worker interface with send and run operations.
 
-- `Worker.PlatformWorker` -> `Worker.WorkerPlatform`: The platform service was renamed and is now a Context.Service class.
+- `Worker.PlatformWorker` -> `Worker.WorkerPlatform`: The platform service was renamed and is now a Context.Service value and same-name interface.
 
-- `Worker.PlatformWorkerTypeId` -> `none`: The Context.Service class replaces the public platform-worker type-id alias.
+- `Worker.PlatformWorkerTypeId` -> `none`: The Context.Service value and same-name interface replaces the public platform-worker type-id alias.
 
 - `Worker.SerializedWorker` -> `RpcClient with RpcClient.layerProtocolWorker`: The serialized worker facade was removed; v4 routes schema-defined RPCs through the worker protocol.
 
@@ -7574,7 +7656,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Worker.WorkerManager` -> `Worker.WorkerPlatform`: WorkerPlatform now spawns low-level Worker values directly, replacing WorkerManager.
 
-- `Worker.WorkerManagerTypeId` -> `none`: The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service class.
+- `Worker.WorkerManagerTypeId` -> `none`: The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service value and same-name interface.
 
 - `Worker.WorkerPool` -> `RpcClient.Protocol`: For serialized request/response workloads use the worker-backed RPC Protocol; for raw messages build a Pool around WorkerPlatform.spawn.
 
@@ -7608,9 +7690,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `WorkerRunner.CloseLatch` -> `none`: The public close-latch service was removed; WorkerRunner implementations manage lifetime through their run effect and adapter scope.
 
-- `WorkerRunner.PlatformRunner` -> `WorkerRunner.WorkerRunnerPlatform`: The platform service was renamed and is now a Context.Service class.
+- `WorkerRunner.PlatformRunner` -> `WorkerRunner.WorkerRunnerPlatform`: The platform service was renamed and is now a Context.Service value and same-name interface.
 
-- `WorkerRunner.PlatformRunnerTypeId` -> `none`: The Context.Service class replaces the public platform-runner type-id alias.
+- `WorkerRunner.PlatformRunnerTypeId` -> `none`: The Context.Service value and same-name interface replaces the public platform-runner type-id alias.
 
 - `WorkerRunner.Runner` -> `WorkerRunner.WorkerRunner`: The namespace-only runner API was replaced by the low-level WorkerRunner interface.
 
@@ -7769,6 +7851,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RpcSchema.isStreamSerializable` -> `RpcSchema.isStreamSchema(schema)`: The separate WithResult serializability predicate was removed; v4 RPC streaming is identified by its explicit Stream schema.
 
 ### `@effect/rpc/RpcSerialization`
+
+- `RpcSerialization.RpcSerialization` -> `effect/unstable/rpc/RpcSerialization#RpcSerialization`: Use the same-name RpcSerialization interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/rpc/RpcSerialization TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
 
 - `RpcSerialization.RpcSerializationError` -> `effect/unstable/rpc/RpcSerialization#MaxBufferSizeExceeded`: Buffer-limit failures now use MaxBufferSizeExceeded. MessagePack-specific decode errors have no counterpart.
 
@@ -8688,7 +8772,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/workflow/WorkflowEngine`
 
-- `WorkflowEngine.makeUnsafe` -> `effect/unstable/workflow/WorkflowEngine#makeUnsafe`: Moved into core Effect. Context service projections now use Service instead of Type, and absent encoded results use Option.
+- `WorkflowEngine.WorkflowEngine` -> `effect/unstable/workflow/WorkflowEngine#WorkflowEngine`: Use the same-name WorkflowEngine interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/workflow/WorkflowEngine TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `WorkflowEngine.WorkflowInstance` -> `effect/unstable/workflow/WorkflowEngine#WorkflowInstance`: Use the same-name WorkflowInstance interface for the service value and the Context.Service constant for the key. Implementations now include the \~effect/workflow/WorkflowEngine/WorkflowInstance TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration.
+
+- `WorkflowEngine.makeUnsafe` -> `effect/unstable/workflow/WorkflowEngine#makeUnsafe`: Moved into core Effect. Use the same-name service interfaces instead of Context service type projections, and absent encoded results use Option.
 
 ### `@effect/workflow/WorkflowProxy`
 

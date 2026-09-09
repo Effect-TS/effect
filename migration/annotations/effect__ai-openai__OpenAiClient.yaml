@@ -160,3 +160,6 @@
 "@effect/ai-openai/OpenAiClient#SummaryPart":
   replacement: "OpenAiSchema.SummaryTextContent"
   note: "The client-local reasoning summary schema moved to the focused v4 OpenAiSchema module."
+"@effect/ai-openai/OpenAiClient#OpenAiClient":
+  replacement: "@effect/ai-openai/OpenAiClient#OpenAiClient"
+  note: "Use the same-name OpenAiClient interface for the service value and the Context.Service constant for the key. Implementations now include the ~@effect/ai-openai/OpenAiClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

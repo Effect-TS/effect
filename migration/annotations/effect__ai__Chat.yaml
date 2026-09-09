@@ -1,0 +1,6 @@
+"@effect/ai/Chat#Chat":
+  replacement: "effect/unstable/ai/Chat#Chat"
+  note: "Use the same-name Chat interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/ai/Chat TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."
+"@effect/ai/Chat#Persistence":
+  replacement: "effect/unstable/ai/Chat#Persistence"
+  note: "Use the same-name Persistence interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/ai/Chat/Persisted TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

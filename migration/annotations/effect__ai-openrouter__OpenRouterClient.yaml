@@ -13,3 +13,6 @@
 "@effect/ai-openrouter/OpenRouterClient#Service":
   replacement: "OpenRouterClient.Service"
   note: "Still exported in v4; adapt to the regenerated client, revised request and response schemas, and the new streaming result tuple."
+"@effect/ai-openrouter/OpenRouterClient#OpenRouterClient":
+  replacement: "@effect/ai-openrouter/OpenRouterClient#OpenRouterClient"
+  note: "Use the same-name OpenRouterClient interface for the service value and the Context.Service constant for the key. Implementations now include the ~@effect/ai-openrouter/OpenRouterClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

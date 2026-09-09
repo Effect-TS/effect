@@ -1,0 +1,3 @@
+"@effect/ai/Tokenizer#Tokenizer":
+  replacement: "effect/unstable/ai/Tokenizer#Tokenizer"
+  note: "Use the same-name Tokenizer interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/ai/Tokenizer TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

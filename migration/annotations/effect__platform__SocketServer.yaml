@@ -10,3 +10,6 @@
 "@effect/platform/SocketServer#UnixAddress":
   replacement: "effect/unstable/net/NetAddress#UnixPathAddress"
   note: "Replaced by the shared Unix filesystem-path address model."
+"@effect/platform/SocketServer#SocketServer":
+  replacement: "effect/unstable/socket/SocketServer#SocketServer"
+  note: "Use the same-name SocketServer interface for the service value and the Context.Service constant for the key. Implementations now include the ~@effect/platform/SocketServer TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

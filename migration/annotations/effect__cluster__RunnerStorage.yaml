@@ -4,3 +4,6 @@
 "@effect/cluster/RunnerStorage#makeMemory":
   replacement: "effect/unstable/cluster/RunnerStorage#makeMemory"
   note: "Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation."
+"@effect/cluster/RunnerStorage#RunnerStorage":
+  replacement: "effect/unstable/cluster/RunnerStorage#RunnerStorage"
+  note: "Use the same-name RunnerStorage interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/cluster/RunnerStorage TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

@@ -25,3 +25,12 @@
 "@effect/experimental/EventLog#SchemaTypeId":
   replacement: effect/unstable/eventlog/EventLog#SchemaTypeId
   note: Import SchemaTypeId from the v4 EventLog module.
+"@effect/experimental/EventLog#EventLog":
+  replacement: "effect/unstable/eventlog/EventLog#EventLog"
+  note: "Use the same-name EventLog interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/eventlog/EventLog TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."
+"@effect/experimental/EventLog#Identity":
+  replacement: "effect/unstable/eventlog/EventLog#Identity"
+  note: "Use the same-name Identity interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/eventlog/EventLog/Identity TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."
+"@effect/experimental/EventLog#Registry":
+  replacement: "effect/unstable/eventlog/EventLog#Registry"
+  note: "Use the same-name Registry interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/unstable/eventlog/EventLog/Registry TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

@@ -1,3 +1,6 @@
 "@effect/ai/EmbeddingModel#makeDataLoader":
   replacement: "EmbeddingModel.make + RequestResolver.setDelay + RequestResolver.batchN"
   note: "The dedicated data-loader constructor was removed. EmbeddingModel.make batches concurrent embed requests through its resolver; compose the exposed resolver with setDelay and optional batchN for the old window and maximum-batch behavior."
+"@effect/ai/EmbeddingModel#EmbeddingModel":
+  replacement: "effect/unstable/ai/EmbeddingModel#EmbeddingModel"
+  note: "Use the same-name EmbeddingModel interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/unstable/ai/EmbeddingModel TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

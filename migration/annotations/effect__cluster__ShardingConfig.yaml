@@ -1,9 +1,12 @@
 "@effect/cluster/ShardingConfig#config":
   replacement: "effect/unstable/cluster/ShardingConfig#config"
-  note: "Moved into core Effect; its Context service value type now uses the Service property instead of Type."
+  note: "Moved into core Effect; use the ShardingConfig interface for the service value type."
 "@effect/cluster/ShardingConfig#defaults":
   replacement: "effect/unstable/cluster/ShardingConfig#defaults"
-  note: "Moved into core Effect; service type projections now use Service instead of Type. V4 also defaults maxResidentEntities to 10,000 and unprocessedMessageBatchSize to 1,024."
+  note: "Moved into core Effect; use the ShardingConfig interface for service value types. V4 also defaults maxResidentEntities to 10,000 and unprocessedMessageBatchSize to 1,024."
 "@effect/cluster/ShardingConfig#layer":
   replacement: "effect/unstable/cluster/ShardingConfig#layer"
-  note: "Moved into core Effect with the same shallow default merge; service type projections now use Service instead of Type."
+  note: "Moved into core Effect with the same shallow default merge; use the ShardingConfig interface for service value types."
+"@effect/cluster/ShardingConfig#ShardingConfig":
+  replacement: "effect/unstable/cluster/ShardingConfig#ShardingConfig"
+  note: "Use the same-name ShardingConfig interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/cluster/ShardingConfig TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

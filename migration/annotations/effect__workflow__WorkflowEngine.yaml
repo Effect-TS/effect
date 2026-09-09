@@ -3,4 +3,10 @@
   note: "Moved into core Effect and remains the non-durable engine for tests and local development."
 "@effect/workflow/WorkflowEngine#makeUnsafe":
   replacement: "effect/unstable/workflow/WorkflowEngine#makeUnsafe"
-  note: "Moved into core Effect. Context service projections now use Service instead of Type, and absent encoded results use Option."
+  note: "Moved into core Effect. Use the same-name service interfaces instead of Context service type projections, and absent encoded results use Option."
+"@effect/workflow/WorkflowEngine#WorkflowEngine":
+  replacement: "effect/unstable/workflow/WorkflowEngine#WorkflowEngine"
+  note: "Use the same-name WorkflowEngine interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/workflow/WorkflowEngine TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."
+"@effect/workflow/WorkflowEngine#WorkflowInstance":
+  replacement: "effect/unstable/workflow/WorkflowEngine#WorkflowInstance"
+  note: "Use the same-name WorkflowInstance interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/workflow/WorkflowEngine/WorkflowInstance TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

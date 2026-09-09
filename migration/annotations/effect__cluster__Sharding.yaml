@@ -1,3 +1,6 @@
 "@effect/cluster/Sharding#layer":
   replacement: "effect/unstable/cluster/Sharding#layer"
   note: "Moved into core Effect with the same main sharding runtime composition and public service requirements."
+"@effect/cluster/Sharding#Sharding":
+  replacement: "effect/unstable/cluster/Sharding#Sharding"
+  note: "Use the same-name Sharding interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/cluster/Sharding TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

@@ -88,3 +88,6 @@
 "@effect/platform/FileSystem#WriteFileStringOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"writeFileString\"]>[2]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."
+"@effect/platform/FileSystem#WatchBackend":
+  replacement: "effect/FileSystem#WatchBackend"
+  note: "Use the same-name WatchBackend interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/FileSystem/WatchBackend TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

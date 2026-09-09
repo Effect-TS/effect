@@ -13,3 +13,6 @@
 "@effect/ai/McpServer#run":
   replacement: "McpServer.run"
   note: "Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025_06_18], imported with McpProtocol from effect/unstable/ai; it remains the Effect-level runner over RpcServer.Protocol."
+"@effect/ai/McpServer#McpServer":
+  replacement: "effect/unstable/ai/McpServer#McpServer"
+  note: "Use the same-name McpServer interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/ai/McpServer TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

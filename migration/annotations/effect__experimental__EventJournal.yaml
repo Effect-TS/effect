@@ -16,3 +16,6 @@
 "@effect/experimental/EventJournal#makeMemory":
   replacement: effect/unstable/eventlog/EventJournal#makeMemory
   note: The in-memory constructor moved into core Effect and now returns the Context.Service implementation as a directly nameable interface.
+"@effect/experimental/EventJournal#EventJournal":
+  replacement: "effect/unstable/eventlog/EventJournal#EventJournal"
+  note: "Use the same-name EventJournal interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/eventlog/EventJournal TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

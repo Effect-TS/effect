@@ -1,5 +1,5 @@
 "@effect/platform/Transferable#CollectorService":
-  replacement: "Transferable.Collector[\"Service\"]"
+  replacement: "Transferable.Collector"
   note: "The collector interface is now the service type of the Transferable.Collector Context.Service value and same-name interface."
 "@effect/platform/Transferable#schema":
   replacement: "Transferable.schema"
@@ -10,3 +10,6 @@
 "@effect/platform/Transferable#unsafeMakeCollector":
   replacement: "Transferable.makeCollectorUnsafe"
   note: "The unsafe collector constructor was renamed."
+"@effect/platform/Transferable#Collector":
+  replacement: "effect/unstable/workers/Transferable#Collector"
+  note: "Use the same-name Collector interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/workers/Transferable/Collector TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

@@ -7,3 +7,6 @@
 "@effect/cluster/Snowflake#TypeId":
   replacement: "effect/unstable/cluster/Snowflake#TypeId"
   note: "Moved into core Effect; the public marker is now the string literal ~effect/cluster/Snowflake."
+"@effect/cluster/Snowflake#Snowflake.Generator":
+  replacement: "effect/unstable/cluster/Snowflake#Snowflake.Generator"
+  note: "The generator shape now includes the ~effect/cluster/Snowflake/Generator TypeId. Use the module make constructor and the top-level Generator interface and service key."

@@ -1,0 +1,3 @@
+"@effect/opentelemetry/OtlpSerialization#OtlpSerialization":
+  replacement: "effect/unstable/observability/OtlpSerialization#OtlpSerialization"
+  note: "Use the same-name OtlpSerialization interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/observability/OtlpSerialization TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

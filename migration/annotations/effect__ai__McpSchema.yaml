@@ -25,3 +25,6 @@
 "@effect/ai/McpSchema#SuccessEncoded":
   replacement: "McpSchema.SuccessEncoded"
   note: "Moved to effect/unstable/ai/McpSchema and still derives an encoded JSON-RPC success union from an RpcGroup."
+"@effect/ai/McpSchema#McpServerClient":
+  replacement: "effect/unstable/ai/McpSchema#McpServerClient"
+  note: "Use the same-name McpServerClient interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/ai/McpSchema/McpServerClient TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

@@ -7,3 +7,6 @@
 "@effect/platform/Etag#toString":
   replacement: "Etag.toString"
   note: "Retained with the same Etag-to-header-string behavior and signature."
+"@effect/platform/Etag#Generator":
+  replacement: "effect/unstable/http/Etag#Generator"
+  note: "Use the same-name Generator interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/http/Etag/Generator TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

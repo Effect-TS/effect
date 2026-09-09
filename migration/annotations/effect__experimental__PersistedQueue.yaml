@@ -13,3 +13,9 @@
 "@effect/experimental/PersistedQueue#TypeId":
   replacement: effect/unstable/persistence/PersistedQueue#TypeId
   note: Import TypeId from the v4 unstable PersistedQueue module; it is now a string brand.
+"@effect/experimental/PersistedQueue#PersistedQueueFactory":
+  replacement: "effect/unstable/persistence/PersistedQueue#PersistedQueueFactory"
+  note: "Use the same-name PersistedQueueFactory interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/persistence/PersistedQueue/PersistedQueueFactory TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."
+"@effect/experimental/PersistedQueue#PersistedQueueStore":
+  replacement: "effect/unstable/persistence/PersistedQueue#PersistedQueueStore"
+  note: "Use the same-name PersistedQueueStore interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/persistence/PersistedQueue/PersistedQueueStore TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."

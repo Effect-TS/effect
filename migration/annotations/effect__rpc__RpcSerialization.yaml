@@ -13,3 +13,6 @@
 "@effect/rpc/RpcSerialization#msgPack":
   replacement: "effect/unstable/rpc/RpcSerialization#layerSchemaBinary"
   note: "The MessagePack RpcSerialization service value was removed. Provide layerSchemaBinary instead."
+"@effect/rpc/RpcSerialization#RpcSerialization":
+  replacement: "effect/unstable/rpc/RpcSerialization#RpcSerialization"
+  note: "Use the same-name RpcSerialization interface for the service value and the Context.Service constant for the key. Implementations now include the ~effect/rpc/RpcSerialization TypeId; use the module constructor or layer where available, and include that field on manual implementations. The runtime service key is unchanged by the interface migration."
