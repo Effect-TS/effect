@@ -199,6 +199,28 @@ describe("CharacterEncoding", () => {
     })
   }
 
+  it("matches installed iconv-lite GBK extension mappings", () => {
+    for (const name of ["gbk", "gb18030"]) {
+      const codec = All.resolveUnsafe(name)
+      for (const lead of [0xa6, 0xfe]) {
+        for (let trail = 0x40; trail <= 0xfe; trail++) {
+          const input = Buffer.from([lead, trail])
+          const expected = Iconv.decode(input, name)
+          assert.equal(C.decodeUnsafe(input, codec), expected)
+          assert.deepEqual(C.encodeUnsafe(expected, codec), Uint8Array.from(Iconv.encode(expected, name)))
+          const decoder = C.makeDecoderUnsafe(codec)
+          assert.equal(decoder.write(input.subarray(0, 1)) + decoder.write(input.subarray(1)) + decoder.end(), expected)
+        }
+      }
+    }
+  })
+
+  it("includes installed iconv-lite ISO-8859-8 aliases", () => {
+    for (const alias of ["iso88598i", "iso88598e"]) {
+      assert.equal(All.resolveUnsafe(alias), All.resolveUnsafe("iso88598"))
+    }
+  })
+
   it("accepts encoding aliases without prototype traversal", () => {
     for (const name of ["windows-1252", "cp1252", "win1252", "UTF-8", "utf-16le", "Shift_JIS", "GB2312", "latin1"]) {
       assert.equal(All.encodingExists(name), true, name)
