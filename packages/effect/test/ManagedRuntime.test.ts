@@ -16,10 +16,10 @@ describe("ManagedRuntime", () => {
   })
 
   test("provides context", async () => {
-    const tag = Context.Service<string>("string")
-    const layer = Layer.succeed(tag)("test")
+    class Tag extends Context.Service<Tag, string>()("string") {}
+    const layer = Layer.succeed(Tag)("test")
     const runtime = ManagedRuntime.make(layer)
-    const result = await runtime.runPromise(tag)
+    const result = await runtime.runPromise(Tag)
     await runtime.dispose()
     strictEqual(result, "test")
   })
@@ -39,11 +39,11 @@ describe("ManagedRuntime", () => {
   })
 
   it("can be built synchronously", () => {
-    const tag = Context.Service<string>("string")
-    const layer = Layer.succeed(tag)("test")
+    class Tag extends Context.Service<Tag, string>()("string") {}
+    const layer = Layer.succeed(Tag)("test")
     const managedRuntime = ManagedRuntime.make(layer)
     const services = Effect.runSync(managedRuntime.contextEffect)
-    const result = Context.get(services, tag)
+    const result = Context.get(services, Tag)
     strictEqual(result, "test")
   })
 

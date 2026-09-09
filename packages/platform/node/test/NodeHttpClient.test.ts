@@ -69,8 +69,9 @@ const makeLocalServerClient = Effect.gen(function*() {
     createTodo
   } as const
 })
-interface LocalServerClient extends Effect.Success<typeof makeLocalServerClient> {}
-const LocalServerClient = Context.Service<LocalServerClient>("test/LocalServerClient")
+class LocalServerClient
+  extends Context.Service<LocalServerClient, Effect.Success<typeof makeLocalServerClient>>()("test/LocalServerClient")
+{}
 const LocalServerClientLayer = Layer.effect(LocalServerClient)(makeLocalServerClient)
 const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   HttpRouter.route(

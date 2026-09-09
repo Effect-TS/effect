@@ -35,8 +35,9 @@ const makeJsonPlaceholder = Effect.gen(function*() {
     createTodo
   } as const
 })
-interface JsonPlaceholder extends Effect.Success<typeof makeJsonPlaceholder> {}
-const JsonPlaceholder = Context.Service<JsonPlaceholder>("test/JsonPlaceholder")
+class JsonPlaceholder
+  extends Context.Service<JsonPlaceholder, Effect.Success<typeof makeJsonPlaceholder>>()("test/JsonPlaceholder")
+{}
 const JsonPlaceholderLayer = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
 const TestRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
   yield* router.addAll([

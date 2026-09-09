@@ -6,10 +6,6 @@ interface StubConnection {
   readonly id: string
 }
 
-interface StubTransactionConnection {
-  readonly _: unique symbol
-}
-
 const sqlError = (message: string) =>
   new SqlError.SqlError({
     reason: new SqlError.UnknownError({ cause: new Error(message), message })
@@ -31,10 +27,10 @@ const makeHarness = (failures: {
 } = {}) => {
   const calls: Array<string> = []
   const conn: StubConnection = { id: "stub" }
-  const transactionService = Context.Service<
-    StubTransactionConnection,
+  class TransactionConnection extends Context.Service<
+    TransactionConnection,
     readonly [conn: StubConnection, counter: number]
-  >(`test/SqlClient/TransactionConnection/${harnessIdCounter++}`)
+  >()(`test/SqlClient/TransactionConnection/${harnessIdCounter++}`) {}
 
   let transactionActive = false
   const savepoints: Array<number> = []
@@ -42,7 +38,7 @@ const makeHarness = (failures: {
   const record = (name: string) => Effect.sync(() => calls.push(name))
 
   const withTransaction = SqlClient.makeWithTransaction({
-    transactionService,
+    transactionService: TransactionConnection,
     spanAttributes: [],
     acquireConnection: Effect.flatMap(Scope.make(), (scope) =>
       Effect.as(

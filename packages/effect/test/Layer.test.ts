@@ -11,7 +11,7 @@ import * as Scope from "effect/Scope"
 describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
     Effect.gen(function*() {
-      const BoolTag = Context.Service<boolean>("boolean")
+      class BoolTag extends Context.Service<BoolTag, boolean>()("boolean") {}
       const latch = Latch.makeUnsafe()
       const layer1 = Layer.effectContext<never, never, never>(Effect.never)
       const layer2 = Layer.effectContext(
@@ -555,7 +555,7 @@ describe("Layer", () => {
   describe("tracing", () => {
     it.effect("withSpan forwards captureStackTrace to the layer stack frame", () =>
       Effect.gen(function*() {
-        const Frame = Context.Service<References.StackFrame | undefined>("Frame")
+        class Frame extends Context.Service<Frame, References.StackFrame | undefined>()("Frame") {}
         const layer = Layer.effect(Frame, References.CurrentStackFrame)
 
         // By default the frame records this call site, not Layer's internals.
@@ -587,7 +587,7 @@ describe("Layer", () => {
       Effect.gen(function*() {
         // Edge case: the data-first overload has separate runtime branching, and onEnd
         // must run when the layer scope closes.
-        const SpanName = Context.Service<string>("SpanName")
+        class SpanName extends Context.Service<SpanName, string>()("SpanName") {}
         const exits: Array<Exit.Exit<unknown, unknown>> = []
         const scope = yield* Scope.make()
         const layer = Layer.effect(SpanName)(
@@ -610,7 +610,7 @@ describe("Layer", () => {
       Effect.gen(function*() {
         // Edge case: external spans do not get stack-frame wrapping, but they should
         // still be installed as the parent span for layer construction.
-        const SpanId = Context.Service<string>("SpanId")
+        class SpanId extends Context.Service<SpanId, string>()("SpanId") {}
         const parent = Tracer.externalSpan({
           spanId: "0000000000000001",
           traceId: "00000000000000000000000000000001",
@@ -641,8 +641,8 @@ export class Service1 {
     return Effect.succeed(1)
   }
 }
-const Service1Tag = Context.Service<Service1>("Service1")
-const makeLayer1 = (array: Array<string>): Layer.Layer<Service1> => {
+class Service1Tag extends Context.Service<Service1Tag, Service1>()("Service1") {}
+const makeLayer1 = (array: Array<string>): Layer.Layer<Service1Tag> => {
   return Layer.effect(Service1Tag)(
     Effect.acquireRelease(
       Effect.sync(() => {
@@ -658,8 +658,8 @@ class Service2 {
     return Effect.succeed(2)
   }
 }
-const Service2Tag = Context.Service<Service2>("Service2")
-const makeLayer2 = (array: Array<string>): Layer.Layer<Service2> => {
+class Service2Tag extends Context.Service<Service2Tag, Service2>()("Service2") {}
+const makeLayer2 = (array: Array<string>): Layer.Layer<Service2Tag> => {
   return Layer.effect(Service2Tag)(
     Effect.acquireRelease(
       Effect.sync(() => {
@@ -675,8 +675,8 @@ class Service3 {
     return Effect.succeed(3)
   }
 }
-const Service3Tag = Context.Service<Service3>("Service3")
-const makeLayer3 = (array: Array<string>): Layer.Layer<Service3> => {
+class Service3Tag extends Context.Service<Service3Tag, Service3>()("Service3") {}
+const makeLayer3 = (array: Array<string>): Layer.Layer<Service3Tag> => {
   return Layer.effect(Service3Tag)(
     Effect.acquireRelease(
       Effect.sync(() => {

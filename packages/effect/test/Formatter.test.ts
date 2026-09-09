@@ -230,7 +230,7 @@ describe("Formatter", () => {
     })
 
     it("Context.Service", () => {
-      const MyService = Context.Service<{ readonly value: number }>("MyService")
+      class MyService extends Context.Service<MyService, { readonly value: number }>()("MyService") {}
       strictEqual(format(MyService).includes(`"key": "MyService"`), true)
     })
 

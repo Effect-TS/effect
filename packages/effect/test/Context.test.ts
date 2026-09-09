@@ -6,9 +6,9 @@ import * as Redactable from "effect/Redactable"
 import { describe, it } from "vitest"
 
 describe("Context", () => {
-  const A = Context.Service<number>("ContextTest/A")
-  const B = Context.Service<number>("ContextTest/B")
-  const C = Context.Service<number>("ContextTest/C")
+  class A extends Context.Service<A, number>()("ContextTest/A") {}
+  class B extends Context.Service<B, number>()("ContextTest/B") {}
+  class C extends Context.Service<C, number>()("ContextTest/C") {}
 
   it("keeps the source immutable across additions", () => {
     const source = Context.make(A, 1)
@@ -43,6 +43,7 @@ describe("Context", () => {
   })
 
   it("invalidates the fiber cache only for opted-in keys", () => {
+    // Keep direct const-form coverage alongside the class form.
     const Cached = Context.Service<number>("ContextTest/Cached", { fiberCached: true })
     class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
       fiberCached: true
@@ -82,7 +83,7 @@ describe("Context", () => {
   })
 
   it("supports the Redactable fallback context", () => {
-    const Cached = Context.Service<number>("ContextTest/RedactableCached", { fiberCached: true })
+    class Cached extends Context.Service<Cached, number>()("ContextTest/RedactableCached", { fiberCached: true }) {}
     const context = Redactable.getRedacted({
       [Redactable.symbolRedactable](context: Context.Context<never>) {
         return context
@@ -98,8 +99,8 @@ describe("Context", () => {
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<undefined>("ContextTest/Undefined", { fiberCached: true })
-    const Missing = Context.Service<undefined>("ContextTest/Missing")
+    class Undefined extends Context.Service<Undefined, undefined>()("ContextTest/Undefined", { fiberCached: true }) {}
+    class Missing extends Context.Service<Missing, undefined>()("ContextTest/Missing") {}
     const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
       defaultValue: () => "default",
       fiberCached: true
@@ -115,7 +116,10 @@ describe("Context", () => {
   })
 
   it("bounds deep overlay chains without changing values or order", () => {
-    const keys = Array.from({ length: 20 }, (_, i) => Context.Service<number>(`ContextTest/Deep${i}`))
+    const keys = Array.from(
+      { length: 20 },
+      (_, i) => class Deep extends Context.Service<Deep, number>()(`ContextTest/Deep${i}`) {}
+    )
     let context = Context.empty()
     for (let i = 0; i < keys.length; i++) {
       context = Context.add(context, keys[i], i)

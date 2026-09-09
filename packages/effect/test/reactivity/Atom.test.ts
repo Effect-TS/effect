@@ -202,12 +202,11 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   it("runtime layers are disposed with their registry", () => {
-    interface Service {
+    class Service extends Context.Service<Service, {
       readonly id: number
       readonly isAlive: () => boolean
       readonly finalize: () => void
-    }
-    const Service = Context.Service<Service>("Atom.test/RegistryScopedService")
+    }>()("Atom.test/RegistryScopedService") {}
     const finalized: Array<number> = []
     let builds = 0
     const layer = Layer.effect(
@@ -247,7 +246,7 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   it("default runtime factories build layers once per registry", () => {
-    const Service = Context.Service<number>("Atom.test/DefaultRegistryScopedService")
+    class Service extends Context.Service<Service, number>()("Atom.test/DefaultRegistryScopedService") {}
     let builds = 0
     const runtime = Atom.runtime(Layer.sync(Service, () => ++builds))
     const service = runtime.atom(Service)
@@ -263,7 +262,7 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   it("concrete runtime memo maps share layers across registries", () => {
-    const Service = Context.Service<number>("Atom.test/SharedRuntimeService")
+    class Service extends Context.Service<Service, number>()("Atom.test/SharedRuntimeService") {}
     let builds = 0
     const factory = Atom.context({ memoMap: Layer.makeMemoMapUnsafe() })
     const runtime = factory(Layer.sync(Service, () => ++builds))
@@ -280,7 +279,7 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   it("shared memo map atoms share within a registry and isolate across registries", () => {
-    const Service = Context.Service<number>("Atom.test/SharedRegistryScopedService")
+    class Service extends Context.Service<Service, number>()("Atom.test/SharedRegistryScopedService") {}
     let builds = 0
     const layer = Layer.sync(Service, () => ++builds)
     const memoMap = Atom.make(() => Layer.makeMemoMapUnsafe())
@@ -2830,11 +2829,10 @@ describe("Atom", { concurrent: false }, () => {
   })
 })
 
-interface BuildCounter {
+class BuildCounter extends Context.Service<BuildCounter, {
   readonly get: Effect.Effect<number>
   readonly inc: Effect.Effect<void>
-}
-const BuildCounter = Context.Service<BuildCounter>("BuildCounter")
+}>()("BuildCounter") {}
 const BuildCounterLayer = Layer.sync(BuildCounter, () => {
   let count = 0
   return BuildCounter.of({
@@ -2845,11 +2843,10 @@ const BuildCounterLayer = Layer.sync(BuildCounter, () => {
   })
 })
 
-interface Counter {
+class Counter extends Context.Service<Counter, {
   readonly get: Effect.Effect<number>
   readonly inc: Effect.Effect<void>
-}
-const Counter = Context.Service<Counter>("Counter")
+}>()("Counter") {}
 const CounterLayer = Layer.effect(
   Counter,
   Effect.gen(function*() {
@@ -2884,10 +2881,9 @@ const CounterTest = Layer.effect(
   Layer.provide(BuildCounterLayer)
 )
 
-interface Multiplier {
+class Multiplier extends Context.Service<Multiplier, {
   readonly times: (n: number) => Effect.Effect<number>
-}
-const Multiplier = Context.Service<Multiplier>("Multiplier")
+}>()("Multiplier") {}
 const MultiplierLayer = Layer.effect(
   Multiplier,
   Effect.gen(function*() {

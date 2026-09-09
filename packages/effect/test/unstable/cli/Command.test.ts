@@ -50,8 +50,8 @@ describe("Command", () => {
   describe("annotations", () => {
     it.effect("should expose annotations in help docs", () =>
       Effect.gen(function*() {
-        const Team = Context.Service<never, string>("effect/test/unstable/cli/Team")
-        const Priority = Context.Service<never, number>("effect/test/unstable/cli/Priority")
+        class Team extends Context.Service<Team, string>()("effect/test/unstable/cli/Team") {}
+        class Priority extends Context.Service<Priority, number>()("effect/test/unstable/cli/Priority") {}
         const docs: Array<Parameters<CliOutput.Formatter["formatHelpDoc"]>[0]> = []
 
         const formatter: CliOutput.Formatter = {
@@ -74,13 +74,13 @@ describe("Command", () => {
 
         assert.strictEqual(docs.length, 1)
         const annotations = docs[0].annotations
-        assert.strictEqual(Context.get(annotations, Team), "runtime")
-        assert.strictEqual(Context.get(annotations, Priority), 2)
+        assert.strictEqual(Context.getUnsafe(annotations, Team), "runtime")
+        assert.strictEqual(Context.getUnsafe(annotations, Priority), 2)
       }))
 
     it.effect("should keep annotations when adding subcommands", () =>
       Effect.gen(function*() {
-        const Scope = Context.Service<never, string>("effect/test/unstable/cli/Scope")
+        class Scope extends Context.Service<Scope, string>()("effect/test/unstable/cli/Scope") {}
         const docs: Array<Parameters<CliOutput.Formatter["formatHelpDoc"]>[0]> = []
 
         const formatter: CliOutput.Formatter = {
@@ -110,8 +110,8 @@ describe("Command", () => {
         )
 
         assert.strictEqual(docs.length, 2)
-        assert.strictEqual(Context.get(docs[0].annotations, Scope), "root")
-        assert.strictEqual(Context.get(docs[1].annotations, Scope), "child")
+        assert.strictEqual(Context.getUnsafe(docs[0].annotations, Scope), "root")
+        assert.strictEqual(Context.getUnsafe(docs[1].annotations, Scope), "child")
       }))
   })
 
@@ -667,9 +667,9 @@ describe("Command", () => {
         const Region = GlobalFlag.Setting("region")({
           flag: Flag.String("region").pipe(Flag.optional)
         })
-        const RegionFromProvide = Context.Service<never, Option.Option<string>>(
+        class RegionFromProvide extends Context.Service<RegionFromProvide, Option.Option<string>>()(
           "effect/test/unstable/cli/RegionFromProvide"
-        )
+        ) {}
         const capturedFromProvide: Array<Option.Option<string>> = []
         const capturedFromProvideEffect: Array<Option.Option<string>> = []
 
@@ -1412,7 +1412,7 @@ describe("Command", () => {
       Effect.gen(function*() {
         const messages: Array<string> = []
 
-        const DbUrl = Context.Service<never, string>("effect/test/unstable/cli/DbUrl")
+        class DbUrl extends Context.Service<DbUrl, string>()("effect/test/unstable/cli/DbUrl") {}
 
         const root = Command.make("app", {
           dryRun: Flag.Boolean("dry-run")

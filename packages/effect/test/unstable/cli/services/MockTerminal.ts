@@ -30,6 +30,8 @@ export declare namespace MockTerminal {
 // Service
 // =============================================================================
 
+// Keep the production Terminal identifier until Terminal is migrated to class syntax.
+// A MockTerminal self type would no longer satisfy the Terminal requirements below.
 export const MockTerminal = Context.Service<Terminal.Terminal, MockTerminal>()(
   Terminal.Terminal.key
 )
