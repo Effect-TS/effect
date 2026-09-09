@@ -180,10 +180,9 @@ does not necessarily mean every character was scanned in JavaScript.
 
 ## Latest optimization results (2026-09-08)
 
-These are before/after **Effect** measurements, not fresh comparisons against
-iconv-lite or node-iconv. The older third-party results are retained separately
-below; mixing their baseline columns with these new measurements would not be a
-paired comparison.
+These are before/after **Effect** measurements. Fresh direct comparisons against
+iconv-lite and node-iconv are in the next section, measured separately on September 9.
+Do not mix baseline columns between the optimization and third-party runs.
 
 macOS ARM64 / Apple M2 Max; Node 24.20.0, Bun 1.4.0 and Deno 2.9.6. Each runtime
 runs both Effect revisions in one process, with five alternating 150 ms rounds
@@ -253,74 +252,88 @@ small changes may be noise. See the [multibyte report](./CharacterEncoding.multi
 for reproduction, validation and raw samples. That report records the state at
 `ccb487d06`, before the subsequently committed UTF-16LE Buffer optimization.
 
-## Historical third-party results (2026-09-08, before runtime optimizations)
+## Direct third-party results (2026-09-09)
 
-These tables predate both optimizations above and have not been rerun against
-the latest Effect revision.
+Fresh comparisons at Effect `53900c09f`, including both runtime optimizations.
+Node 24.20.0 on macOS ARM64 / Apple M2 Max, using the default settings above:
+five rotating-order 150 ms rounds after 100 ms warmup per provider, approximately
+64 KiB input and 4,093-byte stream chunks. Both runs completed all output-equality
+checks. Providers were measured together within each run; the published and alpha
+comparisons ran sequentially.
 
-Node 24.20.0 on macOS ARM64, using the default settings above. Baseline here is
-the supplied iconv-lite 1.0.0-alpha.2 checkout and node-iconv 3.0.1. Values are
-median MiB/s; the last column is the median of paired throughput changes against
-iconv-lite, not the ratio of independent medians.
+Values are median MiB/s. The last column is the median of paired Effect throughput
+changes against iconv-lite, not the ratio of independent medians.
 
-| Workload             | Effect | iconv-lite alpha | node-iconv | Paired change |
-| -------------------- | -----: | ---------------: | ---------: | ------------: |
-| utf8/encode          |    488 |              489 |        198 |         -0.3% |
-| utf8/decode          |   1275 |             1274 |        263 |         -0.8% |
-| utf8->utf16le/stream |    299 |              332 |        355 |         -8.5% |
-| utf16le/encode       |    486 |              509 |        224 |         -4.2% |
-| utf16le/decode       |   1974 |             1977 |        397 |         -0.1% |
-| cp1251/encode        |    755 |              603 |        254 |        +24.5% |
-| cp1251/decode        |    798 |              222 |        207 |       +259.4% |
-| cp1251->utf8/stream  |    216 |              145 |        217 |        +46.5% |
-| cp932/encode         |    413 |              485 |        210 |        -14.7% |
-| cp932/decode         |    199 |              266 |        225 |        -24.5% |
-| cp932->utf8/stream   |    128 |              172 |        230 |        -24.2% |
-| gb18030/encode       |    269 |              285 |        182 |         -6.2% |
-| gb18030/decode       |    175 |              212 |        212 |        -17.3% |
+### Published iconv-lite 0.7.3 and node-iconv 3.0.1
 
-At that revision the results were mixed, not an across-the-board win: Unicode
-codec throughput was near the alpha baseline, single-byte encode/decode was faster
-in this corpus, and multibyte codecs and most streaming pipelines trailed iconv-lite. Effect
-streaming offers typed errors, cancellation and scoped composition, but those
-capabilities do not automatically make conversion faster. The host is shared
-and some samples have substantial outliers. Further optimization and broader
-corpora are needed before claiming general performance parity.
+| Workload             | Effect | iconv-lite 0.7.3 | node-iconv | Effect vs iconv-lite |
+| -------------------- | -----: | ---------------: | ---------: | -------------------: |
+| utf8/encode          |    495 |              497 |        198 |                +0.7% |
+| utf8/decode          |   1250 |              408 |        258 |              +206.8% |
+| utf8->utf16le/stream |    672 |              356 |        366 |               +90.5% |
+| utf16le/encode       |  14478 |            14855 |        232 |                -3.2% |
+| utf16le/decode       |   2030 |            43756 |        397 |               -95.3% |
+| cp1251/encode        |    741 |              672 |        250 |                +9.9% |
+| cp1251/decode        |    808 |              526 |        206 |               +52.6% |
+| cp1251->utf8/stream  |    216 |              235 |        217 |                -5.5% |
+| cp932/encode         |    590 |              480 |        207 |               +23.9% |
+| cp932/decode         |    199 |              265 |        223 |               -24.4% |
+| cp932->utf8/stream   |    134 |              180 |        235 |               -25.0% |
+| gb18030/encode       |    281 |              283 |        186 |                -0.8% |
+| gb18030/decode       |    176 |              216 |        206 |               -17.8% |
 
-In this rerun, the alpha CP1251 streaming baseline dropped from about 270 MiB/s
-in the first draft to 145 MiB/s, while Effect remained near 216 MiB/s. Its apparent
-relative win should not be attributed to the explicit-codec change; the stable
-baseline still outperforms Effect on that workload. Raw samples are retained to
-make this variability visible.
+UTF-16LE encoding is now close to published iconv-lite (-3.2%), compared with
+-96.9% in the previous comparison (Effect 467 versus 15182 MiB/s). UTF-8→UTF-16LE
+streaming moves from -14.0% to +90.5%, and CP932 encoding from -15.0% to +23.9%.
+These are fresh paired provider comparisons; old-to-new differences are not
+controlled before/after measurements. The separate optimization runs above
+isolate the Effect changes.
 
-### Published iconv-lite 0.7.3 comparison
+Against node-iconv, Effect is faster on these encode workloads, UTF-8/UTF-16LE/CP1251
+decoding and UTF-8→UTF-16LE streaming. CP1251 streaming is roughly equal.
+Node-iconv remains faster on CP932/GB18030 decoding and CP932→UTF-8 streaming.
 
-Same settings, measured separately:
+UTF-16 decoding remains far behind published iconv-lite's raw Buffer conversion
+(-95.3%); it is unchanged by the encoder optimization. Malformed UTF-16 decoding
+semantics differ as described above, although the timed corpus is valid.
+CP932/GB18030 decoding and the other streaming workloads also remain behind
+iconv-lite. This is not an across-the-board performance win.
 
-| Workload             | Effect | iconv-lite 0.7.3 | node-iconv | Paired change |
-| -------------------- | -----: | ---------------: | ---------: | ------------: |
-| utf8/encode          |    482 |              481 |        194 |         -0.0% |
-| utf8/decode          |   1271 |              409 |        264 |       +214.9% |
-| utf8->utf16le/stream |    303 |              357 |        364 |        -14.0% |
-| utf16le/encode       |    467 |            15182 |        217 |        -96.9% |
-| utf16le/decode       |   1924 |            42859 |        379 |        -95.5% |
-| cp1251/encode        |    752 |              749 |        251 |         +0.6% |
-| cp1251/decode        |    808 |              534 |        208 |        +51.3% |
-| cp1251->utf8/stream  |    217 |              241 |        221 |        -10.2% |
-| cp932/encode         |    408 |              478 |        204 |        -15.0% |
-| cp932/decode         |    196 |              268 |        225 |        -26.8% |
-| cp932->utf8/stream   |    130 |              175 |        228 |        -25.7% |
-| gb18030/encode       |    268 |              288 |        186 |         -6.1% |
-| gb18030/decode       |    173 |              212 |        201 |        -18.3% |
+### Local iconv-lite 1.0.0-alpha.2 and node-iconv 3.0.1
 
-The stable baseline was especially fast for UTF-16, using Node's raw Buffer
-conversion rather than the alpha's TextEncoder/TextDecoder backend. The latest
-Effect optimization addresses encoding throughput, but this direct comparison
-has not been rerun and UTF-16 decoding is unchanged. Malformed UTF-16
-decoding semantics also differ as described above; the timed corpus is valid.
+The supplied iconv-lite checkout is pinned at
+`2472166ea5a4825ca091b9550713c403852a566b`. Same settings, measured separately:
 
-Raw samples: [alpha comparison](./CharacterEncoding.alpha-results.jsonl) and
-[published 0.7.3 comparison](./CharacterEncoding.stable-results.jsonl).
+| Workload             | Effect | iconv-lite alpha | node-iconv | Effect vs iconv-lite |
+| -------------------- | -----: | ---------------: | ---------: | -------------------: |
+| utf8/encode          |    492 |              487 |        198 |                +0.9% |
+| utf8/decode          |   1263 |             1261 |        262 |                +0.1% |
+| utf8->utf16le/stream |    658 |              320 |        349 |              +109.7% |
+| utf16le/encode       |  14251 |              511 |        228 |             +2716.3% |
+| utf16le/decode       |   1998 |             1992 |        389 |                -0.8% |
+| cp1251/encode        |    746 |              616 |        253 |               +20.9% |
+| cp1251/decode        |    790 |              221 |        204 |              +258.0% |
+| cp1251->utf8/stream  |    217 |              264 |        216 |               -17.8% |
+| cp932/encode         |    591 |              478 |        209 |               +23.6% |
+| cp932/decode         |    200 |              264 |        222 |               -24.9% |
+| cp932->utf8/stream   |    131 |              170 |        227 |               -22.8% |
+| gb18030/encode       |    279 |              282 |        180 |                -2.1% |
+| gb18030/decode       |    177 |              217 |        205 |               -17.9% |
+
+The alpha uses a different Unicode backend: Effect UTF-16LE encoding is much
+faster, while UTF-8/UTF-16LE decoding is near parity. CP932 encoding is faster
+against both iconv-lite versions.
+
+The alpha CP1251 streaming result returned to 264 MiB/s, versus 145 in the prior
+report and about 270 in the first draft. Effect remains near 217 MiB/s. The older
+apparent win was baseline variability, not a sustained Effect improvement.
+Broader corpora and repeated runs are needed before generalizing these results.
+
+Fresh raw samples: [published 0.7.3 comparison](./CharacterEncoding.stable-results-2026-09-09.jsonl)
+and [alpha comparison](./CharacterEncoding.alpha-results-2026-09-09.jsonl).
+Previous, pre-optimization samples are preserved:
+[published 0.7.3](./CharacterEncoding.stable-results.jsonl) and
+[alpha](./CharacterEncoding.alpha-results.jsonl).
 
 ## Selective bundle verification
 
