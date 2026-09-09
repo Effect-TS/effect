@@ -20,5 +20,7 @@ export const encoding: Encoding = /* @__PURE__ */ make("iso88598", [
   "isoir138",
   "hebrew",
   "hebrew8",
+  "iso88598i",
+  "iso88598e",
   "cp28598"
 ], () => new SingleByte(data))

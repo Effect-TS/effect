@@ -125,14 +125,22 @@ The first draft's string-taking conversion API and core `encodings` /
 
 ## Provenance and regeneration
 
-Mapping tables were imported from the user's local iconv-lite checkout at
-`2472166ea5a4825ca091b9550713c403852a566b` (`1.0.0-alpha.2`). Full MIT attribution is
+Mapping tables are generated from the installed `packages/effect` development
+dependency, iconv-lite `0.7.3`. The workspace lockfile pins the resolved version;
+the generator records that package version in each generated table. No local
+iconv-lite checkout or Git metadata is required. Full MIT attribution is
 included in each generated data file. Conversion algorithms use iconv-lite's
 table format and single-byte/multibyte table-driven approach, with new typed
-conversion state and Effect integration. The source checkout is not modified.
+conversion state and Effect integration. The installed package is not modified.
+
+Switching from the original alpha checkout to installed 0.7.3 updates some
+GBK/GB18030 extension mappings to 0.7.3's private-use mappings and adds the
+`iso88598i` / `iso88598e` aliases. Generated data now follows that installed version,
+not the alpha's mapping revisions. The benchmark results below retain their
+recorded revisions and were measured before this regeneration.
 
 ```sh
-node scripts/generate-character-encoding.ts /path/to/iconv-lite
+node scripts/generate-character-encoding.ts
 pnpm lint-fix
 pnpm test --run packages/effect/test/CharacterEncoding.test.ts
 ```
@@ -272,7 +280,7 @@ changes against iconv-lite, not the ratio of independent medians.
 | utf8/decode          |   1250 |              408 |        258 |              +206.8% |
 | utf8->utf16le/stream |    672 |              356 |        366 |               +90.5% |
 | utf16le/encode       |  14478 |            14855 |        232 |                -3.2% |
-| utf16le/decode       |   2030 |            43756 |        397 |               -95.3% |
+| utf16le/decode\*     |   2030 |            43756 |        397 |               -95.3% |
 | cp1251/encode        |    741 |              672 |        250 |                +9.9% |
 | cp1251/decode        |    808 |              526 |        206 |               +52.6% |
 | cp1251->utf8/stream  |    216 |              235 |        217 |                -5.5% |
@@ -281,6 +289,17 @@ changes against iconv-lite, not the ratio of independent medians.
 | cp932->utf8/stream   |    134 |              180 |        235 |               -25.0% |
 | gb18030/encode       |    281 |              283 |        186 |                -0.8% |
 | gb18030/decode       |    176 |              216 |        206 |               -17.8% |
+
+\* UTF-16LE decoding still uses `TextDecoder`, which validates surrogate sequences
+and replaces malformed input (or rejects it in strict mode). Published iconv-lite
+0.7.3 uses Node's `StringDecoder`/Buffer path, preserving raw UTF-16 code units
+with different malformed-input semantics and less validation work. The recent
+Buffer optimization changed encoding only. This row measures synchronous
+`decodeUnsafe`, not Effect Streams or Effect runtime execution. During timing,
+the harness consumes only the returned string's length, not every character;
+the 43,756 MiB/s result is not full text-processing throughput. The timed input
+is valid, so outputs agree despite the semantic differences. Against the alpha's
+TextDecoder backend, Effect decoding is near parity (1,998 vs 1,992 MiB/s below).
 
 UTF-16LE encoding is now close to published iconv-lite (-3.2%), compared with
 -96.9% in the previous comparison (Effect 467 versus 15182 MiB/s). UTF-8→UTF-16LE
@@ -293,9 +312,6 @@ Against node-iconv, Effect is faster on these encode workloads, UTF-8/UTF-16LE/C
 decoding and UTF-8→UTF-16LE streaming. CP1251 streaming is roughly equal.
 Node-iconv remains faster on CP932/GB18030 decoding and CP932→UTF-8 streaming.
 
-UTF-16 decoding remains far behind published iconv-lite's raw Buffer conversion
-(-95.3%); it is unchanged by the encoder optimization. Malformed UTF-16 decoding
-semantics differ as described above, although the timed corpus is valid.
 CP932/GB18030 decoding and the other streaming workloads also remain behind
 iconv-lite. This is not an across-the-board performance win.
 
