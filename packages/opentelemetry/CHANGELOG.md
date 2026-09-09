@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.64.1
+
+### Patch Changes
+
+- [#8139](https://github.com/Effect-TS/effect/pull/8139) [`08d837d`](https://github.com/Effect-TS/effect/commit/08d837dffb27c29d01638bc5de76dc3f954f39c7) Thanks @tim-smart! - Preserve OpenTelemetry trace propagation through unnamed `Effect.fn` and disabled spans by using the nearest propagated parent. Make `Tracer.currentOtelSpan` skip these spans as well.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+  - @effect/platform@0.97.2
+
 ## 0.64.0
 
 ### Patch Changes
