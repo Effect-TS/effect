@@ -12,8 +12,10 @@
  * @since 4.0.0
  */
 import { PGlite, type PGliteInterface, type PGliteOptions } from "@electric-sql/pglite"
+import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
@@ -282,6 +284,19 @@ export const fromClient = (
     )
   })
 
+type QueryExecution = Data.TaggedEnum<{
+  Script: { readonly sql: string }
+  Parameterized: { readonly sql: string; readonly params: Arr.NonEmptyReadonlyArray<unknown> }
+}>
+
+const QueryExecution = Data.taggedEnum<QueryExecution>()
+
+const classifyQueryExecution = (sql: string, params: ReadonlyArray<unknown>): QueryExecution =>
+  Arr.match(params, {
+    onEmpty: () => QueryExecution.Script({ sql }),
+    onNonEmpty: (params) => QueryExecution.Parameterized({ sql, params })
+  })
+
 class PgliteConnection implements Connection {
   readonly pglite: PGliteInterface
   constructor(pglite: PGliteInterface) {
@@ -289,13 +304,16 @@ class PgliteConnection implements Connection {
   }
 
   private run(method: string, sql: string, params: ReadonlyArray<unknown>) {
-    return Effect.map(
-      Effect.tryPromise({
-        try: () => this.pglite.query<any>(sql, params as Array<any>),
-        catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", method) })
-      }),
-      (result) => result.rows
-    )
+    return Effect.tryPromise({
+      try: () =>
+        QueryExecution.$match(classifyQueryExecution(sql, params), {
+          // PGlite's query API only accepts a single statement. Keep scripts
+          // intact and expose the final result through the SQL row interface.
+          Script: ({ sql }) => this.pglite.exec(sql).then((results) => results.at(-1)?.rows ?? []),
+          Parameterized: ({ sql, params }) => this.pglite.query<any>(sql, [...params]).then((result) => result.rows)
+        }),
+      catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", method) })
+    })
   }
   execute(
     sql: string,
