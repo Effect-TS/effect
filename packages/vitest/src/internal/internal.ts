@@ -36,9 +36,18 @@ const runPromise: <E, A>(
 /** @internal */
 const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
   const promise = runPromise(effect, ctx)
-  // Vitest stops awaiting the test promise on timeout, but the interrupted fiber
-  // still needs to finish its finalizers. Keep failures on the original promise.
-  ctx?.onTestFinished(() => promise.then(constVoid, constVoid))
+  if (ctx) {
+    // Register only on abort so normally completing concurrent tests keep their
+    // usual teardown order. Keep failures on the original test promise.
+    const onAbort = () => ctx.onTestFinished(() => promise.then(constVoid, constVoid))
+    if (ctx.signal.aborted) {
+      onAbort()
+    } else {
+      ctx.signal.addEventListener("abort", onAbort, { once: true })
+      const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
+      promise.then(cleanup, cleanup)
+    }
+  }
   return promise
 }
 
@@ -261,12 +270,13 @@ export const layer = <R, E>(
     Effect.runSync
   )
   let closed = false
-  const closeScope = (ctx?: Vitest.TestContext) => {
+  const closeScope = () => {
     if (closed) {
       return Promise.resolve()
     }
     closed = true
-    return runPromise(Scope.close(scope, Exit.void), ctx)
+    // Layer cleanup must outlive the last test's already-aborted signal.
+    return runPromise(Scope.close(scope, Exit.void))
   }
 
   const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R> =>
@@ -319,7 +329,7 @@ export const layer = <R, E>(
         ctx.onTestFinished(() => {
           remaining--
           if (remaining === 0) {
-            return closeScope(ctx)
+            return closeScope()
           }
         })
         return runPromise(Effect.asVoid(contextEffect), ctx)
