@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.77.2
+
+### Patch Changes
+
+- [#8142](https://github.com/Effect-TS/effect/pull/8142) [`1af4232`](https://github.com/Effect-TS/effect/commit/1af4232fea7bc613e1dc68db9bec7b1f596d9e68) Thanks @thewilkybarkid! - Update TOML dependency to remove a vulnerability notice
+
 ## 0.77.1
 
 ### Patch Changes
