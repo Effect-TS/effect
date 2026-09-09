@@ -6,7 +6,7 @@ import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { flow, pipe } from "effect/Function"
+import { constVoid, flow, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import type * as Schema from "effect/Schema"
@@ -34,7 +34,13 @@ const runPromise: <E, A>(
 }, (effect, _, ctx) => Effect.runPromise(effect, { signal: ctx?.signal }))
 
 /** @internal */
-const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(effect, ctx)
+const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
+  const promise = runPromise(effect, ctx)
+  // Vitest stops awaiting the test promise on timeout, but the interrupted fiber
+  // still needs to finish its finalizers. Keep failures on the original promise.
+  ctx?.onTestFinished(() => promise.then(constVoid, constVoid))
+  return promise
+}
 
 /** @internal */
 export type TestContext = TestConsole.TestConsole | TestClock.TestClock
