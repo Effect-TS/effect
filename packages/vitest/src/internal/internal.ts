@@ -44,6 +44,8 @@ const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>
     ctx.signal.addEventListener("abort", onAbort, { once: true })
     const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
     promise.then(cleanup, cleanup)
+    // A retry after a timed-out attempt reuses the aborted signal, so no event fires.
+    if (ctx.signal.aborted) onAbort()
   }
   return promise
 }
