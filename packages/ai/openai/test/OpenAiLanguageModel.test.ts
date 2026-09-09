@@ -2182,7 +2182,7 @@ class ParamEncodeService extends Context.Service<ParamEncodeService, {
 const AsymmetricParam = Schema.String.pipe(
   Schema.decodeTo(Schema.String, {
     decode: SchemaGetter.passthrough(),
-    encode: SchemaGetter.transformOrFail<string, string, ParamEncodeService>((value) =>
+    encode: SchemaGetter.transformEffect<string, string, ParamEncodeService>((value) =>
       Effect.service(ParamEncodeService).pipe(
         Effect.flatMap((service) => service.use),
         Effect.as(value)

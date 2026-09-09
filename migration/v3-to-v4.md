@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`2e471d9cec31889cd6548aa5423b64c2b85238be`)
+Base: `origin/v3` (`6985be0cf461f0997f28f6798f469d01a2b46ca3`)
 
-Head: `HEAD` (`303c58f2c1b9d9f2e25ad4554b80af193852fbec`)
+Head: `HEAD` (`f57836b4418ea7c7d399f51bc1adad3fc0c08e98`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14905,7 +14905,7 @@ Schema.toFormatter(schema)
 
 - `Schema.transformLiterals` -> `Schema.Literals(fromValues).transform(toValues)`: Split the pairs into parallel arrays and use `Literals(...).transform(...)`.
 
-- `Schema.transformOrFail` -> `schema.pipe(Schema.decodeTo(target, { decode: SchemaGetter.transformOrFail(...), encode: ... }))`: Replace the constructor with `decodeTo` and fallible `SchemaGetter` transformations.
+- `Schema.transformOrFail` -> `schema.pipe(Schema.decodeTo(target, { decode: SchemaGetter.transformEffect(...), encode: ... }))`: Replace the constructor with `decodeTo` and effectful `SchemaGetter` transformations.
 
 - `Schema.trimmed` -> `Schema.isTrimmed`: Rename the string predicate to `isTrimmed` and apply it with `Schema.check` or a schema's `check` method.
 

@@ -167,8 +167,8 @@ describe("TemplateLiteralParser", () => {
       class DecodeScale extends Context.Service<DecodeScale, number>()("TemplateLiteral/DecodeScale") {}
       class EncodeScale extends Context.Service<EncodeScale, number>()("TemplateLiteral/EncodeScale") {}
       const part = Schema.Number.pipe(Schema.decode({
-        decode: SchemaGetter.transformOrFail((value) => Effect.map(DecodeScale, (scale) => value * scale)),
-        encode: SchemaGetter.transformOrFail((value) => Effect.map(EncodeScale, (scale) => value / scale))
+        decode: SchemaGetter.transformEffect((value) => Effect.map(DecodeScale, (scale) => value * scale)),
+        encode: SchemaGetter.transformEffect((value) => Effect.map(EncodeScale, (scale) => value / scale))
       }))
       const schema = Schema.TemplateLiteralParser(["value:", part])
       assert.deepStrictEqual(

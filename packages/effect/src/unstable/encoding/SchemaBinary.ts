@@ -5077,7 +5077,7 @@ function makeTransformation(
   trusted: Trusted | undefined,
   successOnly = false
 ): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
-  return SchemaTransformation.transformOrFail({
+  return SchemaTransformation.transformEffect({
     decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
       try {
         const value = decodeOneShot(layout, bytes, options, mode)

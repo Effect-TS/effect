@@ -3860,7 +3860,7 @@ Expected a value between -2147483648 and 2147483647`
         const calls: Array<string> = []
         const value = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail((value) => {
+            decode: SchemaGetter.transformEffect((value) => {
               calls.push(value)
               return value === "b" ? Effect.yieldNow.pipe(Effect.as(value)) : Effect.succeed(value)
             }),
@@ -4466,7 +4466,7 @@ Expected a value between -2147483648 and 2147483647`
         let secondCalls = 0
         const first = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
+            decode: SchemaGetter.transformEffect(() =>
               Deferred.succeed(firstStarted, undefined).pipe(
                 Effect.andThen(Deferred.await(firstLatch)),
                 Effect.as("first")
@@ -4501,7 +4501,7 @@ Expected a value between -2147483648 and 2147483647`
         let secondCalls = 0
         const first = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
+            decode: SchemaGetter.transformEffect(() =>
               Deferred.succeed(firstStarted, undefined).pipe(
                 Effect.andThen(Deferred.await(firstLatch)),
                 Effect.andThen(Effect.fail(new SchemaIssue.Forbidden({ message: "first failed" })))
@@ -4536,7 +4536,7 @@ Expected a value between -2147483648 and 2147483647`
         let secondCalls = 0
         const first = Schema.String.pipe(
           Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
+            decode: SchemaGetter.transformEffect(() =>
               Deferred.succeed(firstStarted, undefined).pipe(
                 Effect.andThen(Deferred.await(firstLatch)),
                 Effect.as("first")
@@ -6002,11 +6002,11 @@ Expected a value between -2147483648 and 2147483647`
     )
   })
 
-  it("transformOrFail", async () => {
+  it("transformEffect", async () => {
     const schema = Schema.String.pipe(
       Schema.decodeTo(
         Schema.String,
-        SchemaTransformation.transformOrFail({
+        SchemaTransformation.transformEffect({
           decode: (s) =>
             s === "a"
               ? Effect.fail(new SchemaIssue.Forbidden({ message: `input should not be "a"` }))

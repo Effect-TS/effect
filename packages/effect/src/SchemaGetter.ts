@@ -57,7 +57,7 @@ import * as Str from "./String.ts"
  *
  * @see {@link transform} to create a getter from a pure function
  * @see {@link passthrough} for the identity getter
- * @see {@link transformOrFail} for fallible transformation
+ * @see {@link transformEffect} for effectful transformation
  *
  * @category models
  * @since 4.0.0
@@ -467,7 +467,7 @@ export function required<T, E extends T = T>(annotations?: Schema.Annotations.Ke
  *
  * @see {@link onNone} to handle only absent values
  * @see {@link transform} for a simpler pure transformation of present values
- * @see {@link transformOrFail} for fallible transformation of present values
+ * @see {@link transformEffect} for effectful transformation of present values
  *
  * @category transforming
  * @since 4.0.0
@@ -562,7 +562,7 @@ export function checkEffect<T, R = never>(
  * Schema.decodeSync(NumberFromString)("42") // => 42
  * ```
  *
- * @see {@link transformOrFail} when the transformation can fail
+ * @see {@link transformEffect} when the transformation returns an `Effect`
  * @see {@link transformOptional} when you need to handle `None` inputs
  * @see {@link passthrough} when no transformation is needed
  *
@@ -574,7 +574,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
 }
 
 /**
- * Creates a getter that applies a fallible, effectful transformation to present values.
+ * Creates a getter that applies an effectful transformation to present values.
  *
  * **When to use**
  *
@@ -592,7 +592,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  * ```ts import.meta.vitest
  * import { Effect, Option, SchemaGetter, SchemaIssue } from "effect"
  *
- * const safeParseInt = SchemaGetter.transformOrFail<number, string>(
+ * const safeParseInt = SchemaGetter.transformEffect<number, string>(
  *   (s, options) => {
  *     const n = parseInt(s, 10)
  *     return isNaN(n)
@@ -609,7 +609,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  * @category transforming
  * @since 4.0.0
  */
-export function transformOrFail<T, E, R = never>(
+export function transformEffect<T, E, R = never>(
   f: (e: E, options: SchemaAST.ParseOptions) => Effect.Effect<T, SchemaIssue.Issue, R>
 ): Getter<T, E, R> {
   return onSome((e, options) => f(e, options).pipe(Effect.mapEager(Option.some)))
@@ -771,7 +771,7 @@ export function String<E>(): Getter<string, E> {
  * await Effect.runPromise(toNumber.run(Option.some("42"), {})) // => Option.some(42)
  * ```
  *
- * @see {@link transformOrFail} for validated number parsing
+ * @see {@link transformEffect} for effectful or validated number parsing
  *
  * @category converting
  * @since 4.0.0
@@ -1378,7 +1378,7 @@ export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
  * @since 4.0.0
  */
 export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
-  return transformOrFail((input, options) =>
+  return transformEffect((input, options) =>
     Effect.mapErrorEager(
       Effect.fromResult(Encoding.decodeBase64(input)),
       () =>
@@ -1414,7 +1414,7 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
  * @since 4.0.0
  */
 export function decodeBase64String<E extends string>(): Getter<string, E> {
-  return transformOrFail((input, options) =>
+  return transformEffect((input, options) =>
     Result.match(Encoding.decodeBase64String(input), {
       onFailure: () =>
         Effect.fail(
@@ -1453,7 +1453,7 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
  * @since 4.0.0
  */
 export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
-  return transformOrFail((input, options) =>
+  return transformEffect((input, options) =>
     Result.match(Encoding.decodeBase64Url(input), {
       onFailure: () =>
         Effect.fail(
@@ -1491,7 +1491,7 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
  * @since 4.0.0
  */
 export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
-  return transformOrFail((input, options) =>
+  return transformEffect((input, options) =>
     Result.match(Encoding.decodeBase64UrlString(input), {
       onFailure: () =>
         Effect.fail(
@@ -1530,7 +1530,7 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
  * @since 4.0.0
  */
 export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
-  return transformOrFail((input, options) =>
+  return transformEffect((input, options) =>
     Result.match(Encoding.decodeHex(input), {
       onFailure: () =>
         Effect.fail(
@@ -1568,7 +1568,7 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
  * @since 4.0.0
  */
 export function decodeHexString<E extends string>(): Getter<string, E> {
-  return transformOrFail((input, options) =>
+  return transformEffect((input, options) =>
     Result.match(Encoding.decodeHexString(input), {
       onFailure: () =>
         Effect.fail(
@@ -1632,7 +1632,7 @@ export function encodeUriComponent<E extends string>(): Getter<string, E> {
  * @since 4.0.0
  */
 export function decodeUriComponent<E extends string>(): Getter<string, E> {
-  return transformOrFail((input, options) => {
+  return transformEffect((input, options) => {
     try {
       return Effect.succeed(globalThis.decodeURIComponent(input))
     } catch {
@@ -1680,7 +1680,7 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
  * @since 4.0.0
  */
 export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Getter<DateTime.Utc, E> {
-  return transformOrFail((input, options) => {
+  return transformEffect((input, options) => {
     return Option.match(DateTime.make(input), {
       onNone: () =>
         Effect.fail(

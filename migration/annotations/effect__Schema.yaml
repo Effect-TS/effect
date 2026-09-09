@@ -1190,8 +1190,8 @@ effect/Schema#transformLiterals:
   replacement: Schema.Literals(fromValues).transform(toValues)
   note: Split the pairs into parallel arrays and use `Literals(...).transform(...)`.
 effect/Schema#transformOrFail:
-  replacement: "schema.pipe(Schema.decodeTo(target, { decode: SchemaGetter.transformOrFail(...), encode: ... }))"
-  note: Replace the constructor with `decodeTo` and fallible `SchemaGetter` transformations.
+  replacement: "schema.pipe(Schema.decodeTo(target, { decode: SchemaGetter.transformEffect(...), encode: ... }))"
+  note: Replace the constructor with `decodeTo` and effectful `SchemaGetter` transformations.
 effect/Schema#Trim:
   replacement: Schema.Trim
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.

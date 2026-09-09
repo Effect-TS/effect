@@ -10,15 +10,15 @@ class ErrorDecoder extends Context.Service<ErrorDecoder, {}>()("ErrorDecoder") {
 class PayloadDecoder extends Context.Service<PayloadDecoder, {}>()("PayloadDecoder") {}
 
 const payload = Schema.String.pipe(Schema.decodeTo(Schema.String, {
-  decode: SchemaGetter.transformOrFail((value: string) => Effect.as(PayloadDecoder, value)),
-  encode: SchemaGetter.transformOrFail((value: string) => Effect.as(PayloadEncoder, value))
+  decode: SchemaGetter.transformEffect((value: string) => Effect.as(PayloadDecoder, value)),
+  encode: SchemaGetter.transformEffect((value: string) => Effect.as(PayloadEncoder, value))
 }))
 const success = Schema.String.pipe(Schema.decodeTo(Schema.String, {
-  decode: SchemaGetter.transformOrFail((value: string) => Effect.as(SuccessDecoder, value)),
+  decode: SchemaGetter.transformEffect((value: string) => Effect.as(SuccessDecoder, value)),
   encode: SchemaGetter.passthrough()
 }))
 const error = Schema.String.pipe(Schema.decodeTo(Schema.String, {
-  decode: SchemaGetter.transformOrFail((value: string) => Effect.as(ErrorDecoder, value)),
+  decode: SchemaGetter.transformEffect((value: string) => Effect.as(ErrorDecoder, value)),
   encode: SchemaGetter.passthrough()
 }))
 

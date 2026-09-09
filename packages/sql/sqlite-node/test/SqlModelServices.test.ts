@@ -7,12 +7,12 @@ import { SqlClient, SqlModel, SqlResolver } from "effect/unstable/sql"
 class NameDecoder extends Context.Service<NameDecoder, { readonly prefix: string }>()("test/NameDecoder") {}
 class NameEncoder extends Context.Service<NameEncoder, { readonly prefix: string }>()("test/NameEncoder") {}
 const decodedName = Schema.String.pipe(Schema.decodeTo(Schema.String, {
-  decode: SchemaGetter.transformOrFail((value: string) => Effect.map(NameDecoder, ({ prefix }) => prefix + value)),
+  decode: SchemaGetter.transformEffect((value: string) => Effect.map(NameDecoder, ({ prefix }) => prefix + value)),
   encode: SchemaGetter.passthrough()
 }))
 const encodedName = Schema.String.pipe(Schema.decodeTo(Schema.String, {
   decode: SchemaGetter.passthrough(),
-  encode: SchemaGetter.transformOrFail((value: string) => Effect.map(NameEncoder, ({ prefix }) => prefix + value))
+  encode: SchemaGetter.transformEffect((value: string) => Effect.map(NameEncoder, ({ prefix }) => prefix + value))
 }))
 class User extends Model.Class<User>("User")({ id: Schema.Int, name: decodedName }) {}
 class Both extends Model.Class<Both>("Both")({

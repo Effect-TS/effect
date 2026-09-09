@@ -691,7 +691,7 @@ const decodeFromCursor = (
     SchemaAST.unknown,
     ast,
     new SchemaTransformation.Transformation(
-      SchemaGetter.transformOrFail((input: unknown) => decode(input as ConfigCursor)),
+      SchemaGetter.transformEffect((input: unknown) => decode(input as ConfigCursor)),
       SchemaGetter.passthrough()
     )
   )

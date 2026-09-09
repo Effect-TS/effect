@@ -1084,7 +1084,7 @@ function getEncodePayloadSchemaFromBody(
   const encoding = HttpApiSchema.getPayloadEncoding(ast, method)
   const out = $HttpBody.pipe(Schema.decodeTo(
     schema,
-    SchemaTransformation.transformOrFail<unknown, HttpBody.HttpBody>({
+    SchemaTransformation.transformEffect<unknown, HttpBody.HttpBody>({
       decode(input, options) {
         return Effect.fail(
           new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)

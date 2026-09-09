@@ -44,7 +44,7 @@ describe("SchemaParser", () => {
         it.effect(`${name} decodes and encodes asynchronous children sequentially (${errors})`, () =>
           Effect.gen(function*() {
             const calls: Array<string> = []
-            const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+            const getter = SchemaGetter.transformEffect<string, string>((value) => {
               calls.push(`start ${value}`)
               return Effect.gen(function*() {
                 yield* Effect.yieldNow
@@ -85,7 +85,7 @@ describe("SchemaParser", () => {
           for (const operation of ["decode", "encode"] as const) {
             const started = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
             const releases = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
-            const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+            const getter = SchemaGetter.transformEffect<string, string>((value) => {
               const index = value.charCodeAt(0) - 97
               return Deferred.succeed(started[index], undefined).pipe(
                 Effect.andThen(Deferred.await(releases[index])),
@@ -116,7 +116,7 @@ describe("SchemaParser", () => {
       Effect.gen(function*() {
         const started = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
         const release = yield* Deferred.make<void>()
-        const getter = SchemaGetter.transformOrFail<string, string>((value) => {
+        const getter = SchemaGetter.transformEffect<string, string>((value) => {
           const index = value.charCodeAt(0) - 97
           return Deferred.succeed(started[index], undefined).pipe(
             Effect.andThen(Deferred.await(release)),
@@ -138,7 +138,7 @@ describe("SchemaParser", () => {
         const firstStarted = yield* Deferred.make<void>()
         const firstInterrupted = yield* Deferred.make<void>()
         const first = Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOrFail(() =>
+          decode: SchemaGetter.transformEffect(() =>
             Deferred.succeed(firstStarted, undefined).pipe(
               Effect.andThen(Effect.never),
               Effect.onInterrupt(() => Deferred.succeed(firstInterrupted, undefined).pipe(Effect.asVoid))
@@ -147,7 +147,7 @@ describe("SchemaParser", () => {
           encode: SchemaGetter.passthrough()
         }))
         const second = Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOrFail(() =>
+          decode: SchemaGetter.transformEffect(() =>
             Deferred.await(firstStarted).pipe(
               Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue({ message: "second failed" })))
             )
@@ -182,7 +182,7 @@ describe("SchemaParser", () => {
         const secondCompleted = yield* Deferred.make<void>()
         const failing = (effect: Effect.Effect<void>) =>
           Schema.String.pipe(Schema.decode({
-            decode: SchemaGetter.transformOrFail(() =>
+            decode: SchemaGetter.transformEffect(() =>
               effect.pipe(Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue())))
             ),
             encode: SchemaGetter.passthrough()
@@ -222,7 +222,7 @@ describe("SchemaParser", () => {
         const releaseFirst = yield* Deferred.make<void>()
         const secondCompleted = yield* Deferred.make<void>()
         const value = Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOrFail((value) =>
+          decode: SchemaGetter.transformEffect((value) =>
             value === "first"
               ? Deferred.await(releaseFirst).pipe(Effect.as(value))
               : Deferred.succeed(secondCompleted, undefined).pipe(Effect.as(value))
@@ -249,7 +249,7 @@ describe("SchemaParser", () => {
         const allStarted = yield* Deferred.make<void>()
         const release = yield* Deferred.make<void>()
         const item = Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOrFail((value) =>
+          decode: SchemaGetter.transformEffect((value) =>
             Ref.updateAndGet(started, (n) => n + 1).pipe(
               Effect.tap((n) => n === 4 ? Deferred.succeed(allStarted, undefined) : Effect.void),
               Effect.andThen(Deferred.await(release)),
@@ -274,7 +274,7 @@ describe("SchemaParser", () => {
         const releaseFirst = yield* Deferred.make<void>()
         const secondStarted = yield* Deferred.make<void>()
         const first = Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOrFail(() =>
+          decode: SchemaGetter.transformEffect(() =>
             Deferred.succeed(firstStarted, undefined).pipe(
               Effect.andThen(Deferred.await(releaseFirst)),
               Effect.as("first")
@@ -283,7 +283,7 @@ describe("SchemaParser", () => {
           encode: SchemaGetter.passthrough()
         }))
         const second = Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOrFail(() =>
+          decode: SchemaGetter.transformEffect(() =>
             Deferred.succeed(secondStarted, undefined).pipe(Effect.as("second"))
           ),
           encode: SchemaGetter.passthrough()
