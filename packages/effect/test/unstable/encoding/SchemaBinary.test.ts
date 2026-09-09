@@ -1583,12 +1583,12 @@ describe("SchemaBinary", () => {
       )
     })
 
-    it.effect("round-trips a yielding transformOrFail through SchemaParser Effect APIs", () =>
+    it.effect("round-trips a yielding transformEffect through SchemaParser Effect APIs", () =>
       Effect.gen(function*() {
         const schema = Schema.String.pipe(
           Schema.decodeTo(
             Schema.Number,
-            SchemaTransformation.transformOrFail({
+            SchemaTransformation.transformEffect({
               decode: (s) => Effect.yieldNow.pipe(Effect.as(Number(s))),
               encode: (n) => Effect.yieldNow.pipe(Effect.as(String(n)))
             })
@@ -3267,7 +3267,7 @@ describe("SchemaBinary", () => {
     const AsyncName = Schema.String.pipe(
       Schema.decodeTo(
         Schema.String,
-        SchemaTransformation.transformOrFail({
+        SchemaTransformation.transformEffect({
           decode: (value) => Effect.promise(() => Promise.resolve(value.toUpperCase())),
           encode: (value) => Effect.promise(() => Promise.resolve(value.toLowerCase()))
         })
@@ -3319,7 +3319,7 @@ describe("SchemaBinary", () => {
           name: Schema.String.pipe(
             Schema.decodeTo(
               Schema.String,
-              SchemaTransformation.transformOrFail({
+              SchemaTransformation.transformEffect({
                 decode: (value, options) =>
                   value === "bob"
                     ? Effect.fail(new SchemaIssue.InvalidValue({ expected: "not bob" }, value, options))

@@ -163,7 +163,7 @@ const TypeId = "~effect/SchemaTransformation/Transformation"
  *
  * @see {@link make} — construct from `{ decode, encode }` getters
  * @see {@link transform} — construct from pure functions
- * @see {@link transformOrFail} — construct from effectful functions
+ * @see {@link transformEffect} — construct from effectful functions
  * @see {@link Middleware} — effect-pipeline-level alternative
  *
  * @category models
@@ -270,7 +270,7 @@ export function isTransformation(u: unknown): u is Transformation<any, any, unkn
  * ```
  *
  * @see {@link transform} — simpler constructor from pure functions
- * @see {@link transformOrFail} — constructor from effectful functions
+ * @see {@link transformEffect} — constructor from effectful functions
  * @see {@link Transformation}
  *
  * @category constructors
@@ -287,8 +287,7 @@ export const make = <T, E, RD = never, RE = never>(options: {
 }
 
 /**
- * Creates a `Transformation` from effectful decode and encode functions that
- * can fail with `Issue`.
+ * Creates a `Transformation` from effectful decode and encode functions.
  *
  * **When to use**
  *
@@ -309,7 +308,7 @@ export const make = <T, E, RD = never, RE = never>(options: {
  * const DateFromString = Schema.String.pipe(
  *   Schema.decodeTo(
  *     Schema.Date,
- *     SchemaTransformation.transformOrFail({
+ *     SchemaTransformation.transformEffect({
  *       decode: (s, options) => {
  *         const d = new Date(s)
  *         return isNaN(d.getTime())
@@ -330,13 +329,13 @@ export const make = <T, E, RD = never, RE = never>(options: {
  * @category transforming
  * @since 3.10.0
  */
-export function transformOrFail<T, E, RD = never, RE = never>(options: {
+export function transformEffect<T, E, RD = never, RE = never>(options: {
   readonly decode: (e: E, options: SchemaAST.ParseOptions) => Effect.Effect<T, SchemaIssue.Issue, RD>
   readonly encode: (t: T, options: SchemaAST.ParseOptions) => Effect.Effect<E, SchemaIssue.Issue, RE>
 }): Transformation<T, E, RD, RE> {
   return new Transformation(
-    SchemaGetter.transformOrFail(options.decode),
-    SchemaGetter.transformOrFail(options.encode)
+    SchemaGetter.transformEffect(options.decode),
+    SchemaGetter.transformEffect(options.encode)
   )
 }
 
@@ -372,7 +371,7 @@ export function transformOrFail<T, E, RD = never, RE = never>(options: {
  * Schema.decodeSync(CentsFromDollars)(2.5) // => 250
  * ```
  *
- * @see {@link transformOrFail} — for fallible or effectful transformations
+ * @see {@link transformEffect} — for fallible or effectful transformations
  * @see {@link transformOptional} — for transformations that handle missing keys
  * @see {@link passthrough} — when no conversion is needed
  *
@@ -1017,7 +1016,7 @@ export const dateFromMillis: Transformation<globalThis.Date, number> = new Trans
  * @category transforming
  * @since 4.0.0
  */
-export const durationFromString: Transformation<Duration.Duration, string> = transformOrFail<
+export const durationFromString: Transformation<Duration.Duration, string> = transformEffect<
   Duration.Duration,
   string
 >({
@@ -1067,7 +1066,7 @@ export const durationFromString: Transformation<Duration.Duration, string> = tra
  * @category transforming
  * @since 4.0.0
  */
-export const durationFromNanos: Transformation<Duration.Duration, bigint> = transformOrFail({
+export const durationFromNanos: Transformation<Duration.Duration, bigint> = transformEffect({
   decode: (i) => Effect.succeed(Duration.nanos(i)),
   encode: (a, options) =>
     Option.match(Duration.toNanos(a), {
@@ -1124,7 +1123,7 @@ export const durationFromMillis: Transformation<Duration.Duration, number> = tra
  * @category transforming
  * @since 4.0.0
  */
-export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = transformOrFail({
+export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = transformEffect({
   decode: (input, options) =>
     Option.match(ByteSize.fromInput(input), {
       onNone: () =>
@@ -1146,7 +1145,7 @@ export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = tra
  * @category transforming
  * @since 4.0.0
  */
-export const byteSizeFromBigInt: Transformation<ByteSize.ByteSize, bigint> = transformOrFail({
+export const byteSizeFromBigInt: Transformation<ByteSize.ByteSize, bigint> = transformEffect({
   decode: (input, options) =>
     Option.match(ByteSize.fromInput(input), {
       onNone: () =>
@@ -1168,7 +1167,7 @@ export const byteSizeFromBigInt: Transformation<ByteSize.ByteSize, bigint> = tra
  * @category transforming
  * @since 4.0.0
  */
-export const byteSizeFromNumber: Transformation<ByteSize.ByteSize, number> = transformOrFail({
+export const byteSizeFromNumber: Transformation<ByteSize.ByteSize, number> = transformEffect({
   decode: (input, options) =>
     Option.match(ByteSize.fromInput(input), {
       onNone: () =>
@@ -1524,12 +1523,12 @@ export function optionFromOptional<T>(): Transformation<Option.Option<T>, T | un
  * ```
  *
  * @see {@link numberFromString}
- * @see {@link transformOrFail}
+ * @see {@link transformEffect}
  *
  * @category transforming
  * @since 4.0.0
  */
-export const urlFromString: Transformation<URL, string> = transformOrFail<URL, string>({
+export const urlFromString: Transformation<URL, string> = transformEffect<URL, string>({
   decode: (s, options) =>
     URL.canParse(s)
       ? Effect.succeed(new URL(s))
@@ -1561,7 +1560,7 @@ export const urlFromString: Transformation<URL, string> = transformOrFail<URL, s
  * @category transforming
  * @since 4.0.0
  */
-export const bigDecimalFromString: Transformation<BigDecimal.BigDecimal, string> = transformOrFail<
+export const bigDecimalFromString: Transformation<BigDecimal.BigDecimal, string> = transformEffect<
   BigDecimal.BigDecimal,
   string
 >({
@@ -1927,7 +1926,7 @@ export const timeZoneOffsetFromNumber: Transformation<DateTime.TimeZone.Offset, 
  * @category transforming
  * @since 4.0.0
  */
-export const timeZoneNamedFromString: Transformation<DateTime.TimeZone.Named, string> = transformOrFail<
+export const timeZoneNamedFromString: Transformation<DateTime.TimeZone.Named, string> = transformEffect<
   DateTime.TimeZone.Named,
   string
 >({
@@ -1968,7 +1967,7 @@ export const timeZoneNamedFromString: Transformation<DateTime.TimeZone.Named, st
  * @category transforming
  * @since 4.0.0
  */
-export const timeZoneFromString: Transformation<DateTime.TimeZone, string> = transformOrFail<
+export const timeZoneFromString: Transformation<DateTime.TimeZone, string> = transformEffect<
   DateTime.TimeZone,
   string
 >({
@@ -2009,7 +2008,7 @@ export const timeZoneFromString: Transformation<DateTime.TimeZone, string> = tra
  * @category transforming
  * @since 4.0.0
  */
-export const dateTimeUtcFromString: Transformation<DateTime.Utc, string> = transformOrFail<
+export const dateTimeUtcFromString: Transformation<DateTime.Utc, string> = transformEffect<
   DateTime.Utc,
   string
 >({
@@ -2049,7 +2048,7 @@ export const dateTimeUtcFromString: Transformation<DateTime.Utc, string> = trans
  * @category transforming
  * @since 4.0.0
  */
-export const dateTimeZonedFromString: Transformation<DateTime.Zoned, string> = transformOrFail<
+export const dateTimeZonedFromString: Transformation<DateTime.Zoned, string> = transformEffect<
   DateTime.Zoned,
   string
 >({

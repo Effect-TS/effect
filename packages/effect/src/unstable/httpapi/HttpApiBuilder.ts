@@ -1221,7 +1221,7 @@ function getResponseTransformation(
     HttpApiSchema.isNoContent(bodySchema.ast)
   )
 
-  return SchemaTransformation.transformOrFail({
+  return SchemaTransformation.transformEffect({
     decode: (input, options) =>
       Effect.fail(
         new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
@@ -1240,7 +1240,7 @@ function withHeadersTransformation<T = unknown>(
     options?: SchemaAST.ParseOptions
   ) => Effect.Effect<unknown, Schema.SchemaError, unknown>
 ): SchemaTransformation.Transformation<T, Response.HttpServerResponse, never, unknown> {
-  return SchemaTransformation.transformOrFail<T, Response.HttpServerResponse, never, unknown>({
+  return SchemaTransformation.transformEffect<T, Response.HttpServerResponse, never, unknown>({
     decode: (input, options) =>
       Effect.fail(
         new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)

@@ -63,7 +63,7 @@ class VerifyContext extends Context.Service<
 
 const VerifyId = Schema.String.pipe(
   Schema.decodeTo(Schema.String, {
-    encode: SchemaGetter.transformOrFail((s) =>
+    encode: SchemaGetter.transformEffect((s) =>
       Effect.gen(function*() {
         const { maxLength } = yield* VerifyContext
         if (s.length > maxLength) {

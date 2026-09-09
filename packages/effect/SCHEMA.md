@@ -2285,7 +2285,7 @@ const URLSchema = Schema.declare(
         // The JSON representation is a plain string
         Schema.String,
         // How to convert between URL and string
-        SchemaTransformation.transformOrFail<URL, string>({
+        SchemaTransformation.transformEffect<URL, string>({
           // JSON string -> URL (may fail if the string is not a valid URL)
           decode: (s, options) =>
             Effect.try({
@@ -3211,7 +3211,7 @@ const Kilometers = Schema.Finite.pipe(
 )
 ```
 
-You can define transformations that may fail during decoding or encoding using `SchemaTransformation.transformOrFail`.
+You can define transformations that may fail during decoding or encoding using `SchemaTransformation.transformEffect`.
 
 This is useful when you need to validate input or enforce rules that may not always succeed.
 
@@ -3223,7 +3223,7 @@ import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect"
 const URLFromString = Schema.String.pipe(
   Schema.decodeTo(
     Schema.instanceOf(URL),
-    SchemaTransformation.transformOrFail({
+    SchemaTransformation.transformEffect({
       decode: (s, options) =>
         Effect.try({
           try: () => new URL(s),
@@ -6152,7 +6152,7 @@ option.
 import { Effect, Schema, SchemaGetter } from "effect"
 
 const item = Schema.String.pipe(Schema.decode({
-  decode: SchemaGetter.transformOrFail((value) => Effect.sleep("10 millis").pipe(Effect.as(value))),
+  decode: SchemaGetter.transformEffect((value) => Effect.sleep("10 millis").pipe(Effect.as(value))),
   encode: SchemaGetter.passthrough()
 }))
 

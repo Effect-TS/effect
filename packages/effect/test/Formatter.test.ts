@@ -504,7 +504,7 @@ describe("Formatter", () => {
     it("allows user-provided transformations to report their input", () => {
       const schema = Schema.String.pipe(
         Schema.decode({
-          decode: SchemaGetter.transformOrFail((input, options) =>
+          decode: SchemaGetter.transformEffect((input, options) =>
             Effect.fail(new SchemaIssue.InvalidValue(undefined, input, options))
           ),
           encode: SchemaGetter.passthrough()

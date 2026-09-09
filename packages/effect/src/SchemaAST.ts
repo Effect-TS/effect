@@ -1542,7 +1542,7 @@ export function templateLiteralParser(parts: ReadonlyArray<AST>): Arrays {
 
 function templateLiteralTransformation(template: TemplateLiteral) {
   return new SchemaTransformation.Transformation(
-    SchemaGetter.transformOrFail((s: string, options) => {
+    SchemaGetter.transformEffect((s: string, options) => {
       const segments = segmentTemplateLiteralParts(template, s, options)
       if (segments) return Effect.succeed(segments)
       return Effect.fail(
@@ -4394,9 +4394,8 @@ export function withConstructorDefault<A extends AST>(
  *
  * **Details**
  *
- * This is the low-level primitive behind `Schema.transform` and
- * `Schema.transformOrFail`. It appends a {@link Link} to the `to` node's
- * encoding chain.
+ * This is the low-level primitive behind `Schema.decodeTo`. It appends a
+ * {@link Link} to the `to` node's encoding chain.
  *
  * - Returns a new AST with the same type as `to`.
  *
@@ -4824,7 +4823,7 @@ const symbolToString = new Link(
   symbolString,
   new SchemaTransformation.Transformation(
     SchemaGetter.transform((description) => globalThis.Symbol.for(isStringSymbolRegExp.exec(description)![1])),
-    SchemaGetter.transformOrFail((sym: symbol, options) => {
+    SchemaGetter.transformEffect((sym: symbol, options) => {
       const key = globalThis.Symbol.keyFor(sym)
       if (key !== undefined) {
         return Effect.succeed(globalThis.String(sym))

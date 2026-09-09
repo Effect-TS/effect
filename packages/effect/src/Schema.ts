@@ -8883,7 +8883,7 @@ export const RegExp: RegExp = instanceOf(
           source: String,
           flags: String
         }),
-        SchemaTransformation.transformOrFail({
+        SchemaTransformation.transformEffect({
           decode: (e, options) =>
             Effect.try({
               try: () => new globalThis.RegExp(e.source, e.flags),
@@ -9195,7 +9195,7 @@ export const File: File = instanceOf(globalThis.File, {
         name: String,
         lastModified: Int
       }),
-      SchemaTransformation.transformOrFail({
+      SchemaTransformation.transformEffect({
         decode: (e, options) =>
           Result_.match(Encoding.decodeBase64(e.data), {
             onFailure: () =>
@@ -9275,7 +9275,7 @@ export const FormData: FormData = instanceOf(globalThis.FormData, {
           ])
         ])
       ),
-      SchemaTransformation.transformOrFail({
+      SchemaTransformation.transformEffect({
         decode: (e) => {
           const out = new globalThis.FormData()
           for (const [key, entry] of e) {
@@ -10006,7 +10006,7 @@ export const Uint8ArrayFromHex: Uint8ArrayFromHex = String.annotate({
 // -----------------------------------------------------------------------------
 
 const bigDecimalFromString: SchemaTransformation.Transformation<BigDecimal_.BigDecimal, string> = SchemaTransformation
-  .transformOrFail<BigDecimal_.BigDecimal, string>({
+  .transformEffect<BigDecimal_.BigDecimal, string>({
     decode: (s, options) => {
       const result = BigDecimal_.fromString(s)
       return Option_.isNone(result)
@@ -10704,7 +10704,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
 // -----------------------------------------------------------------------------
 
 function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): SchemaGetter.Getter<DateTime.Utc, E> {
-  return SchemaGetter.transformOrFail((input, options) => {
+  return SchemaGetter.transformEffect((input, options) => {
     return Option_.match(DateTime.make(input), {
       onNone: () =>
         Effect.fail(
@@ -10720,7 +10720,7 @@ const timeZoneOffsetFromNumber: SchemaTransformation.Transformation<DateTime.Tim
     encode: (tz) => tz.offset
   })
 const timeZoneNamedFromString: SchemaTransformation.Transformation<DateTime.TimeZone.Named, string> =
-  SchemaTransformation.transformOrFail<DateTime.TimeZone.Named, string>({
+  SchemaTransformation.transformEffect<DateTime.TimeZone.Named, string>({
     decode: (s, options) => {
       return Option_.match(DateTime.zoneMakeNamed(s), {
         onNone: () =>
@@ -10737,7 +10737,7 @@ const timeZoneNamedFromString: SchemaTransformation.Transformation<DateTime.Time
     encode: (tz) => Effect.succeed(tz.id)
   })
 const timeZoneFromString: SchemaTransformation.Transformation<DateTime.TimeZone, string> = SchemaTransformation
-  .transformOrFail<DateTime.TimeZone, string>({
+  .transformEffect<DateTime.TimeZone, string>({
     decode: (s, options) => {
       return Option_.match(DateTime.zoneFromString(s), {
         onNone: () =>
@@ -10754,7 +10754,7 @@ const timeZoneFromString: SchemaTransformation.Transformation<DateTime.TimeZone,
     encode: (tz) => Effect.succeed(DateTime.zoneToString(tz))
   })
 const dateTimeUtcFromString: SchemaTransformation.Transformation<DateTime.Utc, string> = SchemaTransformation
-  .transformOrFail<DateTime.Utc, string>({
+  .transformEffect<DateTime.Utc, string>({
     decode: (s, options) => {
       return Option_.match(DateTime.make(s), {
         onNone: () =>
@@ -10771,7 +10771,7 @@ const dateTimeUtcFromString: SchemaTransformation.Transformation<DateTime.Utc, s
     encode: (utc) => Effect.succeed(DateTime.formatIso(utc))
   })
 const dateTimeZonedFromString: SchemaTransformation.Transformation<DateTime.Zoned, string> = SchemaTransformation
-  .transformOrFail<DateTime.Zoned, string>({
+  .transformEffect<DateTime.Zoned, string>({
     decode: (s, options) => {
       return Option_.match(DateTime.makeZonedFromString(s), {
         onNone: () =>
@@ -11295,7 +11295,7 @@ const netAddressFromString = <S extends declare<any>, E extends { readonly messa
 ) =>
   String.pipe(decodeTo(
     declaration,
-    SchemaTransformation.transformOrFail({
+    SchemaTransformation.transformEffect({
       decode: (input, options) => {
         const result = parse(input)
         return Result_.isSuccess(result)
@@ -11943,7 +11943,7 @@ export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress,
 // -----------------------------------------------------------------------------
 
 const durationFromString: SchemaTransformation.Transformation<Duration_.Duration, string> = SchemaTransformation
-  .transformOrFail<Duration_.Duration, string>({
+  .transformEffect<Duration_.Duration, string>({
     decode: (s, options) =>
       Option_.match(Duration_.fromInput(s as Duration_.Input), {
         onNone: () =>
@@ -11959,7 +11959,7 @@ const durationFromString: SchemaTransformation.Transformation<Duration_.Duration
     encode: (duration) => Effect.succeed(globalThis.String(duration))
   })
 const durationFromNanos: SchemaTransformation.Transformation<Duration_.Duration, bigint> = SchemaTransformation
-  .transformOrFail({
+  .transformEffect({
     decode: (i) => Effect.succeed(Duration_.nanos(i)),
     encode: (a, options) =>
       Option_.match(Duration_.toNanos(a), {
@@ -12535,7 +12535,7 @@ export function Graph<T extends Graph_.Kind, Node extends Constraint, Edge exten
       toCodec: ([node, edge]) =>
         link<Graph_.Graph<Node["Encoded"], Edge["Encoded"], T>>()(
           graphEncodedSchema(type, node, edge),
-          SchemaTransformation.transformOrFail({
+          SchemaTransformation.transformEffect({
             decode: graphDecode,
             encode: (graph, options) => graphEncode(graph, type, options)
           })
@@ -13183,7 +13183,7 @@ export const JsonFromUrlParamsField = (
   UrlParams.pipe(
     decodeTo(
       fromJsonString(Unknown, options),
-      SchemaTransformation.transformOrFail({
+      SchemaTransformation.transformEffect({
         decode: (params) =>
           Option_.match(UrlParams_.getFirst(params, field), {
             onNone: () => Effect.fail(new SchemaIssue.Pointer([field], new SchemaIssue.MissingKey(undefined))),

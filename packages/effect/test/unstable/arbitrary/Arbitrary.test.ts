@@ -1779,7 +1779,7 @@ describe("Arbitrary", () => {
             toCodec: () =>
               Schema.link<number>()(
                 encoded,
-                SchemaTransformation.transformOrFail({
+                SchemaTransformation.transformEffect({
                   decode: (value) =>
                     value === 25 || value === 100
                       ? Effect.succeed(value)
@@ -1811,7 +1811,7 @@ describe("Arbitrary", () => {
           toCodecArbitrary: () =>
             Schema.link<number>()(
               Schema.Literal(1),
-              SchemaTransformation.transformOrFail<number, 1>({
+              SchemaTransformation.transformEffect<number, 1>({
                 decode: () => {
                   Deferred.doneUnsafe(started, Effect.void)
                   return Effect.never
@@ -2833,7 +2833,7 @@ describe("Arbitrary", () => {
           toCodecArbitrary: () =>
             Schema.link<number>()(
               Schema.Literal(1),
-              SchemaTransformation.transformOrFail<number, 1>({
+              SchemaTransformation.transformEffect<number, 1>({
                 decode: () => {
                   Deferred.doneUnsafe(started, Effect.void)
                   return Effect.never

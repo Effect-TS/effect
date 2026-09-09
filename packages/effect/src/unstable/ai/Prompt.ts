@@ -1844,7 +1844,7 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
 }).pipe(
   Schema.decodeTo(
     $Prompt,
-    SchemaTransformation.transformOrFail({
+    SchemaTransformation.transformEffect({
       decode: (input, options) =>
         Effect.mapBothEager(
           SchemaParser.decodeEffect(Schema.Array(Message))(input.content),

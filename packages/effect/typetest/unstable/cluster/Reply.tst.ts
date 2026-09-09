@@ -6,7 +6,7 @@ import { describe, expect, it } from "tstyche"
 class Decoder extends Context.Service<Decoder, number>()("ReplyTest/Decoder") {}
 
 const success = Schema.Number.pipe(Schema.decodeTo(Schema.Number, {
-  decode: SchemaGetter.transformOrFail((value) => Effect.map(Decoder, (scale) => value * scale)),
+  decode: SchemaGetter.transformEffect((value) => Effect.map(Decoder, (scale) => value * scale)),
   encode: SchemaGetter.passthrough()
 }))
 const rpc = Rpc.make("Decode", { payload: {}, success })
