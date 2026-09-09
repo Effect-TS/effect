@@ -115,6 +115,24 @@ describe("Logger", () => {
       assert.strictEqual(json[0].level, "INFO")
     }))
 
+  it.effect("formatJson includes the message of plain Errors", () =>
+    Effect.gen(function*() {
+      const json: Array<{ readonly message: unknown; readonly level: string }> = []
+      const logger = Logger.formatJson.pipe(Logger.map((output) => void json.push(JSON.parse(output))))
+
+      yield* Effect.gen(function*() {
+        yield* Effect.fail(new Error("boom"))
+      }).pipe(
+        Effect.tapError(Effect.logError),
+        Effect.ignore,
+        Effect.provide(Logger.layer([logger]))
+      )
+
+      assert.strictEqual(json.length, 1)
+      assert.strictEqual(json[0].message, "Error: boom")
+      assert.strictEqual(json[0].level, "ERROR")
+    }))
+
   it.effect("annotateLogsScoped applies annotations only while scoped", () =>
     Effect.gen(function*() {
       const annotations: Array<Record<string, unknown>> = []
