@@ -182,7 +182,7 @@ export const make = Effect.map(Tracer, (tracer) =>
       )
     },
     context(execution, fiber) {
-      const currentSpan = fiber.currentSpan
+      const currentSpan = Option.getOrUndefined(filterDisablePropagation(Option.fromNullable(fiber.currentSpan)))
 
       if (currentSpan === undefined) {
         return execution()
@@ -194,6 +194,15 @@ export const make = Effect.map(Tracer, (tracer) =>
       )
     }
   }))
+
+const filterDisablePropagation: (self: Option.Option<EffectTracer.AnySpan>) => Option.Option<EffectTracer.AnySpan> =
+  Option
+    .flatMap(
+      (span) =>
+        Context.get(span.context, EffectTracer.DisablePropagation)
+          ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
+          : Option.some(span)
+    )
 
 /** @internal */
 export const traceFlagsTag = Context.GenericTag<OtelTraceFlags, OtelApi.TraceFlags>(
@@ -343,7 +352,7 @@ const convertOtelTimeInput = (input: OtelApi.TimeInput | undefined, clock: Clock
 
 /** @internal */
 export const currentOtelSpan: Effect.Effect<OtelApi.Span, Cause.NoSuchElementException> = Effect.clockWith((clock) =>
-  Effect.map(Effect.currentSpan, (span): OtelApi.Span => {
+  Effect.map(Effect.currentPropagatedSpan, (span): OtelApi.Span => {
     if (OtelSpanTypeId in span) {
       return (span as OtelSpan).span
     }
