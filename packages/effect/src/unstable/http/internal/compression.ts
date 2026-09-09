@@ -67,7 +67,7 @@ export const makeCompressionWeb = (options: {
         return Effect.succeed(streamBody(
           response,
           () => options.transform(algorithm, opts)(singleChunkStream(data)),
-          body.contentType
+          response.headers["content-type"] ?? body.contentType
         ))
       }
       case "Stream": {
@@ -75,7 +75,7 @@ export const makeCompressionWeb = (options: {
         return Effect.succeed(streamBody(
           response,
           () => options.transform(algorithm, opts)(Stream.toReadableStream(stream)),
-          body.contentType
+          response.headers["content-type"] ?? body.contentType
         ))
       }
       case "Raw": {
@@ -85,7 +85,9 @@ export const makeCompressionWeb = (options: {
         }
         return Effect.succeed(setBodyWithoutLength(
           response,
-          HttpBody.raw(options.transform(algorithm, opts)(readable), { contentType: body.contentType })
+          HttpBody.raw(options.transform(algorithm, opts)(readable), {
+            contentType: response.headers["content-type"] ?? body.contentType
+          })
         ))
       }
       default: {
