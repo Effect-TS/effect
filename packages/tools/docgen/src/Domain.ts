@@ -321,28 +321,44 @@ export class DocgenError extends Data.TaggedError("DocgenError")<{
   readonly message: string
 }> {}
 
+const ProcessTypeId = "~@effect/docgen/Process"
+
 /**
  * Represents a handle to the currently executing process.
  *
  * @category services
  * @since 0.6.0
  */
-export class Process extends Context.Service<Process, {
+export interface Process {
+  readonly [ProcessTypeId]: typeof ProcessTypeId
+
   readonly cwd: Effect.Effect<string>
   readonly platform: Effect.Effect<NodeJS.Platform>
   readonly argv: Effect.Effect<Array<string>>
   readonly env: Effect.Effect<Record<string, string>>
-}>()("@effect/docgen/Process") {
-  static readonly layer = Layer.succeed(Process, {
-    cwd: Effect.sync(() => process.cwd()),
-    platform: Effect.sync(() => process.platform),
-    argv: Effect.sync(() => process.argv),
-    env: Effect.sync(() => {
-      const env: Record<string, string> = {}
-      for (const [key, value] of Object.entries(process.env)) {
-        if (value !== undefined) Rec.assignProperty(env, key, value)
-      }
-      return env
+}
+
+/**
+ * Service key for `Process` implementations.
+ *
+ * @category services
+ * @since 0.6.0
+ */
+export const Process = (() => {
+  const service = Context.Service<Process>("@effect/docgen/Process")
+  return Object.assign(service, {
+    layer: Layer.succeed(service, {
+      [ProcessTypeId]: ProcessTypeId as typeof ProcessTypeId,
+      cwd: Effect.sync(() => process.cwd()),
+      platform: Effect.sync(() => process.platform),
+      argv: Effect.sync(() => process.argv),
+      env: Effect.sync(() => {
+        const env: Record<string, string> = {}
+        for (const [key, value] of Object.entries(process.env)) {
+          if (value !== undefined) Rec.assignProperty(env, key, value)
+        }
+        return env
+      })
     })
   })
-}
+})()

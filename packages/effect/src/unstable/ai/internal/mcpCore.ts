@@ -56,7 +56,7 @@ export interface CanonicalInitializeResult {
 export interface McpInvocation {
   readonly clientId: number
   readonly protocol: NegotiatedProtocolProfile
-  readonly requestContext: McpSchema.McpServerClient["Service"]
+  readonly requestContext: McpSchema.McpServerClient
 }
 
 // NOTE: McpInvocation is runtime context, not a wire DTO. It combines the

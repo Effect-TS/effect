@@ -11,6 +11,8 @@ import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type { HttpClient } from "effect/unstable/http/HttpClient"
 
+const AnthropicConfigTypeId = "~@effect/ai-anthropic/AnthropicConfig"
+
 /**
  * Service tag for Anthropic client configuration overrides, such as transformations applied to the generated HTTP client.
  *
@@ -24,20 +26,30 @@ import type { HttpClient } from "effect/unstable/http/HttpClient"
  * @category services
  * @since 4.0.0
  */
-export class AnthropicConfig extends Context.Service<
-  AnthropicConfig,
-  AnthropicConfig.Service
->()("@effect/ai-anthropic/AnthropicConfig") {
-  /**
-   * Gets the configured Anthropic service from the current context when present.
-   *
-   * @since 4.0.0
-   */
-  static readonly getOrUndefined: Effect.Effect<typeof AnthropicConfig.Service | undefined> = Effect.map(
-    Effect.context<never>(),
-    Context.getOrUndefined(AnthropicConfig)
-  )
+export interface AnthropicConfig extends AnthropicConfig.Service {
+  readonly [AnthropicConfigTypeId]: typeof AnthropicConfigTypeId
 }
+
+/**
+ * Service key for `AnthropicConfig` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const AnthropicConfig = (() => {
+  const service = Context.Service<AnthropicConfig>("@effect/ai-anthropic/AnthropicConfig")
+  return Object.assign(service, {
+    /**
+     * Gets the configured Anthropic service from the current context when present.
+     *
+     * @since 4.0.0
+     */
+    getOrUndefined: Effect.map(
+      Effect.context<never>(),
+      Context.getOrUndefined(service)
+    )
+  })
+})()
 
 /**
  * Namespace containing types associated with the `AnthropicConfig` service.
@@ -56,6 +68,8 @@ export declare namespace AnthropicConfig {
    * @since 4.0.0
    */
   export interface Service {
+    readonly [AnthropicConfigTypeId]: typeof AnthropicConfigTypeId
+
     readonly transformClient?: ((client: HttpClient) => HttpClient) | undefined
   }
 }
@@ -80,5 +94,10 @@ export const withClientTransform: {
 ) =>
   Effect.flatMap(
     AnthropicConfig.getOrUndefined,
-    (config) => Effect.provideService(self, AnthropicConfig, { ...config, transformClient })
+    (config) =>
+      Effect.provideService(self, AnthropicConfig, {
+        ...config,
+        [AnthropicConfigTypeId]: AnthropicConfigTypeId,
+        transformClient
+      })
   ))

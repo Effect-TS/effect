@@ -56,9 +56,12 @@ In v4, use the same pattern with `Effect.context<R>()`, then run with
 ```ts
 import { Context, Effect } from "effect"
 
-class Logger extends Context.Service<Logger, {
+interface Logger {
+  readonly ["~Logger"]: "~Logger"
+
   readonly log: (message: string) => void
-}>()("Logger") {}
+}
+const Logger = Context.Service<Logger>("Logger")
 
 const program = Effect.gen(function*() {
   const logger = yield* Logger
@@ -70,6 +73,7 @@ const main = Effect.gen(function*() {
   return Effect.runForkWith(services)(program)
 }).pipe(
   Effect.provideContext(Context.make(Logger, {
+    ["~Logger"]: "~Logger" as const,
     log: (message) => console.log(message)
   }))
 )

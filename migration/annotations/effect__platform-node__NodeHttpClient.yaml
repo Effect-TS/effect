@@ -9,10 +9,10 @@
   note: "Direct rename; the layer owns and finalizes a scoped Undici Agent."
 "@effect/platform-node/NodeHttpClient#HttpAgent":
   replacement: "NodeHttpClient.HttpAgent"
-  note: "The identifier remains but is now a Context.Service class; use HttpAgent[\"Service\"] for the concrete http/https agent pair."
+  note: "Use the same-name HttpAgent interface and Context.Service value for the concrete http/https agent pair."
 "@effect/platform-node/NodeHttpClient#HttpAgentTypeId":
   replacement: "none"
-  note: "The public marker was removed; the HttpAgent Context.Service class supplies service identity."
+  note: "The public marker was removed; HttpAgent implementations now include a private TypeId."
 "@effect/platform-node/NodeHttpClient#layer":
   replacement: "NodeHttpClient.layerNodeHttp"
   note: "Use the renamed node:http/node:https backend layer; choose layerUndici only when intentionally changing backends."

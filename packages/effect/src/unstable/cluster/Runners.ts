@@ -37,6 +37,8 @@ import type { RunnerAddress } from "./RunnerAddress.ts"
 import { ShardingConfig } from "./ShardingConfig.ts"
 import * as Snowflake from "./Snowflake.ts"
 
+const RunnersTypeId = "~effect/cluster/Runners"
+
 /**
  * Service for communicating with cluster runners, including pinging runners,
  * sending and notifying messages, coordinating persisted replies, and marking
@@ -45,7 +47,9 @@ import * as Snowflake from "./Snowflake.ts"
  * @category services
  * @since 4.0.0
  */
-export class Runners extends Context.Service<Runners, {
+export interface Runners {
+  readonly [RunnersTypeId]: typeof RunnersTypeId
+
   /**
    * Checks whether a Runner is responsive.
    */
@@ -53,6 +57,8 @@ export class Runners extends Context.Service<Runners, {
 
   /**
    * Send a message locally.
+   *
+   * **Details**
    *
    * This ensures that the message hits storage before being sent to the local
    * entity.
@@ -113,6 +119,8 @@ export class Runners extends Context.Service<Runners, {
    * Notify the current Runner that a message is available, then read replies from
    * storage.
    *
+   * **Details**
+   *
    * This ensures that the message hits storage before being sent to the local
    * entity.
    */
@@ -131,7 +139,15 @@ export class Runners extends Context.Service<Runners, {
    * Mark a Runner as unavailable.
    */
   readonly onRunnerUnavailable: (address: RunnerAddress) => Effect.Effect<void>
-}>()("effect/cluster/Runners") {}
+}
+
+/**
+ * Service key for `Runners` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Runners = Context.Service<Runners>("effect/cluster/Runners")
 
 /**
  * Builds the `Runners` service from remote runner callbacks and adds local
@@ -160,11 +176,11 @@ export class Runners extends Context.Service<Runners, {
  * @since 4.0.0
  */
 export const make: (
-  options: Omit<Runners["Service"], "sendLocal" | "notifyLocal"> & {
+  options: Omit<Runners, typeof RunnersTypeId | "sendLocal" | "notifyLocal"> & {
     readonly codecFor: RpcSerialization.CodecFor
   }
 ) => Effect.Effect<
-  Runners["Service"],
+  Runners,
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
 > = Effect.fnUntraced(function*(options) {
@@ -363,6 +379,7 @@ export const make: (
   }
 
   return Runners.of({
+    [RunnersTypeId]: RunnersTypeId as typeof RunnersTypeId,
     ...serviceOptions,
     sendLocal(options) {
       const message = options.message
@@ -437,7 +454,7 @@ export const make: (
  * @since 4.0.0
  */
 export const makeNoop: Effect.Effect<
-  Runners["Service"],
+  Runners,
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
 > = make({
@@ -544,7 +561,7 @@ export const makeRpcClient: Effect.Effect<
  * @since 4.0.0
  */
 export const makeRpc: Effect.Effect<
-  Runners["Service"],
+  Runners,
   never,
   Scope | RpcClientProtocol | MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig
 > = Effect.gen(function*() {
@@ -709,6 +726,8 @@ export const layerRpc: Layer.Layer<
   Layer.provide(Snowflake.layerGenerator)
 )
 
+const RpcClientProtocolTypeId = "~effect/cluster/Runners/RpcClientProtocol"
+
 /**
  * Service that creates RPC client protocols for runner addresses and exposes
  * the codec shared by those protocols.
@@ -716,10 +735,17 @@ export const layerRpc: Layer.Layer<
  * @category services
  * @since 4.0.0
  */
-export class RpcClientProtocol extends Context.Service<
-  RpcClientProtocol,
-  {
-    readonly make: (address: RunnerAddress) => Effect.Effect<RpcClient_.Protocol["Service"], never, Scope>
-    readonly codecFor: RpcSerialization.CodecFor
-  }
->()("effect/cluster/Runners/RpcClientProtocol") {}
+export interface RpcClientProtocol {
+  readonly [RpcClientProtocolTypeId]: typeof RpcClientProtocolTypeId
+
+  readonly make: (address: RunnerAddress) => Effect.Effect<RpcClient_.Protocol, never, Scope>
+  readonly codecFor: RpcSerialization.CodecFor
+}
+
+/**
+ * Service key for `RpcClientProtocol` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const RpcClientProtocol = Context.Service<RpcClientProtocol>("effect/cluster/Runners/RpcClientProtocol")

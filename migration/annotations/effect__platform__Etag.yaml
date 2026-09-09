@@ -1,6 +1,6 @@
 "@effect/platform/Etag#GeneratorTypeId":
   replacement: "Etag.Generator"
-  note: "The standalone generator brand was removed; Generator is now a Context.Service class."
+  note: "The standalone generator brand was removed; Generator is now a Context.Service value and same-name interface."
 "@effect/platform/Etag#layer":
   replacement: "Etag.layer"
   note: "Retained; it still provides the strong metadata-based ETag Generator service."

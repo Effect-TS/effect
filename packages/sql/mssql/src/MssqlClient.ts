@@ -428,6 +428,7 @@ export const make = (
         })
 
       const connection = identity<MssqlConnection>({
+        ["~effect/sql/SqlConnection"]: "~effect/sql/SqlConnection" as const,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)

@@ -26,6 +26,20 @@ import type * as OpenAiSchema from "./OpenAiSchema.ts"
  */
 export type Model = "text-embedding-ada-002" | "text-embedding-3-small" | "text-embedding-3-large"
 
+const ConfigTypeId = "~@effect/ai-openai/OpenAiEmbeddingModel/Config"
+
+type ConfigShape = Simplify<
+  & Partial<
+    Omit<
+      typeof OpenAiSchema.CreateEmbeddingRequest.Encoded,
+      "input"
+    >
+  >
+  & {
+    readonly [x: string]: unknown
+  }
+>
+
 /**
  * Context service for OpenAI embedding model configuration.
  *
@@ -45,20 +59,17 @@ export type Model = "text-embedding-ada-002" | "text-embedding-3-small" | "text-
  * @category services
  * @since 4.0.0
  */
-export class Config extends Context.Service<
-  Config,
-  Simplify<
-    & Partial<
-      Omit<
-        typeof OpenAiSchema.CreateEmbeddingRequest.Encoded,
-        "input"
-      >
-    >
-    & {
-      readonly [x: string]: unknown
-    }
-  >
->()("@effect/ai-openai/OpenAiEmbeddingModel/Config") {}
+export interface Config extends ConfigShape {
+  readonly [ConfigTypeId]: typeof ConfigTypeId
+}
+
+/**
+ * Service key for `Config` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Config = Context.Service<Config>("@effect/ai-openai/OpenAiEmbeddingModel/Config")
 
 /**
  * Creates an `AiModel` for an OpenAI embedding model with its configured vector dimensions.
@@ -78,7 +89,7 @@ export const model = (
   model: (string & {}) | Model,
   options: {
     readonly dimensions: number
-    readonly config?: Omit<typeof Config.Service, "model" | "dimensions">
+    readonly config?: Omit<ConfigShape, "model" | "dimensions">
   }
 ): AiModel.Model<"openai", EmbeddingModel.EmbeddingModel | EmbeddingModel.Dimensions, OpenAiClient> =>
   AiModel.make(
@@ -126,13 +137,13 @@ export const model = (
  */
 export const make = Effect.fnUntraced(function*({ model, config: providerConfig }: {
   readonly model: (string & {}) | Model
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Effect.fn.Return<EmbeddingModel.Service, never, OpenAiClient> {
   const client = yield* OpenAiClient
 
   const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
     Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
-  )
+  ).pipe(Effect.map(({ [ConfigTypeId]: _typeId, ...config }) => config))
 
   return yield* EmbeddingModel.make({
     embedMany: Effect.fnUntraced(function*({ inputs }) {
@@ -166,7 +177,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Layer.Layer<EmbeddingModel.EmbeddingModel, never, OpenAiClient> =>
   Layer.effect(EmbeddingModel.EmbeddingModel, make(options))
 
@@ -190,19 +201,21 @@ export const layer = (options: {
  * @since 4.0.0
  */
 export const withConfigOverride: {
-  (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service): Effect.Effect<A, E, Exclude<R, Config>>
+  (overrides: ConfigShape): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape): Effect.Effect<A, E, Exclude<R, Config>>
 } = dual<
   (
-    overrides: typeof Config.Service
+    overrides: ConfigShape
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape) => Effect.Effect<A, E, Exclude<R, Config>>
 >(2, (self, overrides) =>
   Effect.flatMap(
     Effect.serviceOption(Config),
     (config) =>
       Effect.provideService(self, Config, {
-        ...(config._tag === "Some" ? config.value : {}),
+        ...(config._tag === "Some" ? config.value : {
+          [ConfigTypeId]: ConfigTypeId as typeof ConfigTypeId
+        }),
         ...overrides
       })
   ))

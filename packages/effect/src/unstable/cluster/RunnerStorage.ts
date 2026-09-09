@@ -20,6 +20,8 @@ import { Runner } from "./Runner.ts"
 import type { RunnerAddress } from "./RunnerAddress.ts"
 import * as ShardId from "./ShardId.ts"
 
+const RunnerStorageTypeId = "~effect/cluster/RunnerStorage"
+
 /**
  * Represents a generic interface to the persistent storage required by the
  * cluster.
@@ -27,7 +29,9 @@ import * as ShardId from "./ShardId.ts"
  * @category services
  * @since 4.0.0
  */
-export class RunnerStorage extends Context.Service<RunnerStorage, {
+export interface RunnerStorage {
+  readonly [RunnerStorageTypeId]: typeof RunnerStorageTypeId
+
   /**
    * Register a new runner with the cluster.
    */
@@ -50,6 +54,8 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
 
   /**
    * Try to acquire the given shard ids for processing.
+   *
+   * **Details**
    *
    * It returns an array of shards it was able to acquire.
    */
@@ -78,7 +84,15 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
    * Release all the shards assigned to the given runner.
    */
   readonly releaseAll: (address: RunnerAddress) => Effect.Effect<void, PersistenceError>
-}>()("effect/cluster/RunnerStorage") {}
+}
+
+/**
+ * Service key for `RunnerStorage` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const RunnerStorage = Context.Service<RunnerStorage>("effect/cluster/RunnerStorage")
 
 /**
  * String-encoded runner storage interface used by adapters that persist runner
@@ -150,6 +164,7 @@ export interface Encoded {
  */
 export const makeEncoded = (encoded: Encoded) =>
   RunnerStorage.of({
+    [RunnerStorageTypeId]: RunnerStorageTypeId as typeof RunnerStorageTypeId,
     getRunners: Effect.gen(function*() {
       const runners = yield* encoded.getRunners
       const results: Array<[Runner, boolean]> = []
@@ -206,6 +221,7 @@ export const makeMemory = Effect.gen(function*() {
   let id = 0
 
   return RunnerStorage.of({
+    [RunnerStorageTypeId]: RunnerStorageTypeId as typeof RunnerStorageTypeId,
     getRunners: Effect.sync(() => Array.from(MutableHashMap.values(runners))),
     register: (runner, healthy) =>
       Effect.sync(() => {

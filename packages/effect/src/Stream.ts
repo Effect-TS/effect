@@ -347,9 +347,12 @@ export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Stream<A, E
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class Greeter extends Context.Service<Greeter, {
+ * interface Greeter {
+ *   readonly ["~Greeter"]: "~Greeter"
+ *
  *   readonly greet: (name: string) => string
- * }>()("Greeter") {}
+ * }
+ * const Greeter = Context.Service<Greeter>("Greeter")
  *
  * const stream = Stream.service(Greeter).pipe(
  *   Stream.map((greeter) => greeter.greet("World"))
@@ -358,6 +361,7 @@ export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Stream<A, E
  * await Effect.runPromise(
  *   stream.pipe(
  *     Stream.provideService(Greeter, {
+ *       ["~Greeter"]: "~Greeter" as const,
  *       greet: (name) => `Hello, ${name}!`
  *     }),
  *     Stream.runCollect
@@ -384,9 +388,12 @@ export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> =
  * ```ts import.meta.vitest
  * import { Context, Effect, Option, Stream } from "effect"
  *
- * class Greeter extends Context.Service<Greeter, {
+ * interface Greeter {
+ *   readonly ["~Greeter"]: "~Greeter"
+ *
  *   readonly greet: (name: string) => string
- * }>()("Greeter") {}
+ * }
+ * const Greeter = Context.Service<Greeter>("Greeter")
  *
  * const stream = Stream.serviceOption(Greeter).pipe(
  *   Stream.map((maybeGreeter) =>
@@ -400,6 +407,7 @@ export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> =
  * await Effect.runPromise(
  *   stream.pipe(
  *     Stream.provideService(Greeter, {
+ *       ["~Greeter"]: "~Greeter" as const,
  *       greet: (name) => `Hello, ${name}!`
  *     }),
  *     Stream.runCollect
@@ -972,9 +980,12 @@ export const fromIterable = <A>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class UserRepo extends Context.Service<UserRepo, {
+ * interface UserRepo {
+ *   readonly ["~UserRepo"]: "~UserRepo"
+ *
  *   readonly list: Effect.Effect<ReadonlyArray<string>>
- * }>()("UserRepo") {}
+ * }
+ * const UserRepo = Context.Service<UserRepo>("UserRepo")
  *
  * const listUsers = Effect.service(UserRepo).pipe(
  *   Effect.andThen((repo) => repo.list)
@@ -985,6 +996,7 @@ export const fromIterable = <A>(
  * const program = Effect.gen(function*() {
  *   const users = yield* stream.pipe(
  *     Stream.provideService(UserRepo, {
+ *       ["~UserRepo"]: "~UserRepo" as const,
  *       list: Effect.succeed(["user1", "user2"])
  *     }),
  *     Stream.runCollect
@@ -5981,18 +5993,17 @@ const retryWithoutReset = <A, E, R, X, E2, R2>(
  * ```ts import.meta.vitest
  * import { Context, Effect, ExecutionPlan, Layer, Stream } from "effect"
  *
- * class Service extends Context.Service<Service>()("Service", {
- *   make: Effect.succeed({
- *     stream: Stream.fail("A") as Stream.Stream<number, string>
- *   })
- * }) {
- *   static Bad = Layer.succeed(Service, Service.of({ stream: Stream.fail("A") }))
- *   static Good = Layer.succeed(Service, Service.of({ stream: Stream.make(1, 2, 3) }))
+ * interface Service {
+ *   readonly ["~Service"]: "~Service"
+ *   readonly stream: Stream.Stream<number, string>
  * }
+ * const Service = Context.Service<Service>("Service")
+ * const bad = Layer.succeed(Service, { ["~Service"]: "~Service", stream: Stream.fail("A") })
+ * const good = Layer.succeed(Service, { ["~Service"]: "~Service", stream: Stream.make(1, 2, 3) })
  *
  * const plan = ExecutionPlan.make(
- *   { provide: Service.Bad },
- *   { provide: Service.Good }
+ *   { provide: bad },
+ *   { provide: good }
  * )
  *
  * const stream = Stream.unwrap(Effect.map(Service, (_) => _.stream))
@@ -9902,9 +9913,16 @@ export const ensuring: {
  * ```ts import.meta.vitest
  * import { Console, Context, Effect, Layer, Stream } from "effect"
  *
- * class Env extends Context.Service<Env, { readonly name: string }>()("Env") {}
+ * interface Env {
+ *   readonly ["~Env"]: "~Env"
+ *   readonly name: string
+ * }
+ * const Env = Context.Service<Env>("Env")
  *
- * const layer = Layer.succeed(Env)({ name: "Ada" })
+ * const layer = Layer.succeed(Env)({
+ *   ["~Env"]: "~Env" as const,
+ *   name: "Ada"
+ * })
  *
  * const stream = Stream.fromEffect(
  *   Effect.gen(function*() {
@@ -9953,11 +9971,25 @@ export const provide: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class Config extends Context.Service<Config, { readonly prefix: string }>()("Config") {}
- * class Greeter extends Context.Service<Greeter, { greet: (name: string) => string }>()("Greeter") {}
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *   readonly prefix: string
+ * }
+ * const Config = Context.Service<Config>("Config")
+ * interface Greeter {
+ *   readonly ["~Greeter"]: "~Greeter"
+ *   greet: (name: string) => string
+ * }
+ * const Greeter = Context.Service<Greeter>("Greeter")
  *
- * const context = Context.make(Config, { prefix: "Hello" }).pipe(
- *   Context.add(Greeter, { greet: (name: string) => `${name}!` })
+ * const context = Context.make(Config, {
+ *   ["~Config"]: "~Config" as const,
+ *   prefix: "Hello"
+ * }).pipe(
+ *   Context.add(Greeter, {
+ *     ["~Greeter"]: "~Greeter" as const,
+ *     greet: (name: string) => `${name}!`
+ *   })
  * )
  *
  * const stream = Stream.fromEffect(
@@ -9997,9 +10029,12 @@ export const provideContext: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class Greeter extends Context.Service<Greeter, {
+ * interface Greeter {
+ *   readonly ["~Greeter"]: "~Greeter"
+ *
  *   greet: (name: string) => string
- * }>()("Greeter") {}
+ * }
+ * const Greeter = Context.Service<Greeter>("Greeter")
  *
  * const stream = Stream.fromEffect(
  *   Effect.service(Greeter).pipe(
@@ -10011,6 +10046,7 @@ export const provideContext: {
  *   const collected = yield* Stream.runCollect(
  *     stream.pipe(
  *       Stream.provideService(Greeter, {
+ *         ["~Greeter"]: "~Greeter" as const,
  *         greet: (name) => `Hello, ${name}`
  *       })
  *     )
@@ -10050,7 +10086,11 @@ export const provideService: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class ApiConfig extends Context.Service<ApiConfig, { readonly baseUrl: string }>()("ApiConfig") {}
+ * interface ApiConfig {
+ *   readonly ["~ApiConfig"]: "~ApiConfig"
+ *   readonly baseUrl: string
+ * }
+ * const ApiConfig = Context.Service<ApiConfig>("ApiConfig")
  *
  * const stream = Stream.fromEffect(
  *   Effect.gen(function*() {
@@ -10063,7 +10103,10 @@ export const provideService: {
  * const withConfig = stream.pipe(
  *   Stream.provideServiceEffect(
  *     ApiConfig,
- *     Effect.succeed({ baseUrl: "https://example.com" }).pipe(
+ *     Effect.succeed({
+ *       ["~ApiConfig"]: "~ApiConfig" as const,
+ *       baseUrl: "https://example.com"
+ *     }).pipe(
  *       Effect.tap(() => Effect.sync(() => events.push("loading")))
  *     )
  *   )
@@ -10103,8 +10146,16 @@ export const provideServiceEffect: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class Logger extends Context.Service<Logger, { prefix: string }>()("Logger") {}
- * class Config extends Context.Service<Config, { name: string }>()("Config") {}
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *   prefix: string
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *   name: string
+ * }
+ * const Config = Context.Service<Config>("Config")
  *
  * const stream = Stream.fromEffect(
  *   Effect.gen(function*() {
@@ -10116,7 +10167,10 @@ export const provideServiceEffect: {
  *
  * const updated = stream.pipe(
  *   Stream.updateContext((context: Context.Context<Logger>) =>
- *     Context.add(context, Config, { name: "World" })
+ *     Context.add(context, Config, {
+ *       ["~Config"]: "~Config" as const,
+ *       name: "World"
+ *     })
  *   )
  * )
  *
@@ -10126,7 +10180,10 @@ export const provideServiceEffect: {
  * })
  *
  * await Effect.runPromise(
- *   Effect.provideService(program, Logger, { prefix: "Hello " })
+ *   Effect.provideService(program, Logger, {
+ *     ["~Logger"]: "~Logger" as const,
+ *     prefix: "Hello "
+ *   })
  * )
  * ```
  *
@@ -10156,10 +10213,17 @@ export const updateContext: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
- * class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
+ * interface Counter {
+ *   readonly ["~Counter"]: "~Counter"
+ *   count: number
+ * }
+ * const Counter = Context.Service<Counter>("Counter")
  *
  * const stream = Stream.fromEffect(Effect.service(Counter)).pipe(
- *   Stream.updateService(Counter, (counter) => ({ count: counter.count + 1 }))
+ *   Stream.updateService(Counter, (counter) => ({
+ *     ["~Counter"]: "~Counter" as const,
+ *     count: counter.count + 1
+ *   }))
  * )
  *
  * const program = Effect.gen(function*() {
@@ -10167,7 +10231,10 @@ export const updateContext: {
  *   const message = `Updated count: ${counters[0].count}` // => "Updated count: 1"
  * })
  *
- * await Effect.runPromise(Effect.provideService(program, Counter, { count: 0 }))
+ * await Effect.runPromise(Effect.provideService(program, Counter, {
+ *   ["~Counter"]: "~Counter" as const,
+ *   count: 0
+ * }))
  * ```
  *
  * @category providing services

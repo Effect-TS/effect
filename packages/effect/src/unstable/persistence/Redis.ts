@@ -33,6 +33,8 @@ export interface RedisMessage {
   readonly message: string
 }
 
+const RedisTypeId = "~effect/persistence/Redis"
+
 /**
  * Service for sending Redis commands, subscribing to channels, and evaluating
  * cached Lua scripts.
@@ -40,7 +42,9 @@ export interface RedisMessage {
  * @category services
  * @since 4.0.0
  */
-export class Redis extends Context.Service<Redis, {
+export interface Redis {
+  readonly [RedisTypeId]: typeof RedisTypeId
+
   readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
 
   /**
@@ -60,7 +64,15 @@ export class Redis extends Context.Service<Redis, {
       readonly result: unknown
     }
   >(script: Script<Config>) => (...params: Config["params"]) => Effect.Effect<Config["result"], RedisError>
-}>()("effect/persistence/Redis") {}
+}
+
+/**
+ * Service key for `Redis` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Redis = Context.Service<Redis>("effect/persistence/Redis")
 
 /**
  * Creates a `Redis` service from raw command and subscription operations.
@@ -128,7 +140,8 @@ export const make = Effect.fnUntraced(function*(
     return queue
   })
 
-  return identity<Redis["Service"]>({
+  return identity<Redis>({
+    [RedisTypeId]: RedisTypeId as typeof RedisTypeId,
     send: options.send,
     subscribe,
     eval: eval_

@@ -58,6 +58,8 @@ const policy = Schedule.forever.pipe(
   })
 )
 
+const FlusherTypeId = "~effect/observability/OtlpExporter/Flusher"
+
 /**
  * Registry of exporter flush operations, used to manually drain buffered
  * telemetry before the surrounding scope closes.
@@ -73,7 +75,9 @@ const policy = Schedule.forever.pipe(
  * @category services
  * @since 4.0.0
  */
-export class Flusher extends Context.Service<Flusher, {
+export interface Flusher {
+  readonly [FlusherTypeId]: typeof FlusherTypeId
+
   /**
    * Drains all registered exporters concurrently and cannot fail.
    *
@@ -99,9 +103,15 @@ export class Flusher extends Context.Service<Flusher, {
    */
   readonly flush: Effect.Effect<void>
   readonly register: (run: Effect.Effect<void>) => Effect.Effect<void, never, Scope.Scope>
-}>()(
-  "effect/observability/OtlpExporter/Flusher"
-) {}
+}
+
+/**
+ * Service key for `Flusher` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Flusher = Context.Service<Flusher>("effect/observability/OtlpExporter/Flusher")
 
 /**
  * Provides a `Flusher` backed by a fresh registry.
@@ -127,6 +137,7 @@ export class Flusher extends Context.Service<Flusher, {
 export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
   const registry = new Set<Effect.Effect<void>>()
   return {
+    [FlusherTypeId]: FlusherTypeId as typeof FlusherTypeId,
     flush: Effect.suspend(() => {
       if (registry.size === 0) {
         return Effect.void

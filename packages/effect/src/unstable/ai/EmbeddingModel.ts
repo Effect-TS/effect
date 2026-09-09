@@ -18,6 +18,8 @@ import * as RequestResolver from "../../RequestResolver.ts"
 import * as Schema from "../../Schema.ts"
 import * as AiError from "./AiError.ts"
 
+const EmbeddingModelTypeId = "~effect/unstable/ai/EmbeddingModel"
+
 /**
  * Service tag for embedding model operations.
  *
@@ -33,9 +35,17 @@ import * as AiError from "./AiError.ts"
  * @category services
  * @since 4.0.0
  */
-export class EmbeddingModel extends Context.Service<EmbeddingModel, Service>()(
-  "effect/unstable/ai/EmbeddingModel"
-) {}
+export interface EmbeddingModel extends Service {
+  readonly [EmbeddingModelTypeId]: typeof EmbeddingModelTypeId
+}
+
+/**
+ * Service key for `EmbeddingModel` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EmbeddingModel = Context.Service<EmbeddingModel>("effect/unstable/ai/EmbeddingModel")
 
 /**
  * Service tag that provides the current embedding dimensions.
@@ -157,6 +167,8 @@ export class EmbeddingRequest extends Request.TaggedClass("EmbeddingRequest")<
  * @since 4.0.0
  */
 export interface Service {
+  readonly [EmbeddingModelTypeId]: typeof EmbeddingModelTypeId
+
   readonly resolver: RequestResolver.RequestResolver<EmbeddingRequest>
   readonly embed: (input: string) => Effect.Effect<EmbedResponse, AiError.AiError>
   readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<EmbedManyResponse, AiError.AiError>
@@ -219,6 +231,7 @@ export const make: (params: {
   )
 
   return EmbeddingModel.of({
+    [EmbeddingModelTypeId]: EmbeddingModelTypeId as typeof EmbeddingModelTypeId,
     resolver,
     embed: (input) =>
       Effect.request(new EmbeddingRequest({ input }), resolver).pipe(

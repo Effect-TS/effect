@@ -306,10 +306,10 @@ export const raceAll = <const Activities extends NonEmptyReadonlyArray<Any>>(
 // internal
 // -----------------------------------------------------------------------------
 
-const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine["Service"]>(
+const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine>(
   "effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
 )
-const InstanceTag = Context.Service<WorkflowInstance, WorkflowInstance["Service"]>(
+const InstanceTag = Context.Service<WorkflowInstance, WorkflowInstance>(
   "effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
 )
 

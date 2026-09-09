@@ -112,6 +112,7 @@ export const ConfigurationSchema = Schema.Struct({
  * @since 0.6.0
  */
 export interface ConfigurationShape {
+  readonly [ConfigurationTypeId]: typeof ConfigurationTypeId
   readonly projectName: string
   readonly projectHomepage: string
   readonly srcLink: string
@@ -129,15 +130,25 @@ export interface ConfigurationShape {
   readonly examplesCompilerOptions: Record<string, unknown>
 }
 
+const ConfigurationTypeId = "~@effect/docgen/Configuration"
+
 /**
  * Service that provides resolved docgen configuration.
  *
  * @category services
  * @since 0.6.0
  */
-export class Configuration
-  extends Context.Service<Configuration, ConfigurationShape>()("@effect/docgen/Configuration")
-{}
+export interface Configuration extends ConfigurationShape {
+  readonly [ConfigurationTypeId]: typeof ConfigurationTypeId
+}
+
+/**
+ * Service key for `Configuration` implementations.
+ *
+ * @category services
+ * @since 0.6.0
+ */
+export const Configuration = Context.Service<Configuration>("@effect/docgen/Configuration")
 
 /** @internal */
 export const defaultCompilerOptions = {
@@ -343,6 +354,7 @@ export const load = (args: {
     )
 
     return Configuration.of({
+      [ConfigurationTypeId]: ConfigurationTypeId,
       ...args,
       srcDir,
       outDir,

@@ -14,6 +14,7 @@ import type { Effect } from "../../Effect.ts"
 import type { Scope } from "../../Scope.ts"
 import type { Stream } from "../../Stream.ts"
 import type { SqlError } from "./SqlError.ts"
+const ConnectionTypeId = "~effect/sql/SqlConnection"
 
 /**
  * Low-level SQL driver connection capable of executing compiled SQL as
@@ -24,6 +25,8 @@ import type { SqlError } from "./SqlError.ts"
  * @since 4.0.0
  */
 export interface Connection {
+  readonly [ConnectionTypeId]: typeof ConnectionTypeId
+
   readonly execute: (
     sql: string,
     params: ReadonlyArray<unknown>,

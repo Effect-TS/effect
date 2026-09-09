@@ -55,95 +55,111 @@ const DraftPlan = ExecutionPlan.make(
   }
 )
 
-export class AiWriter extends Context.Service<AiWriter, {
+const AiWriterTypeId = "~docs/AiWriter"
+
+export interface AiWriter {
+  readonly [AiWriterTypeId]: typeof AiWriterTypeId
+
   draftAnnouncement(product: string): Effect.Effect<{
     readonly provider: string
     readonly text: string
   }, AiWriterError>
   extractLaunchPlan(notes: string): Effect.Effect<LaunchPlan, AiWriterError>
   streamReleaseHighlights(version: string): Stream.Stream<string, AiWriterError>
-}>()("docs/AiWriter") {
-  static readonly layer = Layer.effect(
-    AiWriter,
-    Effect.gen(function*() {
-      // Calling `captureRequirements` on an `ExecutionPlan` will move the
-      // requirements of the plan (in this case the ai clients) into the Layer
-      // requirements.
-      const draftsModel = yield* DraftPlan.captureRequirements
+}
 
-      // Use a different model for the launch plan extraction
-      const launchPlanModel = yield* OpenAiLanguageModel.model("gpt-4.1").captureRequirements
+/**
+ * Service key for `AiWriter` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const AiWriter = (() => {
+  const service = Context.Service<AiWriter>("docs/AiWriter")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        // Calling `captureRequirements` on an `ExecutionPlan` will move the
+        // requirements of the plan (in service case the ai clients) into the Layer
+        // requirements.
+        const draftsModel = yield* DraftPlan.captureRequirements
 
-      const draftAnnouncement = Effect.fn("AiWriter.draftAnnouncement")(
-        function*(product: string) {
-          const model = yield* LanguageModel.LanguageModel
-          const provider = yield* Model.ProviderName
-          const response = yield* model.generateText({
-            prompt: `Write a short launch announcement for ${product}. ` +
-              "Keep it concise and include one concrete user benefit."
-          })
+        // Use a different model for the launch plan extraction
+        const launchPlanModel = yield* OpenAiLanguageModel.model("gpt-4.1").captureRequirements
 
-          // `LanguageModel.generateText` exposes convenience fields so you can
-          // inspect usage and finish reason without parsing content parts.
-          yield* Effect.logInfo(
-            `${provider} finished with ${response.finishReason}. outputTokens=${response.usage.outputTokens.total}`
-          )
+        const draftAnnouncement = Effect.fn("AiWriter.draftAnnouncement")(
+          function*(product: string) {
+            const model = yield* LanguageModel.LanguageModel
+            const provider = yield* Model.ProviderName
+            const response = yield* model.generateText({
+              prompt: `Write a short launch announcement for ${product}. ` +
+                "Keep it concise and include one concrete user benefit."
+            })
 
-          return {
-            provider,
-            text: response.text
-          }
-        },
-        // To apply an `ExecutionPlan`, we use `Effect.withExecutionPlan`
-        Effect.withExecutionPlan(draftsModel),
-        // Map AiError into our custom error type
-        Effect.mapError((error) => AiWriterError.fromAiError(error))
-      )
+            // `LanguageModel.generateText` exposes convenience fields so you can
+            // inspect usage and finish reason without parsing content parts.
+            yield* Effect.logInfo(
+              `${provider} finished with ${response.finishReason}. outputTokens=${response.usage.outputTokens.total}`
+            )
 
-      const extractLaunchPlan = Effect.fn("AiWriter.extractLaunchPlan")(
-        function*(notes: string) {
-          const model = yield* LanguageModel.LanguageModel
-          const response = yield* model.generateObject({
-            objectName: "launch_plan",
-            prompt:
-              "Convert these notes into a launch plan object with audience, channels, launchDate, summary, and keyRisks:\n" +
-              notes,
-            // The generated object is validated and decoded through this schema.
-            schema: LaunchPlan
-          })
-
-          return response.value
-        },
-        // The .model(...) apis return a Layer that can be used with
-        // Effect.provide
-        Effect.provide(launchPlanModel),
-        // Map AiError into our custom error type
-        Effect.mapError((error) => AiWriterError.fromAiError(error))
-      )
-
-      const streamReleaseHighlights = (version: string) =>
-        LanguageModel.streamText({
-          prompt: `Write release highlights for version ${version} as a short bulleted list.`
-        }).pipe(
-          Stream.filter((part): part is Response.TextDeltaPart => part.type === "text-delta"),
-          Stream.map((part) => part.delta),
-          Stream.provide(launchPlanModel),
+            return {
+              provider,
+              text: response.text
+            }
+          },
+          // To apply an `ExecutionPlan`, we use `Effect.withExecutionPlan`
+          Effect.withExecutionPlan(draftsModel),
           // Map AiError into our custom error type
-          Stream.mapError((error) => AiWriterError.fromAiError(error))
+          Effect.mapError((error) => AiWriterError.fromAiError(error))
         )
 
-      return AiWriter.of({
-        draftAnnouncement,
-        extractLaunchPlan,
-        streamReleaseHighlights
+        const extractLaunchPlan = Effect.fn("AiWriter.extractLaunchPlan")(
+          function*(notes: string) {
+            const model = yield* LanguageModel.LanguageModel
+            const response = yield* model.generateObject({
+              objectName: "launch_plan",
+              prompt:
+                "Convert these notes into a launch plan object with audience, channels, launchDate, summary, and keyRisks:\n" +
+                notes,
+              // The generated object is validated and decoded through service schema.
+              schema: LaunchPlan
+            })
+
+            return response.value
+          },
+          // The .model(...) apis return a Layer that can be used with
+          // Effect.provide
+          Effect.provide(launchPlanModel),
+          // Map AiError into our custom error type
+          Effect.mapError((error) => AiWriterError.fromAiError(error))
+        )
+
+        const streamReleaseHighlights = (version: string) =>
+          LanguageModel.streamText({
+            prompt: `Write release highlights for version ${version} as a short bulleted list.`
+          }).pipe(
+            Stream.filter((part): part is Response.TextDeltaPart => part.type === "text-delta"),
+            Stream.map((part) => part.delta),
+            Stream.provide(launchPlanModel),
+            // Map AiError into our custom error type
+            Stream.mapError((error) => AiWriterError.fromAiError(error))
+          )
+
+        return service.of({
+          [AiWriterTypeId]: AiWriterTypeId as typeof AiWriterTypeId,
+          draftAnnouncement,
+          extractLaunchPlan,
+          streamReleaseHighlights
+        })
       })
-    })
-  ).pipe(
-    // This Layer has requirements for both the OpenAI and Anthropic clients,
-    // since the ExecutionPlan includes models from both providers.
-    Layer.provide([OpenAiClientLayer, AnthropicClientLayer])
-  )
-}
+    ).pipe(
+      // This Layer has requirements for both the OpenAI and Anthropic clients,
+      // since the ExecutionPlan includes models from both providers.
+      Layer.provide([OpenAiClientLayer, AnthropicClientLayer])
+    )
+  })
+})()
 
 // We can now use `AiWriter` like any other Effect service.
 export const program: Effect.Effect<

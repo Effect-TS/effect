@@ -243,6 +243,7 @@ const makeImpl = Effect.fnUntraced(function*(
 })
 
 class ConnectionImpl implements Connection {
+  readonly ["~effect/sql/SqlConnection"] = "~effect/sql/SqlConnection" as const
   readonly connection: PgConnection.PgConnection
   readonly streamAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
 

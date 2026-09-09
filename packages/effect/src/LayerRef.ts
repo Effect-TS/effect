@@ -95,11 +95,15 @@ export interface LayerRef<in out I, in out E = never> {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerRef } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const databaseLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.succeed("result")
  * })
  *
@@ -275,11 +279,15 @@ export interface TagClass<
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerRef } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const databaseLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.succeed("result")
  * })
  *

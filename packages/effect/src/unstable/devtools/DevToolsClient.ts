@@ -27,6 +27,8 @@ import * as DevToolsSchema from "./DevToolsSchema.ts"
 const RequestSchema = Schema.toCodecJson(DevToolsSchema.Request)
 const ResponseSchema = Schema.toCodecJson(DevToolsSchema.Response)
 
+const DevToolsClientTypeId = "~effect/devtools/DevToolsClient"
+
 /**
  * Service for sending span and span-event telemetry to the Effect devtools
  * connection.
@@ -34,14 +36,21 @@ const ResponseSchema = Schema.toCodecJson(DevToolsSchema.Response)
  * @category services
  * @since 4.0.0
  */
-export class DevToolsClient extends Context.Service<
-  DevToolsClient,
-  {
-    readonly sendUnsafe: (
-      _: DevToolsSchema.Span | DevToolsSchema.SpanEvent
-    ) => void
-  }
->()("effect/devtools/DevToolsClient") {}
+export interface DevToolsClient {
+  readonly [DevToolsClientTypeId]: typeof DevToolsClientTypeId
+
+  readonly sendUnsafe: (
+    _: DevToolsSchema.Span | DevToolsSchema.SpanEvent
+  ) => void
+}
+
+/**
+ * Service key for `DevToolsClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const DevToolsClient = Context.Service<DevToolsClient>("effect/devtools/DevToolsClient")
 
 const makeEffect = Effect.gen(function*() {
   const socket = yield* Socket.Socket
@@ -99,6 +108,7 @@ const makeEffect = Effect.gen(function*() {
   )
 
   return DevToolsClient.of({
+    [DevToolsClientTypeId]: DevToolsClientTypeId as typeof DevToolsClientTypeId,
     sendUnsafe(request: DevToolsSchema.Span | DevToolsSchema.SpanEvent) {
       Queue.offerUnsafe(requests, request)
     }
@@ -139,7 +149,7 @@ const toMetricsSnapshot = (
  * @since 4.0.0
  */
 export const make: Effect.Effect<
-  DevToolsClient["Service"],
+  DevToolsClient,
   never,
   Scope.Scope | Socket.Socket
 > = makeEffect.pipe(

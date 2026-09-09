@@ -38,13 +38,17 @@ type IdleTimeToLiveInput<K> = Duration.Input | ((key: K) => Duration.Input)
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const DatabaseService = Context.Service<{
+ * interface DatabaseService {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("Database")
+ * }
+ * const DatabaseService = Context.Service<DatabaseService>("Database")
  *
  * // Create a LayerMap that provides different database configurations
  * const createDatabaseLayerMap = LayerMap.make((env: string) =>
  *   Layer.succeed(DatabaseService)({
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("DatabaseService.query")((sql) => Effect.succeed(`${env}: ${sql}`))
  *   })
  * )
@@ -120,15 +124,19 @@ export interface LayerMap<in out K, in out I, in out E = never> {
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const DatabaseService = Context.Service<{
+ * interface DatabaseService {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("Database")
+ * }
+ * const DatabaseService = Context.Service<DatabaseService>("Database")
  *
  * // Create a LayerMap that provides different database configurations
  * const program = Effect.gen(function*() {
  *   const layerMap = yield* LayerMap.make(
  *     (env: string) =>
  *       Layer.succeed(DatabaseService)({
+ *         ["~Database"]: "~Database" as const,
  *         query: Effect.fn("DatabaseService.query")((sql) => Effect.succeed(`${env}: ${sql}`))
  *       }),
  *     { idleTimeToLive: "5 seconds" }
@@ -215,16 +223,21 @@ export const make: <
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const Database = Context.Service<{
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("Database")
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Create predefined layers
  * const layers = {
  *   development: Layer.succeed(Database)({
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("DevDatabase.query")((sql) => Effect.succeed(`DEV: ${sql}`))
  *   }),
  *   production: Layer.succeed(Database)({
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("ProdDatabase.query")((sql) => Effect.succeed(`PROD: ${sql}`))
  *   })
  * } as const
@@ -360,15 +373,19 @@ export interface TagClass<
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const Greeter = Context.Service<{
+ * interface Greeter {
+ *   readonly ["~Greeter"]: "~Greeter"
+ *
  *   readonly greet: Effect.Effect<string>
- * }>("Greeter")
+ * }
+ * const Greeter = Context.Service<Greeter>("Greeter")
  *
  * // Create a service that wraps a LayerMap
  * class GreeterMap extends LayerMap.Service<GreeterMap>()("GreeterMap", {
  *   // Define the lookup function for the layer map
  *   lookup: (name: string) =>
  *     Layer.succeed(Greeter)({
+ *       ["~Greeter"]: "~Greeter" as const,
  *       greet: Effect.succeed(`Hello, ${name}!`)
  *     }),
  *

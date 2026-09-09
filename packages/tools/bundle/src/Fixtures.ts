@@ -24,29 +24,40 @@ import * as Order from "effect/Order"
 import * as Glob from "glob"
 import { fileURLToPath } from "node:url"
 
+const FixturesTypeId = "~@effect/bundle/Fixtures"
+const FixturesMake = Effect.gen(function*() {
+  const fixturesDir = fileURLToPath(new URL("../fixtures/", import.meta.url))
+
+  const fixtures = yield* Effect.promise(() => Glob.glob("*.ts", { cwd: fixturesDir })).pipe(
+    Effect.map(Array.sort(Order.String)),
+    Effect.orDie
+  )
+
+  return {
+    [FixturesTypeId]: FixturesTypeId as typeof FixturesTypeId,
+    fixtures,
+    fixturesDir
+  } as const
+})
+type FixturesShape = Effect.Success<typeof FixturesMake>
+
 /**
  * Context service that discovers and sorts TypeScript fixture files used by the bundle size tooling.
  *
  * @category services
  * @since 4.0.0
  */
-export class Fixtures extends Context.Service<Fixtures>()(
-  "@effect/bundle/Fixtures",
-  {
-    make: Effect.gen(function*() {
-      const fixturesDir = fileURLToPath(new URL("../fixtures/", import.meta.url))
-
-      const fixtures = yield* Effect.promise(() => Glob.glob("*.ts", { cwd: fixturesDir })).pipe(
-        Effect.map(Array.sort(Order.String)),
-        Effect.orDie
-      )
-
-      return {
-        fixtures,
-        fixturesDir
-      } as const
-    })
-  }
-) {
-  static readonly layer = Layer.effect(this, this.make)
+export interface Fixtures extends FixturesShape {
+  readonly [FixturesTypeId]: typeof FixturesTypeId
 }
+
+/**
+ * Service key for `Fixtures` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Fixtures = (() => {
+  const service = Object.assign(Context.Service<Fixtures>("@effect/bundle/Fixtures"), { make: FixturesMake })
+  return Object.assign(service, { layer: Layer.effect(service, service.make) })
+})()

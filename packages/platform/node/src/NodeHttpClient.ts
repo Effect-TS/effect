@@ -372,6 +372,8 @@ export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUn
 // node:http
 // -----------------------------------------------------------------------------
 
+const HttpAgentTypeId = "~@effect/platform-node/NodeHttpClient/HttpAgent"
+
 /**
  * Service tag for the paired Node `http` and `https` agents used by the
  * node:http-backed HTTP client.
@@ -379,10 +381,20 @@ export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUn
  * @category services
  * @since 4.0.0
  */
-export class HttpAgent extends Context.Service<HttpAgent, {
+export interface HttpAgent {
+  readonly [HttpAgentTypeId]: typeof HttpAgentTypeId
+
   readonly http: Http.Agent
   readonly https: Https.Agent
-}>()("@effect/platform-node/NodeHttpClient/HttpAgent") {}
+}
+
+/**
+ * Service key for `HttpAgent` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const HttpAgent = Context.Service<HttpAgent>("@effect/platform-node/NodeHttpClient/HttpAgent")
 
 /**
  * Acquires Node `http` and `https` agents with the supplied options and
@@ -391,7 +403,7 @@ export class HttpAgent extends Context.Service<HttpAgent, {
  * @category resource management
  * @since 4.0.0
  */
-export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
+export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent, never, Scope.Scope> =>
   Effect.zipWith(
     Effect.acquireRelease(
       Effect.sync(() => new Http.Agent(options)),
@@ -401,7 +413,11 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent
       Effect.sync(() => new Https.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
-    (http, https) => ({ http, https })
+    (http, https) => ({
+      [HttpAgentTypeId]: HttpAgentTypeId as typeof HttpAgentTypeId,
+      http,
+      https
+    })
   )
 
 /**

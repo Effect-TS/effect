@@ -18,6 +18,8 @@ import * as K8s from "./K8sHttpClient.ts"
 import type { RunnerAddress } from "./RunnerAddress.ts"
 import * as Runners from "./Runners.ts"
 
+const RunnerHealthTypeId = "~effect/cluster/RunnerHealth"
+
 /**
  * Represents the service used to check if a Runner is healthy.
  *
@@ -30,12 +32,19 @@ import * as Runners from "./Runners.ts"
  * @category services
  * @since 4.0.0
  */
-export class RunnerHealth extends Context.Service<
-  RunnerHealth,
-  {
-    readonly isAlive: (address: RunnerAddress) => Effect.Effect<boolean>
-  }
->()("effect/cluster/RunnerHealth") {}
+export interface RunnerHealth {
+  readonly [RunnerHealthTypeId]: typeof RunnerHealthTypeId
+
+  readonly isAlive: (address: RunnerAddress) => Effect.Effect<boolean>
+}
+
+/**
+ * Service key for `RunnerHealth` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const RunnerHealth = Context.Service<RunnerHealth>("effect/cluster/RunnerHealth")
 
 /**
  * Layer that always considers a runner healthy.
@@ -49,6 +58,7 @@ export class RunnerHealth extends Context.Service<
  * @since 4.0.0
  */
 export const layerNoop = Layer.succeed(RunnerHealth, {
+  [RunnerHealthTypeId]: RunnerHealthTypeId as typeof RunnerHealthTypeId,
   isAlive: () => Effect.succeed(true)
 })
 
@@ -61,7 +71,7 @@ export const layerNoop = Layer.succeed(RunnerHealth, {
  * @since 4.0.0
  */
 export const makePing: Effect.Effect<
-  RunnerHealth["Service"],
+  RunnerHealth,
   never,
   Runners.Runners | Scope.Scope
 > = Effect.gen(function*() {
@@ -76,7 +86,10 @@ export const makePing: Effect.Effect<
     )
   }
 
-  return RunnerHealth.of({ isAlive })
+  return RunnerHealth.of({
+    [RunnerHealthTypeId]: RunnerHealthTypeId as typeof RunnerHealthTypeId,
+    isAlive
+  })
 })
 
 /**
@@ -109,6 +122,7 @@ export const makeK8s = Effect.fnUntraced(function*(options?: {
   const allPods = yield* K8s.makeGetPods(options)
 
   return RunnerHealth.of({
+    [RunnerHealthTypeId]: RunnerHealthTypeId as typeof RunnerHealthTypeId,
     isAlive: (address) =>
       allPods.pipe(
         Effect.map((pods) => pods.get(address.host)?.isReadyOrInitializing ?? false),

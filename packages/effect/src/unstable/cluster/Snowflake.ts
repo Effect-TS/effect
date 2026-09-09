@@ -83,6 +83,7 @@ export declare namespace Snowflake {
    * @since 4.0.0
    */
   export interface Generator {
+    readonly [GeneratorTypeId]: typeof GeneratorTypeId
     readonly nextUnsafe: () => Snowflake
     readonly setMachineId: (machineId: MachineId) => Effect.Effect<void>
   }
@@ -232,6 +233,7 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
   let sequenceAt = Math.floor(clock.currentTimeMillisUnsafe())
 
   return identity<Snowflake.Generator>({
+    [GeneratorTypeId]: GeneratorTypeId,
     setMachineId: (newMachineId) =>
       Effect.sync(() => {
         machineId = newMachineId
@@ -262,16 +264,25 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
   })
 })
 
+const GeneratorTypeId = "~effect/cluster/Snowflake/Generator"
+
 /**
  * Context service for a stateful snowflake id generator.
  *
  * @category services
  * @since 4.0.0
  */
-export class Generator extends Context.Service<
-  Generator,
-  Snowflake.Generator
->()("effect/cluster/Snowflake/Generator") {}
+export interface Generator extends Snowflake.Generator {
+  readonly [GeneratorTypeId]: typeof GeneratorTypeId
+}
+
+/**
+ * Service key for `Generator` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Generator = Context.Service<Generator>("effect/cluster/Snowflake/Generator")
 
 /**
  * Layer that provides the default snowflake `Generator` service.

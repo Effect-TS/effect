@@ -2991,9 +2991,11 @@ SchemaParser.makeEffect(schema)({}).pipe(Effect.runPromise).then(console.log)
 import { Context, Effect, Option, Schema, SchemaParser } from "effect"
 
 // Define a service that may provide a default value
-class ConstructorService extends Context.Service<ConstructorService, { defaultValue: Effect.Effect<number> }>()(
-  "ConstructorService"
-) {}
+interface ConstructorService {
+  readonly ["~ConstructorService"]: "~ConstructorService"
+  defaultValue: Effect.Effect<number>
+}
+const ConstructorService = Context.Service<ConstructorService>("ConstructorService")
 
 const schema = Schema.Struct({
   a: Schema.Number.pipe(
@@ -3012,7 +3014,13 @@ const schema = Schema.Struct({
 
 SchemaParser.makeEffect(schema)({})
   .pipe(
-    Effect.provideService(ConstructorService, ConstructorService.of({ defaultValue: Effect.succeed(0) })),
+    Effect.provideService(
+      ConstructorService,
+      ConstructorService.of({
+        ["~ConstructorService"]: "~ConstructorService" as const,
+        defaultValue: Effect.succeed(0)
+      })
+    ),
     Effect.runPromise
   )
   .then(console.log, console.error)
@@ -6568,7 +6576,11 @@ You can use `Schema.catchDecodingWithContext` to get a fallback value from a ser
 import { Context, Effect, Option, Schema } from "effect"
 
 // Define a service that provides a fallback value
-class Service extends Context.Service<Service, { fallback: Effect.Effect<string> }>()("Service") {}
+interface Service {
+  readonly ["~Service"]: "~Service"
+  fallback: Effect.Effect<string>
+}
+const Service = Context.Service<Service>("Service")
 
 //      ┌─── Codec<string, string, Service, never>
 //      ▼
@@ -6589,7 +6601,10 @@ const schema = Schema.revealCodec(
 //      ┌─── Codec<string, string, never, never>
 //      ▼
 const provided = Schema.revealCodec(
-  schema.pipe(Schema.middlewareDecoding(Effect.provideService(Service, { fallback: Effect.succeed("b") })))
+  schema.pipe(Schema.middlewareDecoding(Effect.provideService(Service, {
+    ["~Service"]: "~Service" as const,
+    fallback: Effect.succeed("b")
+  })))
 )
 
 console.log(String(Schema.decodeUnknownExit(provided)(null)))
@@ -6856,12 +6871,12 @@ import type { Effect } from "effect"
 import { Context, Schema } from "effect"
 
 // A service that retrieves full user info from an ID
-class UserDatabase extends Context.Service<
-  UserDatabase,
-  {
-    getUserById: (id: string) => Effect.Effect<{ readonly id: string; readonly name: string }>
-  }
->()("UserDatabase") {}
+interface UserDatabase {
+  readonly ["~UserDatabase"]: "~UserDatabase"
+
+  getUserById: (id: string) => Effect.Effect<{ readonly id: string; readonly name: string }>
+}
+const UserDatabase = Context.Service<UserDatabase>("UserDatabase")
 
 // Schema that decodes from an ID to a user object using the database,
 // but encodes just the ID

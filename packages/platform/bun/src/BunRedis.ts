@@ -19,16 +19,28 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as Redis from "effect/unstable/persistence/Redis"
 
+const BunRedisTypeId = "~@effect/platform-bun/BunRedis"
+
 /**
  * Service tag for Bun Redis integration, exposing the raw `RedisClient` and a `use` helper that maps client promise failures to `RedisError`.
  *
  * @category services
  * @since 4.0.0
  */
-export class BunRedis extends Context.Service<BunRedis, {
+export interface BunRedis {
+  readonly [BunRedisTypeId]: typeof BunRedisTypeId
+
   readonly client: RedisClient
   readonly use: <A>(f: (client: RedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
-}>()("@effect/platform-bun/BunRedis") {}
+}
+
+/**
+ * Service key for `BunRedis` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const BunRedis = Context.Service<BunRedis>("@effect/platform-bun/BunRedis")
 
 const make = Effect.fnUntraced(function*(
   options?: {
@@ -88,7 +100,8 @@ const make = Effect.fnUntraced(function*(
       })
   })
 
-  const bunRedis = Fn.identity<BunRedis["Service"]>({
+  const bunRedis = Fn.identity<BunRedis>({
+    [BunRedisTypeId]: BunRedisTypeId as typeof BunRedisTypeId,
     client,
     use
   })

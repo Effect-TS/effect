@@ -633,7 +633,7 @@ const watchNode = (path: string, info: FileSystem.File.Info, options?: FileSyste
   )
 
 const watch = (
-  backend: Option.Option<FileSystem.WatchBackend["Service"]>,
+  backend: Option.Option<FileSystem.WatchBackend>,
   path: string,
   options?: FileSystem.WatchOptions
 ) =>

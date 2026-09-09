@@ -49,13 +49,13 @@ export const make = (options: {
   deferred: DurableDeferred.make(`DurableClock/${options.name}`)
 })
 
-const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine["Service"]>(
+const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine>(
   "effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
 )
 
 const InstanceTag = Context.Service<
   WorkflowInstance,
-  WorkflowInstance["Service"]
+  WorkflowInstance
 >(
   "effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
 )

@@ -869,37 +869,57 @@ export const snapshotCacheKey = (
     modules === undefined ? "all" : [...modules].sort()
   ])
 
-export class Snapshotter extends Context.Service<Snapshotter, {
+const SnapshotterTypeId = "~@effect/api-diff/Snapshotter"
+
+export interface Snapshotter {
+  readonly [SnapshotterTypeId]: typeof SnapshotterTypeId
+
   readonly extract: (options: ExtractSnapshotOptions) => Effect.Effect<
     ApiSnapshot,
     ApiDiffError | SnapshotExtractionError
   >
-}>()("@effect/api-diff/Snapshotter") {
-  static readonly layerNoDependencies = Layer.effect(
-    Snapshotter,
-    Effect.gen(function*() {
-      const discovery = yield* Discovery
-      const path = yield* Path.Path
+}
 
-      const extract = Effect.fnUntraced(function*(options: ExtractSnapshotOptions) {
-        const discovered = yield* discovery.discoverEntrypoints(options.repoRoot, options.modules)
-        return yield* Effect.try({
-          try: () => extractSnapshot(options, discovered, path),
-          catch: (cause) =>
-            isSnapshotExtractionError(cause)
-              ? cause
-              : new ApiDiffError({
-                message: `Could not extract the API snapshot for ${options.ref}`,
-                cause
-              })
+/**
+ * Service key for `Snapshotter` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Snapshotter = (() => {
+  const service = Context.Service<Snapshotter>("@effect/api-diff/Snapshotter")
+  const service1 = Object.assign(service, {
+    layerNoDependencies: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        const discovery = yield* Discovery
+        const path = yield* Path.Path
+
+        const extract = Effect.fnUntraced(function*(options: ExtractSnapshotOptions) {
+          const discovered = yield* discovery.discoverEntrypoints(options.repoRoot, options.modules)
+          return yield* Effect.try({
+            try: () => extractSnapshot(options, discovered, path),
+            catch: (cause) =>
+              isSnapshotExtractionError(cause)
+                ? cause
+                : new ApiDiffError({
+                  message: `Could not extract the API snapshot for ${options.ref}`,
+                  cause
+                })
+          })
+        })
+
+        return service.of({
+          [SnapshotterTypeId]: SnapshotterTypeId as typeof SnapshotterTypeId,
+          extract
         })
       })
-
-      return Snapshotter.of({ extract })
-    })
-  )
-
-  static readonly layer = this.layerNoDependencies.pipe(
-    Layer.provide(Discovery.layer)
-  )
-}
+    )
+  })
+  const service2 = Object.assign(service1, {
+    layer: service1.layerNoDependencies.pipe(
+      Layer.provide(Discovery.layer)
+    )
+  })
+  return service2
+})()

@@ -39,6 +39,7 @@ export class SpecFetchError extends Data.TaggedError("SpecFetchError")<{
   readonly source: string
   readonly cause: unknown
 }> {}
+const SpecFetcherTypeId = "~@effect/ai-codegen/SpecFetcher"
 
 /**
  * Service for fetching OpenAPI specifications.
@@ -47,6 +48,8 @@ export class SpecFetchError extends Data.TaggedError("SpecFetchError")<{
  * @since 4.0.0
  */
 export interface SpecFetcher {
+  readonly [SpecFetcherTypeId]: typeof SpecFetcherTypeId
+
   readonly fetch: (
     source: SpecSource,
     provider: string
@@ -153,5 +156,8 @@ export const layer: Layer.Layer<
     return yield* parseSpec(content, sourceString, provider)
   })
 
-  return { fetch }
+  return {
+    [SpecFetcherTypeId]: SpecFetcherTypeId as typeof SpecFetcherTypeId,
+    fetch
+  }
 }).pipe(Layer.effect(SpecFetcher))

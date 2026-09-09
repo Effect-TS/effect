@@ -69,7 +69,7 @@ export class IncomingMessage extends Context.Service<
 export const make = (
   options: Net.ServerOpts & Net.ListenOptions
 ): Effect.Effect<
-  SocketServer.SocketServer["Service"],
+  SocketServer.SocketServer,
   SocketServer.SocketServerError,
   Scope.Scope
 > =>
@@ -111,7 +111,7 @@ export const layer: (
 export const makeTls = (
   options: Tls.TlsOptions & Net.ListenOptions
 ): Effect.Effect<
-  SocketServer.SocketServer["Service"],
+  SocketServer.SocketServer,
   SocketServer.SocketServerError,
   Scope.Scope
 > =>
@@ -152,7 +152,7 @@ export const layerTls: (
 export const makeWebSocket: (
   options: NodeWS.ServerOptions<typeof NodeWS.WebSocket, typeof Http.IncomingMessage>
 ) => Effect.Effect<
-  SocketServer.SocketServer["Service"],
+  SocketServer.SocketServer,
   SocketServer.SocketServerError,
   Scope.Scope
 > = Effect.fnUntraced(function*(
@@ -244,6 +244,7 @@ export const makeWebSocket: (
 
   const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
+    ["~@effect/platform/SocketServer"]: "~@effect/platform/SocketServer" as const,
     address: boundAddress,
     run
   })
@@ -383,6 +384,7 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
 
   const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
+    ["~@effect/platform/SocketServer"]: "~@effect/platform/SocketServer" as const,
     address: boundAddress,
     run
   })

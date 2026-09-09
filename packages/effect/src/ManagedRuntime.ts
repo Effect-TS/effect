@@ -254,17 +254,17 @@ export interface ManagedRuntime<in R, out ER> {
  *
  * const notifications: Array<string> = []
  *
- * class Notifications extends Context.Service<Notifications, {
+ * interface Notifications {
+ *   readonly ["~Notifications"]: "~Notifications"
  *   readonly notify: (message: string) => Effect.Effect<void>
- * }>()("Notifications") {
- *   static readonly layer = Layer.succeed(this)({
- *     notify: Effect.fn("Notifications.notify")((message) =>
- *       Effect.sync(() => notifications.push(message))
- *     )
- *   })
  * }
+ * const Notifications = Context.Service<Notifications>("Notifications")
+ * const notificationsLayer = Layer.succeed(Notifications)({
+ *   ["~Notifications"]: "~Notifications",
+ *   notify: Effect.fn("Notifications.notify")((message) => Effect.sync(() => notifications.push(message)))
+ * })
  *
- * const runtime = ManagedRuntime.make(Notifications.layer)
+ * const runtime = ManagedRuntime.make(notificationsLayer)
  *
  * const program = Effect.flatMap(
  *   Notifications,

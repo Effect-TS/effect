@@ -624,7 +624,7 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
     readonly encodeDefect: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
     readonly context: Context.Context<never>
-    readonly collector?: Transferable.Collector["Service"] | undefined
+    readonly collector?: Transferable.Collector | undefined
   }
 
   const schemasCache = new WeakMap<any, Schemas>()
@@ -887,6 +887,8 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
     )
   )
 
+const ProtocolTypeId = "~effect/rpc/RpcServer/Protocol"
+
 /**
  * Defines the service interface for an RPC server transport, responsible for receiving
  * encoded client messages, sending encoded responses, tracking clients, and
@@ -900,39 +902,55 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
  * @category services
  * @since 4.0.0
  */
-export class Protocol extends Context.Service<
-  Protocol,
-  {
-    readonly run: (
-      f: (clientId: number, data: FromClientEncoded) => Effect.Effect<void>
-    ) => Effect.Effect<never>
-    readonly disconnects: Queue.Dequeue<number>
-    readonly send: (
-      clientId: number,
-      response: FromServerEncoded,
-      transferables?: ReadonlyArray<globalThis.Transferable>
-    ) => Effect.Effect<void>
-    readonly end: (clientId: number) => Effect.Effect<void>
-    readonly clientIds: Effect.Effect<ReadonlySet<number>>
-    readonly initialMessage: Effect.Effect<Option.Option<unknown>>
-    readonly supportsAck: boolean
-    readonly supportsTransferables: boolean
-    readonly supportsSpanPropagation: boolean
-    readonly supportsNotifications: boolean
-    /**
-     * Builds the codec that fills the `unknown` holes of the protocol messages,
-     * re-passed from the `RpcSerialization` backing this transport.
-     */
-    readonly codecFor: RpcSerialization.CodecFor
-  }
->()("effect/rpc/RpcServer/Protocol") {
+export interface Protocol {
+  readonly [ProtocolTypeId]: typeof ProtocolTypeId
+
+  readonly run: (
+    f: (clientId: number, data: FromClientEncoded) => Effect.Effect<void>
+  ) => Effect.Effect<never>
+  readonly disconnects: Queue.Dequeue<number>
+  readonly send: (
+    clientId: number,
+    response: FromServerEncoded,
+    transferables?: ReadonlyArray<globalThis.Transferable>
+  ) => Effect.Effect<void>
+  readonly end: (clientId: number) => Effect.Effect<void>
+  readonly clientIds: Effect.Effect<ReadonlySet<number>>
+  readonly initialMessage: Effect.Effect<Option.Option<unknown>>
+  readonly supportsAck: boolean
+  readonly supportsTransferables: boolean
+  readonly supportsSpanPropagation: boolean
+  readonly supportsNotifications: boolean
   /**
-   * Creates a server protocol service from the supplied RPC implementation.
-   *
-   * @since 4.0.0
+   * Builds the codec that fills the `unknown` holes of the protocol messages,
+   * re-passed from the `RpcSerialization` backing this transport.
    */
-  static make = withRun<Protocol["Service"]>()
+  readonly codecFor: RpcSerialization.CodecFor
 }
+
+/**
+ * Service key for `Protocol` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Protocol = (() => {
+  const service = Context.Service<Protocol>("effect/rpc/RpcServer/Protocol")
+  return Object.assign(service, {
+    /**
+     * Creates a server protocol service from the supplied RPC implementation.
+     *
+     * @since 4.0.0
+     */
+    make: <E, R>(
+      f: (write: Parameters<Protocol["run"]>[0]) => Effect.Effect<Omit<Protocol, "run" | typeof ProtocolTypeId>, E, R>
+    ): Effect.Effect<Protocol, E, R> =>
+      Effect.map(
+        withRun<Omit<Protocol, typeof ProtocolTypeId>>()(f),
+        (protocol) => ({ ...protocol, [ProtocolTypeId]: ProtocolTypeId })
+      )
+  })
+})()
 
 /**
  * Creates a server `Protocol` backed by the current `SocketServer`, accepting
@@ -971,7 +989,7 @@ export const layerProtocolSocketServer: Layer.Layer<
  */
 export const makeProtocolWithHttpEffectWebsocket: Effect.Effect<
   {
-    readonly protocol: Protocol["Service"]
+    readonly protocol: Protocol
     readonly httpEffect: Effect.Effect<
       HttpServerResponse.HttpServerResponse,
       never,
@@ -1007,7 +1025,7 @@ export const makeProtocolWithHttpEffectWebsocket: Effect.Effect<
 export const makeProtocolWebsocket: (options: {
   readonly path: HttpRouter.PathInput
 }) => Effect.Effect<
-  Protocol["Service"],
+  Protocol,
   never,
   RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
 > = Effect.fnUntraced(function*(options) {
@@ -1047,7 +1065,7 @@ export const makeProtocolWithHttpEffect: (
   } | undefined
 ) => Effect.Effect<
   {
-    readonly protocol: Protocol["Service"]
+    readonly protocol: Protocol
     readonly httpEffect: Effect.Effect<
       HttpServerResponse.HttpServerResponse,
       never,
@@ -1181,6 +1199,7 @@ export const makeProtocolWithHttpEffect: (
   const protocol = yield* Protocol.make((writeRequest_) => {
     writeRequest = writeRequest_
     return Effect.succeed({
+      [ProtocolTypeId]: ProtocolTypeId as typeof ProtocolTypeId,
       disconnects,
       send(clientId, response) {
         const client = clients.get(clientId)
@@ -1229,7 +1248,7 @@ export const makeProtocolHttp: (options: {
   readonly path: HttpRouter.PathInput
   readonly streamBufferSize?: number | "unbounded" | undefined
 }) => Effect.Effect<
-  Protocol["Service"],
+  Protocol,
   never,
   RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
 > = Effect.fnUntraced(function*(options) {
@@ -1421,7 +1440,7 @@ export const layerProtocolStdio: Layer.Layer<
  * @since 4.0.0
  */
 export const makeProtocolWorkerRunner: Effect.Effect<
-  Protocol["Service"],
+  Protocol,
   WorkerError,
   WorkerRunner.WorkerRunnerPlatform | Scope.Scope
 > = Protocol.make(Effect.fnUntraced(function*(writeRequest) {
@@ -1493,7 +1512,7 @@ export const layerProtocolWorkerRunner: Layer.Layer<
 
 const makeSocketProtocol: Effect.Effect<
   {
-    readonly protocol: Protocol["Service"]
+    readonly protocol: Protocol
     readonly onSocket: (
       socket: Socket.Socket,
       headers?: ReadonlyArray<[string, string]>
@@ -1582,6 +1601,7 @@ const makeSocketProtocol: Effect.Effect<
   const protocol = yield* Protocol.make((writeRequest_) => {
     writeRequest = writeRequest_
     return Effect.succeed({
+      [ProtocolTypeId]: ProtocolTypeId as typeof ProtocolTypeId,
       disconnects,
       send: (clientId, response) => {
         const client = clients.get(clientId)

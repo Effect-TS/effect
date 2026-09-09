@@ -74,125 +74,136 @@ export interface BundleAllOptions {
   readonly outputDirectory?: string | undefined
 }
 
+const RollupTypeId = "~@effect/bundle/Rollup"
+const RollupMake = Effect.gen(function*() {
+  const pathService = yield* Path.Path
+  const fs = yield* FileSystem.FileSystem
+
+  const createVisualizationOutputs = (options: BundleOptions): ReadonlyArray<VisualizationOutput> => {
+    if (!options.visualize || !options.outputDirectory) {
+      return []
+    }
+    const name = pathService.parse(options.path).name
+    return [
+      {
+        filename: pathService.join(options.outputDirectory, `${name}.treemap.html`),
+        template: "treemap",
+        title: `${name} bundle treemap`
+      },
+      {
+        filename: pathService.join(options.outputDirectory, `${name}.raw-data.json`),
+        template: "raw-data",
+        title: `${name} bundle raw data`
+      }
+    ]
+  }
+
+  const getRollupOptions = (options: BundleOptions): RollupOptions => ({
+    input: options.path,
+    output: {
+      format: "esm"
+    },
+    plugins: createPlugins(pathService, {
+      visualize: options.visualize,
+      visualizations: createVisualizationOutputs(options)
+    }),
+    onwarn: (warning, next) => {
+      if (warning.code === "THIS_IS_UNDEFINED") return
+      next(warning)
+    }
+  })
+
+  const bundle = Effect.fn("Rollup.bundle")(
+    function*(options: BundleOptions) {
+      const bundle = yield* Effect.acquireRelease(
+        Effect.tryPromise({
+          try: () => rollup(getRollupOptions(options)),
+          catch: (cause) => new RollupError({ cause })
+        }),
+        (bundle) => Effect.promise(() => bundle.close())
+      )
+      const { output } = yield* Effect.tryPromise({
+        try: () => bundle.generate({ format: "esm" }),
+        catch: (cause) => new RollupError({ cause })
+      })
+
+      const stream = yield* Stream.fromIterable(output).pipe(
+        Stream.filter((output) => output.type === "chunk"),
+        Stream.map((chunk) => chunk.code),
+        Stream.encodeText,
+        Stream.broadcast({ capacity: 8, replay: 8 })
+      )
+
+      const writeOutput = options.outputDirectory
+        ? stream.pipe(
+          Stream.run(fs.sink(pathService.join(
+            options.outputDirectory,
+            `${pathService.parse(options.path).name}.min.js`
+          ))),
+          Effect.mapError((cause) => new RollupError({ cause }))
+        )
+        : Effect.void
+
+      const [, sizeInBytes] = yield* Effect.all([
+        writeOutput,
+        stream.pipe(
+          NodeStream.pipeThroughDuplex({
+            evaluate: () => createGzip({ level: 9 }),
+            onError: (cause) => new RollupError({ cause })
+          }),
+          Stream.runFold(
+            () => 0,
+            (totalBytes, chunkBytes) => chunkBytes.length + totalBytes
+          )
+        )
+      ], { concurrency: 2 })
+
+      yield* Effect.log(`Bundled ${options.path}`).pipe(
+        Effect.annotateLogs({ size: `${(sizeInBytes / 1000).toFixed(2)} kB` })
+      )
+
+      return new BundleStats({ path: options.path, sizeInBytes })
+    },
+    Effect.scoped
+  )
+
+  const bundleAll = Effect.fn("Rollup.bundleAll")(
+    function*(options: BundleAllOptions) {
+      return yield* Effect.forEach(
+        options.paths,
+        (path) => bundle({ path, visualize: options.visualize, outputDirectory: options.outputDirectory }),
+        // Rollup retains a module graph for each active bundle, so unbounded
+        // concurrency can exhaust the Node.js heap on CI runners.
+        { concurrency: 4 }
+      )
+    }
+  )
+
+  return {
+    [RollupTypeId]: RollupTypeId as typeof RollupTypeId,
+    bundle,
+    bundleAll
+  } as const
+})
+type RollupShape = Effect.Success<typeof RollupMake>
+
 /**
  * Context service for bundling entry files with Rollup and measuring their gzipped output size.
  *
  * @category services
  * @since 4.0.0
  */
-export class Rollup extends Context.Service<Rollup>()(
-  "@effect/bundle/Rollup",
-  {
-    make: Effect.gen(function*() {
-      const pathService = yield* Path.Path
-      const fs = yield* FileSystem.FileSystem
-
-      const createVisualizationOutputs = (options: BundleOptions): ReadonlyArray<VisualizationOutput> => {
-        if (!options.visualize || !options.outputDirectory) {
-          return []
-        }
-        const name = pathService.parse(options.path).name
-        return [
-          {
-            filename: pathService.join(options.outputDirectory, `${name}.treemap.html`),
-            template: "treemap",
-            title: `${name} bundle treemap`
-          },
-          {
-            filename: pathService.join(options.outputDirectory, `${name}.raw-data.json`),
-            template: "raw-data",
-            title: `${name} bundle raw data`
-          }
-        ]
-      }
-
-      const getRollupOptions = (options: BundleOptions): RollupOptions => ({
-        input: options.path,
-        output: {
-          format: "esm"
-        },
-        plugins: createPlugins(pathService, {
-          visualize: options.visualize,
-          visualizations: createVisualizationOutputs(options)
-        }),
-        onwarn: (warning, next) => {
-          if (warning.code === "THIS_IS_UNDEFINED") return
-          next(warning)
-        }
-      })
-
-      const bundle = Effect.fn("Rollup.bundle")(
-        function*(options: BundleOptions) {
-          const bundle = yield* Effect.acquireRelease(
-            Effect.tryPromise({
-              try: () => rollup(getRollupOptions(options)),
-              catch: (cause) => new RollupError({ cause })
-            }),
-            (bundle) => Effect.promise(() => bundle.close())
-          )
-          const { output } = yield* Effect.tryPromise({
-            try: () => bundle.generate({ format: "esm" }),
-            catch: (cause) => new RollupError({ cause })
-          })
-
-          const stream = yield* Stream.fromIterable(output).pipe(
-            Stream.filter((output) => output.type === "chunk"),
-            Stream.map((chunk) => chunk.code),
-            Stream.encodeText,
-            Stream.broadcast({ capacity: 8, replay: 8 })
-          )
-
-          const writeOutput = options.outputDirectory
-            ? stream.pipe(
-              Stream.run(fs.sink(pathService.join(
-                options.outputDirectory,
-                `${pathService.parse(options.path).name}.min.js`
-              ))),
-              Effect.mapError((cause) => new RollupError({ cause }))
-            )
-            : Effect.void
-
-          const [, sizeInBytes] = yield* Effect.all([
-            writeOutput,
-            stream.pipe(
-              NodeStream.pipeThroughDuplex({
-                evaluate: () => createGzip({ level: 9 }),
-                onError: (cause) => new RollupError({ cause })
-              }),
-              Stream.runFold(
-                () => 0,
-                (totalBytes, chunkBytes) => chunkBytes.length + totalBytes
-              )
-            )
-          ], { concurrency: 2 })
-
-          yield* Effect.log(`Bundled ${options.path}`).pipe(
-            Effect.annotateLogs({ size: `${(sizeInBytes / 1000).toFixed(2)} kB` })
-          )
-
-          return new BundleStats({ path: options.path, sizeInBytes })
-        },
-        Effect.scoped
-      )
-
-      const bundleAll = Effect.fn("Rollup.bundleAll")(
-        function*(options: BundleAllOptions) {
-          return yield* Effect.forEach(
-            options.paths,
-            (path) => bundle({ path, visualize: options.visualize, outputDirectory: options.outputDirectory }),
-            // Rollup retains a module graph for each active bundle, so unbounded
-            // concurrency can exhaust the Node.js heap on CI runners.
-            { concurrency: 4 }
-          )
-        }
-      )
-
-      return {
-        bundle,
-        bundleAll
-      } as const
-    })
-  }
-) {
-  static readonly layer = Layer.effect(this, this.make)
+export interface Rollup extends RollupShape {
+  readonly [RollupTypeId]: typeof RollupTypeId
 }
+
+/**
+ * Service key for `Rollup` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Rollup = (() => {
+  const service = Object.assign(Context.Service<Rollup>("@effect/bundle/Rollup"), { make: RollupMake })
+  return Object.assign(service, { layer: Layer.effect(service, service.make) })
+})()

@@ -20,16 +20,22 @@ import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import { RunnerAddress } from "./RunnerAddress.ts"
 
+const ShardingConfigTypeId = "~effect/cluster/ShardingConfig"
+
 /**
  * Represents the configuration for the `Sharding` service on a given runner.
  *
  * @category services
  * @since 4.0.0
  */
-export class ShardingConfig extends Context.Service<ShardingConfig, {
+export interface ShardingConfig {
+  readonly [ShardingConfigTypeId]: typeof ShardingConfigTypeId
+
   /**
    * The address for the current runner that other runners can use to
    * communicate with it.
+   *
+   * **Details**
    *
    * If `None`, the runner is not part of the cluster and will be in a client-only
    * mode.
@@ -38,12 +44,16 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * The listen address for the current runner.
    *
+   * **Details**
+   *
    * Defaults to the `runnerAddress`.
    */
   readonly runnerListenAddress: Option.Option<RunnerAddress>
   /**
    * A number that determines how many shards this runner will be assigned
    * relative to other runners.
+   *
+   * **Details**
    *
    * Defaults to `1`.
    *
@@ -54,11 +64,15 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * The shard groups available across all runners.
    *
+   * **Details**
+   *
    * Defaults to `["default"]`.
    */
   readonly availableShardGroups: ReadonlyArray<string>
   /**
    * The shard groups that are assigned to this runner.
+   *
+   * **Details**
    *
    * Defaults to `["default"]`.
    */
@@ -66,11 +80,15 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * The number of shards to allocate per shard group.
    *
+   * **Details**
+   *
    * **Note**: this value should be consistent across all runners.
    */
   readonly shardsPerGroup: number
   /**
    * The maximum interval between shard lock refreshes.
+   *
+   * **Details**
    *
    * The runner may shorten this interval to one third of
    * `shardLockExpiration` to preserve enough time to stop entities safely if
@@ -88,6 +106,8 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * Start shutting down as soon as an Entity has started shutting down.
    *
+   * **Details**
+   *
    * Defaults to `true`.
    */
   readonly preemptiveShutdown: boolean
@@ -98,6 +118,8 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * The maximum number of entities that can be resident on this runner at the
    * same time.
+   *
+   * **Details**
    *
    * When the limit is reached, no new entities are spawned: the storage read
    * loop stops admitting messages for new entity addresses (they stay in
@@ -114,6 +136,8 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    * The maximum number of unprocessed messages read from storage in a single
    * poll.
    *
+   * **Details**
+   *
    * Defaults to `1024`.
    */
   readonly unprocessedMessageBatchSize: number
@@ -126,11 +150,15 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    * If an entity does not register itself within this time after a message is
    * sent to it, the message will be marked as failed.
    *
+   * **Details**
+   *
    * Defaults to 1 minute.
    */
   readonly entityRegistrationTimeout: Duration.Input
   /**
    * The maximum duration of time to wait for an entity to terminate.
+   *
+   * **Details**
    *
    * By default this is set to 15 seconds to stay within kubernetes defaults.
    */
@@ -161,7 +189,15 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    * entities.
    */
   readonly simulateRemoteSerialization: boolean
-}>()("effect/cluster/ShardingConfig") {}
+}
+
+/**
+ * Service key for `ShardingConfig` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const ShardingConfig = Context.Service<ShardingConfig>("effect/cluster/ShardingConfig")
 
 const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431 })
 
@@ -173,7 +209,8 @@ const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431
  * @category defaults
  * @since 4.0.0
  */
-export const defaults: ShardingConfig["Service"] = {
+export const defaults: ShardingConfig = {
+  [ShardingConfigTypeId]: ShardingConfigTypeId as typeof ShardingConfigTypeId,
   runnerAddress: Option.some(defaultRunnerAddress),
   runnerListenAddress: Option.none(),
   runnerShardWeight: 1,
@@ -228,7 +265,7 @@ export const defaults: ShardingConfig["Service"] = {
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options?: Partial<ShardingConfig["Service"]>): Layer.Layer<ShardingConfig> =>
+export const layer = (options?: Partial<ShardingConfig>): Layer.Layer<ShardingConfig> =>
   Layer.succeed(ShardingConfig)({ ...defaults, ...options })
 
 /**
@@ -246,7 +283,8 @@ export const layerDefaults: Layer.Layer<ShardingConfig> = layer()
  * @category configuration
  * @since 4.0.0
  */
-export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
+export const config: Config.Config<ShardingConfig> = Config.all({
+  [ShardingConfigTypeId]: Config.succeed(ShardingConfigTypeId as typeof ShardingConfigTypeId),
   runnerAddress: Config.all({
     host: Config.String("host").pipe(
       Config.withDefault(defaultRunnerAddress.host)
@@ -379,7 +417,7 @@ export const configFromEnv = config.pipe(
  * @category layers
  * @since 4.0.0
  */
-export const layerFromEnv = (options?: Partial<ShardingConfig["Service"]> | undefined): Layer.Layer<
+export const layerFromEnv = (options?: Partial<ShardingConfig> | undefined): Layer.Layer<
   ShardingConfig,
   Config.ConfigError
 > =>
@@ -394,7 +432,7 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Service"]> | unde
  * @category converting
  * @since 4.0.0
  */
-export const shardGroupConfig = (config: ShardingConfig["Service"]): {
+export const shardGroupConfig = (config: ShardingConfig): {
   readonly available: ReadonlySet<string>
   readonly assigned: ReadonlySet<string>
 } => {

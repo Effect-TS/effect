@@ -594,6 +594,8 @@ export interface AdaptiveFeedbackOptions {
   readonly retryAfter: Duration.Duration | undefined
 }
 
+const RateLimiterStoreTypeId = "~effect/persistence/RateLimiter/RateLimiterStore"
+
 /**
  * Defines the low-level backing store for rate-limit state.
  *
@@ -605,64 +607,76 @@ export interface AdaptiveFeedbackOptions {
  * @category services
  * @since 4.0.0
  */
-export class RateLimiterStore extends Context.Service<
-  RateLimiterStore,
-  {
-    /**
-     * Returns the token count *after* taking the specified `tokens` and time to
-     * live for the `key`.
-     *
-     * If `limit` is provided, the number of taken tokens will be capped at the
-     * limit.
-     *
-     * In the case the limit is exceeded, the returned count will be greater
-     * than the limit, but the TTL will not be updated.
-     */
-    readonly fixedWindow: (options: {
-      readonly key: string
-      readonly tokens: number
-      readonly refillRate: Duration.Duration
-      readonly limit: number | undefined
-    }) => Effect.Effect<readonly [count: number, ttl: number], RateLimiterError>
+export interface RateLimiterStore {
+  readonly [RateLimiterStoreTypeId]: typeof RateLimiterStoreTypeId
 
-    /**
-     * Refills the bucket for `key`, attempts to consume `tokens`, and returns
-     * `[remaining, elapsedMillis]` from that single atomic operation.
-     *
-     * `remaining` is the token count after subtracting `tokens`. Fractional counts
-     * must retain their numeric precision. A negative count is only persisted
-     * when `allowOverflow` is true.
-     *
-     * `elapsedMillis` is the time since the current refill interval started, in
-     * milliseconds (fractions preserved), always at least `0` and less than
-     * `Duration.toMillis(refillRate)`. It is `0` when the bucket is at capacity
-     * after refilling and before consuming. Otherwise the boundary advances by
-     * whole refill intervals and the interval never restarts.
-     */
-    readonly tokenBucket: (options: {
-      readonly key: string
-      readonly tokens: number
-      readonly limit: number
-      readonly refillRate: Duration.Duration
-      readonly allowOverflow: boolean
-    }) => Effect.Effect<readonly [remaining: number, elapsedMillis: number], RateLimiterError>
+  /**
+   * Returns the token count *after* taking the specified `tokens` and time to
+   * live for the `key`.
+   *
+   * **Details**
+   *
+   * If `limit` is provided, the number of taken tokens will be capped at the
+   * limit.
+   * In the case the limit is exceeded, the returned count will be greater
+   * than the limit, but the TTL will not be updated.
+   */
+  readonly fixedWindow: (options: {
+    readonly key: string
+    readonly tokens: number
+    readonly refillRate: Duration.Duration
+    readonly limit: number | undefined
+  }) => Effect.Effect<readonly [count: number, ttl: number], RateLimiterError>
 
-    /**
-     * Consumes tokens from the adaptive rate-limit state for the `key`.
-     *
-     * When the store has no adaptive state for the `key`, implementations
-     * should return a zero delay with the inactive phase.
-     */
-    readonly adaptiveConsume: (
-      options: AdaptiveConsumeOptions
-    ) => Effect.Effect<AdaptiveConsumeResult, RateLimiterError>
+  /**
+   * Refills the bucket for `key`, attempts to consume `tokens`, and returns
+   * `[remaining, elapsedMillis]` from that single atomic operation.
+   *
+   * **Details**
+   *
+   * `remaining` is the token count after subtracting `tokens`. Fractional counts
+   * must retain their numeric precision. A negative count is only persisted
+   * when `allowOverflow` is true.
+   *
+   * `elapsedMillis` is the time since the current refill interval started, in
+   * milliseconds (fractions preserved), always at least `0` and less than
+   * `Duration.toMillis(refillRate)`. It is `0` when the bucket is at capacity
+   * after refilling and before consuming. Otherwise the boundary advances by
+   * whole refill intervals and the interval never restarts.
+   */
+  readonly tokenBucket: (options: {
+    readonly key: string
+    readonly tokens: number
+    readonly limit: number
+    readonly refillRate: Duration.Duration
+    readonly allowOverflow: boolean
+  }) => Effect.Effect<readonly [remaining: number, elapsedMillis: number], RateLimiterError>
 
-    /**
-     * Records response feedback for the adaptive rate-limit state.
-     */
-    readonly adaptiveFeedback: (options: AdaptiveFeedbackOptions) => Effect.Effect<void, RateLimiterError>
-  }
->()("effect/persistence/RateLimiter/RateLimiterStore") {}
+  /**
+   * Consumes tokens from the adaptive rate-limit state for the `key`.
+   *
+   * **Details**
+   *
+   * When the store has no adaptive state for the `key`, implementations
+   * should return a zero delay with the inactive phase.
+   */
+  readonly adaptiveConsume: (
+    options: AdaptiveConsumeOptions
+  ) => Effect.Effect<AdaptiveConsumeResult, RateLimiterError>
+
+  /**
+   * Records response feedback for the adaptive rate-limit state.
+   */
+  readonly adaptiveFeedback: (options: AdaptiveFeedbackOptions) => Effect.Effect<void, RateLimiterError>
+}
+
+/**
+ * Service key for `RateLimiterStore` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const RateLimiterStore = Context.Service<RateLimiterStore>("effect/persistence/RateLimiter/RateLimiterStore")
 
 const adaptiveStateTtlGraceMillis = 60_000
 const adaptiveStateMaxWindowMillis = 60 * 60 * 1_000
@@ -715,6 +729,7 @@ export const layerStoreMemory: Layer.Layer<
     now + learnedWindowMillis + adaptiveStateTtlGraceMillis
 
   return RateLimiterStore.of({
+    [RateLimiterStoreTypeId]: RateLimiterStoreTypeId as typeof RateLimiterStoreTypeId,
     fixedWindow: (options) =>
       Effect.clockWith((clock) =>
         Effect.sync(() => {
@@ -923,6 +938,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   const adaptiveFeedback = redis.eval(adaptiveFeedbackScript)
 
   return RateLimiterStore.of({
+    [RateLimiterStoreTypeId]: RateLimiterStoreTypeId as typeof RateLimiterStoreTypeId,
     fixedWindow(options) {
       const key = `${prefix}${options.key}`
       const refillMillis = Duration.toMillis(options.refillRate)

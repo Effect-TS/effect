@@ -37,6 +37,8 @@ import * as Snowflake from "./Snowflake.ts"
 
 const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
 
+const MessageStorageTypeId = "~effect/cluster/MessageStorage"
+
 /**
  * Service for cluster mailbox persistence and reply delivery.
  *
@@ -49,7 +51,9 @@ const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
  * @category services
  * @since 4.0.0
  */
-export class MessageStorage extends Context.Service<MessageStorage, {
+export interface MessageStorage {
+  readonly [MessageStorageTypeId]: typeof MessageStorageTypeId
+
   /**
    * Save the provided message and its associated metadata.
    */
@@ -122,6 +126,8 @@ export class MessageStorage extends Context.Service<MessageStorage, {
 
   /**
    * Unregister the reply handlers for the specified ShardId.
+   *
+   * **Details**
    *
    * By default the waiters are resumed with `EntityNotAssignedToRunner`, so
    * they can re-route the wait. With `interrupt: true` the waiters are
@@ -198,7 +204,15 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
-}>()("effect/cluster/MessageStorage") {}
+}
+
+/**
+ * Service key for `MessageStorage` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const MessageStorage = Context.Service<MessageStorage>("effect/cluster/MessageStorage")
 
 /**
  * Result of saving a request or envelope into message storage.
@@ -489,8 +503,12 @@ export type EncodedRepliesOptions<A> = {
 export const make = (
   storage:
     & Omit<
-      MessageStorage["Service"],
-      "saveReply" | "registerReplyHandler" | "unregisterReplyHandler" | "unregisterShardReplyHandlers"
+      MessageStorage,
+      | typeof MessageStorageTypeId
+      | "saveReply"
+      | "registerReplyHandler"
+      | "unregisterReplyHandler"
+      | "unregisterShardReplyHandlers"
     >
     & {
       /**
@@ -504,7 +522,7 @@ export const make = (
         reply: Reply.ReplyWithContext<R>
       ) => Effect.Effect<Reply.ReplyWithContext<R>, PersistenceError | MalformedMessage>
     }
-): Effect.Effect<MessageStorage["Service"]> =>
+): Effect.Effect<MessageStorage> =>
   Effect.sync(() => {
     type ReplyHandler = {
       readonly message: Message.OutgoingRequest<any> | Message.IncomingRequest<any>
@@ -515,6 +533,7 @@ export const make = (
     const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
+      [MessageStorageTypeId]: MessageStorageTypeId as typeof MessageStorageTypeId,
       ...storage,
       registerReplyHandler: (message) => {
         const requestId = message.envelope.requestId
@@ -612,14 +631,14 @@ export const make = (
  * @since 4.0.0
  */
 export const makeEncoded: (encoded: Encoded) => Effect.Effect<
-  MessageStorage["Service"],
+  MessageStorage,
   never,
   Snowflake.Generator
 > = Effect.fnUntraced(function*(encoded: Encoded) {
   const snowflakeGen = yield* Snowflake.Generator
   const clock = yield* Clock
 
-  const storage: MessageStorage["Service"] = yield* make({
+  const storage: MessageStorage = yield* make({
     saveRequest: (message) =>
       Message.serializeEnvelope(message).pipe(
         Effect.flatMap((envelope) =>
@@ -697,7 +716,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
     unprocessedMessages(shardIds, options) {
-      const storage = this as unknown as MessageStorage["Service"]
+      const storage = this as unknown as MessageStorage
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.succeed([])
       if (options?.addresses !== undefined && options.addresses.length === 0) return Effect.succeed([])
@@ -707,7 +726,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       )
     },
     unprocessedMessagesById(messageIds) {
-      const storage = this as unknown as MessageStorage["Service"]
+      const storage = this as unknown as MessageStorage
       const ids = Array.from(messageIds)
       if (!Arr.isArrayNonEmpty(ids)) return Effect.succeed([])
       return Effect.flatMap(
@@ -727,7 +746,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
   })
 
   const decodeMessages = (
-    storage: MessageStorage["Service"],
+    storage: MessageStorage,
     envelopes: Array<{
       readonly envelope: Envelope.Encoded
       readonly lastSentReply: Option.Option<Reply.Encoded>
@@ -835,7 +854,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
  * @category constructors
  * @since 4.0.0
  */
-export const noop: MessageStorage["Service"] = Effect.runSync(make({
+export const noop: MessageStorage = Effect.runSync(make({
   saveRequest: () => Effect.succeed(SaveResult.Success()),
   saveEnvelope: () => Effect.void,
   saveReply: (reply) => Effect.succeed(reply),
@@ -883,6 +902,256 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
 // the same claim window the SQL driver uses (`last_read < ten minutes ago`)
 const claimExpirationMillis = 10 * 60 * 1000
 
+const MemoryDriverTypeId = "~effect/cluster/MessageStorage/MemoryDriver"
+const MemoryDriverMake = Effect.gen(function*() {
+  const clock = yield* Clock
+  const requests = new Map<string, MemoryEntry>()
+  const requestsByPrimaryKey = new Map<string, MemoryEntry>()
+  const unprocessed = new Set<Envelope.Encoded>()
+  const replyIds = new Set<string>()
+  const lastRead = new Map<Envelope.Encoded, number>()
+
+  const journal: Array<Envelope.Encoded> = []
+
+  const addressKey = (address: Envelope.Encoded["address"] | EntityAddress) =>
+    `${address.shardId.group}/${address.shardId.id}/${address.entityType}/${address.entityId}`
+
+  const resetAddresses = (addresses: ReadonlyArray<EntityAddress>) =>
+    addresses.length === 0
+      ? Effect.void
+      : Effect.sync(() => {
+        const keys = new Set(addresses.map(addressKey))
+        for (const envelope of journal) {
+          if (keys.has(addressKey(envelope.address))) {
+            lastRead.delete(envelope)
+          }
+        }
+      })
+
+  const cursors = new WeakMap<{}, number>()
+
+  const unprocessedWith = (predicate: Predicate<Envelope.Encoded>) => {
+    const messages: Array<{
+      readonly envelope: Envelope.Encoded
+      readonly lastSentReply: Option.Option<Reply.Encoded>
+    }> = []
+    const now = clock.currentTimeMillisUnsafe()
+    for (const envelope of unprocessed) {
+      if (!predicate(envelope)) {
+        continue
+      }
+      if (envelope._tag === "Request") {
+        const entry = requests.get(envelope.requestId)
+        if (entry?.deliverAt && entry.deliverAt > now) {
+          continue
+        }
+        messages.push({
+          envelope,
+          lastSentReply: Option.fromNullishOr(entry?.replies[entry.replies.length - 1])
+        })
+      } else {
+        messages.push({
+          envelope,
+          lastSentReply: Option.none()
+        })
+      }
+    }
+    return messages
+  }
+
+  const replyLatch = yield* Latch.make()
+
+  function repliesFor(requestIds: Array<string>) {
+    const replies = Arr.empty<Reply.Encoded>()
+    for (const requestId of requestIds) {
+      const request = requests.get(requestId)
+      if (!request) continue
+      else if (request.lastReceivedChunk === undefined) {
+        replies.push(...request.replies)
+        continue
+      }
+      const sequence = request.lastReceivedChunk.sequence
+      for (const reply of request.replies) {
+        if (reply._tag === "Chunk" && reply.sequence <= sequence) {
+          continue
+        }
+        replies.push(reply)
+      }
+    }
+    return replies
+  }
+
+  const encoded: Encoded = {
+    saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
+      Effect.sync(() => {
+        const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
+        const existing = primaryKey
+          ? requestsByPrimaryKey.get(primaryKey)
+          : envelope._tag === "Request" && requests.get(envelope.requestId)
+        if (existing) {
+          return SaveResultEncoded.Duplicate({
+            originalId: Snowflake.Snowflake(existing.envelope.requestId),
+            lastReceivedReply: Option.fromNullishOr(
+              existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
+                ? existing.replies[0]
+                : existing.lastReceivedChunk
+            )
+          })
+        }
+        if (envelope._tag === "Request") {
+          const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
+          requests.set(envelope.requestId, entry)
+          if (primaryKey) {
+            requestsByPrimaryKey.set(primaryKey, entry)
+          }
+        } else if (envelope._tag === "AckChunk") {
+          const entry = requests.get(envelope.requestId)
+          if (entry) {
+            entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+              r._tag === "Chunk" && r.id === envelope.replyId
+            ) ?? entry.lastReceivedChunk
+          }
+        }
+        unprocessed.add(envelope)
+        journal.push(envelope)
+        return SaveResultEncoded.Success()
+      }),
+    saveReply: (reply_) =>
+      Effect.sync(() => {
+        const reply = JSON.parse(JSON.stringify(reply_)) as Reply.Encoded
+        const entry = requests.get(reply.requestId)
+        if (!entry || replyIds.has(reply.id)) return
+        if (reply._tag === "WithExit") {
+          unprocessed.delete(entry.envelope)
+          lastRead.delete(entry.envelope)
+        }
+        entry.replies.push(reply)
+        replyIds.add(reply.id)
+        replyLatch.openUnsafe()
+      }),
+    clearReplies: (id) =>
+      Effect.sync(() => {
+        const entry = requests.get(String(id))
+        if (!entry) return
+        entry.replies = []
+        entry.lastReceivedChunk = undefined
+        unprocessed.add(entry.envelope)
+        lastRead.delete(entry.envelope)
+      }),
+    requestIdForPrimaryKey: (primaryKey) =>
+      Effect.sync(() => {
+        const entry = requestsByPrimaryKey.get(primaryKey)
+        return Option.map(Option.fromNullishOr(entry?.envelope.requestId), Snowflake.Snowflake)
+      }),
+    repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
+    repliesForUnfiltered: (requestIds) =>
+      Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
+    unprocessedMessages: (shardIds, now, options) =>
+      options?.addresses?.length === 0 ? Effect.succeed([]) : Effect.sync(() => {
+        if (unprocessed.size === 0) return []
+        const limit = options?.limit ?? Infinity
+        const addressFilter = options?.addresses && new Set(options.addresses.map(addressKey))
+        const messages = Arr.empty<{
+          envelope: Envelope.Encoded
+          lastSentReply: Option.Option<Reply.Encoded>
+        }>()
+        for (let index = 0; index < journal.length; index++) {
+          if (messages.length >= limit) break
+          const envelope = journal[index]
+          const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
+          if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
+            continue
+          }
+          if (addressFilter && !addressFilter.has(addressKey(envelope.address))) {
+            continue
+          }
+          if (envelope._tag === "Request") {
+            const entry = requests.get(envelope.requestId)!
+            if (entry.deliverAt && entry.deliverAt > now) {
+              continue
+            }
+            const claimedAt = lastRead.get(envelope)
+            if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
+              continue
+            }
+            messages.push({
+              envelope,
+              lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
+            })
+            lastRead.set(envelope, now)
+          } else {
+            messages.push({
+              envelope,
+              lastSentReply: Option.none()
+            })
+            unprocessed.delete(envelope)
+          }
+        }
+        return messages
+      }),
+    unprocessedMessagesById: (ids) =>
+      Effect.sync(() => {
+        const envelopeIds = new Set<string>()
+        for (const id of ids) {
+          envelopeIds.add(String(id))
+        }
+        return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
+      }),
+    resetAddresses,
+    clearAddress: (address) =>
+      Effect.sync(() => {
+        for (const [primaryKey, entry] of requestsByPrimaryKey) {
+          const envelope = entry.envelope
+          const sameAddress = address.entityType === envelope.address.entityType &&
+            address.entityId === envelope.address.entityId
+          if (sameAddress) {
+            requestsByPrimaryKey.delete(primaryKey)
+          }
+        }
+        for (let i = journal.length - 1; i >= 0; i--) {
+          const envelope = journal[i]
+          const sameAddress = address.entityType === envelope.address.entityType &&
+            address.entityId === envelope.address.entityId
+          if (!sameAddress) {
+            continue
+          }
+          unprocessed.delete(envelope)
+          lastRead.delete(envelope)
+          if (envelope._tag === "Request") {
+            requests.delete(envelope.requestId)
+          }
+          journal.splice(i, 1)
+        }
+      }),
+    resetShards: (shardIds) =>
+      Effect.sync(() => {
+        const shards = new Set(shardIds)
+        for (const envelope of journal) {
+          const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
+          if (shards.has(shardId.toString())) {
+            lastRead.delete(envelope)
+          }
+        }
+      }),
+    withTransaction: Effect.provideService(MemoryTransaction, true)
+  }
+
+  const storage = yield* makeEncoded(encoded)
+
+  return {
+    [MemoryDriverTypeId]: MemoryDriverTypeId as typeof MemoryDriverTypeId,
+    storage,
+    encoded,
+    requests,
+    requestsByPrimaryKey,
+    unprocessed,
+    replyIds,
+    journal,
+    cursors
+  } as const
+})
+type MemoryDriverShape = Effect.Success<typeof MemoryDriverMake>
+
 /**
  * Service that provides an in-memory message storage driver with inspectable backing state.
  *
@@ -895,263 +1164,26 @@ const claimExpirationMillis = 10 * 60 * 1000
  * @category services
  * @since 4.0.0
  */
-export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluster/MessageStorage/MemoryDriver", {
-  make: Effect.gen(function*() {
-    const clock = yield* Clock
-    const requests = new Map<string, MemoryEntry>()
-    const requestsByPrimaryKey = new Map<string, MemoryEntry>()
-    const unprocessed = new Set<Envelope.Encoded>()
-    const replyIds = new Set<string>()
-    const lastRead = new Map<Envelope.Encoded, number>()
-
-    const journal: Array<Envelope.Encoded> = []
-
-    const addressKey = (address: Envelope.Encoded["address"] | EntityAddress) =>
-      `${address.shardId.group}/${address.shardId.id}/${address.entityType}/${address.entityId}`
-
-    const resetAddresses = (addresses: ReadonlyArray<EntityAddress>) =>
-      addresses.length === 0
-        ? Effect.void
-        : Effect.sync(() => {
-          const keys = new Set(addresses.map(addressKey))
-          for (const envelope of journal) {
-            if (keys.has(addressKey(envelope.address))) {
-              lastRead.delete(envelope)
-            }
-          }
-        })
-
-    const cursors = new WeakMap<{}, number>()
-
-    const unprocessedWith = (predicate: Predicate<Envelope.Encoded>) => {
-      const messages: Array<{
-        readonly envelope: Envelope.Encoded
-        readonly lastSentReply: Option.Option<Reply.Encoded>
-      }> = []
-      const now = clock.currentTimeMillisUnsafe()
-      for (const envelope of unprocessed) {
-        if (!predicate(envelope)) {
-          continue
-        }
-        if (envelope._tag === "Request") {
-          const entry = requests.get(envelope.requestId)
-          if (entry?.deliverAt && entry.deliverAt > now) {
-            continue
-          }
-          messages.push({
-            envelope,
-            lastSentReply: Option.fromNullishOr(entry?.replies[entry.replies.length - 1])
-          })
-        } else {
-          messages.push({
-            envelope,
-            lastSentReply: Option.none()
-          })
-        }
-      }
-      return messages
-    }
-
-    const replyLatch = yield* Latch.make()
-
-    function repliesFor(requestIds: Array<string>) {
-      const replies = Arr.empty<Reply.Encoded>()
-      for (const requestId of requestIds) {
-        const request = requests.get(requestId)
-        if (!request) continue
-        else if (request.lastReceivedChunk === undefined) {
-          replies.push(...request.replies)
-          continue
-        }
-        const sequence = request.lastReceivedChunk.sequence
-        for (const reply of request.replies) {
-          if (reply._tag === "Chunk" && reply.sequence <= sequence) {
-            continue
-          }
-          replies.push(reply)
-        }
-      }
-      return replies
-    }
-
-    const encoded: Encoded = {
-      saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
-        Effect.sync(() => {
-          const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
-          const existing = primaryKey
-            ? requestsByPrimaryKey.get(primaryKey)
-            : envelope._tag === "Request" && requests.get(envelope.requestId)
-          if (existing) {
-            return SaveResultEncoded.Duplicate({
-              originalId: Snowflake.Snowflake(existing.envelope.requestId),
-              lastReceivedReply: Option.fromNullishOr(
-                existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
-                  ? existing.replies[0]
-                  : existing.lastReceivedChunk
-              )
-            })
-          }
-          if (envelope._tag === "Request") {
-            const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
-            requests.set(envelope.requestId, entry)
-            if (primaryKey) {
-              requestsByPrimaryKey.set(primaryKey, entry)
-            }
-          } else if (envelope._tag === "AckChunk") {
-            const entry = requests.get(envelope.requestId)
-            if (entry) {
-              entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                r._tag === "Chunk" && r.id === envelope.replyId
-              ) ?? entry.lastReceivedChunk
-            }
-          }
-          unprocessed.add(envelope)
-          journal.push(envelope)
-          return SaveResultEncoded.Success()
-        }),
-      saveReply: (reply_) =>
-        Effect.sync(() => {
-          const reply = JSON.parse(JSON.stringify(reply_)) as Reply.Encoded
-          const entry = requests.get(reply.requestId)
-          if (!entry || replyIds.has(reply.id)) return
-          if (reply._tag === "WithExit") {
-            unprocessed.delete(entry.envelope)
-            lastRead.delete(entry.envelope)
-          }
-          entry.replies.push(reply)
-          replyIds.add(reply.id)
-          replyLatch.openUnsafe()
-        }),
-      clearReplies: (id) =>
-        Effect.sync(() => {
-          const entry = requests.get(String(id))
-          if (!entry) return
-          entry.replies = []
-          entry.lastReceivedChunk = undefined
-          unprocessed.add(entry.envelope)
-          lastRead.delete(entry.envelope)
-        }),
-      requestIdForPrimaryKey: (primaryKey) =>
-        Effect.sync(() => {
-          const entry = requestsByPrimaryKey.get(primaryKey)
-          return Option.map(Option.fromNullishOr(entry?.envelope.requestId), Snowflake.Snowflake)
-        }),
-      repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
-      repliesForUnfiltered: (requestIds) =>
-        Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
-      unprocessedMessages: (shardIds, now, options) =>
-        options?.addresses?.length === 0 ? Effect.succeed([]) : Effect.sync(() => {
-          if (unprocessed.size === 0) return []
-          const limit = options?.limit ?? Infinity
-          const addressFilter = options?.addresses && new Set(options.addresses.map(addressKey))
-          const messages = Arr.empty<{
-            envelope: Envelope.Encoded
-            lastSentReply: Option.Option<Reply.Encoded>
-          }>()
-          for (let index = 0; index < journal.length; index++) {
-            if (messages.length >= limit) break
-            const envelope = journal[index]
-            const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
-            if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
-              continue
-            }
-            if (addressFilter && !addressFilter.has(addressKey(envelope.address))) {
-              continue
-            }
-            if (envelope._tag === "Request") {
-              const entry = requests.get(envelope.requestId)!
-              if (entry.deliverAt && entry.deliverAt > now) {
-                continue
-              }
-              const claimedAt = lastRead.get(envelope)
-              if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
-                continue
-              }
-              messages.push({
-                envelope,
-                lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
-              })
-              lastRead.set(envelope, now)
-            } else {
-              messages.push({
-                envelope,
-                lastSentReply: Option.none()
-              })
-              unprocessed.delete(envelope)
-            }
-          }
-          return messages
-        }),
-      unprocessedMessagesById: (ids) =>
-        Effect.sync(() => {
-          const envelopeIds = new Set<string>()
-          for (const id of ids) {
-            envelopeIds.add(String(id))
-          }
-          return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
-        }),
-      resetAddresses,
-      clearAddress: (address) =>
-        Effect.sync(() => {
-          for (const [primaryKey, entry] of requestsByPrimaryKey) {
-            const envelope = entry.envelope
-            const sameAddress = address.entityType === envelope.address.entityType &&
-              address.entityId === envelope.address.entityId
-            if (sameAddress) {
-              requestsByPrimaryKey.delete(primaryKey)
-            }
-          }
-          for (let i = journal.length - 1; i >= 0; i--) {
-            const envelope = journal[i]
-            const sameAddress = address.entityType === envelope.address.entityType &&
-              address.entityId === envelope.address.entityId
-            if (!sameAddress) {
-              continue
-            }
-            unprocessed.delete(envelope)
-            lastRead.delete(envelope)
-            if (envelope._tag === "Request") {
-              requests.delete(envelope.requestId)
-            }
-            journal.splice(i, 1)
-          }
-        }),
-      resetShards: (shardIds) =>
-        Effect.sync(() => {
-          const shards = new Set(shardIds)
-          for (const envelope of journal) {
-            const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
-            if (shards.has(shardId.toString())) {
-              lastRead.delete(envelope)
-            }
-          }
-        }),
-      withTransaction: Effect.provideService(MemoryTransaction, true)
-    }
-
-    const storage = yield* makeEncoded(encoded)
-
-    return {
-      storage,
-      encoded,
-      requests,
-      requestsByPrimaryKey,
-      unprocessed,
-      replyIds,
-      journal,
-      cursors
-    } as const
-  })
-}) {
-  /**
-   * Layer that provides the in-memory message storage driver.
-   *
-   * @since 4.0.0
-   */
-  static readonly layer: Layer.Layer<MemoryDriver> = Layer.effect(this)(this.make).pipe(
-    Layer.provide(Snowflake.layerGenerator)
-  )
+export interface MemoryDriver extends MemoryDriverShape {
+  readonly [MemoryDriverTypeId]: typeof MemoryDriverTypeId
 }
+
+/**
+ * Service key for `MemoryDriver` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const MemoryDriver = (() => {
+  const service = Object.assign(Context.Service<MemoryDriver>("effect/cluster/MessageStorage/MemoryDriver"), {
+    make: MemoryDriverMake
+  })
+  return Object.assign(service, {
+    layer: Layer.effect(service)(service.make).pipe(
+      Layer.provide(Snowflake.layerGenerator)
+    )
+  })
+})()
 
 /**
  * Layer that provides the no-op `MessageStorage` service.

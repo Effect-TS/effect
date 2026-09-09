@@ -104,6 +104,8 @@ export class IndexedDbDatabaseError extends Data.TaggedError(
   override readonly message = this.reason
 }
 
+const IndexedDbDatabaseTypeId = "~@effect/platform-browser/IndexedDbDatabase"
+
 /**
  * Service tag for an open IndexedDB database, its `IDBKeyRange` constructor, reactivity service, and rebuild effect.
  *
@@ -129,15 +131,22 @@ export class IndexedDbDatabaseError extends Data.TaggedError(
  * @category services
  * @since 4.0.0
  */
-export class IndexedDbDatabase extends Context.Service<
-  IndexedDbDatabase,
-  {
-    readonly database: MutableRef.MutableRef<globalThis.IDBDatabase>
-    readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-    readonly reactivity: Reactivity.Reactivity["Service"]
-    readonly rebuild: Effect.Effect<void, IndexedDbDatabaseError>
-  }
->()(TypeId) {}
+export interface IndexedDbDatabase {
+  readonly [IndexedDbDatabaseTypeId]: typeof IndexedDbDatabaseTypeId
+
+  readonly database: MutableRef.MutableRef<globalThis.IDBDatabase>
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+  readonly reactivity: Reactivity.Reactivity
+  readonly rebuild: Effect.Effect<void, IndexedDbDatabaseError>
+}
+
+/**
+ * Service key for `IndexedDbDatabase` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const IndexedDbDatabase = Context.Service<IndexedDbDatabase>(TypeId)
 
 /**
  * Describes an IndexedDB schema version and its migrations, and acts as an effect that yields a query builder for the target version.
@@ -528,7 +537,13 @@ const layer = <DatabaseName extends string>(
         rebuildLock
       )
 
-      return IndexedDbDatabase.of({ database, IDBKeyRange, rebuild, reactivity })
+      return IndexedDbDatabase.of({
+        [IndexedDbDatabaseTypeId]: IndexedDbDatabaseTypeId as typeof IndexedDbDatabaseTypeId,
+        database,
+        IDBKeyRange,
+        rebuild,
+        reactivity
+      })
     })
   ).pipe(
     Layer.provide(Reactivity.layer)
@@ -553,7 +568,7 @@ const makeTransactionProto = <Source extends IndexedDbVersion.AnyWithProps>({
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
   readonly tables: ReadonlyMap<string, IndexedDbVersion.Tables<Source>>
   readonly transaction: globalThis.IDBTransaction
-  readonly reactivity: Reactivity.Reactivity["Service"]
+  readonly reactivity: Reactivity.Reactivity
 }): Transaction<Source> => {
   const migration = IndexedDbQueryBuilder.make({
     database,

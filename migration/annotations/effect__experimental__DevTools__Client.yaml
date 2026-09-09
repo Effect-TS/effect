@@ -1,8 +1,8 @@
 "@effect/experimental/DevTools/Client#Client":
   replacement: effect/unstable/devtools/DevToolsClient#DevToolsClient
-  note: Client was renamed to the DevToolsClient Context.Service class.
+  note: Client was renamed to the DevToolsClient Context.Service value and same-name interface.
 "@effect/experimental/DevTools/Client#ClientImpl":
-  replacement: effect/unstable/devtools/DevToolsClient#DevToolsClient["Service"]
+  replacement: effect/unstable/devtools/DevToolsClient#DevToolsClient
   note: Use the service shape from DevToolsClient; unsafeAddSpan was replaced by sendUnsafe.
 "@effect/experimental/DevTools/Client#layer":
   replacement: effect/unstable/devtools/DevToolsClient#layer

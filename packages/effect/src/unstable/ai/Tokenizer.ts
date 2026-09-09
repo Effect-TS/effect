@@ -16,6 +16,8 @@ import * as Predicate from "../../Predicate.ts"
 import type * as AiError from "./AiError.ts"
 import * as Prompt from "./Prompt.ts"
 
+const TokenizerTypeId = "~effect/ai/Tokenizer"
+
 /**
  * Service tag for model tokenization services.
  *
@@ -51,9 +53,17 @@ import * as Prompt from "./Prompt.ts"
  * @category services
  * @since 4.0.0
  */
-export class Tokenizer extends Context.Service<Tokenizer, Service>()(
-  "effect/ai/Tokenizer"
-) {}
+export interface Tokenizer extends Service {
+  readonly [TokenizerTypeId]: typeof TokenizerTypeId
+}
+
+/**
+ * Service key for `Tokenizer` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Tokenizer = Context.Service<Tokenizer>("effect/ai/Tokenizer")
 
 /**
  * Tokenizer service interface providing text tokenization and truncation
@@ -71,11 +81,10 @@ export class Tokenizer extends Context.Service<Tokenizer, Service>()(
  * import { Prompt } from "effect/unstable/ai"
  * import type { Tokenizer } from "effect/unstable/ai"
  *
- * const customTokenizer: Tokenizer.Service = {
- *   tokenize: (input) =>
- *     Effect.succeed(input.toString().split(" ").map((_, i) => i)),
- *   truncate: (input, maxTokens) =>
- *     Effect.succeed(Prompt.make(input.toString().slice(0, maxTokens * 5)))
+ * const customTokenizer: Tokenizer.Tokenizer = {
+ *   ["~effect/ai/Tokenizer"]: "~effect/ai/Tokenizer",
+ *   tokenize: (input) => Effect.succeed(input.toString().split(" ").map((_, i) => i)),
+ *   truncate: (input, maxTokens) => Effect.succeed(Prompt.make(input.toString().slice(0, maxTokens * 5)))
  * }
  *
  * const tokenCount = (await Effect.runPromise(customTokenizer.tokenize("one two three"))).length // => 3
@@ -86,6 +95,8 @@ export class Tokenizer extends Context.Service<Tokenizer, Service>()(
  * @since 4.0.0
  */
 export interface Service {
+  readonly [TokenizerTypeId]: typeof TokenizerTypeId
+
   /**
    * Converts text input into an array of token numbers.
    */
@@ -151,6 +162,7 @@ export const make = (options: {
   readonly tokenize: (content: Prompt.Prompt) => Effect.Effect<Array<number>, AiError.AiError>
 }): Service =>
   Tokenizer.of({
+    [TokenizerTypeId]: TokenizerTypeId as typeof TokenizerTypeId,
     tokenize(input) {
       return options.tokenize(Prompt.make(input))
     },

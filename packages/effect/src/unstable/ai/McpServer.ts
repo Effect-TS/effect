@@ -168,6 +168,8 @@ const toInternalServerNotification = (
   }
 }
 
+const McpServerTypeId = "~effect/ai/McpServer"
+
 /**
  * Service that stores and serves an MCP server's registered tools, resources,
  * prompts, completions, and outgoing notifications.
@@ -180,7 +182,9 @@ const toInternalServerNotification = (
  * @category services
  * @since 4.0.0
  */
-export class McpServer extends Context.Service<McpServer, {
+export interface McpServer {
+  readonly [McpServerTypeId]: typeof McpServerTypeId
+
   readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>>
   readonly notifyElicitationComplete: (options: {
     readonly clientId: number
@@ -266,343 +270,357 @@ export class McpServer extends Context.Service<McpServer, {
   readonly completion: (
     complete: typeof Complete.payloadSchema.Type
   ) => Effect.Effect<CompleteResult, InvalidParams | InternalError, McpServerClient>
-}>()("effect/ai/McpServer") {
-  /**
-   * Builds an MCP server service from registered tools, prompts, resources, and completions.
-   *
-   * @since 4.0.0
-   */
-  static readonly make = Effect.gen(function*() {
-    const internalCore = yield* McpCore.make
-    const tools = Arr.empty<{
-      readonly tool: McpTool
-      readonly annotations: Context.Context<never>
-    }>()
-    const resources: Array<{
-      readonly resource: Resource
-      readonly annotations: Context.Context<never>
-    }> = []
-    const resourceTemplates: Array<{
-      readonly template: ResourceTemplate
-      readonly annotations: Context.Context<never>
-    }> = []
-    const prompts: Array<{
-      readonly prompt: Prompt
-      readonly annotations: Context.Context<never>
-    }> = []
-    const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
-    const listChangedHandles = new Map<string, any>()
-    const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
-      spanPrefix: "McpServer/Notifications",
-      onFromClient: (options) =>
-        Effect.suspend((): Effect.Effect<void> => {
-          const message = options.message
-          if (message._tag !== "Request") {
-            return Effect.void
-          }
-          const notification = toInternalServerNotification(message)
-          if (notification === undefined) {
-            return Effect.void
-          }
-          if (message.tag.includes("list_changed")) {
-            if (!listChangedHandles.has(message.tag)) {
-              listChangedHandles.set(
-                message.tag,
-                setTimeout(() => {
-                  Queue.offerUnsafe(notificationsQueue, { notification })
-                  listChangedHandles.delete(message.tag)
-                }, 0)
-              )
-            }
-          } else {
-            Queue.offerUnsafe(notificationsQueue, { notification })
-          }
-          return notifications.write({
-            clientId: 0,
-            requestId: message.id,
-            _tag: "Exit",
-            exit: Exit.void
-          })
-        })
-    })
+}
 
-    const service = McpServer.of({
-      notifications: notifications.client,
-      notifyElicitationComplete: ({ clientId, elicitationId }) =>
-        Queue.offer(notificationsQueue, {
-          notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
-          targetClientId: clientId
-        }),
-      initializedClients: new Set(),
-      get tools() {
-        return tools
-      },
-      addTool: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
-          if (existingIndex === -1) {
-            tools.push(options)
-          } else {
-            tools[existingIndex] = options
-          }
-          const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-          yield* internalCore.tools.register({
-            descriptor: new McpTool({
-              ...options.tool,
-              title: options.tool.title ?? options.tool.annotations?.title
-            }),
-            isVisible: (profile) =>
-              enabledWhen === undefined || enabledWhen(
-                {
-                  protocolVersion: profile.protocolVersion,
-                  capabilities: profile.clientCapabilities,
-                  clientInfo: profile.clientInfo
-                }
-              ),
-            handle: (call, invocation) =>
-              options.handle(call.arguments).pipe(
-                Effect.provideService(
-                  McpServerClient,
-                  invocation.requestContext
+/**
+ * Service key for `McpServer` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const McpServer = (() => {
+  const service = Context.Service<McpServer>("effect/ai/McpServer")
+  const service1 = Object.assign(service, {
+    /**
+     * Builds an MCP server service from registered tools, prompts, resources, and completions.
+     *
+     * @since 4.0.0
+     */
+    make: Effect.gen(function*() {
+      const internalCore = yield* McpCore.make
+      const tools = Arr.empty<{
+        readonly tool: McpTool
+        readonly annotations: Context.Context<never>
+      }>()
+      const resources: Array<{
+        readonly resource: Resource
+        readonly annotations: Context.Context<never>
+      }> = []
+      const resourceTemplates: Array<{
+        readonly template: ResourceTemplate
+        readonly annotations: Context.Context<never>
+      }> = []
+      const prompts: Array<{
+        readonly prompt: Prompt
+        readonly annotations: Context.Context<never>
+      }> = []
+      const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
+      const listChangedHandles = new Map<string, any>()
+      const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
+        spanPrefix: "McpServer/Notifications",
+        onFromClient: (options) =>
+          Effect.suspend((): Effect.Effect<void> => {
+            const message = options.message
+            if (message._tag !== "Request") {
+              return Effect.void
+            }
+            const notification = toInternalServerNotification(message)
+            if (notification === undefined) {
+              return Effect.void
+            }
+            if (message.tag.includes("list_changed")) {
+              if (!listChangedHandles.has(message.tag)) {
+                listChangedHandles.set(
+                  message.tag,
+                  setTimeout(() => {
+                    Queue.offerUnsafe(notificationsQueue, { notification })
+                    listChangedHandles.delete(message.tag)
+                  }, 0)
+                )
+              }
+            } else {
+              Queue.offerUnsafe(notificationsQueue, { notification })
+            }
+            return notifications.write({
+              clientId: 0,
+              requestId: message.id,
+              _tag: "Exit",
+              exit: Exit.void
+            })
+          })
+      })
+
+      const service: McpServer = {
+        [McpServerTypeId]: McpServerTypeId as typeof McpServerTypeId,
+        notifications: notifications.client,
+        notifyElicitationComplete: ({ clientId, elicitationId }) =>
+          Queue.offer(notificationsQueue, {
+            notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
+            targetClientId: clientId
+          }),
+        initializedClients: new Set(),
+        get tools() {
+          return tools
+        },
+        addTool: (options) =>
+          Effect.gen(function*() {
+            const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
+            if (existingIndex === -1) {
+              tools.push(options)
+            } else {
+              tools[existingIndex] = options
+            }
+            const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+            yield* internalCore.tools.register({
+              descriptor: new McpTool({
+                ...options.tool,
+                title: options.tool.title ?? options.tool.annotations?.title
+              }),
+              isVisible: (profile) =>
+                enabledWhen === undefined || enabledWhen(
+                  {
+                    protocolVersion: profile.protocolVersion,
+                    capabilities: profile.clientCapabilities,
+                    clientInfo: profile.clientInfo
+                  }
                 ),
-                Effect.catchTags({
-                  InternalError: (error) =>
-                    Effect.fail(
-                      new McpCore.ToolExecutionError({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    ),
-                  InvalidParams: (error) =>
-                    Effect.fail(
-                      new McpCore.InvalidToolInput({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    )
-                }),
-                Effect.flatMap((result) =>
-                  result.structuredContent === undefined
-                    ? Effect.succeed(result)
-                    : validateStructuredContent(options.tool.name, result.structuredContent).pipe(
-                      Effect.as(result)
-                    )
-                )
-              )
-          })
-          yield* notifications.client["notifications/tools/list_changed"]({})
-        }),
-      callTool: (request) =>
-        Effect.gen(function*() {
-          const client = yield* McpServerClient
-          const result = yield* internalCore.tools.call(request, {
-            clientId: client.clientId,
-            protocol: {
-              protocolVersion: client.protocolVersion,
-              clientCapabilities: client.initializePayload.capabilities,
-              clientInfo: client.initializePayload.clientInfo
-            },
-            requestContext: client
-          }).pipe(
-            Effect.mapError((error) =>
-              new InvalidParams({
-                message: error._tag === "ToolNotFound"
-                  ? `Tool '${error.name}' not found`
-                  : error.message
-              })
-            )
-          )
-          return result
-        }),
-      get resources() {
-        return resources
-      },
-      get resourceTemplates() {
-        return resourceTemplates
-      },
-      addResource: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
-          if (existingIndex === -1) {
-            resources.push(options)
-          } else {
-            resources[existingIndex] = options
-          }
-          yield* internalCore.resources.register({
-            descriptor: options.resource,
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
-            read: (invocation) =>
-              options.handle.pipe(
-                Effect.provideService(McpServerClient, invocation.requestContext)
-              )
-          })
-          yield* notifications.client["notifications/resources/list_changed"]({})
-        }),
-      addResourceTemplate: ({ annotations, completions, handle, routerPath, template }) =>
-        Effect.gen(function*() {
-          const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
-            current.uriTemplate === template.uriTemplate
-          )
-          if (existingIndex === -1) {
-            resourceTemplates.push({ template, annotations })
-          } else {
-            resourceTemplates[existingIndex] = { template, annotations }
-          }
-          const templateMatcher = makeUriMatcher<true>()
-          templateMatcher.add(routerPath, true)
-          yield* internalCore.resources.registerTemplate({
-            descriptor: template,
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
-            match: (uri) => {
-              const match = templateMatcher.find(uri)
-              if (match === undefined) {
-                return undefined
-              }
-              const params: Array<string> = []
-              for (const key of Object.keys(match.params)) {
-                params[Number(key)] = match.params[key]!
-              }
-              return params
-            },
-            read: (uri, params, invocation) =>
-              handle(uri, Array.from(params)).pipe(
-                Effect.provideService(McpServerClient, invocation.requestContext)
-              )
-          })
-          for (const [param, handle] of Object.entries(completions)) {
-            yield* internalCore.completions.register(
-              `resource/${template.uriTemplate}/${param}`,
-              (request) =>
-                handle(request.argument.value, request.context).pipe(
-                  Effect.map((result) => ({
-                    values: result.completion.values,
-                    total: result.completion.total,
-                    hasMore: result.completion.hasMore,
-                    metadata: result._meta
-                  }))
-                )
-            )
-          }
-          yield* notifications.client["notifications/resources/list_changed"]({})
-        }),
-      findResource: (uri) =>
-        Effect.gen(function*() {
-          const client = yield* McpServerClient
-          return yield* internalCore.resources.read(uri, {
-            clientId: client.clientId,
-            protocol: {
-              protocolVersion: client.protocolVersion,
-              clientCapabilities: client.clientCapabilities,
-              clientInfo: client.clientInfo,
-              requestMetadata: client.initializePayload._meta
-            },
-            requestContext: client
-          }).pipe(
-            Effect.catchTag("ResourceNotFound", (error) =>
-              Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })))
-          )
-        }),
-      get prompts() {
-        return prompts
-      },
-      addPrompt: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = prompts.findIndex(({ prompt }) => prompt.name === options.prompt.name)
-          if (existingIndex === -1) {
-            prompts.push(options)
-          } else {
-            prompts[existingIndex] = options
-          }
-          yield* internalCore.prompts.register({
-            descriptor: options.prompt,
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
-            get: (params, invocation) =>
-              options.handle(params).pipe(
-                Effect.provideService(McpServerClient, invocation.requestContext)
-              )
-          })
-          for (const [param, handle] of Object.entries(options.completions)) {
-            yield* internalCore.completions.register(
-              `prompt/${options.prompt.name}/${param}`,
-              (request, invocation) =>
-                handle(request.argument.value, request.context).pipe(
+              handle: (call, invocation) =>
+                options.handle(call.arguments).pipe(
                   Effect.provideService(
                     McpServerClient,
                     invocation.requestContext
                   ),
-                  Effect.map((result) => ({
-                    values: result.completion.values,
-                    total: result.completion.total,
-                    hasMore: result.completion.hasMore,
-                    metadata: result._meta
-                  }))
+                  Effect.catchTags({
+                    InternalError: (error) =>
+                      Effect.fail(
+                        new McpCore.ToolExecutionError({
+                          name: options.tool.name,
+                          message: error.message
+                        })
+                      ),
+                    InvalidParams: (error) =>
+                      Effect.fail(
+                        new McpCore.InvalidToolInput({
+                          name: options.tool.name,
+                          message: error.message
+                        })
+                      )
+                  }),
+                  Effect.flatMap((result) =>
+                    result.structuredContent === undefined
+                      ? Effect.succeed(result)
+                      : validateStructuredContent(options.tool.name, result.structuredContent).pipe(
+                        Effect.as(result)
+                      )
+                  )
                 )
+            })
+            yield* notifications.client["notifications/tools/list_changed"]({})
+          }),
+        callTool: (request) =>
+          Effect.gen(function*() {
+            const client = yield* McpServerClient
+            const result = yield* internalCore.tools.call(request, {
+              clientId: client.clientId,
+              protocol: {
+                protocolVersion: client.protocolVersion,
+                clientCapabilities: client.initializePayload.capabilities,
+                clientInfo: client.initializePayload.clientInfo
+              },
+              requestContext: client
+            }).pipe(
+              Effect.mapError((error) =>
+                new InvalidParams({
+                  message: error._tag === "ToolNotFound"
+                    ? `Tool '${error.name}' not found`
+                    : error.message
+                })
+              )
             )
-          }
-          yield* notifications.client["notifications/prompts/list_changed"]({})
+            return result
+          }),
+        get resources() {
+          return resources
+        },
+        get resourceTemplates() {
+          return resourceTemplates
+        },
+        addResource: (options) =>
+          Effect.gen(function*() {
+            const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
+            if (existingIndex === -1) {
+              resources.push(options)
+            } else {
+              resources[existingIndex] = options
+            }
+            yield* internalCore.resources.register({
+              descriptor: options.resource,
+              isVisible: (profile) => {
+                const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+                return enabledWhen === undefined || enabledWhen({
+                  protocolVersion: profile.protocolVersion,
+                  capabilities: profile.clientCapabilities,
+                  clientInfo: profile.clientInfo
+                })
+              },
+              read: (invocation) =>
+                options.handle.pipe(
+                  Effect.provideService(McpServerClient, invocation.requestContext)
+                )
+            })
+            yield* notifications.client["notifications/resources/list_changed"]({})
+          }),
+        addResourceTemplate: ({ annotations, completions, handle, routerPath, template }) =>
+          Effect.gen(function*() {
+            const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
+              current.uriTemplate === template.uriTemplate
+            )
+            if (existingIndex === -1) {
+              resourceTemplates.push({ template, annotations })
+            } else {
+              resourceTemplates[existingIndex] = { template, annotations }
+            }
+            const templateMatcher = makeUriMatcher<true>()
+            templateMatcher.add(routerPath, true)
+            yield* internalCore.resources.registerTemplate({
+              descriptor: template,
+              isVisible: (profile) => {
+                const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
+                return enabledWhen === undefined || enabledWhen({
+                  protocolVersion: profile.protocolVersion,
+                  capabilities: profile.clientCapabilities,
+                  clientInfo: profile.clientInfo
+                })
+              },
+              match: (uri) => {
+                const match = templateMatcher.find(uri)
+                if (match === undefined) {
+                  return undefined
+                }
+                const params: Array<string> = []
+                for (const key of Object.keys(match.params)) {
+                  params[Number(key)] = match.params[key]!
+                }
+                return params
+              },
+              read: (uri, params, invocation) =>
+                handle(uri, Array.from(params)).pipe(
+                  Effect.provideService(McpServerClient, invocation.requestContext)
+                )
+            })
+            for (const [param, handle] of Object.entries(completions)) {
+              yield* internalCore.completions.register(
+                `resource/${template.uriTemplate}/${param}`,
+                (request) =>
+                  handle(request.argument.value, request.context).pipe(
+                    Effect.map((result) => ({
+                      values: result.completion.values,
+                      total: result.completion.total,
+                      hasMore: result.completion.hasMore,
+                      metadata: result._meta
+                    }))
+                  )
+              )
+            }
+            yield* notifications.client["notifications/resources/list_changed"]({})
+          }),
+        findResource: (uri) =>
+          Effect.gen(function*() {
+            const client = yield* McpServerClient
+            return yield* internalCore.resources.read(uri, {
+              clientId: client.clientId,
+              protocol: {
+                protocolVersion: client.protocolVersion,
+                clientCapabilities: client.clientCapabilities,
+                clientInfo: client.clientInfo,
+                requestMetadata: client.initializePayload._meta
+              },
+              requestContext: client
+            }).pipe(
+              Effect.catchTag("ResourceNotFound", (error) =>
+                Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })))
+            )
+          }),
+        get prompts() {
+          return prompts
+        },
+        addPrompt: (options) =>
+          Effect.gen(function*() {
+            const existingIndex = prompts.findIndex(({ prompt }) => prompt.name === options.prompt.name)
+            if (existingIndex === -1) {
+              prompts.push(options)
+            } else {
+              prompts[existingIndex] = options
+            }
+            yield* internalCore.prompts.register({
+              descriptor: options.prompt,
+              isVisible: (profile) => {
+                const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+                return enabledWhen === undefined || enabledWhen({
+                  protocolVersion: profile.protocolVersion,
+                  capabilities: profile.clientCapabilities,
+                  clientInfo: profile.clientInfo
+                })
+              },
+              get: (params, invocation) =>
+                options.handle(params).pipe(
+                  Effect.provideService(McpServerClient, invocation.requestContext)
+                )
+            })
+            for (const [param, handle] of Object.entries(options.completions)) {
+              yield* internalCore.completions.register(
+                `prompt/${options.prompt.name}/${param}`,
+                (request, invocation) =>
+                  handle(request.argument.value, request.context).pipe(
+                    Effect.provideService(
+                      McpServerClient,
+                      invocation.requestContext
+                    ),
+                    Effect.map((result) => ({
+                      values: result.completion.values,
+                      total: result.completion.total,
+                      hasMore: result.completion.hasMore,
+                      metadata: result._meta
+                    }))
+                  )
+              )
+            }
+            yield* notifications.client["notifications/prompts/list_changed"]({})
+          }),
+        getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
+          const client = yield* McpServerClient
+          return yield* internalCore.prompts.get(
+            name,
+            params ?? {},
+            McpProtocolInternal.invocationFromClient(client)
+          ).pipe(
+            Effect.catchTag("PromptNotFound", () => new InvalidParams({ message: `Prompt '${name}' not found` }))
+          )
         }),
-      getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
-        const client = yield* McpServerClient
-        return yield* internalCore.prompts.get(
-          name,
-          params ?? {},
-          McpProtocolInternal.invocationFromClient(client)
-        ).pipe(
-          Effect.catchTag("PromptNotFound", () => new InvalidParams({ message: `Prompt '${name}' not found` }))
-        )
-      }),
-      completion: Effect.fnUntraced(function*(complete) {
-        const client = yield* McpServerClient
-        const ref = complete.ref
-        const result = yield* internalCore.completions.complete({
-          reference: ref.type === "ref/resource"
-            ? { type: "resourceTemplate", uriTemplate: ref.uri }
-            : { type: "prompt", name: ref.name },
-          argument: complete.argument,
-          context: complete.context
-        }, McpProtocolInternal.invocationFromClient(client))
-        return {
-          _meta: result.metadata,
-          completion: {
-            values: result.values,
-            total: result.total,
-            hasMore: result.hasMore
+        completion: Effect.fnUntraced(function*(complete) {
+          const client = yield* McpServerClient
+          const ref = complete.ref
+          const result = yield* internalCore.completions.complete({
+            reference: ref.type === "ref/resource"
+              ? { type: "resourceTemplate", uriTemplate: ref.uri }
+              : { type: "prompt", name: ref.name },
+            argument: complete.argument,
+            context: complete.context
+          }, McpProtocolInternal.invocationFromClient(client))
+          return {
+            _meta: result.metadata,
+            completion: {
+              values: result.values,
+              total: result.total,
+              hasMore: result.hasMore
+            }
           }
-        }
-      })
+        })
+      }
+      internalState.set(service, { core: internalCore, notifications: notificationsQueue })
+      return service
     })
-    internalState.set(service, { core: internalCore, notifications: notificationsQueue })
-    return service
   })
-
-  /**
-   * Layer that provides the MCP server and client services.
-   *
-   * @since 4.0.0
-   */
-  static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
-}
+  const service2 = Object.assign(service1, {
+    /**
+     * Layer that provides the MCP server and client services.
+     *
+     * @since 4.0.0
+     */
+    layer: Layer.effect(service1)(service1.make) as Layer.Layer<McpServer | McpServerClient>
+  })
+  return service2
+})()
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
@@ -631,10 +649,22 @@ class McpClientKey extends Data.Class<{
   readonly profile: McpCore.NegotiatedProtocolProfile
 }> {}
 
-class McpProtocolState extends Context.Service<McpProtocolState, {
+const McpProtocolStateTypeId = "~effect/ai/McpServer/McpProtocolState"
+
+interface McpProtocolState {
+  readonly [McpProtocolStateTypeId]: typeof McpProtocolStateTypeId
+
   readonly sessions: Sessions
   readonly protocolRegistry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
-}>()("effect/ai/McpServer/McpProtocolState") {}
+}
+
+/**
+ * Service key for `McpProtocolState` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+const McpProtocolState = Context.Service<McpProtocolState>("effect/ai/McpServer/McpProtocolState")
 
 const makeMcpProtocolState = Effect.fnUntraced(function*(
   protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
@@ -643,6 +673,7 @@ const makeMcpProtocolState = Effect.fnUntraced(function*(
   // before v2026-07-28. The strategy must let sessionful revisions pin a profile
   // after initialize while stateless revisions select and derive it per request.
   return McpProtocolState.of({
+    [McpProtocolStateTypeId]: McpProtocolStateTypeId as typeof McpProtocolStateTypeId,
     sessions: {
       bySessionId: new Map(),
       byClientId: new Map()
@@ -703,7 +734,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
-}, protocolState: McpProtocolState["Service"]) {
+}, protocolState: McpProtocolState) {
   const protocolRegistry = protocolState.protocolRegistry
   const serverScope = yield* Effect.scope
   const protocol = yield* RpcServer.Protocol
@@ -792,6 +823,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         effect,
         McpServerClient,
         McpServerClient.of({
+          ["~effect/ai/McpSchema/McpServerClient"]: "~effect/ai/McpSchema/McpServerClient" as const,
           clientId: client.id,
           protocolVersion: session?.negotiatedProfile.protocolVersion ?? selectedProtocol.protocolVersion,
           clientCapabilities: profile.clientCapabilities,
@@ -1233,11 +1265,12 @@ export const layerStdio = (options: {
 
 const mcpStdioSerialization = (
   protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
-): RpcSerialization.RpcSerialization["Service"] => {
+): RpcSerialization.RpcSerialization => {
   const serialization = RpcSerialization.jsonRpc({
     contentType: "application/json-rpc"
   })
   return RpcSerialization.RpcSerialization.of({
+    ["~effect/rpc/RpcSerialization"]: "~effect/rpc/RpcSerialization" as const,
     contentType: serialization.contentType,
     includesFraming: true,
     codecFor: serialization.codecFor,

@@ -131,9 +131,9 @@ export const deriveIdentityRootSecretMaterial = Effect.fnUntraced(function*(opti
 
 /** @internal */
 export const makeGetIdentityRootSecretMaterial = (crypto: Crypto) => {
-  const cache = new WeakMap<Identity["Service"], IdentityRootSecretMaterial>()
+  const cache = new WeakMap<Identity, IdentityRootSecretMaterial>()
 
-  return Effect.fnUntraced(function*(identity: Identity["Service"]) {
+  return Effect.fnUntraced(function*(identity: Identity) {
     const cached = cache.get(identity)
     if (cached !== undefined) {
       return cached

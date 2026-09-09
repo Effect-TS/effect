@@ -526,9 +526,12 @@ const runImpl = <A, E, R, XE extends E, XA extends A>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Fiber, FiberSet } from "effect"
  *
- * class Users extends Context.Service<Users, {
+ * interface Users {
+ *   readonly ["~Users"]: "~Users"
+ *
  *   readonly getAll: Effect.Effect<Array<unknown>>
- * }>()("Users") {}
+ * }
+ * const Users = Context.Service<Users>("Users")
  *
  * const program = Effect.gen(function*() {
  *   const set = yield* FiberSet.make()
@@ -542,6 +545,7 @@ const runImpl = <A, E, R, XE extends E, XA extends A>(
  * )
  *
  * const actual = await Effect.runPromise(Effect.provideService(program, Users, {
+ *   ["~Users"]: "~Users" as const,
  *   getAll: Effect.succeed([])
  * }))
  * actual // => 0

@@ -51,6 +51,8 @@ import * as OpenAiSchema from "./OpenAiSchema.ts"
  * @since 4.0.0
  */
 export interface Service {
+  readonly [OpenAiClientTypeId]: typeof OpenAiClientTypeId
+
   /**
    * The transformed HTTP client used by this service.
    */
@@ -91,6 +93,8 @@ export interface Service {
 // Service Identifier
 // =============================================================================
 
+const OpenAiClientTypeId = "~@effect/ai-openai/OpenAiClient"
+
 /**
  * Service tag for the OpenAI client.
  *
@@ -106,9 +110,17 @@ export interface Service {
  * @category services
  * @since 4.0.0
  */
-export class OpenAiClient extends Context.Service<OpenAiClient, Service>()(
-  "@effect/ai-openai/OpenAiClient"
-) {}
+export interface OpenAiClient extends Service {
+  readonly [OpenAiClientTypeId]: typeof OpenAiClientTypeId
+}
+
+/**
+ * Service key for `OpenAiClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenAiClient = Context.Service<OpenAiClient>("@effect/ai-openai/OpenAiClient")
 
 // =============================================================================
 // Options
@@ -326,6 +338,7 @@ export const make = Effect.fnUntraced(
       )
 
     return OpenAiClient.of({
+      [OpenAiClientTypeId]: OpenAiClientTypeId as typeof OpenAiClientTypeId,
       client: httpClient,
       createResponse,
       createResponseStream,
@@ -439,6 +452,8 @@ export const layerConfig = (options?: {
  */
 export type ResponseStreamEvent = typeof OpenAiSchema.ResponseStreamEvent.Type
 
+const OpenAiSocketTypeId = "~@effect/ai-openai/OpenAiClient/OpenAiSocket"
+
 /**
  * Service for creating OpenAI response streams over a WebSocket connection.
  *
@@ -464,7 +479,9 @@ export type ResponseStreamEvent = typeof OpenAiSchema.ResponseStreamEvent.Type
  * @category services
  * @since 4.0.0
  */
-export class OpenAiSocket extends Context.Service<OpenAiSocket, {
+export interface OpenAiSocket {
+  readonly [OpenAiSocketTypeId]: typeof OpenAiSocketTypeId
+
   /**
    * Create a streaming response using the OpenAI responses endpoint.
    */
@@ -477,7 +494,15 @@ export class OpenAiSocket extends Context.Service<OpenAiSocket, {
     ],
     AiError.AiError
   >
-}>()("@effect/ai-openai/OpenAiClient/OpenAiSocket") {}
+}
+
+/**
+ * Service key for `OpenAiSocket` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenAiSocket = Context.Service<OpenAiSocket>("@effect/ai-openai/OpenAiClient/OpenAiSocket")
 
 const makeSocket = Effect.gen(function*() {
   const client = yield* OpenAiClient
@@ -631,6 +656,7 @@ const makeSocket = Effect.gen(function*() {
   const request = yield* makeRequest
 
   return OpenAiSocket.context({
+    [OpenAiSocketTypeId]: OpenAiSocketTypeId as typeof OpenAiSocketTypeId,
     createResponseStream(options) {
       const stream = Stream.unwrap(Effect.gen(function*() {
         const scope = yield* Effect.scope

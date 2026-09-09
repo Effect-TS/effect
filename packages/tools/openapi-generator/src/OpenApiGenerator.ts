@@ -26,6 +26,8 @@ import * as OpenApiTransformer from "./OpenApiTransformer.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
 
+const OpenApiGeneratorTypeId = "~@effect/openapi-generator/OpenApiGenerator"
+
 /**
  * Service for turning OpenAPI or Swagger specifications into generated Effect
  * HTTP client or HttpApi source code.
@@ -33,10 +35,18 @@ import * as Utils from "./Utils.ts"
  * @category services
  * @since 4.0.0
  */
-export class OpenApiGenerator extends Context.Service<
-  OpenApiGenerator,
-  { readonly generate: (spec: OpenAPISpec, options: OpenApiGenerateOptions) => Effect.Effect<string> }
->()("OpenApiGenerator") {}
+export interface OpenApiGenerator {
+  readonly [OpenApiGeneratorTypeId]: typeof OpenApiGeneratorTypeId
+  readonly generate: (spec: OpenAPISpec, options: OpenApiGenerateOptions) => Effect.Effect<string>
+}
+
+/**
+ * Service key for `OpenApiGenerator` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenApiGenerator = Context.Service<OpenApiGenerator>("OpenApiGenerator")
 
 /**
  * Output targets supported by the OpenAPI generator.
@@ -200,7 +210,10 @@ export const make = Effect.gen(function*() {
       )
   )
 
-  return { generate } as const
+  return {
+    [OpenApiGeneratorTypeId]: OpenApiGeneratorTypeId as typeof OpenApiGeneratorTypeId,
+    generate
+  } as const
 })
 
 type WarningEmitter = (warning: OpenApiGeneratorWarning) => void

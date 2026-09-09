@@ -26,6 +26,8 @@ import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
 import * as Workflow from "./Workflow.ts"
 
+const WorkflowEngineTypeId = "~effect/workflow/WorkflowEngine"
+
 /**
  * Service that represents workflow runtimes, responsible for registering and
  * executing workflows and coordinating activities, durable deferreds,
@@ -34,178 +36,187 @@ import * as Workflow from "./Workflow.ts"
  * @category services
  * @since 4.0.0
  */
-export class WorkflowEngine extends Context.Service<
-  WorkflowEngine,
-  {
-    /**
-     * Register a workflow with the engine.
-     */
-    readonly register: <
-      Name extends string,
-      Payload extends Workflow.AnyStructSchema,
-      Success extends Schema.Top,
-      Error extends Schema.Top,
-      R
-    >(
-      workflow: Workflow.Workflow<Name, Payload, Success, Error>,
-      execute: (
-        payload: Payload["Type"],
-        executionId: string
-      ) => Effect.Effect<Success["Type"], Error["Type"], R>
-    ) => Effect.Effect<
-      void,
-      never,
-      | Scope.Scope
-      | Exclude<
-        R,
-        | WorkflowEngine
-        | WorkflowInstance
-        | Workflow.Execution<Name>
-        | Scope.Scope
-      >
-      | Payload["DecodingServices"]
-      | Payload["EncodingServices"]
-      | Success["DecodingServices"]
-      | Success["EncodingServices"]
-      | Error["DecodingServices"]
-      | Error["EncodingServices"]
-    >
+export interface WorkflowEngine {
+  readonly [WorkflowEngineTypeId]: typeof WorkflowEngineTypeId
 
-    /**
-     * Execute a registered workflow.
-     */
-    readonly execute: <
-      Name extends string,
-      Payload extends Workflow.AnyStructSchema,
-      Success extends Schema.Top,
-      Error extends Schema.Top,
-      const Discard extends boolean = false
-    >(
-      workflow: Workflow.Workflow<Name, Payload, Success, Error>,
-      options: {
-        readonly executionId: string
-        readonly payload: Payload["Type"]
-        readonly discard?: Discard | undefined
-        readonly suspendedRetrySchedule?:
-          | Schedule.Schedule<any, unknown>
-          | undefined
-      }
-    ) => Effect.Effect<
-      Discard extends true ? string : Success["Type"],
-      Error["Type"],
-      | Payload["EncodingServices"]
-      | Success["DecodingServices"]
-      | Error["DecodingServices"]
-    >
-
-    /**
-     * Poll the current status of a registered workflow execution.
-     */
-    readonly poll: <
-      Name extends string,
-      Payload extends Workflow.AnyStructSchema,
-      Success extends Schema.Top,
-      Error extends Schema.Top
-    >(
-      workflow: Workflow.Workflow<Name, Payload, Success, Error>,
+  /**
+   * Register a workflow with the engine.
+   */
+  readonly register: <
+    Name extends string,
+    Payload extends Workflow.AnyStructSchema,
+    Success extends Schema.Top,
+    Error extends Schema.Top,
+    R
+  >(
+    workflow: Workflow.Workflow<Name, Payload, Success, Error>,
+    execute: (
+      payload: Payload["Type"],
       executionId: string
-    ) => Effect.Effect<
-      Option.Option<Workflow.Result<Success["Type"], Error["Type"]>>,
-      never,
-      Success["DecodingServices"] | Error["DecodingServices"]
-    >
-
-    /**
-     * Interrupt a registered workflow.
-     */
-    readonly interrupt: (
-      workflow: Workflow.Any,
-      executionId: string
-    ) => Effect.Effect<void>
-
-    /**
-     * Interrupts a registered workflow unsafely, potentially ignoring
-     * compensation finalizers and orphaning child workflows.
-     */
-    readonly interruptUnsafe: (
-      workflow: Workflow.Any,
-      executionId: string
-    ) => Effect.Effect<void>
-
-    /**
-     * Resume a registered workflow.
-     */
-    readonly resume: (
-      workflow: Workflow.Any,
-      executionId: string
-    ) => Effect.Effect<void>
-
-    /**
-     * Execute an activity from a workflow.
-     */
-    readonly activityExecute: <
-      Success extends Schema.Constraint,
-      Error extends Schema.Constraint,
-      R
-    >(
-      activity: Activity.Activity<Success, Error, R>,
-      attempt: number
-    ) => Effect.Effect<
-      Workflow.Result<Success["Type"], Error["Type"]>,
-      never,
-      | Success["DecodingServices"]
-      | Error["DecodingServices"]
-      | R
+    ) => Effect.Effect<Success["Type"], Error["Type"], R>
+  ) => Effect.Effect<
+    void,
+    never,
+    | Scope.Scope
+    | Exclude<
+      R,
+      | WorkflowEngine
       | WorkflowInstance
+      | Workflow.Execution<Name>
+      | Scope.Scope
     >
+    | Payload["DecodingServices"]
+    | Payload["EncodingServices"]
+    | Success["DecodingServices"]
+    | Success["EncodingServices"]
+    | Error["DecodingServices"]
+    | Error["EncodingServices"]
+  >
 
-    /**
-     * Try to retrieve the result of an DurableDeferred
-     */
-    readonly deferredResult: <
-      Success extends Schema.Constraint,
-      Error extends Schema.Constraint
-    >(
-      deferred: DurableDeferred.DurableDeferred<Success, Error>
-    ) => Effect.Effect<
-      Option.Option<Exit.Exit<Success["Type"], Error["Type"]>>,
-      never,
-      WorkflowInstance
-    >
+  /**
+   * Execute a registered workflow.
+   */
+  readonly execute: <
+    Name extends string,
+    Payload extends Workflow.AnyStructSchema,
+    Success extends Schema.Top,
+    Error extends Schema.Top,
+    const Discard extends boolean = false
+  >(
+    workflow: Workflow.Workflow<Name, Payload, Success, Error>,
+    options: {
+      readonly executionId: string
+      readonly payload: Payload["Type"]
+      readonly discard?: Discard | undefined
+      readonly suspendedRetrySchedule?:
+        | Schedule.Schedule<any, unknown>
+        | undefined
+    }
+  ) => Effect.Effect<
+    Discard extends true ? string : Success["Type"],
+    Error["Type"],
+    | Payload["EncodingServices"]
+    | Success["DecodingServices"]
+    | Error["DecodingServices"]
+  >
 
-    /**
-     * Set the result of a DurableDeferred, and then resume any waiting
-     * workflows.
-     */
-    readonly deferredDone: <
-      Success extends Schema.Constraint,
-      Error extends Schema.Constraint
-    >(
-      deferred: DurableDeferred.DurableDeferred<Success, Error>,
-      options: {
-        readonly workflowName: string
-        readonly executionId: string
-        readonly deferredName: string
-        readonly exit: Exit.Exit<Success["Type"], Error["Type"]>
-      }
-    ) => Effect.Effect<
-      void,
-      never,
-      Success["EncodingServices"] | Error["EncodingServices"]
-    >
+  /**
+   * Poll the current status of a registered workflow execution.
+   */
+  readonly poll: <
+    Name extends string,
+    Payload extends Workflow.AnyStructSchema,
+    Success extends Schema.Top,
+    Error extends Schema.Top
+  >(
+    workflow: Workflow.Workflow<Name, Payload, Success, Error>,
+    executionId: string
+  ) => Effect.Effect<
+    Option.Option<Workflow.Result<Success["Type"], Error["Type"]>>,
+    never,
+    Success["DecodingServices"] | Error["DecodingServices"]
+  >
 
-    /**
-     * Schedule a wake up for a DurableClock
-     */
-    readonly scheduleClock: (
-      workflow: Workflow.Any,
-      options: {
-        readonly executionId: string
-        readonly clock: DurableClock
-      }
-    ) => Effect.Effect<void>
-  }
->()("effect/workflow/WorkflowEngine") {}
+  /**
+   * Interrupt a registered workflow.
+   */
+  readonly interrupt: (
+    workflow: Workflow.Any,
+    executionId: string
+  ) => Effect.Effect<void>
+
+  /**
+   * Interrupts a registered workflow unsafely, potentially ignoring
+   * compensation finalizers and orphaning child workflows.
+   */
+  readonly interruptUnsafe: (
+    workflow: Workflow.Any,
+    executionId: string
+  ) => Effect.Effect<void>
+
+  /**
+   * Resume a registered workflow.
+   */
+  readonly resume: (
+    workflow: Workflow.Any,
+    executionId: string
+  ) => Effect.Effect<void>
+
+  /**
+   * Execute an activity from a workflow.
+   */
+  readonly activityExecute: <
+    Success extends Schema.Constraint,
+    Error extends Schema.Constraint,
+    R
+  >(
+    activity: Activity.Activity<Success, Error, R>,
+    attempt: number
+  ) => Effect.Effect<
+    Workflow.Result<Success["Type"], Error["Type"]>,
+    never,
+    | Success["DecodingServices"]
+    | Error["DecodingServices"]
+    | R
+    | WorkflowInstance
+  >
+
+  /**
+   * Try to retrieve the result of an DurableDeferred
+   */
+  readonly deferredResult: <
+    Success extends Schema.Constraint,
+    Error extends Schema.Constraint
+  >(
+    deferred: DurableDeferred.DurableDeferred<Success, Error>
+  ) => Effect.Effect<
+    Option.Option<Exit.Exit<Success["Type"], Error["Type"]>>,
+    never,
+    WorkflowInstance
+  >
+
+  /**
+   * Set the result of a DurableDeferred, and then resume any waiting
+   * workflows.
+   */
+  readonly deferredDone: <
+    Success extends Schema.Constraint,
+    Error extends Schema.Constraint
+  >(
+    deferred: DurableDeferred.DurableDeferred<Success, Error>,
+    options: {
+      readonly workflowName: string
+      readonly executionId: string
+      readonly deferredName: string
+      readonly exit: Exit.Exit<Success["Type"], Error["Type"]>
+    }
+  ) => Effect.Effect<
+    void,
+    never,
+    Success["EncodingServices"] | Error["EncodingServices"]
+  >
+
+  /**
+   * Schedule a wake up for a DurableClock
+   */
+  readonly scheduleClock: (
+    workflow: Workflow.Any,
+    options: {
+      readonly executionId: string
+      readonly clock: DurableClock
+    }
+  ) => Effect.Effect<void>
+}
+
+/**
+ * Service key for `WorkflowEngine` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const WorkflowEngine = Context.Service<WorkflowEngine>("effect/workflow/WorkflowEngine")
+
+const WorkflowInstanceTypeId = "~effect/workflow/WorkflowEngine/WorkflowInstance"
 
 /**
  * Service that contains workflow runtime state for one execution.
@@ -225,79 +236,93 @@ export class WorkflowEngine extends Context.Service<
  * @category services
  * @since 4.0.0
  */
-export class WorkflowInstance extends Context.Service<
-  WorkflowInstance,
-  {
-    /**
-     * The workflow execution ID.
-     */
-    readonly executionId: string
+export interface WorkflowInstance {
+  readonly [WorkflowInstanceTypeId]: typeof WorkflowInstanceTypeId
 
-    /**
-     * The workflow definition.
-     */
-    readonly workflow: Workflow.Any
+  /**
+   * The workflow execution ID.
+   */
+  readonly executionId: string
 
-    /**
-     * A scope that represents the lifetime of the workflow.
-     *
-     * It is only closed when the workflow is completed.
-     */
-    readonly scope: Scope.Closeable
+  /**
+   * The workflow definition.
+   */
+  readonly workflow: Workflow.Any
 
-    /**
-     * Whether the workflow has requested to be suspended.
-     */
-    suspended: boolean
+  /**
+   * A scope that represents the lifetime of the workflow.
+   *
+   * **Details**
+   *
+   * It is only closed when the workflow is completed.
+   */
+  readonly scope: Scope.Closeable
 
-    /**
-     * Whether the workflow has requested to be interrupted.
-     */
-    interrupted: boolean
+  /**
+   * Whether the workflow has requested to be suspended.
+   */
+  suspended: boolean
 
-    /**
-     * Whether the current workflow run has been abandoned for replay. When
-     * `true`, callbacks registered with `Workflow.addFinalizer` are skipped as
-     * the owner-local scope closes.
-     */
-    abandoned: boolean
+  /**
+   * Whether the workflow has requested to be interrupted.
+   */
+  interrupted: boolean
 
-    /**
-     * When SuspendOnFailure is triggered, the cause of the failure is stored
-     * here.
-     */
-    cause: Cause.Cause<never> | undefined
+  /**
+   * Whether the current workflow run has been abandoned for replay. When
+   * `true`, callbacks registered with `Workflow.addFinalizer` are skipped as
+   * the owner-local scope closes.
+   */
+  abandoned: boolean
 
-    /** Deferred names this run parked on; their completions preempt the run. */
-    readonly awaitedDeferreds: Set<string>
+  /**
+   * When SuspendOnFailure is triggered, the cause of the failure is stored
+   * here.
+   */
+  cause: Cause.Cause<never> | undefined
 
-    readonly activityState: {
-      count: number
-      readonly latch: Latch.Latch
-    }
-  }
->()("effect/workflow/WorkflowEngine/WorkflowInstance") {
-  static initial(
-    workflow: Workflow.Any,
-    executionId: string,
-    scope = Scope.makeUnsafe()
-  ): WorkflowInstance["Service"] {
-    return WorkflowInstance.of({
-      executionId,
-      workflow,
-      scope,
-      suspended: false,
-      interrupted: false,
-      abandoned: false,
-      cause: undefined,
-      awaitedDeferreds: new Set(),
-      activityState: {
-        count: 0,
-        latch: Latch.makeUnsafe()
-      }
-    })
+  /** Deferred names this run parked on; their completions preempt the run. */
+  readonly awaitedDeferreds: Set<string>
+
+  readonly activityState: {
+    count: number
+    readonly latch: Latch.Latch
   }
 }
+
+/**
+ * Service key for `WorkflowInstance` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const WorkflowInstance = (() => {
+  const service = Context.Service<WorkflowInstance>("effect/workflow/WorkflowEngine/WorkflowInstance")
+  const withInitial = Object.assign(service, {
+    initial(
+      workflow: Workflow.Any,
+      executionId: string,
+      scope = Scope.makeUnsafe()
+    ): WorkflowInstance {
+      return service.of({
+        [WorkflowInstanceTypeId]: WorkflowInstanceTypeId as typeof WorkflowInstanceTypeId,
+        executionId,
+        workflow,
+        scope,
+        suspended: false,
+        interrupted: false,
+        abandoned: false,
+        cause: undefined,
+        awaitedDeferreds: new Set(),
+        activityState: {
+          count: 0,
+          latch: Latch.makeUnsafe()
+        }
+      })
+    }
+  })
+  return Object.defineProperty(withInitial, "initial", { enumerable: false })
+})()
 
 /**
  * In-process deferred state for live workflow executions.
@@ -314,7 +339,7 @@ export interface DeferredState {
 
   /** Tracks and provides a run, retaining pending results across suspension. */
   readonly trackRun: <A, E, R>(
-    instance: WorkflowInstance["Service"],
+    instance: WorkflowInstance,
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, Exclude<R, WorkflowInstance>>
 
@@ -335,7 +360,7 @@ export interface DeferredState {
 export const makeDeferredState = (): DeferredState => {
   const pending = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
   const running = new Map<string, {
-    readonly instance: WorkflowInstance["Service"]
+    readonly instance: WorkflowInstance
     readonly fiber: Fiber.Fiber<unknown, unknown>
   }>()
   return {
@@ -402,7 +427,7 @@ export interface Encoded {
       readonly executionId: string
       readonly payload: object
       readonly discard: Discard
-      readonly parent?: WorkflowInstance["Service"] | undefined
+      readonly parent?: WorkflowInstance | undefined
     }
   ) => Effect.Effect<
     Discard extends true ? void : Workflow.Result<unknown, unknown>
@@ -469,8 +494,9 @@ export interface Encoded {
  * @category constructors
  * @since 4.0.0
  */
-export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
+export const makeUnsafe = (options: Encoded): WorkflowEngine =>
   WorkflowEngine.of({
+    [WorkflowEngineTypeId]: WorkflowEngineTypeId as typeof WorkflowEngineTypeId,
     register: Effect.fnUntraced(function*(workflow, execute) {
       const services = yield* Effect.context<WorkflowEngine>()
       yield* options.register(workflow, (payload, executionId) =>
@@ -688,7 +714,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         executionId: string
       ) => Effect.Effect<unknown, unknown, WorkflowInstance | WorkflowEngine>
       readonly parent: string | undefined
-      instance: WorkflowInstance["Service"]
+      instance: WorkflowInstance
       interrupted: boolean
       resumeRequested: boolean
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined

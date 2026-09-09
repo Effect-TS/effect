@@ -227,6 +227,7 @@ export const make = (
     const defaultMethod: "execute" | "query" = options.disablePreparedStatements === true ? "query" : "execute"
 
     class ConnectionImpl implements Connection {
+      readonly ["~effect/sql/SqlConnection"] = "~effect/sql/SqlConnection" as const
       readonly conn: Mysql.PoolConnection | Mysql.Pool
       constructor(conn: Mysql.PoolConnection | Mysql.Pool) {
         this.conn = conn

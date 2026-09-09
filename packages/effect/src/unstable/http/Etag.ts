@@ -68,16 +68,28 @@ export const toString = (self: Etag): string => {
   }
 }
 
+const GeneratorTypeId = "~effect/http/Etag/Generator"
+
 /**
  * Service for generating ETags from filesystem file information or Web `File`-like metadata.
  *
  * @category services
  * @since 4.0.0
  */
-export class Generator extends Context.Service<Generator, {
+export interface Generator {
+  readonly [GeneratorTypeId]: typeof GeneratorTypeId
+
   readonly fromFileInfo: (info: FileSystem.File.Info) => Effect.Effect<Etag>
   readonly fromFileWeb: (file: Body.HttpBody.FileLike) => Effect.Effect<Etag>
-}>()("effect/http/Etag/Generator") {}
+}
+
+/**
+ * Service key for `Generator` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Generator = Context.Service<Generator>("effect/http/Etag/Generator")
 
 const fromFileInfo = (info: FileSystem.File.Info) => {
   const mtime = Option.match(info.mtime, {
@@ -115,6 +127,7 @@ const fromFileWeb = (file: Body.HttpBody.FileLike) => {
 export const layer: Layer.Layer<Generator> = Layer.succeed(
   Generator
 )({
+  [GeneratorTypeId]: GeneratorTypeId as typeof GeneratorTypeId,
   fromFileInfo(info) {
     return Effect.sync(() => ({ _tag: "Strong", value: fromFileInfo(info) }))
   },
@@ -132,6 +145,7 @@ export const layer: Layer.Layer<Generator> = Layer.succeed(
 export const layerWeak: Layer.Layer<Generator> = Layer.succeed(
   Generator
 )({
+  [GeneratorTypeId]: GeneratorTypeId as typeof GeneratorTypeId,
   fromFileInfo(info) {
     return Effect.sync(() => ({ _tag: "Weak", value: fromFileInfo(info) }))
   },

@@ -69,8 +69,8 @@ export const withRunClient = <EX, RX>(
   f: (
     write: (clientId: number, response: FromServerEncoded) => Effect.Effect<void>,
     clientIds: ReadonlySet<number>
-  ) => Effect.Effect<Omit<Protocol["Service"], "run">, EX, RX>
-): Effect.Effect<Protocol["Service"], EX, RX> =>
+  ) => Effect.Effect<Omit<Protocol, "run" | "~effect/rpc/RpcClient/Protocol">, EX, RX>
+): Effect.Effect<Protocol, EX, RX> =>
   Effect.suspend(() => {
     const clientIds = new Set<number>()
     const clientBuffers = new Map<number, Array<[FromServerEncoded, Context.Context<never>]>>()
@@ -94,6 +94,7 @@ export const withRunClient = <EX, RX>(
         return write(clientId, data)
       }, clientIds),
       (a) => ({
+        ["~effect/rpc/RpcClient/Protocol"]: "~effect/rpc/RpcClient/Protocol" as const,
         ...a,
         run(clientId, f) {
           return Effect.gen(function*() {
@@ -115,6 +116,6 @@ export const withRunClient = <EX, RX>(
             })
           })
         }
-      } satisfies Protocol["Service"])
+      } satisfies Protocol)
     )
   })

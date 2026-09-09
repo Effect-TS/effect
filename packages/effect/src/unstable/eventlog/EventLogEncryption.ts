@@ -61,6 +61,8 @@ const toArrayBuffer = (data: Uint8Array): ArrayBuffer => {
 
 const toBufferSource = (data: Uint8Array): ArrayBufferView<ArrayBuffer> => new Uint8Array(toArrayBuffer(data))
 
+const EventLogEncryptionTypeId = "~effect/eventlog/EventLogEncryption"
+
 /**
  * Service that provides identity generation, entry
  * encryption and decryption, and SHA-256 hashing for event-log replication.
@@ -73,9 +75,11 @@ const toBufferSource = (data: Uint8Array): ArrayBufferView<ArrayBuffer> => new U
  * @category services
  * @since 4.0.0
  */
-export class EventLogEncryption extends Context.Service<EventLogEncryption, {
+export interface EventLogEncryption {
+  readonly [EventLogEncryptionTypeId]: typeof EventLogEncryptionTypeId
+
   readonly encrypt: (
-    identity: Identity["Service"],
+    identity: Identity,
     entries: ReadonlyArray<Entry>
   ) => Effect.Effect<
     ReadonlyArray<{
@@ -84,13 +88,21 @@ export class EventLogEncryption extends Context.Service<EventLogEncryption, {
     }>
   >
   readonly decrypt: (
-    identity: Identity["Service"],
+    identity: Identity,
     entries: ReadonlyArray<EncryptedRemoteEntry>
   ) => Effect.Effect<Array<RemoteEntry>>
   readonly sha256String: (data: Uint8Array) => Effect.Effect<string>
   readonly sha256: (data: Uint8Array) => Effect.Effect<Uint8Array>
-  readonly generateIdentity: Effect.Effect<Identity["Service"]>
-}>()("effect/eventlog/EventLogEncryption") {}
+  readonly generateIdentity: Effect.Effect<Identity>
+}
+
+/**
+ * Service key for `EventLogEncryption` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventLogEncryption = Context.Service<EventLogEncryption>("effect/eventlog/EventLogEncryption")
 
 /**
  * Creates an `EventLogEncryption` service backed by the Web Crypto `SubtleCrypto`
@@ -99,11 +111,12 @@ export class EventLogEncryption extends Context.Service<EventLogEncryption, {
  * @category encryption
  * @since 4.0.0
  */
-export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncryption["Service"]> =>
+export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncryption> =>
   Effect.sync(() => {
     const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(crypto)
 
     return EventLogEncryption.of({
+      [EventLogEncryptionTypeId]: EventLogEncryptionTypeId as typeof EventLogEncryptionTypeId,
       encrypt: Effect.fnUntraced(function*(identity, entries) {
         const data = yield* Effect.orDie(Entry.encodeArray(entries))
         const key = (yield* getIdentityRootSecretMaterial(identity)).encryptionKey
@@ -150,6 +163,7 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
           }
         ),
       generateIdentity: Effect.sync(() => ({
+        ["~effect/eventlog/EventLog/Identity"]: "~effect/eventlog/EventLog/Identity" as const,
         publicKey: crypto.randomUUID(),
         privateKey: Redacted.make(crypto.getRandomValues(new Uint8Array(32)))
       }))

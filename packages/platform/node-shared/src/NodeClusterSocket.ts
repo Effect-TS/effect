@@ -35,6 +35,7 @@ export const layerClientProtocol: Layer.Layer<
   Effect.gen(function*() {
     const serialization = yield* RpcSerialization.RpcSerialization
     return {
+      ["~effect/cluster/Runners/RpcClientProtocol"]: "~effect/cluster/Runners/RpcClientProtocol" as const,
       codecFor: serialization.codecFor,
       make: Effect.fnUntraced(function*(address) {
         const socket = yield* NodeSocket.makeNet({

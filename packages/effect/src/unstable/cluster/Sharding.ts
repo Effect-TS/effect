@@ -73,6 +73,8 @@ import { EntityRegistered, type ShardingRegistrationEvent, SingletonRegistered }
 import { SingletonAddress } from "./SingletonAddress.ts"
 import * as Snowflake from "./Snowflake.ts"
 
+const ShardingTypeId = "~effect/cluster/Sharding"
+
 /**
  * Service that registers entities and singletons, routes messages to owned
  * shards, generates runner-local snowflake ids, and polls
@@ -86,7 +88,9 @@ import * as Snowflake from "./Snowflake.ts"
  * @category services
  * @since 4.0.0
  */
-export class Sharding extends Context.Service<Sharding, {
+export interface Sharding {
+  readonly [ShardingTypeId]: typeof ShardingTypeId
+
   /**
    * Returns a stream of events that occur when the runner registers entities or
    * singletons.
@@ -206,7 +210,15 @@ export class Sharding extends Context.Service<Sharding, {
    * Retrieves the active entity count for the current runner.
    */
   readonly activeEntityCount: Effect.Effect<number>
-}>()("effect/cluster/Sharding") {}
+}
+
+/**
+ * Service key for `Sharding` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Sharding = Context.Service<Sharding>("effect/cluster/Sharding")
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -1177,7 +1189,7 @@ const make = Effect.gen(function*() {
     )
   }
 
-  const reset: Sharding["Service"]["reset"] = (requestId) =>
+  const reset: Sharding["reset"] = (requestId) =>
     Effect.matchCause(storage.clearReplies(requestId), {
       onSuccess: () => true,
       onFailure: () => false
@@ -1535,7 +1547,7 @@ const make = Effect.gen(function*() {
   const singletonFibers = yield* FiberMap.make<SingletonAddress>()
   const withSingletonLock = Semaphore.makeUnsafe(1).withPermits(1)
 
-  const registerSingleton: Sharding["Service"]["registerSingleton"] = Effect.fnUntraced(
+  const registerSingleton: Sharding["registerSingleton"] = Effect.fnUntraced(
     function*(name, run, options) {
       const shardGroup = options?.shardGroup ?? "default"
       const address = new SingletonAddress({
@@ -1608,7 +1620,7 @@ const make = Effect.gen(function*() {
   const reaper = yield* EntityReaper
   const entityManagerLatches = new Map<string, Latch.Latch>()
 
-  const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
+  const registerEntity: Sharding["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
       const runnerAddress = getRunnerAddress()
       if (!runnerAddress || entityManagers.has(entity.type)) return
@@ -1749,6 +1761,7 @@ const make = Effect.gen(function*() {
   })
 
   const sharding = Sharding.of({
+    [ShardingTypeId]: ShardingTypeId as typeof ShardingTypeId,
     getRegistrationEvents,
     getShardId,
     hasShardId(shardId: ShardId) {

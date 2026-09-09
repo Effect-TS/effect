@@ -42,6 +42,8 @@ import {
 } from "./EventLogMessage.ts"
 import * as EventLogServer from "./EventLogServer.ts"
 
+const EventLogServerUnencryptedTypeId = "~effect/eventlog/EventLogServerUnencrypted"
+
 /**
  * Service that writes plaintext event-log entries directly to
  * unencrypted storage through registered event handlers.
@@ -54,7 +56,9 @@ import * as EventLogServer from "./EventLogServer.ts"
  * @category services
  * @since 4.0.0
  */
-export class EventLogServerUnencrypted extends Context.Service<EventLogServerUnencrypted, {
+export interface EventLogServerUnencrypted {
+  readonly [EventLogServerUnencryptedTypeId]: typeof EventLogServerUnencryptedTypeId
+
   readonly makeWrite: <Groups extends EventGroup.Any>(
     schema: EventLog.EventLogSchema<Groups>
   ) => <
@@ -68,7 +72,17 @@ export class EventLogServerUnencrypted extends Context.Service<EventLogServerUne
     Event.Success<Event>,
     EventLogServerStoreError | Event.Error<Event>
   >
-}>()("effect/eventlog/EventLogServerUnencrypted") {}
+}
+
+/**
+ * Service key for `EventLogServerUnencrypted` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventLogServerUnencrypted = Context.Service<EventLogServerUnencrypted>(
+  "effect/eventlog/EventLogServerUnencrypted"
+)
 
 /**
  * Creates a typed server-side write function for events in the supplied
@@ -261,6 +275,8 @@ export class EventLogServerAuthError extends Data.TaggedError("EventLogServerAut
   readonly message?: string | undefined
 }> {}
 
+const EventLogServerAuthorizationTypeId = "~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization"
+
 /**
  * Service that validates unencrypted event-log server
  * write access, read access, and identities.
@@ -273,7 +289,9 @@ export class EventLogServerAuthError extends Data.TaggedError("EventLogServerAut
  * @category services
  * @since 4.0.0
  */
-export class EventLogServerAuthorization extends Context.Service<EventLogServerAuthorization, {
+export interface EventLogServerAuthorization {
+  readonly [EventLogServerAuthorizationTypeId]: typeof EventLogServerAuthorizationTypeId
+
   readonly authorizeWrite: (options: {
     readonly publicKey: string
     readonly storeId: StoreId
@@ -286,7 +304,19 @@ export class EventLogServerAuthorization extends Context.Service<EventLogServerA
   readonly authorizeIdentity: (options: {
     readonly publicKey: string
   }) => Effect.Effect<void, EventLogServerAuthError>
-}>()("effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization") {}
+}
+
+/**
+ * Service key for `EventLogServerAuthorization` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventLogServerAuthorization = Context.Service<EventLogServerAuthorization>(
+  "effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization"
+)
+
+const StoreMappingTypeId = "~effect/eventlog/EventLogServerUnencrypted/StoreMapping"
 
 /**
  * Service that resolves client-requested store ids to server store ids and checks
@@ -300,7 +330,9 @@ export class EventLogServerAuthorization extends Context.Service<EventLogServerA
  * @category services
  * @since 4.0.0
  */
-export class StoreMapping extends Context.Service<StoreMapping, {
+export interface StoreMapping {
+  readonly [StoreMappingTypeId]: typeof StoreMappingTypeId
+
   readonly resolve: (
     options: {
       readonly publicKey: string
@@ -311,7 +343,15 @@ export class StoreMapping extends Context.Service<StoreMapping, {
     readonly publicKey: string
     readonly storeId: StoreId
   }) => Effect.Effect<boolean, EventLogServerStoreError>
-}>()("effect/eventlog/EventLogServerUnencrypted/StoreMapping") {}
+}
+
+/**
+ * Service key for `StoreMapping` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const StoreMapping = Context.Service<StoreMapping>("effect/eventlog/EventLogServerUnencrypted/StoreMapping")
 
 const toStoreNotFoundError = (options: {
   readonly storeId: StoreId
@@ -337,6 +377,7 @@ export const layerStoreMappingStatic = (options: {
   readonly storeId: StoreId
 }): Layer.Layer<StoreMapping> =>
   Layer.succeed(StoreMapping, {
+    [StoreMappingTypeId]: StoreMappingTypeId as typeof StoreMappingTypeId,
     resolve(request) {
       if (request.storeId === options.storeId) {
         return Effect.succeed(options.storeId)
@@ -345,6 +386,8 @@ export const layerStoreMappingStatic = (options: {
     },
     hasStore: ({ storeId }) => Effect.succeed(storeId === options.storeId)
   })
+
+const StorageTypeId = "~effect/eventlog/EventLogServerUnencrypted/Storage"
 
 /**
  * Defines the backing store service used by the unencrypted event-log server.
@@ -363,7 +406,9 @@ export const layerStoreMappingStatic = (options: {
  * @category services
  * @since 4.0.0
  */
-export class Storage extends Context.Service<Storage, {
+export interface Storage {
+  readonly [StorageTypeId]: typeof StorageTypeId
+
   readonly getId: Effect.Effect<RemoteId>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
@@ -380,9 +425,18 @@ export class Storage extends Context.Service<Storage, {
     readonly compactors: ReadonlyMap<string, RegisteredCompactor>
   }) => Stream.Stream<RemoteEntry>
   readonly withTransaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-}>()("effect/eventlog/EventLogServerUnencrypted/Storage") {}
+}
 
-const makeClientIdentity = (publicKey: string): EventLog.Identity["Service"] => ({
+/**
+ * Service key for `Storage` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Storage = Context.Service<Storage>("effect/eventlog/EventLogServerUnencrypted/Storage")
+
+const makeClientIdentity = (publicKey: string): EventLog.Identity => ({
+  ["~effect/eventlog/EventLog/Identity"]: "~effect/eventlog/EventLog/Identity" as const,
   publicKey,
   privateKey: constEmptyPrivateKey
 })
@@ -567,7 +621,7 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
  * @category constructors
  * @since 4.0.0
  */
-export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
+export const makeStorageMemory: Effect.Effect<Storage, never, Scope.Scope> = Effect.gen(function*() {
   const knownIds = new Map<string, Map<string, number>>()
   const journals = new Map<string, Array<RemoteEntry>>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
@@ -632,6 +686,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
   const transactionSemaphore = yield* Semaphore.make(1)
 
   return Storage.of({
+    [StorageTypeId]: StorageTypeId as typeof StorageTypeId,
     getId: Effect.succeed(remoteId),
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       Effect.sync(() => {
@@ -708,6 +763,7 @@ export const make = Effect.gen(function*() {
   const handler = yield* makeServerHandler
 
   return EventLogServerUnencrypted.of({
+    [EventLogServerUnencryptedTypeId]: EventLogServerUnencryptedTypeId as typeof EventLogServerUnencryptedTypeId,
     makeWrite<Groups extends EventGroup.Any>(schema: EventLog.EventLogSchema<Groups>) {
       const events = new Map<string, Event.AnyWithProps>()
       for (const group of schema.groups as unknown as ReadonlyArray<EventGroup.EventGroup<Event.Any>>) {

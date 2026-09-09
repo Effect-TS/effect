@@ -23,12 +23,23 @@ import * as Domain from "./Domain.ts"
  * @since 0.6.0
  */
 export interface SourceShape {
+  readonly ["~@effect/docgen/Source"]: "~@effect/docgen/Source"
   readonly path: Array.NonEmptyReadonlyArray<string>
   readonly sourceFile: ast.SourceFile
 }
 
 /** @internal */
-export class Source extends Context.Service<Source, SourceShape>()("@effect/docgen/Source") {}
+export interface Source extends SourceShape {
+  readonly ["~@effect/docgen/Source"]: "~@effect/docgen/Source"
+}
+
+/**
+ * Service key for `Source` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Source = Context.Service<Source>("@effect/docgen/Source")
 
 const sortModulesByPath: <A extends Domain.Module>(self: Iterable<A>) => Array<A> = Array
   .sort(Domain.ByPath)
@@ -693,7 +704,11 @@ export const parseFile =
       const sourceFile = project.getSourceFile(file.path)
       const filePath = file.path.split(path.sep)
       if (sourceFile !== undefined && Array.isArrayNonEmpty(filePath)) {
-        return yield* Effect.provideService(parseModule, Source, { sourceFile, path: filePath })
+        return yield* Effect.provideService(parseModule, Source, {
+          ["~@effect/docgen/Source"]: "~@effect/docgen/Source",
+          sourceFile,
+          path: filePath
+        })
       }
       return yield* Effect.fail([`Unable to locate file: ${file.path}`])
     })

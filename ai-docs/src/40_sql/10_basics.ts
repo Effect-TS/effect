@@ -82,77 +82,98 @@ const SqlLive = MigratorLayer.pipe(Layer.provideMerge(SqlLayer))
 
 // Wrap data access in a service, so the rest of the application depends on
 // `Groups` instead of the database directly.
-export class Groups extends Context.Service<Groups, {
+const GroupsTypeId = "~app/Groups"
+
+export interface Groups {
+  readonly [GroupsTypeId]: typeof GroupsTypeId
+
   create(name: string, slug: string): Effect.Effect<Group>
   rename(id: GroupId, name: string): Effect.Effect<Group, GroupNotFound>
   findById(id: GroupId): Effect.Effect<Group, GroupNotFound>
   readonly list: Effect.Effect<Array<Group>>
-}>()("app/Groups") {
-  static readonly layer = Layer.effect(
-    Groups,
-    Effect.gen(function*() {
-      const sql = yield* SqlClient.SqlClient
-
-      // `SqlModel.makeRepository` derives insert / update / findById / delete
-      // operations from the model, using the matching variant schema for each
-      // operation.
-      const repo = yield* SqlModel.makeRepository(Group, {
-        tableName: "groups",
-        spanPrefix: "Groups",
-        idColumn: "id"
-      })
-
-      // For queries the repository does not cover, combine the `sql` tag with
-      // `SqlSchema` to decode the rows using the model schema.
-      const listAll = SqlSchema.findAll({
-        Request: Schema.Void,
-        Result: Group,
-        execute: () => sql`SELECT * FROM groups ORDER BY createdAt`
-      })
-
-      // Use `Effect.fn` to give each method a named span for observability.
-      const create = Effect.fn("Groups.create")((name: string, slug: string) =>
-        // `Group.insert.makeEffect` fills in the generated id and timestamps
-        // using the Effect clock, so tests can control them with `TestClock`.
-        Group.insert.makeEffect({ name, slug, notes: null }).pipe(
-          Effect.flatMap(repo.insert),
-          // Database and encoding failures are unexpected here, so treat
-          // them as defects to keep the service interface focused on domain
-          // errors.
-          Effect.orDie
-        )
-      )
-
-      const rename = Effect.fn("Groups.rename")((id: GroupId, name: string) =>
-        Group.update.makeEffect({ id, name }).pipe(
-          Effect.flatMap(repo.update),
-          Effect.orDie
-        )
-      )
-
-      const findById = Effect.fn("Groups.findById")((id: GroupId) =>
-        repo.findById(id).pipe(
-          Effect.catchTags({
-            NoSuchElementError: () => new GroupNotFound({ id }),
-            SchemaError: Effect.die,
-            SqlError: Effect.die
-          })
-        )
-      )
-
-      const list = listAll().pipe(
-        Effect.orDie,
-        Effect.withSpan("Groups.list")
-      )
-
-      return Groups.of({ create, rename, findById, list })
-    })
-  ).pipe(
-    // Provide the layers locally, so lots of messy wiring doesn't need to
-    // happen in the "main" entrypoint of the application.
-    Layer.provide(SqlLive)
-  )
 }
+
+/**
+ * Service key for `Groups` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Groups = (() => {
+  const service = Context.Service<Groups>("app/Groups")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+
+        // `SqlModel.makeRepository` derives insert / update / findById / delete
+        // operations from the model, using the matching variant schema for each
+        // operation.
+        const repo = yield* SqlModel.makeRepository(Group, {
+          tableName: "groups",
+          spanPrefix: "Groups",
+          idColumn: "id"
+        })
+
+        // For queries the repository does not cover, combine the `sql` tag with
+        // `SqlSchema` to decode the rows using the model schema.
+        const listAll = SqlSchema.findAll({
+          Request: Schema.Void,
+          Result: Group,
+          execute: () => sql`SELECT * FROM groups ORDER BY createdAt`
+        })
+
+        // Use `Effect.fn` to give each method a named span for observability.
+        const create = Effect.fn("Groups.create")((name: string, slug: string) =>
+          // `Group.insert.makeEffect` fills in the generated id and timestamps
+          // using the Effect clock, so tests can control them with `TestClock`.
+          Group.insert.makeEffect({ name, slug, notes: null }).pipe(
+            Effect.flatMap(repo.insert),
+            // Database and encoding failures are unexpected here, so treat
+            // them as defects to keep the service interface focused on domain
+            // errors.
+            Effect.orDie
+          )
+        )
+
+        const rename = Effect.fn("Groups.rename")((id: GroupId, name: string) =>
+          Group.update.makeEffect({ id, name }).pipe(
+            Effect.flatMap(repo.update),
+            Effect.orDie
+          )
+        )
+
+        const findById = Effect.fn("Groups.findById")((id: GroupId) =>
+          repo.findById(id).pipe(
+            Effect.catchTags({
+              NoSuchElementError: () => new GroupNotFound({ id }),
+              SchemaError: Effect.die,
+              SqlError: Effect.die
+            })
+          )
+        )
+
+        const list = listAll().pipe(
+          Effect.orDie,
+          Effect.withSpan("Groups.list")
+        )
+
+        return service.of({
+          [GroupsTypeId]: GroupsTypeId as typeof GroupsTypeId,
+          create,
+          rename,
+          findById,
+          list
+        })
+      })
+    ).pipe(
+      // Provide the layers locally, so lots of messy wiring doesn't need to
+      // happen in the "main" entrypoint of the application.
+      Layer.provide(SqlLive)
+    )
+  })
+})()
 
 const program = Effect.gen(function*() {
   const groups = yield* Groups

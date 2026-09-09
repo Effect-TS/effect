@@ -216,6 +216,7 @@ export const make = Effect.gen(function*() {
         }
         context = Context.add(context, HttpServerRequest.ParsedSearchParams, result.searchParams)
         context = Context.add(context, RouteContext, {
+          [RouteContextTypeId]: RouteContextTypeId as typeof RouteContextTypeId,
           route,
           params: result.params
         })
@@ -267,6 +268,8 @@ export const RouterConfig = Context.Reference<Partial<FindMyWay.RouterConfig>>(
   { defaultValue: () => ({}) }
 )
 
+const RouteContextTypeId = "~effect/http/HttpRouter/RouteContext"
+
 /**
  * Service for the matched HTTP route in the current request.
  *
@@ -283,10 +286,20 @@ export const RouterConfig = Context.Reference<Partial<FindMyWay.RouterConfig>>(
  * @category services
  * @since 4.0.0
  */
-export class RouteContext extends Context.Service<RouteContext, {
+export interface RouteContext {
+  readonly [RouteContextTypeId]: typeof RouteContextTypeId
+
   readonly params: Readonly<Record<string, string | undefined>>
   readonly route: Route<unknown, unknown>
-}>()("effect/http/HttpRouter/RouteContext") {}
+}
+
+/**
+ * Service key for `RouteContext` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const RouteContext = Context.Service<RouteContext>("effect/http/HttpRouter/RouteContext")
 
 /**
  * Effect that returns the path parameters captured for the current matched route.

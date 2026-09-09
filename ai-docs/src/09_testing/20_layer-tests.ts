@@ -13,81 +13,137 @@ export interface Todo {
 
 // Create a test ref service that can be used to store and manipulate test data
 // in layers.
-export class TodoRepoTestRef extends Context.Service<TodoRepoTestRef, Ref.Ref<Array<Todo>>>()("app/TodoRepoTestRef") {
-  static readonly layer = Layer.effect(TodoRepoTestRef, Ref.make(Array.empty()))
+const TodoRepoTestRefTypeId = "~app/TodoRepoTestRef"
+
+export interface TodoRepoTestRef extends Ref.Ref<Array<Todo>> {
+  readonly [TodoRepoTestRefTypeId]: typeof TodoRepoTestRefTypeId
 }
 
-class TodoRepo extends Context.Service<TodoRepo, {
+/**
+ * Service key for `TodoRepoTestRef` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const TodoRepoTestRef = (() => {
+  const service = Context.Service<TodoRepoTestRef>("app/TodoRepoTestRef")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      Ref.make(Array.empty<Todo>()).pipe(
+        Effect.map((ref) =>
+          Object.assign(ref, { [TodoRepoTestRefTypeId]: TodoRepoTestRefTypeId as typeof TodoRepoTestRefTypeId })
+        )
+      )
+    )
+  })
+})()
+
+const TodoRepoTypeId = "~app/testing/TodoRepo"
+
+interface TodoRepo {
+  readonly [TodoRepoTypeId]: typeof TodoRepoTypeId
+
   create(title: string): Effect.Effect<Todo>
   readonly list: Effect.Effect<ReadonlyArray<Todo>>
-}>()("app/TodoRepo") {
-  static readonly layerTest = Layer.effect(
-    TodoRepo,
-    Effect.gen(function*() {
-      const store = yield* TodoRepoTestRef
-
-      const create = Effect.fn("TodoRepo.create")(function*(title: string) {
-        const todos = yield* Ref.get(store)
-        const todo = { id: todos.length + 1, title }
-        yield* Ref.set(store, [...todos, todo])
-        return todo
-      })
-
-      const list = Ref.get(store)
-
-      return TodoRepo.of({
-        create,
-        list
-      })
-    })
-  ).pipe(
-    // Provide the test ref layer as a dependency for the test repo layer.
-    // Use Layer.provideMerge so the tests can also access the test ref directly
-    // if needed.
-    Layer.provideMerge(TodoRepoTestRef.layer)
-  )
 }
 
-class TodoService extends Context.Service<TodoService, {
+/**
+ * Service key for `TodoRepo` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+const TodoRepo = (() => {
+  const service = Context.Service<TodoRepo>("app/TodoRepo")
+  return Object.assign(service, {
+    layerTest: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        const store = yield* TodoRepoTestRef
+
+        const create = Effect.fn("TodoRepo.create")(function*(title: string) {
+          const todos = yield* Ref.get(store)
+          const todo = { id: todos.length + 1, title }
+          yield* Ref.set(store, [...todos, todo])
+          return todo
+        })
+
+        const list = Ref.get(store)
+
+        return service.of({
+          [TodoRepoTypeId]: TodoRepoTypeId as typeof TodoRepoTypeId,
+          create,
+          list
+        })
+      })
+    ).pipe(
+      // Provide the test ref layer as a dependency for the test repo layer.
+      // Use Layer.provideMerge so the tests can also access the test ref directly
+      // if needed.
+      Layer.provideMerge(TodoRepoTestRef.layer)
+    )
+  })
+})()
+
+const TodoServiceTypeId = "~app/TodoService"
+
+interface TodoService {
+  readonly [TodoServiceTypeId]: typeof TodoServiceTypeId
+
   addAndCount(title: string): Effect.Effect<number>
   readonly titles: Effect.Effect<ReadonlyArray<string>>
-}>()("app/TodoService") {
-  static readonly layerNoDeps = Layer.effect(
-    TodoService,
-    Effect.gen(function*() {
-      const repo = yield* TodoRepo
-
-      const addAndCount = Effect.fn("TodoService.addAndCount")(function*(title: string) {
-        yield* repo.create(title)
-        const todos = yield* repo.list
-        return todos.length
-      })
-
-      const titles = repo.list.pipe(
-        Effect.map((todos) => todos.map((todo) => todo.title))
-      )
-
-      return TodoService.of({
-        addAndCount,
-        titles
-      })
-    })
-  )
-
-  // You would also add a live layer here that provides real dependencies for
-  // production code.
-  //
-  // static readonly layer = Layer.effect(TodoService, ...).pipe(
-  //   Layer.provide(TodoRepo.layer)
-  // )
-
-  static readonly layerTest = this.layerNoDeps.pipe(
-    // Provide the test repo layer as a dependency for the test service layer.
-    // Use `Layer.provideMerge` so the tests can also access the test repo
-    // directly if needed, as well as the test ref through the repo layer.
-    Layer.provideMerge(TodoRepo.layerTest)
-  )
 }
+
+/**
+ * Service key for `TodoService` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+const TodoService = (() => {
+  const service = Context.Service<TodoService>("app/TodoService")
+  const service1 = Object.assign(service, {
+    layerNoDeps: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        const repo = yield* TodoRepo
+
+        const addAndCount = Effect.fn("TodoService.addAndCount")(function*(title: string) {
+          yield* repo.create(title)
+          const todos = yield* repo.list
+          return todos.length
+        })
+
+        const titles = repo.list.pipe(
+          Effect.map((todos) => todos.map((todo) => todo.title))
+        )
+
+        return service.of({
+          [TodoServiceTypeId]: TodoServiceTypeId as typeof TodoServiceTypeId,
+          addAndCount,
+          titles
+        })
+      })
+    )
+  })
+  const service2 = Object.assign(service1, {
+    // You would also add a live layer here that provides real dependencies for
+    // production code.
+    //
+    // static readonly layer = Layer.effect(TodoService, ...).pipe(
+    //   Layer.provide(TodoRepo.layer)
+    // )
+
+    layerTest: service1.layerNoDeps.pipe(
+      // Provide the test repo layer as a dependency for the test service1 layer.
+      // Use `Layer.provideMerge` so the tests can also access the test repo
+      // directly if needed, as well as the test ref through the repo layer.
+      Layer.provideMerge(TodoRepo.layerTest)
+    )
+  })
+  return service2
+})()
 
 // `layer(...)` creates one shared layer for the block and tears it down in
 // `afterAll`, so all tests inside can access the same service context.

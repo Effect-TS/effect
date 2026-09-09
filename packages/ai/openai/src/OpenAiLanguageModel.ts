@@ -61,6 +61,47 @@ type PromptCacheBreakpoint = { readonly mode: "explicit" }
 // Configuration
 // =============================================================================
 
+const ConfigTypeId = "~@effect/ai-openai/OpenAiLanguageModel/Config"
+
+type ConfigShape = Simplify<
+  & Partial<
+    Omit<
+      typeof OpenAiSchema.CreateResponse.Encoded,
+      "input" | "tools" | "tool_choice" | "stream" | "text"
+    >
+  >
+  & {
+    /**
+     * File ID prefixes used to identify file IDs in Responses API.
+     * When undefined, all file data is treated as base64 content.
+     *
+     * Examples:
+     * - OpenAI: ['file-'] for IDs like 'file-abc123'
+     * - Azure OpenAI: ['assistant-'] for IDs like 'assistant-abc123'
+     */
+    readonly fileIdPrefixes?: ReadonlyArray<string> | undefined
+    /**
+     * Configuration options for a text response from the model.
+     */
+    readonly text?: {
+      /**
+       * Constrains the verbosity of the model's response. Lower values will
+       * result in more concise responses, while higher values will result in
+       * more verbose responses.
+       *
+       * Defaults to `"medium"`.
+       */
+      readonly verbosity?: "low" | "medium" | "high" | undefined
+    } | undefined
+    /**
+     * Whether to use strict JSON schema validation.
+     *
+     * Defaults to `true`.
+     */
+    readonly strictJsonSchema?: boolean | undefined
+  }
+>
+
 /**
  * Context service for OpenAI language model configuration.
  *
@@ -79,47 +120,17 @@ type PromptCacheBreakpoint = { readonly mode: "explicit" }
  * @category services
  * @since 4.0.0
  */
-export class Config extends Context.Service<
-  Config,
-  Simplify<
-    & Partial<
-      Omit<
-        typeof OpenAiSchema.CreateResponse.Encoded,
-        "input" | "tools" | "tool_choice" | "stream" | "text"
-      >
-    >
-    & {
-      /**
-       * File ID prefixes used to identify file IDs in Responses API.
-       * When undefined, all file data is treated as base64 content.
-       *
-       * Examples:
-       * - OpenAI: ['file-'] for IDs like 'file-abc123'
-       * - Azure OpenAI: ['assistant-'] for IDs like 'assistant-abc123'
-       */
-      readonly fileIdPrefixes?: ReadonlyArray<string> | undefined
-      /**
-       * Configuration options for a text response from the model.
-       */
-      readonly text?: {
-        /**
-         * Constrains the verbosity of the model's response. Lower values will
-         * result in more concise responses, while higher values will result in
-         * more verbose responses.
-         *
-         * Defaults to `"medium"`.
-         */
-        readonly verbosity?: "low" | "medium" | "high" | undefined
-      } | undefined
-      /**
-       * Whether to use strict JSON schema validation.
-       *
-       * Defaults to `true`.
-       */
-      readonly strictJsonSchema?: boolean | undefined
-    }
-  >
->()("@effect/ai-openai/OpenAiLanguageModel/Config") {}
+export interface Config extends ConfigShape {
+  readonly [ConfigTypeId]: typeof ConfigTypeId
+}
+
+/**
+ * Service key for `Config` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Config = Context.Service<Config>("@effect/ai-openai/OpenAiLanguageModel/Config")
 
 // =============================================================================
 // Provider Options / Metadata
@@ -572,7 +583,7 @@ declare module "effect/unstable/ai/Response" {
  */
 export const model = (
   model: (string & {}) | Model,
-  config?: Omit<typeof Config.Service, "model">
+  config?: Omit<ConfigShape, "model">
 ): AiModel.Model<"openai", LanguageModel.LanguageModel, OpenAiClient> =>
   AiModel.make("openai", model, layer({ model, config }))
 
@@ -611,18 +622,18 @@ export const model = (
  */
 export const make = Effect.fnUntraced(function*({ model, config: providerConfig }: {
   readonly model: (string & {}) | Model
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Effect.fn.Return<LanguageModel.Service, never, OpenAiClient> {
   const client = yield* OpenAiClient
 
   const makeConfig = Effect.gen(function*() {
     const services = yield* Effect.context<never>()
     return { model, ...providerConfig, ...Context.getOrUndefined(services, Config) }
-  })
+  }).pipe(Effect.map(({ [ConfigTypeId]: _typeId, ...config }) => config))
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {
-      readonly config: typeof Config.Service
+      readonly config: ConfigShape
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<typeof OpenAiSchema.CreateResponse.Encoded, AiError.AiError> {
@@ -731,7 +742,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Layer.Layer<LanguageModel.LanguageModel, never, OpenAiClient> =>
   Layer.effect(LanguageModel.LanguageModel, make(options))
 
@@ -757,19 +768,21 @@ export const layer = (options: {
  * @since 4.0.0
  */
 export const withConfigOverride: {
-  (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service): Effect.Effect<A, E, Exclude<R, Config>>
+  (overrides: ConfigShape): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape): Effect.Effect<A, E, Exclude<R, Config>>
 } = dual<
   (
-    overrides: typeof Config.Service
+    overrides: ConfigShape
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape) => Effect.Effect<A, E, Exclude<R, Config>>
 >(2, (self, overrides) =>
   Effect.flatMap(
     Effect.serviceOption(Config),
     (config) =>
       Effect.provideService(self, Config, {
-        ...(config._tag === "Some" ? config.value : {}),
+        ...(config._tag === "Some" ? config.value : {
+          [ConfigTypeId]: ConfigTypeId as typeof ConfigTypeId
+        }),
         ...overrides
       })
   ))
@@ -794,7 +807,7 @@ const prepareMessages = Effect.fnUntraced(
     include,
     toolNameMapper
   }: {
-    readonly config: typeof Config.Service
+    readonly config: ConfigShape
     readonly options: LanguageModel.ProviderOptions
     readonly include: Set<typeof OpenAiSchema.IncludeEnum.Encoded>
     readonly capabilities: ModelCapabilities
@@ -1695,7 +1708,7 @@ const makeStreamResponse = Effect.fnUntraced(
     options,
     toolNameMapper
   }: {
-    readonly config: typeof Config.Service
+    readonly config: ConfigShape
     readonly stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
     readonly options: LanguageModel.ProviderOptions
@@ -2713,7 +2726,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   options,
   toolNameMapper
 }: {
-  readonly config: typeof Config.Service
+  readonly config: ConfigShape
   readonly options: LanguageModel.ProviderOptions
   readonly toolNameMapper: Tool.NameMapper<Tools>
 }): Effect.fn.Return<{
@@ -2917,7 +2930,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
 // Utilities
 // =============================================================================
 
-const isFileId = (data: string, config: typeof Config.Service): boolean =>
+const isFileId = (data: string, config: ConfigShape): boolean =>
   config.fileIdPrefixes != null && config.fileIdPrefixes.some((prefix) => data.startsWith(prefix))
 
 const getItemId = (
@@ -2979,7 +2992,7 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string) =>
   })
 
 const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
-  readonly config: typeof Config.Service
+  readonly config: ConfigShape
   readonly options: LanguageModel.ProviderOptions
 }): Effect.fn.Return<typeof OpenAiSchema.TextResponseFormatConfiguration.Encoded, AiError.AiError> {
   if (options.responseFormat.type === "json") {

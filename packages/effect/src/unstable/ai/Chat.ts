@@ -32,6 +32,8 @@ import * as Prompt from "./Prompt.ts"
 import type * as Response from "./Response.ts"
 import type * as Tool from "./Tool.ts"
 
+const ChatTypeId = "~effect/ai/Chat"
+
 /**
  * Service tag for stateful AI conversation sessions.
  *
@@ -82,9 +84,17 @@ import type * as Tool from "./Tool.ts"
  * @category services
  * @since 4.0.0
  */
-export class Chat extends Context.Service<Chat, Service>()(
-  "effect/ai/Chat"
-) {}
+export interface Chat extends Service {
+  readonly [ChatTypeId]: typeof ChatTypeId
+}
+
+/**
+ * Service key for `Chat` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Chat = Context.Service<Chat>("effect/ai/Chat")
 
 /**
  * Represents the interface that the `Chat` service provides.
@@ -102,6 +112,7 @@ export class Chat extends Context.Service<Chat, Service>()(
  * @since 4.0.0
  */
 export interface Service {
+  readonly [ChatTypeId]: typeof ChatTypeId
   /**
    * Reference to the chat history.
    *
@@ -419,6 +430,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
   const semaphore = Semaphore.makeUnsafe(1)
 
   return Chat.of({
+    [ChatTypeId]: ChatTypeId as typeof ChatTypeId,
     history,
     export: Ref.get(history).pipe(
       Effect.flatMap(encodeHistory),
@@ -716,6 +728,9 @@ export class ChatNotFoundError extends Schema.Error<ChatNotFoundError>(
   chatId: Schema.String
 }) {}
 
+// @effect-diagnostics effect/leakingRequirements:off
+const PersistenceTypeId = "~effect/ai/Chat/Persisted"
+
 /**
  * Service tag for persistence-backed AI conversation storage.
  *
@@ -727,10 +742,17 @@ export class ChatNotFoundError extends Schema.Error<ChatNotFoundError>(
  * @category services
  * @since 4.0.0
  */
-// @effect-diagnostics effect/leakingRequirements:off
-export class Persistence extends Context.Service<Persistence, Persistence.Service>()(
-  "effect/ai/Chat/Persisted"
-) {}
+export interface Persistence extends Persistence.Service {
+  readonly [PersistenceTypeId]: typeof PersistenceTypeId
+}
+
+/**
+ * Service key for `Persistence` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Persistence = Context.Service<Persistence>("effect/ai/Chat/Persisted")
 
 /**
  * Namespace containing the service contract for chat persistence.
@@ -746,6 +768,8 @@ export declare namespace Persistence {
    * @since 4.0.0
    */
   export interface Service {
+    readonly [PersistenceTypeId]: typeof PersistenceTypeId
+
     /**
      * Attempts to retrieve the persisted chat from the backing persistence
      * store with the specified chat identifer. If the chat does not exist in
@@ -948,6 +972,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
   )
 
   return Persistence.of({
+    [PersistenceTypeId]: PersistenceTypeId as typeof PersistenceTypeId,
     get,
     getOrCreate
   })

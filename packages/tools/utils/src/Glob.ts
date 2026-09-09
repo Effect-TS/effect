@@ -24,6 +24,7 @@ export class GlobError extends Data.TaggedError("GlobError")<{
   readonly pattern: string | ReadonlyArray<string>
   readonly cause: unknown
 }> {}
+const GlobTypeId = "~@effect/utils/Glob"
 
 /**
  * Service interface for matching filesystem paths with glob patterns.
@@ -32,6 +33,8 @@ export class GlobError extends Data.TaggedError("GlobError")<{
  * @since 4.0.0
  */
 export interface Glob {
+  readonly [GlobTypeId]: typeof GlobTypeId
+
   readonly glob: (
     pattern: string | ReadonlyArray<string>,
     options?: GlobLib.GlobOptions
@@ -53,6 +56,7 @@ export const Glob: Context.Service<Glob, Glob> = Context.Service("@effect/utils/
  * @since 4.0.0
  */
 export const layer: Layer.Layer<Glob> = Layer.succeed(Glob, {
+  [GlobTypeId]: GlobTypeId as typeof GlobTypeId,
   glob: (pattern, options) =>
     Effect.tryPromise({
       try: () => GlobLib.glob(pattern as string | Array<string>, options ?? {}) as Promise<Array<string>>,

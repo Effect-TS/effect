@@ -31,6 +31,8 @@ export type RedisOptions = Omit<RedisConnectOptions, "hostname"> & {
   readonly url?: string
 }
 
+const DenoRedisTypeId = "~@effect/platform-deno/DenoRedis"
+
 /**
  * Service tag for Deno Redis integration, exposing the raw `@db/redis` client
  * and a `use` helper that maps client promise failures to `RedisError`.
@@ -38,10 +40,20 @@ export type RedisOptions = Omit<RedisConnectOptions, "hostname"> & {
  * @category services
  * @since 4.0.0
  */
-export class DenoRedis extends Context.Service<DenoRedis, {
+export interface DenoRedis {
+  readonly [DenoRedisTypeId]: typeof DenoRedisTypeId
+
   readonly client: RedisClient
   readonly use: <A>(f: (client: RedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
-}>()("@effect/platform-deno/DenoRedis") {}
+}
+
+/**
+ * Service key for `DenoRedis` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const DenoRedis = Context.Service<DenoRedis>("@effect/platform-deno/DenoRedis")
 
 const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
   const connectClient = () => {
@@ -111,7 +123,8 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
       )
   })
 
-  const denoRedis = Fn.identity<DenoRedis["Service"]>({
+  const denoRedis = Fn.identity<DenoRedis>({
+    [DenoRedisTypeId]: DenoRedisTypeId as typeof DenoRedisTypeId,
     client,
     use
   })

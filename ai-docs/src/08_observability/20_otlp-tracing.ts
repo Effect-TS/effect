@@ -38,36 +38,52 @@ export const ObservabilityLayer = Layer.merge(OtlpTracingLayer, OtlpLoggingLayer
   Layer.provide(FetchHttpClient.layer)
 )
 
-export class Checkout extends Context.Service<Checkout, {
+const CheckoutTypeId = "~acme/Checkout"
+
+export interface Checkout {
+  readonly [CheckoutTypeId]: typeof CheckoutTypeId
+
   processCheckout(orderId: string): Effect.Effect<void>
-}>()("acme/Checkout") {
-  static readonly layer = Layer.effect(
-    Checkout,
-    Effect.gen(function*() {
-      yield* Effect.logInfo("setting up checkout service")
+}
 
-      return Checkout.of({
-        processCheckout: Effect.fn("Checkout.processCheckout")(function*(orderId: string) {
-          yield* Effect.logInfo("starting checkout", { orderId })
+/**
+ * Service key for `Checkout` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Checkout = (() => {
+  const service = Context.Service<Checkout>("acme/Checkout")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        yield* Effect.logInfo("setting up checkout service")
 
-          yield* Effect.sleep("50 millis").pipe(
-            Effect.withSpan("checkout.charge-card"),
-            Effect.annotateSpans({
-              "checkout.order_id": orderId,
-              "checkout.provider": "acme-pay"
-            })
-          )
+        return service.of({
+          [CheckoutTypeId]: CheckoutTypeId as typeof CheckoutTypeId,
+          processCheckout: Effect.fn("Checkout.processCheckout")(function*(orderId: string) {
+            yield* Effect.logInfo("starting checkout", { orderId })
 
-          yield* Effect.sleep("20 millis").pipe(
-            Effect.withSpan("checkout.persist-order")
-          )
+            yield* Effect.sleep("50 millis").pipe(
+              Effect.withSpan("checkout.charge-card"),
+              Effect.annotateSpans({
+                "checkout.order_id": orderId,
+                "checkout.provider": "acme-pay"
+              })
+            )
 
-          yield* Effect.logInfo("checkout completed", { orderId })
+            yield* Effect.sleep("20 millis").pipe(
+              Effect.withSpan("checkout.persist-order")
+            )
+
+            yield* Effect.logInfo("checkout completed", { orderId })
+          })
         })
       })
-    })
-  )
-}
+    )
+  })
+})()
 
 // Example usage of the Checkout service.
 const CheckoutTest = Layer.effectDiscard(

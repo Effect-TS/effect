@@ -1,6 +1,6 @@
 "@effect/experimental/Persistence#BackingPersistence":
   replacement: effect/unstable/persistence/Persistence#BackingPersistence
-  note: Use the v4 BackingPersistence Context.Service class.
+  note: Use the v4 BackingPersistence Context.Service value and same-name interface.
 "@effect/experimental/Persistence#BackingPersistenceTypeId":
   replacement: none
   note: The BackingPersistence brand is no longer publicly exported in v4.
@@ -33,7 +33,7 @@
   note: Persistence parsing failures now use the core SchemaError type.
 "@effect/experimental/Persistence#ResultPersistence":
   replacement: effect/unstable/persistence/Persistence#Persistence
-  note: ResultPersistence was renamed to Persistence and is now a Context.Service class.
+  note: ResultPersistence was renamed to Persistence and is now a Context.Service value and same-name interface.
 "@effect/experimental/Persistence#ResultPersistence.Key":
   replacement: effect/unstable/persistence/Persistable#Persistable
   note: Persistable is the v4 schema-backed persistence key contract.

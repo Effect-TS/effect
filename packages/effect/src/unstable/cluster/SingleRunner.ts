@@ -57,7 +57,7 @@ import * as SqlRunnerStorage from "./SqlRunnerStorage.ts"
  * @since 4.0.0
  */
 export const layer = (options?: {
-  readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
+  readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig> | undefined
   readonly runnerStorage?: "memory" | "sql" | undefined
 }): Layer.Layer<
   | Sharding.Sharding

@@ -1,45 +1,56 @@
 /**
  * @title Context.Service
  *
- * The default way to define a service is to extend `Context.Service`,
- * passing in the service interface as a type parameter.
+ * Define services with an interface and a `Context.Service` value of the same
+ * name. Include a unique TypeId to distinguish the service structurally.
  */
 
 // file: src/db/Database.ts
 import { Context, Effect, Layer, Schema } from "effect"
 
-// Pass in the service class name as the first type parameter, and the service
-// interface as the second type parameter.
-export class Database extends Context.Service<Database, {
-  query(sql: string): Effect.Effect<Array<unknown>, DatabaseError>
-}>()(
-  // The string identifier for the service, which should include the package
-  // name and the subdirectory path to the service file.
-  "myapp/db/Database"
-) {
-  // Attach a static layer to the service, which will be used to provide an
-  // implementation of the service.
-  static readonly layer = Layer.effect(
-    Database,
-    Effect.gen(function*() {
-      // Define the service methods using Effect.fn
-      const query = Effect.fn("Database.query")(function*(sql: string) {
-        yield* Effect.log("Executing SQL query:", sql)
-        return [{ id: 1, name: "Alice" }, { id: 2, name: "Bob" }]
-      })
+// The interface names the implementation type and the context requirement.
+const DatabaseTypeId = "~myapp/db/Database"
 
-      // Return an instance of the service using Database.of, passing in an
-      // object that implements the service interface.
-      return Database.of({
-        query
-      })
-    })
-  )
+export interface Database {
+  readonly [DatabaseTypeId]: typeof DatabaseTypeId
+
+  query(sql: string): Effect.Effect<Array<unknown>, DatabaseError>
 }
+
+/**
+ * Service key for `Database` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Database = (() => {
+  const service = Context.Service<Database>("myapp/db/Database")
+  return Object.assign(service, {
+    // Attach a static layer to the service, which will be used to provide an
+    // implementation of the service.
+    layer: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        // Define the service methods using Effect.fn
+        const query = Effect.fn("Database.query")(function*(sql: string) {
+          yield* Effect.log("Executing SQL query:", sql)
+          return [{ id: 1, name: "Alice" }, { id: 2, name: "Bob" }]
+        })
+
+        // Return an instance of the service using Database.of, passing in an
+        // object that implements the service interface.
+        return service.of({
+          [DatabaseTypeId]: DatabaseTypeId as typeof DatabaseTypeId,
+          query
+        })
+      })
+    )
+  })
+})()
 
 export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
   cause: Schema.Defect()
 }) {}
 
-// If you ever need to access the service type, use `Database["Service"]`
-export type DatabaseService = Database["Service"]
+// The service interface is directly nameable as Database.
+export type DatabaseService = Database

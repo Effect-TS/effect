@@ -59,6 +59,7 @@ export const layerClientProtocolHttp = (options: {
       const https = options.https ?? false
       const path = options.path.startsWith("/") ? options.path : `/${options.path}`
       return {
+        ["~effect/cluster/Runners/RpcClientProtocol"]: "~effect/cluster/Runners/RpcClientProtocol" as const,
         codecFor: serialization.codecFor,
         make: (address) => {
           const clientWithUrl = HttpClient.mapRequest(
@@ -114,6 +115,7 @@ export const layerClientProtocolWebsocket = (options: {
       const path = options.path.startsWith("/") ? options.path : `/${options.path}`
       const constructor = yield* Socket.WebSocketConstructor
       return {
+        ["~effect/cluster/Runners/RpcClientProtocol"]: "~effect/cluster/Runners/RpcClientProtocol" as const,
         codecFor: serialization.codecFor,
         make: Effect.fnUntraced(function*(address) {
           const socket = yield* Socket.makeWebSocket(

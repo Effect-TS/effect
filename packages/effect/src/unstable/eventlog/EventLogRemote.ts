@@ -40,6 +40,8 @@ import {
 import { encodeSessionAuthPayload, signSessionAuthPayloadBytes } from "./EventLogSessionAuth.ts"
 import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecretDerivation.ts"
 
+const EventLogRemoteTypeId = "~effect/eventlog/EventLogRemote"
+
 /**
  * Service that represents a remote event-log replica.
  *
@@ -56,22 +58,32 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * @category services
  * @since 4.0.0
  */
-export class EventLogRemote extends Context.Service<EventLogRemote, {
+export interface EventLogRemote {
+  readonly [EventLogRemoteTypeId]: typeof EventLogRemoteTypeId
+
   readonly id: RemoteId
   readonly changes: (options: {
-    readonly identity: Identity["Service"]
+    readonly identity: Identity
     readonly storeId: StoreId
     readonly startSequence: number
   }) => Effect.Effect<Queue.Dequeue<RemoteEntry, EventLogRemoteError>, never, Scope.Scope>
   readonly write: (options: {
-    readonly identity: Identity["Service"]
+    readonly identity: Identity
     readonly storeId: StoreId
     readonly entries: ReadonlyArray<Entry>
   }) => Effect.Effect<void, EventLogRemoteError>
   readonly whenAuthenticated: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E | EventLogRemoteError, R | Identity>
-}>()("effect/eventlog/EventLogRemote") {}
+}
+
+/**
+ * Service key for `EventLogRemote` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventLogRemote = Context.Service<EventLogRemote>("effect/eventlog/EventLogRemote")
 
 /**
  * Error raised by `EventLogRemote` operations, recording the failed method and
@@ -97,7 +109,7 @@ export class EventLogRemoteError extends Data.TaggedError("EventLogRemoteError")
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
 
 const makeAuthenticate = Effect.fnUntraced(function*(options: {
-  readonly identity: Identity["Service"]
+  readonly identity: Identity
   readonly hello: HelloResponse
 }) {
   const rootSecretMaterial = yield* getIdentityRootSecretMaterial(options.identity)
@@ -120,6 +132,8 @@ const makeAuthenticate = Effect.fnUntraced(function*(options: {
   })
 })
 
+const EventLogRemoteClientTypeId = "~effect/unstable/eventlog/EventLogRemote/EventLogRemoteClient"
+
 /**
  * Service that provides a typed RPC client for the `EventLogRemoteRpcs` protocol.
  *
@@ -131,19 +145,35 @@ const makeAuthenticate = Effect.fnUntraced(function*(options: {
  * @category services
  * @since 4.0.0
  */
-export class EventLogRemoteClient extends Context.Service<
-  EventLogRemoteClient,
-  RpcClient.RpcClient<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>, RpcClientError>
->()(
-  "effect/unstable/eventlog/EventLogRemote/EventLogRemoteClient"
-) {
-  static readonly layer = Layer.effect(
-    EventLogRemoteClient,
-    RpcClient.make(EventLogRemoteRpcs, {
-      disableTracing: true
-    })
-  )
+export interface EventLogRemoteClient
+  extends RpcClient.RpcClient<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>, RpcClientError>
+{
+  readonly [EventLogRemoteClientTypeId]: typeof EventLogRemoteClientTypeId
 }
+
+/**
+ * Service key for `EventLogRemoteClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventLogRemoteClient = (() => {
+  const service = Context.Service<EventLogRemoteClient>("effect/unstable/eventlog/EventLogRemote/EventLogRemoteClient")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      RpcClient.make(EventLogRemoteRpcs, {
+        disableTracing: true
+      }).pipe(
+        Effect.map((client) =>
+          Object.assign(client, {
+            [EventLogRemoteClientTypeId]: EventLogRemoteClientTypeId as typeof EventLogRemoteClientTypeId
+          })
+        )
+      )
+    )
+  })
+})()
 
 /**
  * Creates an `EventLogRemote` from custom write encoding and change decoding
@@ -160,15 +190,15 @@ export class EventLogRemoteClient extends Context.Service<
  */
 export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges }: {
   readonly encodeWrite: (options: {
-    readonly identity: Identity["Service"]
+    readonly identity: Identity
     readonly entries: ReadonlyArray<Entry>
     readonly storeId: StoreId
   }) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
   readonly decodeChanges: (
-    identity: Identity["Service"],
+    identity: Identity,
     data: Uint8Array<ArrayBuffer>
   ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError>
-}): Effect.fn.Return<EventLogRemote["Service"], EventLogRemoteError, Scope.Scope | EventLogRemoteClient | Registry> {
+}): Effect.fn.Return<EventLogRemote, EventLogRemoteError, Scope.Scope | EventLogRemoteClient | Registry> {
   const client = yield* EventLogRemoteClient
   const registry = yield* Registry
 
@@ -176,8 +206,8 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
     Effect.mapError((cause) => new EventLogRemoteError({ method: "hello", cause }))
   )
 
-  const identities = new Map<string, Identity["Service"]>()
-  const ensureIdentity = (identity: Identity["Service"]) => {
+  const identities = new Map<string, Identity>()
+  const ensureIdentity = (identity: Identity) => {
     let entry = identities.get(identity.publicKey)
     if (!entry) {
       entry = identity
@@ -201,7 +231,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
     capacity: Number.MAX_SAFE_INTEGER
   })
 
-  const ensureAuthenticated = (identity: Identity["Service"]) => {
+  const ensureAuthenticated = (identity: Identity) => {
     ensureIdentity(identity)
     return Cache.get(authCache, identity.publicKey)
   }
@@ -209,7 +239,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   const retryForbidden = <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     options: {
-      readonly identity: Identity["Service"]
+      readonly identity: Identity
     }
   ) =>
     Effect.retry(effect, {
@@ -229,6 +259,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   let chunkedIdCounter = 0
 
   const remote = EventLogRemote.of({
+    [EventLogRemoteTypeId]: EventLogRemoteTypeId as typeof EventLogRemoteTypeId,
     id: hello.remoteId,
     write: Effect.fnUntraced(
       function*(options) {
@@ -296,10 +327,9 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   return remote
 })
 
-/** @effect-diagnostics-next-line classSelfMismatch:off */
-class IdentityService extends Context.Service<Identity, Identity["Service"]>()(
-  "effect/eventlog/EventLog/Identity" satisfies Identity["key"]
-) {}
+const IdentityService = Context.Service<Identity>(
+  "effect/eventlog/EventLog/Identity" satisfies typeof Identity.key
+)
 
 /**
  * Creates an `EventLogRemote` that encrypts outgoing entries and decrypts
@@ -309,7 +339,7 @@ class IdentityService extends Context.Service<Identity, Identity["Service"]>()(
  * @since 4.0.0
  */
 export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
-  EventLogRemote["Service"],
+  EventLogRemote,
   EventLogRemoteError,
   Scope.Scope | EventLogRemoteClient | EventLogEncryption | Registry
 > {
@@ -344,7 +374,7 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
  * @since 4.0.0
  */
 export const makeUnencrypted: Effect.Effect<
-  EventLogRemote["Service"],
+  EventLogRemote,
   EventLogRemoteError,
   Scope.Scope | EventLogRemoteClient | Registry
 > = makeWith({

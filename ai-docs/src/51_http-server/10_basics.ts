@@ -79,33 +79,50 @@ export const AuthorizationClient = HttpApiMiddleware.layerClient(
 
 // Define the HttpApiClient service, which will be used to make requests to the
 // API.
-export class ApiClient extends Context.Service<ApiClient, HttpApiClient.ForApi<typeof Api>>()("acme/ApiClient") {
-  static readonly layer = Layer.effect(
-    ApiClient,
-    HttpApiClient.make(Api, {
-      // Use transformClient to apply middleware to the generated client. This
-      // is useful for settings the base url and applying retry policies.
-      transformClient: (client) =>
-        client.pipe(
-          HttpClient.mapRequest(flow(
-            HttpClientRequest.prependUrl("http://localhost:3000")
-          )),
-          HttpClient.retryTransient({
-            schedule: Schedule.exponential(100),
-            times: 3
-          })
-        )
-    })
-  ).pipe(
-    // Provide the client implementation of the Authorization middleware, which
-    // is required.
-    Layer.provide(AuthorizationClient),
-    // Supply a HttpClient implementation to use for making requests. Here we
-    // use the FetchHttpClient, but you could also use the NodeHttpClient or
-    // BunHttpClient.
-    Layer.provide(FetchHttpClient.layer)
-  )
+const ApiClientTypeId = "~acme/ApiClient"
+
+export interface ApiClient extends HttpApiClient.ForApi<typeof Api> {
+  readonly [ApiClientTypeId]: typeof ApiClientTypeId
 }
+
+/**
+ * Service key for `ApiClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const ApiClient = (() => {
+  const service = Context.Service<ApiClient>("acme/ApiClient")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      HttpApiClient.make(Api, {
+        // Use transformClient to apply middleware to the generated client. This
+        // is useful for settings the base url and applying retry policies.
+        transformClient: (client) =>
+          client.pipe(
+            HttpClient.mapRequest(flow(
+              HttpClientRequest.prependUrl("http://localhost:3000")
+            )),
+            HttpClient.retryTransient({
+              schedule: Schedule.exponential(100),
+              times: 3
+            })
+          )
+      }).pipe(
+        Effect.map((client) => Object.assign(client, { [ApiClientTypeId]: ApiClientTypeId as typeof ApiClientTypeId }))
+      )
+    ).pipe(
+      // Provide the client implementation of the Authorization middleware, which
+      // is required.
+      Layer.provide(AuthorizationClient),
+      // Supply a HttpClient implementation to use for making requests. Here we
+      // use the FetchHttpClient, but you could also use the NodeHttpClient or
+      // BunHttpClient.
+      Layer.provide(FetchHttpClient.layer)
+    )
+  })
+})()
 
 // The generated client mirrors your API definition, so renames and schema
 // changes are checked end-to-end at compile time.

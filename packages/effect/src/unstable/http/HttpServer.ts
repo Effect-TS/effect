@@ -25,6 +25,8 @@ import * as HttpPlatform from "./HttpPlatform.ts"
 import type { HttpServerRequest } from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 
+const HttpServerTypeId = "~effect/http/HttpServer"
+
 /**
  * Service tag for an HTTP server runtime.
  *
@@ -36,7 +38,9 @@ import type { HttpServerResponse } from "./HttpServerResponse.ts"
  * @category services
  * @since 4.0.0
  */
-export class HttpServer extends Context.Service<HttpServer, {
+export interface HttpServer {
+  readonly [HttpServerTypeId]: typeof HttpServerTypeId
+
   readonly serve: {
     <E, R>(effect: Effect.Effect<HttpServerResponse, E, R>): Effect.Effect<
       void,
@@ -54,7 +58,15 @@ export class HttpServer extends Context.Service<HttpServer, {
   }
 
   readonly address: NetAddress.SocketAddress
-}>()("effect/http/HttpServer") {}
+}
+
+/**
+ * Service key for `HttpServer` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const HttpServer = Context.Service<HttpServer>("effect/http/HttpServer")
 
 /**
  * Constructs an `HttpServer` service from a serving implementation and listening
@@ -71,7 +83,7 @@ export const make = (
     ) => Effect.Effect<void, never, Scope.Scope>
     readonly address: NetAddress.SocketAddress
   }
-): HttpServer["Service"] => options
+): HttpServer => Object.assign(options, { [HttpServerTypeId]: HttpServerTypeId as typeof HttpServerTypeId })
 
 /**
  * Creates a layer that starts serving an HTTP response effect with the current

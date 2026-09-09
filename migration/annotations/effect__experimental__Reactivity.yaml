@@ -8,8 +8,8 @@
   replacement: effect/unstable/reactivity/Reactivity#Reactivity
   note: Use the v4 Reactivity Context.Service; unsafe methods were renamed with an Unsafe suffix.
 "@effect/experimental/Reactivity#Reactivity.Service":
-  replacement: effect/unstable/reactivity/Reactivity#Reactivity["Service"]
-  note: The named namespace member was removed; derive the service shape from the Context.Service class.
+  replacement: effect/unstable/reactivity/Reactivity#Reactivity
+  note: The named namespace member was removed; use the directly exported Reactivity interface.
 "@effect/experimental/Reactivity#stream":
   replacement: effect/unstable/reactivity/Reactivity#stream
   note: Import stream from the v4 unstable Reactivity module.

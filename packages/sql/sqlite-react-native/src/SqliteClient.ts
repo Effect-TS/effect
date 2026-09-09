@@ -196,6 +196,7 @@ export const make = (
         })
 
       return identity<SqliteConnection>({
+        ["~effect/sql/SqlConnection"]: "~effect/sql/SqlConnection" as const,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)
@@ -302,6 +303,8 @@ interface DB {
    * Sync version of the execute function
    * It will block the JS thread and therefore your UI and should be used with caution
    *
+   * **Details**
+   *
    * When writing your queries, you can use the ? character as a placeholder for parameters
    * The parameters will be automatically escaped and sanitized
    *
@@ -316,6 +319,8 @@ interface DB {
   executeSync: (query: string, params?: Array<any>) => QueryResult
   /**
    * Basic query execution function, it is async don't forget to await it
+   *
+   * **Details**
    *
    * When writing your queries, you can use the ? character as a placeholder for parameters
    * The parameters will be automatically escaped and sanitized
@@ -365,6 +370,8 @@ interface DB {
    * Allows to trigger a sync the database with it's remote replica
    * In order for this function to work you need to use openSync or openRemote functions
    * with libsql: true in the package.json
+   *
+   * **Details**
    *
    * The database is hosted in turso
    */

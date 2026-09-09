@@ -73,7 +73,7 @@ export const layer = <
       readonly namespace?: string | undefined
       readonly labelSelector?: string | undefined
     } | undefined
-    readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
+    readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig> | undefined
   }
 ): ClientOnly extends true ? Layer.Layer<
     Sharding | Runners.Runners | ("byo" extends Storage ? never : MessageStorage.MessageStorage),

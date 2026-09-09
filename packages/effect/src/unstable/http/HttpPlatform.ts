@@ -24,13 +24,17 @@ import type * as Body from "./HttpBody.ts"
 import * as Response from "./HttpServerResponse.ts"
 import * as internal from "./internal/compression.ts"
 
+const HttpPlatformTypeId = "~effect/http/HttpPlatform"
+
 /**
  * Service for platform-specific HTTP response helpers, including file-backed server responses.
  *
  * @category services
  * @since 4.0.0
  */
-export class HttpPlatform extends Context.Service<HttpPlatform, {
+export interface HttpPlatform {
+  readonly [HttpPlatformTypeId]: typeof HttpPlatformTypeId
+
   readonly platform: "deno" | "node" | "bun" | "web"
   readonly compression: Compression
   readonly fileResponse: (
@@ -49,7 +53,15 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
       readonly offset?: number | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse>
-}>()("effect/http/HttpPlatform") {}
+}
+
+/**
+ * Service key for `HttpPlatform` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const HttpPlatform = Context.Service<HttpPlatform>("effect/http/HttpPlatform")
 
 /**
  * Creates an `HttpPlatform` service from platform-specific file response constructors, using `FileSystem` and `Etag.Generator`.
@@ -81,7 +93,7 @@ export const make: (impl: {
     }
   ) => Response.HttpServerResponse
 }) => Effect.Effect<
-  HttpPlatform["Service"],
+  HttpPlatform,
   never,
   Etag.Generator | FileSystem.FileSystem
 > = Effect.fnUntraced(function*(impl) {
@@ -89,6 +101,7 @@ export const make: (impl: {
   const etagGen = yield* Etag.Generator
 
   return HttpPlatform.of({
+    [HttpPlatformTypeId]: HttpPlatformTypeId as typeof HttpPlatformTypeId,
     platform: impl.platform,
     compression: internal.wrapCompression(impl.compression),
     fileResponse: Effect.fnUntraced(function*(path, options) {

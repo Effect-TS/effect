@@ -30,6 +30,7 @@ import * as WorkerThreads from "node:worker_threads"
  * @since 4.0.0
  */
 export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.succeed(WorkerRunner.WorkerRunnerPlatform)({
+  ["~effect/workers/WorkerRunner/WorkerRunnerPlatform"]: "~effect/workers/WorkerRunner/WorkerRunnerPlatform" as const,
   start<O = unknown, I = unknown>() {
     return Effect.gen(function*() {
       if (!WorkerThreads.parentPort && !process.send) {

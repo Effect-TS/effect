@@ -201,6 +201,7 @@ export const make = (
     )
 
     class ConnectionImpl implements Connection {
+      readonly ["~effect/sql/SqlConnection"] = "~effect/sql/SqlConnection" as const
       private conn: Clickhouse.ClickHouseClient
       constructor(conn: Clickhouse.ClickHouseClient) {
         this.conn = conn

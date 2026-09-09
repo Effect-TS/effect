@@ -162,12 +162,16 @@ export const layerRpcHandlers = (options: {
           })
         }
 
-        const authenticatedIdentities = new Set(
-          Context.getOrUndefined(client.annotations, AuthenticatedIdentities)
+        const authenticatedIdentities = Object.assign(
+          new Set(
+            Context.getOrUndefined(client.annotations, AuthenticatedIdentities)
+          ),
+          { [AuthenticatedIdentitiesTypeId]: AuthenticatedIdentitiesTypeId as typeof AuthenticatedIdentitiesTypeId }
         )
         authenticatedIdentities.add(request.publicKey)
         void client
           .annotate(EventLog.Identity, {
+            ["~effect/eventlog/EventLog/Identity"]: "~effect/eventlog/EventLog/Identity" as const,
             publicKey: request.publicKey,
             privateKey: constEmptyPrivateKey
           })
@@ -251,15 +255,27 @@ export class ChunkedMessageState extends Context.Reference<
   defaultValue: () => new Map()
 }) {}
 
+const AuthenticatedIdentitiesTypeId = "~effect/eventlog/EventLogServer/AuthenticatedIdentities"
+
 /**
  * Annotation containing the public keys authenticated on an RPC connection.
  *
  * @category services
  * @since 4.0.0
  */
-export class AuthenticatedIdentities extends Context.Service<AuthenticatedIdentities, Set<string>>()(
+export interface AuthenticatedIdentities extends Set<string> {
+  readonly [AuthenticatedIdentitiesTypeId]: typeof AuthenticatedIdentitiesTypeId
+}
+
+/**
+ * Service key for `AuthenticatedIdentities` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const AuthenticatedIdentities = Context.Service<AuthenticatedIdentities>(
   "effect/eventlog/EventLogServer/AuthenticatedIdentities"
-) {}
+)
 
 class SessionAuthCacheKey extends Data.Class<{
   readonly publicKey: string

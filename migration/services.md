@@ -26,14 +26,19 @@ const Database = Context.GenericTag<Database>("Database")
 ```ts
 import { Context } from "effect"
 
-interface Database {
+export interface Database {
+  readonly ["~Database"]: "~Database"
   readonly query: (sql: string) => string
 }
 
-const Database = Context.Service<Database>("Database")
+export const Database = Context.Service<Database>("Database")
 ```
 
-## Class-Based Services
+Use the same name for the interface and service value. The interface names both
+the implementation and its context requirement; no `["Service"]` projection is
+needed. Implementations include the service-specific TypeId.
+
+## Supported class constructor syntax
 
 **v3: `Context.Tag` class syntax**
 
@@ -44,6 +49,8 @@ class Database extends Context.Tag("Database")<Database, {
   readonly query: (sql: string) => string
 }>() {}
 ```
+
+The class constructor remains supported, including tests that exercise this API.
 
 **v4: `Context.Service` class syntax**
 
@@ -99,9 +106,12 @@ const program = Notifications.notify("hello")
 ```ts
 import { Context, Effect } from "effect"
 
-class Notifications extends Context.Service<Notifications, {
+interface Notifications {
+  readonly ["~Notifications"]: "~Notifications"
+
   readonly notify: (message: string) => Effect.Effect<void>
-}>()("Notifications") {}
+}
+const Notifications = Context.Service<Notifications>("Notifications")
 
 // use: access the service and call a method in one step
 const program = Notifications.use((n) => n.notify("hello"))
@@ -170,25 +180,34 @@ const program = Effect.gen(function*() {
 
 **v4**
 
-In v4, `Context.Service` with `make` stores the constructor effect on the
-class but does **not** auto-generate a layer. Define layers explicitly using
-`Layer.effect`:
+In v4, define the service interface and value together, then export the constructor
+and layer explicitly:
 
 ```ts
 import { Context, Effect, Layer } from "effect"
 
-class Logger extends Context.Service<Logger>()("Logger", {
-  make: Effect.gen(function*() {
-    const config = yield* Config
-    return { log: (msg: string) => Effect.log(`[${config.prefix}] ${msg}`) }
-  })
-}) {
-  // Build the layer yourself from the make effect
-  static readonly layer = Layer.effect(this, this.make).pipe(
-    Layer.provide(Config.layer)
-  )
+export interface Logger {
+  readonly ["~Logger"]: "~Logger"
+  readonly log: (message: string) => Effect.Effect<void>
 }
+
+export const Logger = Context.Service<Logger>("Logger")
+
+export const make = Effect.gen(function*() {
+  const config = yield* Config
+  return Logger.of({
+    ["~Logger"]: "~Logger",
+    log: (message: string) => Effect.log(`[${config.prefix}] ${message}`)
+  })
+})
+
+export const layer = Layer.effect(Logger, make).pipe(
+  Layer.provide(Config.layer)
+)
 ```
+
+The supported class constructor also accepts a `make` option, but it does not
+automatically generate a layer.
 
 The `dependencies` option no longer exists. Wire dependencies via
 `Layer.provide` as shown above.

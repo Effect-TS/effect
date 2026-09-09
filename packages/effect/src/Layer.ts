@@ -195,9 +195,12 @@ const MemoMapTypeId = "~effect/Layer/MemoMap"
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Create a custom MemoMap for manual layer building
  * const program = Effect.gen(function*() {
@@ -205,6 +208,7 @@ const MemoMapTypeId = "~effect/Layer/MemoMap"
  *   const scope = yield* Effect.scope
  *
  *   const dbLayer = Layer.succeed(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  *   })
  *   const context = yield* Layer.buildWithMemoMap(dbLayer, memoMap, scope)
@@ -257,11 +261,15 @@ const memoMapReuse = <RIn, E, ROut>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const dbLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  * })
  * const notALayer = { someProperty: "value" }
@@ -311,13 +319,17 @@ const fromBuildUnsafe = <ROut, E, RIn>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const databaseLayer = Layer.fromBuild(() =>
  *   Effect.sync(() =>
  *     Context.make(Database, {
+ *       ["~Database"]: "~Database" as const,
  *       query: (sql: string) => Effect.succeed("result")
  *     })
  *   )
@@ -358,13 +370,17 @@ export const fromBuild = <ROut, E, RIn>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const databaseLayer = Layer.fromBuildMemo(() =>
  *   Effect.sync(() =>
  *     Context.make(Database, {
+ *       ["~Database"]: "~Database" as const,
  *       query: (sql: string) => Effect.succeed("result")
  *     })
  *   )
@@ -465,9 +481,12 @@ class MemoMapImpl implements MemoMap {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Create a memo map for manual layer building
  * const program = Effect.gen(function*() {
@@ -475,6 +494,7 @@ class MemoMapImpl implements MemoMap {
  *   const scope = yield* Effect.scope
  *
  *   const dbLayer = Layer.succeed(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  *   })
  *   const context = yield* Layer.buildWithMemoMap(dbLayer, memoMap, scope)
@@ -518,9 +538,12 @@ export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(p
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Create a memo map safely within an Effect
  * const program = Effect.gen(function*() {
@@ -528,6 +551,7 @@ export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(p
  *   const scope = yield* Effect.scope
  *
  *   const dbLayer = Layer.succeed(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  *   })
  *   const context = yield* Layer.buildWithMemoMap(dbLayer, memoMap, scope)
@@ -597,13 +621,19 @@ export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class Logger extends Context.Service<Logger, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const logs: Array<string> = []
  *
@@ -614,12 +644,14 @@ export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("
  *
  *   // Build database layer with memoization
  *   const dbLayer = Layer.succeed(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  *   })
  *   const dbContext = yield* Layer.buildWithMemoMap(dbLayer, memoMap, scope)
  *
  *   // Build logger layer with same memoization (reuses memo if same layer)
  *   const loggerLayer = Layer.succeed(Logger, {
+ *     ["~Logger"]: "~Logger" as const,
  *     log: Effect.fn("Logger.log")((msg: string) => Effect.sync(() => logs.push(msg)))
  *   })
  *   const loggerContext = yield* Layer.buildWithMemoMap(
@@ -671,13 +703,17 @@ export const buildWithMemoMap: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Build a layer to get its services
  * const program = Effect.gen(function*() {
  *   const dbLayer = Layer.succeed(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  *   })
  *
@@ -725,9 +761,12 @@ export const build = <RIn, E, ROut>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Scope } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const logs: Array<string> = []
  *
@@ -735,14 +774,20 @@ export const build = <RIn, E, ROut>(
  * const program = Effect.gen(function*() {
  *   const scope = yield* Effect.scope
  *
- *   const dbLayer = Layer.effect(Database, Effect.gen(function*() {
- *     logs.push("Initializing database...")
- *     yield* Scope.addFinalizer(
- *       scope,
- *       Effect.sync(() => logs.push("Database closed"))
- *     )
- *     return { query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`)) }
- *   }))
+ *   const dbLayer = Layer.effect(
+ *     Database,
+ *     Effect.gen(function*() {
+ *       logs.push("Initializing database...")
+ *       yield* Scope.addFinalizer(
+ *         scope,
+ *         Effect.sync(() => logs.push("Database closed"))
+ *       )
+ *       return {
+ *         ["~Database"]: "~Database" as const,
+ *         query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`))
+ *       }
+ *     })
+ *   )
  *
  *   // Build with specific scope - resources tied to this scope
  *   const context = yield* Layer.buildWithScope(dbLayer, scope)
@@ -788,11 +833,15 @@ export const buildWithScope: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const DatabaseLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Query result: ${sql}`))
  * })
  * const program = Database.use((database) => database.query("SELECT 1"))
@@ -833,19 +882,27 @@ export const succeed: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class Logger extends Context.Service<Logger, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const logs: Array<string> = []
  * const context = Context.make(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  * }).pipe(
  *   Context.add(Logger, {
+ *     ["~Logger"]: "~Logger" as const,
  *     log: (msg: string) => Effect.sync(() => logs.push(msg))
  *   })
  * )
@@ -907,11 +964,15 @@ export const empty: Layer<never> = succeedContext(Context.empty())
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const layer = Layer.sync(Database, () => ({
+ *   ["~Database"]: "~Database" as const,
  *   query: (sql: string) => Effect.succeed(`Query: ${sql}`)
  * }))
  * const program = Database.use((database) => database.query("SELECT 1"))
@@ -951,12 +1012,16 @@ export const sync: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const layer = Layer.syncContext(() =>
  *   Context.make(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: (sql: string) => Effect.succeed(`Query: ${sql}`)
  *   })
  * )
@@ -992,12 +1057,17 @@ export const syncContext = <A>(evaluate: LazyArg<Context.Context<A>>): Layer<A> 
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * const layer = Layer.effect(Database,
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * const layer = Layer.effect(
+ *   Database,
  *   Effect.sync(() => ({
+ *     ["~Database"]: "~Database" as const,
  *     query: (sql: string) => Effect.succeed(`Query: ${sql}`)
  *   }))
  * )
@@ -1051,13 +1121,15 @@ const effectImpl = <I, S, E, R>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<
- *   Database,
- *   { readonly query: (sql: string) => Effect.Effect<string> }
- * >()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const layer = Layer.effectContext(
  *   Effect.succeed(Context.make(Database, {
+ *     ["~Database"]: "~Database" as const,
  *     query: (sql: string) => Effect.succeed(`Query: ${sql}`)
  *   }))
  * )
@@ -1157,12 +1229,18 @@ const unwrapKey = Context.Service<Layer<any, any, any>>("effect/Layer/unwrap")
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const layerEffect = Effect.succeed(
- *   Layer.succeed(Database, { query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result")) })
+ *   Layer.succeed(Database, {
+ *     ["~Database"]: "~Database" as const,
+ *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
+ *   })
  * )
  *
  * const unwrappedLayer = Layer.unwrap(layerEffect)
@@ -1215,19 +1293,27 @@ const mergeAllEffect = <Layers extends [Layer<never, any, any>, ...Array<Layer<n
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class Logger extends Context.Service<Logger, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const dbLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  * })
  * const logs: Array<string> = []
  * const loggerLayer = Layer.succeed(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: Effect.fn("Logger.log")((msg: string) => Effect.sync(() => logs.push(msg)))
  * })
  *
@@ -1270,18 +1356,26 @@ export const mergeAll = <Layers extends [Layer<never, any, any>, ...Array<Layer<
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class Logger extends Context.Service<Logger, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const dbLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed("result"))
  * })
  * const loggerLayer = Layer.succeed(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: Effect.fn("Logger.log")((_msg: string) => Effect.void)
  * })
  *
@@ -1366,46 +1460,61 @@ const provideWith = (
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class UserService extends Context.Service<UserService, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface UserService {
+ *   readonly ["~UserService"]: "~UserService"
+ *
  *   readonly getUser: (id: string) => Effect.Effect<{
  *     id: string
  *     name: string
  *   }>
- * }>()("UserService") {}
+ * }
+ * const UserService = Context.Service<UserService>("UserService")
  *
- * class Logger extends Context.Service<Logger, {
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * // Create dependency layers
  * const databaseLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`DB: ${sql}`))
  * })
  *
  * const logs: Array<string> = []
  * const loggerLayer = Layer.succeed(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: Effect.fn("Logger.log")((msg: string) => Effect.sync(() => logs.push(`[LOG] ${msg}`)))
  * })
  *
  * // UserService depends on Database and Logger
- * const userServiceLayer = Layer.effect(UserService, Effect.gen(function*() {
- *   const database = yield* Database
- *   const logger = yield* Logger
+ * const userServiceLayer = Layer.effect(
+ *   UserService,
+ *   Effect.gen(function*() {
+ *     const database = yield* Database
+ *     const logger = yield* Logger
  *
- *   return {
- *     getUser: Effect.fn("UserService.getUser")(function*(id: string) {
+ *     return {
+ *       ["~UserService"]: "~UserService" as const,
+ *       getUser: Effect.fn("UserService.getUser")(function*(id: string) {
  *         yield* logger.log(`Looking up user ${id}`)
  *         const result = yield* database.query(
  *           `SELECT * FROM users WHERE id = ${id}`
  *         )
  *         return { id, name: result }
  *       })
- *   }
- * }))
+ *     }
+ *   })
+ * )
  *
  * // Provide dependencies to UserService layer
  * const userServiceWithDependencies = userServiceLayer.pipe(
@@ -1478,46 +1587,61 @@ export const provide: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
- * class Logger extends Context.Service<Logger, {
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
- * class UserService extends Context.Service<UserService, {
+ * interface UserService {
+ *   readonly ["~UserService"]: "~UserService"
+ *
  *   readonly getUser: (id: string) => Effect.Effect<{
  *     id: string
  *     name: string
  *   }>
- * }>()("UserService") {}
+ * }
+ * const UserService = Context.Service<UserService>("UserService")
  *
  * // Create dependency layers
  * const databaseLayer = Layer.succeed(Database, {
+ *   ["~Database"]: "~Database" as const,
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`DB: ${sql}`))
  * })
  *
  * const logs: Array<string> = []
  * const loggerLayer = Layer.succeed(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: Effect.fn("Logger.log")((msg: string) => Effect.sync(() => logs.push(`[LOG] ${msg}`)))
  * })
  *
  * // UserService depends on Database and Logger
- * const userServiceLayer = Layer.effect(UserService, Effect.gen(function*() {
- *   const database = yield* Database
- *   const logger = yield* Logger
+ * const userServiceLayer = Layer.effect(
+ *   UserService,
+ *   Effect.gen(function*() {
+ *     const database = yield* Database
+ *     const logger = yield* Logger
  *
- *   return {
- *     getUser: Effect.fn("UserService.getUser")(function*(id: string) {
+ *     return {
+ *       ["~UserService"]: "~UserService" as const,
+ *       getUser: Effect.fn("UserService.getUser")(function*(id: string) {
  *         yield* logger.log(`Looking up user ${id}`)
  *         const result = yield* database.query(
  *           `SELECT * FROM users WHERE id = ${id}`
  *         )
  *         return { id, name: result }
  *       })
- *   }
- * }))
+ *     }
+ *   })
+ * )
  *
  * // Provide dependencies and merge all services together
  * const allServicesLayer = userServiceLayer.pipe(
@@ -1591,23 +1715,33 @@ export const provideMerge: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Config extends Context.Service<Config, {
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *
  *   readonly dbUrl: string
  *   readonly logLevel: string
- * }>()("Config") {}
+ * }
+ * const Config = Context.Service<Config>("Config")
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
- * class Logger extends Context.Service<Logger, {
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const logs: Array<string> = []
  *
  * // Base config layer
  * const configLayer = Layer.succeed(Config, {
+ *   ["~Config"]: "~Config" as const,
  *   dbUrl: "postgres://localhost:5432/mydb",
  *   logLevel: "debug"
  * })
@@ -1619,14 +1753,17 @@ export const provideMerge: {
  *
  *     // Create database layer based on config
  *     const dbLayer = Layer.succeed(Database, {
+ *       ["~Database"]: "~Database" as const,
  *       query: Effect.fn("Database.query")((sql: string) =>
  *         Effect.succeed(
  *           `Querying ${config.dbUrl}: ${sql}`
- *         ))
+ *         )
+ *       )
  *     })
  *
  *     // Create logger layer based on config
  *     const loggerLayer = Layer.succeed(Logger, {
+ *       ["~Logger"]: "~Logger" as const,
  *       log: Effect.fn("Logger.log")((msg: string) =>
  *         config.logLevel === "debug"
  *           ? Effect.sync(() => logs.push(`[DEBUG] ${msg}`))
@@ -1819,9 +1956,12 @@ export const tapCause: {
  *   message: string
  * }> {}
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Layer that can fail during construction
  * const error = new DatabaseError({ message: "Connection failed" })
@@ -1901,13 +2041,19 @@ export {
  *
  * class ConfigError extends Data.TaggedError("ConfigError") {}
  *
- * class Config extends Context.Service<Config, {
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *
  *   readonly apiUrl: string
- * }>()("Config") {}
+ * }
+ * const Config = Context.Service<Config>("Config")
  *
  * const configLayer = Layer.effect(Config, Effect.fail(new ConfigError()))
  *
- * const fallbackLayer = Layer.succeed(Config, { apiUrl: "http://localhost" })
+ * const fallbackLayer = Layer.succeed(Config, {
+ *   ["~Config"]: "~Config" as const,
+ *   apiUrl: "http://localhost"
+ * })
  *
  * const recovered = configLayer.pipe(
  *   Layer.catchTag("ConfigError", () => fallbackLayer)
@@ -1996,17 +2142,22 @@ export const catchTag: {
  *   message: string
  * }> {}
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * const primaryDatabaseLayer = Layer.effect(Database,
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * const primaryDatabaseLayer = Layer.effect(
+ *   Database,
  *   Effect.fail(new DatabaseError({ message: "Primary DB unreachable" }))
  * )
  *
  * const databaseWithFallback = primaryDatabaseLayer.pipe(
  *   Layer.catchCause(() => {
  *     return Layer.succeed(Database, {
+ *       ["~Database"]: "~Database" as const,
  *       query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Memory: ${sql}`))
  *     })
  *   })
@@ -2101,27 +2252,42 @@ export const updateService: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Ref } from "effect"
  *
- * class Counter extends Context.Service<Counter, {
+ * interface Counter {
+ *   readonly ["~Counter"]: "~Counter"
+ *
  *   readonly id: number
- * }>()("Counter") {}
+ * }
+ * const Counter = Context.Service<Counter>("Counter")
  *
- * class Left extends Context.Service<Left, {
+ * interface Left {
+ *   readonly ["~Left"]: "~Left"
+ *
  *   readonly counterId: number
- * }>()("Left") {}
+ * }
+ * const Left = Context.Service<Left>("Left")
  *
- * class Right extends Context.Service<Right, {
+ * interface Right {
+ *   readonly ["~Right"]: "~Right"
+ *
  *   readonly counterId: number
- * }>()("Right") {}
+ * }
+ * const Right = Context.Service<Right>("Right")
  *
- * const leftLayer = Layer.effect(Left, Effect.gen(function*() {
- *   const counter = yield* Counter
- *   return { counterId: counter.id }
- * }))
+ * const leftLayer = Layer.effect(
+ *   Left,
+ *   Effect.gen(function*() {
+ *     const counter = yield* Counter
+ *     return Left.of({ ["~Left"]: "~Left", counterId: counter.id })
+ *   })
+ * )
  *
- * const rightLayer = Layer.effect(Right, Effect.gen(function*() {
- *   const counter = yield* Counter
- *   return { counterId: counter.id }
- * }))
+ * const rightLayer = Layer.effect(
+ *   Right,
+ *   Effect.gen(function*() {
+ *     const counter = yield* Counter
+ *     return Right.of({ ["~Right"]: "~Right", counterId: counter.id })
+ *   })
+ * )
  *
  * const compareIds = Effect.gen(function*() {
  *   const left = yield* Left
@@ -2132,10 +2298,16 @@ export const updateService: {
  * const program = Effect.gen(function*() {
  *   const nextId = yield* Ref.make(0)
  *
- *   const counterLayer = Layer.effect(Counter, Effect.gen(function*() {
- *     const id = yield* Ref.updateAndGet(nextId, (n) => n + 1)
- *     return { id }
- *   }))
+ *   const counterLayer = Layer.effect(
+ *     Counter,
+ *     Effect.gen(function*() {
+ *       const id = yield* Ref.updateAndGet(nextId, (n) => n + 1)
+ *       return {
+ *         ["~Counter"]: "~Counter" as const,
+ *         id
+ *       }
+ *     })
+ *   )
  *
  *   const shared = Layer.merge(
  *     Layer.provide(leftLayer, counterLayer),
@@ -2182,19 +2354,28 @@ export const fresh = <A, E, R>(self: Layer<A, E, R>): Layer<A, E, R> =>
  * ```ts import.meta.vitest
  * import { Context, Deferred, Effect, Fiber, Layer, Ref } from "effect"
  *
- * class HttpServer extends Context.Service<HttpServer, {
+ * interface HttpServer {
+ *   readonly ["~HttpServer"]: "~HttpServer"
+ *
  *   readonly port: number
- * }>()("HttpServer") {}
+ * }
+ * const HttpServer = Context.Service<HttpServer>("HttpServer")
  *
  * const program = Effect.gen(function*() {
  *   const events = yield* Ref.make<Array<string>>([])
  *   const started = yield* Deferred.make<void>()
  *
- *   const serverLayer = Layer.effect(HttpServer, Effect.gen(function*() {
- *     yield* Ref.update(events, (events) => [...events, "Starting HTTP server..."])
- *     yield* Deferred.succeed(started, undefined)
- *     return { port: 3000 }
- *   }))
+ *   const serverLayer = Layer.effect(
+ *     HttpServer,
+ *     Effect.gen(function*() {
+ *       yield* Ref.update(events, (events) => [...events, "Starting HTTP server..."])
+ *       yield* Deferred.succeed(started, undefined)
+ *       return {
+ *         ["~HttpServer"]: "~HttpServer" as const,
+ *         port: 3000
+ *       }
+ *     })
+ *   )
  *
  *   const fiber = yield* Effect.forkChild(Layer.launch(serverLayer))
  *   yield* Deferred.await(started)
@@ -2266,7 +2447,9 @@ type AnyEffectOrStream =
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class UserService extends Context.Service<UserService, {
+ * interface UserService {
+ *   readonly ["~UserService"]: "~UserService"
+ *
  *   readonly config: { apiUrl: string }
  *   readonly getUser: (
  *     id: string
@@ -2276,10 +2459,12 @@ type AnyEffectOrStream =
  *     id: string,
  *     data: object
  *   ) => Effect.Effect<{ id: string; name: string }, Error>
- * }>()("UserService") {}
+ * }
+ * const UserService = Context.Service<UserService>("UserService")
  *
  * // Create a partial mock - only implement what you need for testing
  * const testUserLayer = Layer.mock(UserService, {
+ *   ["~UserService"]: "~UserService",
  *   config: { apiUrl: "https://test-api.com" }, // Required - non-Effect property
  *   getUser: (id: string) => Effect.succeed({ id, name: "Test User" }) // Mock implementation
  *   // deleteUser and updateUser are omitted - will throw UnimplementedError if called
@@ -2501,28 +2686,34 @@ export interface SpanOptions extends Tracer.SpanOptions {
  * import { Context, Effect, Layer } from "effect"
  * import type { Tracer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const logs: Array<string> = []
  *
  * // Create a traced layer - all operations performed during construction of
  * // the `Database` service are part of the "database-init" span
- * const databaseLayer = Layer.effect(Database, Effect.gen(function*() {
- *   // These operations are traced under "database-init" span
- *   logs.push("Connecting to database")
- *   logs.push("Database connected")
+ * const databaseLayer = Layer.effect(
+ *   Database,
+ *   Effect.gen(function*() {
+ *     // These operations are traced under "database-init" span
+ *     logs.push("Connecting to database")
+ *     logs.push("Database connected")
  *
- *   const parentSpan = yield* Effect.currentParentSpan
- *   logs.push((parentSpan as Tracer.Span).name)
+ *     const parentSpan = yield* Effect.currentParentSpan
+ *     logs.push((parentSpan as Tracer.Span).name)
  *
- *   return {
- *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`))
- *   }
- * })).pipe(Layer.provide(Layer.span("database-init", {
- *   onEnd: (span, exit) =>
- *     Effect.sync(() => logs.push(`Span ${span.name} ended with: ${exit._tag}`))
+ *     return {
+ *       ["~Database"]: "~Database" as const,
+ *       query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`))
+ *     }
+ *   })
+ * ).pipe(Layer.provide(Layer.span("database-init", {
+ *   onEnd: (span, exit) => Effect.sync(() => logs.push(`Span ${span.name} ended with: ${exit._tag}`))
  * })))
  *
  * const program = Database.use((database) => database.query("SELECT 1"))
@@ -2563,10 +2754,13 @@ export const span = (
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Tracer } from "effect"
  *
- * class Database extends Context.Service<Database, {
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   readonly spanId: string
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Create a layer that uses an existing span as parent
  * const databaseLayer = Layer.effect(
@@ -2575,6 +2769,7 @@ export const span = (
  *     const parentSpan = yield* Effect.currentParentSpan
  *
  *     return {
+ *       ["~Database"]: "~Database" as const,
  *       spanId: parentSpan.spanId,
  *       query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`))
  *     }
@@ -2584,7 +2779,8 @@ export const span = (
  *   traceId: "000"
  * }))))
  * const program = Database.use((database) =>
- *   Effect.map(database.query("SELECT 1"), (result) => ({ spanId: database.spanId, result })))
+ *   Effect.map(database.query("SELECT 1"), (result) => ({ spanId: database.spanId, result }))
+ * )
  * Effect.runSync(Effect.provide(program, databaseLayer)) // => { spanId: "42", result: "Result: SELECT 1" }
  * ```
  *
@@ -2609,34 +2805,44 @@ export const parentSpan = (span: Tracer.AnySpan): Layer<Tracer.ParentSpan> =>
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class Logger extends Context.Service<Logger, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   readonly log: (msg: string) => Effect.Effect<void>
- * }>()("Logger") {}
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const logs: Array<string> = []
  *
  * // Create layers with tracing
- * const databaseLayer = Layer.effect(Database, Effect.gen(function*() {
- *   return {
- *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`))
- *   }
- * })).pipe(Layer.withSpan("database-initialization", {
+ * const databaseLayer = Layer.effect(
+ *   Database,
+ *   Effect.gen(function*() {
+ *     return {
+ *       ["~Database"]: "~Database" as const,
+ *       query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result: ${sql}`))
+ *     }
+ *   })
+ * ).pipe(Layer.withSpan("database-initialization", {
  *   attributes: { dbType: "postgres" }
  * }))
  *
  * const loggerLayer = Layer.succeed(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: Effect.fn("Logger.log")((msg: string) => Effect.sync(() => logs.push(msg)))
  * }).pipe(Layer.withSpan("logger-initialization"))
  *
  * // Combine traced layers
  * const appLayer = Layer.mergeAll(databaseLayer, loggerLayer).pipe(
  *   Layer.withSpan("app-initialization", {
- *     onEnd: (span, exit) =>
- *       Effect.sync(() => logs.push(`Application initialization completed: ${exit._tag}`))
+ *     onEnd: (span, exit) => Effect.sync(() => logs.push(`Application initialization completed: ${exit._tag}`))
  *   })
  * )
  *
@@ -2717,26 +2923,40 @@ export const withSpan: {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Tracer } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>()("Database") {}
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
  *
- * class Cache extends Context.Service<Cache, {
+ *   readonly query: (sql: string) => Effect.Effect<string>
+ * }
+ * const Database = Context.Service<Database>("Database")
+ *
+ * interface Cache {
+ *   readonly ["~Cache"]: "~Cache"
+ *
  *   readonly get: (key: string) => Effect.Effect<string | null>
- * }>()("Cache") {}
+ * }
+ * const Cache = Context.Service<Cache>("Cache")
  *
  * // Create layers
- * const DatabaseLayer = Layer.effect(Database, Effect.gen(function*() {
- *   return {
- *     query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`DB: ${sql}`))
- *   }
- * }))
+ * const DatabaseLayer = Layer.effect(
+ *   Database,
+ *   Effect.gen(function*() {
+ *     return {
+ *       ["~Database"]: "~Database" as const,
+ *       query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`DB: ${sql}`))
+ *     }
+ *   })
+ * )
  *
- * const CacheLayer = Layer.effect(Cache, Effect.gen(function*() {
- *   return {
- *     get: Effect.fn("Cache.get")((key: string) => Effect.succeed(`Cache: ${key}`))
- *   }
- * }))
+ * const CacheLayer = Layer.effect(
+ *   Cache,
+ *   Effect.gen(function*() {
+ *     return {
+ *       ["~Cache"]: "~Cache" as const,
+ *       get: Effect.fn("Cache.get")((key: string) => Effect.succeed(`Cache: ${key}`))
+ *     }
+ *   })
+ * )
  *
  * // Use with an existing parent span from Effect.withSpan
  * const program = Effect.withSpan("application-startup")(

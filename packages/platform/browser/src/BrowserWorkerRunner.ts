@@ -35,7 +35,8 @@ if (typeof self !== "undefined" && "onconnect" in self) {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatform["Service"] => ({
+export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatform => ({
+  ["~effect/workers/WorkerRunner/WorkerRunnerPlatform"]: "~effect/workers/WorkerRunner/WorkerRunnerPlatform" as const,
   start: Effect.fnUntraced(function*<O = unknown, I = unknown>() {
     const disconnects = yield* Queue.make<number>()
     let currentPortId = 0

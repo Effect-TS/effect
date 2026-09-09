@@ -15,6 +15,8 @@ import type { LogsData } from "./OtlpLogger.ts"
 import type { MetricsData } from "./OtlpMetrics.ts"
 import type { TraceData } from "./OtlpTracer.ts"
 
+const OtlpSerializationTypeId = "~effect/observability/OtlpSerialization"
+
 /**
  * Service for serializing OTLP traces, metrics, and logs into HTTP request
  * bodies.
@@ -22,11 +24,21 @@ import type { TraceData } from "./OtlpTracer.ts"
  * @category services
  * @since 4.0.0
  */
-export class OtlpSerialization extends Context.Service<OtlpSerialization, {
+export interface OtlpSerialization {
+  readonly [OtlpSerializationTypeId]: typeof OtlpSerializationTypeId
+
   readonly traces: (data: TraceData) => HttpBody.HttpBody
   readonly metrics: (data: MetricsData) => HttpBody.HttpBody
   readonly logs: (data: LogsData) => HttpBody.HttpBody
-}>()("effect/observability/OtlpSerialization") {}
+}
+
+/**
+ * Service key for `OtlpSerialization` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OtlpSerialization = Context.Service<OtlpSerialization>("effect/observability/OtlpSerialization")
 
 /**
  * Provides `OtlpSerialization` using OTLP/HTTP JSON bodies.
@@ -35,6 +47,7 @@ export class OtlpSerialization extends Context.Service<OtlpSerialization, {
  * @since 4.0.0
  */
 export const layerJson = Layer.succeed(OtlpSerialization, {
+  [OtlpSerializationTypeId]: OtlpSerializationTypeId as typeof OtlpSerializationTypeId,
   traces: (spans) => HttpBody.jsonUnsafe(spans),
   metrics: (metrics) => HttpBody.jsonUnsafe(metrics),
   logs: (logs) => HttpBody.jsonUnsafe(logs)
@@ -48,6 +61,7 @@ export const layerJson = Layer.succeed(OtlpSerialization, {
  * @since 4.0.0
  */
 export const layerProtobuf = Layer.succeed(OtlpSerialization, {
+  [OtlpSerializationTypeId]: OtlpSerializationTypeId as typeof OtlpSerializationTypeId,
   traces: (spans) =>
     HttpBody.uint8Array(
       otlpProtobuf.encodeTracesData(spans as any),

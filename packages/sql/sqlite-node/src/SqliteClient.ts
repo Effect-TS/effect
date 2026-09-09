@@ -251,6 +251,7 @@ export const make = (
       ) => Effect.flatMap(prepare(sql), (statement) => runStatementValuesUnprepared(statement, params))
 
       return identity<SqliteConnection>({
+        ["~effect/sql/SqlConnection"]: "~effect/sql/SqlConnection" as const,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)

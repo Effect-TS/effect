@@ -220,8 +220,8 @@ export const makeHandle = (params: Omit<ChildProcessHandle, typeof HandleTypeId>
  * @category constructors
  * @since 4.0.0
  */
-export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProcessSpawner["Service"] => {
-  const streamString: ChildProcessSpawner["Service"]["streamLines"] = (command, options) =>
+export const make = (spawn: ChildProcessSpawner["spawn"]): ChildProcessSpawner => {
+  const streamString: ChildProcessSpawner["streamLines"] = (command, options) =>
     spawn(command).pipe(
       Effect.map((handle) =>
         Stream.decodeText(
@@ -230,10 +230,11 @@ export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProce
       ),
       Stream.unwrap
     )
-  const streamLines: ChildProcessSpawner["Service"]["streamLines"] = (command, options) =>
+  const streamLines: ChildProcessSpawner["streamLines"] = (command, options) =>
     Stream.splitLines(streamString(command, options))
 
   return ChildProcessSpawner.of({
+    [ChildProcessSpawnerTypeId]: ChildProcessSpawnerTypeId as typeof ChildProcessSpawnerTypeId,
     spawn,
     exitCode: (command) => Effect.scoped(Effect.flatMap(spawn(command), (handle) => handle.exitCode)),
     streamString,
@@ -243,13 +244,17 @@ export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProce
   })
 }
 
+const ChildProcessSpawnerTypeId = "~effect/process/ChildProcessSpawner"
+
 /**
  * Service tag for child process spawning.
  *
  * @category services
  * @since 4.0.0
  */
-export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
+export interface ChildProcessSpawner {
+  readonly [ChildProcessSpawnerTypeId]: typeof ChildProcessSpawnerTypeId
+
   /**
    * Spawn a command and return a handle for interaction.
    */
@@ -293,4 +298,12 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
   string(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
   }): Effect.Effect<string, PlatformError.PlatformError>
-}>()("effect/process/ChildProcessSpawner") {}
+}
+
+/**
+ * Service key for `ChildProcessSpawner` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const ChildProcessSpawner = Context.Service<ChildProcessSpawner>("effect/process/ChildProcessSpawner")

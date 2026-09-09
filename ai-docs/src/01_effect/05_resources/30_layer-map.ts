@@ -18,34 +18,50 @@ type UserRecord = {
 
 let nextConnectionId = 0
 
-export class DatabasePool extends Context.Service<DatabasePool, {
+const DatabasePoolTypeId = "~app/DatabasePool"
+
+export interface DatabasePool {
+  readonly [DatabasePoolTypeId]: typeof DatabasePoolTypeId
+
   readonly tenantId: string
   readonly connectionId: number
   readonly query: (sql: string) => Effect.Effect<ReadonlyArray<UserRecord>, DatabaseQueryError>
-}>()("app/DatabasePool") {
-  // A layer factory that builds one pool per tenant.
-  static readonly layer = (tenantId: string) =>
-    Layer.effect(
-      DatabasePool,
-      Effect.acquireRelease(
-        Effect.sync(() => {
-          const connectionId = ++nextConnectionId
-
-          return DatabasePool.of({
-            tenantId,
-            connectionId,
-            query: Effect.fn("DatabasePool.query")((_sql: string) =>
-              Effect.succeed([
-                { id: 1, email: `admin@${tenantId}.example.com` },
-                { id: 2, email: `ops@${tenantId}.example.com` }
-              ])
-            )
-          })
-        }),
-        (pool) => Effect.logInfo(`Closing tenant pool ${pool.tenantId}#${pool.connectionId}`)
-      )
-    )
 }
+
+/**
+ * Service key for `DatabasePool` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const DatabasePool = (() => {
+  const service = Context.Service<DatabasePool>("app/DatabasePool")
+  return Object.assign(service, {
+    // A layer factory that builds one pool per tenant.
+    layer: (tenantId: string) =>
+      Layer.effect(
+        service,
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            const connectionId = ++nextConnectionId
+
+            return service.of({
+              [DatabasePoolTypeId]: DatabasePoolTypeId as typeof DatabasePoolTypeId,
+              tenantId,
+              connectionId,
+              query: Effect.fn("DatabasePool.query")((_sql: string) =>
+                Effect.succeed([
+                  { id: 1, email: `admin@${tenantId}.example.com` },
+                  { id: 2, email: `ops@${tenantId}.example.com` }
+                ])
+              )
+            })
+          }),
+          (pool) => Effect.logInfo(`Closing tenant pool ${pool.tenantId}#${pool.connectionId}`)
+        )
+      )
+  })
+})()
 
 // extend `LayerMap.Service` to create a `LayerMap` service
 export class PoolMap extends LayerMap.Service<PoolMap>()("app/PoolMap", {

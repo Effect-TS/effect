@@ -21,6 +21,8 @@ import type { ReadonlyRecord } from "../../Record.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 
+const ReactivityTypeId = "~effect/reactivity/Reactivity"
+
 /**
  * Service for key-based reactive invalidation.
  *
@@ -38,32 +40,39 @@ import * as Stream from "../../Stream.ts"
  * @category services
  * @since 4.0.0
  */
-export class Reactivity extends Context.Service<
-  Reactivity,
-  {
-    readonly invalidateUnsafe: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) => void
-    readonly registerUnsafe: (
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
-      handler: () => void
-    ) => () => void
-    readonly invalidate: (
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
-    ) => Effect.Effect<void>
-    readonly mutation: <A, E, R>(
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
-      effect: Effect.Effect<A, E, R>
-    ) => Effect.Effect<A, E, R>
-    readonly query: <A, E, R>(
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
-      effect: Effect.Effect<A, E, R>
-    ) => Effect.Effect<Queue.Dequeue<A, E>, never, R | Scope.Scope>
-    readonly stream: <A, E, R>(
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
-      effect: Effect.Effect<A, E, R>
-    ) => Stream.Stream<A, E, Exclude<R, Scope.Scope>>
-    readonly withBatch: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  }
->()("effect/reactivity/Reactivity") {}
+export interface Reactivity {
+  readonly [ReactivityTypeId]: typeof ReactivityTypeId
+
+  readonly invalidateUnsafe: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) => void
+  readonly registerUnsafe: (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    handler: () => void
+  ) => () => void
+  readonly invalidate: (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ) => Effect.Effect<void>
+  readonly mutation: <A, E, R>(
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, R>
+  readonly query: <A, E, R>(
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<Queue.Dequeue<A, E>, never, R | Scope.Scope>
+  readonly stream: <A, E, R>(
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    effect: Effect.Effect<A, E, R>
+  ) => Stream.Stream<A, E, Exclude<R, Scope.Scope>>
+  readonly withBatch: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+}
+
+/**
+ * Service key for `Reactivity` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Reactivity = Context.Service<Reactivity>("effect/reactivity/Reactivity")
 
 /**
  * Creates an in-memory `Reactivity` service.
@@ -186,7 +195,9 @@ export const make = Effect.sync(() => {
 
   const withBatch = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.suspend(() => {
-      const pending = new Set<string | number>()
+      const pending = Object.assign(new Set<string | number>(), {
+        [PendingInvalidationTypeId]: PendingInvalidationTypeId as typeof PendingInvalidationTypeId
+      })
       return effect.pipe(
         Effect.provideService(PendingInvalidation, pending),
         Effect.onExit((_) =>
@@ -202,6 +213,7 @@ export const make = Effect.sync(() => {
     })
 
   return Reactivity.of({
+    [ReactivityTypeId]: ReactivityTypeId as typeof ReactivityTypeId,
     mutation,
     query,
     stream,
@@ -212,9 +224,19 @@ export const make = Effect.sync(() => {
   })
 })
 
-class PendingInvalidation extends Context.Service<PendingInvalidation, Set<string | number>>()(
-  "effect/reactivity/Reactivity/PendingInvalidation"
-) {}
+const PendingInvalidationTypeId = "~effect/reactivity/Reactivity/PendingInvalidation"
+
+interface PendingInvalidation extends Set<string | number> {
+  readonly [PendingInvalidationTypeId]: typeof PendingInvalidationTypeId
+}
+
+/**
+ * Service key for `PendingInvalidation` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+const PendingInvalidation = Context.Service<PendingInvalidation>("effect/reactivity/Reactivity/PendingInvalidation")
 
 /**
  * Wraps an effect so the supplied keys are invalidated after the effect succeeds.

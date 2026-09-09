@@ -763,7 +763,7 @@ export const makeEncoded: (options?: {
 export const make: (options?: {
   readonly prefix?: string | undefined
 }) => Effect.Effect<
-  MessageStorage.MessageStorage["Service"],
+  MessageStorage.MessageStorage,
   never,
   SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
 > = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)

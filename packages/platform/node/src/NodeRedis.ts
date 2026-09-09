@@ -22,6 +22,8 @@ import { createClient, SocketTimeoutError } from "redis"
 type NodeRedisClient = ReturnType<typeof createClient>
 type NodeRedisClientOptions = NonNullable<Parameters<typeof createClient>[0]>
 
+const NodeRedisTypeId = "~@effect/platform-node/NodeRedis"
+
 /**
  * Service tag for the Node Redis integration, exposing the underlying
  * `node-redis` client and a `use` helper that maps client failures to
@@ -30,10 +32,20 @@ type NodeRedisClientOptions = NonNullable<Parameters<typeof createClient>[0]>
  * @category services
  * @since 4.0.0
  */
-export class NodeRedis extends Context.Service<NodeRedis, {
+export interface NodeRedis {
+  readonly [NodeRedisTypeId]: typeof NodeRedisTypeId
+
   readonly client: NodeRedisClient
   readonly use: <A>(f: (client: NodeRedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
-}>()("@effect/platform-node/NodeRedis") {}
+}
+
+/**
+ * Service key for `NodeRedis` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const NodeRedis = Context.Service<NodeRedis>("@effect/platform-node/NodeRedis")
 
 const make = Effect.fnUntraced(function*(
   options?: NodeRedisClientOptions
@@ -143,7 +155,8 @@ const make = Effect.fnUntraced(function*(
       })
   })
 
-  const nodeRedis = Fn.identity<NodeRedis["Service"]>({
+  const nodeRedis = Fn.identity<NodeRedis>({
+    [NodeRedisTypeId]: NodeRedisTypeId as typeof NodeRedisTypeId,
     client,
     use
   })

@@ -35,7 +35,7 @@ const constVoid = constant(Effect.void)
 const serializeDefectReply = <R extends Rpc.Any>(
   reply: Reply.ReplyWithContext<R>,
   defect: unknown,
-  codecFor: RpcServer.Protocol["Service"]["codecFor"]
+  codecFor: RpcServer.Protocol["codecFor"]
 ): Effect.Effect<Reply.Encoded> =>
   Effect.orDie(Reply.serialize(
     Reply.ReplyWithContext.fromDefect({

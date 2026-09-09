@@ -31,6 +31,7 @@ declare const self: MessagePort
  * @since 4.0.0
  */
 export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.succeed(WorkerRunner.WorkerRunnerPlatform)({
+  ["~effect/workers/WorkerRunner/WorkerRunnerPlatform"]: "~effect/workers/WorkerRunner/WorkerRunnerPlatform" as const,
   start: Effect.fnUntraced(function*<O = unknown, I = unknown>() {
     if (!("postMessage" in self)) {
       return yield* new WorkerError({

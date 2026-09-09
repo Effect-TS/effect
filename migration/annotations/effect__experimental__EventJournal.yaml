@@ -15,4 +15,4 @@
   note: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 "@effect/experimental/EventJournal#makeMemory":
   replacement: effect/unstable/eventlog/EventJournal#makeMemory
-  note: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
+  note: The in-memory constructor moved into core Effect and now returns the Context.Service implementation as a directly nameable interface.

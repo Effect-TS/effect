@@ -40,7 +40,7 @@ export const makeStorage = (options?: {
   readonly remoteIdTable?: string
   readonly insertBatchSize?: number
 }): Effect.Effect<
-  EventLogServerEncrypted.Storage["Service"],
+  EventLogServerEncrypted.Storage,
   SqlError.SqlError,
   SqlClient.SqlClient | EventLogEncryption.EventLogEncryption | Scope.Scope
 > =>
@@ -184,6 +184,7 @@ export const makeStorage = (options?: {
       )
 
     return EventLogServerEncrypted.Storage.of({
+      ["~effect/eventlog/EventLogServer/Storage"]: "~effect/eventlog/EventLogServer/Storage" as const,
       getId: Effect.succeed(remoteId),
       getOrCreateSessionAuthBinding: Effect.fnUntraced(
         function*(publicKey, signingPublicKey) {

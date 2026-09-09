@@ -100,6 +100,10 @@ type ConfigOptions = Simplify<
 >
 type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknown }
 
+const ConfigTypeId = "~@effect/ai-openai-compat/OpenAiLanguageModel/Config"
+
+type ConfigShape = ConfigOptions & { readonly [x: string]: unknown }
+
 /**
  * Context service for OpenAI language model configuration.
  *
@@ -114,10 +118,17 @@ type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknow
  * @category services
  * @since 4.0.0
  */
-export class Config extends Context.Service<
-  Config,
-  ConfigOptions & { readonly [x: string]: unknown }
->()("@effect/ai-openai-compat/OpenAiLanguageModel/Config") {}
+export interface Config extends ConfigShape {
+  readonly [ConfigTypeId]: typeof ConfigTypeId
+}
+
+/**
+ * Service key for `Config` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Config = Context.Service<Config>("@effect/ai-openai-compat/OpenAiLanguageModel/Config")
 
 // =============================================================================
 // Provider Options / Metadata
@@ -577,11 +588,11 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
     Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
-  )
+  ).pipe(Effect.map(({ [ConfigTypeId]: _typeId, ...config }) => config))
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {
-      readonly config: typeof Config.Service
+      readonly config: ConfigShape
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<CreateResponseRequestJson, AiError.AiError> {
@@ -703,13 +714,13 @@ export const layer = (options: {
  * @since 4.0.0
  */
 export const withConfigOverride: {
-  (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service): Effect.Effect<A, E, Exclude<R, Config>>
+  (overrides: ConfigShape): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape): Effect.Effect<A, E, Exclude<R, Config>>
 } = dual<
   (
-    overrides: typeof Config.Service
+    overrides: ConfigShape
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape) => Effect.Effect<A, E, Exclude<R, Config>>
 >(2, (self, overrides) =>
   Effect.flatMap(
     Effect.serviceOption(Config),
@@ -740,7 +751,7 @@ const prepareMessages = Effect.fnUntraced(
     include,
     toolNameMapper
   }: {
-    readonly config: typeof Config.Service
+    readonly config: ConfigShape
     readonly options: LanguageModel.ProviderOptions
     readonly include: Set<IncludeEnum>
     readonly capabilities: ModelCapabilities
@@ -1463,7 +1474,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   options,
   toolNameMapper
 }: {
-  readonly config: typeof Config.Service
+  readonly config: ConfigShape
   readonly options: LanguageModel.ProviderOptions
   readonly toolNameMapper: Tool.NameMapper<Tools>
 }): Effect.fn.Return<{
@@ -1866,7 +1877,7 @@ const stringifyJson = (value: unknown): string =>
 // Utilities
 // =============================================================================
 
-const isFileId = (data: string, config: typeof Config.Service): boolean =>
+const isFileId = (data: string, config: ConfigShape): boolean =>
   config.fileIdPrefixes != null && config.fileIdPrefixes.some((prefix) => data.startsWith(prefix))
 
 const getItemId = (
@@ -1908,7 +1919,7 @@ const normalizeServiceTier = (
 }
 
 const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
-  readonly config: typeof Config.Service
+  readonly config: ConfigShape
   readonly options: LanguageModel.ProviderOptions
 }): Effect.fn.Return<TextResponseFormatConfiguration, AiError.AiError> {
   if (options.responseFormat.type === "json") {

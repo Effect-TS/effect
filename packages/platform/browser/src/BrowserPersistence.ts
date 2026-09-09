@@ -51,6 +51,7 @@ export const layerBackingIndexedDb = (options?: {
     ).pipe(Effect.orDie)
 
     return Persistence.BackingPersistence.of({
+      ["~effect/persistence/BackingPersistence"]: "~effect/persistence/BackingPersistence" as const,
       make: Effect.fnUntraced(function*(storeId) {
         const clock = yield* Clock.Clock
         return {

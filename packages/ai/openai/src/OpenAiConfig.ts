@@ -11,6 +11,8 @@ import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type { HttpClient } from "effect/unstable/http/HttpClient"
 
+const OpenAiConfigTypeId = "~@effect/ai-openai/OpenAiConfig"
+
 /**
  * Context service for scoped OpenAI configuration used by provider operations.
  *
@@ -24,20 +26,30 @@ import type { HttpClient } from "effect/unstable/http/HttpClient"
  * @category services
  * @since 4.0.0
  */
-export class OpenAiConfig extends Context.Service<
-  OpenAiConfig,
-  OpenAiConfig.Service
->()("@effect/ai-openai/OpenAiConfig") {
-  /**
-   * Gets the configured OpenAI service from the current context when present.
-   *
-   * @since 4.0.0
-   */
-  static readonly getOrUndefined: Effect.Effect<typeof OpenAiConfig.Service | undefined> = Effect.map(
-    Effect.context<never>(),
-    Context.getOrUndefined(OpenAiConfig)
-  )
+export interface OpenAiConfig extends OpenAiConfig.Service {
+  readonly [OpenAiConfigTypeId]: typeof OpenAiConfigTypeId
 }
+
+/**
+ * Service key for `OpenAiConfig` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenAiConfig = (() => {
+  const service = Context.Service<OpenAiConfig>("@effect/ai-openai/OpenAiConfig")
+  return Object.assign(service, {
+    /**
+     * Gets the configured OpenAI service from the current context when present.
+     *
+     * @since 4.0.0
+     */
+    getOrUndefined: Effect.map(
+      Effect.context<never>(),
+      Context.getOrUndefined(service)
+    )
+  })
+})()
 
 /**
  * Types used by the `OpenAiConfig` context service.
@@ -53,6 +65,8 @@ export declare namespace OpenAiConfig {
    * @since 4.0.0
    */
   export interface Service {
+    readonly [OpenAiConfigTypeId]: typeof OpenAiConfigTypeId
+
     readonly transformClient?: ((client: HttpClient) => HttpClient) | undefined
   }
 }
@@ -89,5 +103,10 @@ export const withClientTransform: {
 ) =>
   Effect.flatMap(
     OpenAiConfig.getOrUndefined,
-    (config) => Effect.provideService(self, OpenAiConfig, { ...config, transformClient })
+    (config) =>
+      Effect.provideService(self, OpenAiConfig, {
+        ...config,
+        [OpenAiConfigTypeId]: OpenAiConfigTypeId,
+        transformClient
+      })
   ))

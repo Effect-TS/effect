@@ -36,6 +36,8 @@ import * as EventLogEncryption from "./EventLogEncryption.ts"
 import { StoreId } from "./EventLogMessage.ts"
 import type { EventLogRemote } from "./EventLogRemote.ts"
 
+const EventLogTypeId = "~effect/eventlog/EventLog"
+
 /**
  * Service for writing typed event-log events through registered handlers.
  *
@@ -48,7 +50,9 @@ import type { EventLogRemote } from "./EventLogRemote.ts"
  * @category services
  * @since 4.0.0
  */
-export class EventLog extends Context.Service<EventLog, {
+export interface EventLog {
+  readonly [EventLogTypeId]: typeof EventLogTypeId
+
   readonly write: <Groups extends EventGroup.Any, Tag extends Event.Tag<EventGroup.Events<Groups>>>(options: {
     readonly schema: EventLogSchema<Groups>
     readonly event: Tag
@@ -59,7 +63,17 @@ export class EventLog extends Context.Service<EventLog, {
   >
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
-}>()("effect/eventlog/EventLog") {}
+}
+
+/**
+ * Event log service contract.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventLog = Context.Service<EventLog>("effect/eventlog/EventLog")
+
+const RegistryTypeId = "~effect/unstable/eventlog/EventLog/Registry"
 
 /**
  * Service that collects event handlers, compaction handlers, remote replicas,
@@ -68,7 +82,9 @@ export class EventLog extends Context.Service<EventLog, {
  * @category services
  * @since 4.0.0
  */
-export class Registry extends Context.Service<Registry, {
+export interface Registry {
+  readonly [RegistryTypeId]: typeof RegistryTypeId
+
   readonly registerHandlerUnsafe: (options: {
     readonly event: string
     readonly handler: Handlers.Item<any>
@@ -92,13 +108,21 @@ export class Registry extends Context.Service<Registry, {
     }) => Effect.Effect<void>
   }>
 
-  readonly registerRemote: (remote: EventLogRemote["Service"]) => Effect.Effect<void, never, Scope.Scope>
-  readonly handleRemote: (handler: (remote: EventLogRemote["Service"]) => Effect.Effect<void>) => Effect.Effect<void>
+  readonly registerRemote: (remote: EventLogRemote) => Effect.Effect<void, never, Scope.Scope>
+  readonly handleRemote: (handler: (remote: EventLogRemote) => Effect.Effect<void>) => Effect.Effect<void>
 
   readonly registerReactivity: (keys: Record<string, ReadonlyArray<string>>) => Effect.Effect<void, never, Scope.Scope>
 
   readonly reactivityKeys: Record<string, ReadonlyArray<string>>
-}>()("effect/unstable/eventlog/EventLog/Registry") {}
+}
+
+/**
+ * Service key for `Registry` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Registry = Context.Service<Registry>("effect/unstable/eventlog/EventLog/Registry")
 
 /**
  * Provides an in-memory `Registry` for event handlers, compactors, remote
@@ -120,11 +144,12 @@ export const layerRegistry = Layer.effect(
     }>()
 
     const remoteFiberMap = yield* FiberMap.make<RemoteId>()
-    const remotes = new Map<RemoteId, EventLogRemote["Service"]>()
-    let remoteHandler: (remote: EventLogRemote["Service"]) => Effect.Effect<void> = (_) => Effect.void
+    const remotes = new Map<RemoteId, EventLogRemote>()
+    let remoteHandler: (remote: EventLogRemote) => Effect.Effect<void> = (_) => Effect.void
 
     const reactivityKeys: Record<string, ReadonlyArray<string>> = {}
     return Registry.of({
+      [RegistryTypeId]: RegistryTypeId as typeof RegistryTypeId,
       registerHandlerUnsafe(options) {
         handlers.set(options.event, options.handler)
       },
@@ -169,6 +194,8 @@ export const layerRegistry = Layer.effect(
   })
 )
 
+const IdentityTypeId = "~effect/eventlog/EventLog/Identity"
+
 /**
  * Context service for an event-log identity containing a public key and redacted
  * private key material.
@@ -181,10 +208,20 @@ export const layerRegistry = Layer.effect(
  * @category services
  * @since 4.0.0
  */
-export class Identity extends Context.Service<Identity, {
+export interface Identity {
+  readonly [IdentityTypeId]: typeof IdentityTypeId
+
   readonly publicKey: string
   readonly privateKey: Redacted.Redacted<Uint8Array<ArrayBuffer>>
-}>()("effect/eventlog/EventLog/Identity") {}
+}
+
+/**
+ * Service key for `Identity` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Identity = Context.Service<Identity>("effect/eventlog/EventLog/Identity")
 
 /**
  * Type-level identifier used to brand `EventLogSchema` values.
@@ -455,9 +492,10 @@ const IdentityStringSchema = Schema.StringFromBase64Url.pipe(
  * @category constructors
  * @since 4.0.0
  */
-export const decodeIdentityString = (value: string): Identity["Service"] => {
+export const decodeIdentityString = (value: string): Identity => {
   const decoded = Schema.decodeUnknownSync(IdentityStringSchema)(value)
   return {
+    [IdentityTypeId]: IdentityTypeId as typeof IdentityTypeId,
     publicKey: decoded.publicKey,
     privateKey: Redacted.make(decoded.privateKey as Uint8Array<ArrayBuffer>)
   }
@@ -470,7 +508,7 @@ export const decodeIdentityString = (value: string): Identity["Service"] => {
  * @category constructors
  * @since 4.0.0
  */
-export const encodeIdentityString = (identity: Identity["Service"]): string =>
+export const encodeIdentityString = (identity: Identity): string =>
   Schema.encodeSync(IdentityStringSchema)({
     publicKey: identity.publicKey,
     privateKey: Redacted.value(identity.privateKey)
@@ -483,8 +521,8 @@ export const encodeIdentityString = (identity: Identity["Service"]): string =>
  * @category constructors
  * @since 4.0.0
  */
-export const makeIdentity: Effect.Effect<Identity["Service"], never, EventLogEncryption.EventLogEncryption> =
-  EventLogEncryption.EventLogEncryption.use((_) => _.generateIdentity)
+export const makeIdentity: Effect.Effect<Identity, never, EventLogEncryption.EventLogEncryption> = EventLogEncryption
+  .EventLogEncryption.use((_) => _.generateIdentity)
 
 const handlersProto = {
   [HandlersTypeId]: {
@@ -701,8 +739,8 @@ export const groupReactivity = <Events extends Event.Any>(
 export const makeReplayFromRemote = (options: {
   readonly handlers: ReadonlyMap<string, Handlers.Item<any>>
   readonly storeId: StoreId
-  readonly identity: Identity["Service"]
-  readonly reactivity: Reactivity["Service"]
+  readonly identity: Identity
+  readonly reactivity: Reactivity
   readonly reactivityKeys: Record<string, ReadonlyArray<string>>
   readonly logAnnotations: {
     readonly service: string
@@ -805,7 +843,7 @@ const make = Effect.gen(function*() {
     })
 
   const runRemote = Effect.fnUntraced(
-    function*(remote: EventLogRemote["Service"]) {
+    function*(remote: EventLogRemote) {
       const startSequence = yield* journal.nextRemoteSequence(remote.id)
 
       yield* Effect.gen(function*() {
@@ -951,7 +989,8 @@ const make = Effect.gen(function*() {
   yield* registry.handleRemote(runRemote)
 
   return EventLog.of({
-    write: eventLogWrite as EventLog["Service"]["write"],
+    [EventLogTypeId]: EventLogTypeId as typeof EventLogTypeId,
+    write: eventLogWrite as EventLog["write"],
     entries: journal.entries,
     destroy: journal.destroy
   })

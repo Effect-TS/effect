@@ -283,6 +283,7 @@ export const fromClient = (
   })
 
 class PgliteConnection implements Connection {
+  readonly ["~effect/sql/SqlConnection"] = "~effect/sql/SqlConnection" as const
   readonly pglite: PGliteInterface
   constructor(pglite: PGliteInterface) {
     this.pglite = pglite

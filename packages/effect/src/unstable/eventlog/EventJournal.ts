@@ -28,6 +28,8 @@ import * as Semaphore from "../../Semaphore.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import type { StoreId } from "./EventLogMessage.ts"
 
+const EventJournalTypeId = "~effect/eventlog/EventJournal"
+
 /**
  * Context service for storing and replaying event journal entries.
  *
@@ -39,7 +41,9 @@ import type { StoreId } from "./EventLogMessage.ts"
  * @category services
  * @since 4.0.0
  */
-export class EventJournal extends Context.Service<EventJournal, {
+export interface EventJournal {
+  readonly [EventJournalTypeId]: typeof EventJournalTypeId
+
   /**
    * Read all the entries in the journal.
    */
@@ -82,6 +86,8 @@ export class EventJournal extends Context.Service<EventJournal, {
   /**
    * Run an effect with the uncommitted entries for a remote source.
    *
+   * **Details**
+   *
    * The effect is not run when there are no uncommitted entries, in which case
    * `Option.none()` is returned. Otherwise, its result is wrapped in
    * `Option.some()`.
@@ -110,7 +116,15 @@ export class EventJournal extends Context.Service<EventJournal, {
    * Run an effect with a lock on the journal.
    */
   readonly withLock: (storeId: StoreId) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-}>()("effect/eventlog/EventJournal") {}
+}
+
+/**
+ * Service key for `EventJournal` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const EventJournal = Context.Service<EventJournal>("effect/eventlog/EventJournal")
 
 const TypeId = "effect/eventlog/EventJournal/EventJournalError" as const
 
@@ -366,7 +380,7 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
  * @category constructors
  * @since 4.0.0
  */
-export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(function*() {
+export const makeMemory: Effect.Effect<EventJournal> = Effect.gen(function*() {
   const journal: Array<Entry> = []
   const byId = new Map<string, Entry>()
   const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
@@ -391,6 +405,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
   }
 
   return EventJournal.of({
+    [EventJournalTypeId]: EventJournalTypeId as typeof EventJournalTypeId,
     entries: Effect.sync(() => journal.slice()),
     write({ effect, event, payload, primaryKey }) {
       return Effect.acquireUseRelease(
@@ -530,7 +545,7 @@ export const layerMemory: Layer.Layer<EventJournal> = Layer.effect(EventJournal,
  */
 export const makeIndexedDb = (options?: {
   readonly database?: string
-}): Effect.Effect<EventJournal["Service"], EventJournalError, Scope> =>
+}): Effect.Effect<EventJournal, EventJournalError, Scope> =>
   Effect.gen(function*() {
     const database = options?.database ?? "effect_event_journal"
     const openRequest = indexedDB.open(database, 1)
@@ -557,6 +572,7 @@ export const makeIndexedDb = (options?: {
     const pubsub = yield* PubSub.unbounded<Entry>()
 
     return EventJournal.of({
+      [EventJournalTypeId]: EventJournalTypeId as typeof EventJournalTypeId,
       entries: idbReq("entries", () =>
         db.transaction("entries", "readonly")
           .objectStore("entries")

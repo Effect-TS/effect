@@ -302,13 +302,13 @@ export type RequirementsHandler<Workflows extends Any> = Workflows extends Workf
     | _Error["EncodingServices"]
   : never
 
-const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine["Service"]>(
+const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine>(
   "effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
 )
 
 const InstanceTag = Context.Service<
   WorkflowInstance,
-  WorkflowInstance["Service"]
+  WorkflowInstance
 >(
   "effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
 )
@@ -761,7 +761,7 @@ export const wrapActivityResult = <A, E, R>(
   })
 
 interface ActivityRegistration {
-  readonly instance: WorkflowInstance["Service"]
+  readonly instance: WorkflowInstance
   state: "pending" | "adopted" | "released"
 }
 
@@ -769,7 +769,7 @@ const PendingActivityRegistration = Context.Service<ActivityRegistration>(
   "effect/workflow/Workflow/PendingActivityRegistration"
 )
 
-const registerActivityUnsafe = (instance: WorkflowInstance["Service"]): ActivityRegistration => {
+const registerActivityUnsafe = (instance: WorkflowInstance): ActivityRegistration => {
   const state = instance.activityState
   if (state.count === 0) state.latch.closeUnsafe()
   state.count++
@@ -778,7 +778,7 @@ const registerActivityUnsafe = (instance: WorkflowInstance["Service"]): Activity
 
 const adoptActivityUnsafe = (
   context: Context.Context<never>,
-  instance: WorkflowInstance["Service"]
+  instance: WorkflowInstance
 ): ActivityRegistration | undefined => {
   const pending = Context.getOrUndefined(context, PendingActivityRegistration)
   if (!pending || pending.instance !== instance) {
@@ -815,7 +815,7 @@ const withPendingActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Ef
     )
   })
 
-const waitForZero = Effect.fnUntraced(function*(instance: WorkflowInstance["Service"]) {
+const waitForZero = Effect.fnUntraced(function*(instance: WorkflowInstance) {
   const state = instance.activityState
   while (true) {
     if (state.count > 0) {
@@ -933,7 +933,7 @@ export const withCompensation: {
  * @category interruption
  * @since 4.0.0
  */
-export const suspend = (instance: WorkflowInstance["Service"]): Effect.Effect<never> =>
+export const suspend = (instance: WorkflowInstance): Effect.Effect<never> =>
   Effect.interruptible(Effect.callback<never>(() => {
     instance.suspended = true
     const fiber = Fiber.getCurrent()!

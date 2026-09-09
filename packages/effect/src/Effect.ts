@@ -4330,7 +4330,11 @@ export const ignoreCause: <
  * ```ts import.meta.vitest
  * import { Context, Effect, ExecutionPlan, Layer } from "effect"
  *
- * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ * interface Endpoint {
+ *   readonly ["~Endpoint"]: "~Endpoint"
+ *   url: string
+ * }
+ * const Endpoint = Context.Service<Endpoint>("Endpoint")
  *
  * const fetchUrl = Effect.gen(function*() {
  *   const endpoint = yield* Effect.service(Endpoint)
@@ -4341,8 +4345,19 @@ export const ignoreCause: <
  * })
  *
  * const plan = ExecutionPlan.make(
- *   { provide: Layer.succeed(Endpoint, { url: "bad" }), attempts: 2 },
- *   { provide: Layer.succeed(Endpoint, { url: "good" }) }
+ *   {
+ *     provide: Layer.succeed(Endpoint, {
+ *       ["~Endpoint"]: "~Endpoint" as const,
+ *       url: "bad"
+ *     }),
+ *     attempts: 2
+ *   },
+ *   {
+ *     provide: Layer.succeed(Endpoint, {
+ *       ["~Endpoint"]: "~Endpoint" as const,
+ *       url: "good"
+ *     })
+ *   }
  * )
  *
  * const program = Effect.withExecutionPlan(fetchUrl, plan)
@@ -4354,7 +4369,11 @@ export const ignoreCause: <
  * ```ts import.meta.vitest
  * import { Context, Effect, ExecutionPlan, Layer } from "effect"
  *
- * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ * interface Endpoint {
+ *   readonly ["~Endpoint"]: "~Endpoint"
+ *   url: string
+ * }
+ * const Endpoint = Context.Service<Endpoint>("Endpoint")
  *
  * const fetchUrl = Effect.gen(function*() {
  *   const endpoint = yield* Effect.service(Endpoint)
@@ -4365,8 +4384,18 @@ export const ignoreCause: <
  * })
  *
  * const plan = ExecutionPlan.make(
- *   { provide: Layer.succeed(Endpoint, { url: "bad" }) },
- *   { provide: Layer.succeed(Endpoint, { url: "good" }) }
+ *   {
+ *     provide: Layer.succeed(Endpoint, {
+ *       ["~Endpoint"]: "~Endpoint" as const,
+ *       url: "bad"
+ *     })
+ *   },
+ *   {
+ *     provide: Layer.succeed(Endpoint, {
+ *       ["~Endpoint"]: "~Endpoint" as const,
+ *       url: "good"
+ *     })
+ *   }
  * )
  *
  * const events: Array<string> = []
@@ -5747,12 +5776,18 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * import { Context, Effect, Option } from "effect"
  * const output: Array<unknown> = []
  *
- * const Logger = Context.Service<{
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   log: (msg: string) => void
- * }>("Logger")
- * const Database = Context.Service<{
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   query: (sql: string) => string
- * }>("Database")
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * const program = Effect.gen(function*() {
  *   const allServices = yield* Effect.context()
@@ -5761,12 +5796,22 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  *   const loggerOption = Context.getOption(allServices, Logger)
  *   const databaseOption = Context.getOption(allServices, Database)
  *
- *   yield* Effect.sync(() => { output.push(`Logger available: ${Option.isSome(loggerOption)}`) })
- *   yield* Effect.sync(() => { output.push(`Database available: ${Option.isSome(databaseOption)}`) })
+ *   yield* Effect.sync(() => {
+ *     output.push(`Logger available: ${Option.isSome(loggerOption)}`)
+ *   })
+ *   yield* Effect.sync(() => {
+ *     output.push(`Database available: ${Option.isSome(databaseOption)}`)
+ *   })
  * })
  *
- * const context = Context.make(Logger, { log: () => {} })
- *   .pipe(Context.add(Database, { query: () => "result" }))
+ * const context = Context.make(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
+ *   log: () => {}
+ * })
+ *   .pipe(Context.add(Database, {
+ *     ["~Database"]: "~Database" as const,
+ *     query: () => "result"
+ *   }))
  *
  * const provided = Effect.provideContext(program, context)
  * Effect.runSync(provided)
@@ -5800,12 +5845,18 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  * import { Context, Effect, Option } from "effect"
  * const output: Array<unknown> = []
  *
- * const Logger = Context.Service<{
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   log: (msg: string) => void
- * }>("Logger")
- * const Cache = Context.Service<{
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Cache {
+ *   readonly ["~Cache"]: "~Cache"
+ *
  *   get: (key: string) => string | null
- * }>("Cache")
+ * }
+ * const Cache = Context.Service<Cache>("Cache")
  *
  * const program = Effect.contextWith((services: Context.Context<Context.Service.Identifier<typeof Cache>>) => {
  *   const cacheOption = Context.getOption(services, Cache)
@@ -5814,18 +5865,23 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  *   if (hasCache) {
  *     return Effect.gen(function*() {
  *       const cache = yield* Effect.service(Cache)
- *       yield* Effect.sync(() => { output.push("Using cached data") })
+ *       yield* Effect.sync(() => {
+ *         output.push("Using cached data")
+ *       })
  *       return cache.get("user:123") || "default"
  *     })
  *   } else {
  *     return Effect.gen(function*() {
- *       yield* Effect.sync(() => { output.push("No cache available, using fallback") })
+ *       yield* Effect.sync(() => {
+ *         output.push("No cache available, using fallback")
+ *       })
  *       return "fallback data"
  *     })
  *   }
  * })
  *
  * const withCache = Effect.provideService(program, Cache, {
+ *   ["~Cache"]: "~Cache" as const,
  *   get: () => "cached_value"
  * })
  * void output.push(Effect.runSync(withCache))
@@ -5939,16 +5995,30 @@ export const provide: {
  * const output: Array<unknown> = []
  *
  * // Define service keys
- * const Logger = Context.Service<{
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   log: (msg: string) => void
- * }>("Logger")
- * const Database = Context.Service<{
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   query: (sql: string) => string
- * }>("Database")
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Create a context with multiple services
- * const context = Context.make(Logger, { log: (message) => { output.push(message) } })
- *   .pipe(Context.add(Database, { query: () => "result" }))
+ * const context = Context.make(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
+ *   log: (message) => {
+ *     output.push(message)
+ *   }
+ * })
+ *   .pipe(Context.add(Database, {
+ *     ["~Database"]: "~Database" as const,
+ *     query: () => "result"
+ *   }))
  *
  * // An effect that requires both services
  * const program = Effect.gen(function*() {
@@ -5995,16 +6065,22 @@ export const provideContext: {
  * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
- * class Config extends Context.Service<Config, {
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *
  *   readonly greeting: string
- * }>()("Config") {}
+ * }
+ * const Config = Context.Service<Config>("Config")
  *
  * const program = Effect.gen(function*() {
  *   const config = yield* Effect.service(Config)
  *   return `${config.greeting}, World!`
  * })
  *
- * const context = Context.make(Config, { greeting: "Hello" })
+ * const context = Context.make(Config, {
+ *   ["~Config"]: "~Config" as const,
+ *   greeting: "Hello"
+ * })
  *
  * const runnable = Effect.setContext(program, context)
  *
@@ -6074,9 +6150,12 @@ export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> 
  * const output: Array<unknown> = []
  *
  * // Define a service key
- * const Logger = Context.Service<{
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   log: (msg: string) => void
- * }>("Logger")
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * // Use serviceOption to optionally access the logger
  * const program = Effect.gen(function*() {
@@ -6112,12 +6191,18 @@ export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> 
  * import { Context, Effect } from "effect"
  *
  * // Define services
- * const Logger = Context.Service<{
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   log: (msg: string) => void
- * }>("Logger")
- * const Config = Context.Service<{
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *
  *   name: string
- * }>("Config")
+ * }
+ * const Config = Context.Service<Config>("Config")
  *
  * const program = Effect.service(Config).pipe(
  *   Effect.map((config) => `Hello ${config.name}!`)
@@ -6126,12 +6211,16 @@ export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> 
  * // Transform services by providing Config while keeping Logger requirement
  * const configured = program.pipe(
  *   Effect.updateContext((context: Context.Context<Context.Service.Identifier<typeof Logger>>) =>
- *     Context.add(context, Config, { name: "World" })
+ *     Context.add(context, Config, {
+ *       ["~Config"]: "~Config" as const,
+ *       name: "World"
+ *     })
  *   )
  * )
  *
  * // The effect now requires only Logger service
  * const result = Effect.provideService(configured, Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: () => {}
  * })
  * Effect.runSync(result) // => "Hello World!"
@@ -6166,18 +6255,30 @@ export const updateContext: {
  * const output: Array<unknown> = []
  *
  * // Define a counter service
- * const Counter = Context.Service<{ count: number }>("Counter")
+ * interface Counter {
+ *   readonly ["~Counter"]: "~Counter"
+ *   count: number
+ * }
+ * const Counter = Context.Service<Counter>("Counter")
  *
  * const program = Effect.gen(function*() {
  *   const updatedCounter = yield* Effect.service(Counter)
- *   yield* Effect.sync(() => { output.push(`Updated count: ${updatedCounter.count}`) })
+ *   yield* Effect.sync(() => {
+ *     output.push(`Updated count: ${updatedCounter.count}`)
+ *   })
  *   return updatedCounter.count
  * }).pipe(
- *   Effect.updateService(Counter, (counter) => ({ count: counter.count + 1 }))
+ *   Effect.updateService(Counter, (counter) => ({
+ *     ["~Counter"]: "~Counter" as const,
+ *     count: counter.count + 1
+ *   }))
  * )
  *
  * // Provide initial service and run
- * const result = Effect.provideService(program, Counter, { count: 0 })
+ * const result = Effect.provideService(program, Counter, {
+ *   ["~Counter"]: "~Counter" as const,
+ *   count: 0
+ * })
  * void output.push(Effect.runSync(result))
  * output // => ["Updated count: 1", 1]
  * ```
@@ -6283,20 +6384,28 @@ export const updateServiceScoped: <I, A>(
  * const output: Array<unknown> = []
  *
  * // Define a service for configuration
- * const Config = Context.Service<{
+ * interface Config {
+ *   readonly ["~Config"]: "~Config"
+ *
  *   apiUrl: string
  *   timeout: number
- * }>("Config")
+ * }
+ * const Config = Context.Service<Config>("Config")
  *
  * const fetchData = Effect.gen(function*() {
  *   const config = yield* Effect.service(Config)
- *   yield* Effect.sync(() => { output.push(`Fetching from: ${config.apiUrl}`) })
- *   yield* Effect.sync(() => { output.push(`Timeout: ${config.timeout}ms`) })
+ *   yield* Effect.sync(() => {
+ *     output.push(`Fetching from: ${config.apiUrl}`)
+ *   })
+ *   yield* Effect.sync(() => {
+ *     output.push(`Timeout: ${config.timeout}ms`)
+ *   })
  *   return "data"
  * })
  *
  * // Provide the service implementation
  * const program = Effect.provideService(fetchData, Config, {
+ *   ["~Config"]: "~Config" as const,
  *   apiUrl: "https://api.example.com",
  *   timeout: 5000
  * })
@@ -9267,9 +9376,12 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = inte
  * const output: Array<unknown> = []
  *
  * // Define a logger service
- * const Logger = Context.Service<{
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *
  *   log: (msg: string) => void
- * }>("Logger")
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
  *
  * const program = Effect.gen(function*() {
  *   const logger = yield* Effect.service(Logger)
@@ -9279,6 +9391,7 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = inte
  *
  * // Prepare context
  * const context = Context.make(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
  *   log: (msg) => void output.push(`[LOG] ${msg}`)
  * })
  *
@@ -14471,6 +14584,8 @@ export const trackDuration: {
 // Transactions
 // -----------------------------------------------------------------------------
 
+const TransactionTypeId = "~effect/Effect/Transaction"
+
 /**
  * Service that holds the current transaction state.
  *
@@ -14492,6 +14607,7 @@ export const trackDuration: {
  * })
  *
  * const runnable = Effect.provideService(txEffect, Effect.Transaction, {
+ *   ["~effect/Effect/Transaction"]: "~effect/Effect/Transaction",
  *   retry: false,
  *   journal: new Map()
  * })
@@ -14501,19 +14617,26 @@ export const trackDuration: {
  * @category services
  * @since 4.0.0
  */
-export class Transaction extends Context.Service<
-  Transaction,
-  {
-    retry: boolean
-    readonly journal: Map<
-      TxRef<any>,
-      {
-        readonly version: number
-        value: any
-      }
-    >
-  }
->()("effect/Effect/Transaction") {}
+export interface Transaction {
+  readonly [TransactionTypeId]: typeof TransactionTypeId
+
+  retry: boolean
+  readonly journal: Map<
+    TxRef<any>,
+    {
+      readonly version: number
+      value: any
+    }
+  >
+}
+
+/**
+ * Service key for `Transaction` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Transaction = Context.Service<Transaction>("effect/Effect/Transaction")
 
 /**
  * Defines a transaction boundary. Transactions are "all or nothing" with respect to changes
@@ -14570,7 +14693,11 @@ export const tx = <A, E, R>(
       return effect as Effect<A, E, Exclude<R, Transaction>>
     }
     // Create transaction state only at the outermost boundary
-    state = { journal: new Map(), retry: false }
+    state = {
+      [TransactionTypeId]: TransactionTypeId as typeof TransactionTypeId,
+      journal: new Map(),
+      retry: false
+    }
     let result: Exit.Exit<A, E> | undefined
     return uninterruptibleMask((restore) =>
       flatMap(
@@ -14603,7 +14730,7 @@ export const tx = <A, E, R>(
     )
   })
 
-const isTransactionConsistent = (state: Transaction["Service"]) => {
+const isTransactionConsistent = (state: Transaction) => {
   for (const [ref, { version }] of state.journal) {
     if (ref.version !== version) {
       return false
@@ -14612,7 +14739,7 @@ const isTransactionConsistent = (state: Transaction["Service"]) => {
   return true
 }
 
-const awaitPendingTransaction = (state: Transaction["Service"]) =>
+const awaitPendingTransaction = (state: Transaction) =>
   suspend(() => {
     const key = {}
     const refs = Array.from(state.journal.keys())
@@ -14633,7 +14760,7 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
     })
   })
 
-function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {
+function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction) {
   for (const [ref, { value }] of state.journal) {
     if (value !== ref.value) {
       ref.version = ref.version + 1
@@ -14646,7 +14773,7 @@ function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["S
   }
 }
 
-function clearTransaction(state: Transaction["Service"]) {
+function clearTransaction(state: Transaction) {
   state.retry = false
   state.journal.clear()
 }

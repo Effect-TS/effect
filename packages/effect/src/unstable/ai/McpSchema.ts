@@ -2647,6 +2647,8 @@ export interface McpReverseClient {
   ) => Effect.Effect<typeof ElicitResult.Type, McpReverseOperationError | McpReverseOperationUnsupported>
 }
 
+const McpServerClientTypeId = "~effect/ai/McpSchema/McpServerClient"
+
 /**
  * Service available while handling an MCP client request.
  *
@@ -2658,7 +2660,9 @@ export interface McpReverseClient {
  * @category services
  * @since 4.0.0
  */
-export class McpServerClient extends Context.Service<McpServerClient, {
+export interface McpServerClient {
+  readonly [McpServerClientTypeId]: typeof McpServerClientTypeId
+
   readonly clientId: number
   readonly protocolVersion: ProtocolVersion
   readonly clientCapabilities: ClientCapabilities
@@ -2669,7 +2673,15 @@ export class McpServerClient extends Context.Service<McpServerClient, {
     never,
     Scope.Scope
   >
-}>()("effect/ai/McpSchema/McpServerClient") {}
+}
+
+/**
+ * Service key for `McpServerClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const McpServerClient = Context.Service<McpServerClient>("effect/ai/McpSchema/McpServerClient")
 
 /**
  * RPC middleware that provides `McpServerClient` to handlers for initialized

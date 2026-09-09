@@ -107,8 +107,8 @@ export const make = Effect.fnUntraced(function*<
   entity: Entity<Type, Rpcs>,
   buildHandlers: Effect.Effect<Handlers, never, RX>,
   options: {
-    readonly sharding: Sharding["Service"]
-    readonly storage: MessageStorage.MessageStorage["Service"]
+    readonly sharding: Sharding
+    readonly storage: MessageStorage.MessageStorage
     readonly runnerAddress: RunnerAddress
     readonly residency: Residency
     readonly maxIdleTime?: Input | undefined

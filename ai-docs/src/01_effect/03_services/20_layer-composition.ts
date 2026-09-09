@@ -21,50 +21,61 @@ export class UserRespositoryError extends Schema.TaggedError<UserRespositoryErro
   reason: SqlError.SqlError
 }) {}
 
-export class UserRepository extends Context.Service<UserRepository, {
+const UserRepositoryTypeId = "~myapp/UserRepository"
+
+export interface UserRepository {
+  readonly [UserRepositoryTypeId]: typeof UserRepositoryTypeId
+
   findById(id: string): Effect.Effect<
     Option.Option<{ readonly id: string; readonly name: string }>,
     UserRespositoryError
   >
-}>()("myapp/UserRepository") {
-  // Implement the layer for the UserRepository service, which depends on the
-  // SqlClient service
-  static readonly layerNoDeps: Layer.Layer<
-    UserRepository,
-    never,
-    SqlClient.SqlClient
-  > = Layer.effect(
-    UserRepository,
-    Effect.gen(function*() {
-      const sql = yield* SqlClient.SqlClient
-
-      const findById = Effect.fn("UserRepository.findById")(function*(id: string) {
-        const results = yield* sql<{
-          readonly id: string
-          readonly name: string
-        }>`SELECT * FROM users WHERE id = '${id}'`
-        return Array.head(results)
-      }, Effect.mapError((reason) => new UserRespositoryError({ reason })))
-
-      return UserRepository.of({ findById })
-    })
-  )
-
-  // Use Layer.provide to compose the UserRepository layer with the SqlClient
-  // layer, exposing only the UserRepository service
-  static readonly layer: Layer.Layer<
-    UserRepository,
-    Config.ConfigError | SqlError.SqlError
-  > = this.layerNoDeps.pipe(
-    Layer.provide(SqlClientLayer)
-  )
-
-  // Use Layer.provideMerge to compose the UserRepository layer with the SqlClient
-  // layer, exposing both the UserRepository and SqlClient services
-  static readonly layerWithSqlClient: Layer.Layer<
-    UserRepository | SqlClient.SqlClient,
-    Config.ConfigError | SqlError.SqlError
-  > = this.layerNoDeps.pipe(
-    Layer.provideMerge(SqlClientLayer)
-  )
 }
+
+/**
+ * Service key for `UserRepository` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const UserRepository = (() => {
+  const service = Context.Service<UserRepository>("myapp/UserRepository")
+  const service1 = Object.assign(service, {
+    // Implement the layer for the UserRepository service, which depends on the
+    // SqlClient service
+    layerNoDeps: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+
+        const findById = Effect.fn("UserRepository.findById")(function*(id: string) {
+          const results = yield* sql<{
+            readonly id: string
+            readonly name: string
+          }>`SELECT * FROM users WHERE id = '${id}'`
+          return Array.head(results)
+        }, Effect.mapError((reason) => new UserRespositoryError({ reason })))
+
+        return service.of({
+          [UserRepositoryTypeId]: UserRepositoryTypeId as typeof UserRepositoryTypeId,
+          findById
+        })
+      })
+    )
+  })
+  const service2 = Object.assign(service1, {
+    // Use Layer.provide to compose the UserRepository layer with the SqlClient
+    // layer, exposing only the UserRepository service1
+    layer: service1.layerNoDeps.pipe(
+      Layer.provide(SqlClientLayer)
+    )
+  })
+  const service3 = Object.assign(service2, {
+    // Use Layer.provideMerge to compose the UserRepository layer with the SqlClient
+    // layer, exposing both the UserRepository and SqlClient services
+    layerWithSqlClient: service2.layerNoDeps.pipe(
+      Layer.provideMerge(SqlClientLayer)
+    )
+  })
+  return service3
+})()

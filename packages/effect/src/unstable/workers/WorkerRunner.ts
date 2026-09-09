@@ -46,12 +46,26 @@ export interface WorkerRunner<O = unknown, I = unknown> {
  */
 export type PlatformMessage<I> = readonly [request: 0, I] | readonly [close: 1]
 
+const WorkerRunnerPlatformTypeId = "~effect/workers/WorkerRunner/WorkerRunnerPlatform"
+
 /**
  * Context service that starts a platform-specific `WorkerRunner`.
  *
  * @category services
  * @since 4.0.0
  */
-export class WorkerRunnerPlatform extends Context.Service<WorkerRunnerPlatform, {
+export interface WorkerRunnerPlatform {
+  readonly [WorkerRunnerPlatformTypeId]: typeof WorkerRunnerPlatformTypeId
+
   readonly start: <O = unknown, I = unknown>() => Effect.Effect<WorkerRunner<O, I>, WorkerError>
-}>()("effect/workers/WorkerRunner/WorkerRunnerPlatform") {}
+}
+
+/**
+ * Service key for `WorkerRunnerPlatform` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const WorkerRunnerPlatform = Context.Service<WorkerRunnerPlatform>(
+  "effect/workers/WorkerRunner/WorkerRunnerPlatform"
+)

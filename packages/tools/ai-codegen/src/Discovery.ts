@@ -48,6 +48,7 @@ export interface DiscoveredProvider {
   readonly specSource: SpecSource
   readonly outputPath: string
 }
+const ProviderDiscoveryTypeId = "~@effect/ai-codegen/ProviderDiscovery"
 
 /**
  * Service for discovering AI provider configurations.
@@ -56,6 +57,8 @@ export interface DiscoveredProvider {
  * @since 4.0.0
  */
 export interface ProviderDiscovery {
+  readonly [ProviderDiscoveryTypeId]: typeof ProviderDiscoveryTypeId
+
   readonly discover: () => Effect.Effect<
     Array<DiscoveredProvider>,
     DiscoveryError | Glob.GlobError
@@ -209,5 +212,9 @@ export const layer: Layer.Layer<
     return found
   })
 
-  return { discover, discoverOne }
+  return {
+    [ProviderDiscoveryTypeId]: ProviderDiscoveryTypeId as typeof ProviderDiscoveryTypeId,
+    discover,
+    discoverOne
+  }
 }).pipe(Layer.effect(ProviderDiscovery))

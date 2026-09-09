@@ -586,7 +586,7 @@ export class Request<Rpc extends Rpc.Any> extends Data.Class<
   }
 }
 
-const shardingTag = Context.Service<Sharding, Sharding["Service"]>("effect/cluster/Sharding")
+const shardingTag = Context.Service<Sharding, Sharding>("effect/cluster/Sharding")
 
 /**
  * Builds an in-memory test client for an entity layer.
@@ -627,7 +627,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
     readonly build: Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>
   }>()
   const sharding = shardingTag.of({
-    ...({} as Sharding["Service"]),
+    ...({} as Sharding),
     registerEntity: (entity, handlers, options) =>
       Effect.contextWith((context) => {
         entityMap.set(entity.type, {

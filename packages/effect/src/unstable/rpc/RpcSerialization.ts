@@ -43,6 +43,8 @@ const codecForJson = Schema.toCodecJson as CodecFor
 let sharedTextDecoder: TextDecoder | undefined
 const decodeText = (bytes: Uint8Array): string => (sharedTextDecoder ??= new TextDecoder()).decode(bytes)
 
+const RpcSerializationTypeId = "~effect/rpc/RpcSerialization"
+
 /**
  * Service that describes how RPC protocol messages are encoded and decoded,
  * including the content type and whether the serialization format provides
@@ -56,12 +58,22 @@ const decodeText = (bytes: Uint8Array): string => (sharedTextDecoder ??= new Tex
  * @category services
  * @since 4.0.0
  */
-export class RpcSerialization extends Context.Service<RpcSerialization, {
+export interface RpcSerialization {
+  readonly [RpcSerializationTypeId]: typeof RpcSerializationTypeId
+
   makeUnsafe(): Parser
   readonly contentType: string
   readonly includesFraming: boolean
   readonly codecFor: CodecFor
-}>()("effect/rpc/RpcSerialization") {}
+}
+
+/**
+ * Service key for `RpcSerialization` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const RpcSerialization = Context.Service<RpcSerialization>("effect/rpc/RpcSerialization")
 
 /**
  * A stateful parser for an RPC serialization format, able to decode input
@@ -119,7 +131,8 @@ const isBufferSizeExceeded = (
  * @category serialization
  * @since 4.0.0
  */
-export const json: RpcSerialization["Service"] = RpcSerialization.of({
+export const json: RpcSerialization = RpcSerialization.of({
+  [RpcSerializationTypeId]: RpcSerializationTypeId as typeof RpcSerializationTypeId,
   contentType: "application/json",
   includesFraming: false,
   codecFor: codecForJson,
@@ -139,9 +152,10 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
  * @category serialization
  * @since 4.0.0
  */
-export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"] => {
+export const makeNdjson = (options?: StreamOptions): RpcSerialization => {
   const maxBufferSize = options?.maxBufferSize ?? defaultMaxBufferSize
   return RpcSerialization.of({
+    [RpcSerializationTypeId]: RpcSerializationTypeId as typeof RpcSerializationTypeId,
     contentType: "application/ndjson",
     includesFraming: true,
     codecFor: codecForJson,
@@ -196,7 +210,7 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
  * @category serialization
  * @since 4.0.0
  */
-export const ndjson: RpcSerialization["Service"] = makeNdjson()
+export const ndjson: RpcSerialization = makeNdjson()
 
 /**
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
@@ -207,8 +221,9 @@ export const ndjson: RpcSerialization["Service"] = makeNdjson()
  */
 export const jsonRpc = (options?: {
   readonly contentType?: string | undefined
-}): RpcSerialization["Service"] =>
+}): RpcSerialization =>
   RpcSerialization.of({
+    [RpcSerializationTypeId]: RpcSerializationTypeId as typeof RpcSerializationTypeId,
     contentType: options?.contentType ?? "application/json",
     includesFraming: false,
     codecFor: codecForJson,
@@ -242,8 +257,9 @@ export const jsonRpc = (options?: {
 export const ndJsonRpc = (options?: {
   readonly contentType?: string | undefined
   readonly maxBufferSize?: number | "unbounded" | undefined
-}): RpcSerialization["Service"] =>
+}): RpcSerialization =>
   RpcSerialization.of({
+    [RpcSerializationTypeId]: RpcSerializationTypeId as typeof RpcSerializationTypeId,
     contentType: options?.contentType ?? "application/json-rpc",
     includesFraming: true,
     codecFor: codecForJson,
@@ -533,7 +549,7 @@ const schemaBinaryTextEncoder = new TextEncoder()
 const makeSchemaBinary = (options?: {
   readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
-}): RpcSerialization["Service"] => {
+}): RpcSerialization => {
   const maxFrameSize = options?.maxFrameSize === "unbounded"
     ? undefined
     : options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
@@ -542,6 +558,7 @@ const makeSchemaBinary = (options?: {
     : SchemaBinary.toCodecDirect
   const envelopeOptions = { fingerprint: true } as const
   return RpcSerialization.of({
+    [RpcSerializationTypeId]: RpcSerializationTypeId as typeof RpcSerializationTypeId,
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
     codecFor,

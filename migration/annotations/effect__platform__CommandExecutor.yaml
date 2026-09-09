@@ -15,4 +15,4 @@
   note: "The ChildProcessHandle marker is internal in v4; use the ChildProcessHandle interface."
 "@effect/platform/CommandExecutor#TypeId":
   replacement: "none"
-  note: "The Context.Service class replaces the public executor type-id alias."
+  note: "The Context.Service value and same-name interface replaces the public executor type-id alias."

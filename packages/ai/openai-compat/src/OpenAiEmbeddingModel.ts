@@ -29,6 +29,10 @@ export type Model = string
 type ConfigOptions = Simplify<Partial<Omit<CreateEmbeddingRequestJson, "input">>>
 type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknown }
 
+const ConfigTypeId = "~@effect/ai-openai-compat/OpenAiEmbeddingModel/Config"
+
+type ConfigShape = ConfigOptions & { readonly [x: string]: unknown }
+
 /**
  * Context service for OpenAI embedding model configuration.
  *
@@ -49,10 +53,17 @@ type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknow
  * @category services
  * @since 4.0.0
  */
-export class Config extends Context.Service<
-  Config,
-  ConfigOptions & { readonly [x: string]: unknown }
->()("@effect/ai-openai-compat/OpenAiEmbeddingModel/Config") {}
+export interface Config extends ConfigShape {
+  readonly [ConfigTypeId]: typeof ConfigTypeId
+}
+
+/**
+ * Service key for `Config` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Config = Context.Service<Config>("@effect/ai-openai-compat/OpenAiEmbeddingModel/Config")
 
 /**
  * Creates an `AiModel` for an OpenAI-compatible embedding model with its configured vector dimensions.
@@ -123,7 +134,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
     Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
-  )
+  ).pipe(Effect.map(({ [ConfigTypeId]: _typeId, ...config }) => config))
 
   return yield* EmbeddingModel.make({
     embedMany: Effect.fnUntraced(function*({ inputs }) {
@@ -176,13 +187,13 @@ export const layer = (options: {
  * @since 4.0.0
  */
 export const withConfigOverride: {
-  (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service): Effect.Effect<A, E, Exclude<R, Config>>
+  (overrides: ConfigShape): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape): Effect.Effect<A, E, Exclude<R, Config>>
 } = dual<
   (
-    overrides: typeof Config.Service
+    overrides: ConfigShape
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape) => Effect.Effect<A, E, Exclude<R, Config>>
 >(2, (self, overrides) =>
   Effect.flatMap(
     Effect.serviceOption(Config),

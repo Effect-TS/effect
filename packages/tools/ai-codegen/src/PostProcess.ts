@@ -62,6 +62,7 @@ export class PostProcessError extends Data.TaggedError("PostProcessError")<{
     return lines.join("\n")
   }
 }
+const PostProcessorTypeId = "~@effect/ai-codegen/PostProcessor"
 
 /**
  * Service for post-processing generated code.
@@ -70,6 +71,8 @@ export class PostProcessError extends Data.TaggedError("PostProcessError")<{
  * @since 4.0.0
  */
 export interface PostProcessor {
+  readonly [PostProcessorTypeId]: typeof PostProcessorTypeId
+
   readonly lint: (filePath: string) => Effect.Effect<void, PostProcessError>
   readonly format: (filePath: string) => Effect.Effect<void, PostProcessError>
 }
@@ -156,5 +159,9 @@ export const layer: Layer.Layer<
     yield* runCommand("pnpm", ["exec", "dprint", "--log-level", "silent", "fmt", filePath], "format", filePath)
   })
 
-  return { lint, format }
+  return {
+    [PostProcessorTypeId]: PostProcessorTypeId as typeof PostProcessorTypeId,
+    lint,
+    format
+  }
 }).pipe(Layer.effect(PostProcessor))

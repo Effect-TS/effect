@@ -6,4 +6,4 @@
   note: "Moved into core Effect. Its options now require codecFor; pass the codec used by the remote runner transport, such as RpcSerialization.json.codecFor for JSON. Context service projections now use Service instead of Type."
 "@effect/cluster/Runners#makeNoop":
   replacement: "effect/unstable/cluster/Runners#makeNoop"
-  note: "Moved into core Effect; it returns the Context.Service implementation through the Service projection instead of Type."
+  note: "Moved into core Effect; it returns the Context.Service implementation as a directly nameable interface instead of the old Type projection."

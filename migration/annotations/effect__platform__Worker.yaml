@@ -24,10 +24,10 @@
   note: "Serialized tagged-request execution moved to the v4 RPC model; define an RpcGroup and use the worker protocol."
 "@effect/platform/Worker#PlatformWorker":
   replacement: "Worker.WorkerPlatform"
-  note: "The platform service was renamed and is now a Context.Service class."
+  note: "The platform service was renamed and is now a Context.Service value and same-name interface."
 "@effect/platform/Worker#PlatformWorkerTypeId":
   replacement: "none"
-  note: "The Context.Service class replaces the public platform-worker type-id alias."
+  note: "The Context.Service value and same-name interface replaces the public platform-worker type-id alias."
 "@effect/platform/Worker#SerializedWorker":
   replacement: "RpcClient with RpcClient.layerProtocolWorker"
   note: "The serialized worker facade was removed; v4 routes schema-defined RPCs through the worker protocol."
@@ -57,7 +57,7 @@
   note: "WorkerPlatform now spawns low-level Worker values directly, replacing WorkerManager."
 "@effect/platform/Worker#WorkerManagerTypeId":
   replacement: "none"
-  note: "The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service class."
+  note: "The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service value and same-name interface."
 "@effect/platform/Worker#WorkerPool":
   replacement: "RpcClient.Protocol"
   note: "For serialized request/response workloads use the worker-backed RPC Protocol; for raw messages build a Pool around WorkerPlatform.spawn."

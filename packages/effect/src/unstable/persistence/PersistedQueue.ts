@@ -109,23 +109,34 @@ export interface PersistedQueue<in out A, out R = never> {
   ) => Effect.Effect<XA, XE | PersistedQueueError, R | XR>
 }
 
+const PersistedQueueFactoryTypeId = "~effect/persistence/PersistedQueue/PersistedQueueFactory"
+
 /**
  * Service for constructing named `PersistedQueue` instances from schemas.
  *
  * @category services
  * @since 4.0.0
  */
-export class PersistedQueueFactory extends Context.Service<
-  PersistedQueueFactory,
-  {
-    readonly make: <S extends Schema.Constraint>(options: {
-      readonly name: string
-      readonly schema: S
-      readonly maxAttempts?: number | undefined
-      readonly retrySchedule?: Schedule.Schedule<any, number> | undefined
-    }) => Effect.Effect<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>
-  }
->()("effect/persistence/PersistedQueue/PersistedQueueFactory") {}
+export interface PersistedQueueFactory {
+  readonly [PersistedQueueFactoryTypeId]: typeof PersistedQueueFactoryTypeId
+
+  readonly make: <S extends Schema.Constraint>(options: {
+    readonly name: string
+    readonly schema: S
+    readonly maxAttempts?: number | undefined
+    readonly retrySchedule?: Schedule.Schedule<any, number> | undefined
+  }) => Effect.Effect<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>
+}
+
+/**
+ * Service key for `PersistedQueueFactory` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const PersistedQueueFactory = Context.Service<PersistedQueueFactory>(
+  "effect/persistence/PersistedQueue/PersistedQueueFactory"
+)
 
 /**
  * Accesses `PersistedQueueFactory` to create a named persisted queue for a
@@ -206,6 +217,7 @@ export const makeFactory = Effect.gen(function*() {
   const store = yield* PersistedQueueStore
 
   return PersistedQueueFactory.of({
+    [PersistedQueueFactoryTypeId]: PersistedQueueFactoryTypeId as typeof PersistedQueueFactoryTypeId,
     make<S extends Schema.Constraint>(options: {
       readonly name: string
       readonly schema: S
@@ -426,6 +438,8 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
   return undefined
 }
 
+const PersistedQueueStoreTypeId = "~effect/persistence/PersistedQueue/PersistedQueueStore"
+
 /**
  * Defines the low-level backing store service used by `PersistedQueue`.
  *
@@ -448,43 +462,52 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * @category services
  * @since 4.0.0
  */
-export class PersistedQueueStore extends Context.Service<
-  PersistedQueueStore,
-  {
-    readonly offer: (
-      options: {
-        readonly name: string
-        readonly id: string
-        readonly element: unknown
-        readonly isCustomId: boolean
-      }
-    ) => Effect.Effect<void, PersistedQueueError>
+export interface PersistedQueueStore {
+  readonly [PersistedQueueStoreTypeId]: typeof PersistedQueueStoreTypeId
 
-    readonly take: (options: {
+  readonly offer: (
+    options: {
       readonly name: string
-      readonly maxAttempts: number
-      readonly retryDelay: (attempts: number) => Effect.Effect<Duration.Duration>
-    }) => Effect.Effect<
-      {
-        readonly id: string
-        readonly attempts: number
-        readonly element: unknown
-      },
-      PersistedQueueError,
-      Scope.Scope
-    >
+      readonly id: string
+      readonly element: unknown
+      readonly isCustomId: boolean
+    }
+  ) => Effect.Effect<void, PersistedQueueError>
 
-    /**
-     * Removes completed elements older than `timeToLive`, together with their
-     * de-duplication records. Failed elements are removed only when
-     * `failedTimeToLive` is provided.
-     */
-    readonly cleanup: (options: {
-      readonly timeToLive: Duration.Duration
-      readonly failedTimeToLive: Duration.Duration | undefined
-    }) => Effect.Effect<void, PersistedQueueError>
-  }
->()("effect/persistence/PersistedQueue/PersistedQueueStore") {}
+  readonly take: (options: {
+    readonly name: string
+    readonly maxAttempts: number
+    readonly retryDelay: (attempts: number) => Effect.Effect<Duration.Duration>
+  }) => Effect.Effect<
+    {
+      readonly id: string
+      readonly attempts: number
+      readonly element: unknown
+    },
+    PersistedQueueError,
+    Scope.Scope
+  >
+
+  /**
+   * Removes completed elements older than `timeToLive`, together with their
+   * de-duplication records. Failed elements are removed only when
+   * `failedTimeToLive` is provided.
+   */
+  readonly cleanup: (options: {
+    readonly timeToLive: Duration.Duration
+    readonly failedTimeToLive: Duration.Duration | undefined
+  }) => Effect.Effect<void, PersistedQueueError>
+}
+
+/**
+ * Service key for `PersistedQueueStore` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const PersistedQueueStore = Context.Service<PersistedQueueStore>(
+  "effect/persistence/PersistedQueue/PersistedQueueStore"
+)
 
 /**
  * Provides an in-memory `PersistedQueueStore`.
@@ -533,6 +556,7 @@ export const layerStoreMemory: Layer.Layer<
     }
 
     return PersistedQueueStore.of({
+      [PersistedQueueStoreTypeId]: PersistedQueueStoreTypeId as typeof PersistedQueueStoreTypeId,
       offer: (options) =>
         Effect.sync(() => {
           const now = clock.currentTimeMillisUnsafe()
@@ -840,6 +864,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     })
 
   return PersistedQueueStore.of({
+    [PersistedQueueStoreTypeId]: PersistedQueueStoreTypeId as typeof PersistedQueueStoreTypeId,
     offer: ({ element, id, isCustomId, name }) => {
       const keys = keysFor(name)
       const payload = JSON.stringify({ id, element })
@@ -1290,7 +1315,7 @@ export const makeStoreSql: (
     readonly lockExpiration?: Duration.Input | undefined
   } | undefined
 ) => Effect.Effect<
-  PersistedQueueStore["Service"],
+  PersistedQueueStore,
   SqlError,
   SqlClient.SqlClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
@@ -1678,6 +1703,7 @@ export const makeStoreSql: (
     )
 
   return PersistedQueueStore.of({
+    [PersistedQueueStoreTypeId]: PersistedQueueStoreTypeId as typeof PersistedQueueStoreTypeId,
     offer: ({ element, id, name }) =>
       Effect.catchCause(Effect.suspend(() => offer(id, name, JSON.stringify(element))), (cause) =>
         Effect.fail(

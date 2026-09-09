@@ -16,6 +16,8 @@ import { dual } from "../../Function.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 
+const CollectorTypeId = "~effect/workers/Transferable/Collector"
+
 /**
  * Service for collecting `Transferable` objects while encoding worker messages
  * so they can be passed to `postMessage` transfer lists.
@@ -23,7 +25,9 @@ import * as SchemaGetter from "../../SchemaGetter.ts"
  * @category services
  * @since 4.0.0
  */
-export class Collector extends Context.Service<Collector, {
+export interface Collector {
+  readonly [CollectorTypeId]: typeof CollectorTypeId
+
   readonly addAll: (
     _: Iterable<globalThis.Transferable>
   ) => Effect.Effect<void>
@@ -32,7 +36,15 @@ export class Collector extends Context.Service<Collector, {
   readonly readUnsafe: () => Array<globalThis.Transferable>
   readonly clearUnsafe: () => Array<globalThis.Transferable>
   readonly clear: Effect.Effect<Array<globalThis.Transferable>>
-}>()("effect/workers/Transferable/Collector") {}
+}
+
+/**
+ * Service key for `Collector` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Collector = Context.Service<Collector>("effect/workers/Transferable/Collector")
 
 /**
  * Creates a mutable `Collector` service directly, exposing unsafe synchronous
@@ -41,7 +53,7 @@ export class Collector extends Context.Service<Collector, {
  * @category constructors
  * @since 4.0.0
  */
-export const makeCollectorUnsafe = (): Collector["Service"] => {
+export const makeCollectorUnsafe = (): Collector => {
   let tranferables: Array<globalThis.Transferable> = []
   const unsafeAddAll = (transfers: Iterable<globalThis.Transferable>): void => {
     tranferables.push(...transfers)
@@ -53,6 +65,7 @@ export const makeCollectorUnsafe = (): Collector["Service"] => {
     return prev
   }
   return Collector.of({
+    [CollectorTypeId]: CollectorTypeId as typeof CollectorTypeId,
     addAllUnsafe: unsafeAddAll,
     addAll: (transferables) => Effect.sync(() => unsafeAddAll(transferables)),
     readUnsafe: unsafeRead,
@@ -69,7 +82,7 @@ export const makeCollectorUnsafe = (): Collector["Service"] => {
  * @category constructors
  * @since 4.0.0
  */
-export const makeCollector: Effect.Effect<Collector["Service"]> = Effect.sync(makeCollectorUnsafe)
+export const makeCollector: Effect.Effect<Collector> = Effect.sync(makeCollectorUnsafe)
 
 /**
  * Adds transferables to the current `Collector` when one is present in the

@@ -534,7 +534,7 @@ export const compression = (
     zstd: { level: levels.zstd }
   }
   const transform = (
-    compression: HttpPlatform["Service"]["compression"],
+    compression: HttpPlatform["compression"],
     acceptEncoding: string | undefined,
     response: HttpServerResponse
   ): Effect.Effect<HttpServerResponse> => {

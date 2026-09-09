@@ -16,6 +16,8 @@ import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Random from "../../Random.ts"
 
+const IdGeneratorTypeId = "~@effect/ai/IdGenerator"
+
 /**
  * Service tag for AI identifier generation services.
  *
@@ -44,6 +46,7 @@ import * as Random from "../../Random.ts"
  *
  * const program = useIdGenerator.pipe(
  *   Effect.provideService(IdGenerator.IdGenerator, {
+ *     ["~@effect/ai/IdGenerator"]: "~@effect/ai/IdGenerator",
  *     generateId: () => Effect.succeed("id-1")
  *   })
  * )
@@ -53,9 +56,17 @@ import * as Random from "../../Random.ts"
  * @category services
  * @since 4.0.0
  */
-export class IdGenerator extends Context.Service<IdGenerator, Service>()(
-  "@effect/ai/IdGenerator"
-) {}
+export interface IdGenerator extends Service {
+  readonly [IdGeneratorTypeId]: typeof IdGeneratorTypeId
+}
+
+/**
+ * Service key for `IdGenerator` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const IdGenerator = Context.Service<IdGenerator>("@effect/ai/IdGenerator")
 
 /**
  * The service interface for ID generation.
@@ -74,7 +85,8 @@ export class IdGenerator extends Context.Service<IdGenerator, Service>()(
  *
  * // Custom deterministic implementation
  * let nextId = 0
- * const customService: IdGenerator.Service = {
+ * const customService: IdGenerator.IdGenerator = {
+ *   ["~@effect/ai/IdGenerator"]: "~@effect/ai/IdGenerator",
  *   generateId: () => Effect.sync(() => `custom_${++nextId}`)
  * }
  *
@@ -87,6 +99,8 @@ export class IdGenerator extends Context.Service<IdGenerator, Service>()(
  * @since 4.0.0
  */
 export interface Service {
+  readonly [IdGeneratorTypeId]: typeof IdGeneratorTypeId
+
   readonly generateId: () => Effect.Effect<string>
 }
 
@@ -193,6 +207,7 @@ const makeGenerator = ({
  * @since 4.0.0
  */
 export const defaultIdGenerator: Service = {
+  [IdGeneratorTypeId]: IdGeneratorTypeId as typeof IdGeneratorTypeId,
   generateId: makeGenerator({ prefix: "id" })
 }
 
@@ -261,6 +276,7 @@ export const make = Effect.fnUntraced(function*({
   const generateId = makeGenerator({ alphabet, prefix, separator, size })
 
   return {
+    [IdGeneratorTypeId]: IdGeneratorTypeId as typeof IdGeneratorTypeId,
     generateId
   } as const
 })

@@ -1259,9 +1259,12 @@ import {
 import { createServer } from "node:http"
 
 // Define the service providing the current user
-class CurrentUser
-  extends Context.Service<CurrentUser, { readonly id: number; readonly name: string }>()("CurrentUser")
-{}
+interface CurrentUser {
+  readonly ["~CurrentUser"]: "~CurrentUser"
+  readonly id: number
+  readonly name: string
+}
+const CurrentUser = Context.Service<CurrentUser>("CurrentUser")
 
 // Define the security scheme: read the "session" cookie
 const sessionCookie = HttpApiSecurity.apiKey({ in: "cookie", key: "session" })
@@ -1298,7 +1301,11 @@ const AuthLayer = Layer.succeed(
           if (value !== "valid-session") {
             return yield* Effect.fail("Invalid session")
           }
-          return { id: 1, name: "John Doe" }
+          return {
+            ["~CurrentUser"]: "~CurrentUser" as const,
+            id: 1,
+            name: "John Doe"
+          }
         })
       )
   }
@@ -2478,9 +2485,12 @@ When you attach interdependent middleware to an endpoint, group, or API, the mid
 import { Context, Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware } from "effect/unstable/httpapi"
 
-class AuthInfo extends Context.Service<AuthInfo, {
+interface AuthInfo {
+  readonly ["~AuthInfo"]: "~AuthInfo"
+
   readonly userId: string
-}>()("AuthInfo") {}
+}
+const AuthInfo = Context.Service<AuthInfo>("AuthInfo")
 
 class LoadAuth extends HttpApiMiddleware.Service<LoadAuth, {
   readonly provides: AuthInfo
@@ -2506,6 +2516,7 @@ const LoadAuthLayer = Layer.effect(
   LoadAuth,
   Effect.succeed((effect) =>
     Effect.provideService(effect, AuthInfo, {
+      ["~AuthInfo"]: "~AuthInfo" as const,
       userId: "user-1"
     })
   )
@@ -2742,9 +2753,12 @@ const User = Schema.Struct({
 })
 
 // Define the UsersRepository service
-class UsersRepository extends Context.Service<UsersRepository, {
+interface UsersRepository {
+  readonly ["~UsersRepository"]: "~UsersRepository"
+
   readonly findById: (id: number) => Effect.Effect<typeof User.Type>
-}>()("UsersRepository") {}
+}
+const UsersRepository = Context.Service<UsersRepository>("UsersRepository")
 
 const Api = HttpApi.make("MyApi")
   .add(
@@ -2779,6 +2793,7 @@ const ApiLayer = HttpApiBuilder.layer(Api).pipe(
   Layer.provide(HttpApiScalar.layer(Api)),
   Layer.provide(
     Layer.succeed(UsersRepository, {
+      ["~UsersRepository"]: "~UsersRepository" as const,
       findById: (id) => Effect.succeed({ id, name: `User ${id}` })
     })
   ),

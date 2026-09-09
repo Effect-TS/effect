@@ -30,7 +30,7 @@ const compression = NodeHttpCompression.make(Platform.makeCompressionWeb({
  * @since 4.0.0
  */
 const make: Effect.Effect<
-  Platform.HttpPlatform["Service"],
+  Platform.HttpPlatform,
   never,
   FileSystem | Etag.Generator
 > = Platform.make({

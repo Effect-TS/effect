@@ -15,6 +15,8 @@ import type * as Effect from "../../Effect.ts"
 import type * as NetAddress from "../net/NetAddress.ts"
 import type * as Socket from "./Socket.ts"
 
+const SocketServerTypeId = "~@effect/platform/SocketServer"
+
 /**
  * Context service for a socket server, exposing its bound address and a run
  * loop that handles each accepted `Socket`.
@@ -22,12 +24,22 @@ import type * as Socket from "./Socket.ts"
  * @category services
  * @since 4.0.0
  */
-export class SocketServer extends Context.Service<SocketServer, {
+export interface SocketServer {
+  readonly [SocketServerTypeId]: typeof SocketServerTypeId
+
   readonly address: NetAddress.SocketAddress
   readonly run: <R, E, _>(
     handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>
   ) => Effect.Effect<never, SocketServerError, R>
-}>()("@effect/platform/SocketServer") {}
+}
+
+/**
+ * Service key for `SocketServer` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const SocketServer = Context.Service<SocketServer>("@effect/platform/SocketServer")
 
 /**
  * Runtime type identifier attached to `SocketServerError` values.

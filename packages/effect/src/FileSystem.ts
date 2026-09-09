@@ -1075,6 +1075,8 @@ export declare namespace WatchEvent {
   }
 }
 
+const WatchBackendTypeId = "~effect/FileSystem/WatchBackend"
+
 /**
  * Service key for file system watch backend implementations.
  *
@@ -1090,7 +1092,8 @@ export declare namespace WatchEvent {
  * import { Effect, FileSystem, Option, Stream } from "effect"
  *
  * // Custom watch backend implementation
- * const customWatchBackend = {
+ * const customWatchBackend: FileSystem.WatchBackend = {
+ *   ["~effect/FileSystem/WatchBackend"]: "~effect/FileSystem/WatchBackend",
  *   register: (path: string, stat: FileSystem.File.Info) => {
  *     // Implementation would depend on platform
  *     return Option.some(Stream.empty) // Placeholder implementation
@@ -1115,10 +1118,20 @@ export declare namespace WatchEvent {
  * @category services
  * @since 4.0.0
  */
-export class WatchBackend extends Context.Service<WatchBackend, {
+export interface WatchBackend {
+  readonly [WatchBackendTypeId]: typeof WatchBackendTypeId
+
   readonly register: (
     path: string,
     stat: File.Info,
     options?: WatchOptions
   ) => Option.Option<Stream.Stream<WatchEvent, PlatformError>>
-}>()("effect/FileSystem/WatchBackend") {}
+}
+
+/**
+ * Service key for `WatchBackend` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const WatchBackend = Context.Service<WatchBackend>("effect/FileSystem/WatchBackend")

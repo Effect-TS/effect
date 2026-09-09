@@ -114,6 +114,7 @@ export interface BarrelFile {
   readonly pattern: string
   readonly offset: number
 }
+const BarrelGeneratorTypeId = "~@effect/utils/BarrelGenerator"
 
 /**
  * Service interface for discovering annotated barrel files and regenerating their export contents.
@@ -122,6 +123,8 @@ export interface BarrelFile {
  * @since 4.0.0
  */
 export interface BarrelGenerator {
+  readonly [BarrelGeneratorTypeId]: typeof BarrelGeneratorTypeId
+
   readonly discoverFiles: (
     pattern: string,
     cwd: string
@@ -212,6 +215,10 @@ export const layer: Layer.Layer<BarrelGenerator, never, FileSystem.FileSystem | 
       yield* fs.writeFileString(file.path, `${header}\n\n${generated}\n`)
     })
 
-    return { discoverFiles, processFile }
+    return {
+      [BarrelGeneratorTypeId]: BarrelGeneratorTypeId as typeof BarrelGeneratorTypeId,
+      discoverFiles,
+      processFile
+    }
   }
 ).pipe(Layer.effect(BarrelGenerator), Layer.provide(Glob.layer))

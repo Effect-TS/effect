@@ -1,6 +1,6 @@
 "@effect/platform/Transferable#CollectorService":
   replacement: "Transferable.Collector[\"Service\"]"
-  note: "The collector interface is now the service type of the Transferable.Collector Context.Service class."
+  note: "The collector interface is now the service type of the Transferable.Collector Context.Service value and same-name interface."
 "@effect/platform/Transferable#schema":
   replacement: "Transferable.schema"
   note: "The schema wrapper moved to effect/unstable/workers/Transferable and uses the v4 Schema model."

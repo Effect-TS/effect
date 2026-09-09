@@ -51,6 +51,41 @@ export type Model = (typeof Generated.Model)["members"][1]["Encoded"]
 // Configuration
 // =============================================================================
 
+const ConfigTypeId = "~@effect/ai-anthropic/AnthropicLanguageModel/Config"
+
+type ConfigShape = Simplify<
+  & Partial<
+    Omit<
+      typeof Generated.BetaCreateMessageParams.Encoded,
+      "messages" | "output_config" | "tools" | "tool_choice" | "stream"
+    >
+  >
+  & {
+    readonly output_config?: {
+      readonly effort?: "low" | "medium" | "high" | null
+    }
+    /**
+     * Disables Claude's ability to use multiple tools to respond to a query.
+     */
+    readonly disableParallelToolCalls?: boolean | undefined
+    /**
+     * Whether the model supports native structured outputs.
+     *
+     * Overrides automatic capability detection based on the model identifier.
+     */
+    readonly structuredOutputs?: boolean | undefined
+    /**
+     * Whether to use strict JSON schema validation for tool calls.
+     *
+     * **Details**
+     *
+     * Only applies to models that support structured outputs. Defaults to
+     * `true` when structured outputs are supported.
+     */
+    readonly strictJsonSchema?: boolean | undefined
+  }
+>
+
 /**
  * Context service for Anthropic language model configuration.
  *
@@ -68,41 +103,17 @@ export type Model = (typeof Generated.Model)["members"][1]["Encoded"]
  * @category services
  * @since 4.0.0
  */
-export class Config extends Context.Service<
-  Config,
-  Simplify<
-    & Partial<
-      Omit<
-        typeof Generated.BetaCreateMessageParams.Encoded,
-        "messages" | "output_config" | "tools" | "tool_choice" | "stream"
-      >
-    >
-    & {
-      readonly output_config?: {
-        readonly effort?: "low" | "medium" | "high" | null
-      }
-      /**
-       * Disables Claude's ability to use multiple tools to respond to a query.
-       */
-      readonly disableParallelToolCalls?: boolean | undefined
-      /**
-       * Whether the model supports native structured outputs.
-       *
-       * Overrides automatic capability detection based on the model identifier.
-       */
-      readonly structuredOutputs?: boolean | undefined
-      /**
-       * Whether to use strict JSON schema validation for tool calls.
-       *
-       * **Details**
-       *
-       * Only applies to models that support structured outputs. Defaults to
-       * `true` when structured outputs are supported.
-       */
-      readonly strictJsonSchema?: boolean | undefined
-    }
-  >
->()("@effect/ai-anthropic/AnthropicLanguageModel/Config") {}
+export interface Config extends ConfigShape {
+  readonly [ConfigTypeId]: typeof ConfigTypeId
+}
+
+/**
+ * Service key for `Config` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Config = Context.Service<Config>("@effect/ai-anthropic/AnthropicLanguageModel/Config")
 
 // =============================================================================
 // Provider Options / Metadata
@@ -651,7 +662,7 @@ declare module "effect/unstable/ai/Response" {
  */
 export const model = (
   model: (string & {}) | Model,
-  config?: Omit<typeof Config.Service, "model">
+  config?: Omit<ConfigShape, "model">
 ): AiModel.Model<"anthropic", LanguageModel.LanguageModel, AnthropicClient> =>
   AiModel.make("anthropic", model, layer({ model, config }))
 
@@ -677,21 +688,23 @@ export const model = (
  */
 export const make = Effect.fnUntraced(function*({ model, config: providerConfig }: {
   readonly model: (string & {}) | Model
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Effect.fn.Return<LanguageModel.Service, never, AnthropicClient> {
   const client = yield* AnthropicClient
 
-  const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.contextWith((services) =>
+  const makeConfig: Effect.Effect<ConfigShape & { readonly model: string }> = Effect.contextWith((
+    services: Context.Context<never>
+  ) =>
     Effect.succeed({
       model,
       ...providerConfig,
       ...Context.getOrUndefined(services, Config)
     })
-  )
+  ).pipe(Effect.map(({ [ConfigTypeId]: _typeId, ...config }) => config))
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {
-      readonly config: typeof Config.Service & { readonly model: string }
+      readonly config: ConfigShape & { readonly model: string }
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<{
@@ -785,7 +798,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Layer.Layer<LanguageModel.LanguageModel, never, AnthropicClient> =>
   Layer.effect(LanguageModel.LanguageModel, make(options))
 
@@ -810,19 +823,21 @@ export const layer = (options: {
  * @since 4.0.0
  */
 export const withConfigOverride: {
-  (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service): Effect.Effect<A, E, Exclude<R, Config>>
+  (overrides: ConfigShape): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape): Effect.Effect<A, E, Exclude<R, Config>>
 } = dual<
   (
-    overrides: typeof Config.Service
+    overrides: ConfigShape
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape) => Effect.Effect<A, E, Exclude<R, Config>>
 >(2, (self, overrides) =>
   Effect.flatMap(
     Effect.serviceOption(Config),
     (config) =>
       Effect.provideService(self, Config, {
-        ...(config._tag === "Some" ? config.value : {}),
+        ...(config._tag === "Some" ? config.value : {
+          [ConfigTypeId]: ConfigTypeId as typeof ConfigTypeId
+        }),
         ...overrides
       })
   ))
@@ -1292,7 +1307,7 @@ const prepareTools = Effect.fnUntraced(
   function*({ betas, capabilities, config, options }: {
     readonly betas: Set<string>
     readonly capabilities: ModelCapabilities
-    readonly config: typeof Config.Service
+    readonly config: ConfigShape
     readonly options: LanguageModel.ProviderOptions
   }): Effect.fn.Return<{
     readonly tools: ReadonlyArray<AnthropicUserDefinedTool | AnthropicProviderDefinedTool> | undefined

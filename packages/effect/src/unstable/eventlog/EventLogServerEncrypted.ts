@@ -144,6 +144,8 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
   }
 }
 
+const StorageTypeId = "~effect/eventlog/EventLogServer/Storage"
+
 /**
  * Defines the backing store service used by the encrypted event-log server.
  *
@@ -161,7 +163,9 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
  * @category services
  * @since 4.0.0
  */
-export class Storage extends Context.Service<Storage, {
+export interface Storage {
+  readonly [StorageTypeId]: typeof StorageTypeId
+
   readonly getId: Effect.Effect<RemoteId>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
@@ -177,7 +181,15 @@ export class Storage extends Context.Service<Storage, {
     storeId: StoreId,
     startSequence: number
   ) => Stream.Stream<EncryptedRemoteEntry>
-}>()("effect/eventlog/EventLogServer/Storage") {}
+}
+
+/**
+ * Service key for `Storage` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Storage = Context.Service<Storage>("effect/eventlog/EventLogServer/Storage")
 
 /**
  * Creates an in-memory encrypted server `Storage`.
@@ -190,7 +202,7 @@ export class Storage extends Context.Service<Storage, {
  * @category constructors
  * @since 4.0.0
  */
-export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
+export const makeStorageMemory: Effect.Effect<Storage, never, Scope.Scope> = Effect.gen(function*() {
   const knownIds = new Map<string, Map<string, number>>()
   const journals = new Map<string, Array<EncryptedRemoteEntry>>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
@@ -219,6 +231,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
   })
 
   return Storage.of({
+    [StorageTypeId]: StorageTypeId as typeof StorageTypeId,
     getId: Effect.succeed(remoteId),
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       Effect.sync(() => {

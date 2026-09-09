@@ -16,6 +16,8 @@ import * as Predicate from "effect/Predicate"
 import type { ParsedOpenApi, ParsedOperation, ParsedOperationHttpClientResponses } from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
 
+const OpenApiTransformerTypeId = "~@effect/openapi-generator/OpenApiTransformer"
+
 /**
  * Service used by the OpenAPI generator to render parsed operations as an
  * Effect HttpClient module.
@@ -29,14 +31,21 @@ import * as Utils from "./Utils.ts"
  * @category services
  * @since 4.0.0
  */
-export class OpenApiTransformer extends Context.Service<
-  OpenApiTransformer,
-  {
-    readonly imports: (importName: string, parsed: ParsedOpenApi) => string
-    readonly toTypes: (importName: string, name: string, parsed: ParsedOpenApi) => string
-    readonly toImplementation: (importName: string, name: string, parsed: ParsedOpenApi) => string
-  }
->()("OpenApiTransformer") {}
+export interface OpenApiTransformer {
+  readonly [OpenApiTransformerTypeId]: typeof OpenApiTransformerTypeId
+
+  readonly imports: (importName: string, parsed: ParsedOpenApi) => string
+  readonly toTypes: (importName: string, name: string, parsed: ParsedOpenApi) => string
+  readonly toImplementation: (importName: string, name: string, parsed: ParsedOpenApi) => string
+}
+
+/**
+ * Service key for `OpenApiTransformer` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenApiTransformer = Context.Service<OpenApiTransformer>("OpenApiTransformer")
 
 interface ImportRequirements {
   readonly eventStream: boolean
@@ -475,6 +484,7 @@ export const make = (
   }
 
   return OpenApiTransformer.of({
+    [OpenApiTransformerTypeId]: OpenApiTransformerTypeId as typeof OpenApiTransformerTypeId,
     imports: (importName, parsed) => {
       const operations = parsed.operations
       const requirements = computeImportRequirements(operations)
@@ -911,6 +921,7 @@ export const make = (
   }
 
   return OpenApiTransformer.of({
+    [OpenApiTransformerTypeId]: OpenApiTransformerTypeId as typeof OpenApiTransformerTypeId,
     imports: (_importName, parsed) => {
       const operations = parsed.operations
       const requirements = computeImportRequirements(operations)

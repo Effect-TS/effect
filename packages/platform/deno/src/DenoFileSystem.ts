@@ -438,7 +438,7 @@ const watchNative = (
   )
 
 const watch = (
-  backend: Option.Option<FileSystem.WatchBackend["Service"]>,
+  backend: Option.Option<FileSystem.WatchBackend>,
   path: string,
   options?: FileSystem.WatchOptions
 ) =>

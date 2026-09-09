@@ -11,6 +11,8 @@ import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type { HttpClient } from "effect/unstable/http/HttpClient"
 
+const OpenRouterConfigTypeId = "~@effect/ai-openrouter/OpenRouterConfig"
+
 /**
  * Context service for scoped OpenRouter provider configuration used by client
  * operations.
@@ -25,20 +27,30 @@ import type { HttpClient } from "effect/unstable/http/HttpClient"
  * @category services
  * @since 4.0.0
  */
-export class OpenRouterConfig extends Context.Service<
-  OpenRouterConfig,
-  OpenRouterConfig.Service
->()("@effect/ai-openrouter/OpenRouterConfig") {
-  /**
-   * Gets the configured OpenRouter service from the current context when present.
-   *
-   * @since 4.0.0
-   */
-  static readonly getOrUndefined: Effect.Effect<typeof OpenRouterConfig.Service | undefined> = Effect.map(
-    Effect.context<never>(),
-    Context.getOrUndefined(OpenRouterConfig)
-  )
+export interface OpenRouterConfig extends OpenRouterConfig.Service {
+  readonly [OpenRouterConfigTypeId]: typeof OpenRouterConfigTypeId
 }
+
+/**
+ * Service key for `OpenRouterConfig` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenRouterConfig = (() => {
+  const service = Context.Service<OpenRouterConfig>("@effect/ai-openrouter/OpenRouterConfig")
+  return Object.assign(service, {
+    /**
+     * Gets the configured OpenRouter service from the current context when present.
+     *
+     * @since 4.0.0
+     */
+    getOrUndefined: Effect.map(
+      Effect.context<never>(),
+      Context.getOrUndefined(service)
+    )
+  })
+})()
 
 /**
  * Types associated with the `OpenRouterConfig` context service.
@@ -54,6 +66,8 @@ export declare namespace OpenRouterConfig {
    * @since 4.0.0
    */
   export interface Service {
+    readonly [OpenRouterConfigTypeId]: typeof OpenRouterConfigTypeId
+
     readonly transformClient?: ((client: HttpClient) => HttpClient) | undefined
   }
 }
@@ -94,6 +108,11 @@ export const withClientTransform: {
   (self, transformClient) =>
     Effect.flatMap(
       OpenRouterConfig.getOrUndefined,
-      (config) => Effect.provideService(self, OpenRouterConfig, { ...config, transformClient })
+      (config) =>
+        Effect.provideService(self, OpenRouterConfig, {
+          ...config,
+          [OpenRouterConfigTypeId]: OpenRouterConfigTypeId,
+          transformClient
+        })
     )
 )

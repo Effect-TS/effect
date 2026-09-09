@@ -15,13 +15,20 @@ deduplicated across `Effect.provide` calls.
 ```ts
 import { Console, Context, Effect, Layer } from "effect"
 
-const MyService = Context.Service<{ readonly value: string }>("MyService")
+interface MyService {
+  readonly ["~MyService"]: "~MyService"
+  readonly value: string
+}
+const MyService = Context.Service<MyService>("MyService")
 
 const MyServiceLayer = Layer.effect(
   MyService,
   Effect.gen(function*() {
     yield* Console.log("Building MyService")
-    return { value: "hello" }
+    return {
+      ["~MyService"]: "~MyService" as const,
+      value: "hello"
+    }
   })
 )
 

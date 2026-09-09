@@ -41,6 +41,8 @@ import { OpenRouterConfig } from "./OpenRouterConfig.ts"
  * @since 4.0.0
  */
 export interface Service {
+  readonly [OpenRouterClientTypeId]: typeof OpenRouterClientTypeId
+
   readonly client: Generated.OpenRouterClient
 
   readonly createChatCompletion: (
@@ -78,6 +80,8 @@ export type ChatStreamingResponseChunkData = typeof Generated.ChatStreamingRespo
 // Service Identifier
 // =============================================================================
 
+const OpenRouterClientTypeId = "~@effect/ai-openrouter/OpenRouterClient"
+
 /**
  * Service tag for the OpenRouter client.
  *
@@ -93,10 +97,17 @@ export type ChatStreamingResponseChunkData = typeof Generated.ChatStreamingRespo
  * @category services
  * @since 4.0.0
  */
-export class OpenRouterClient extends Context.Service<
-  OpenRouterClient,
-  Service
->()("@effect/ai-openrouter/OpenRouterClient") {}
+export interface OpenRouterClient extends Service {
+  readonly [OpenRouterClientTypeId]: typeof OpenRouterClientTypeId
+}
+
+/**
+ * Service key for `OpenRouterClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenRouterClient = Context.Service<OpenRouterClient>("@effect/ai-openrouter/OpenRouterClient")
 
 // =============================================================================
 // Options
@@ -254,6 +265,7 @@ export const make = Effect.fnUntraced(
       )
 
     return OpenRouterClient.of({
+      [OpenRouterClientTypeId]: OpenRouterClientTypeId as typeof OpenRouterClientTypeId,
       client,
       createChatCompletion,
       createChatCompletionStream

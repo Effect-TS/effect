@@ -22,222 +22,242 @@ export interface PrepareSnapshotOptions {
   readonly modules?: ReadonlyArray<string>
 }
 
-export class Worktrees extends Context.Service<Worktrees, {
+const WorktreesTypeId = "~@effect/api-diff/Worktrees"
+
+export interface Worktrees {
+  readonly [WorktreesTypeId]: typeof WorktreesTypeId
+
   readonly resolveRef: (repoRoot: string, ref: string) => Effect.Effect<string, ApiDiffError>
   readonly prepareSnapshot: (options: PrepareSnapshotOptions) => Effect.Effect<ApiSnapshot, ApiDiffError>
-}>()("@effect/api-diff/Worktrees") {
-  static readonly layerNoDependencies = Layer.effect(
-    Worktrees,
-    Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const snapshotter = yield* Snapshotter
-      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+}
 
-      const runCommandScoped = Effect.fnUntraced(function*(
-        command: string,
-        args: ReadonlyArray<string>,
-        cwd: string
-      ) {
-        const display = `${command} ${args.join(" ")}`
-        const handle = yield* spawner.spawn(
-          ChildProcess.make(command, args, { cwd })
-        ).pipe(
-          Effect.mapError((cause) =>
-            new ApiDiffError({
-              message: `Could not start command (${display})`,
-              cause
-            })
+/**
+ * Service key for `Worktrees` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Worktrees = (() => {
+  const service = Context.Service<Worktrees>("@effect/api-diff/Worktrees")
+  const service1 = Object.assign(service, {
+    layerNoDependencies: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const path = yield* Path.Path
+        const snapshotter = yield* Snapshotter
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+
+        const runCommandScoped = Effect.fnUntraced(function*(
+          command: string,
+          args: ReadonlyArray<string>,
+          cwd: string
+        ) {
+          const display = `${command} ${args.join(" ")}`
+          const handle = yield* spawner.spawn(
+            ChildProcess.make(command, args, { cwd })
+          ).pipe(
+            Effect.mapError((cause) =>
+              new ApiDiffError({
+                message: `Could not start command (${display})`,
+                cause
+              })
+            )
           )
-        )
-        const [output, exitCode] = yield* Effect.all([
-          Stream.mkString(Stream.decodeText(handle.all)),
-          handle.exitCode
-        ], { concurrency: "unbounded" }).pipe(
-          Effect.mapError((cause) =>
-            new ApiDiffError({
-              message: `Could not run command (${display})`,
-              cause
-            })
+          const [output, exitCode] = yield* Effect.all([
+            Stream.mkString(Stream.decodeText(handle.all)),
+            handle.exitCode
+          ], { concurrency: "unbounded" }).pipe(
+            Effect.mapError((cause) =>
+              new ApiDiffError({
+                message: `Could not run command (${display})`,
+                cause
+              })
+            )
           )
-        )
-        return { display, exitCode, output }
-      })
+          return { display, exitCode, output }
+        })
 
-      const runCommand = (
-        command: string,
-        args: ReadonlyArray<string>,
-        cwd: string
-      ): Effect.Effect<{
-        readonly display: string
-        readonly exitCode: ChildProcessSpawner.ExitCode
-        readonly output: string
-      }, ApiDiffError> => Effect.scoped(runCommandScoped(command, args, cwd))
+        const runCommand = (
+          command: string,
+          args: ReadonlyArray<string>,
+          cwd: string
+        ): Effect.Effect<{
+          readonly display: string
+          readonly exitCode: ChildProcessSpawner.ExitCode
+          readonly output: string
+        }, ApiDiffError> => Effect.scoped(runCommandScoped(command, args, cwd))
 
-      const runChecked = Effect.fnUntraced(function*(
-        command: string,
-        args: ReadonlyArray<string>,
-        cwd: string
-      ) {
-        const result = yield* runCommand(command, args, cwd)
-        if (result.exitCode !== ChildProcessSpawner.ExitCode(0)) {
-          return yield* new ApiDiffError({
-            message: `Command failed (${result.display}):\n${result.output}`.trim()
-          })
-        }
-        return result.output.trim()
-      })
-
-      const enableStripInternal = Effect.fnUntraced(function*(worktree: string) {
-        const baseConfig = path.join(worktree, "tsconfig.base.json")
-        if (!(yield* fs.exists(baseConfig))) {
-          return
-        }
-        const source = yield* fs.readFileString(baseConfig)
-        if (/"stripInternal"\s*:\s*true/.test(source)) {
-          return
-        }
-        const updated = source.replace(/("stripInternal"\s*:\s*)false/, "$1true")
-        if (updated !== source) {
-          yield* fs.writeFileString(baseConfig, updated)
-        }
-      })
-
-      const hasProductionStripInternal = Effect.fnUntraced(function*(worktree: string) {
-        const candidates = [
-          path.join(worktree, "tsconfig.base.json"),
-          path.join(worktree, "tsconfig.build.json"),
-          path.join(worktree, "packages", "effect", "tsconfig.build.json")
-        ]
-        for (const candidate of candidates) {
-          if ((yield* fs.exists(candidate)) && /"stripInternal"\s*:\s*true/.test(yield* fs.readFileString(candidate))) {
-            return true
+        const runChecked = Effect.fnUntraced(function*(
+          command: string,
+          args: ReadonlyArray<string>,
+          cwd: string
+        ) {
+          const result = yield* runCommand(command, args, cwd)
+          if (result.exitCode !== ChildProcessSpawner.ExitCode(0)) {
+            return yield* new ApiDiffError({
+              message: `Command failed (${result.display}):\n${result.output}`.trim()
+            })
           }
-        }
-        return false
-      })
+          return result.output.trim()
+        })
 
-      const buildWorktree = Effect.fnUntraced(function*(worktree: string) {
-        yield* enableStripInternal(worktree)
-        if (!(yield* hasProductionStripInternal(worktree))) {
-          return yield* new ApiDiffError({
-            message: `No production TypeScript configuration enables stripInternal in ${worktree}`
-          })
-        }
-        // Native test-only dependencies in old branches may not build on the
-        // current Node runtime. Declaration emission does not require dependency lifecycle scripts.
-        yield* runChecked("pnpm", ["install", "--frozen-lockfile", "--ignore-scripts"], worktree)
-        yield* runChecked("pnpm", ["build"], worktree)
-      })
+        const enableStripInternal = Effect.fnUntraced(function*(worktree: string) {
+          const baseConfig = path.join(worktree, "tsconfig.base.json")
+          if (!(yield* fs.exists(baseConfig))) {
+            return
+          }
+          const source = yield* fs.readFileString(baseConfig)
+          if (/"stripInternal"\s*:\s*true/.test(source)) {
+            return
+          }
+          const updated = source.replace(/("stripInternal"\s*:\s*)false/, "$1true")
+          if (updated !== source) {
+            yield* fs.writeFileString(baseConfig, updated)
+          }
+        })
 
-      const removeWorktree = (repoRoot: string, worktree: string): Effect.Effect<void> =>
-        runCommand("git", ["worktree", "remove", "--force", worktree], repoRoot).pipe(
-          Effect.flatMap((result) =>
-            result.exitCode === ChildProcessSpawner.ExitCode(0)
-              ? Effect.void
-              : Console.error(result.output)
-          ),
-          Effect.catch((error) => Console.error(error.message))
-        )
+        const hasProductionStripInternal = Effect.fnUntraced(function*(worktree: string) {
+          const candidates = [
+            path.join(worktree, "tsconfig.base.json"),
+            path.join(worktree, "tsconfig.build.json"),
+            path.join(worktree, "packages", "effect", "tsconfig.build.json")
+          ]
+          for (const candidate of candidates) {
+            if (
+              (yield* fs.exists(candidate)) && /"stripInternal"\s*:\s*true/.test(yield* fs.readFileString(candidate))
+            ) {
+              return true
+            }
+          }
+          return false
+        })
 
-      const resolveRef = Effect.fnUntraced(function*(repoRoot: string, ref: string) {
-        return yield* runChecked("git", ["rev-parse", "--verify", `${ref}^{commit}`], repoRoot)
-      })
+        const buildWorktree = Effect.fnUntraced(function*(worktree: string) {
+          yield* enableStripInternal(worktree)
+          if (!(yield* hasProductionStripInternal(worktree))) {
+            return yield* new ApiDiffError({
+              message: `No production TypeScript configuration enables stripInternal in ${worktree}`
+            })
+          }
+          // Native test-only dependencies in old branches may not build on the
+          // current Node runtime. Declaration emission does not require dependency lifecycle scripts.
+          yield* runChecked("pnpm", ["install", "--frozen-lockfile", "--ignore-scripts"], worktree)
+          yield* runChecked("pnpm", ["build"], worktree)
+        })
 
-      const prepareSnapshotInternal = Effect.fnUntraced(function*(options: PrepareSnapshotOptions) {
-        const key = snapshotCacheKey(options.sha, options.modules)
-        const cacheLocation = path.join(options.cacheRoot, key, "snapshot.json")
-        if (yield* fs.exists(cacheLocation)) {
-          const source = yield* fs.readFileString(cacheLocation).pipe(
-            Effect.mapError((cause) =>
-              new ApiDiffError({
-                message: `Could not read cached snapshot ${cacheLocation}`,
-                cause
-              })
-            )
+        const removeWorktree = (repoRoot: string, worktree: string): Effect.Effect<void> =>
+          runCommand("git", ["worktree", "remove", "--force", worktree], repoRoot).pipe(
+            Effect.flatMap((result) =>
+              result.exitCode === ChildProcessSpawner.ExitCode(0)
+                ? Effect.void
+                : Console.error(result.output)
+            ),
+            Effect.catch((error) => Console.error(error.message))
           )
-          const cached = (yield* decodeJson(source).pipe(
-            Effect.mapError((cause) =>
-              new ApiDiffError({
-                message: `Could not parse cached snapshot ${cacheLocation}`,
-                cause
-              })
-            )
-          )) as ApiSnapshot
-          return { ...cached, ref: options.ref, sha: options.sha }
-        }
 
-        yield* fs.makeDirectory(options.worktreesRoot, { recursive: true })
-        return yield* Effect.scoped(Effect.gen(function*() {
-          const runRoot = yield* fs.makeTempDirectoryScoped({
-            directory: options.worktreesRoot,
-            prefix: `${options.name}-`
-          })
-          const worktree = path.join(runRoot, "repo")
-          return yield* Effect.acquireUseRelease(
-            runChecked("git", ["worktree", "add", "--detach", worktree, options.sha], options.repoRoot),
-            () =>
-              Effect.gen(function*() {
-                yield* buildWorktree(worktree)
-                const snapshot = yield* snapshotter.extract({
-                  repoRoot: worktree,
-                  ref: options.ref,
-                  sha: options.sha,
-                  ...(options.modules === undefined ? {} : { modules: options.modules })
-                }).pipe(
-                  Effect.mapError((cause) =>
-                    isApiDiffError(cause)
-                      ? cause
-                      : new ApiDiffError({
-                        message: `Could not extract the ${options.name} API snapshot`,
-                        cause
-                      })
-                  )
-                )
-                let encoded: string | undefined
-                try {
-                  encoded = JSON.stringify(snapshot)
-                } catch {
-                  encoded = undefined
-                }
-                if (encoded !== undefined) {
-                  yield* fs.makeDirectory(path.dirname(cacheLocation), { recursive: true })
-                  yield* fs.writeFileString(cacheLocation, encoded).pipe(
+        const resolveRef = Effect.fnUntraced(function*(repoRoot: string, ref: string) {
+          return yield* runChecked("git", ["rev-parse", "--verify", `${ref}^{commit}`], repoRoot)
+        })
+
+        const prepareSnapshotInternal = Effect.fnUntraced(function*(options: PrepareSnapshotOptions) {
+          const key = snapshotCacheKey(options.sha, options.modules)
+          const cacheLocation = path.join(options.cacheRoot, key, "snapshot.json")
+          if (yield* fs.exists(cacheLocation)) {
+            const source = yield* fs.readFileString(cacheLocation).pipe(
+              Effect.mapError((cause) =>
+                new ApiDiffError({
+                  message: `Could not read cached snapshot ${cacheLocation}`,
+                  cause
+                })
+              )
+            )
+            const cached = (yield* decodeJson(source).pipe(
+              Effect.mapError((cause) =>
+                new ApiDiffError({
+                  message: `Could not parse cached snapshot ${cacheLocation}`,
+                  cause
+                })
+              )
+            )) as ApiSnapshot
+            return { ...cached, ref: options.ref, sha: options.sha }
+          }
+
+          yield* fs.makeDirectory(options.worktreesRoot, { recursive: true })
+          return yield* Effect.scoped(Effect.gen(function*() {
+            const runRoot = yield* fs.makeTempDirectoryScoped({
+              directory: options.worktreesRoot,
+              prefix: `${options.name}-`
+            })
+            const worktree = path.join(runRoot, "repo")
+            return yield* Effect.acquireUseRelease(
+              runChecked("git", ["worktree", "add", "--detach", worktree, options.sha], options.repoRoot),
+              () =>
+                Effect.gen(function*() {
+                  yield* buildWorktree(worktree)
+                  const snapshot = yield* snapshotter.extract({
+                    repoRoot: worktree,
+                    ref: options.ref,
+                    sha: options.sha,
+                    ...(options.modules === undefined ? {} : { modules: options.modules })
+                  }).pipe(
                     Effect.mapError((cause) =>
-                      new ApiDiffError({
-                        message: `Could not cache the ${options.name} API snapshot`,
-                        cause
-                      })
+                      isApiDiffError(cause)
+                        ? cause
+                        : new ApiDiffError({
+                          message: `Could not extract the ${options.name} API snapshot`,
+                          cause
+                        })
                     )
                   )
-                }
-                return snapshot
-              }),
-            () => removeWorktree(options.repoRoot, worktree)
+                  let encoded: string | undefined
+                  try {
+                    encoded = JSON.stringify(snapshot)
+                  } catch {
+                    encoded = undefined
+                  }
+                  if (encoded !== undefined) {
+                    yield* fs.makeDirectory(path.dirname(cacheLocation), { recursive: true })
+                    yield* fs.writeFileString(cacheLocation, encoded).pipe(
+                      Effect.mapError((cause) =>
+                        new ApiDiffError({
+                          message: `Could not cache the ${options.name} API snapshot`,
+                          cause
+                        })
+                      )
+                    )
+                  }
+                  return snapshot
+                }),
+              () => removeWorktree(options.repoRoot, worktree)
+            )
+          }))
+        })
+
+        const prepareSnapshot = (options: PrepareSnapshotOptions): Effect.Effect<ApiSnapshot, ApiDiffError> =>
+          prepareSnapshotInternal(options).pipe(
+            Effect.mapError((cause) =>
+              isApiDiffError(cause)
+                ? cause
+                : new ApiDiffError({
+                  message: `Could not prepare the ${options.name} API snapshot`,
+                  cause
+                })
+            )
           )
-        }))
+
+        return service.of({
+          [WorktreesTypeId]: WorktreesTypeId as typeof WorktreesTypeId,
+          prepareSnapshot,
+          resolveRef
+        })
       })
-
-      const prepareSnapshot = (options: PrepareSnapshotOptions): Effect.Effect<ApiSnapshot, ApiDiffError> =>
-        prepareSnapshotInternal(options).pipe(
-          Effect.mapError((cause) =>
-            isApiDiffError(cause)
-              ? cause
-              : new ApiDiffError({
-                message: `Could not prepare the ${options.name} API snapshot`,
-                cause
-              })
-          )
-        )
-
-      return Worktrees.of({
-        prepareSnapshot,
-        resolveRef
-      })
-    })
-  )
-
-  static readonly layer = this.layerNoDependencies.pipe(
-    Layer.provide(Snapshotter.layer)
-  )
-}
+    )
+  })
+  const service2 = Object.assign(service1, {
+    layer: service1.layerNoDependencies.pipe(
+      Layer.provide(Snapshotter.layer)
+    )
+  })
+  return service2
+})()

@@ -38,6 +38,8 @@ import { OpenAiConfig } from "./OpenAiConfig.ts"
  * @since 4.0.0
  */
 export interface Service {
+  readonly [OpenAiClientTypeId]: typeof OpenAiClientTypeId
+
   readonly client: HttpClient.HttpClient
   readonly createResponse: (
     options: CreateResponseRequestJson
@@ -58,6 +60,8 @@ export interface Service {
     options: CreateEmbeddingRequestJson
   ) => Effect.Effect<CreateEmbedding200, AiError.AiError>
 }
+
+const OpenAiClientTypeId = "~@effect/ai-openai-compat/OpenAiClient"
 
 /**
  * Service tag for the OpenAI-compatible chat completions and embeddings client.
@@ -80,9 +84,17 @@ export interface Service {
  * @category services
  * @since 4.0.0
  */
-export class OpenAiClient extends Context.Service<OpenAiClient, Service>()(
-  "@effect/ai-openai-compat/OpenAiClient"
-) {}
+export interface OpenAiClient extends Service {
+  readonly [OpenAiClientTypeId]: typeof OpenAiClientTypeId
+}
+
+/**
+ * Service key for `OpenAiClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenAiClient = Context.Service<OpenAiClient>("@effect/ai-openai-compat/OpenAiClient")
 
 /**
  * Configuration options used to construct an OpenAI-compatible client.
@@ -268,6 +280,7 @@ export const make = Effect.fnUntraced(
       )
 
     return OpenAiClient.of({
+      [OpenAiClientTypeId]: OpenAiClientTypeId as typeof OpenAiClientTypeId,
       client: httpClient,
       createResponse,
       createResponseStream,

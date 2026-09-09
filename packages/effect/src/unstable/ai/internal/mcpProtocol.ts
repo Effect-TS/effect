@@ -15,7 +15,7 @@ import * as McpCore from "./mcpCore.ts"
 
 /** @internal */
 export const profileFromClient = (
-  request: PublicMcpSchema.McpServerClient["Service"]
+  request: PublicMcpSchema.McpServerClient
 ): McpCore.NegotiatedProtocolProfile => ({
   protocolVersion: request.protocolVersion,
   clientCapabilities: request.clientCapabilities,
@@ -25,7 +25,7 @@ export const profileFromClient = (
 
 /** @internal */
 export const invocationFromClient = (
-  request: PublicMcpSchema.McpServerClient["Service"]
+  request: PublicMcpSchema.McpServerClient
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: profileFromClient(request),

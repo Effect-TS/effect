@@ -199,6 +199,7 @@ export const make = (
     ]
 
     class LibsqlConnectionImpl implements LibsqlConnection {
+      readonly ["~effect/sql/SqlConnection"] = "~effect/sql/SqlConnection" as const
       readonly sdk: Libsql.Client | Libsql.Transaction
       constructor(sdk: Libsql.Client | Libsql.Transaction) {
         this.sdk = sdk

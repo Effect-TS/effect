@@ -19,6 +19,8 @@ import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import { WorkerError, WorkerSendError } from "./WorkerError.ts"
 
+const WorkerPlatformTypeId = "~effect/workers/Worker/WorkerPlatform"
+
 /**
  * Service that spawns effect `Worker` instances for numeric worker ids using
  * the configured `Spawner`.
@@ -26,11 +28,21 @@ import { WorkerError, WorkerSendError } from "./WorkerError.ts"
  * @category services
  * @since 4.0.0
  */
-export class WorkerPlatform extends Context.Service<WorkerPlatform, {
+export interface WorkerPlatform {
+  readonly [WorkerPlatformTypeId]: typeof WorkerPlatformTypeId
+
   readonly spawn: <O = unknown, I = unknown>(
     id: number
   ) => Effect.Effect<Worker<O, I>, WorkerError, Spawner>
-}>()("effect/workers/Worker/WorkerPlatform") {}
+}
+
+/**
+ * Service key for `WorkerPlatform` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const WorkerPlatform = Context.Service<WorkerPlatform>("effect/workers/Worker/WorkerPlatform")
 
 /**
  * Effect-based worker abstraction that can send input messages and run a
@@ -158,8 +170,9 @@ export const makePlatform = <W>() =>
     readonly deferred: Deferred.Deferred<never, WorkerError>
     readonly scope: Scope.Scope
   }) => Effect.Effect<void>
-}): WorkerPlatform["Service"] =>
+}): WorkerPlatform =>
   WorkerPlatform.of({
+    [WorkerPlatformTypeId]: WorkerPlatformTypeId as typeof WorkerPlatformTypeId,
     spawn<O, I>(id: number) {
       return Effect.gen(function*() {
         const spawn = (yield* Spawner) as SpawnerFn<W>

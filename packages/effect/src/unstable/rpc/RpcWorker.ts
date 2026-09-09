@@ -53,8 +53,8 @@ export declare namespace InitialMessage {
   }
 }
 
-const ProtocolTag = Context.Service<Protocol, Protocol["Service"]>(
-  "effect/rpc/RpcServer/Protocol" satisfies Protocol["key"]
+const ProtocolTag = Context.Service<Protocol, Protocol>(
+  "effect/rpc/RpcServer/Protocol" satisfies typeof Protocol.key
 )
 
 /**

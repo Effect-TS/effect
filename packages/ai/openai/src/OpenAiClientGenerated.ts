@@ -20,15 +20,25 @@ import { OpenAiConfig } from "./OpenAiConfig.ts"
 // Service Identifier
 // =============================================================================
 
+const OpenAiClientGeneratedTypeId = "~@effect/ai-openai/OpenAiClientGenerated"
+
 /**
  * Service identifier for the generated OpenAI client.
  *
  * @since 4.0.0
  * @category service
  */
-export class OpenAiClientGenerated extends Context.Service<OpenAiClientGenerated, Generated.OpenAiClient>()(
-  "@effect/ai-openai/OpenAiClientGenerated"
-) {}
+export interface OpenAiClientGenerated extends Generated.OpenAiClient {
+  readonly [OpenAiClientGeneratedTypeId]: typeof OpenAiClientGeneratedTypeId
+}
+
+/**
+ * Service key for `OpenAiClientGenerated` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const OpenAiClientGenerated = Context.Service<OpenAiClientGenerated>("@effect/ai-openai/OpenAiClientGenerated")
 
 // =============================================================================
 // Options
@@ -90,7 +100,7 @@ const withRedactedHeaders = Effect.updateService(
  * @category constructors
  */
 export const make = Effect.fnUntraced(
-  function*(options: Options): Effect.fn.Return<Generated.OpenAiClient, never, HttpClient.HttpClient> {
+  function*(options: Options): Effect.fn.Return<OpenAiClientGenerated, never, HttpClient.HttpClient> {
     const baseClient = yield* HttpClient.HttpClient
     const apiUrl = options.apiUrl ?? "https://api.openai.com/v1"
 
@@ -119,15 +129,18 @@ export const make = Effect.fnUntraced(
         : identity
     )
 
-    return Generated.make(httpClient, {
-      transformClient: Effect.fnUntraced(function*(client) {
-        const config = yield* OpenAiConfig.getOrUndefined
-        if (Predicate.isNotUndefined(config?.transformClient)) {
-          return config.transformClient(client)
-        }
-        return client
-      })
-    })
+    return Object.assign(
+      Generated.make(httpClient, {
+        transformClient: Effect.fnUntraced(function*(client) {
+          const config = yield* OpenAiConfig.getOrUndefined
+          if (Predicate.isNotUndefined(config?.transformClient)) {
+            return config.transformClient(client)
+          }
+          return client
+        })
+      }),
+      { [OpenAiClientGeneratedTypeId]: OpenAiClientGeneratedTypeId as typeof OpenAiClientGeneratedTypeId }
+    )
   },
   withRedactedHeaders
 )

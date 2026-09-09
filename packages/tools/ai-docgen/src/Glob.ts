@@ -20,18 +20,30 @@ export class GlobError extends Data.TaggedError("GlobError")<{
   readonly cause: unknown
 }> {}
 
+const GlobTypeId = "~@effect/ai-docgen/Glob"
+
 /**
  * Context service for glob pattern matching used by AI docgen tooling.
  *
  * @category services
  * @since 4.0.0
  */
-export class Glob extends Context.Service<Glob, {
+export interface Glob {
+  readonly [GlobTypeId]: typeof GlobTypeId
+
   readonly glob: (
     pattern: string | ReadonlyArray<string>,
     options?: GlobLib.GlobOptions
   ) => Effect.Effect<Array<string>, GlobError>
-}>()("@effect/ai-codegen/Glob") {}
+}
+
+/**
+ * Service key for `Glob` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Glob = Context.Service<Glob>("@effect/ai-codegen/Glob")
 
 /**
  * Layer providing the Glob service.
@@ -40,6 +52,7 @@ export class Glob extends Context.Service<Glob, {
  * @since 4.0.0
  */
 export const layer: Layer.Layer<Glob> = Layer.succeed(Glob, {
+  [GlobTypeId]: GlobTypeId as typeof GlobTypeId,
   glob: (pattern, options) =>
     Effect.tryPromise({
       try: () => GlobLib.glob(pattern as string | Array<string>, options ?? {}) as Promise<Array<string>>,

@@ -44,6 +44,26 @@ import { type ChatStreamingResponseChunkData, OpenRouterClient } from "./OpenRou
 // Configuration
 // =============================================================================
 
+const ConfigTypeId = "~@effect/ai-openrouter/OpenRouterLanguageModel/Config"
+
+type ConfigShape = Simplify<
+  & Partial<
+    Omit<
+      typeof Generated.ChatRequest.Encoded,
+      "messages" | "response_format" | "tools" | "tool_choice" | "stream" | "stream_options"
+    >
+  >
+  & {
+    /**
+     * Whether to use strict JSON schema validation for structured outputs.
+     *
+     * Only applies to models that support structured outputs. Defaults to
+     * `true` when structured outputs are supported.
+     */
+    readonly strictJsonSchema?: boolean | undefined
+  }
+>
+
 /**
  * Context service for OpenRouter language model configuration.
  *
@@ -57,26 +77,17 @@ import { type ChatStreamingResponseChunkData, OpenRouterClient } from "./OpenRou
  * @category services
  * @since 4.0.0
  */
-export class Config extends Context.Service<
-  Config,
-  Simplify<
-    & Partial<
-      Omit<
-        typeof Generated.ChatRequest.Encoded,
-        "messages" | "response_format" | "tools" | "tool_choice" | "stream" | "stream_options"
-      >
-    >
-    & {
-      /**
-       * Whether to use strict JSON schema validation for structured outputs.
-       *
-       * Only applies to models that support structured outputs. Defaults to
-       * `true` when structured outputs are supported.
-       */
-      readonly strictJsonSchema?: boolean | undefined
-    }
-  >
->()("@effect/ai-openrouter/OpenRouterLanguageModel/Config") {}
+export interface Config extends ConfigShape {
+  readonly [ConfigTypeId]: typeof ConfigTypeId
+}
+
+/**
+ * Service key for `Config` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Config = Context.Service<Config>("@effect/ai-openrouter/OpenRouterLanguageModel/Config")
 
 // =============================================================================
 // Provider Options / Metadata
@@ -506,7 +517,7 @@ declare module "effect/unstable/ai/Response" {
  */
 export const model = (
   model: string,
-  config?: Omit<typeof Config.Service, "model">
+  config?: Omit<ConfigShape, "model">
 ): AiModel.Model<"openai", LanguageModel.LanguageModel, OpenRouterClient> =>
   AiModel.make("openai", model, layer({ model, config }))
 
@@ -540,18 +551,18 @@ export const model = (
  */
 export const make = Effect.fnUntraced(function*({ model, config: providerConfig }: {
   readonly model: string
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Effect.fn.Return<LanguageModel.Service, never, OpenRouterClient> {
   const client = yield* OpenRouterClient
   const codecTransformer = getCodecTransformer(model)
 
   const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
     Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
-  )
+  ).pipe(Effect.map(({ [ConfigTypeId]: _typeId, ...config }) => config))
 
   const makeRequest = Effect.fnUntraced(
     function*({ config, options }: {
-      readonly config: typeof Config.Service
+      readonly config: ConfigShape
       readonly options: LanguageModel.ProviderOptions
     }): Effect.fn.Return<typeof Generated.ChatRequest.Encoded, AiError.AiError> {
       const messages = yield* prepareMessages({ options })
@@ -618,7 +629,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  */
 export const layer = (options: {
   readonly model: string
-  readonly config?: Omit<typeof Config.Service, "model"> | undefined
+  readonly config?: Omit<ConfigShape, "model"> | undefined
 }): Layer.Layer<LanguageModel.LanguageModel, never, OpenRouterClient> =>
   Layer.effect(LanguageModel.LanguageModel, make(options))
 
@@ -643,19 +654,21 @@ export const layer = (options: {
  * @since 4.0.0
  */
 export const withConfigOverride: {
-  (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service): Effect.Effect<A, E, Exclude<R, Config>>
+  (overrides: ConfigShape): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape): Effect.Effect<A, E, Exclude<R, Config>>
 } = dual<
   (
-    overrides: typeof Config.Service
+    overrides: ConfigShape
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: typeof Config.Service) => Effect.Effect<A, E, Exclude<R, Config>>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigShape) => Effect.Effect<A, E, Exclude<R, Config>>
 >(2, (self, overrides) =>
   Effect.flatMap(
     Effect.serviceOption(Config),
     (config) =>
       Effect.provideService(self, Config, {
-        ...(config._tag === "Some" ? config.value : {}),
+        ...(config._tag === "Some" ? config.value : {
+          [ConfigTypeId]: ConfigTypeId as typeof ConfigTypeId
+        }),
         ...overrides
       })
   ))
@@ -1776,7 +1789,7 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
   })
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
-  readonly config: typeof Config.Service
+  readonly config: ConfigShape
   readonly options: LanguageModel.ProviderOptions
   readonly transformer: LanguageModel.CodecTransformer
 }): Effect.fn.Return<typeof Generated.ChatFormatJsonSchemaConfig.Encoded | undefined, AiError.AiError> {

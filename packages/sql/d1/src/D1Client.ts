@@ -292,6 +292,7 @@ export const make = (
         })
 
       const connection = identity<Connection>({
+        ["~effect/sql/SqlConnection"]: "~effect/sql/SqlConnection" as const,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(runCached(sql, params), transformRows)

@@ -468,7 +468,7 @@ export const stream = <E>(
 
 const HttpPlatformKey = Context.Service<
   HttpPlatform,
-  HttpPlatform["Service"]
+  HttpPlatform
 >("effect/http/HttpPlatform" satisfies typeof HttpPlatform.key)
 
 /**

@@ -20,7 +20,7 @@ import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
 
-type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
+type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["writeFromRemote"]>[0]
 
 /**
  * Creates an `EventJournal` backed by a SQL database.
@@ -37,7 +37,7 @@ export const make = (options?: {
   readonly entryTable?: string
   readonly remotesTable?: string
 }): Effect.Effect<
-  EventJournal.EventJournal["Service"],
+  EventJournal.EventJournal,
   SqlError.SqlError,
   SqlClient.SqlClient
 > =>
@@ -210,6 +210,7 @@ export const make = (options?: {
     })
 
     return EventJournal.EventJournal.of({
+      ["~effect/eventlog/EventJournal"]: "~effect/eventlog/EventJournal" as const,
       entries: sql`SELECT * FROM ${entryTableSql} ORDER BY timestamp ASC`.pipe(
         withTracerDisabled,
         Effect.flatMap(decodeEntryRows),

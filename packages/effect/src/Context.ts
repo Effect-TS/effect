@@ -83,12 +83,17 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  * import { Context } from "effect"
  *
  * // Define an identifier for a database service
- * const Database = Context.Service<{ query: (sql: string) => string }>(
- *   "Database"
- * )
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *   query: (sql: string) => string
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // The key can be used to store and retrieve services
- * const context = Context.make(Database, { query: (sql) => `Result: ${sql}` })
+ * const context = Context.make(Database, {
+ *   ["~Database"]: "~Database" as const,
+ *   query: (sql) => `Result: ${sql}`
+ * })
  * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
@@ -347,9 +352,12 @@ export interface Reference<in out Shape> extends Service<never, Shape> {
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * const Database = Context.Service<{
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *
  *   query: (sql: string) => string
- * }>("Database")
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
  * // Extract service type from a key
  * type DatabaseService = Context.Service.Shape<typeof Database>
@@ -394,9 +402,11 @@ export declare namespace Service {
    * ```ts import.meta.vitest
    * import { Context } from "effect"
    *
-   * const Database = Context.Service<{ query: (sql: string) => string }>(
-   *   "Database"
-   * )
+   * interface Database {
+   *   readonly ["~Database"]: "~Database"
+   *   query: (sql: string) => string
+   * }
+   * const Database = Context.Service<Database>("Database")
    *
    * // Extract the service shape from the service
    * type DatabaseService = Context.Service.Shape<typeof Database>
@@ -418,9 +428,11 @@ export declare namespace Service {
    * ```ts import.meta.vitest
    * import { Context } from "effect"
    *
-   * const Database = Context.Service<{ query: (sql: string) => string }>(
-   *   "Database"
-   * )
+   * interface Database {
+   *   readonly ["~Database"]: "~Database"
+   *   query: (sql: string) => string
+   * }
+   * const Database = Context.Service<Database>("Database")
    *
    * // Extract the identifier type from a key
    * type DatabaseId = Context.Service.Identifier<typeof Database>
@@ -451,13 +463,25 @@ const TypeId = "~effect/Context" as const
  * import { Context } from "effect"
  *
  * // Create a context with multiple services
- * const Logger = Context.Service<{ log: (msg: string) => void }>("Logger")
- * const Database = Context.Service<{ query: (sql: string) => string }>(
- *   "Database"
- * )
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *   log: (msg: string) => void
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *   query: (sql: string) => string
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
- * const context = Context.make(Logger, { log: (_msg: string) => {} })
- *   .pipe(Context.add(Database, { query: (sql) => `Result: ${sql}` }))
+ * const context = Context.make(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
+ *   log: (_msg: string) => {}
+ * })
+ *   .pipe(Context.add(Database, {
+ *     ["~Database"]: "~Database" as const,
+ *     query: (sql) => `Result: ${sql}`
+ *   }))
  * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
@@ -711,9 +735,16 @@ const emptyContext = makeUnsafe(new Map())
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
  *
- * const context = Context.make(Port, { PORT: 8080 })
+ * const context = Context.make(Port, {
+ *   ["~Port"]: "~Port" as const,
+ *   PORT: 8080
+ * })
  *
  * Context.get(context, Port).PORT // => 8080
  * ```
@@ -743,14 +774,28 @@ export const make = <I, S>(
  * ```ts import.meta.vitest
  * import { Context, pipe } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
- * const someContext = Context.make(Port, { PORT: 8080 })
+ * const someContext = Context.make(Port, {
+ *   ["~Port"]: "~Port" as const,
+ *   PORT: 8080
+ * })
  *
  * const context = pipe(
  *   someContext,
- *   Context.add(Timeout, { TIMEOUT: 5000 })
+ *   Context.add(Timeout, {
+ *     ["~Timeout"]: "~Timeout" as const,
+ *     TIMEOUT: 5000
+ *   })
  * )
  *
  * const values = [Context.get(context, Port).PORT, Context.get(context, Timeout).TIMEOUT]
@@ -824,16 +869,26 @@ export const addUnsafe = <Services, I, S>(
  * ```ts import.meta.vitest
  * import { Context, Option } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
  *
  * const withPort = Context.empty().pipe(
- *   Context.addOrOmit(Port, Option.some({ PORT: 8080 }))
+ *   Context.addOrOmit(
+ *     Port,
+ *     Option.some({
+ *       ["~Port"]: "~Port" as const,
+ *       PORT: 8080
+ *     })
+ *   )
  * )
  *
  * const withoutPort = withPort.pipe(
  *   Context.addOrOmit(Port, Option.none())
  * )
- * Context.getOption(withPort, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(withPort, Port).pipe(Option.map((port) => port.PORT)) // => Option.some(8080)
  * Context.getOption(withoutPort, Port) // => Option.none()
  * ```
  *
@@ -885,18 +940,33 @@ export const addOrOmit: {
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * const Logger = Context.Service<{ log: (msg: string) => void }>("Logger")
- * const Database = Context.Service<{ query: (sql: string) => string }>(
- *   "Database"
- * )
+ * interface Logger {
+ *   readonly ["~Logger"]: "~Logger"
+ *   log: (msg: string) => void
+ * }
+ * const Logger = Context.Service<Logger>("Logger")
+ * interface Database {
+ *   readonly ["~Database"]: "~Database"
+ *   query: (sql: string) => string
+ * }
+ * const Database = Context.Service<Database>("Database")
  *
- * const context = Context.make(Logger, { log: (_msg: string) => {} })
+ * const context = Context.make(Logger, {
+ *   ["~Logger"]: "~Logger" as const,
+ *   log: (_msg: string) => {}
+ * })
  *
- * const logger = Context.getOrElse(context, Logger, () => ({ log: () => {} }))
+ * const logger = Context.getOrElse(context, Logger, () => ({
+ *   ["~Logger"]: "~Logger" as const,
+ *   log: () => {}
+ * }))
  * const database = Context.getOrElse(
  *   context,
  *   Database,
- *   () => ({ query: () => "fallback" })
+ *   () => ({
+ *     ["~Database"]: "~Database" as const,
+ *     query: () => "fallback"
+ *   })
  * )
  *
  * logger === Context.get(context, Logger) // => true
@@ -970,10 +1040,21 @@ export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services
  * ```ts import.meta.vitest
  * import { Context, Option } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
- * const context = Context.make(Port, { PORT: 8080 })
+ * const context = Context.make(Port, {
+ *   ["~Port"]: "~Port" as const,
+ *   PORT: 8080
+ * })
  *
  * Context.getUnsafe(context, Port).PORT // => 8080
  * Context.getOption(context, Timeout) // => Option.none()
@@ -1013,12 +1094,26 @@ export const getUnsafe: {
  * ```ts import.meta.vitest
  * import { Context, pipe } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
  * const context = pipe(
- *   Context.make(Port, { PORT: 8080 }),
- *   Context.add(Timeout, { TIMEOUT: 5000 })
+ *   Context.make(Port, {
+ *     ["~Port"]: "~Port" as const,
+ *     PORT: 8080
+ *   }),
+ *   Context.add(Timeout, {
+ *     ["~Timeout"]: "~Timeout" as const,
+ *     TIMEOUT: 5000
+ *   })
  * )
  *
  * Context.get(context, Timeout).TIMEOUT // => 5000
@@ -1076,12 +1171,23 @@ const serviceNotFoundError = (service: Key<any, any>) => {
  * ```ts import.meta.vitest
  * import { Context, Option } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
- * const context = Context.make(Port, { PORT: 8080 })
+ * const context = Context.make(Port, {
+ *   ["~Port"]: "~Port" as const,
+ *   PORT: 8080
+ * })
  *
- * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(context, Port).pipe(Option.map((port) => port.PORT)) // => Option.some(8080)
  * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *
@@ -1116,11 +1222,25 @@ export const getOption: {
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
- * const firstContext = Context.make(Port, { PORT: 8080 })
- * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
+ * const firstContext = Context.make(Port, {
+ *   ["~Port"]: "~Port" as const,
+ *   PORT: 8080
+ * })
+ * const secondContext = Context.make(Timeout, {
+ *   ["~Timeout"]: "~Timeout" as const,
+ *   TIMEOUT: 5000
+ * })
  *
  * const context = Context.merge(firstContext, secondContext)
  *
@@ -1159,13 +1279,34 @@ export const merge: {
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- * const Host = Context.Service<{ HOST: string }>("Host")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
+ * interface Host {
+ *   readonly ["~Host"]: "~Host"
+ *   HOST: string
+ * }
+ * const Host = Context.Service<Host>("Host")
  *
- * const firstContext = Context.make(Port, { PORT: 8080 })
- * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
- * const thirdContext = Context.make(Host, { HOST: "localhost" })
+ * const firstContext = Context.make(Port, {
+ *   ["~Port"]: "~Port" as const,
+ *   PORT: 8080
+ * })
+ * const secondContext = Context.make(Timeout, {
+ *   ["~Timeout"]: "~Timeout" as const,
+ *   TIMEOUT: 5000
+ * })
+ * const thirdContext = Context.make(Host, {
+ *   ["~Host"]: "~Host" as const,
+ *   HOST: "localhost"
+ * })
  *
  * const context = Context.mergeAll(
  *   firstContext,
@@ -1205,17 +1346,31 @@ export const mergeAll = <T extends Array<unknown>>(
  * ```ts import.meta.vitest
  * import { Context, Option, pipe } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
  * const someContext = pipe(
- *   Context.make(Port, { PORT: 8080 }),
- *   Context.add(Timeout, { TIMEOUT: 5000 })
+ *   Context.make(Port, {
+ *     ["~Port"]: "~Port" as const,
+ *     PORT: 8080
+ *   }),
+ *   Context.add(Timeout, {
+ *     ["~Timeout"]: "~Timeout" as const,
+ *     TIMEOUT: 5000
+ *   })
  * )
  *
  * const context = pipe(someContext, Context.pick(Port))
  *
- * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(context, Port).pipe(Option.map((port) => port.PORT)) // => Option.some(8080)
  * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *
@@ -1247,17 +1402,31 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
  * ```ts import.meta.vitest
  * import { Context, Option, pipe } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * interface Port {
+ *   readonly ["~Port"]: "~Port"
+ *   PORT: number
+ * }
+ * const Port = Context.Service<Port>("Port")
+ * interface Timeout {
+ *   readonly ["~Timeout"]: "~Timeout"
+ *   TIMEOUT: number
+ * }
+ * const Timeout = Context.Service<Timeout>("Timeout")
  *
  * const someContext = pipe(
- *   Context.make(Port, { PORT: 8080 }),
- *   Context.add(Timeout, { TIMEOUT: 5000 })
+ *   Context.make(Port, {
+ *     ["~Port"]: "~Port" as const,
+ *     PORT: 8080
+ *   }),
+ *   Context.add(Timeout, {
+ *     ["~Timeout"]: "~Timeout" as const,
+ *     TIMEOUT: 5000
+ *   })
  * )
  *
  * const context = pipe(someContext, Context.omit(Timeout))
  *
- * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(context, Port).pipe(Option.map((port) => port.PORT)) // => Option.some(8080)
  * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *

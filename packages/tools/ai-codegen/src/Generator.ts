@@ -65,6 +65,7 @@ export class PatchError extends Data.TaggedError("PatchError")<{
   readonly provider: string
   readonly cause: unknown
 }> {}
+const CodeGeneratorTypeId = "~@effect/ai-codegen/CodeGenerator"
 
 /**
  * Service for generating Effect code from OpenAPI specs.
@@ -73,6 +74,8 @@ export class PatchError extends Data.TaggedError("PatchError")<{
  * @since 4.0.0
  */
 export interface CodeGenerator {
+  readonly [CodeGeneratorTypeId]: typeof CodeGeneratorTypeId
+
   readonly generate: (
     provider: DiscoveredProvider,
     spec: unknown
@@ -205,7 +208,10 @@ export const layer: Layer.Layer<
       )
   })
 
-  return { generate }
+  return {
+    [CodeGeneratorTypeId]: CodeGeneratorTypeId as typeof CodeGeneratorTypeId,
+    generate
+  }
 }).pipe(Layer.effect(CodeGenerator))
 
 /**

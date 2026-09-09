@@ -42,6 +42,8 @@ import * as Toolkit from "./Toolkit.ts"
 // Service Definition
 // =============================================================================
 
+const LanguageModelTypeId = "~effect/unstable/ai/LanguageModel"
+
 /**
  * Service tag for AI model services.
  *
@@ -82,9 +84,17 @@ import * as Toolkit from "./Toolkit.ts"
  * @category services
  * @since 4.0.0
  */
-export class LanguageModel extends Context.Service<LanguageModel, Service>()(
-  "effect/unstable/ai/LanguageModel"
-) {}
+export interface LanguageModel extends Service {
+  readonly [LanguageModelTypeId]: typeof LanguageModelTypeId
+}
+
+/**
+ * Service key for `LanguageModel` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const LanguageModel = Context.Service<LanguageModel>("effect/unstable/ai/LanguageModel")
 
 /**
  * The service interface for language model operations, defining the contract that all language model implementations must fulfill.
@@ -93,6 +103,8 @@ export class LanguageModel extends Context.Service<LanguageModel, Service>()(
  * @since 4.0.0
  */
 export interface Service {
+  readonly [LanguageModelTypeId]: typeof LanguageModelTypeId
+
   /**
    * Generate text using the language model.
    */
@@ -1708,6 +1720,7 @@ export const make: (params: {
   }) as any
 
   return {
+    [LanguageModelTypeId]: LanguageModelTypeId as typeof LanguageModelTypeId,
     generateText: generateText as Service["generateText"],
     generateObject: generateObject as Service["generateObject"],
     streamText: streamText as Service["streamText"]

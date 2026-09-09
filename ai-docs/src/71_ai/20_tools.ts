@@ -110,86 +110,104 @@ export class ProductAssistantError extends Schema.TaggedError<ProductAssistantEr
 ) {}
 
 // Wrap tool-enabled generation in a service
-export class ProductAssistant extends Context.Service<ProductAssistant, {
+const ProductAssistantTypeId = "~docs/ProductAssistant"
+
+export interface ProductAssistant {
+  readonly [ProductAssistantTypeId]: typeof ProductAssistantTypeId
+
   answer(question: string): Effect.Effect<{
     readonly text: string
     readonly toolCallCount: number
   }, ProductAssistantError>
-}>()("docs/ProductAssistant") {
-  static readonly layer = Layer.effect(
-    ProductAssistant,
-    Effect.gen(function*() {
-      // Access the toolkit's handlers by yielding the toolkit definition.
-      const toolkit = yield* ProductToolkit
-
-      // Choose a model to use
-      const model = yield* OpenAiLanguageModel.model("gpt-5.2").captureRequirements
-
-      const answer = Effect.fn("ProductAssistant.answer")(
-        function*(question: string) {
-          // Pass the toolkit to `generateText`. The model can call any tool in
-          // the toolkit; the framework resolves parameters, invokes handlers,
-          // and feeds results back automatically.
-          const response = yield* LanguageModel.generateText({
-            prompt: question,
-            toolkit,
-            // You can set `toolChoice` to "required" to force the model to call
-            // a tool before responding with text.
-            //
-            // By default it is set to "auto"
-            toolChoice: "required"
-          })
-
-          // -------------------------------------------------------------------
-          // 5. Inspecting tool calls and results
-          // -------------------------------------------------------------------
-
-          // `response.toolCalls` lists every tool the model invoked, each with
-          // the tool name, a unique id, and the decoded parameters.
-          for (const call of response.toolCalls) {
-            yield* Effect.log(`Tool call: ${call.name} id=${call.id}`)
-          }
-
-          // `response.toolResults` lists the resolved results, each with the
-          // tool name, id, decoded result, and an `isFailure` flag.
-          for (const result of response.toolResults) {
-            yield* Effect.log(
-              `Tool result: ${result.name} id=${result.id} isFailure=${result.isFailure}`
-            )
-          }
-
-          return {
-            text: response.text,
-            toolCallCount: response.toolCalls.length
-          }
-        },
-        // Provide the chosen model to use
-        Effect.provide(model),
-        (_) => _,
-        // Map AI errors into our domain error type
-        Effect.catchTag(
-          "AiError",
-          (error) =>
-            Effect.fail(
-              new ProductAssistantError({
-                reason: error.reason
-              })
-            ),
-          // For unexpected errors, die with the original error
-          (e) => Effect.die(e)
-        )
-      )
-
-      return ProductAssistant.of({ answer })
-    })
-  ).pipe(
-    // The toolkit handler layer must be provided so the framework can invoke
-    // the tool handlers when the model makes tool calls.
-    Layer.provide(ProductToolkitLayer),
-    // Also provide the openai client required by OpenAiLanguageModel.model
-    Layer.provide(OpenAiClientLayer)
-  )
 }
+
+/**
+ * Service key for `ProductAssistant` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const ProductAssistant = (() => {
+  const service = Context.Service<ProductAssistant>("docs/ProductAssistant")
+  return Object.assign(service, {
+    layer: Layer.effect(
+      service,
+      Effect.gen(function*() {
+        // Access the toolkit's handlers by yielding the toolkit definition.
+        const toolkit = yield* ProductToolkit
+
+        // Choose a model to use
+        const model = yield* OpenAiLanguageModel.model("gpt-5.2").captureRequirements
+
+        const answer = Effect.fn("ProductAssistant.answer")(
+          function*(question: string) {
+            // Pass the toolkit to `generateText`. The model can call any tool in
+            // the toolkit; the framework resolves parameters, invokes handlers,
+            // and feeds results back automatically.
+            const response = yield* LanguageModel.generateText({
+              prompt: question,
+              toolkit,
+              // You can set `toolChoice` to "required" to force the model to call
+              // a tool before responding with text.
+              //
+              // By default it is set to "auto"
+              toolChoice: "required"
+            })
+
+            // -------------------------------------------------------------------
+            // 5. Inspecting tool calls and results
+            // -------------------------------------------------------------------
+
+            // `response.toolCalls` lists every tool the model invoked, each with
+            // the tool name, a unique id, and the decoded parameters.
+            for (const call of response.toolCalls) {
+              yield* Effect.log(`Tool call: ${call.name} id=${call.id}`)
+            }
+
+            // `response.toolResults` lists the resolved results, each with the
+            // tool name, id, decoded result, and an `isFailure` flag.
+            for (const result of response.toolResults) {
+              yield* Effect.log(
+                `Tool result: ${result.name} id=${result.id} isFailure=${result.isFailure}`
+              )
+            }
+
+            return {
+              text: response.text,
+              toolCallCount: response.toolCalls.length
+            }
+          },
+          // Provide the chosen model to use
+          Effect.provide(model),
+          (_) => _,
+          // Map AI errors into our domain error type
+          Effect.catchTag(
+            "AiError",
+            (error) =>
+              Effect.fail(
+                new ProductAssistantError({
+                  reason: error.reason
+                })
+              ),
+            // For unexpected errors, die with the original error
+            (e) => Effect.die(e)
+          )
+        )
+
+        return service.of({
+          [ProductAssistantTypeId]: ProductAssistantTypeId as typeof ProductAssistantTypeId,
+          answer
+        })
+      })
+    ).pipe(
+      // The toolkit handler layer must be provided so the framework can invoke
+      // the tool handlers when the model makes tool calls.
+      Layer.provide(ProductToolkitLayer),
+      // Also provide the openai client required by OpenAiLanguageModel.model
+      Layer.provide(OpenAiClientLayer)
+    )
+  })
+})()
 
 // ---------------------------------------------------------------------------
 // 6. Provider-defined tools

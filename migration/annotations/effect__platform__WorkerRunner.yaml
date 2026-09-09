@@ -27,10 +27,10 @@
   note: "Serialized tagged-request execution moved to RpcServer with an RpcGroup handler layer."
 "@effect/platform/WorkerRunner#PlatformRunner":
   replacement: "WorkerRunner.WorkerRunnerPlatform"
-  note: "The platform service was renamed and is now a Context.Service class."
+  note: "The platform service was renamed and is now a Context.Service value and same-name interface."
 "@effect/platform/WorkerRunner#PlatformRunnerTypeId":
   replacement: "none"
-  note: "The Context.Service class replaces the public platform-runner type-id alias."
+  note: "The Context.Service value and same-name interface replaces the public platform-runner type-id alias."
 "@effect/platform/WorkerRunner#Runner":
   replacement: "WorkerRunner.WorkerRunner"
   note: "The namespace-only runner API was replaced by the low-level WorkerRunner interface."

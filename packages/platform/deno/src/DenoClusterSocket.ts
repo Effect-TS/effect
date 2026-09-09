@@ -49,6 +49,7 @@ export const layerClientProtocol: Layer.Layer<
   Effect.gen(function*() {
     const serialization = yield* RpcSerialization.RpcSerialization
     return {
+      ["~effect/cluster/Runners/RpcClientProtocol"]: "~effect/cluster/Runners/RpcClientProtocol" as const,
       codecFor: serialization.codecFor,
       make: Effect.fnUntraced(function*(address) {
         const socket = yield* DenoSocket.makeTcp({
@@ -109,7 +110,7 @@ export const layer = <
       readonly namespace?: string | undefined
       readonly labelSelector?: string | undefined
     } | undefined
-    readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
+    readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig> | undefined
   }
 ): ClientOnly extends true ? Layer.Layer<
     Sharding | Runners.Runners | ("byo" extends Storage ? never : MessageStorage.MessageStorage),

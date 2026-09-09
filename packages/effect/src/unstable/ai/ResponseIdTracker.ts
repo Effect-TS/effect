@@ -46,10 +46,14 @@ export interface PrepareResult {
  * @since 4.0.0
  */
 export interface Service {
+  readonly [ResponseIdTrackerTypeId]: typeof ResponseIdTrackerTypeId
+
   clearUnsafe(): void
   markParts(parts: ReadonlyArray<object>, responseId: string): void
   prepareUnsafe(prompt: Prompt.Prompt): Option.Option<PrepareResult>
 }
+
+const ResponseIdTrackerTypeId = "~effect/ai/ResponseIdTracker"
 
 /**
  * Service tag for enabling provider previous-response ID reuse across language
@@ -64,7 +68,17 @@ export interface Service {
  * @category services
  * @since 4.0.0
  */
-export class ResponseIdTracker extends Context.Service<ResponseIdTracker, Service>()("effect/ai/ResponseIdTracker") {}
+export interface ResponseIdTracker extends Service {
+  readonly [ResponseIdTrackerTypeId]: typeof ResponseIdTrackerTypeId
+}
+
+/**
+ * Service key for `ResponseIdTracker` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const ResponseIdTracker = Context.Service<ResponseIdTracker>("effect/ai/ResponseIdTracker")
 
 /**
  * Creates an in-memory `ResponseIdTracker` service.
@@ -88,6 +102,7 @@ export const make: Effect.Effect<Service> = Effect.sync(() => {
   }
 
   return {
+    [ResponseIdTrackerTypeId]: ResponseIdTrackerTypeId as typeof ResponseIdTrackerTypeId,
     clearUnsafe() {
       sentParts.clear()
     },

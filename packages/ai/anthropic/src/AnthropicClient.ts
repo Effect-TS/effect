@@ -40,6 +40,8 @@ import * as Errors from "./internal/errors.ts"
  * @since 4.0.0
  */
 export interface Service {
+  readonly [AnthropicClientTypeId]: typeof AnthropicClientTypeId
+
   /**
    * The underlying generated Anthropic client that exposes all API endpoints.
    */
@@ -114,6 +116,8 @@ export type MessageStreamEvent =
 // Service Identifier
 // =============================================================================
 
+const AnthropicClientTypeId = "~@effect/ai-anthropic/AnthropicClient"
+
 /**
  * Service tag for the Anthropic client.
  *
@@ -129,9 +133,17 @@ export type MessageStreamEvent =
  * @category services
  * @since 4.0.0
  */
-export class AnthropicClient extends Context.Service<AnthropicClient, Service>()(
-  "@effect/ai-anthropic/AnthropicClient"
-) {}
+export interface AnthropicClient extends Service {
+  readonly [AnthropicClientTypeId]: typeof AnthropicClientTypeId
+}
+
+/**
+ * Service key for `AnthropicClient` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const AnthropicClient = Context.Service<AnthropicClient>("@effect/ai-anthropic/AnthropicClient")
 
 // =============================================================================
 // Options
@@ -342,6 +354,7 @@ export const make = Effect.fnUntraced(
     }
 
     return AnthropicClient.of({
+      [AnthropicClientTypeId]: AnthropicClientTypeId as typeof AnthropicClientTypeId,
       client,
       streamRequest,
       createMessage,

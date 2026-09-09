@@ -839,6 +839,8 @@ export const withHeaders: {
     Effect.updateService(effect, CurrentHeaders, Headers.merge(Headers.fromInput(headers)))
 )
 
+const ProtocolTypeId = "~effect/rpc/RpcClient/Protocol"
+
 /**
  * Defines the service interface for an RPC client transport, responsible for running the
  * receive loop and sending encoded client messages.
@@ -851,7 +853,9 @@ export const withHeaders: {
  * @category services
  * @since 4.0.0
  */
-export class Protocol extends Context.Service<Protocol, {
+export interface Protocol {
+  readonly [ProtocolTypeId]: typeof ProtocolTypeId
+
   readonly run: (
     clientId: number,
     f: (data: FromServerEncoded) => Effect.Effect<void>
@@ -868,14 +872,25 @@ export class Protocol extends Context.Service<Protocol, {
    * re-passed from the `RpcSerialization` backing this transport.
    */
   readonly codecFor: RpcSerialization.CodecFor
-}>()("effect/rpc/RpcClient/Protocol") {
-  /**
-   * Creates a client protocol service from the supplied RPC request runner.
-   *
-   * @since 4.0.0
-   */
-  static make = withRunClient
 }
+
+/**
+ * Service key for `Protocol` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Protocol = (() => {
+  const service = Context.Service<Protocol>("effect/rpc/RpcClient/Protocol")
+  return Object.assign(service, {
+    /**
+     * Creates a client protocol service from the supplied RPC request runner.
+     *
+     * @since 4.0.0
+     */
+    make: withRunClient
+  })
+})()
 
 /**
  * Creates a client `Protocol` that sends each RPC request through the supplied
@@ -885,7 +900,7 @@ export class Protocol extends Context.Service<Protocol, {
  * @since 4.0.0
  */
 export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
-  Protocol["Service"],
+  Protocol,
   never,
   RpcSerialization.RpcSerialization
 > =>
@@ -1026,7 +1041,7 @@ export const makeProtocolSocket = (options?: {
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Effect.Effect<
-  Protocol["Service"],
+  Protocol,
   never,
   Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket
 > =>
@@ -1250,7 +1265,7 @@ export const makeProtocolWorker = (
     readonly timeToLive: Duration.Input
   }
 ): Effect.Effect<
-  Protocol["Service"],
+  Protocol,
   WorkerError,
   Scope.Scope | Worker.WorkerPlatform | Worker.Spawner
 > =>
@@ -1429,6 +1444,8 @@ export const layerProtocolWorker: (
   Worker.WorkerPlatform | Worker.Spawner
 > = flow(makeProtocolWorker, Layer.effect(Protocol))
 
+const ConnectionHooksTypeId = "~effect/rpc/RpcClient/ConnectionHooks"
+
 /**
  * Represents optional client protocol hooks that run when a transport connects
  * and disconnects.
@@ -1441,7 +1458,17 @@ export const layerProtocolWorker: (
  * @category services
  * @since 4.0.0
  */
-export class ConnectionHooks extends Context.Service<ConnectionHooks, {
+export interface ConnectionHooks {
+  readonly [ConnectionHooksTypeId]: typeof ConnectionHooksTypeId
+
   readonly onConnect: Effect.Effect<void>
   readonly onDisconnect: Effect.Effect<void>
-}>()("effect/rpc/RpcClient/ConnectionHooks") {}
+}
+
+/**
+ * Service key for `ConnectionHooks` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const ConnectionHooks = Context.Service<ConnectionHooks>("effect/rpc/RpcClient/ConnectionHooks")

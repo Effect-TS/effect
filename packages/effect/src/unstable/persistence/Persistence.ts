@@ -48,6 +48,8 @@ export class PersistenceError extends Schema.Error<PersistenceError>(ErrorTypeId
   readonly [ErrorTypeId]: typeof ErrorTypeId = ErrorTypeId
 }
 
+const PersistenceTypeId = "~effect/persistence/Persistence"
+
 /**
  * Service for creating scoped stores of persisted `Persistable` request
  * results.
@@ -55,12 +57,22 @@ export class PersistenceError extends Schema.Error<PersistenceError>(ErrorTypeId
  * @category services
  * @since 4.0.0
  */
-export class Persistence extends Context.Service<Persistence, {
+export interface Persistence {
+  readonly [PersistenceTypeId]: typeof PersistenceTypeId
+
   readonly make: (options: {
     readonly storeId: string
     readonly timeToLive?: (exit: Exit.Exit<unknown, unknown>, key: Persistable.Any) => Duration.Input
   }) => Effect.Effect<PersistenceStore, never, Scope.Scope>
-}>()("effect/persistence/Persistence") {}
+}
+
+/**
+ * Service key for `Persistence` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Persistence = Context.Service<Persistence>("effect/persistence/Persistence")
 
 /**
  * Typed store for persisted `Exit` values keyed by `Persistable` requests.
@@ -96,15 +108,27 @@ export interface PersistenceStore {
   readonly clear: Effect.Effect<void, PersistenceError>
 }
 
+const BackingPersistenceTypeId = "~effect/persistence/BackingPersistence"
+
 /**
  * Service for creating raw backing stores for persistence store ids.
  *
  * @category services
  * @since 4.0.0
  */
-export class BackingPersistence extends Context.Service<BackingPersistence, {
+export interface BackingPersistence {
+  readonly [BackingPersistenceTypeId]: typeof BackingPersistenceTypeId
+
   readonly make: (storeId: string) => Effect.Effect<BackingPersistenceStore, never, Scope.Scope>
-}>()("effect/persistence/BackingPersistence") {}
+}
+
+/**
+ * Service key for `BackingPersistence` implementations.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const BackingPersistence = Context.Service<BackingPersistence>("effect/persistence/BackingPersistence")
 
 /**
  * Raw persistence backing store for JSON-compatible objects with optional
@@ -145,6 +169,7 @@ export const layer = Layer.effect(Persistence)(Effect.gen(function*() {
   const backing = yield* BackingPersistence
   const scope = yield* Effect.scope
   return Persistence.of({
+    [PersistenceTypeId]: PersistenceTypeId as typeof PersistenceTypeId,
     make: Effect.fnUntraced(function*(options) {
       const storage = yield* backing.make(options.storeId)
       const timeToLive = options.timeToLive ?? (() => Duration.infinity)
@@ -253,6 +278,7 @@ export const layerBackingMemory: Layer.Layer<BackingPersistence> = Layer.sync(Ba
       return store
     }
     return BackingPersistence.of({
+      [BackingPersistenceTypeId]: BackingPersistenceTypeId as typeof BackingPersistenceTypeId,
       make: (storeId) =>
         Effect.clockWith((clock) => {
           const map = getStore(storeId)
@@ -302,6 +328,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   return BackingPersistence.of({
+    [BackingPersistenceTypeId]: BackingPersistenceTypeId as typeof BackingPersistenceTypeId,
     make: Effect.fnUntraced(function*(storeId) {
       const clock = yield* Clock.Clock
       const tableName = `effect_persistence_${storeId}`
@@ -732,6 +759,7 @@ export const layerBackingSql: Layer.Layer<
   })
 
   return BackingPersistence.of({
+    [BackingPersistenceTypeId]: BackingPersistenceTypeId as typeof BackingPersistenceTypeId,
     make: Effect.fnUntraced(function*(storeId) {
       const clock = yield* Clock.Clock
 
@@ -884,6 +912,7 @@ export const layerBackingRedis: Layer.Layer<
   const setMany = redis.eval(setManyRedis)
 
   return BackingPersistence.of({
+    [BackingPersistenceTypeId]: BackingPersistenceTypeId as typeof BackingPersistenceTypeId,
     make: (prefix) =>
       Effect.sync(() => {
         const prefixed = (key: string) => `${prefix}:${key}`
@@ -1050,6 +1079,7 @@ export const layerBackingKvs: Layer.Layer<
   const backing = yield* KeyValueStore.KeyValueStore
   const clock = yield* Clock.Clock
   return BackingPersistence.of({
+    [BackingPersistenceTypeId]: BackingPersistenceTypeId as typeof BackingPersistenceTypeId,
     make: (storeId) =>
       Effect.sync(() => {
         const store = KeyValueStore.prefix(backing, storeId)
