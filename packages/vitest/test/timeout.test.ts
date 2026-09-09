@@ -46,6 +46,36 @@ for (const mode of ["effect", "live"] as const) {
   })
 }
 
+describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
+  const events: Array<string> = []
+  const abortedAtStart: Array<boolean> = []
+  let attempts = 0
+
+  it.effect.fails("retries after timing out while holding a resource", (ctx) =>
+    Effect.gen(function*() {
+      const attempt = ++attempts
+      abortedAtStart.push(ctx.signal.aborted)
+      yield* resource(events, `attempt${attempt}`)
+      return yield* Effect.never
+    }), { timeout: 75, retry: 1 })
+
+  it("awaits the retry's finalizer before starting the next test", () => {
+    events.push("next:start")
+    assert.strictEqual(attempts, 2)
+    // Vitest reuses the signal aborted by the first attempt's timeout.
+    assert.deepStrictEqual(abortedAtStart, [false, true])
+    assert.deepStrictEqual(events, [
+      "attempt1:acquired",
+      "attempt1:release:start",
+      "attempt1:release:end",
+      "attempt2:acquired",
+      "attempt2:release:start",
+      "attempt2:release:end",
+      "next:start"
+    ])
+  })
+})
+
 describe("it.layer timeout finalizers", { concurrent: false }, () => {
   const events: Array<string> = []
   let signal: AbortSignal | undefined
