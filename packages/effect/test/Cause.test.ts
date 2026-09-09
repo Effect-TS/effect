@@ -123,7 +123,7 @@ describe("Cause", () => {
         expectJSON(Cause.fail(Option.some(1)), {
           _id: "Cause",
           _tag: "Fail",
-          failure: {
+          error: {
             _id: "Option",
             _tag: "Some",
             value: 1
@@ -189,12 +189,12 @@ describe("Cause", () => {
           left: {
             _id: "Cause",
             _tag: "Fail",
-            failure: "failure 1"
+            error: "failure 1"
           },
           right: {
             _id: "Cause",
             _tag: "Fail",
-            failure: "failure 2"
+            error: "failure 2"
           }
         })
       })
@@ -206,12 +206,12 @@ describe("Cause", () => {
           left: {
             _id: "Cause",
             _tag: "Fail",
-            failure: "failure 1"
+            error: "failure 1"
           },
           right: {
             _id: "Cause",
             _tag: "Fail",
-            failure: "failure 2"
+            error: "failure 2"
           }
         })
       })
