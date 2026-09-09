@@ -12,6 +12,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as Runtime from "effect/Runtime"
+import { afterAll, beforeAll } from "vitest"
 import { OtelSpan } from "../src/internal/tracer.js"
 
 class Exporter extends Effect.Service<Exporter>()("Exporter", {
@@ -29,11 +30,15 @@ const TracingLive = Layer.unwrapEffect(Effect.gen(function*() {
   })))
 })).pipe(Layer.provideMerge(Exporter.Default))
 
-// needed to test context propagation
-const contextManager = new AsyncHooksContextManager()
-OtelApi.context.setGlobalContextManager(contextManager)
-
 describe("Tracer", () => {
+  beforeAll(() => {
+    OtelApi.context.setGlobalContextManager(new AsyncHooksContextManager().enable())
+  })
+
+  afterAll(() => {
+    OtelApi.context.disable()
+  })
+
   describe("provided", () => {
     it.effect("withSpan", () =>
       Effect.provide(
@@ -90,6 +95,33 @@ describe("Tracer", () => {
         ),
         TracingLive
       ))
+
+    it.effect("raw OTel child propagates through unnamed Effect.fn", () =>
+      Effect.gen(function*() {
+        const parent = yield* Effect.currentSpan
+        const tracer = yield* Effect.serviceOptional(Tracer.OtelTracer)
+        const { exporter } = yield* Exporter
+
+        yield* Effect.fn(function*() {
+          yield* Effect.yieldNow()
+          const child = tracer.startSpan("query")
+          child.end()
+        })()
+
+        const [child] = exporter.getFinishedSpans()
+        assert.strictEqual(child.name, "query")
+        assert.strictEqual(child.spanContext().traceId, parent.traceId)
+        assert.strictEqual(child.parentSpanContext?.spanId, parent.spanId)
+      }).pipe(Effect.withSpan("parent"), Effect.provide(TracingLive)))
+
+    it.effect("currentOtelSpan skips unnamed Effect.fn", () =>
+      Effect.gen(function*() {
+        const parent = yield* Tracer.currentOtelSpan
+        const current = yield* Effect.fn(function*() {
+          return yield* Tracer.currentOtelSpan
+        })()
+        assert.deepStrictEqual(current.spanContext(), parent.spanContext())
+      }).pipe(Effect.withSpan("parent"), Effect.provide(TracingLive)))
 
     it.scoped("withSpanContext", () =>
       Effect.gen(function*() {
