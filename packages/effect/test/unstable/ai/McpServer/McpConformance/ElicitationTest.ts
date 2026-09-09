@@ -50,6 +50,7 @@ const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknow
     Effect.provideService(
       McpSchema.McpServerClient,
       McpSchema.McpServerClient.of({
+        ["~effect/ai/McpSchema/McpServerClient"]: "~effect/ai/McpSchema/McpServerClient" as const,
         clientId: 1,
         protocolVersion,
         clientCapabilities: { elicitation: {} },

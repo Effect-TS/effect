@@ -22,7 +22,7 @@ export interface JsonRpcMessage {
 }
 
 export interface McpStdioHarness {
-  readonly server: McpServer.McpServer["Service"]
+  readonly server: McpServer.McpServer
   readonly serverFiber: Fiber.Fiber<never, Cause.IllegalArgumentError>
   readonly close: Effect.Effect<void>
   readonly sendRaw: (message: unknown) => Effect.Effect<void>
@@ -78,7 +78,7 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*(
     stdout: () => Sink.forEach((chunk) => Queue.offer(stdout, chunk)),
     stderr: () => Sink.forEach((chunk) => Queue.offer(stderr, chunk))
   })
-  const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
+  const ready = yield* Deferred.make<McpServer.McpServer>()
   const serverFiber = yield* Effect.gen(function*() {
     const context = yield* Layer.build(
       McpServer.layerStdio({

@@ -39,6 +39,7 @@ const platformContext = (compression: HttpPlatform.Compression): Context.Context
   Context.make(
     HttpPlatform.HttpPlatform,
     HttpPlatform.HttpPlatform.of({
+      ["~effect/http/HttpPlatform"]: "~effect/http/HttpPlatform" as const,
       platform: "web",
       compression,
       fileResponse: () => Effect.die("not implemented"),

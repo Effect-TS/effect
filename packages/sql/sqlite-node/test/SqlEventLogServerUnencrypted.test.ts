@@ -33,7 +33,7 @@ const makeEntry = (value: number) =>
   }, { disableChecks: true })
 
 const makeAuthenticateRequest = Effect.fnUntraced(function*(options: {
-  readonly identity: EventLog.Identity["Service"]
+  readonly identity: EventLog.Identity
   readonly challenge: Uint8Array
   readonly remoteId: EventJournal.RemoteId
 }) {
@@ -67,10 +67,14 @@ describe("SqlEventLogServerUnencrypted (sql-sqlite-node)", () => {
             Layer.provideMerge(EventLog.layerRegistry),
             Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, storage)),
             Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+              ["~effect/eventlog/EventLogServerUnencrypted/StoreMapping"]:
+                "~effect/eventlog/EventLogServerUnencrypted/StoreMapping" as const,
               resolve: ({ storeId }) => Effect.succeed(storeId),
               hasStore: () => Effect.succeed(true)
             })),
             Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, {
+              ["~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization"]:
+                "~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization" as const,
               authorizeWrite: () => Effect.void,
               authorizeRead: () => Effect.void,
               authorizeIdentity: () => Effect.void
@@ -116,10 +120,14 @@ describe("SqlEventLogServerUnencrypted (sql-sqlite-node)", () => {
             Layer.provideMerge(EventLog.layerRegistry),
             Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, storage)),
             Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+              ["~effect/eventlog/EventLogServerUnencrypted/StoreMapping"]:
+                "~effect/eventlog/EventLogServerUnencrypted/StoreMapping" as const,
               resolve: ({ storeId }) => Effect.succeed(storeId),
               hasStore: () => Effect.succeed(true)
             })),
             Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, {
+              ["~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization"]:
+                "~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization" as const,
               authorizeWrite: () => Effect.void,
               authorizeRead: () => Effect.void,
               authorizeIdentity: () => Effect.void
@@ -130,7 +138,8 @@ describe("SqlEventLogServerUnencrypted (sql-sqlite-node)", () => {
 
       const firstIdentity = yield* EventLog.makeIdentity
       const secondIdentitySeed = yield* EventLog.makeIdentity
-      const secondIdentity: EventLog.Identity["Service"] = {
+      const secondIdentity: EventLog.Identity = {
+        ["~effect/eventlog/EventLog/Identity"]: "~effect/eventlog/EventLog/Identity" as const,
         publicKey: firstIdentity.publicKey,
         privateKey: secondIdentitySeed.privateKey
       }

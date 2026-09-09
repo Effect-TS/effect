@@ -116,7 +116,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
         tableName: "effect_queue_two_workers",
         pollInterval: "10 millis"
       } as const
-      const makeQueue = Effect.fnUntraced(function*(store: PersistedQueue.PersistedQueueStore["Service"]) {
+      const makeQueue = Effect.fnUntraced(function*(store: PersistedQueue.PersistedQueueStore) {
         const factory = yield* PersistedQueue.makeFactory.pipe(
           Effect.provideService(PersistedQueue.PersistedQueueStore, store)
         )

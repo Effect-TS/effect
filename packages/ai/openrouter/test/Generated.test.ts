@@ -131,6 +131,7 @@ describe("Generated", () => {
           success: Schema.String
         }))
         const client = OpenRouterClient.OpenRouterClient.of({
+          ["~@effect/ai-openrouter/OpenRouterClient"]: "~@effect/ai-openrouter/OpenRouterClient" as const,
           client: Generated.make(HttpClient.make(() => Effect.die("Unexpected HTTP request"))),
           createChatCompletion: () => Effect.succeed([body, response]),
           createChatCompletionStream: () => Effect.succeed([response, Stream.fromIterable(chunks)])

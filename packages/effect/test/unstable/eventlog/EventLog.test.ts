@@ -83,6 +83,7 @@ describe("EventLog", () => {
         let attempt = 0
         let failedChangeWrite = false
         const remote = EventLogRemote.EventLogRemote.of({
+          ["~effect/eventlog/EventLogRemote"]: "~effect/eventlog/EventLogRemote" as const,
           id: EventJournal.makeRemoteIdUnsafe(),
           changes: () => Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>(),
           write: ({ entries }) =>

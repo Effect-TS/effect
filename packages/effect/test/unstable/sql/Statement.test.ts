@@ -110,6 +110,7 @@ describe("Statement", () => {
 const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
   const execute = Effect.as(observe, [])
   const connection: Connection = {
+    ["~effect/sql/SqlConnection"]: "~effect/sql/SqlConnection" as const,
     execute: () => execute,
     executeRaw: () => execute,
     executeValues: () => execute,

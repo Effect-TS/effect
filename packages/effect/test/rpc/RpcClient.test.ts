@@ -90,6 +90,7 @@ describe("RpcClient", () => {
         }
       }
       const workerPlatform = Worker.WorkerPlatform.of({
+        ["~effect/workers/Worker/WorkerPlatform"]: "~effect/workers/Worker/WorkerPlatform" as const,
         spawn: () => Effect.succeed(backing)
       })
       const protocol = yield* RpcClient.makeProtocolWorker({ size: 1, concurrency: 1 }).pipe(

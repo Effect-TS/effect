@@ -26,8 +26,8 @@ const makeEntry = (value: number) =>
   }, { disableChecks: true })
 
 const persistEntries = (
-  encryption: EventLogEncryption.EventLogEncryption["Service"],
-  identity: EventLog.Identity["Service"],
+  encryption: EventLogEncryption.EventLogEncryption,
+  identity: EventLog.Identity,
   entries: ReadonlyArray<EventJournal.Entry>
 ) =>
   Effect.gen(function*() {
@@ -42,8 +42,8 @@ const persistEntries = (
   })
 
 const encodeWrite = Effect.fnUntraced(function*(
-  encryption: EventLogEncryption.EventLogEncryption["Service"],
-  identity: EventLog.Identity["Service"],
+  encryption: EventLogEncryption.EventLogEncryption,
+  identity: EventLog.Identity,
   entry: EventJournal.Entry
 ) {
   const encrypted = yield* encryption.encrypt(identity, [entry])
@@ -68,7 +68,7 @@ const makePersistedEntry = (index: number, entryId = EventJournal.makeEntryIdUns
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
 
 const makeAuthenticateRequest = Effect.fnUntraced(function*(options: {
-  readonly identity: EventLog.Identity["Service"]
+  readonly identity: EventLog.Identity
   readonly challenge: Uint8Array
   readonly remoteId: EventJournal.RemoteId
 }) {
@@ -89,8 +89,8 @@ const makeAuthenticateRequest = Effect.fnUntraced(function*(options: {
 })
 
 const makeAuthenticatedRpcClient = Effect.fnUntraced(function*(
-  storage: EventLogServer.Storage["Service"],
-  identities: ReadonlyArray<EventLog.Identity["Service"]>
+  storage: EventLogServer.Storage,
+  identities: ReadonlyArray<EventLog.Identity>
 ) {
   const rpcClient = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
     Effect.provide(
@@ -313,7 +313,8 @@ describe("SqlEventLogServer", () => {
 
       const firstIdentity = yield* EventLog.makeIdentity
       const secondIdentitySeed = yield* EventLog.makeIdentity
-      const secondIdentity: EventLog.Identity["Service"] = {
+      const secondIdentity: EventLog.Identity = {
+        ["~effect/eventlog/EventLog/Identity"]: "~effect/eventlog/EventLog/Identity" as const,
         publicKey: firstIdentity.publicKey,
         privateKey: secondIdentitySeed.privateKey
       }

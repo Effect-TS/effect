@@ -67,6 +67,7 @@ const makeHandler = async () => {
   })
 
   const httpPlatform = HttpPlatform.HttpPlatform.of({
+    ["~effect/http/HttpPlatform"]: "~effect/http/HttpPlatform" as const,
     platform: "node",
     compression: stubCompression,
     fileResponse: (_path, options) =>
@@ -108,6 +109,7 @@ const makeFailingApp = async (options: {
   })
 
   const httpPlatform = HttpPlatform.HttpPlatform.of({
+    ["~effect/http/HttpPlatform"]: "~effect/http/HttpPlatform" as const,
     platform: "node",
     compression: stubCompression,
     fileResponse: (_path, fileOptions) => {
@@ -147,6 +149,7 @@ const makeLayerHandler = (options: {
     }
   })
   const httpPlatform = HttpPlatform.HttpPlatform.of({
+    ["~effect/http/HttpPlatform"]: "~effect/http/HttpPlatform" as const,
     platform: "node",
     compression: stubCompression,
     fileResponse: () =>

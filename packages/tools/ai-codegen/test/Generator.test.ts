@@ -10,6 +10,7 @@ import * as Path from "effect/Path"
 
 const TestLayer = Generator.layer.pipe(
   Layer.provide(Layer.succeed(OpenApiGenerator.OpenApiGenerator, {
+    ["~@effect/openapi-generator/OpenApiGenerator"]: "~@effect/openapi-generator/OpenApiGenerator" as const,
     generate: (spec) => Effect.succeed(JSON.stringify(spec))
   })),
   Layer.provideMerge(NodeServices.layer)

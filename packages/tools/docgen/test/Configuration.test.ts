@@ -74,6 +74,7 @@ const TestFileSystem = Layer.effect(
 
 const makeProcess = (env: Record<string, string> = {}) =>
   Layer.succeed(Domain.Process, {
+    ["~@effect/docgen/Process"]: "~@effect/docgen/Process" as const,
     cwd: Effect.sync(() => process.cwd()),
     platform: Effect.sync(() => process.platform),
     argv: Effect.sync(() => process.argv),
@@ -108,6 +109,7 @@ describe("Configuration", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
       assert.deepStrictEqual(config, {
+        ["~@effect/docgen/Configuration"]: "~@effect/docgen/Configuration" as const,
         projectName: "name",
         projectHomepage: "homepage",
         srcLink: "homepage/blob/main/src/",
@@ -141,6 +143,7 @@ describe("Configuration", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
       assert.deepStrictEqual(config, {
+        ["~@effect/docgen/Configuration"]: "~@effect/docgen/Configuration" as const,
         projectName: "name",
         projectHomepage: "myproject",
         srcLink: "mygithub",

@@ -153,6 +153,7 @@ describe("RpcServer", () => {
         })
       })
       const socketServer = SocketServer.SocketServer.of({
+        ["~@effect/platform/SocketServer"]: "~@effect/platform/SocketServer" as const,
         address: NetAddress.inetAddressFromStringUnsafe("127.0.0.1:0"),
         run: (handler) => handler(socket).pipe(Effect.orDie, Effect.andThen(Effect.never))
       })

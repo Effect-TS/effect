@@ -1230,6 +1230,7 @@ describe("McpServer protocol adapters", () => {
         Effect.provideService(
           McpSchema.McpServerClient,
           McpSchema.McpServerClient.of({
+            ["~effect/ai/McpSchema/McpServerClient"]: "~effect/ai/McpSchema/McpServerClient" as const,
             clientId: 1,
             protocolVersion: "2025-06-18",
             clientCapabilities: {},

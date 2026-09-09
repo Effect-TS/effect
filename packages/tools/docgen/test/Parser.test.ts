@@ -15,6 +15,7 @@ const project = new ast.Project({
 })
 
 const defaultConfig: Configuration.ConfigurationShape = {
+  ["~@effect/docgen/Configuration"]: "~@effect/docgen/Configuration" as const,
   projectName: "docgen",
   projectHomepage: "https://github.com/effect-ts/docgen",
   srcLink: "https://github.com/effect-ts/docgen/blob/main/src/",
@@ -48,6 +49,7 @@ const makeSource = (source: string | ast.SourceFile) => {
   const sourceFile = makeSourcefile(source)
   const filename = sourceFile.getBaseName()
   return Parser.Source.of({
+    ["~@effect/docgen/Source"]: "~@effect/docgen/Source" as const,
     path: [filename],
     sourceFile
   })

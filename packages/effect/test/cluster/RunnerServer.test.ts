@@ -38,6 +38,7 @@ const layerProtocol = (codecFor: RpcSerialization.CodecFor) =>
   Layer.effect(RpcServer.Protocol)(
     Effect.map(Queue.unbounded<number>(), (disconnects) =>
       RpcServer.Protocol.of({
+        ["~effect/rpc/RpcServer/Protocol"]: "~effect/rpc/RpcServer/Protocol" as const,
         run: () => Effect.never,
         disconnects,
         send: () => Effect.void,

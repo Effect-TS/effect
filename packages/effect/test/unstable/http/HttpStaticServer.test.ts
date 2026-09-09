@@ -14,6 +14,7 @@ const services = Layer.mergeAll(
   Layer.succeed(
     HttpPlatform.HttpPlatform,
     HttpPlatform.HttpPlatform.of({
+      ["~effect/http/HttpPlatform"]: "~effect/http/HttpPlatform" as const,
       platform: "web",
       compression: { algorithms: new Set(), compressResponse: Effect.succeed },
       fileResponse: () => Effect.succeed(HttpServerResponse.text("0123456789")),
@@ -41,7 +42,7 @@ describe("HttpStaticServer", () => {
     }).pipe(Effect.provide(services)))
 })
 
-type FileOptions = Parameters<HttpPlatform.HttpPlatform["Service"]["fileResponse"]>[1]
+type FileOptions = Parameters<HttpPlatform.HttpPlatform["fileResponse"]>[1]
 
 const precisionServices = (size: bigint, calls: Array<{ path: string; options: FileOptions }>) =>
   Layer.mergeAll(
@@ -56,6 +57,7 @@ const precisionServices = (size: bigint, calls: Array<{ path: string; options: F
     Layer.succeed(
       HttpPlatform.HttpPlatform,
       HttpPlatform.HttpPlatform.of({
+        ["~effect/http/HttpPlatform"]: "~effect/http/HttpPlatform" as const,
         platform: "web",
         compression: { algorithms: new Set(), compressResponse: Effect.succeed },
         fileResponse: (path, options) => {

@@ -104,7 +104,7 @@ describe("EventLogRemote", () => {
 })
 
 class RemoteHarness extends Context.Service<RemoteHarness, {
-  readonly remote: EventLogRemote.EventLogRemote["Service"]
+  readonly remote: EventLogRemote.EventLogRemote
   readonly take: Effect.Effect<{
     readonly _tag: Rpc.Tag<RpcGroup.Rpcs<typeof EventLogMessage.EventLogRemoteRpcs>>
     readonly request: Rpc.Payload<RpcGroup.Rpcs<typeof EventLogMessage.EventLogRemoteRpcs>>
@@ -114,7 +114,7 @@ class RemoteHarness extends Context.Service<RemoteHarness, {
 
 const makeHarness = Effect.fn(function*(
   makeClient: Effect.Effect<
-    EventLogRemote.EventLogRemote["Service"],
+    EventLogRemote.EventLogRemote,
     EventLogRemote.EventLogRemoteError,
     EventLogEncryption.EventLogEncryption | EventLogRemote.EventLogRemoteClient | EventLog.Registry | Scope.Scope
   >
@@ -152,7 +152,11 @@ const makeHarness = Effect.fn(function*(
     )
   )
   const remote = yield* makeClient.pipe(
-    Effect.provideService(EventLogRemote.EventLogRemoteClient, client),
+    Effect.provideService(EventLogRemote.EventLogRemoteClient, {
+      ...client,
+      "~effect/unstable/eventlog/EventLogRemote/EventLogRemoteClient":
+        "~effect/unstable/eventlog/EventLogRemote/EventLogRemoteClient"
+    }),
     Effect.provide([EventLogEncryption.layerSubtle, EventLog.layerRegistry]),
     Effect.forkChild
   )
@@ -190,7 +194,7 @@ const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalTh
 
 const authenticate = Effect.fnUntraced(function*(options: {
   readonly harness: RemoteHarness["Service"]
-  readonly identity: EventLog.Identity["Service"]
+  readonly identity: EventLog.Identity
 }) {
   const auth = yield* options.harness.take
   assert(auth._tag === "EventLog.Authenticate")

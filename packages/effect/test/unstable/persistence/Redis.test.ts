@@ -17,6 +17,7 @@ describe("Redis", () => {
 
   it.effect("clearing an empty persistence store succeeds", () => {
     const redis = Redis.Redis.of({
+      ["~effect/persistence/Redis"]: "~effect/persistence/Redis" as const,
       send: <A>(command: string, ...args: ReadonlyArray<string>) => {
         if (command.toUpperCase() === "KEYS") return Effect.succeed([] as unknown as A)
         if (command.toUpperCase() === "DEL" && args.length === 0) {
@@ -40,6 +41,7 @@ describe("Redis", () => {
     const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
     const scripts: Array<unknown> = []
     const redis = Redis.Redis.of({
+      ["~effect/persistence/Redis"]: "~effect/persistence/Redis" as const,
       send: <A>(command: string, ...args: ReadonlyArray<string>) => {
         commands.push([command, args])
         return Effect.succeed(undefined as unknown as A)

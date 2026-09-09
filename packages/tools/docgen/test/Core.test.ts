@@ -27,6 +27,7 @@ const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, run
     const path = yield* Path.Path
     const cwd = yield* fs.makeTempDirectoryScoped()
     const config: Configuration.ConfigurationShape = {
+      ["~@effect/docgen/Configuration"]: "~@effect/docgen/Configuration" as const,
       projectName: "docgen",
       projectHomepage: "https://example.test",
       srcLink: "https://example.test",
@@ -77,6 +78,7 @@ const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, run
     yield* Core.program.pipe(
       Effect.provideService(Configuration.Configuration, config),
       Effect.provideService(Domain.Process, {
+        ["~@effect/docgen/Process"]: "~@effect/docgen/Process" as const,
         cwd: Effect.succeed(process.cwd()),
         platform: Effect.succeed(process.platform),
         argv: Effect.succeed([]),
@@ -186,6 +188,7 @@ describe("Core", () => {
           }
         }).pipe(
           Effect.provideService(Configuration.Configuration, {
+            ["~@effect/docgen/Configuration"]: "~@effect/docgen/Configuration" as const,
             projectName: "docgen",
             projectHomepage: "https://example.com",
             srcLink: "https://example.com/src",
@@ -219,7 +222,11 @@ describe("Core", () => {
     )
 
     return Parser.parseTypeAliases.pipe(
-      Effect.provideService(Parser.Source, { path: ["Identity.ts"], sourceFile }),
+      Effect.provideService(Parser.Source, {
+        ["~@effect/docgen/Source"]: "~@effect/docgen/Source" as const,
+        path: ["Identity.ts"],
+        sourceFile
+      }),
       Effect.map(([alias]) => assert.strictEqual(alias?.signature, "type Identity<A extends string = string> = A"))
     )
   })

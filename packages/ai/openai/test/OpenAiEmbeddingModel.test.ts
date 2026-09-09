@@ -282,6 +282,7 @@ const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
   })
 
 const noopOpenAiClient: OpenAiClient.Service = {
+  ["~@effect/ai-openai/OpenAiClient"]: "~@effect/ai-openai/OpenAiClient" as const,
   client: undefined as unknown as OpenAiClient.Service["client"],
   createResponse: () => Effect.die(new Error("noop")),
   createResponseStream: () => Effect.die(new Error("noop")),

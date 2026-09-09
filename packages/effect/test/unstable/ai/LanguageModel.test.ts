@@ -1358,6 +1358,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts() {},
             prepareUnsafe: () =>
@@ -1416,6 +1417,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts() {},
             prepareUnsafe: () =>
@@ -1470,6 +1472,7 @@ describe("LanguageModel", () => {
             }
           }),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts() {},
             prepareUnsafe: () =>
@@ -1520,6 +1523,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts: (parts, responseId) => {
               markedParts = parts
@@ -1575,6 +1579,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts: () => {
               markCalls++
@@ -1658,6 +1663,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts(parts) {
               markedParts = parts
@@ -1718,6 +1724,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts: (parts, responseId) => {
               markedParts = parts
@@ -1779,6 +1786,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts: (parts, responseId) => {
               markedParts = parts
@@ -1868,6 +1876,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             clearUnsafe() {},
             markParts: (parts) => {
               markedParts = parts
@@ -1966,6 +1975,7 @@ describe("LanguageModel", () => {
             })
           ),
           Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            ["~effect/ai/ResponseIdTracker"]: "~effect/ai/ResponseIdTracker" as const,
             markParts: (parts, responseId) => {
               markedParts = parts
               markedResponseId = responseId

@@ -26,7 +26,10 @@ const snapshot = {
 
 const SnapshotterTest = Layer.succeed(
   Snapshotter,
-  Snapshotter.of({ extract: () => Effect.succeed(snapshot) })
+  Snapshotter.of({
+    ["~@effect/api-diff/Snapshotter"]: "~@effect/api-diff/Snapshotter" as const,
+    extract: () => Effect.succeed(snapshot)
+  })
 )
 
 const ChildProcessSpawnerTest = Layer.succeed(

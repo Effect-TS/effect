@@ -20,7 +20,7 @@ const storeId = EventLogMessage.StoreId.make("repro-store")
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
 
 const authenticate = Effect.fnUntraced(function*(options: {
-  readonly identity: EventLog.Identity["Service"]
+  readonly identity: EventLog.Identity
   readonly challenge: Uint8Array
   readonly remoteId: EventJournal.RemoteId
 }) {
@@ -83,10 +83,14 @@ it.effect("indexes conflicts from the sliced history", () =>
         Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, storage)),
         Layer.provide(Layer.succeed(EventLog.Registry, registry)),
         Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+          ["~effect/eventlog/EventLogServerUnencrypted/StoreMapping"]:
+            "~effect/eventlog/EventLogServerUnencrypted/StoreMapping" as const,
           resolve: ({ storeId }) => Effect.succeed(storeId),
           hasStore: () => Effect.succeed(true)
         })),
         Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, {
+          ["~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization"]:
+            "~effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization" as const,
           authorizeWrite: () => Effect.void,
           authorizeRead: () => Effect.void,
           authorizeIdentity: () => Effect.void

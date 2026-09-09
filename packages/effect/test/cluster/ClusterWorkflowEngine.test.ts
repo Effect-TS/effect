@@ -1194,7 +1194,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 })
 
 const makeTestWorkflowEngine = (
-  config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
+  config?: Partial<ShardingConfig.ShardingConfig>,
   storageLayer = MessageStorage.layerMemory
 ) =>
   ClusterWorkflowEngine.layer.pipe(

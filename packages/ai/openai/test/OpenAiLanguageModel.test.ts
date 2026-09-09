@@ -1992,6 +1992,7 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStre
   return Layer.succeed(
     OpenAiClient.OpenAiClient,
     OpenAiClient.OpenAiClient.of({
+      ["~@effect/ai-openai/OpenAiClient"]: "~@effect/ai-openai/OpenAiClient" as const,
       client: undefined as any,
       createResponse: () => Effect.die(new Error("unexpected createResponse call")),
       createResponseStream: () => Effect.succeed([response, Stream.fromIterable(events)]),

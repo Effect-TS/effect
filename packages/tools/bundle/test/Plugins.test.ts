@@ -91,6 +91,7 @@ describe("Fixtures", () => {
       const { Fixtures } = await import(pathToFileURL(modulePath).href)
 
       assert.deepStrictEqual(await Effect.runPromise(Fixtures.make), {
+        "~@effect/bundle/Fixtures": "~@effect/bundle/Fixtures",
         fixtures: ["example.ts"],
         fixturesDir: fixturesDir + path.sep
       })

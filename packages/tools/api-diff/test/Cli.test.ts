@@ -25,6 +25,7 @@ const snapshot = (ref: string, sha: string, entities: ReadonlyArray<ApiEntity> =
 const WorktreesTest = Layer.succeed(
   Worktrees,
   Worktrees.of({
+    ["~@effect/api-diff/Worktrees"]: "~@effect/api-diff/Worktrees" as const,
     resolveRef: (_repoRoot, ref) => Effect.succeed(ref.repeat(40).slice(0, 40)),
     prepareSnapshot: (options) => Effect.succeed(snapshot(options.ref, options.sha))
   })
@@ -54,6 +55,7 @@ const CheckLayer = ApiDiff.layerNoDependencies.pipe(
   Layer.provide(Layer.succeed(
     Worktrees,
     Worktrees.of({
+      ["~@effect/api-diff/Worktrees"]: "~@effect/api-diff/Worktrees" as const,
       resolveRef: (_repoRoot, ref) => Effect.succeed(ref.repeat(40).slice(0, 40)),
       prepareSnapshot: (options) =>
         Effect.succeed(snapshot(options.ref, options.sha, options.name === "base" ? [removed] : []))

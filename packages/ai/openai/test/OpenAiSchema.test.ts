@@ -426,6 +426,7 @@ describe("OpenAiSchema", () => {
     const client = Layer.succeed(
       OpenAiClient.OpenAiClient,
       OpenAiClient.OpenAiClient.of({
+        ["~@effect/ai-openai/OpenAiClient"]: "~@effect/ai-openai/OpenAiClient" as const,
         client: undefined as any,
         createResponse: () => Effect.die("unexpected"),
         createResponseStream: () =>

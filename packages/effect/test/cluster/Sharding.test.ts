@@ -143,7 +143,7 @@ describe.concurrent("Sharding", () => {
 
   it.effect("interrupts aren't sent for durable messages on shutdown", () =>
     Effect.gen(function*() {
-      let driver!: MessageStorage.MemoryDriver["Service"]
+      let driver!: MessageStorage.MemoryDriver
       yield* Effect.gen(function*() {
         driver = yield* MessageStorage.MemoryDriver
         const makeClient = yield* TestEntity.client
@@ -208,7 +208,7 @@ describe.concurrent("Sharding", () => {
 
             const shardAcquired = Latch.makeUnsafe()
             const armed = Latch.makeUnsafe()
-            let driver!: MessageStorage.MemoryDriver["Service"]
+            let driver!: MessageStorage.MemoryDriver
             const runFiber = yield* Effect.gen(function*() {
               driver = yield* MessageStorage.MemoryDriver
               const sharding = yield* Sharding.Sharding
@@ -288,7 +288,7 @@ describe.concurrent("Sharding", () => {
 
           const shardAcquired = Latch.makeUnsafe()
           const armed = Latch.makeUnsafe()
-          let driver!: MessageStorage.MemoryDriver["Service"]
+          let driver!: MessageStorage.MemoryDriver
           const runFiber = yield* Effect.gen(function*() {
             driver = yield* MessageStorage.MemoryDriver
             const sharding = yield* Sharding.Sharding
@@ -385,7 +385,7 @@ describe.concurrent("Sharding", () => {
 
       const shardAcquired = Latch.makeUnsafe()
       const armed = Latch.makeUnsafe()
-      let driver!: MessageStorage.MemoryDriver["Service"]
+      let driver!: MessageStorage.MemoryDriver
       const runFiber = yield* Effect.gen(function*() {
         driver = yield* MessageStorage.MemoryDriver
         const sharding = yield* Sharding.Sharding
@@ -1109,7 +1109,7 @@ const ActiveTeardownCallerLayer = ActiveTeardownCaller.toLayer(Effect.gen(functi
   return { Arm: () => Effect.void }
 }))
 
-const journalInterrupts = (driver: MessageStorage.MemoryDriver["Service"]) =>
+const journalInterrupts = (driver: MessageStorage.MemoryDriver) =>
   driver.journal.filter((envelope) => envelope._tag === "Interrupt").length
 
 const waitForIdleReap = Effect.fnUntraced(function*(
@@ -1197,7 +1197,7 @@ describe.concurrent("Sharding active teardowns", () => {
 
   it.effect("treats node shutdown interrupts as transient via isShutdown", () =>
     Effect.gen(function*() {
-      let driver!: MessageStorage.MemoryDriver["Service"]
+      let driver!: MessageStorage.MemoryDriver
       let state!: TestEntityState["Service"]
       yield* Effect.gen(function*() {
         driver = yield* MessageStorage.MemoryDriver
@@ -1932,6 +1932,7 @@ const makeFailoverStorageState = (
 
 const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
   RunnerStorage.RunnerStorage.of({
+    ["~effect/cluster/RunnerStorage"]: "~effect/cluster/RunnerStorage" as const,
     getRunners: Effect.sync(() => {
       if (!state.runner) return []
       if (!state.assignSelf) return [[state.runner, false], [otherRunner, true]]
@@ -2000,7 +2001,7 @@ const RegistrationContextHandlers = Effect.map(
   (value) => RegistrationContextEntity.of({ Read: () => Effect.succeed(value) })
 )
 
-const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
+const testConfigDefaults: Partial<ShardingConfig.ShardingConfig> = {
   entityMailboxCapacity: 10,
   entityTerminationTimeout: 0,
   entityMessagePollInterval: 5000,
@@ -2033,10 +2034,10 @@ const TestSharding = TestShardingWithoutStorage.pipe(
 )
 
 const CappedSharding = (
-  config: Partial<ShardingConfig.ShardingConfig["Service"]>,
+  config: Partial<ShardingConfig.ShardingConfig>,
   transformStorage?: (
-    storage: MessageStorage.MessageStorage["Service"]
-  ) => MessageStorage.MessageStorage["Service"]
+    storage: MessageStorage.MessageStorage
+  ) => MessageStorage.MessageStorage
 ) => {
   const configLayer = ShardingConfig.layer({ ...testConfigDefaults, ...config })
   let layer = TestShardingWithoutRunners.pipe(
@@ -2055,7 +2056,7 @@ const CappedSharding = (
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
 
 const ActiveTeardownSharding = (
-  config?: Partial<ShardingConfig.ShardingConfig["Service"]>
+  config?: Partial<ShardingConfig.ShardingConfig>
 ) =>
   ActiveTeardownCallerLayer.pipe(
     Layer.merge(TestEntityNoState),

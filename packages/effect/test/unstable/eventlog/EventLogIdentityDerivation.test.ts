@@ -10,7 +10,8 @@ import {
 const makeIdentity = (options: {
   readonly publicKey: string
   readonly rootSecret: Uint8Array
-}): EventLog.Identity["Service"] => ({
+}): EventLog.Identity => ({
+  ["~effect/eventlog/EventLog/Identity"]: "~effect/eventlog/EventLog/Identity" as const,
   publicKey: options.publicKey,
   privateKey: Redacted.make(options.rootSecret.slice())
 })

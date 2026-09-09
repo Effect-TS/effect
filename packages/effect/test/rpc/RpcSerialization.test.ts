@@ -53,7 +53,7 @@ const codecForJsonString =
   (<S extends Schema.Top>(schema: S) =>
     Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.CodecFor
 
-const serialization: RpcSerialization.RpcSerialization["Service"] = RpcSerialization.RpcSerialization.of({
+const serialization: RpcSerialization.RpcSerialization = RpcSerialization.RpcSerialization.of({
   ...RpcSerialization.ndjson,
   codecFor: codecForJsonString
 })

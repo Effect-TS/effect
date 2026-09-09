@@ -61,6 +61,7 @@ const layerServerProtocol = (codecFor: RpcSerialization.CodecFor) =>
   Layer.effect(RpcServer.Protocol)(
     Effect.map(Queue.unbounded<number>(), (disconnects) =>
       RpcServer.Protocol.of({
+        "~effect/rpc/RpcServer/Protocol": "~effect/rpc/RpcServer/Protocol",
         run: () => Effect.never,
         disconnects,
         send: () => Effect.void,
@@ -144,6 +145,7 @@ describe.concurrent("HttpRunner", () => {
         Effect.provide(RpcSerialization.layerJson),
         Effect.provideService(Socket.WebSocketConstructor, constructor),
         Effect.provideService(RpcClient.ConnectionHooks, {
+          ["~effect/rpc/RpcClient/ConnectionHooks"]: "~effect/rpc/RpcClient/ConnectionHooks" as const,
           onConnect: Deferred.succeed(connected, undefined).pipe(Effect.asVoid),
           onDisconnect: Effect.void
         }),
@@ -285,11 +287,13 @@ describe.concurrent("Runners.makeRpc", () => {
     codecFor: RpcSerialization.CodecFor = Schema.toCodecJson as RpcSerialization.CodecFor
   ) =>
     Layer.succeed(Runners.RpcClientProtocol)({
+      ["~effect/cluster/Runners/RpcClientProtocol"]: "~effect/cluster/Runners/RpcClientProtocol" as const,
       codecFor,
       make: () =>
         Effect.sync(() => {
           let write!: (data: FromServerEncoded) => Effect.Effect<void>
           return RpcClient.Protocol.of({
+            "~effect/rpc/RpcClient/Protocol": "~effect/rpc/RpcClient/Protocol",
             run(_clientId, f) {
               write = f
               return Effect.never

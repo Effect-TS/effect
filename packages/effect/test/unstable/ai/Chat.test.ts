@@ -7,6 +7,7 @@ import * as TestUtils from "./utils.ts"
 
 const withConstantIdGenerator = (id: string) =>
   Effect.provideService(IdGenerator.IdGenerator, {
+    ["~@effect/ai/IdGenerator"]: "~@effect/ai/IdGenerator" as const,
     generateId: () => Effect.succeed(id)
   })
 

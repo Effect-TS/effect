@@ -193,7 +193,7 @@ describe("RpcServer", () => {
             })
         })
         const sharding = Sharding.Sharding.of({
-          ...({} as Sharding.Sharding["Service"]),
+          ...({} as Sharding.Sharding),
           isShutdown: Effect.succeed(false),
           makeClient: () => Effect.succeed(testClient) as never,
           pollStorage: Effect.void

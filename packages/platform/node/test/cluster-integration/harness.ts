@@ -37,7 +37,7 @@ export interface ClusterRunner {
   readonly address: RunnerAddress.RunnerAddress
   readonly index: number
   readonly shardGroups: ReadonlyArray<string>
-  readonly sharding: Sharding.Sharding["Service"]
+  readonly sharding: Sharding.Sharding
   readonly state: () => "frozen" | "killed" | "running" | "stopped"
 }
 
@@ -49,7 +49,7 @@ export interface MessageCounts {
 
 export interface MakeOptions {
   readonly backend: Backend
-  readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
+  readonly config?: Partial<ShardingConfig.ShardingConfig> | undefined
   readonly entities:
     | RunnerEntities
     | ((options: { readonly prefix: string }) => RunnerEntities)
@@ -86,7 +86,7 @@ export interface InsertMessageRow {
   readonly trace_id: string | null
 }
 
-type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
+type HarnessConfig = Partial<ShardingConfig.ShardingConfig> & {
   readonly shardLockDisableAdvisory: boolean
 }
 
@@ -214,7 +214,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
   return { client, set }
 }
 
-const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"]) => {
+const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage) => {
   const gate = Latch.makeUnsafe(true)
   const refreshPaused = Latch.makeUnsafe()
   const syncPaused = Latch.makeUnsafe()
@@ -317,6 +317,7 @@ const trackedClientProtocolLayer = (
     Effect.gen(function*() {
       const serialization = yield* RpcSerialization.RpcSerialization
       return {
+        "~effect/cluster/Runners/RpcClientProtocol": "~effect/cluster/Runners/RpcClientProtocol" as const,
         codecFor: serialization.codecFor,
         make: Effect.fnUntraced(function*(address) {
           const socket = yield* NodeSocket.fromDuplex(
@@ -367,7 +368,7 @@ const runnerHealthLayer = (
 export const socketRunnerLayer = (
   address: RunnerAddress.RunnerAddress,
   entities: RunnerEntities,
-  socketServer: SocketServer.SocketServer["Service"],
+  socketServer: SocketServer.SocketServer,
   config: HarnessConfig,
   clientProtocol = NodeClusterSocket.layerClientProtocol
 ) =>

@@ -127,6 +127,7 @@ const pingBody = {
 }
 
 const directClient = McpSchema.McpServerClient.of({
+  ["~effect/ai/McpSchema/McpServerClient"]: "~effect/ai/McpSchema/McpServerClient" as const,
   clientId: 1,
   protocolVersion: "2025-06-18",
   clientCapabilities: {},
@@ -843,7 +844,7 @@ describe("McpServer", () => {
             })
           )
         )
-        const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
+        const ready = yield* Deferred.make<McpServer.McpServer>()
         yield* Effect.gen(function*() {
           const context = yield* Layer.build(
             McpServer.resource({
