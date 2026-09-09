@@ -90,6 +90,41 @@ const randomBytes = (length: number): Uint8Array => {
 }
 
 describe("HttpCompression", () => {
+  for (
+    const [name, makeResponse] of [
+      ["Stream", () => HttpServerResponse.stream(Stream.succeed(new TextEncoder().encode(bigJson)))],
+      ["Uint8Array", () => HttpServerResponse.uint8Array(new TextEncoder().encode(bigJson))],
+      ["Raw", () => HttpServerResponse.raw(new Response(bigJson).body, { contentType: "text/plain" })]
+    ] as const
+  ) {
+    it(`preserves a Content-Type header override when compressing web ${name} responses`, async () => {
+      const original = HttpServerResponse.setHeader(makeResponse(), "content-type", "application/json")
+      assert.strictEqual(original.headers["content-type"], "application/json")
+      const handler = makeHandler(Effect.succeed(original))
+
+      const compressed = await get(handler, { "accept-encoding": "gzip" })
+      assert.strictEqual(compressed.headers.get("content-encoding"), "gzip")
+      assert.strictEqual(await decompress(await compressed.arrayBuffer(), "gzip"), bigJson)
+      assert.strictEqual(compressed.headers.get("content-type"), original.headers["content-type"])
+    })
+  }
+
+  it("preserves a header-only Content-Type when compressing web Raw responses", async () => {
+    const handler = makeHandler(
+      Effect.sync(() =>
+        HttpServerResponse.raw(new Response(bigJson).body, { headers: { "content-type": "application/json" } })
+      )
+    )
+    const uncompressed = await get(handler, { "accept-encoding": "identity" })
+    assert.strictEqual(uncompressed.headers.get("content-type"), "application/json")
+    assert.strictEqual(await uncompressed.text(), bigJson)
+
+    const compressed = await get(handler, { "accept-encoding": "gzip" })
+    assert.strictEqual(compressed.headers.get("content-encoding"), "gzip")
+    assert.strictEqual(await decompress(await compressed.arrayBuffer(), "gzip"), bigJson)
+    assert.strictEqual(compressed.headers.get("content-type"), uncompressed.headers.get("content-type"))
+  })
+
   it("compresses a compressible response with gzip", async () => {
     const response = await get(makeHandler(bigJsonApp), { "accept-encoding": "gzip" })
     assert.strictEqual(response.status, 200)

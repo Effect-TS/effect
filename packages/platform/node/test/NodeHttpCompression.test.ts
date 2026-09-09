@@ -50,6 +50,28 @@ const get = (
 ) => handler(new Request("http://localhost/", headers === undefined ? {} : { headers }))
 
 describe("NodeHttpCompression", () => {
+  for (
+    const [name, makeResponse] of [
+      ["Stream", () => HttpServerResponse.stream(Stream.succeed(new TextEncoder().encode(bigJson)))],
+      ["Uint8Array", () => HttpServerResponse.uint8Array(new TextEncoder().encode(bigJson))]
+    ] as const
+  ) {
+    it(`preserves a Content-Type header override when compressing ${name} responses`, () => {
+      const original = HttpServerResponse.setHeader(makeResponse(), "content-type", "application/json")
+      assert.strictEqual(original.headers["content-type"], "application/json")
+      return withHandler(
+        Effect.succeed(original),
+        undefined,
+        async (handler) => {
+          const compressed = await get(handler, { "accept-encoding": "gzip" })
+          assert.strictEqual(compressed.headers.get("content-encoding"), "gzip")
+          assert.strictEqual(Zlib.gunzipSync(new Uint8Array(await compressed.arrayBuffer())).toString(), bigJson)
+          assert.strictEqual(compressed.headers.get("content-type"), original.headers["content-type"])
+        }
+      )
+    })
+  }
+
   it.effect("advertises supported algorithms", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
