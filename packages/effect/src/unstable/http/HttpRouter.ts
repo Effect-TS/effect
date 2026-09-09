@@ -46,52 +46,62 @@ const TypeId = "~effect/http/HttpRouter"
  * @category services
  * @since 4.0.0
  */
-export interface HttpRouter {
-  readonly [TypeId]: typeof TypeId
+export declare namespace HttpRouter {
+  /**
+   * Implementation of the HttpRouter service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
 
-  readonly prefixed: (prefix: string) => HttpRouter
+    readonly prefixed: (prefix: string) => HttpRouter["Service"]
 
-  readonly add: <E = never, R = never>(
-    method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
-    path: PathInput,
-    handler:
-      | HttpServerResponse.HttpServerResponse
-      | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
-      | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
-    options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ) => Effect.Effect<
-    void,
-    never,
-    Request.From<"Requires", Exclude<R, Provided>> | Request.From<"Error", E>
-  >
+    readonly add: <E = never, R = never>(
+      method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
+      path: PathInput,
+      handler:
+        | HttpServerResponse.HttpServerResponse
+        | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
+        | ((
+          request: HttpServerRequest.HttpServerRequest["Service"]
+        ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<
+      void,
+      never,
+      Request.From<"Requires", Exclude<R, Provided>> | Request.From<"Error", E>
+    >
 
-  readonly addAll: <const Routes extends ReadonlyArray<Route<any, any>>>(
-    routes: Routes
-  ) => Effect.Effect<
-    void,
-    never,
-    | Request.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
-    | Request.From<"Error", Route.Error<Routes[number]>>
-  >
+    readonly addAll: <const Routes extends ReadonlyArray<Route<any, any>>>(
+      routes: Routes
+    ) => Effect.Effect<
+      void,
+      never,
+      | Request.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
+      | Request.From<"Error", Route.Error<Routes[number]>>
+    >
 
-  readonly addGlobalMiddleware: <E, R>(
-    middleware:
-      & ((
-        effect: Effect.Effect<HttpServerResponse.HttpServerResponse, Types.unhandled>
-      ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>)
-      & (Types.unhandled extends E ? unknown : "You cannot handle any errors")
-  ) => Effect.Effect<
-    void,
-    never,
-    | Request.From<"GlobalRequires", Exclude<R, GlobalProvided>>
-    | Request.From<"GlobalError", Exclude<E, Types.unhandled>>
-  >
+    readonly addGlobalMiddleware: <E, R>(
+      middleware:
+        & ((
+          effect: Effect.Effect<HttpServerResponse.HttpServerResponse, Types.unhandled>
+        ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>)
+        & (Types.unhandled extends E ? unknown : "You cannot handle any errors")
+    ) => Effect.Effect<
+      void,
+      never,
+      | Request.From<"GlobalRequires", Exclude<R, GlobalProvided>>
+      | Request.From<"GlobalError", Exclude<E, Types.unhandled>>
+    >
 
-  readonly asHttpEffect: () => Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    unknown,
-    HttpServerRequest.HttpServerRequest | Scope.Scope
-  >
+    readonly asHttpEffect: () => Effect.Effect<
+      HttpServerResponse.HttpServerResponse,
+      unknown,
+      HttpServerRequest.HttpServerRequest | Scope.Scope
+    >
+  }
 }
 
 /**
@@ -102,9 +112,7 @@ export interface HttpRouter {
  * @category services
  * @since 4.0.0
  */
-export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Service<HttpRouter>(
-  "effect/http/HttpRouter"
-)
+export class HttpRouter extends Context.Service<HttpRouter, HttpRouter.Service>()("effect/http/HttpRouter") {}
 
 /**
  * Constructs an empty `HttpRouter` service.
@@ -163,7 +171,7 @@ export const make = Effect.gen(function*() {
 
   return HttpRouter.of({
     [TypeId]: TypeId,
-    prefixed(this: HttpRouter, prefix: string) {
+    prefixed(this: HttpRouter["Service"], prefix: string) {
       prefix = removeTrailingSlash(prefix as PathInput)
       return HttpRouter.of({
         ...this,
@@ -246,7 +254,7 @@ export const make = Effect.gen(function*() {
   })
 })
 
-function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: string) {
+function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest["Service"], prefix: string) {
   const prefexLen = prefix.length
   return request.modify({ url: request.url.length <= prefexLen ? "/" : request.url.slice(prefexLen) })
 }
@@ -485,7 +493,7 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  * @since 4.0.0
  */
 export const use = <A, E, R>(
-  f: (router: HttpRouter) => Effect.Effect<A, E, R>
+  f: (router: HttpRouter["Service"]) => Effect.Effect<A, E, R>
 ): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => Layer.effectDiscard(Effect.flatMap(HttpRouter, f))
 
 /**
@@ -514,7 +522,9 @@ export const add = <E = never, R = never>(
   handler:
     | HttpServerResponse.HttpServerResponse
     | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
-    | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+    | ((
+      request: HttpServerRequest.HttpServerRequest["Service"]
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
   options?: {
     readonly uninterruptible?: boolean | undefined
   }
@@ -681,7 +691,9 @@ export const route = <E = never, R = never>(
   handler:
     | HttpServerResponse.HttpServerResponse
     | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
-    | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+    | ((
+      request: HttpServerRequest.HttpServerRequest["Service"]
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
   options?: {
     readonly uninterruptible?: boolean | undefined
   }

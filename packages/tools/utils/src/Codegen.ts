@@ -121,12 +121,20 @@ export interface BarrelFile {
  * @category services
  * @since 4.0.0
  */
-export interface BarrelGenerator {
-  readonly discoverFiles: (
-    pattern: string,
-    cwd: string
-  ) => Effect.Effect<Array<BarrelFile>, PlatformError | Glob.GlobError>
-  readonly processFile: (file: BarrelFile) => Effect.Effect<void, PlatformError | Glob.GlobError | BarrelCodegenError>
+export declare namespace BarrelGenerator {
+  /**
+   * Implementation of the BarrelGenerator service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly discoverFiles: (
+      pattern: string,
+      cwd: string
+    ) => Effect.Effect<Array<BarrelFile>, PlatformError | Glob.GlobError>
+    readonly processFile: (file: BarrelFile) => Effect.Effect<void, PlatformError | Glob.GlobError | BarrelCodegenError>
+  }
 }
 
 /**
@@ -135,9 +143,9 @@ export interface BarrelGenerator {
  * @category services
  * @since 4.0.0
  */
-export const BarrelGenerator: Context.Service<BarrelGenerator, BarrelGenerator> = Context.Service(
-  "@effect/utils/BarrelGenerator"
-)
+export class BarrelGenerator
+  extends Context.Service<BarrelGenerator, BarrelGenerator.Service>()("@effect/utils/BarrelGenerator")
+{}
 
 /**
  * Builds the `BarrelGenerator` service, discovering files with `@barrel` annotations and rewriting their generated export sections from matching modules.

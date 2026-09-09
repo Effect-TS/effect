@@ -222,7 +222,7 @@ export const SpecSource = {
    *
    * @since 4.0.0
    */
-  fromString: (spec: string, packagePath: string, pathService: Path.Path): SpecSource => {
+  fromString: (spec: string, packagePath: string, pathService: Path.Path["Service"]): SpecSource => {
     if (spec.startsWith("http://") || spec.startsWith("https://")) {
       return SpecSource.Url(spec)
     }
@@ -237,7 +237,7 @@ export const SpecSource = {
   fromConfig: (
     spec: string | { readonly type: string; readonly statsUrl?: string },
     packagePath: string,
-    pathService: Path.Path
+    pathService: Path.Path["Service"]
   ): SpecSource => {
     if (typeof spec === "string") {
       return SpecSource.fromString(spec, packagePath, pathService)

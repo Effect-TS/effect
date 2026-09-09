@@ -1236,7 +1236,7 @@ interface StatementImpl<A> extends Statement<A> {
   withConnection<XA, E>(
     operation: string,
     f: (
-      connection: Connection,
+      connection: Connection["Service"],
       sql: string,
       params: ReadonlyArray<unknown>
     ) => Effect.Effect<XA, E>,
@@ -1245,7 +1245,7 @@ interface StatementImpl<A> extends Statement<A> {
   withConnectionSpan<XA, E>(
     operation: string,
     f: (
-      connection: Connection,
+      connection: Connection["Service"],
       sql: string,
       params: ReadonlyArray<unknown>
     ) => Effect.Effect<XA, E>,
@@ -1282,7 +1282,7 @@ const StatementProto: Omit<
     this: StatementImpl<any>,
     operation: string,
     f: (
-      connection: Connection,
+      connection: Connection["Service"],
       sql: string,
       params: ReadonlyArray<unknown>
     ) => Effect.Effect<XA, E>,
@@ -1304,7 +1304,7 @@ const StatementProto: Omit<
     this: StatementImpl<any>,
     operation: string,
     f: (
-      connection: Connection,
+      connection: Connection["Service"],
       sql: string,
       params: ReadonlyArray<unknown>
     ) => Effect.Effect<XA, E>,
@@ -1320,7 +1320,7 @@ const StatementProto: Omit<
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
-        : this.borrower((connection: Connection) => f(connection, sql, params))
+        : this.borrower((connection: Connection["Service"]) => f(connection, sql, params))
       return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
         ? Effect.provideService(execute, Tracer.ParentSpan, span)
         : execute

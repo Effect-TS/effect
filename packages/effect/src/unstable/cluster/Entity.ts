@@ -263,10 +263,10 @@ const Proto = {
     return fromRpcGroup(this.type, this.protocol.annotateRpcsMerge(annotations))
   },
   getShardId(this: Entity<string, any>, entityId: EntityId) {
-    return Effect.map(shardingTag, (sharding) => sharding.getShardId(entityId, this.getShardGroup(entityId)))
+    return Effect.map(ShardingTag, (sharding) => sharding.getShardId(entityId, this.getShardGroup(entityId)))
   },
   get client() {
-    return shardingTag.pipe(
+    return ShardingTag.pipe(
       Effect.flatMap((sharding) => sharding.makeClient(this as any))
     )
   },
@@ -295,7 +295,7 @@ const Proto = {
     | Rpc.Middleware<Rpcs>
     | Sharding
   > {
-    return shardingTag.pipe(
+    return ShardingTag.pipe(
       Effect.flatMap((sharding) =>
         sharding.registerEntity(
           this,
@@ -586,7 +586,7 @@ export class Request<Rpc extends Rpc.Any> extends Data.Class<
   }
 }
 
-const shardingTag = Context.Service<Sharding, Sharding["Service"]>("effect/cluster/Sharding")
+class ShardingTag extends Context.Service<ShardingTag, Sharding["Service"]>()("effect/cluster/Sharding") {}
 
 /**
  * Builds an in-memory test client for an entity layer.
@@ -626,7 +626,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
     readonly disableFatalDefects: boolean | undefined
     readonly build: Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>
   }>()
-  const sharding = shardingTag.of({
+  const sharding = ShardingTag.of({
     ...({} as Sharding["Service"]),
     registerEntity: (entity, handlers, options) =>
       Effect.contextWith((context) => {
@@ -639,7 +639,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
         return Effect.void
       })
   })
-  yield* Layer.build(Layer.provide(layer, Layer.succeed(shardingTag)(sharding)))
+  yield* Layer.build(Layer.provide(layer, Layer.succeed(ShardingTag)(sharding)))
   const entityEntry = entityMap.get(entity.type)
   if (!entityEntry) {
     return yield* Effect.die(`Entity.makeTestClient: ${entity.type} was not registered by layer`)
@@ -722,7 +722,7 @@ export const keepAlive: (
     yield* olatch.value.open
     return
   }
-  const sharding = yield* shardingTag
+  const sharding = yield* ShardingTag
   const address = yield* CurrentAddress
   const requestId = yield* sharding.getSnowflake
   const span = yield* Effect.orDie(Effect.currentSpan)

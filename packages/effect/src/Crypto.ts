@@ -74,84 +74,92 @@ export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
  * @category services
  * @since 4.0.0
  */
-export interface Crypto {
-  readonly [TypeId]: typeof TypeId
-
+export declare namespace Crypto {
   /**
-   * Generates a random integer in the range Number.MIN_SAFE_INTEGER to
-   * Number.MAX_SAFE_INTEGER (both inclusive).
-   */
-  nextIntUnsafe(): number
-
-  /**
-   * Generates a random number in the range 0 (inclusive) to 1 (exclusive).
-   */
-  nextDoubleUnsafe(): number
-
-  /**
-   * Generates cryptographically secure random bytes.
-   */
-  randomBytes(size: number): Effect.Effect<Uint8Array, PlatformError.PlatformError>
-
-  /**
-   * Computes a cryptographic digest for the supplied data.
-   */
-  digest(
-    algorithm: DigestAlgorithm,
-    data: Uint8Array
-  ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
-
-  /**
-   * Generates a cryptographically secure random number between 0 (inclusive)
-   * and 1 (exclusive).
-   */
-  readonly random: Effect.Effect<number>
-
-  /**
-   * Generates a cryptographically secure random boolean.
-   */
-  readonly randomBoolean: Effect.Effect<boolean>
-
-  /**
-   * Generates a cryptographically secure random integer between
-   * `Number.MIN_SAFE_INTEGER` and `Number.MAX_SAFE_INTEGER` (both inclusive).
-   */
-  readonly randomInt: Effect.Effect<number>
-
-  /**
-   * Generates a cryptographically secure random number between `min`
-   * (inclusive) and `max` (exclusive).
-   */
-  randomBetween(min: number, max: number): Effect.Effect<number>
-
-  /**
-   * Generates a cryptographically secure random integer between `min` and `max`.
+   * Implementation of the Crypto service.
    *
-   * **Details**
-   *
-   * The lower bound is rounded up with `Math.ceil` and the upper bound is
-   * rounded down with `Math.floor`. By default the range is inclusive; set
-   * `options.halfOpen: true` to exclude the upper bound.
+   * @category models
+   * @since 4.0.0
    */
-  randomIntBetween(min: number, max: number, options?: {
-    readonly halfOpen?: boolean | undefined
-  }): Effect.Effect<number>
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
 
-  /**
-   * Uses the cryptographically secure random generator to shuffle the supplied
-   * iterable.
-   */
-  randomShuffle<A>(elements: Iterable<A>): Effect.Effect<Array<A>>
+    /**
+     * Generates a random integer in the range Number.MIN_SAFE_INTEGER to
+     * Number.MAX_SAFE_INTEGER (both inclusive).
+     */
+    nextIntUnsafe(): number
 
-  /**
-   * Generates a cryptographically secure UUIDv4 string.
-   */
-  readonly randomUUIDv4: Effect.Effect<string, PlatformError.PlatformError>
+    /**
+     * Generates a random number in the range 0 (inclusive) to 1 (exclusive).
+     */
+    nextDoubleUnsafe(): number
 
-  /**
-   * Generates a cryptographically secure UUIDv7 string.
-   */
-  readonly randomUUIDv7: Effect.Effect<string, PlatformError.PlatformError>
+    /**
+     * Generates cryptographically secure random bytes.
+     */
+    randomBytes(size: number): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+    /**
+     * Computes a cryptographic digest for the supplied data.
+     */
+    digest(
+      algorithm: DigestAlgorithm,
+      data: Uint8Array
+    ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+    /**
+     * Generates a cryptographically secure random number between 0 (inclusive)
+     * and 1 (exclusive).
+     */
+    readonly random: Effect.Effect<number>
+
+    /**
+     * Generates a cryptographically secure random boolean.
+     */
+    readonly randomBoolean: Effect.Effect<boolean>
+
+    /**
+     * Generates a cryptographically secure random integer between
+     * `Number.MIN_SAFE_INTEGER` and `Number.MAX_SAFE_INTEGER` (both inclusive).
+     */
+    readonly randomInt: Effect.Effect<number>
+
+    /**
+     * Generates a cryptographically secure random number between `min`
+     * (inclusive) and `max` (exclusive).
+     */
+    randomBetween(min: number, max: number): Effect.Effect<number>
+
+    /**
+     * Generates a cryptographically secure random integer between `min` and `max`.
+     *
+     * **Details**
+     *
+     * The lower bound is rounded up with `Math.ceil` and the upper bound is
+     * rounded down with `Math.floor`. By default the range is inclusive; set
+     * `options.halfOpen: true` to exclude the upper bound.
+     */
+    randomIntBetween(min: number, max: number, options?: {
+      readonly halfOpen?: boolean | undefined
+    }): Effect.Effect<number>
+
+    /**
+     * Uses the cryptographically secure random generator to shuffle the supplied
+     * iterable.
+     */
+    randomShuffle<A>(elements: Iterable<A>): Effect.Effect<Array<A>>
+
+    /**
+     * Generates a cryptographically secure UUIDv4 string.
+     */
+    readonly randomUUIDv4: Effect.Effect<string, PlatformError.PlatformError>
+
+    /**
+     * Generates a cryptographically secure UUIDv7 string.
+     */
+    readonly randomUUIDv7: Effect.Effect<string, PlatformError.PlatformError>
+  }
 }
 
 /**
@@ -172,7 +180,7 @@ export interface Crypto {
  * @category services
  * @since 4.0.0
  */
-export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/Crypto")
+export class Crypto extends Context.Service<Crypto, Crypto.Service>()("effect/Crypto") {}
 
 /**
  * Creates a `Crypto` service from the primitive implementation, deriving the
@@ -219,10 +227,11 @@ export const make = (
       data: Uint8Array
     ) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
   }
-): Crypto => {
+): Crypto["Service"] => {
   const randomBytesUnsafe = impl.randomBytes
 
-  const randomBytes: Crypto["randomBytes"] = (size) => Effect.map(validateSize("randomBytes", size), randomBytesUnsafe)
+  const randomBytes: Crypto["Service"]["randomBytes"] = (size) =>
+    Effect.map(validateSize("randomBytes", size), randomBytesUnsafe)
 
   const readUint53 = (bytes: Uint8Array): number =>
     ((bytes[0] & 0x1f) * 2 ** 48) + (bytes[1] * 2 ** 40) + (bytes[2] * 2 ** 32) +

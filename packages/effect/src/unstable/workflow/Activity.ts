@@ -306,12 +306,12 @@ export const raceAll = <const Activities extends NonEmptyReadonlyArray<Any>>(
 // internal
 // -----------------------------------------------------------------------------
 
-const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine["Service"]>(
+class EngineTag extends Context.Service<EngineTag, WorkflowEngine["Service"]>()(
   "effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
-)
-const InstanceTag = Context.Service<WorkflowInstance, WorkflowInstance["Service"]>(
+) {}
+class InstanceTag extends Context.Service<InstanceTag, WorkflowInstance["Service"]>()(
   "effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
-)
+) {}
 
 const makeExecute = Effect.fnUntraced(function*<
   R,

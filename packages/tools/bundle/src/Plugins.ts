@@ -30,7 +30,7 @@ import { type PluginVisualizerOptions, visualizer } from "rollup-plugin-visualiz
 const EFFECT_PACKAGE_REGEX = /^(@effect\/[\w-]+|effect)(\/.*)?$/
 const TYPE_SCRIPT_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"])
 
-const toLocalDistPath = (pathService: Path.Path, packageDir: string, resolvedId: string): string => {
+const toLocalDistPath = (pathService: Path.Path["Service"], packageDir: string, resolvedId: string): string => {
   const srcDir = pathService.join(packageDir, "src")
   const relative = pathService.relative(srcDir, resolvedId)
   if (relative === "" || relative.startsWith("..") || pathService.isAbsolute(relative)) {
@@ -103,7 +103,7 @@ const resolvePluginOptions = (options: PluginOptions): ResolvedPluginOptions => 
  * @category constructors
  * @since 4.0.0
  */
-export const createResolveLocalPackageImports = (pathService: Path.Path): Plugin => ({
+export const createResolveLocalPackageImports = (pathService: Path.Path["Service"]): Plugin => ({
   name: "rollup-plugin-resolve-imports",
   async resolveId(source, importer) {
     const match = source.match(EFFECT_PACKAGE_REGEX)
@@ -129,7 +129,7 @@ export const createResolveLocalPackageImports = (pathService: Path.Path): Plugin
  * @category constructors
  * @since 4.0.0
  */
-export const createPlugins = (pathService: Path.Path, options: PluginOptions = {}): Array<Plugin> => {
+export const createPlugins = (pathService: Path.Path["Service"], options: PluginOptions = {}): Array<Plugin> => {
   const resolved = resolvePluginOptions(options)
   const plugins: Array<Plugin> = [
     createResolveLocalPackageImports(pathService),

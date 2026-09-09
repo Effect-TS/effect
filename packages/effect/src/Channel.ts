@@ -284,7 +284,7 @@ const ChannelProto = {
 export const fromTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, EX, EnvX, Env>(
   transform: (
     upstream: Pull.Pull<InElem, InErr, InDone>,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect.Effect<Pull.Pull<OutElem, OutErr, OutDone, EnvX>, EX, Env>
 ): Channel<
   OutElem,
@@ -296,7 +296,7 @@ export const fromTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, E
   Env | EnvX
 > => {
   const self = Object.create(ChannelProto)
-  self.transform = (upstream: any, scope: Scope.Scope) =>
+  self.transform = (upstream: any, scope: Scope.Scope["Service"]) =>
     Effect.catchCause(transform(upstream, scope), (cause) => Effect.succeed(Effect.failCause(cause)))
   return self
 }
@@ -343,7 +343,7 @@ export const transformPull = <
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
   f: (
     pull: Pull.Pull<OutElem, OutErr, OutDone>,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect.Effect<Pull.Pull<OutElem2, OutErr2, OutDone2, Env2>, OutErrX, EnvX>
 ): Channel<
   OutElem2,
@@ -400,8 +400,8 @@ export const fromPull = <OutElem, OutErr, OutDone, EX, EnvX, Env>(
 export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, InDone, EX, EnvX, Env>(
   f: (
     upstream: Pull.Pull<InElem, InErr, InDone>,
-    scope: Scope.Scope,
-    forkedScope: Scope.Scope
+    scope: Scope.Scope["Service"],
+    forkedScope: Scope.Scope["Service"]
   ) => Effect.Effect<Pull.Pull<OutElem, OutErr, OutDone, EnvX>, EX, Env>
 ): Channel<OutElem, Pull.ExcludeDone<OutErr> | EX, OutDone, InElem, InErr, InDone, Env | EnvX> =>
   fromTransform(
@@ -438,7 +438,7 @@ export const toTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env
   channel: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
 ): (
   upstream: Pull.Pull<InElem, InErr, InDone>,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ) => Effect.Effect<Pull.Pull<OutElem, OutErr, OutDone>, never, Env> => (channel as any).transform
 
 /**
@@ -458,7 +458,7 @@ export const toTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env
 export const DefaultChunkSize: number = 4096
 
 const asyncQueue = <A, E = never, R = never>(
-  scope: Scope.Scope,
+  scope: Scope.Scope["Service"],
   f: (queue: Queue.Queue<A, E | Cause.Done>) => Effect.Effect<unknown, E, R | Scope.Scope>,
   options?: {
     readonly bufferSize?: number | undefined
@@ -1829,7 +1829,7 @@ export const fromTransformStream = <IE, I, O, E>(options: {
   })
 
 const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   readonly exit?: MutableRef.MutableRef<Exit.Exit<never, E | E2 | Cause.Done> | undefined> | undefined
   readonly readable: ReadableStream<A>
   readonly onError: (error: unknown) => E
@@ -8408,7 +8408,7 @@ export const toPull: <OutElem, OutErr, OutDone, Env>(
  */
 export const toPullScoped = <OutElem, OutErr, OutDone, Env>(
   self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ): Effect.Effect<Pull.Pull<OutElem, OutErr, OutDone, Env>, never, Env> => toTransform(self)(Cause.done(), scope)
 
 /**

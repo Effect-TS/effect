@@ -29,7 +29,7 @@ import type { Pod as K8sPod } from "./K8sTypes.ts"
  */
 export class K8sHttpClient extends Context.Service<
   K8sHttpClient,
-  HttpClient.HttpClient
+  HttpClient.HttpClient["Service"]
 >()("effect/cluster/K8sHttpClient") {}
 
 /**

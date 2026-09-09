@@ -55,17 +55,25 @@ export interface DiscoveredProvider {
  * @category services
  * @since 4.0.0
  */
-export interface ProviderDiscovery {
-  readonly discover: () => Effect.Effect<
-    Array<DiscoveredProvider>,
-    DiscoveryError | Glob.GlobError
-  >
-  readonly discoverOne: (
-    name: string
-  ) => Effect.Effect<
-    DiscoveredProvider,
-    DiscoveryError | ProviderNotFoundError | Glob.GlobError
-  >
+export declare namespace ProviderDiscovery {
+  /**
+   * Implementation of the ProviderDiscovery service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly discover: () => Effect.Effect<
+      Array<DiscoveredProvider>,
+      DiscoveryError | Glob.GlobError
+    >
+    readonly discoverOne: (
+      name: string
+    ) => Effect.Effect<
+      DiscoveredProvider,
+      DiscoveryError | ProviderNotFoundError | Glob.GlobError
+    >
+  }
 }
 
 /**
@@ -74,9 +82,9 @@ export interface ProviderDiscovery {
  * @category services
  * @since 4.0.0
  */
-export const ProviderDiscovery: Context.Service<ProviderDiscovery, ProviderDiscovery> = Context.Service(
-  "@effect/ai-codegen/ProviderDiscovery"
-)
+export class ProviderDiscovery
+  extends Context.Service<ProviderDiscovery, ProviderDiscovery.Service>()("@effect/ai-codegen/ProviderDiscovery")
+{}
 
 /**
  * Error during provider discovery.

@@ -24,9 +24,9 @@ interface AtomStore<A> {
   readonly getServerSnapshot: () => A
 }
 
-const storeRegistry = new WeakMap<AtomRegistry.AtomRegistry, WeakMap<Atom.Atom<any>, AtomStore<any>>>()
+const storeRegistry = new WeakMap<AtomRegistry.AtomRegistry["Service"], WeakMap<Atom.Atom<any>, AtomStore<any>>>()
 
-function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): AtomStore<A> {
+function makeStore<A>(registry: AtomRegistry.AtomRegistry["Service"], atom: Atom.Atom<A>): AtomStore<A> {
   let stores = storeRegistry.get(registry)
   if (stores === undefined) {
     stores = new WeakMap()
@@ -51,13 +51,13 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
   return newStore
 }
 
-function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A {
+function useStore<A>(registry: AtomRegistry.AtomRegistry["Service"], atom: Atom.Atom<A>): A {
   const store = makeStore(registry, atom)
 
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
 }
 
-const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
+const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry["Service"], WeakSet<Atom.Atom<any>>>()
 
 /**
  * Seeds initial atom values in the current React atom registry.
@@ -122,12 +122,12 @@ export const useAtomValue: {
   return useStore(registry, atom)
 }
 
-function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): void {
+function mountAtom<A>(registry: AtomRegistry.AtomRegistry["Service"], atom: Atom.Atom<A>): void {
   React.useEffect(() => registry.mount(atom), [atom, registry])
 }
 
 function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>(
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   atom: Atom.Writable<R, W>,
   options?: {
     readonly mode?: ([R] extends [AsyncResult.AsyncResult<any, any>] ? Mode : "value") | undefined
@@ -294,17 +294,17 @@ export const useAtom = <R, W, const Mode extends "value" | "promise" | "promiseE
 
 const atomPromiseMap = {
   suspendOnWaiting: new WeakMap<
-    AtomRegistry.AtomRegistry,
+    AtomRegistry.AtomRegistry["Service"],
     WeakMap<Atom.Atom<any>, Promise<void>>
   >(),
   default: new WeakMap<
-    AtomRegistry.AtomRegistry,
+    AtomRegistry.AtomRegistry["Service"],
     WeakMap<Atom.Atom<any>, Promise<void>>
   >()
 }
 
 function atomToPromise<A, E>(
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
   suspendOnWaiting: boolean
 ) {
@@ -333,7 +333,7 @@ function atomToPromise<A, E>(
 }
 
 function atomResultOrSuspend<A, E>(
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
   suspendOnWaiting: boolean
 ) {

@@ -53,7 +53,7 @@ export declare namespace OpenAiConfig {
    * @since 4.0.0
    */
   export interface Service {
-    readonly transformClient?: ((client: HttpClient) => HttpClient) | undefined
+    readonly transformClient?: ((client: HttpClient["Service"]) => HttpClient["Service"]) | undefined
   }
 }
 
@@ -81,11 +81,16 @@ export declare namespace OpenAiConfig {
  * @since 4.0.0
  */
 export const withClientTransform: {
-  (transform: (client: HttpClient) => HttpClient): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, transform: (client: HttpClient) => HttpClient): Effect.Effect<A, E, R>
+  (
+    transform: (client: HttpClient["Service"]) => HttpClient["Service"]
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    transform: (client: HttpClient["Service"]) => HttpClient["Service"]
+  ): Effect.Effect<A, E, R>
 } = dual(2, <A, E, R>(
   self: Effect.Effect<A, E, R>,
-  transformClient: (client: HttpClient) => HttpClient
+  transformClient: (client: HttpClient["Service"]) => HttpClient["Service"]
 ) =>
   Effect.flatMap(
     OpenAiConfig.getOrUndefined,

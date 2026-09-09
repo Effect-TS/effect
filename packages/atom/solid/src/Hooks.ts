@@ -17,7 +17,7 @@ import type { Accessor, ResourceOptions, ResourceReturn } from "solid-js"
 import { createComputed, createEffect, createMemo, createResource, createSignal, onCleanup, useContext } from "solid-js"
 import { RegistryContext } from "./RegistryContext.ts"
 
-const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
+const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry["Service"], WeakSet<Atom.Atom<any>>>()
 
 /**
  * Seeds initial atom values in the current Solid atom registry.
@@ -66,7 +66,7 @@ export const useAtomValue: {
   return createAtomAccessor(registry, f ? () => Atom.map(atom(), f) : atom)
 }
 
-function createAtomAccessor<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): Accessor<A> {
+function createAtomAccessor<A>(registry: AtomRegistry.AtomRegistry["Service"], atom: () => Atom.Atom<A>): Accessor<A> {
   const [value, setValue] = createSignal<A>(null as any)
   createComputed(() => {
     onCleanup(registry.subscribe(atom(), setValue as any, constImmediate))
@@ -76,14 +76,14 @@ function createAtomAccessor<A>(registry: AtomRegistry.AtomRegistry, atom: () => 
 
 const constImmediate = { immediate: true }
 
-function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): void {
+function mountAtom<A>(registry: AtomRegistry.AtomRegistry["Service"], atom: () => Atom.Atom<A>): void {
   createComputed(() => {
     onCleanup(registry.mount(atom()))
   })
 }
 
 function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>(
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   atom: () => Atom.Writable<R, W>,
   options?: {
     readonly mode?: ([R] extends [AsyncResult.AsyncResult<any, any>] ? Mode : "value") | undefined

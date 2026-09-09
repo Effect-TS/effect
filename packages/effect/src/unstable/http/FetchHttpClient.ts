@@ -50,7 +50,7 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
   "effect/http/FetchHttpClient/RequestInit"
 ) {}
 
-const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
+const fetch: HttpClient.HttpClient["Service"] = HttpClient.make((request, url, signal, fiber) => {
   const fetch = fiber.getRef(Fetch)
   const options: globalThis.RequestInit = Context.getOrUndefined(fiber.context, RequestInit) ?? {}
   let headers = options.headers

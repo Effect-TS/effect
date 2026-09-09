@@ -164,24 +164,32 @@ export type TypeId = typeof TypeId
  * @category services
  * @since 4.0.0
  */
-export interface MssqlClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
+export declare namespace MssqlClient {
+  /**
+   * Implementation of the MssqlClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
 
-  readonly config: MssqlClientConfig
+    readonly config: MssqlClientConfig
 
-  readonly param: (
-    type: DataType,
-    value: unknown,
-    options?: ParameterOptions
-  ) => Statement.Fragment
+    readonly param: (
+      type: DataType,
+      value: unknown,
+      options?: ParameterOptions
+    ) => Statement.Fragment
 
-  readonly call: <
-    I extends Record<string, Parameter<any>>,
-    O extends Record<string, Parameter<any>>,
-    A extends object
-  >(
-    procedure: Procedure.ProcedureWithValues<I, O, A>
-  ) => Effect.Effect<Procedure.Procedure.Result<O, A>, SqlError>
+    readonly call: <
+      I extends Record<string, Parameter<any>>,
+      O extends Record<string, Parameter<any>>,
+      A extends object
+    >(
+      procedure: Procedure.ProcedureWithValues<I, O, A>
+    ) => Effect.Effect<Procedure.Procedure.Result<O, A>, SqlError>
+  }
 }
 
 /**
@@ -195,7 +203,7 @@ export interface MssqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const MssqlClient = Context.Service<MssqlClient>("@effect/sql-mssql/MssqlClient")
+export class MssqlClient extends Context.Service<MssqlClient, MssqlClient.Service>()("@effect/sql-mssql/MssqlClient") {}
 
 /**
  * Configuration for a Microsoft SQL Server client, including connection, authentication, pool, parameter type, span attribute, and query/result name transform options.
@@ -238,7 +246,7 @@ export interface MssqlClientConfig {
   readonly transformQueryNames?: ((str: string) => string) | undefined
 }
 
-interface MssqlConnection extends Connection {
+interface MssqlConnection extends Connection.Service {
   readonly call: (
     procedure: Procedure.ProcedureWithValues<any, any, any>,
     transformRows: ((rows: ReadonlyArray<any>) => ReadonlyArray<any>) | undefined
@@ -265,7 +273,7 @@ let clientIdCounter = 0
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<MssqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<MssqlClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
@@ -570,7 +578,7 @@ export const make = (
       rollbackSavepoint: (conn, id) => conn.rollback(`effect_sql_${id}`)
     })
 
-    return identity<MssqlClient>(Object.assign(
+    return identity<MssqlClient["Service"]>(Object.assign(
       yield* Client.make({
         acquirer: Pool.get(pool),
         compiler,

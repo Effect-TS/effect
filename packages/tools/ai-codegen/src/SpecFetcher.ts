@@ -46,11 +46,19 @@ export class SpecFetchError extends Data.TaggedError("SpecFetchError")<{
  * @category services
  * @since 4.0.0
  */
-export interface SpecFetcher {
-  readonly fetch: (
-    source: SpecSource,
-    provider: string
-  ) => Effect.Effect<unknown, SpecFetchError>
+export declare namespace SpecFetcher {
+  /**
+   * Implementation of the SpecFetcher service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly fetch: (
+      source: SpecSource,
+      provider: string
+    ) => Effect.Effect<unknown, SpecFetchError>
+  }
 }
 
 /**
@@ -59,9 +67,9 @@ export interface SpecFetcher {
  * @category services
  * @since 4.0.0
  */
-export const SpecFetcher: Context.Service<SpecFetcher, SpecFetcher> = Context.Service(
-  "@effect/ai-codegen/SpecFetcher"
-)
+export class SpecFetcher
+  extends Context.Service<SpecFetcher, SpecFetcher.Service>()("@effect/ai-codegen/SpecFetcher")
+{}
 
 /**
  * Layer providing the SpecFetcher service.

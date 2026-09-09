@@ -42,10 +42,18 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
  * @category services
  * @since 2.0.0
  */
-export interface Scope {
-  readonly [TypeId]: typeof TypeId
-  readonly strategy: "sequential" | "parallel"
-  state: State.Open | State.Closed | State.Empty
+export declare namespace Scope {
+  /**
+   * Implementation of the Scope service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    readonly strategy: "sequential" | "parallel"
+    state: State.Open | State.Closed | State.Empty
+  }
 }
 /**
  * A `Closeable` scope extends the base `Scope` interface with the ability
@@ -70,7 +78,7 @@ export interface Scope {
  * @category models
  * @since 2.0.0
  */
-export interface Closeable extends Scope {
+export interface Closeable extends Scope.Service {
   readonly [CloseableTypeId]: typeof CloseableTypeId
 }
 
@@ -212,7 +220,15 @@ export declare namespace State {
  * @category services
  * @since 2.0.0
  */
-export const Scope: Context.Service<Scope, Scope> = effect.scopeTag
+export const Scope: Context.ServiceClass<Scope, "effect/Scope", Scope.Service> = effect.Scope
+
+/**
+ * Identifier for the current scope.
+ *
+ * @category services
+ * @since 2.0.0
+ */
+export interface Scope extends Context.ServiceClass.Shape<"effect/Scope", Scope.Service> {}
 
 /**
  * Creates a new `Scope` with the specified finalizer strategy.
@@ -308,8 +324,8 @@ export const makeUnsafe: (finalizerStrategy?: "sequential" | "parallel") => Clos
  * @since 4.0.0
  */
 export const provide: {
-  (value: Scope): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Scope>>
-  <A, E, R>(self: Effect<A, E, R>, value: Scope): Effect<A, E, Exclude<R, Scope>>
+  (value: Scope["Service"]): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Scope>>
+  <A, E, R>(self: Effect<A, E, R>, value: Scope["Service"]): Effect<A, E, Exclude<R, Scope>>
 } = effect.provideScope
 
 /**
@@ -345,8 +361,10 @@ export const provide: {
  * @category combinators
  * @since 2.0.0
  */
-export const addFinalizerExit: (scope: Scope, finalizer: (exit: Exit<any, any>) => Effect<unknown>) => Effect<void> =
-  effect.scopeAddFinalizerExit
+export const addFinalizerExit: (
+  scope: Scope["Service"],
+  finalizer: (exit: Exit<any, any>) => Effect<unknown>
+) => Effect<void> = effect.scopeAddFinalizerExit
 
 /**
  * Registers a finalizer effect on a scope.
@@ -379,7 +397,8 @@ export const addFinalizerExit: (scope: Scope, finalizer: (exit: Exit<any, any>) 
  * @category combinators
  * @since 2.0.0
  */
-export const addFinalizer: (scope: Scope, finalizer: Effect<unknown>) => Effect<void> = effect.scopeAddFinalizer
+export const addFinalizer: (scope: Scope["Service"], finalizer: Effect<unknown>) => Effect<void> =
+  effect.scopeAddFinalizer
 
 /**
  * Creates a closeable child scope registered with a parent scope.
@@ -413,7 +432,7 @@ export const addFinalizer: (scope: Scope, finalizer: Effect<unknown>) => Effect<
  * @since 2.0.0
  */
 export const fork: (
-  scope: Scope,
+  scope: Scope["Service"],
   finalizerStrategy?: "sequential" | "parallel"
 ) => Effect<Closeable> = effect.scopeFork
 
@@ -453,7 +472,7 @@ export const fork: (
  * @category combinators
  * @since 4.0.0
  */
-export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "parallel") => Closeable =
+export const forkUnsafe: (scope: Scope["Service"], finalizerStrategy?: "sequential" | "parallel") => Closeable =
   effect.scopeForkUnsafe
 
 /**
@@ -490,7 +509,7 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  * @category combinators
  * @since 2.0.0
  */
-export const close: <A, E>(self: Scope, exit: Exit<A, E>) => Effect<void> = effect.scopeClose
+export const close: <A, E>(self: Scope["Service"], exit: Exit<A, E>) => Effect<void> = effect.scopeClose
 
 /**
  * Closes a scope unsafely with the provided exit value.
@@ -515,7 +534,7 @@ export const close: <A, E>(self: Scope, exit: Exit<A, E>) => Effect<void> = effe
  * @category unsafe
  * @since 4.0.0
  */
-export const closeUnsafe: <A, E>(self: Scope, exit_: Exit<A, E>) => Effect<void, never, never> | undefined =
+export const closeUnsafe: <A, E>(self: Scope["Service"], exit_: Exit<A, E>) => Effect<void, never, never> | undefined =
   effect.scopeCloseUnsafe
 
 /**

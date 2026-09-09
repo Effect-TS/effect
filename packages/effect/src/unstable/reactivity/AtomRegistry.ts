@@ -47,7 +47,7 @@ export const TypeId: TypeId = "~effect/reactivity/AtomRegistry"
  * @category guards
  * @since 4.0.0
  */
-export const isAtomRegistry = (u: unknown): u is AtomRegistry => hasProperty(u, TypeId)
+export const isAtomRegistry = (u: unknown): u is AtomRegistry["Service"] => hasProperty(u, TypeId)
 
 /**
  * The runtime registry that stores atom nodes and coordinates reads, writes,
@@ -61,25 +61,33 @@ export const isAtomRegistry = (u: unknown): u is AtomRegistry => hasProperty(u, 
  * @category models
  * @since 4.0.0
  */
-export interface AtomRegistry {
-  readonly [TypeId]: TypeId
-  readonly scheduler: Scheduler
-  readonly schedulerAsync: Scheduler
-  readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
-  readonly get: <A>(atom: Atom.Atom<A>) => A
-  readonly mount: <A>(atom: Atom.Atom<A>) => () => void
-  readonly refresh: <A>(atom: Atom.Atom<A>) => void
-  readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
-  readonly setSerializable: (key: string, encoded: unknown) => void
-  readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
-  readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
-  readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
-    readonly immediate?: boolean
-  }) => () => void
-  readonly reset: () => void
-  readonly dispose: () => void
-  onNodeAdded?: ((node: Node<any>) => void) | undefined
-  onNodeRemoved?: ((node: Node<any>) => void) | undefined
+export declare namespace AtomRegistry {
+  /**
+   * Implementation of the AtomRegistry service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: TypeId
+    readonly scheduler: Scheduler
+    readonly schedulerAsync: Scheduler
+    readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
+    readonly get: <A>(atom: Atom.Atom<A>) => A
+    readonly mount: <A>(atom: Atom.Atom<A>) => () => void
+    readonly refresh: <A>(atom: Atom.Atom<A>) => void
+    readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
+    readonly setSerializable: (key: string, encoded: unknown) => void
+    readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
+    readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
+    readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
+      readonly immediate?: boolean
+    }) => () => void
+    readonly reset: () => void
+    readonly dispose: () => void
+    onNodeAdded?: ((node: Node<any>) => void) | undefined
+    onNodeRemoved?: ((node: Node<any>) => void) | undefined
+  }
 }
 
 /**
@@ -121,7 +129,7 @@ export const make = (
     readonly timeoutResolution?: number | undefined
     readonly defaultIdleTTL?: number | undefined
   } | undefined
-): AtomRegistry =>
+): AtomRegistry["Service"] =>
   new RegistryImpl(
     options?.initialValues,
     options?.scheduleTask,
@@ -140,7 +148,7 @@ export const make = (
  * @category services
  * @since 4.0.0
  */
-export const AtomRegistry = Context.Service<AtomRegistry>(TypeId)
+export class AtomRegistry extends Context.Service<AtomRegistry, AtomRegistry.Service>()(TypeId) {}
 
 /**
  * Creates a layer that provides an `AtomRegistry` configured with the supplied
@@ -196,11 +204,11 @@ export const layer: Layer.Layer<AtomRegistry> = layerOptions()
  * @since 4.0.0
  */
 export const toStream: {
-  <A>(atom: Atom.Atom<A>): (self: AtomRegistry) => Stream.Stream<A>
-  <A>(self: AtomRegistry, atom: Atom.Atom<A>): Stream.Stream<A>
+  <A>(atom: Atom.Atom<A>): (self: AtomRegistry["Service"]) => Stream.Stream<A>
+  <A>(self: AtomRegistry["Service"], atom: Atom.Atom<A>): Stream.Stream<A>
 } = dual(
   2,
-  <A>(self: AtomRegistry, atom: Atom.Atom<A>) =>
+  <A>(self: AtomRegistry["Service"], atom: Atom.Atom<A>) =>
     Stream.callback<A>((queue) =>
       Effect.suspend(() => {
         const fiber = Fiber.getCurrent()!
@@ -226,11 +234,11 @@ export const toStream: {
  * @since 4.0.0
  */
 export const toStreamResult: {
-  <A, E>(atom: Atom.Atom<Result.AsyncResult<A, E>>): (self: AtomRegistry) => Stream.Stream<A, E>
-  <A, E>(self: AtomRegistry, atom: Atom.Atom<Result.AsyncResult<A, E>>): Stream.Stream<A, E>
+  <A, E>(atom: Atom.Atom<Result.AsyncResult<A, E>>): (self: AtomRegistry["Service"]) => Stream.Stream<A, E>
+  <A, E>(self: AtomRegistry["Service"], atom: Atom.Atom<Result.AsyncResult<A, E>>): Stream.Stream<A, E>
 } = dual(
   2,
-  <A, E>(self: AtomRegistry, atom: Atom.Atom<Result.AsyncResult<A, E>>): Stream.Stream<A, E> =>
+  <A, E>(self: AtomRegistry["Service"], atom: Atom.Atom<Result.AsyncResult<A, E>>): Stream.Stream<A, E> =>
     toStream(self, atom).pipe(
       Stream.filter(Result.isNotInitial),
       Stream.mapEffect((result) =>
@@ -254,13 +262,13 @@ export const toStreamResult: {
 export const getResult: {
   <A, E>(atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
     readonly suspendOnWaiting?: boolean | undefined
-  }): (self: AtomRegistry) => Effect.Effect<A, E>
-  <A, E>(self: AtomRegistry, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
+  }): (self: AtomRegistry["Service"]) => Effect.Effect<A, E>
+  <A, E>(self: AtomRegistry["Service"], atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
     readonly suspendOnWaiting?: boolean | undefined
   }): Effect.Effect<A, E>
 } = dual(
   (args) => isAtomRegistry(args[0]),
-  <A, E>(self: AtomRegistry, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
+  <A, E>(self: AtomRegistry["Service"], atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
     readonly suspendOnWaiting?: boolean | undefined
   }): Effect.Effect<A, E> => {
     const suspendOnWaiting = options?.suspendOnWaiting ?? false
@@ -292,11 +300,11 @@ export const getResult: {
  * @since 4.0.0
  */
 export const mount: {
-  <A>(atom: Atom.Atom<A>): (self: AtomRegistry) => Effect.Effect<void, never, Scope.Scope>
-  <A>(self: AtomRegistry, atom: Atom.Atom<A>): Effect.Effect<void, never, Scope.Scope>
+  <A>(atom: Atom.Atom<A>): (self: AtomRegistry["Service"]) => Effect.Effect<void, never, Scope.Scope>
+  <A>(self: AtomRegistry["Service"], atom: Atom.Atom<A>): Effect.Effect<void, never, Scope.Scope>
 } = dual(
   2,
-  <A>(self: AtomRegistry, atom: Atom.Atom<A>) =>
+  <A>(self: AtomRegistry["Service"], atom: Atom.Atom<A>) =>
     Effect.acquireRelease(
       Effect.sync(() => self.mount(atom)),
       (release) => Effect.sync(release)
@@ -317,7 +325,7 @@ const SerializableTypeId: Atom.SerializableTypeId = "~effect-atom/atom/Atom/Seri
 const atomKey = <A>(atom: Atom.Atom<A>): Atom.Atom<A> | string =>
   SerializableTypeId in atom ? (atom as Atom.Serializable<any>)[SerializableTypeId].key : atom
 
-class RegistryImpl implements AtomRegistry {
+class RegistryImpl implements AtomRegistry.Service {
   readonly [TypeId]: TypeId
   readonly timeoutResolution: number
   readonly defaultIdleTTL: number | undefined

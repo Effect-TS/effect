@@ -32757,9 +32757,11 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
   A
 
 export const make = (
-  httpClient: HttpClient.HttpClient,
+  httpClient: HttpClient.HttpClient["Service"],
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?:
+      | ((client: HttpClient.HttpClient["Service"]) => Effect.Effect<HttpClient.HttpClient["Service"]>)
+      | undefined
   } = {}
 ): OpenRouterClient => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
@@ -34544,7 +34546,7 @@ export const make = (
 }
 
 export interface OpenRouterClient {
-  readonly httpClient: HttpClient.HttpClient
+  readonly httpClient: HttpClient.HttpClient["Service"]
   /**
    * Returns user activity data grouped by endpoint for the last 30 (completed) UTC days. [Management key](/docs/guides/overview/auth/management-api-keys) required.
    */

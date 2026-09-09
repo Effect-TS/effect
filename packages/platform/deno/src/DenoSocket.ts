@@ -71,8 +71,8 @@ export class Conn extends Context.Service<Conn, Deno.Conn>()(
  */
 export const fromConn = <RO>(
   open: Effect.Effect<Deno.Conn, Socket.SocketError, RO>
-): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
-  Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
+): Effect.Effect<Socket.Socket["Service"], never, Exclude<RO, Scope.Scope>> =>
+  Effect.withFiber<Socket.Socket["Service"], never, Exclude<RO, Scope.Scope>>((fiber) => {
     let current: {
       readonly conn: Deno.Conn
       readonly writer: WritableStreamDefaultWriter<Uint8Array>
@@ -83,7 +83,7 @@ export const fromConn = <RO>(
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
 
-    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+    const reader: Socket.Socket["Service"]["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn: Deno.Conn | undefined
       let upgradeAvailable = true
@@ -199,7 +199,7 @@ export const fromConn = <RO>(
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
-    ) as Socket.Socket["reader"]
+    ) as Socket.Socket["Service"]["reader"]
 
     const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
       latch.whenOpen(Effect.suspend(() => {
@@ -239,7 +239,7 @@ export const fromConn = <RO>(
           })
       }))
 
-    const writer: Socket.Socket["writer"] = Effect.acquireRelease(
+    const writer: Socket.Socket["Service"]["writer"] = Effect.acquireRelease(
       Effect.sync(() => {
         writeClosed = false
         return { write, writeAll }
@@ -271,7 +271,7 @@ export const fromConn = <RO>(
  * @category constructors
  * @since 4.0.0
  */
-export const makeTcp = (options: TcpOptions): Effect.Effect<Socket.Socket> => {
+export const makeTcp = (options: TcpOptions): Effect.Effect<Socket.Socket["Service"]> => {
   const { keepAlive, noDelay, openTimeout, ...connectOptions } = options
   const acquire = Effect.contextWith((context: Context.Context<Scope.Scope>) => {
     let conn: Deno.Conn | undefined

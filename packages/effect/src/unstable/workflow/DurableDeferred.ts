@@ -113,16 +113,13 @@ export const make = <
   }
 }
 
-const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine["Service"]>(
+class EngineTag extends Context.Service<EngineTag, WorkflowEngine["Service"]>()(
   "effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
-)
+) {}
 
-const InstanceTag = Context.Service<
-  WorkflowInstance,
-  WorkflowInstance["Service"]
->(
+class InstanceTag extends Context.Service<InstanceTag, WorkflowInstance["Service"]>()(
   "effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
-)
+) {}
 
 const CurrentAttempt = Context.Reference<number>(
   "effect/workflow/Activity/CurrentAttempt" satisfies typeof Activity.CurrentAttempt.key,

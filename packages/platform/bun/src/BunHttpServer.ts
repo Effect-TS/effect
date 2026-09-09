@@ -227,10 +227,10 @@ export const make = Effect.fnUntraced(
 const MIN_COMPRESSIBLE_SIZE = 1024
 
 const makeResponse = (
-  request: ServerRequest.HttpServerRequest,
+  request: ServerRequest.HttpServerRequest["Service"],
   response: ServerResponse.HttpServerResponse,
   context: Context.Context<never>,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ): Response => {
   const fields: {
     headers: globalThis.Headers
@@ -394,7 +394,7 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
   this.buffer.push(_)
 }
 
-class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
+class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest.Service {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
@@ -587,8 +587,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     return this.arrayBufferEffect
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpServerError> {
-    return Effect.callback<Socket.Socket, Error.HttpServerError>((resume) => {
+  get upgrade(): Effect.Effect<Socket.Socket["Service"], Error.HttpServerError> {
+    return Effect.callback<Socket.Socket["Service"], Error.HttpServerError>((resume) => {
       const deferred = Deferred.makeUnsafe<ServerWebSocket<WebSocketContext>>()
       const semaphore = Semaphore.makeUnsafe(1)
 
@@ -635,9 +635,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
               }
             }
           })
-        const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
+        const writer: Socket.Socket["Service"]["writer"] = Effect.succeed({ write, writeAll })
 
-        const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+        const reader: Socket.Socket["Service"]["reader"] = Effect.gen(function*() {
           const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
           yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
           const closeError = ws.data.closeError ?? (ws.readyState >= 2

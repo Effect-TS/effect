@@ -54,7 +54,7 @@ export interface Service {
   /**
    * The transformed HTTP client used by this service.
    */
-  readonly client: HttpClient.HttpClient
+  readonly client: HttpClient.HttpClient["Service"]
 
   /**
    * Create a response using the OpenAI responses endpoint.
@@ -146,7 +146,9 @@ export type Options = {
   /**
    * Optional transformer for the HTTP client.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }
 
 // =============================================================================
@@ -400,7 +402,9 @@ export const layerConfig = (options?: {
   /**
    * Optional transformer for the HTTP client.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }): Layer.Layer<OpenAiClient, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     OpenAiClient,

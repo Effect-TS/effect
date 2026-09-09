@@ -53,7 +53,7 @@ const positionToNumber = (position: bigint, method: string) =>
 
 // == access
 
-const access = ((): FileSystem.FileSystem["access"] => {
+const access = ((): FileSystem.FileSystem["Service"]["access"] => {
   const nodeAccess = effectify(
     NFS.access,
     handleErrnoException("FileSystem", "access"),
@@ -73,7 +73,7 @@ const access = ((): FileSystem.FileSystem["access"] => {
 
 // == copy
 
-const copy = ((): FileSystem.FileSystem["copy"] => {
+const copy = ((): FileSystem.FileSystem["Service"]["copy"] => {
   const nodeCp = effectify(
     NFS.cp,
     handleErrnoException("FileSystem", "copy"),
@@ -122,7 +122,7 @@ const chown = (() => {
 
 // == glob
 
-const glob = ((): FileSystem.FileSystem["glob"] => {
+const glob = ((): FileSystem.FileSystem["Service"]["glob"] => {
   const nodeGlob = effectify(
     NFS.glob,
     handleErrnoException("FileSystem", "glob"),
@@ -148,7 +148,7 @@ const link = (() => {
 
 // == makeDirectory
 
-const makeDirectory = ((): FileSystem.FileSystem["makeDirectory"] => {
+const makeDirectory = ((): FileSystem.FileSystem["Service"]["makeDirectory"] => {
   const nodeMkdir = effectify(
     NFS.mkdir,
     handleErrnoException("FileSystem", "makeDirectory"),
@@ -163,7 +163,7 @@ const makeDirectory = ((): FileSystem.FileSystem["makeDirectory"] => {
 
 // == makeTempDirectory
 
-const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["makeTempDirectory"] => {
+const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["Service"]["makeTempDirectory"] => {
   const nodeMkdtemp = effectify(
     NFS.mkdtemp,
     handleErrnoException("FileSystem", method),
@@ -183,7 +183,7 @@ const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
 
 // == remove
 
-const removeFactory = (method: string): FileSystem.FileSystem["remove"] => {
+const removeFactory = (method: string): FileSystem.FileSystem["Service"]["remove"] => {
   const nodeRm = effectify(
     NFS.rm,
     handleErrnoException("FileSystem", method),
@@ -199,7 +199,7 @@ const remove = removeFactory("remove")
 
 // == makeTempDirectoryScoped
 
-const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectoryScoped"] => {
+const makeTempDirectoryScoped = ((): FileSystem.FileSystem["Service"]["makeTempDirectoryScoped"] => {
   const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
   const removeDirectory = removeFactory("makeTempDirectoryScoped")
   return (options) =>
@@ -211,7 +211,7 @@ const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectorySco
 
 // == open
 
-const openFactory = (method: string): FileSystem.FileSystem["open"] => {
+const openFactory = (method: string): FileSystem.FileSystem["Service"]["open"] => {
   const nodeOpen = effectify(
     NFS.open,
     handleErrnoException("FileSystem", method),
@@ -424,7 +424,7 @@ const makeFile = (() => {
 
 // == makeTempFile
 
-const makeTempFileFactory = (method: string): FileSystem.FileSystem["makeTempFile"] => {
+const makeTempFileFactory = (method: string): FileSystem.FileSystem["Service"]["makeTempFile"] => {
   const makeDirectory = makeTempDirectoryFactory(method)
   return Effect.fnUntraced(function*(options) {
     const directory = yield* makeDirectory(options)
@@ -438,7 +438,7 @@ const makeTempFile = makeTempFileFactory("makeTempFile")
 
 // == makeTempFileScoped
 
-const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
+const makeTempFileScoped = ((): FileSystem.FileSystem["Service"]["makeTempFileScoped"] => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
   const removeDirectory = removeFactory("makeTempFileScoped")
   return (options) =>
@@ -450,7 +450,7 @@ const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
 
 // == readDirectory
 
-const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
+const readDirectory: FileSystem.FileSystem["Service"]["readDirectory"] = (path, options) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, options),
     catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
@@ -649,7 +649,7 @@ const watch = (
 
 // == writeFile
 
-const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) =>
+const writeFile: FileSystem.FileSystem["Service"]["writeFile"] = (path, data, options) =>
   Effect.callback<void, Error.PlatformError>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {

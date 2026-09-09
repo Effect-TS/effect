@@ -28,30 +28,38 @@ const TypeId = "~effect/Terminal"
  * @category services
  * @since 4.0.0
  */
-export interface Terminal {
-  readonly [TypeId]: typeof TypeId
+export declare namespace Terminal {
+  /**
+   * Implementation of the Terminal service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
 
-  /**
-   * The number of columns available on the platform's terminal interface.
-   */
-  readonly columns: Effect.Effect<number>
-  /**
-   * The number of rows available on the platform's terminal interface.
-   */
+    /**
+     * The number of columns available on the platform's terminal interface.
+     */
+    readonly columns: Effect.Effect<number>
+    /**
+     * The number of rows available on the platform's terminal interface.
+     */
 
-  readonly rows: Effect.Effect<number>
-  /**
-   * Reads input events from the default standard input.
-   */
-  readonly readInput: Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
-  /**
-   * Reads a single line from the default standard input.
-   */
-  readonly readLine: Effect.Effect<string, QuitError>
-  /**
-   * Displays text to the default standard output.
-   */
-  readonly display: (text: string) => Effect.Effect<void, PlatformError>
+    readonly rows: Effect.Effect<number>
+    /**
+     * Reads input events from the default standard input.
+     */
+    readonly readInput: Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
+    /**
+     * Reads a single line from the default standard input.
+     */
+    readonly readLine: Effect.Effect<string, QuitError>
+    /**
+     * Displays text to the default standard output.
+     */
+    readonly display: (text: string) => Effect.Effect<void, PlatformError>
+  }
 }
 
 /**
@@ -163,7 +171,7 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * @category services
  * @since 4.0.0
  */
-export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("effect/Terminal")
+export class Terminal extends Context.Service<Terminal, Terminal.Service>()("effect/Terminal") {}
 
 /**
  * Creates a `Terminal` service implementation.
@@ -184,5 +192,5 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<Terminal, typeof TypeId>
-): Terminal => Terminal.of({ ...impl, [TypeId]: TypeId })
+  impl: Omit<Terminal["Service"], typeof TypeId>
+): Terminal["Service"] => Terminal.of({ ...impl, [TypeId]: TypeId })

@@ -38,12 +38,12 @@ import * as preResponseHandler from "./internal/preResponseHandler.ts"
 export const toHandled = <E, R, EH, RH>(
   self: Effect.Effect<HttpServerResponse, E, R>,
   handleResponse: (
-    request: HttpServerRequest,
+    request: HttpServerRequest["Service"],
     response: HttpServerResponse
   ) => Effect.Effect<unknown, EH, RH>,
   middleware?: HttpMiddleware | undefined
 ): Effect.Effect<void, never, Exclude<R | RH | HttpServerRequest, Scope.Scope>> => {
-  const handleCause = (request: HttpServerRequest, cause: Cause.Cause<E | EH | HttpServerError>) =>
+  const handleCause = (request: HttpServerRequest["Service"], cause: Cause.Cause<E | EH | HttpServerError>) =>
     Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
@@ -69,7 +69,7 @@ export const toHandled = <E, R, EH, RH>(
   // Writes the response, applying any registered pre-response handler first.
   // Returns an `Exit` when the write completes synchronously.
   const sendResponse = (
-    request: HttpServerRequest,
+    request: HttpServerRequest["Service"],
     response: HttpServerResponse
   ): Effect.Effect<HttpServerResponse, EH | HttpServerError, RH> => {
     const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
@@ -83,7 +83,7 @@ export const toHandled = <E, R, EH, RH>(
     })
   }
 
-  const withMiddleware = (request: HttpServerRequest): Effect.Effect<
+  const withMiddleware = (request: HttpServerRequest["Service"]): Effect.Effect<
     unknown,
     E | EH | HttpServerError,
     HttpServerRequest | R | RH
@@ -114,7 +114,7 @@ export const toHandled = <E, R, EH, RH>(
   }
 
   // Apply tracing lazily so disabled requests can use the single-frame path.
-  const traced = (request: HttpServerRequest) =>
+  const traced = (request: HttpServerRequest["Service"]) =>
     tracer(
       withMiddleware(request) as Effect.Effect<
         HttpServerResponse,
@@ -139,8 +139,8 @@ export const toHandled = <E, R, EH, RH>(
   class RequestFrame {
     readonly scope: Scope.Closeable
     readonly prev: Context.Context<never>
-    readonly request: HttpServerRequest
-    constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
+    readonly request: HttpServerRequest["Service"]
+    constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest["Service"]) {
       this.scope = scope
       this.prev = prev
       this.request = request
@@ -192,7 +192,7 @@ const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
  * @category resource management
  * @since 4.0.0
  */
-export const scopeDisableClose = (scope: Scope.Scope): void => {
+export const scopeDisableClose = (scope: Scope.Scope["Service"]): void => {
   ;(scope as any)[scopeEjected] = true
 }
 
@@ -230,7 +230,7 @@ const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
  * @since 4.0.0
  */
 export type PreResponseHandler = (
-  request: HttpServerRequest,
+  request: HttpServerRequest["Service"],
   response: HttpServerResponse
 ) => Effect.Effect<HttpServerResponse, HttpServerError>
 
@@ -253,7 +253,7 @@ export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Ef
  * @since 4.0.0
  */
 export const appendPreResponseHandlerUnsafe: (
-  request: HttpServerRequest,
+  request: HttpServerRequest["Service"],
   handler: PreResponseHandler
 ) => void = preResponseHandler.appendPreResponseHandlerUnsafe
 

@@ -235,7 +235,7 @@ export const withLogAddress = <A, E, R>(
  * @since 4.0.0
  */
 export const makeTestClient: Effect.Effect<
-  HttpClient.HttpClient,
+  HttpClient.HttpClient["Service"],
   never,
   HttpServer | HttpClient.HttpClient
 > = Effect.gen(function*() {

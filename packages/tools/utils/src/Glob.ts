@@ -31,11 +31,19 @@ export class GlobError extends Data.TaggedError("GlobError")<{
  * @category services
  * @since 4.0.0
  */
-export interface Glob {
-  readonly glob: (
-    pattern: string | ReadonlyArray<string>,
-    options?: GlobLib.GlobOptions
-  ) => Effect.Effect<Array<string>, GlobError>
+export declare namespace Glob {
+  /**
+   * Implementation of the Glob service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly glob: (
+      pattern: string | ReadonlyArray<string>,
+      options?: GlobLib.GlobOptions
+    ) => Effect.Effect<Array<string>, GlobError>
+  }
 }
 
 /**
@@ -44,7 +52,7 @@ export interface Glob {
  * @category services
  * @since 4.0.0
  */
-export const Glob: Context.Service<Glob, Glob> = Context.Service("@effect/utils/Glob")
+export class Glob extends Context.Service<Glob, Glob.Service>()("@effect/utils/Glob") {}
 
 /**
  * Layer that provides the `Glob` service using the `glob` package and maps matching failures to `GlobError`.

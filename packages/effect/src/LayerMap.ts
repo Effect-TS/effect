@@ -38,9 +38,9 @@ type IdleTimeToLiveInput<K> = Duration.Input | ((key: K) => Duration.Input)
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const DatabaseService = Context.Service<{
+ * class DatabaseService extends Context.Service<DatabaseService, {
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("Database")
+ * }>()("Database") {}
  *
  * // Create a LayerMap that provides different database configurations
  * const createDatabaseLayerMap = LayerMap.make((env: string) =>
@@ -120,9 +120,9 @@ export interface LayerMap<in out K, in out I, in out E = never> {
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const DatabaseService = Context.Service<{
+ * class DatabaseService extends Context.Service<DatabaseService, {
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("Database")
+ * }>()("Database") {}
  *
  * // Create a LayerMap that provides different database configurations
  * const program = Effect.gen(function*() {
@@ -215,9 +215,9 @@ export const make: <
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const Database = Context.Service<{
+ * class Database extends Context.Service<Database, {
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("Database")
+ * }>()("Database") {}
  *
  * // Create predefined layers
  * const layers = {
@@ -360,9 +360,9 @@ export interface TagClass<
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
- * const Greeter = Context.Service<{
+ * class Greeter extends Context.Service<Greeter, {
  *   readonly greet: Effect.Effect<string>
- * }>("Greeter")
+ * }>()("Greeter") {}
  *
  * // Create a service that wraps a LayerMap
  * class GreeterMap extends LayerMap.Service<GreeterMap>()("GreeterMap", {

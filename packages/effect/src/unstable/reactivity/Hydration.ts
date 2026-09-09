@@ -74,7 +74,7 @@ const encodeOrSkip = (
  * @since 4.0.0
  */
 export const dehydrate = (
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   options?: {
     /**
      * How to encode `AsyncResult.Initial` values. Default is "ignore".
@@ -144,7 +144,7 @@ export const toValues = (state: ReadonlyArray<DehydratedAtom>): Array<Dehydrated
  * @since 4.0.0
  */
 export const hydrate = (
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   dehydratedState: Iterable<DehydratedAtom>
 ): void => {
   for (const datom of (dehydratedState as Iterable<DehydratedAtomValue>)) {

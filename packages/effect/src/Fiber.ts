@@ -615,6 +615,6 @@ export const getCurrent: () => Fiber<any, any> | undefined = effect.getCurrentFi
  * @since 4.0.0
  */
 export const runIn: {
-  (scope: Scope): <A, E>(self: Fiber<A, E>) => Fiber<A, E>
-  <A, E>(self: Fiber<A, E>, scope: Scope): Fiber<A, E>
+  (scope: Scope["Service"]): <A, E>(self: Fiber<A, E>) => Fiber<A, E>
+  <A, E>(self: Fiber<A, E>, scope: Scope["Service"]): Fiber<A, E>
 } = effect.fiberRunIn

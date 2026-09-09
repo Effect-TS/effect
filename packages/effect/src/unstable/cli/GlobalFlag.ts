@@ -126,9 +126,10 @@ export const Setting = <const Id extends string>(
   readonly flag: Flag.Flag<A>
 }): Setting<Id, A> => {
   settingIdCounter += 1
-  const ref = Context.Service<Setting.Identifier<Id>, A>(
+  // This factory preserves its public string identifier independently of the parsed value type.
+  const ref: Context.Service<Setting.Identifier<Id>, A> = class extends Context.Service<Setting.Identifier<Id>, A>()(
     `effect/unstable/cli/GlobalFlag/${id}/${settingIdCounter}`
-  )
+  ) {}
   return Object.assign(ref, {
     _tag: "Setting" as const,
     id,

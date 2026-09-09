@@ -1495,7 +1495,7 @@ const makeSocketProtocol: Effect.Effect<
   {
     readonly protocol: Protocol["Service"]
     readonly onSocket: (
-      socket: Socket.Socket,
+      socket: Socket.Socket["Service"],
       headers?: ReadonlyArray<[string, string]>
     ) => Effect.Effect<void, never, Scope.Scope>
   },
@@ -1514,70 +1514,72 @@ const makeSocketProtocol: Effect.Effect<
 
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
 
-  const onSocket = Effect.fnUntraced(function*(socket: Socket.Socket, headers?: ReadonlyArray<[string, string]>) {
-    const scope = yield* Effect.scope
-    const parser = serialization.makeUnsafe()
-    const id = clientId++
-    yield* Scope.addFinalizerExit(scope, () => {
-      clients.delete(id)
-      clientIds.delete(id)
-      return Queue.offer(disconnects, id)
-    })
+  const onSocket = Effect.fnUntraced(
+    function*(socket: Socket.Socket["Service"], headers?: ReadonlyArray<[string, string]>) {
+      const scope = yield* Effect.scope
+      const parser = serialization.makeUnsafe()
+      const id = clientId++
+      yield* Scope.addFinalizerExit(scope, () => {
+        clients.delete(id)
+        clientIds.delete(id)
+        return Queue.offer(disconnects, id)
+      })
 
-    const writer = yield* socket.writer
-    const write = (response: FromServerEncoded) => {
-      try {
-        const encoded = parser.encode(response)
-        if (encoded === undefined) {
-          return Effect.void
+      const writer = yield* socket.writer
+      const write = (response: FromServerEncoded) => {
+        try {
+          const encoded = parser.encode(response)
+          if (encoded === undefined) {
+            return Effect.void
+          }
+          return Effect.orDie(writer.write(encoded))
+        } catch (cause) {
+          return Effect.orDie(
+            writer.write(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
+          )
         }
-        return Effect.orDie(writer.write(encoded))
-      } catch (cause) {
-        return Effect.orDie(
-          writer.write(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
-        )
       }
+      clients.set(id, { write })
+      clientIds.add(id)
+
+      const processData = (data: Uint8Array | string): Effect.Effect<void, Socket.SocketError> => {
+        try {
+          const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
+          if (decoded.length === 0) return Effect.void
+          let i = 0
+          return Effect.whileLoop({
+            while: () => i < decoded.length,
+            body() {
+              const message = decoded[i++]
+              if (message._tag === "Request" && headers) {
+                ;(message as Types.Mutable<RequestEncoded>).headers = headers.concat(message.headers)
+              }
+              return writeRequest(id, message)
+            },
+            step: constVoid
+          })
+        } catch (cause) {
+          if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
+            return writer.write(new Socket.CloseEvent(1009, String(cause)))
+          }
+          return writer.write(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
+        }
+      }
+
+      yield* Effect.gen(function*() {
+        const { pull } = yield* socket.reader
+        while (true) {
+          const frames = yield* pull
+          for (let i = 0; i < frames.length; i++) {
+            yield* processData(frames[i])
+          }
+        }
+      }).pipe(
+        Effect.catchReason("SocketError", "SocketCloseError", (_) => Effect.void),
+        Effect.orDie
+      )
     }
-    clients.set(id, { write })
-    clientIds.add(id)
-
-    const processData = (data: Uint8Array | string): Effect.Effect<void, Socket.SocketError> => {
-      try {
-        const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
-        if (decoded.length === 0) return Effect.void
-        let i = 0
-        return Effect.whileLoop({
-          while: () => i < decoded.length,
-          body() {
-            const message = decoded[i++]
-            if (message._tag === "Request" && headers) {
-              ;(message as Types.Mutable<RequestEncoded>).headers = headers.concat(message.headers)
-            }
-            return writeRequest(id, message)
-          },
-          step: constVoid
-        })
-      } catch (cause) {
-        if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
-          return writer.write(new Socket.CloseEvent(1009, String(cause)))
-        }
-        return writer.write(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
-      }
-    }
-
-    yield* Effect.gen(function*() {
-      const { pull } = yield* socket.reader
-      while (true) {
-        const frames = yield* pull
-        for (let i = 0; i < frames.length; i++) {
-          yield* processData(frames[i])
-        }
-      }
-    }).pipe(
-      Effect.catchReason("SocketError", "SocketCloseError", (_) => Effect.void),
-      Effect.orDie
-    )
-  })
+  )
 
   const protocol = yield* Protocol.make((writeRequest_) => {
     writeRequest = writeRequest_

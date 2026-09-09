@@ -27,7 +27,7 @@ import { currentFiberTypeId, redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Scheduler from "../Scheduler.ts"
-import type * as Scope from "../Scope.ts"
+import type * as ScopeModule from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type {
   Concurrency,
@@ -2246,7 +2246,7 @@ export const updateServiceScoped = <I, A>(
   options?: {
     readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
   } | undefined
-): Effect.Effect<void, never, I | Scope.Scope> =>
+): Effect.Effect<void, never, I | ScopeModule.Scope> =>
   uninterruptible(withFiber((fiber) => {
     const original = Context.getUnsafe(fiber.context, service)
     const updated = update(original)
@@ -3903,16 +3903,19 @@ export const ScopeTypeId = "~effect/Scope"
 export const ScopeCloseableTypeId = "~effect/Scope/Closeable"
 
 /** @internal */
-export const scopeTag: Context.Service<Scope.Scope, Scope.Scope> = Context.Service<Scope.Scope>("effect/Scope")
+export class Scope extends Context.Service<Scope, ScopeModule.Scope.Service>()("effect/Scope") {}
 
 /** @internal */
-export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
+export const scopeTag = Scope
+
+/** @internal */
+export const scopeClose = <A, E>(self: ScopeModule.Scope["Service"], exit_: Exit.Exit<A, E>) =>
   suspend(() => scopeCloseUnsafe(self, exit_) ?? void_)
 
 /** @internal */
-export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
+export const scopeCloseUnsafe = <A, E>(self: ScopeModule.Scope["Service"], exit_: Exit.Exit<A, E>) => {
   if (self.state._tag === "Closed") return
-  const closed: Scope.State.Closed = { _tag: "Closed", exit: exit_ }
+  const closed: ScopeModule.State.Closed = { _tag: "Closed", exit: exit_ }
   if (self.state._tag === "Empty") {
     self.state = closed
     return
@@ -3938,8 +3941,8 @@ const combineFinalizerCause = <A, E, XE, XR>(
   exitIsSuccess(exit_) ? finalizer : catchCause(finalizer, (cause) => failCause(causeCombine(exit_.cause, cause)))
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
-  self: Scope.Scope,
-  finalizers: NonNullable<Scope.State.Open["finalizers"]>,
+  self: ScopeModule.Scope["Service"],
+  finalizers: NonNullable<ScopeModule.State.Open["finalizers"]>,
   exit_: Exit.Exit<A, E>
 ) {
   let exits: Array<Exit.Exit<any, never>> = []
@@ -3961,11 +3964,11 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
 })
 
 /** @internal */
-export const scopeFork = (scope: Scope.Scope, finalizerStrategy?: "sequential" | "parallel") =>
+export const scopeFork = (scope: ScopeModule.Scope["Service"], finalizerStrategy?: "sequential" | "parallel") =>
   sync(() => scopeForkUnsafe(scope, finalizerStrategy))
 
 /** @internal */
-export const scopeForkUnsafe = (scope: Scope.Scope, finalizerStrategy?: "sequential" | "parallel") => {
+export const scopeForkUnsafe = (scope: ScopeModule.Scope["Service"], finalizerStrategy?: "sequential" | "parallel") => {
   const newScope = scopeMakeUnsafe(finalizerStrategy)
   if (scope.state._tag === "Closed") {
     newScope.state = scope.state
@@ -3979,7 +3982,7 @@ export const scopeForkUnsafe = (scope: Scope.Scope, finalizerStrategy?: "sequent
 
 /** @internal */
 export const scopeAddFinalizerExit = (
-  scope: Scope.Scope,
+  scope: ScopeModule.Scope["Service"],
   finalizer: (exit: Exit.Exit<any, any>) => Effect.Effect<unknown>
 ): Effect.Effect<void> => {
   return suspend(() => {
@@ -3993,13 +3996,13 @@ export const scopeAddFinalizerExit = (
 
 /** @internal */
 export const scopeAddFinalizer = (
-  scope: Scope.Scope,
+  scope: ScopeModule.Scope["Service"],
   finalizer: Effect.Effect<unknown>
 ): Effect.Effect<void> => scopeAddFinalizerExit(scope, constant(finalizer))
 
 /** @internal */
 export const scopeAddFinalizerUnsafe = (
-  scope: Scope.Scope,
+  scope: ScopeModule.Scope["Service"],
   key: {},
   finalizer: (exit: Exit.Exit<any, any>) => Effect.Effect<unknown>
 ): void => {
@@ -4023,7 +4026,7 @@ export const scopeAddFinalizerUnsafe = (
 
 /** @internal */
 export const scopeRemoveFinalizerUnsafe = (
-  scope: Scope.Scope,
+  scope: ScopeModule.Scope["Service"],
   key: {}
 ): void => {
   if (scope.state._tag === "Open") {
@@ -4038,7 +4041,7 @@ export const scopeRemoveFinalizerUnsafe = (
 }
 
 /** @internal */
-export const scopeFinalizerCountUnsafe = (scope: Scope.Scope): number =>
+export const scopeFinalizerCountUnsafe = (scope: ScopeModule.Scope["Service"]): number =>
   scope.state._tag !== "Open"
     ? 0
     : scope.state.finalizer !== undefined
@@ -4046,7 +4049,9 @@ export const scopeFinalizerCountUnsafe = (scope: Scope.Scope): number =>
     : (scope.state.finalizers?.size ?? 0)
 
 /** @internal */
-export const scopeMakeUnsafe = (finalizerStrategy: "sequential" | "parallel" = "sequential"): Scope.Closeable => ({
+export const scopeMakeUnsafe = (
+  finalizerStrategy: "sequential" | "parallel" = "sequential"
+): ScopeModule.Closeable => ({
   [ScopeCloseableTypeId]: ScopeCloseableTypeId,
   [ScopeTypeId]: ScopeTypeId,
   strategy: finalizerStrategy,
@@ -4056,20 +4061,25 @@ export const scopeMakeUnsafe = (finalizerStrategy: "sequential" | "parallel" = "
 const constScopeEmpty = { _tag: "Empty" } as const
 
 /** @internal */
-export const scopeMake = (finalizerStrategy?: "sequential" | "parallel"): Effect.Effect<Scope.Closeable> =>
+export const scopeMake = (finalizerStrategy?: "sequential" | "parallel"): Effect.Effect<ScopeModule.Closeable> =>
   sync(() => scopeMakeUnsafe(finalizerStrategy))
 
 /** @internal */
-export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag
+export const scope: Effect.Effect<ScopeModule.Scope["Service"], never, ScopeModule.Scope> = scopeTag
 
 /** @internal */
 export const provideScope: {
-  (value: Scope.Scope): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope.Scope>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, value: Scope.Scope): Effect.Effect<A, E, Exclude<R, Scope.Scope>>
+  (
+    value: ScopeModule.Scope["Service"]
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, ScopeModule.Scope>>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    value: ScopeModule.Scope["Service"]
+  ): Effect.Effect<A, E, Exclude<R, ScopeModule.Scope>>
 } = provideService(scopeTag)
 
 /** @internal */
-export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
+export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, ScopeModule.Scope>> =>
   withFiber((fiber) => {
     const prev = fiber.context
     const scope = scopeMakeUnsafe()
@@ -4083,18 +4093,24 @@ export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, 
 /** @internal */
 export const scopeUse: {
   (
-    scope: Scope.Closeable
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope.Scope>>
-  <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Closeable): Effect.Effect<A, E, Exclude<R, Scope.Scope>>
+    scope: ScopeModule.Closeable
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, ScopeModule.Scope>>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    scope: ScopeModule.Closeable
+  ): Effect.Effect<A, E, Exclude<R, ScopeModule.Scope>>
 } = dual(
   2,
-  <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Closeable): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    scope: ScopeModule.Closeable
+  ): Effect.Effect<A, E, Exclude<R, ScopeModule.Scope>> =>
     onExit(provideScope(self, scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
 )
 
 /** @internal */
 export const scopedWith = <A, E, R>(
-  f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
+  f: (scope: ScopeModule.Scope["Service"]) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   suspend(() => {
     const scope = scopeMakeUnsafe()
@@ -4106,7 +4122,7 @@ export const acquireRelease = <A, E, R, R2>(
   acquire: Effect.Effect<A, E, R>,
   release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, never, R2>,
   options?: { readonly interruptible?: boolean }
-): Effect.Effect<A, E, R | R2 | Scope.Scope> =>
+): Effect.Effect<A, E, R | R2 | ScopeModule.Scope> =>
   contextWith((context: Context.Context<R2>) =>
     uninterruptibleMask((restore) =>
       flatMap(
@@ -4123,7 +4139,7 @@ export const acquireRelease = <A, E, R, R2>(
 /** @internal */
 export const addFinalizer = <R>(
   finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
-): Effect.Effect<void, never, R | Scope.Scope> =>
+): Effect.Effect<void, never, R | ScopeModule.Scope> =>
   flatMap(
     scope,
     (scope) =>
@@ -4359,7 +4375,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
 /** @internal */
 export const acquireDisposable = <A extends AsyncDisposable | Disposable, E, R>(
   acquire: Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R | Scope.Scope> =>
+): Effect.Effect<A, E, R | ScopeModule.Scope> =>
   acquireRelease(acquire, (resource) =>
     hasProperty(resource, Symbol.asyncDispose)
       ? promise(() => resource[Symbol.asyncDispose]())
@@ -4554,7 +4570,7 @@ export const interruptibleMask = <A, E, R>(
   })
 
 /** @internal */
-export const abortSignal: Effect.Effect<AbortSignal, never, Scope.Scope> = map(
+export const abortSignal: Effect.Effect<AbortSignal, never, ScopeModule.Scope> = map(
   acquireRelease(
     sync(() => new AbortController()),
     (controller) => sync(() => controller.abort())
@@ -5503,7 +5519,7 @@ export const awaitAllChildren = <A, E, R>(
 /** @internal */
 export const forkIn: {
   (
-    scope: Scope.Scope,
+    scope: ScopeModule.Scope["Service"],
     options?: {
       readonly startImmediately?: boolean | undefined
       readonly uninterruptible?: boolean | "inherit" | undefined
@@ -5513,7 +5529,7 @@ export const forkIn: {
   ) => Effect.Effect<Fiber.Fiber<A, E>, never, R>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
-    scope: Scope.Scope,
+    scope: ScopeModule.Scope["Service"],
     options?: {
       readonly startImmediately?: boolean | undefined
       readonly uninterruptible?: boolean | "inherit" | undefined
@@ -5523,7 +5539,7 @@ export const forkIn: {
   (args) => isEffect(args[0]),
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
-    scope: Scope.Scope,
+    scope: ScopeModule.Scope["Service"],
     options?: {
       readonly startImmediately?: boolean | undefined
       readonly uninterruptible?: boolean | "inherit" | undefined
@@ -5562,15 +5578,16 @@ export const forkScoped: {
       readonly uninterruptible?: boolean | "inherit" | undefined
     } | undefined
   ): [Arg] extends [Effect.Effect<infer _A, infer _E, infer _R>] ?
-    Effect.Effect<Fiber.Fiber<_A, _E>, never, _R | Scope.Scope>
-    : <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.Fiber<A, E>, never, R | Scope.Scope>
+    Effect.Effect<Fiber.Fiber<_A, _E>, never, _R | ScopeModule.Scope>
+    : <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.Fiber<A, E>, never, R | ScopeModule.Scope>
 } = dual((args) => isEffect(args[0]), <A, E, R>(
   self: Effect.Effect<A, E, R>,
   options?: {
     readonly startImmediately?: boolean
     readonly uninterruptible?: boolean | "inherit"
   }
-): Effect.Effect<Fiber.Fiber<A, E>, never, R | Scope.Scope> => flatMap(scope, (scope) => forkIn(self, scope, options)))
+): Effect.Effect<Fiber.Fiber<A, E>, never, R | ScopeModule.Scope> =>
+  flatMap(scope, (scope) => forkIn(self, scope, options)))
 
 // ----------------------------------------------------------------------------
 // execution
@@ -5606,14 +5623,14 @@ export const runForkWith = <R>(context: Context.Context<R>) =>
 
 /** @internal */
 export const fiberRunIn: {
-  (scope: Scope.Scope): <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A, E>
+  (scope: ScopeModule.Scope["Service"]): <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A, E>
   <A, E>(
     self: Fiber.Fiber<A, E>,
-    scope: Scope.Scope
+    scope: ScopeModule.Scope["Service"]
   ): Fiber.Fiber<A, E>
 } = dual(2, <A, E>(
   self: FiberImpl<A, E>,
-  scope: Scope.Scope
+  scope: ScopeModule.Scope["Service"]
 ): Fiber.Fiber<A, E> => {
   if (self._exit) {
     return self
@@ -5965,7 +5982,7 @@ export const makeSpan = (
 export const makeSpanScoped = (
   name: string,
   options?: Tracer.SpanOptionsNoTrace | undefined
-): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
+): Effect.Effect<Tracer.Span, never, ScopeModule.Scope> =>
   uninterruptible(
     withFiber((fiber) => {
       const scope = Context.getUnsafe(fiber.context, scopeTag)
@@ -5984,12 +6001,12 @@ export const withSpanScoped: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | ScopeModule.Scope>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
     options?: Tracer.SpanOptions
-  ): Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
+  ): Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | ScopeModule.Scope>
 } = function() {
   const dataFirst = typeof arguments[0] !== "string"
   const name = dataFirst ? arguments[1] : arguments[0]
@@ -6444,8 +6461,8 @@ export const LogToStderr = Context.Reference<boolean>("effect/Logger/LogToStderr
 
 /** @internal */
 export const annotateLogsScoped: {
-  (key: string, value: unknown): Effect.Effect<void, never, Scope.Scope>
-  (values: Record<string, unknown>): Effect.Effect<void, never, Scope.Scope>
+  (key: string, value: unknown): Effect.Effect<void, never, ScopeModule.Scope>
+  (values: Record<string, unknown>): Effect.Effect<void, never, ScopeModule.Scope>
 } = function() {
   const entries = typeof arguments[0] === "string" ?
     [[arguments[0], arguments[1]]] :

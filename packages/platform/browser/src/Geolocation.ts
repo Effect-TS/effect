@@ -47,18 +47,26 @@ const ErrorTypeId = "~@effect/platform-browser/Geolocation/GeolocationError"
  * @category services
  * @since 4.0.0
  */
-export interface Geolocation {
-  readonly [TypeId]: typeof TypeId
-  readonly getCurrentPosition: (
-    options?: PositionOptions | undefined
-  ) => Effect.Effect<GeolocationPosition, GeolocationError>
-  readonly watchPosition: (
-    options?:
-      | PositionOptions & {
-        readonly bufferSize?: number | undefined
-      }
-      | undefined
-  ) => Stream.Stream<GeolocationPosition, GeolocationError>
+export declare namespace Geolocation {
+  /**
+   * Implementation of the Geolocation service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    readonly getCurrentPosition: (
+      options?: PositionOptions | undefined
+    ) => Effect.Effect<GeolocationPosition, GeolocationError>
+    readonly watchPosition: (
+      options?:
+        | PositionOptions & {
+          readonly bufferSize?: number | undefined
+        }
+        | undefined
+    ) => Stream.Stream<GeolocationPosition, GeolocationError>
+  }
 }
 
 /**
@@ -74,7 +82,7 @@ export interface Geolocation {
  * @category services
  * @since 4.0.0
  */
-export const Geolocation: Context.Service<Geolocation, Geolocation> = Context.Service<Geolocation>(TypeId)
+export class Geolocation extends Context.Service<Geolocation, Geolocation.Service>()(TypeId) {}
 
 /**
  * Tagged error wrapping a browser geolocation failure reason.

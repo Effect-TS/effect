@@ -66,7 +66,9 @@ export type Options = {
   /**
    * Optional transformer for the HTTP client.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }
 
 const RedactedOpenAiHeaders = {
@@ -176,7 +178,9 @@ export const layerConfig = (options?: {
   /**
    * Optional transformer for the HTTP client.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }): Layer.Layer<OpenAiClientGenerated, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     OpenAiClientGenerated,

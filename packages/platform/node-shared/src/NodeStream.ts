@@ -331,7 +331,7 @@ export const toUint8Array = <E = Cause.UnknownError>(
 // ----------------------------------------------------------------------------
 
 const readableToPullUnsafe = <A, E>(options: {
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   readonly exit?: MutableRef.MutableRef<Exit.Exit<never, E | Cause.Done> | undefined> | undefined
   readonly latch?: Latch.Latch | undefined
   readonly readable: Readable | NodeJS.ReadableStream

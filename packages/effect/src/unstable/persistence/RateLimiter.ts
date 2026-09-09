@@ -42,21 +42,31 @@ export type TypeId = "~effect/persistence/RateLimiter"
  * @category models
  * @since 4.0.0
  */
-export interface RateLimiter {
-  readonly [TypeId]: TypeId
+export declare namespace RateLimiter {
+  /**
+   * Implementation of the RateLimiter service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: TypeId
 
-  readonly consume: (options: {
-    readonly algorithm?: "fixed-window" | "token-bucket" | undefined
-    readonly onExceeded?: "delay" | "fail" | undefined
-    readonly window: Duration.Input
-    readonly limit: number
-    readonly key: string
-    readonly tokens?: number | undefined
-  }) => Effect.Effect<ConsumeResult, RateLimiterError>
+    readonly consume: (options: {
+      readonly algorithm?: "fixed-window" | "token-bucket" | undefined
+      readonly onExceeded?: "delay" | "fail" | undefined
+      readonly window: Duration.Input
+      readonly limit: number
+      readonly key: string
+      readonly tokens?: number | undefined
+    }) => Effect.Effect<ConsumeResult, RateLimiterError>
 
-  readonly adaptiveConsume: (options: AdaptiveConsumeOptions) => Effect.Effect<AdaptiveConsumeResult, RateLimiterError>
+    readonly adaptiveConsume: (
+      options: AdaptiveConsumeOptions
+    ) => Effect.Effect<AdaptiveConsumeResult, RateLimiterError>
 
-  readonly adaptiveFeedback: (options: AdaptiveFeedbackOptions) => Effect.Effect<void, RateLimiterError>
+    readonly adaptiveFeedback: (options: AdaptiveFeedbackOptions) => Effect.Effect<void, RateLimiterError>
+  }
 }
 
 /**
@@ -70,7 +80,7 @@ export interface RateLimiter {
  * @category services
  * @since 4.0.0
  */
-export const RateLimiter: Context.Service<RateLimiter, RateLimiter> = Context.Service<RateLimiter>(TypeId)
+export class RateLimiter extends Context.Service<RateLimiter, RateLimiter.Service>()(TypeId) {}
 
 /**
  * Creates a `RateLimiter` from the current `RateLimiterStore`.
@@ -84,13 +94,13 @@ export const RateLimiter: Context.Service<RateLimiter, RateLimiter> = Context.Se
  * @since 4.0.0
  */
 export const make: Effect.Effect<
-  RateLimiter,
+  RateLimiter["Service"],
   never,
   RateLimiterStore
 > = Effect.gen(function*() {
   const store = yield* RateLimiterStore
 
-  return identity<RateLimiter>({
+  return identity<RateLimiter["Service"]>({
     [TypeId]: TypeId,
     adaptiveConsume: store.adaptiveConsume,
     adaptiveFeedback: store.adaptiveFeedback,
@@ -307,21 +317,21 @@ export const makeWithRateLimiter: Effect.Effect<
  * @category accessors
  * @since 4.0.0
  */
-export function sleep(self: RateLimiter): (options: {
+export function sleep(self: RateLimiter["Service"]): (options: {
   readonly algorithm?: "fixed-window" | "token-bucket" | undefined
   readonly window: Duration.Input
   readonly limit: number
   readonly key: string
   readonly tokens?: number | undefined
 }) => Effect.Effect<ConsumeResult, RateLimiterError>
-export function sleep(self: RateLimiter, options: {
+export function sleep(self: RateLimiter["Service"], options: {
   readonly algorithm?: "fixed-window" | "token-bucket" | undefined
   readonly window: Duration.Input
   readonly limit: number
   readonly key: string
   readonly tokens?: number | undefined
 }): Effect.Effect<ConsumeResult, RateLimiterError>
-export function sleep(self: RateLimiter, options?: {
+export function sleep(self: RateLimiter["Service"], options?: {
   readonly algorithm?: "fixed-window" | "token-bucket" | undefined
   readonly window: Duration.Input
   readonly limit: number

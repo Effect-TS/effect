@@ -57,7 +57,7 @@ export class HttpServerError extends Data.TaggedError("HttpServerError")<{
 
   override stack = `${this.name}: ${this.message}`
 
-  get request(): Request.HttpServerRequest {
+  get request(): Request.HttpServerRequest["Service"] {
     return this.reason.request
   }
 
@@ -89,7 +89,7 @@ export class HttpServerError extends Data.TaggedError("HttpServerError")<{
  * @since 4.0.0
  */
 export class RequestParseError extends Data.TaggedError("RequestParseError")<{
-  readonly request: Request.HttpServerRequest
+  readonly request: Request.HttpServerRequest["Service"]
   readonly description?: string
   readonly cause?: unknown
 }> implements Respondable.Respondable {
@@ -123,7 +123,7 @@ export class RequestParseError extends Data.TaggedError("RequestParseError")<{
  * @since 4.0.0
  */
 export class RouteNotFound extends Data.TaggedError("RouteNotFound")<{
-  readonly request: Request.HttpServerRequest
+  readonly request: Request.HttpServerRequest["Service"]
   readonly description?: string
   readonly cause?: unknown
 }> implements Respondable.Respondable {
@@ -153,7 +153,7 @@ export class RouteNotFound extends Data.TaggedError("RouteNotFound")<{
  * @since 4.0.0
  */
 export class InternalError extends Data.TaggedError("InternalError")<{
-  readonly request: Request.HttpServerRequest
+  readonly request: Request.HttpServerRequest["Service"]
   readonly description?: string
   readonly cause?: unknown
 }> implements Respondable.Respondable {
@@ -195,7 +195,7 @@ export const isHttpServerError = (u: unknown): u is HttpServerError => hasProper
  * @since 4.0.0
  */
 export class ResponseError extends Data.TaggedError("ResponseError")<{
-  readonly request: Request.HttpServerRequest
+  readonly request: Request.HttpServerRequest["Service"]
   readonly response: Response.HttpServerResponse
   readonly description?: string
   readonly cause?: unknown

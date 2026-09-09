@@ -11036,9 +11036,11 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
   A
 
 export const make = (
-  httpClient: HttpClient.HttpClient,
+  httpClient: HttpClient.HttpClient["Service"],
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?:
+      | ((client: HttpClient.HttpClient["Service"]) => Effect.Effect<HttpClient.HttpClient["Service"]>)
+      | undefined
   } = {}
 ): AnthropicClient => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
@@ -11772,7 +11774,7 @@ export const make = (
 }
 
 export interface AnthropicClient {
-  readonly httpClient: HttpClient.HttpClient
+  readonly httpClient: HttpClient.HttpClient["Service"]
   /**
    * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
    *

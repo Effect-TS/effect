@@ -576,7 +576,7 @@ export const fromPull = <A, E, R, EX, RX>(
  */
 export const transformPull = <A, E, R, B, E2, R2, EX, RX>(
   self: Stream<A, E, R>,
-  f: (pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void>, scope: Scope.Scope) => Effect.Effect<
+  f: (pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void>, scope: Scope.Scope["Service"]) => Effect.Effect<
     Pull.Pull<Arr.NonEmptyReadonlyArray<B>, E2, void, R2>,
     EX,
     RX
@@ -624,8 +624,8 @@ export const transformPullBracket = <A, E, R, B, E2, R2, EX, RX>(
   self: Stream<A, E, R>,
   f: (
     pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R>,
-    scope: Scope.Scope,
-    forkedScope: Scope.Scope
+    scope: Scope.Scope["Service"],
+    forkedScope: Scope.Scope["Service"]
   ) => Effect.Effect<
     Pull.Pull<Arr.NonEmptyReadonlyArray<B>, E2, void, R2>,
     EX,

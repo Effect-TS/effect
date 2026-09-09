@@ -46,7 +46,7 @@ const collectAsyncIterable = <A>(
     catch: handleError("FileSystem", method, pathOrDescriptor)
   })
 
-const access: FileSystem.FileSystem["access"] = (path, options) => {
+const access: FileSystem.FileSystem["Service"]["access"] = (path, options) => {
   if (!options?.readable && !options?.writable) {
     return Effect.asVoid(tryPromise("access", path, () => Deno.stat(path)))
   }
@@ -61,22 +61,23 @@ const access: FileSystem.FileSystem["access"] = (path, options) => {
   )
 }
 
-const copy: FileSystem.FileSystem["copy"] = (fromPath, toPath, options) =>
+const copy: FileSystem.FileSystem["Service"]["copy"] = (fromPath, toPath, options) =>
   tryPromise("copy", fromPath, () =>
     denoCopy(fromPath, toPath, {
       overwrite: options?.overwrite ?? false,
       preserveTimestamps: options?.preserveTimestamps ?? false
     }))
 
-const copyFile: FileSystem.FileSystem["copyFile"] = (fromPath, toPath) =>
+const copyFile: FileSystem.FileSystem["Service"]["copyFile"] = (fromPath, toPath) =>
   tryPromise("copyFile", fromPath, () => Deno.copyFile(fromPath, toPath))
 
-const chmod: FileSystem.FileSystem["chmod"] = (path, mode) => tryPromise("chmod", path, () => Deno.chmod(path, mode))
+const chmod: FileSystem.FileSystem["Service"]["chmod"] = (path, mode) =>
+  tryPromise("chmod", path, () => Deno.chmod(path, mode))
 
-const chown: FileSystem.FileSystem["chown"] = (path, uid, gid) =>
+const chown: FileSystem.FileSystem["Service"]["chown"] = (path, uid, gid) =>
   tryPromise("chown", path, () => Deno.chown(path, uid, gid))
 
-const glob: FileSystem.FileSystem["glob"] = (pattern, options) =>
+const glob: FileSystem.FileSystem["Service"]["glob"] = (pattern, options) =>
   Effect.map(
     collectAsyncIterable("glob", pattern, () =>
       expandGlob(pattern, {
@@ -86,17 +87,17 @@ const glob: FileSystem.FileSystem["glob"] = (pattern, options) =>
     (entries) => entries.map((entry) => entry.path)
   )
 
-const link: FileSystem.FileSystem["link"] = (existingPath, newPath) =>
+const link: FileSystem.FileSystem["Service"]["link"] = (existingPath, newPath) =>
   tryPromise("link", existingPath, () => Deno.link(existingPath, newPath))
 
-const makeDirectory: FileSystem.FileSystem["makeDirectory"] = (path, options) =>
+const makeDirectory: FileSystem.FileSystem["Service"]["makeDirectory"] = (path, options) =>
   tryPromise("makeDirectory", path, () =>
     Deno.mkdir(path, {
       recursive: options?.recursive ?? false,
       ...(options?.mode === undefined ? {} : { mode: options.mode })
     }))
 
-const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["makeTempDirectory"] => (options) =>
+const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["Service"]["makeTempDirectory"] => (options) =>
   tryPromise(method, options?.directory, () =>
     Deno.makeTempDir({
       ...(options?.directory === undefined ? {} : { dir: options.directory }),
@@ -105,7 +106,7 @@ const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["makeTe
 
 const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
 
-const removeFactory = (method: string): FileSystem.FileSystem["remove"] => (path, options) => {
+const removeFactory = (method: string): FileSystem.FileSystem["Service"]["remove"] => (path, options) => {
   const effect = tryPromise(method, path, () => Deno.remove(path, { recursive: options?.recursive ?? false }))
   return options?.force
     ? Effect.catchTag(
@@ -118,7 +119,7 @@ const removeFactory = (method: string): FileSystem.FileSystem["remove"] => (path
 
 const remove = removeFactory("remove")
 
-const makeTempDirectoryScoped: FileSystem.FileSystem["makeTempDirectoryScoped"] = (options) =>
+const makeTempDirectoryScoped: FileSystem.FileSystem["Service"]["makeTempDirectoryScoped"] = (options) =>
   Effect.acquireRelease(
     makeTempDirectoryFactory("makeTempDirectoryScoped")(options),
     (directory) => Effect.orDie(removeFactory("makeTempDirectoryScoped")(directory, { recursive: true }))
@@ -338,7 +339,7 @@ class FileImpl implements FileSystem.File {
   }
 }
 
-const open: FileSystem.FileSystem["open"] = (path, options) => {
+const open: FileSystem.FileSystem["Service"]["open"] = (path, options) => {
   const append = options?.flag?.startsWith("a") ?? false
   return Effect.map(
     Effect.acquireRelease(
@@ -349,7 +350,7 @@ const open: FileSystem.FileSystem["open"] = (path, options) => {
   )
 }
 
-const makeTempFileFactory = (method: string): FileSystem.FileSystem["makeTempFile"] => (options) =>
+const makeTempFileFactory = (method: string): FileSystem.FileSystem["Service"]["makeTempFile"] => (options) =>
   tryPromise(method, options?.directory, () =>
     Deno.makeTempFile({
       ...(options?.directory === undefined ? {} : { dir: options.directory }),
@@ -359,13 +360,13 @@ const makeTempFileFactory = (method: string): FileSystem.FileSystem["makeTempFil
 
 const makeTempFile = makeTempFileFactory("makeTempFile")
 
-const makeTempFileScoped: FileSystem.FileSystem["makeTempFileScoped"] = (options) =>
+const makeTempFileScoped: FileSystem.FileSystem["Service"]["makeTempFileScoped"] = (options) =>
   Effect.acquireRelease(
     makeTempFileFactory("makeTempFileScoped")(options),
     (file) => Effect.orDie(removeFactory("makeTempFileScoped")(file, { force: true }))
   )
 
-const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) => {
+const readDirectory: FileSystem.FileSystem["Service"]["readDirectory"] = (path, options) => {
   if (options?.recursive) {
     return Effect.map(
       collectAsyncIterable("readDirectory", path, () => walk(path)),
@@ -378,29 +379,31 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
   )
 }
 
-const readFile: FileSystem.FileSystem["readFile"] = (path) =>
+const readFile: FileSystem.FileSystem["Service"]["readFile"] = (path) =>
   tryPromise("readFile", path, (signal) => Deno.readFile(path, { signal }))
 
-const readLink: FileSystem.FileSystem["readLink"] = (path) => tryPromise("readLink", path, () => Deno.readLink(path))
+const readLink: FileSystem.FileSystem["Service"]["readLink"] = (path) =>
+  tryPromise("readLink", path, () => Deno.readLink(path))
 
-const realPath: FileSystem.FileSystem["realPath"] = (path) => tryPromise("realPath", path, () => Deno.realPath(path))
+const realPath: FileSystem.FileSystem["Service"]["realPath"] = (path) =>
+  tryPromise("realPath", path, () => Deno.realPath(path))
 
-const rename: FileSystem.FileSystem["rename"] = (oldPath, newPath) =>
+const rename: FileSystem.FileSystem["Service"]["rename"] = (oldPath, newPath) =>
   tryPromise("rename", oldPath, () => Deno.rename(oldPath, newPath))
 
-const stat: FileSystem.FileSystem["stat"] = (path) =>
+const stat: FileSystem.FileSystem["Service"]["stat"] = (path) =>
   Effect.map(
     tryPromise("stat", path, () => Deno.stat(path)),
     makeFileInfo
   )
 
-const symlink: FileSystem.FileSystem["symlink"] = (target, path) =>
+const symlink: FileSystem.FileSystem["Service"]["symlink"] = (target, path) =>
   tryPromise("symlink", target, () => Deno.symlink(target, path))
 
-const truncate: FileSystem.FileSystem["truncate"] = (path, length) =>
+const truncate: FileSystem.FileSystem["Service"]["truncate"] = (path, length) =>
   tryPromise("truncate", path, () => Deno.truncate(path, length))
 
-const utimes: FileSystem.FileSystem["utimes"] = (path, atime, mtime) =>
+const utimes: FileSystem.FileSystem["Service"]["utimes"] = (path, atime, mtime) =>
   tryPromise("utimes", path, () => Deno.utime(path, atime, mtime))
 
 const watchNative = (
@@ -452,7 +455,7 @@ const watch = (
     Stream.unwrap
   )
 
-const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
+const writeFile: FileSystem.FileSystem["Service"]["writeFile"] = (path, data, options) => {
   const flag = options?.flag ?? "w"
   if (options?.mode === undefined && (flag === "w" || flag === "wx" || flag === "a" || flag === "ax")) {
     return tryPromise("writeFile", path, (signal) =>

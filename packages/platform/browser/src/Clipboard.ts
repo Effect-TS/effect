@@ -41,14 +41,22 @@ const ErrorTypeId = "~@effect/platform-browser/Clipboard/ClipboardError"
  * @category services
  * @since 4.0.0
  */
-export interface Clipboard {
-  readonly [TypeId]: typeof TypeId
-  readonly read: Effect.Effect<ClipboardItems, ClipboardError>
-  readonly readString: Effect.Effect<string, ClipboardError>
-  readonly write: (items: ClipboardItems) => Effect.Effect<void, ClipboardError>
-  readonly writeString: (text: string) => Effect.Effect<void, ClipboardError>
-  readonly writeBlob: (blob: Blob) => Effect.Effect<void, ClipboardError>
-  readonly clear: Effect.Effect<void, ClipboardError>
+export declare namespace Clipboard {
+  /**
+   * Implementation of the Clipboard service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    readonly read: Effect.Effect<ClipboardItems, ClipboardError>
+    readonly readString: Effect.Effect<string, ClipboardError>
+    readonly write: (items: ClipboardItems) => Effect.Effect<void, ClipboardError>
+    readonly writeString: (text: string) => Effect.Effect<void, ClipboardError>
+    readonly writeBlob: (blob: Blob) => Effect.Effect<void, ClipboardError>
+    readonly clear: Effect.Effect<void, ClipboardError>
+  }
 }
 
 /**
@@ -78,7 +86,7 @@ export class ClipboardError extends Data.TaggedError("ClipboardError")<{
  * @category services
  * @since 4.0.0
  */
-export const Clipboard: Context.Service<Clipboard, Clipboard> = Context.Service<Clipboard>(TypeId)
+export class Clipboard extends Context.Service<Clipboard, Clipboard.Service>()(TypeId) {}
 
 /**
  * Builds a `Clipboard` service from primitive read and write operations, deriving `clear` and `writeBlob` helpers.
@@ -87,8 +95,8 @@ export const Clipboard: Context.Service<Clipboard, Clipboard> = Context.Service<
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<Clipboard, "clear" | "writeBlob" | typeof TypeId>
-): Clipboard =>
+  impl: Omit<Clipboard["Service"], "clear" | "writeBlob" | typeof TypeId>
+): Clipboard["Service"] =>
   Clipboard.of({
     ...impl,
     [TypeId]: TypeId,

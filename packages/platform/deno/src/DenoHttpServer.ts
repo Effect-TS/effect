@@ -150,10 +150,10 @@ export const make = Effect.fnUntraced(function*(
 })
 
 const makeResponse = Effect.fnUntraced(function*(
-  request: ServerRequest.HttpServerRequest,
+  request: ServerRequest.HttpServerRequest["Service"],
   response: ServerResponse.HttpServerResponse,
   context: Context.Context<never>,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ) {
   const fields: {
     headers: globalThis.Headers
@@ -286,7 +286,7 @@ export const layerConfig = (
     layerHttpServices
   )
 
-class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
+class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest.Service {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
@@ -443,7 +443,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     return this.arrayBufferEffect
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpServerError> {
+  get upgrade(): Effect.Effect<Socket.Socket["Service"], Error.HttpServerError> {
     return Effect.flatMap(
       Effect.try({
         try: () => Deno.upgradeWebSocket(this.source, this.websocketOptions),

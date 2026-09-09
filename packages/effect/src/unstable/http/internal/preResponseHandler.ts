@@ -6,7 +6,10 @@ import type { HttpServerRequest } from "../HttpServerRequest.ts"
 export const requestPreResponseHandlers = new WeakMap<object, PreResponseHandler>()
 
 /** @internal */
-export const appendPreResponseHandlerUnsafe = (request: HttpServerRequest, handler: PreResponseHandler): void => {
+export const appendPreResponseHandlerUnsafe = (
+  request: HttpServerRequest["Service"],
+  handler: PreResponseHandler
+): void => {
   const prev = requestPreResponseHandlers.get(request.source)
   const next: PreResponseHandler = prev ?
     (request, response) => Effect.flatMap(prev(request, response), (response) => handler(request, response))

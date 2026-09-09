@@ -74,7 +74,7 @@ export interface RcMap<in out K, in out A, in out E = never> extends Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly lookup: (key: K) => Effect.Effect<A, E, Scope.Scope>
   readonly context: Context.Context<never>
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   readonly idleTimeToLive: (key: K) => Duration.Duration
   readonly capacity: number
   state: State<K, A, E>
@@ -167,7 +167,7 @@ export declare namespace State {
 const makeUnsafe = <K, A, E>(options: {
   readonly lookup: (key: K) => Effect.Effect<A, E, Scope.Scope>
   readonly context: Context.Context<never>
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   readonly idleTimeToLive: (key: K) => Duration.Duration
   readonly capacity: number
 }): RcMap<K, A, E> => ({

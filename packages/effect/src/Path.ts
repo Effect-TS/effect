@@ -81,22 +81,30 @@ export const TypeId = "~effect/Path"
  * @category services
  * @since 4.0.0
  */
-export interface Path {
-  readonly [TypeId]: typeof TypeId
-  readonly sep: string
-  readonly basename: (path: string, suffix?: string) => string
-  readonly dirname: (path: string) => string
-  readonly extname: (path: string) => string
-  readonly format: (pathObject: Partial<Path.Parsed>) => string
-  readonly fromFileUrl: (url: URL) => Effect.Effect<string, BadArgument>
-  readonly isAbsolute: (path: string) => boolean
-  readonly join: (...paths: ReadonlyArray<string>) => string
-  readonly normalize: (path: string) => string
-  readonly parse: (path: string) => Path.Parsed
-  readonly relative: (from: string, to: string) => string
-  readonly resolve: (...pathSegments: ReadonlyArray<string>) => string
-  readonly toFileUrl: (path: string) => Effect.Effect<URL, BadArgument>
-  readonly toNamespacedPath: (path: string) => string
+export declare namespace Path {
+  /**
+   * Implementation of the Path service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    readonly sep: string
+    readonly basename: (path: string, suffix?: string) => string
+    readonly dirname: (path: string) => string
+    readonly extname: (path: string) => string
+    readonly format: (pathObject: Partial<Path.Parsed>) => string
+    readonly fromFileUrl: (url: URL) => Effect.Effect<string, BadArgument>
+    readonly isAbsolute: (path: string) => boolean
+    readonly join: (...paths: ReadonlyArray<string>) => string
+    readonly normalize: (path: string) => string
+    readonly parse: (path: string) => Path.Parsed
+    readonly relative: (from: string, to: string) => string
+    readonly resolve: (...pathSegments: ReadonlyArray<string>) => string
+    readonly toFileUrl: (path: string) => Effect.Effect<URL, BadArgument>
+    readonly toNamespacedPath: (path: string) => string
+  }
 }
 
 /**
@@ -200,7 +208,7 @@ export declare namespace Path {
  * import { Effect, Layer, Path } from "effect"
  *
  * // Create a custom path implementation
- * const customPath: Path.Path = {
+ * const customPath: Path.Path["Service"] = {
  *   [Path.TypeId]: Path.TypeId,
  *   sep: "/",
  *   basename: (path: string, suffix?: string) => {
@@ -252,7 +260,7 @@ export declare namespace Path {
  * @category services
  * @since 4.0.0
  */
-export const Path: Context.Service<Path, Path> = Context.Service("effect/Path")
+export class Path extends Context.Service<Path, Path.Service>()("effect/Path") {}
 
 /**
  * The following functions are adapted from the Node.js source code:
@@ -382,7 +390,7 @@ function fromFileUrl(url: URL): Effect.Effect<string, BadArgument> {
   return Effect.succeed(decodeURIComponent(pathname))
 }
 
-const resolve: Path["resolve"] = function resolve() {
+const resolve: Path["Service"]["resolve"] = function resolve() {
   let resolvedPath = ""
   let resolvedAbsolute = false
   let cwd: string | undefined = undefined

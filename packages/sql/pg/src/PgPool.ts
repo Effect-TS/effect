@@ -67,38 +67,46 @@ export interface Config extends PgConnection.Config {
  * @category models
  * @since 4.0.0
  */
-export interface PgPool {
-  readonly [TypeId]: TypeId
-  readonly config: Config
+export declare namespace PgPool {
   /**
-   * Checks out a session until the scope closes. Without multiplexing the
-   * checkout is exclusive. With multiplexing the
-   * session may be shared with other fibers, so multi-statement work should
-   * use `reserve` instead.
-   */
-  readonly get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
-  /**
-   * Checks out a session for exclusive use until the scope closes. Use this for
-   * transactions and listeners on a multiplexed pool.
-   */
-  readonly reserve: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
-  /**
-   * Removes a session so the pool can replace it. Fatal protocol and socket
-   * errors invalidate sessions automatically.
-   */
-  /**
-   * Lends a session for the duration of one effect and takes it back on any
-   * exit, without opening a scope for it.
+   * Implementation of the PgPool service.
    *
-   * **Details**
-   *
-   * For work that finishes with the effect that runs it. A lease that has to
-   * outlive its effect - a stream, a transaction - takes `get` or `reserve`.
+   * @category models
+   * @since 4.0.0
    */
-  readonly use: <A, E, R>(
-    f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, E | SqlError, R>
-  readonly invalidate: (connection: PgConnection.PgConnection) => Effect.Effect<void>
+  export interface Service {
+    readonly [TypeId]: TypeId
+    readonly config: Config
+    /**
+     * Checks out a session until the scope closes. Without multiplexing the
+     * checkout is exclusive. With multiplexing the
+     * session may be shared with other fibers, so multi-statement work should
+     * use `reserve` instead.
+     */
+    readonly get: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope>
+    /**
+     * Checks out a session for exclusive use until the scope closes. Use this for
+     * transactions and listeners on a multiplexed pool.
+     */
+    readonly reserve: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope>
+    /**
+     * Removes a session so the pool can replace it. Fatal protocol and socket
+     * errors invalidate sessions automatically.
+     */
+    /**
+     * Lends a session for the duration of one effect and takes it back on any
+     * exit, without opening a scope for it.
+     *
+     * **Details**
+     *
+     * For work that finishes with the effect that runs it. A lease that has to
+     * outlive its effect - a stream, a transaction - takes `get` or `reserve`.
+     */
+    readonly use: <A, E, R>(
+      f: (connection: PgConnection.PgConnection["Service"]) => Effect.Effect<A, E, R>
+    ) => Effect.Effect<A, E | SqlError, R>
+    readonly invalidate: (connection: PgConnection.PgConnection["Service"]) => Effect.Effect<void>
+  }
 }
 
 /**
@@ -107,7 +115,7 @@ export interface PgPool {
  * @category services
  * @since 4.0.0
  */
-export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
+export class PgPool extends Context.Service<PgPool, PgPool.Service>()("@effect/sql-pg/PgPool") {}
 
 /**
  * Creates a scoped PostgreSQL session pool.
@@ -121,111 +129,114 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
  * @category constructors
  * @since 4.0.0
  */
-export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Return<PgPool, SqlError, Scope.Scope> {
-  const clock = yield* Clock.Clock
-  const runFork = Effect.runForkWith(yield* Effect.context())
+export const make = Effect.fnUntraced(
+  function*(options: Config): Effect.fn.Return<PgPool["Service"], SqlError, Scope.Scope> {
+    const clock = yield* Clock.Clock
+    const runFork = Effect.runForkWith(yield* Effect.context())
 
-  const multiplex = options.multiplex ?? false
-  const connectionTTL = options.connectionTTL !== undefined
-    ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
-    : undefined
-  const deadConnections = new Set<PgConnection.PgConnection>()
-  const createdAt = new WeakMap<PgConnection.PgConnection, number>()
-  const checkedOut = new WeakSet<PgConnection.PgConnection>()
+    const multiplex = options.multiplex ?? false
+    const connectionTTL = options.connectionTTL !== undefined
+      ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
+      : undefined
+    const deadConnections = new Set<PgConnection.PgConnection["Service"]>()
+    const createdAt = new WeakMap<PgConnection.PgConnection["Service"], number>()
+    const checkedOut = new WeakSet<PgConnection.PgConnection["Service"]>()
 
-  // Assigned below, once the pool exists. `acquire` only runs when the pool
-  // opens a connection, which is always after that.
-  let pool: Pool.Pool<PgConnection.PgConnection, SqlError>
-  const acquire = Effect.tap(PgConnection.make(options), (connection) =>
-    Effect.sync(() => {
-      createdAt.set(connection, clock.currentTimeMillisUnsafe())
-      const internals = connectionInternals(connection)
-      internals.fatalHooks.add(() => {
-        deadConnections.add(connection)
-        // `deadConnections` is only read by the next checkout, and a checkout
-        // already waiting for this connection would never get that far. Tell
-        // the pool now so it can replace the connection and admit them.
-        runFork(Pool.invalidate(pool, connection))
-      })
-      // Pinning a shared session has to take it out of circulation, or a
-      // second checkout lands on the connection its own stream is holding.
-      if (multiplex) internals.reserve = Pool.reserve(pool, connection)
-    }))
+    // Assigned below, once the pool exists. `acquire` only runs when the pool
+    // opens a connection, which is always after that.
+    let pool: Pool.Pool<PgConnection.PgConnection["Service"], SqlError>
+    const acquire = Effect.tap(PgConnection.make(options), (connection) =>
+      Effect.sync(() => {
+        createdAt.set(connection, clock.currentTimeMillisUnsafe())
+        const internals = connectionInternals(connection)
+        internals.fatalHooks.add(() => {
+          deadConnections.add(connection)
+          // `deadConnections` is only read by the next checkout, and a checkout
+          // already waiting for this connection would never get that far. Tell
+          // the pool now so it can replace the connection and admit them.
+          runFork(Pool.invalidate(pool, connection))
+        })
+        // Pinning a shared session has to take it out of circulation, or a
+        // second checkout lands on the connection its own stream is holding.
+        if (multiplex) internals.reserve = Pool.reserve(pool, connection)
+      }))
 
-  const maxConnections = options.maxConnections ?? 10
-  pool = yield* Pool.makeWithTTL({
-    acquire,
-    min: options.minConnections ?? 0,
-    max: maxConnections,
-    concurrency: multiplex
-      ? Math.max(1, options.multiplexConcurrency ?? defaultMultiplexConcurrency)
-      : 1,
-    timeToLive: options.idleTimeout ?? Duration.seconds(10),
-    timeToLiveStrategy: "usage"
-  })
+    const maxConnections = options.maxConnections ?? 10
+    pool = yield* Pool.makeWithTTL({
+      acquire,
+      min: options.minConnections ?? 0,
+      max: maxConnections,
+      concurrency: multiplex
+        ? Math.max(1, options.multiplexConcurrency ?? defaultMultiplexConcurrency)
+        : 1,
+      timeToLive: options.idleTimeout ?? Duration.seconds(10),
+      timeToLiveStrategy: "usage"
+    })
 
-  const expired = (connection: PgConnection.PgConnection): boolean => {
-    if (connectionInternals(connection).deadError() !== undefined) return true
-    if (connectionTTL === undefined) return false
-    if (!checkedOut.has(connection)) {
-      checkedOut.add(connection)
-      return false
-    }
-    const openedAt = createdAt.get(connection)
-    return openedAt !== undefined && clock.currentTimeMillisUnsafe() - openedAt >= connectionTTL
-  }
-
-  // A checkout runs per statement, so the case where nothing has died and the
-  // first connection is usable stays a plain flatMap; retrying is the
-  // exception and pays for the loop.
-  const retry: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.gen(function*() {
-    while (true) {
-      if (deadConnections.size > 0) {
-        const dead = Array.from(deadConnections)
-        deadConnections.clear()
-        yield* Effect.forEach(dead, (connection) => Pool.invalidate(pool, connection), { discard: true })
+    const expired = (connection: PgConnection.PgConnection["Service"]): boolean => {
+      if (connectionInternals(connection).deadError() !== undefined) return true
+      if (connectionTTL === undefined) return false
+      if (!checkedOut.has(connection)) {
+        checkedOut.add(connection)
+        return false
       }
-      const connection = yield* Pool.get(pool)
-      if (expired(connection)) {
-        yield* Pool.invalidate(pool, connection)
-        continue
-      }
-      return connection
+      const openedAt = createdAt.get(connection)
+      return openedAt !== undefined && clock.currentTimeMillisUnsafe() - openedAt >= connectionTTL
     }
-  })
 
-  const get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
-    deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
-      expired(connection)
-        ? Effect.andThen(Pool.invalidate(pool, connection), retry)
-        : Effect.succeed(connection))
-  )
+    // A checkout runs per statement, so the case where nothing has died and the
+    // first connection is usable stays a plain flatMap; retrying is the
+    // exception and pays for the loop.
+    const retry: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope> = Effect.gen(function*() {
+      while (true) {
+        if (deadConnections.size > 0) {
+          const dead = Array.from(deadConnections)
+          deadConnections.clear()
+          yield* Effect.forEach(dead, (connection) => Pool.invalidate(pool, connection), { discard: true })
+        }
+        const connection = yield* Pool.get(pool)
+        if (expired(connection)) {
+          yield* Pool.invalidate(pool, connection)
+          continue
+        }
+        return connection
+      }
+    })
 
-  // `pin` reserves the pool item itself, so this needs no help.
-  const reserve = Effect.flatMap(get, (connection) => connection.pin)
-
-  // `Pool.use` cannot check the session it hands over before running the
-  // effect, so it is only taken when there is nothing to check: no session is
-  // known dead, and no lifetime can have run out. Otherwise the scoped
-  // checkout does its replacement pass first. Checking inside the callback
-  // instead would hold one lease while acquiring another, which deadlocks a
-  // pool of one.
-  const use = <A, E, R>(
-    f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E | SqlError, R> =>
-    Effect.suspend(() =>
-      connectionTTL === undefined && deadConnections.size === 0
-        ? Pool.use(pool, f)
-        : Effect.scoped(Effect.flatMap(get, f))
+    const get: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope> = Effect.suspend(() =>
+      deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
+        expired(connection)
+          ? Effect.andThen(Pool.invalidate(pool, connection), retry)
+          : Effect.succeed(connection))
     )
 
-  const pgPool: PgPool = {
-    [TypeId]: TypeId,
-    config: options,
-    get,
-    reserve,
-    use,
-    invalidate: (connection) => Pool.invalidate(pool, connectionInternals(connection).base as PgConnection.PgConnection)
+    // `pin` reserves the pool item itself, so this needs no help.
+    const reserve = Effect.flatMap(get, (connection) => connection.pin)
+
+    // `Pool.use` cannot check the session it hands over before running the
+    // effect, so it is only taken when there is nothing to check: no session is
+    // known dead, and no lifetime can have run out. Otherwise the scoped
+    // checkout does its replacement pass first. Checking inside the callback
+    // instead would hold one lease while acquiring another, which deadlocks a
+    // pool of one.
+    const use = <A, E, R>(
+      f: (connection: PgConnection.PgConnection["Service"]) => Effect.Effect<A, E, R>
+    ): Effect.Effect<A, E | SqlError, R> =>
+      Effect.suspend(() =>
+        connectionTTL === undefined && deadConnections.size === 0
+          ? Pool.use(pool, f)
+          : Effect.scoped(Effect.flatMap(get, f))
+      )
+
+    const pgPool: PgPool["Service"] = {
+      [TypeId]: TypeId,
+      config: options,
+      get,
+      reserve,
+      use,
+      invalidate: (connection) =>
+        Pool.invalidate(pool, connectionInternals(connection).base as PgConnection.PgConnection["Service"])
+    }
+    return pgPool
   }
-  return pgPool
-})
+)

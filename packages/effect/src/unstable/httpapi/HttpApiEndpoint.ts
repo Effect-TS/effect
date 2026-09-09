@@ -117,7 +117,7 @@ type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType>
     : { readonly payload: Simplify<PayloadType> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
   & {
-    readonly request: HttpServerRequest
+    readonly request: HttpServerRequest["Service"]
     readonly endpoint: Endpoint
     readonly group: HttpApiGroup.Top
   }
@@ -127,7 +127,7 @@ type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType> =
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
   & {
-    readonly request: HttpServerRequest
+    readonly request: HttpServerRequest["Service"]
     readonly endpoint: Endpoint
     readonly group: HttpApiGroup.Top
   }

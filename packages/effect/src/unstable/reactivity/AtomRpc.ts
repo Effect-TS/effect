@@ -159,10 +159,11 @@ export const Service = <Self>() =>
     readonly runtime?: Atom.RuntimeFactory | undefined
   }
 ): AtomRpcClient<Self, Id, Rpcs> => {
-  const self: Mutable<AtomRpcClient<Self, Id, Rpcs>> = Context.Service<
+  // This constructor must retain the caller-supplied Self identifier for service subclasses.
+  const self: Mutable<AtomRpcClient<Self, Id, Rpcs>> = class extends Context.Service<
     Self,
     RpcClient.RpcClient.Flat<Rpcs, RpcClientError>
-  >()(id) as any
+  >()(id) {} as any
 
   const layer = Layer.effect(
     self,

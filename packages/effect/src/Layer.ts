@@ -53,7 +53,7 @@ const TypeId = "~effect/Layer"
  */
 export interface Layer<in ROut, out E = never, out RIn = never> extends Variance<ROut, E, RIn>, Pipeable {
   /** @internal */
-  build(memoMap: MemoMap, scope: Scope.Scope): Effect<Context.Context<ROut>, E, RIn>
+  build(memoMap: MemoMap, scope: Scope.Scope["Service"]): Effect<Context.Context<ROut>, E, RIn>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: LayerUnify<this>
   [Unify.ignoreSymbol]?: LayerUnifyIgnore
@@ -223,12 +223,12 @@ export interface MemoMap {
   readonly [MemoMapTypeId]: typeof MemoMapTypeId
   readonly get: <RIn, E, ROut>(
     layer: Layer<ROut, E, RIn>,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect<Context.Context<ROut>, E, RIn> | undefined
   readonly getOrElseMemoize: <RIn, E, ROut>(
     layer: Layer<ROut, E, RIn>,
-    scope: Scope.Scope,
-    build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
+    scope: Scope.Scope["Service"],
+    build: (memoMap: MemoMap, scope: Scope.Scope["Service"]) => Effect<Context.Context<ROut>, E, RIn>
   ) => Effect<Context.Context<ROut>, E, RIn>
 }
 
@@ -240,7 +240,7 @@ type MemoMapEntry = {
 
 const memoMapReuse = <RIn, E, ROut>(
   entry: MemoMapEntry,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ): Effect<Context.Context<ROut>, E, RIn> => {
   entry.observers++
   return internalEffect.andThen(
@@ -289,7 +289,7 @@ const LayerProto = {
 const fromBuildUnsafe = <ROut, E, RIn>(
   build: (
     memoMap: MemoMap,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect<Context.Context<ROut>, E, RIn>
 ): Layer<ROut, E, RIn> => {
   const self = Object.create(LayerProto)
@@ -333,10 +333,10 @@ const fromBuildUnsafe = <ROut, E, RIn>(
 export const fromBuild = <ROut, E, RIn>(
   build: (
     memoMap: MemoMap,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect<Context.Context<ROut>, E, RIn>
 ): Layer<ROut, E, RIn> =>
-  fromBuildUnsafe((memoMap: MemoMap, scope: Scope.Scope) => {
+  fromBuildUnsafe((memoMap: MemoMap, scope: Scope.Scope["Service"]) => {
     const layerScope = Scope.forkUnsafe(scope)
     return internalEffect.onExit(
       build(memoMap, layerScope),
@@ -380,7 +380,7 @@ export const fromBuild = <ROut, E, RIn>(
 export const fromBuildMemo = <ROut, E, RIn>(
   build: (
     memoMap: MemoMap,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect<Context.Context<ROut>, E, RIn>
 ): Layer<ROut, E, RIn> => {
   const self: Layer<ROut, E, RIn> = fromBuild((memoMap, scope) => memoMap.getOrElseMemoize(self, scope, build))
@@ -390,8 +390,8 @@ export const fromBuildMemo = <ROut, E, RIn>(
 const memoMapBuild = <RIn, E, ROut>(
   memoMap: MemoMapImpl,
   layer: Layer<ROut, E, RIn>,
-  scope: Scope.Scope,
-  build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
+  scope: Scope.Scope["Service"],
+  build: (memoMap: MemoMap, scope: Scope.Scope["Service"]) => Effect<Context.Context<ROut>, E, RIn>
 ): Effect<Context.Context<ROut>, E, RIn> => {
   const layerScope = Scope.makeUnsafe()
   const deferred = Deferred.makeUnsafe<Context.Context<ROut>, E>()
@@ -433,7 +433,7 @@ class MemoMapImpl implements MemoMap {
 
   get<RIn, E, ROut>(
     layer: Layer<ROut, E, RIn>,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ): Effect<Context.Context<ROut>, E, RIn> | undefined {
     const local = this.map.get(layer)
     if (local) {
@@ -444,8 +444,8 @@ class MemoMapImpl implements MemoMap {
 
   getOrElseMemoize<RIn, E, ROut>(
     layer: Layer<ROut, E, RIn>,
-    scope: Scope.Scope,
-    build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
+    scope: Scope.Scope["Service"],
+    build: (memoMap: MemoMap, scope: Scope.Scope["Service"]) => Effect<Context.Context<ROut>, E, RIn>
   ): Effect<Context.Context<ROut>, E, RIn> {
     return internalEffect.suspend(() => {
       const existing = this.get(layer, scope)
@@ -645,17 +645,17 @@ export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("
 export const buildWithMemoMap: {
   (
     memoMap: MemoMap,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ): <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Effect<Context.Context<ROut>, E, RIn>
   <RIn, E, ROut>(
     self: Layer<ROut, E, RIn>,
     memoMap: MemoMap,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ): Effect<Context.Context<ROut>, E, RIn>
 } = dual(3, <RIn, E, ROut>(
   self: Layer<ROut, E, RIn>,
   memoMap: MemoMap,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ): Effect<Context.Context<ROut>, E, RIn> =>
   internalEffect.provideService(
     internalEffect.map(self.build(memoMap, scope), Context.add(CurrentMemoMap, memoMap)),
@@ -760,11 +760,11 @@ export const build = <RIn, E, ROut>(
  * @since 2.0.0
  */
 export const buildWithScope: {
-  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Effect<Context.Context<ROut>, E, RIn>
-  <RIn, E, ROut>(self: Layer<ROut, E, RIn>, scope: Scope.Scope): Effect<Context.Context<ROut>, E, RIn>
+  (scope: Scope.Scope["Service"]): <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Effect<Context.Context<ROut>, E, RIn>
+  <RIn, E, ROut>(self: Layer<ROut, E, RIn>, scope: Scope.Scope["Service"]): Effect<Context.Context<ROut>, E, RIn>
 } = dual(2, <RIn, E, ROut>(
   self: Layer<ROut, E, RIn>,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ): Effect<Context.Context<ROut>, E, RIn> =>
   core.withFiber((fiber) =>
     buildWithMemoMap(
@@ -877,7 +877,7 @@ export const succeedContext = <A>(context: Context.Context<A>): Layer<A> =>
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Option } from "effect"
  *
- * const Service = Context.Service<string>("Service")
+ * class Service extends Context.Service<Service, string>()("Service") {}
  * const context = Effect.runSync(Effect.scoped(Layer.build(Layer.empty)))
  * Context.getOption(context, Service) // => Option.none()
  * ```
@@ -1137,7 +1137,7 @@ export const effectDiscard = <X, E, R>(effect: Effect<X, E, R>): Layer<never, E,
 export const suspend = <A, E, R>(evaluate: LazyArg<Layer<A, E, R>>): Layer<A, E, R> =>
   fromBuildMemo((memoMap, scope) => internalEffect.suspend(() => evaluate().build(memoMap, scope)))
 
-const unwrapKey = Context.Service<Layer<any, any, any>>("effect/Layer/unwrap")
+class UnwrapKey extends Context.Service<UnwrapKey, Layer<any, any, any>>()("effect/Layer/unwrap") {}
 
 /**
  * Unwraps a `Layer` from an `Effect`, flattening the nested structure.
@@ -1175,12 +1175,12 @@ const unwrapKey = Context.Service<Layer<any, any, any>>("effect/Layer/unwrap")
  */
 export const unwrap = <A, E1, R1, E, R>(
   self: Effect<Layer<A, E1, R1>, E, R>
-): Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> => flatMap(effect(unwrapKey)(self), Context.get(unwrapKey))
+): Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> => flatMap(effect(UnwrapKey)(self), Context.get(UnwrapKey))
 
 const mergeAllEffect = <Layers extends [Layer<never, any, any>, ...Array<Layer<never, any, any>>]>(
   layers: Layers,
   memoMap: MemoMap,
-  scope: Scope.Scope
+  scope: Scope.Scope["Service"]
 ): Effect<
   Context.Context<{ [k in keyof Layers]: Success<Layers[k]> }[number]>,
   { [k in keyof Layers]: Error<Layers[k]> }[number],
@@ -2375,13 +2375,13 @@ const ChannelTypeId: Channel.TypeId = "~effect/Channel"
  * ```ts import.meta.vitest
  * import { Context, Layer } from "effect"
  *
- * const NumberService = Context.Service<number>("Number")
+ * class NumberService extends Context.Service<NumberService, number>()("Number") {}
  * const numberLayer = Layer.succeed(NumberService, 42)
  *
- * // Define a constraint that the success type must be a number
- * const satisfiesNumber = Layer.satisfiesSuccessType<number>()
+ * // Require the layer to provide the NumberService identifier
+ * const satisfiesNumber = Layer.satisfiesSuccessType<NumberService>()
  *
- * // This works - Layer<42, never, never> extends Layer<number, never, never>
+ * // The layer provides NumberService with a number implementation
  * const validLayer = satisfiesNumber(numberLayer)
  * ```
  *
@@ -2432,13 +2432,13 @@ export const satisfiesErrorType =
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * const NumberService = Context.Service<number>("Number")
+ * class NumberService extends Context.Service<NumberService, number>()("Number") {}
  * const numberLayer = Layer.effectDiscard(Effect.asVoid(NumberService))
  *
- * // Define a constraint that the service requirements must be numbers
- * const satisfiesNumber = Layer.satisfiesServicesType<number>()
+ * // Require the layer dependencies to use the NumberService identifier
+ * const satisfiesNumber = Layer.satisfiesServicesType<NumberService>()
  *
- * // This works - Layer<never, never, 42> extends Layer<never, never, number>
+ * // The layer requires NumberService
  * const validLayer = satisfiesNumber(numberLayer)
  * ```
  *

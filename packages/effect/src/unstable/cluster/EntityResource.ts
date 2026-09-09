@@ -71,7 +71,7 @@ export interface EntityResource<out A, out E = never> {
  */
 export class CloseScope extends Context.Service<
   CloseScope,
-  Scope.Scope
+  Scope.Scope["Service"]
 >()("effect/cluster/EntityResource/CloseScope") {}
 
 /**

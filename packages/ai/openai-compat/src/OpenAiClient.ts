@@ -38,7 +38,7 @@ import { OpenAiConfig } from "./OpenAiConfig.ts"
  * @since 4.0.0
  */
 export interface Service {
-  readonly client: HttpClient.HttpClient
+  readonly client: HttpClient.HttpClient["Service"]
   readonly createResponse: (
     options: CreateResponseRequestJson
   ) => Effect.Effect<
@@ -95,7 +95,9 @@ export type Options = {
   readonly apiUrl?: string | undefined
   readonly organizationId?: Redacted.Redacted<string> | undefined
   readonly projectId?: Redacted.Redacted<string> | undefined
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }
 
 const RedactedOpenAiHeaders = {
@@ -320,7 +322,9 @@ export const layerConfig = (options?: {
   readonly apiUrl?: Config.Config<string> | undefined
   readonly organizationId?: Config.Config<Redacted.Redacted<string> | undefined> | undefined
   readonly projectId?: Config.Config<Redacted.Redacted<string> | undefined> | undefined
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }): Layer.Layer<OpenAiClient, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     OpenAiClient,

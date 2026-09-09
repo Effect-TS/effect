@@ -20,7 +20,8 @@ import type { Terminal, UserInput } from "effect/Terminal"
  * @category constructors
  * @since 4.0.0
  */
-export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Terminal, never, Scope> = NodeTerminal.make
+export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Terminal["Service"], never, Scope> =
+  NodeTerminal.make
 
 /**
  * Provides the default process-backed `Terminal` service, ending key input on

@@ -115,7 +115,7 @@ export interface Config<A, E> {
  * @since 4.0.0
  */
 export interface State<A, E> {
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   isShuttingDown: boolean
   usage: number
   readonly resizeSemaphore: Semaphore.Semaphore

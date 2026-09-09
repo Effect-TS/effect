@@ -92,26 +92,12 @@ export const makeUnsafe = (options: {
 export type PlatformMessage = readonly [ready: 0] | readonly [data: 1, unknown]
 
 /**
- * Phantom identifier for the service that maps worker ids to platform-specific
- * worker instances.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Spawner {
-  readonly _: unique symbol
-}
-
-/**
  * Service tag for the worker `SpawnerFn`.
  *
  * @category services
  * @since 4.0.0
  */
-export const Spawner: Context.Service<
-  Spawner,
-  SpawnerFn<unknown>
-> = Context.Service("effect/workers/Worker/Spawner")
+export class Spawner extends Context.Service<Spawner, SpawnerFn<unknown>>()("effect/workers/Worker/Spawner") {}
 
 /**
  * Function that creates or locates a platform-specific worker instance for a
@@ -150,13 +136,13 @@ export const makePlatform = <W>() =>
 >(options: {
   readonly setup: (options: {
     readonly worker: W
-    readonly scope: Scope.Scope
+    readonly scope: Scope.Scope["Service"]
   }) => Effect.Effect<P, WorkerError>
   readonly listen: (options: {
     readonly port: P
     readonly emit: (data: any) => void
     readonly deferred: Deferred.Deferred<never, WorkerError>
-    readonly scope: Scope.Scope
+    readonly scope: Scope.Scope["Service"]
   }) => Effect.Effect<void>
 }): WorkerPlatform["Service"] =>
   WorkerPlatform.of({

@@ -48,19 +48,27 @@ export type TypeId = "~@effect/sql-pg/PgClient"
  * @category services
  * @since 4.0.0
  */
-export interface PgClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: PgClientConfig
-  readonly json: (_: unknown) => Fragment
+export declare namespace PgClient {
   /**
-   * Registers a channel listener and returns its non-empty payload queue after
-   * PostgreSQL confirms `LISTEN`. The listener holds a connection until the
-   * scope closes.
+   * Implementation of the PgClient service.
+   *
+   * @category models
+   * @since 4.0.0
    */
-  readonly listen: (
-    channel: string
-  ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification>, SqlError, Scope.Scope>
-  readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: PgClientConfig
+    readonly json: (_: unknown) => Fragment
+    /**
+     * Registers a channel listener and returns its non-empty payload queue after
+     * PostgreSQL confirms `LISTEN`. The listener holds a connection until the
+     * scope closes.
+     */
+    readonly listen: (
+      channel: string
+    ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification>, SqlError, Scope.Scope>
+    readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
+  }
 }
 
 /**
@@ -69,7 +77,7 @@ export interface PgClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
+export class PgClient extends Context.Service<PgClient, PgClient.Service>()("@effect/sql-pg/PgClient") {}
 
 /**
  * Connection and query settings for a PostgreSQL client.
@@ -142,7 +150,9 @@ export interface PgPoolConfig extends PgClientConfig {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+export const make = (
+  options: PgPoolConfig
+): Effect.Effect<PgClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.flatMap(PgPool.make(options), (pool) =>
     makeImpl({
       acquirer: Effect.map(pool.get, makeConnection),
@@ -165,7 +175,7 @@ export const makeClient = (
      */
     readonly acquireForStream?: boolean | undefined
   }
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<PgClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.flatMap(PgConnection.make(options), (connection) =>
     makeImpl({
       acquirer: Effect.succeed(makeConnection(
@@ -182,13 +192,13 @@ export const makeClient = (
  */
 const makeImpl = Effect.fnUntraced(function*(
   options: {
-    readonly acquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
+    readonly acquirer: Effect.Effect<Connection["Service"], SqlError, Scope.Scope>
     readonly borrower?: Borrower | undefined
-    readonly transactionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
-    readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
+    readonly transactionAcquirer: Effect.Effect<Connection["Service"], SqlError, Scope.Scope>
+    readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope>
     readonly config: PgClientConfig
   }
-): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
+): Effect.fn.Return<PgClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> {
   const config = options.config
   const compiler = makeCompiler(
     config.transformQueryNames,
@@ -242,13 +252,13 @@ const makeImpl = Effect.fnUntraced(function*(
   )
 })
 
-class ConnectionImpl implements Connection {
-  readonly connection: PgConnection.PgConnection
-  readonly streamAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
+class ConnectionImpl implements Connection.Service {
+  readonly connection: PgConnection.PgConnection["Service"]
+  readonly streamAcquirer: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope> | undefined
 
   constructor(
-    connection: PgConnection.PgConnection,
-    streamAcquirer?: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
+    connection: PgConnection.PgConnection["Service"],
+    streamAcquirer?: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope> | undefined
   ) {
     this.connection = connection
     this.streamAcquirer = streamAcquirer
@@ -304,9 +314,9 @@ class ConnectionImpl implements Connection {
 }
 
 const makeConnection = (
-  connection: PgConnection.PgConnection,
-  streamAcquirer?: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
-): Connection => new ConnectionImpl(connection, streamAcquirer)
+  connection: PgConnection.PgConnection["Service"],
+  streamAcquirer?: Effect.Effect<PgConnection.PgConnection["Service"], SqlError, Scope.Scope> | undefined
+): Connection["Service"] => new ConnectionImpl(connection, streamAcquirer)
 
 /**
  * Provides both `PgClient` and `SqlClient` from an acquisition effect.
@@ -315,7 +325,7 @@ const makeConnection = (
  * @since 4.0.0
  */
 export const layerFrom = <E, R>(
-  acquire: Effect.Effect<PgClient, E, R>
+  acquire: Effect.Effect<PgClient["Service"], E, R>
 ): Layer.Layer<PgClient | Client.SqlClient, E, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
   Layer.effectContext(
     Effect.map(acquire, (client) =>

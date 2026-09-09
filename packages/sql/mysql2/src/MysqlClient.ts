@@ -156,9 +156,17 @@ export type TypeId = "~@effect/sql-mysql2/MysqlClient"
  * @category services
  * @since 4.0.0
  */
-export interface MysqlClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: MysqlClientConfig
+export declare namespace MysqlClient {
+  /**
+   * Implementation of the MysqlClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: MysqlClientConfig
+  }
 }
 
 /**
@@ -171,7 +179,9 @@ export interface MysqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const MysqlClient = Context.Service<MysqlClient>("@effect/sql-mysql2/MysqlClient")
+export class MysqlClient
+  extends Context.Service<MysqlClient, MysqlClient.Service>()("@effect/sql-mysql2/MysqlClient")
+{}
 
 /**
  * Configuration for a mysql2 client, including connection URI or connection fields, pool options, span attributes, and query/result name transforms.
@@ -216,7 +226,7 @@ export interface MysqlClientConfig {
  */
 export const make = (
   options: MysqlClientConfig
-): Effect.Effect<MysqlClient, SqlError, Scope | Reactivity.Reactivity> =>
+): Effect.Effect<MysqlClient["Service"], SqlError, Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -226,7 +236,7 @@ export const make = (
       undefined
     const defaultMethod: "execute" | "query" = options.disablePreparedStatements === true ? "query" : "execute"
 
-    class ConnectionImpl implements Connection {
+    class ConnectionImpl implements Connection.Service {
       readonly conn: Mysql.PoolConnection | Mysql.Pool
       constructor(conn: Mysql.PoolConnection | Mysql.Pool) {
         this.conn = conn

@@ -130,7 +130,9 @@ export type Options = {
    *
    * Use to add middleware, logging, or custom request/response handling.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }
 
 // =============================================================================
@@ -326,7 +328,9 @@ export const layerConfig = (options?: {
   /**
    * Optional transformer for the HTTP client.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }): Layer.Layer<OpenRouterClient, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     OpenRouterClient,

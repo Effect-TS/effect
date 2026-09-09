@@ -466,10 +466,9 @@ export const stream = <E>(
   })
 }
 
-const HttpPlatformKey = Context.Service<
-  HttpPlatform,
-  HttpPlatform["Service"]
->("effect/http/HttpPlatform" satisfies typeof HttpPlatform.key)
+class HttpPlatformKey extends Context.Service<HttpPlatformKey, HttpPlatform["Service"]>()(
+  "effect/http/HttpPlatform" satisfies typeof HttpPlatform.key
+) {}
 
 /**
  * Creates a streamed file response for a file system path.

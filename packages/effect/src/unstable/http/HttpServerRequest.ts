@@ -72,30 +72,38 @@ export const TypeId = "~effect/http/HttpServerRequest"
  * @category models
  * @since 4.0.0
  */
-export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessage<HttpServerError> {
-  readonly [TypeId]: typeof TypeId
-  readonly source: object
-  readonly url: string
-  readonly originalUrl: string
-  readonly method: HttpMethod
-  readonly cookies: ReadonlyRecord<string, string>
+export declare namespace HttpServerRequest {
+  /**
+   * Implementation of the HttpServerRequest service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends HttpIncomingMessage.HttpIncomingMessage<HttpServerError> {
+    readonly [TypeId]: typeof TypeId
+    readonly source: object
+    readonly url: string
+    readonly originalUrl: string
+    readonly method: HttpMethod
+    readonly cookies: ReadonlyRecord<string, string>
 
-  readonly multipart: Effect.Effect<
-    Multipart.Persisted,
-    Multipart.MultipartError,
-    Scope.Scope | FileSystem.FileSystem | Path.Path
-  >
-  readonly multipartStream: Stream.Stream<Multipart.Part, Multipart.MultipartError>
+    readonly multipart: Effect.Effect<
+      Multipart.Persisted,
+      Multipart.MultipartError,
+      Scope.Scope | FileSystem.FileSystem | Path.Path
+    >
+    readonly multipartStream: Stream.Stream<Multipart.Part, Multipart.MultipartError>
 
-  readonly upgrade: Effect.Effect<Socket.Socket, HttpServerError>
+    readonly upgrade: Effect.Effect<Socket.Socket["Service"], HttpServerError>
 
-  readonly modify: (
-    options: {
-      readonly url?: string
-      readonly headers?: Headers.Headers
-      readonly remoteAddress?: Option.Option<string>
-    }
-  ) => HttpServerRequest
+    readonly modify: (
+      options: {
+        readonly url?: string
+        readonly headers?: Headers.Headers
+        readonly remoteAddress?: Option.Option<string>
+      }
+    ) => HttpServerRequest["Service"]
+  }
 }
 
 /**
@@ -109,9 +117,9 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
  * @category services
  * @since 4.0.0
  */
-export const HttpServerRequest: Context.Service<HttpServerRequest, HttpServerRequest> = Context.Service(
-  "effect/http/HttpServerRequest"
-)
+export class HttpServerRequest
+  extends Context.Service<HttpServerRequest, HttpServerRequest.Service>()("effect/http/HttpServerRequest")
+{}
 
 /**
  * Service that contains decoded URL query parameters for the current request.
@@ -251,7 +259,7 @@ export const schemaBodyJson = <A, RD>(
   return Effect.flatMap(HttpServerRequest, parse)
 }
 
-const isMultipart = (request: HttpServerRequest) =>
+const isMultipart = (request: HttpServerRequest["Service"]) =>
   request.headers["content-type"]?.toLowerCase().includes("multipart/form-data") === true ||
   getFormDataBody(request) !== undefined
 
@@ -391,7 +399,7 @@ export const schemaBodyFormJson = <A, RD>(
  * @category converting
  * @since 4.0.0
  */
-export const fromClientRequest = (request: HttpClientRequest.HttpClientRequest): HttpServerRequest => {
+export const fromClientRequest = (request: HttpClientRequest.HttpClientRequest): HttpServerRequest["Service"] => {
   const url = Option.match(HttpClientRequest.toUrl(request), {
     onNone: () => request.url,
     onSome: (url) => url.toString()
@@ -410,7 +418,7 @@ export const fromClientRequest = (request: HttpClientRequest.HttpClientRequest):
  * @category converting
  * @since 4.0.0
  */
-export const fromWeb = (request: globalThis.Request): HttpServerRequest =>
+export const fromWeb = (request: globalThis.Request): HttpServerRequest["Service"] =>
   new ServerRequestImpl(request, removeHost(request.url))
 
 /**
@@ -424,7 +432,7 @@ export const fromWeb = (request: globalThis.Request): HttpServerRequest =>
  * @category converting
  * @since 4.0.0
  */
-export const toClientRequest = (request: HttpServerRequest): HttpClientRequest.HttpClientRequest => {
+export const toClientRequest = (request: HttpServerRequest["Service"]): HttpClientRequest.HttpClientRequest => {
   const body = toClientBody(request)
   const headers = body._tag !== "Empty" && body.contentLength === undefined
     ? Headers.remove(request.headers, "content-length")
@@ -442,7 +450,7 @@ export const toClientRequest = (request: HttpServerRequest): HttpClientRequest.H
   )
 }
 
-const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody => {
+const toClientBody = (request: HttpServerRequest["Service"]): HttpBody.HttpBody => {
   if (!hasBody(request.method)) {
     return HttpBody.empty
   }
@@ -464,7 +472,7 @@ const removeHost = (url: string) => {
   return index === -1 ? "/" : url.slice(index)
 }
 
-class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
+class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest.Service {
   readonly [TypeId]: typeof TypeId
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: Request
@@ -647,7 +655,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     return this.arrayBufferEffect
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
+  get upgrade(): Effect.Effect<Socket.Socket["Service"], HttpServerError> {
     return Effect.fail(
       new HttpServerError({
         reason: new RequestParseError({
@@ -659,7 +667,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 }
 
-class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
+class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest.Service {
   readonly [TypeId]: typeof TypeId
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: HttpClientRequest.HttpClientRequest
@@ -847,12 +855,12 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     )
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
+  get upgrade(): Effect.Effect<Socket.Socket["Service"], HttpServerError> {
     return Effect.fail(requestParseError(this, "Not an upgradeable ServerRequest"))
   }
 }
 
-const getFormDataBody = (request: HttpServerRequest): FormData | undefined => {
+const getFormDataBody = (request: HttpServerRequest["Service"]): FormData | undefined => {
   if (!HttpClientRequest.isHttpClientRequest(request.source)) {
     return undefined
   }
@@ -866,7 +874,10 @@ const getFormDataBody = (request: HttpServerRequest): FormData | undefined => {
   return undefined
 }
 
-const rawBodyStream = (request: HttpServerRequest, body: unknown): Stream.Stream<Uint8Array, HttpServerError> => {
+const rawBodyStream = (
+  request: HttpServerRequest["Service"],
+  body: unknown
+): Stream.Stream<Uint8Array, HttpServerError> => {
   if (body instanceof Request) {
     return streamFromReadable(request, body.body)
   }
@@ -879,7 +890,10 @@ const rawBodyStream = (request: HttpServerRequest, body: unknown): Stream.Stream
   return Stream.fail(requestParseError(request, "Unsupported body type"))
 }
 
-const rawBodyBytes = (request: HttpServerRequest, body: unknown): Effect.Effect<Uint8Array, HttpServerError> => {
+const rawBodyBytes = (
+  request: HttpServerRequest["Service"],
+  body: unknown
+): Effect.Effect<Uint8Array, HttpServerError> => {
   if (body instanceof Request) {
     return Effect.tryPromise({
       try: () => body.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
@@ -892,14 +906,17 @@ const rawBodyBytes = (request: HttpServerRequest, body: unknown): Effect.Effect<
   return Effect.fail(requestParseError(request, "Unsupported body type"))
 }
 
-const bytesFromBodyInit = (request: HttpServerRequest, body: BodyInit): Effect.Effect<Uint8Array, HttpServerError> =>
+const bytesFromBodyInit = (
+  request: HttpServerRequest["Service"],
+  body: BodyInit
+): Effect.Effect<Uint8Array, HttpServerError> =>
   Effect.tryPromise({
     try: () => new Response(body).arrayBuffer().then((buffer) => new Uint8Array(buffer)),
     catch: (cause) => requestParseError(request, undefined, cause)
   })
 
 const streamFromReadable = (
-  request: HttpServerRequest,
+  request: HttpServerRequest["Service"],
   body: ReadableStream<Uint8Array> | null | undefined
 ): Stream.Stream<Uint8Array, HttpServerError> =>
   body
@@ -910,7 +927,7 @@ const streamFromReadable = (
     : Stream.empty
 
 const requestParseError = (
-  request: HttpServerRequest,
+  request: HttpServerRequest["Service"],
   description?: string,
   cause?: unknown
 ) =>
@@ -1024,7 +1041,7 @@ const textDecoder = new TextDecoder()
  * @category converting
  * @since 4.0.0
  */
-export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
+export const toURL = (self: HttpServerRequest["Service"]): Option.Option<URL> => {
   const host = self.headers.host ?? "localhost"
   const protocol = self.headers["x-forwarded-proto"] === "https" ? "https" : "http"
   try {
@@ -1046,7 +1063,7 @@ export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
  * @category converting
  * @since 4.0.0
  */
-export const toWebResult = (self: HttpServerRequest, options?: {
+export const toWebResult = (self: HttpServerRequest["Service"], options?: {
   readonly signal?: AbortSignal | undefined
   readonly context?: Context.Context<never> | undefined
 }): Result.Result<Request, RequestError> => {
@@ -1087,7 +1104,7 @@ export const toWebResult = (self: HttpServerRequest, options?: {
  * @category converting
  * @since 4.0.0
  */
-export const toWeb = (self: HttpServerRequest, options?: {
+export const toWeb = (self: HttpServerRequest["Service"], options?: {
   readonly signal?: AbortSignal | undefined
 }): Effect.Effect<Request, RequestError> =>
   Effect.contextWith((context) =>

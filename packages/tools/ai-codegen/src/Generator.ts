@@ -72,11 +72,19 @@ export class PatchError extends Data.TaggedError("PatchError")<{
  * @category services
  * @since 4.0.0
  */
-export interface CodeGenerator {
-  readonly generate: (
-    provider: DiscoveredProvider,
-    spec: unknown
-  ) => Effect.Effect<string, GenerationError | PatchError, FileSystem.FileSystem | Path_.Path>
+export declare namespace CodeGenerator {
+  /**
+   * Implementation of the CodeGenerator service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly generate: (
+      provider: DiscoveredProvider,
+      spec: unknown
+    ) => Effect.Effect<string, GenerationError | PatchError, FileSystem.FileSystem | Path_.Path>
+  }
 }
 
 /**
@@ -85,9 +93,9 @@ export interface CodeGenerator {
  * @category services
  * @since 4.0.0
  */
-export const CodeGenerator: Context.Service<CodeGenerator, CodeGenerator> = Context.Service(
-  "@effect/ai-codegen/CodeGenerator"
-)
+export class CodeGenerator
+  extends Context.Service<CodeGenerator, CodeGenerator.Service>()("@effect/ai-codegen/CodeGenerator")
+{}
 
 const isRecord = (u: unknown): u is { readonly [x: string]: unknown } =>
   Predicate.isObjectOrArray(u) && !Array.isArray(u)

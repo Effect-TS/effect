@@ -1449,7 +1449,7 @@ const allTupled = <const T extends ArrayLike<Prompt<any>>>(arg: T): Prompt<
 
 const runWithInput = <Output>(
   prompt: Prompt<Output>,
-  terminal: Terminal.Terminal,
+  terminal: Terminal.Terminal["Service"],
   input: Queue.Dequeue<Terminal.UserInput, Cause.Done>
 ): Effect.Effect<Output, NoSuchElementError, Environment> =>
   Effect.suspend(() => {
@@ -1473,7 +1473,7 @@ const runWithInput = <Output>(
 const runLoop = Effect.fnUntraced(
   function*(
     loop: Loop,
-    terminal: Terminal.Terminal,
+    terminal: Terminal.Terminal["Service"],
     input: Queue.Dequeue<Terminal.UserInput, Cause.Done>
   ) {
     let state = Effect.isEffect(loop.initialState) ? yield* loop.initialState : loop.initialState

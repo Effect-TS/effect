@@ -181,7 +181,9 @@ export const Service =
           | HttpApiGroup.ClientServices<Groups>
           | HttpClient.HttpClient
         >)
-      readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+      readonly transformClient?:
+        | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+        | undefined
       readonly transformResponse?:
         | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
         | undefined
@@ -189,10 +191,11 @@ export const Service =
       readonly runtime?: Atom.RuntimeFactory | undefined
     }
   ): AtomHttpApiClient<Self, Id, Groups> => {
-    const self: Mutable<AtomHttpApiClient<Self, Id, Groups>> = Context.Service<
+    // This constructor must retain the caller-supplied Self identifier for service subclasses.
+    const self: Mutable<AtomHttpApiClient<Self, Id, Groups>> = class extends Context.Service<
       Self,
       HttpApiClient.Client<Groups, never, never>
-    >()(id) as any
+    >()(id) {} as any
 
     const layer = Layer.effect(
       self,

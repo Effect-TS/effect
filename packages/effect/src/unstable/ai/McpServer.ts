@@ -1340,7 +1340,7 @@ export const layerHttp = (options: {
     status: 405,
     headers: { allow: "POST" }
   })
-  const methodNotAllowed = (request: HttpServerRequest.HttpServerRequest) =>
+  const methodNotAllowed = (request: HttpServerRequest.HttpServerRequest["Service"]) =>
     isAllowedMcpOrigin(request, options.allowedOrigins)
       ? Effect.succeed(methodNotAllowedResponse)
       : Effect.succeed(HttpServerResponse.empty({ status: 403 }))
@@ -1466,7 +1466,7 @@ const layerMcpProtocolHttp = (options: {
   }))
 
 const isAllowedMcpOrigin = (
-  request: HttpServerRequest.HttpServerRequest,
+  request: HttpServerRequest.HttpServerRequest["Service"],
   allowedOrigins: ReadonlyArray<string> | undefined
 ): boolean => {
   const origin = request.headers["origin"]

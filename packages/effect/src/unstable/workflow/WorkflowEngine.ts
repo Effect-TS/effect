@@ -678,7 +678,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         payload: object,
         executionId: string
       ) => Effect.Effect<unknown, unknown, WorkflowInstance | WorkflowEngine>
-      readonly scope: Scope.Scope
+      readonly scope: Scope.Scope["Service"]
     }>()
 
     type ExecutionState = {

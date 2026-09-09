@@ -111,7 +111,9 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
 }): Command<Name, Input, ContextInput, E, R> => {
   const config = options.config
   const contextConfig = options.contextConfig ?? emptyConfig
-  const service = options.service ?? Context.Service<CommandContext<Name>, ContextInput>(`${TypeId}/${options.name}`)
+  // Command keys use CommandContext<Name>, independently of their parsed input shape.
+  const service = options.service ??
+    class extends Context.Service<CommandContext<Name>, ContextInput>()(`${TypeId}/${options.name}`) {}
   const annotations = options.annotations ?? Context.empty()
   const globalFlags = options.globalFlags ?? []
   const subcommands = options.subcommands ?? []

@@ -27,7 +27,7 @@ const toHashAlgorithm = (algorithm: EffectCrypto.DigestAlgorithm): string => {
   }
 }
 
-const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
+const digest: EffectCrypto.Crypto["Service"]["digest"] = (algorithm, data) =>
   Effect.try({
     try: () => Uint8Array.from(NodeCrypto.createHash(toHashAlgorithm(algorithm)).update(data).digest()),
     catch: (cause) =>
@@ -46,7 +46,7 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
  * @category constructors
  * @since 1.0.0
  */
-export const make: EffectCrypto.Crypto = EffectCrypto.make({
+export const make: EffectCrypto.Crypto["Service"] = EffectCrypto.make({
   randomBytes: NodeCrypto.randomBytes,
   digest
 })

@@ -183,7 +183,9 @@ export type Options = {
    * Optional transformer for the underlying HTTP client, such as middleware, logging, or custom request/response
    * handling.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }
 
 // =============================================================================
@@ -413,7 +415,9 @@ export const layerConfig = (options?: {
    * Optional transformer for the underlying HTTP client, such as middleware, logging, or custom request/response
    * handling.
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  readonly transformClient?:
+    | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+    | undefined
 }): Layer.Layer<AnthropicClient, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     AnthropicClient,

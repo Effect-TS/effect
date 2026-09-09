@@ -69,9 +69,17 @@ export class PostProcessError extends Data.TaggedError("PostProcessError")<{
  * @category services
  * @since 4.0.0
  */
-export interface PostProcessor {
-  readonly lint: (filePath: string) => Effect.Effect<void, PostProcessError>
-  readonly format: (filePath: string) => Effect.Effect<void, PostProcessError>
+export declare namespace PostProcessor {
+  /**
+   * Implementation of the PostProcessor service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly lint: (filePath: string) => Effect.Effect<void, PostProcessError>
+    readonly format: (filePath: string) => Effect.Effect<void, PostProcessError>
+  }
 }
 
 /**
@@ -80,9 +88,9 @@ export interface PostProcessor {
  * @category services
  * @since 4.0.0
  */
-export const PostProcessor: Context.Service<PostProcessor, PostProcessor> = Context.Service(
-  "@effect/ai-codegen/PostProcessor"
-)
+export class PostProcessor
+  extends Context.Service<PostProcessor, PostProcessor.Service>()("@effect/ai-codegen/PostProcessor")
+{}
 
 /**
  * Layer providing the PostProcessor service.

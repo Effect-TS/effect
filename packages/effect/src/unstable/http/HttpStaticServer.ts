@@ -109,7 +109,7 @@ export const make: (options: {
   }
 
   const serveFile: (
-    request: HttpServerRequest.HttpServerRequest,
+    request: HttpServerRequest.HttpServerRequest["Service"],
     filePath: string,
     fileSize?: bigint
   ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HttpServerError.HttpServerError> = Effect.fnUntraced(
@@ -297,7 +297,7 @@ const stripQueryString = (url: string): string => {
   return queryIndex === -1 ? url : url.slice(0, queryIndex)
 }
 
-const resolveMimeType = (path: Path.Path, filePath: string, mimeTypes: Record<string, string>): string => {
+const resolveMimeType = (path: Path.Path["Service"], filePath: string, mimeTypes: Record<string, string>): string => {
   const extension = path.extname(filePath).toLowerCase()
   if (extension.length <= 1) {
     return "application/octet-stream"
@@ -376,7 +376,7 @@ const parseRange = (
   }
 }
 
-const resolveFilePath = (path: Path.Path, root: string, url: string): string | undefined => {
+const resolveFilePath = (path: Path.Path["Service"], root: string, url: string): string | undefined => {
   const urlPath = stripQueryString(url)
   let decodedPath: string
   try {
@@ -399,14 +399,14 @@ const resolveFilePath = (path: Path.Path, root: string, url: string): string | u
   return resolvedPath
 }
 
-const toRouteNotFoundError = (request: HttpServerRequest.HttpServerRequest) =>
+const toRouteNotFoundError = (request: HttpServerRequest.HttpServerRequest["Service"]) =>
   new HttpServerError.HttpServerError({ reason: new HttpServerError.RouteNotFound({ request }) })
 
-const toInternalServerError = (request: HttpServerRequest.HttpServerRequest, cause: unknown) =>
+const toInternalServerError = (request: HttpServerRequest.HttpServerRequest["Service"], cause: unknown) =>
   new HttpServerError.HttpServerError({ reason: new HttpServerError.InternalError({ request, cause }) })
 
 const handlePlatformError = <A>(
-  request: HttpServerRequest.HttpServerRequest,
+  request: HttpServerRequest.HttpServerRequest["Service"],
   self: Effect.Effect<A, PlatformError>
 ): Effect.Effect<A, HttpServerError.HttpServerError> =>
   Effect.catchIf(
@@ -479,7 +479,7 @@ const notModifiedResponse = (
 }
 
 const evaluateConditionalRequest = (
-  request: HttpServerRequest.HttpServerRequest,
+  request: HttpServerRequest.HttpServerRequest["Service"],
   response: HttpServerResponse.HttpServerResponse
 ): HttpServerResponse.HttpServerResponse | undefined => {
   const ifNoneMatch = request.headers["if-none-match"]

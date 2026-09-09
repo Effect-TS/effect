@@ -58,14 +58,22 @@ export type TypeId = "~@effect/sql-sqlite-node/SqliteClient"
  * @category services
  * @since 4.0.0
  */
-export interface SqliteClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: SqliteClientConfig
-  readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
-  readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
+export declare namespace SqliteClient {
+  /**
+   * Implementation of the SqliteClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: SqliteClientConfig
+    readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
+    readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 
-  /** Not supported in sqlite */
-  readonly updateValues: never
+    /** Not supported in sqlite */
+    readonly updateValues: never
+  }
 }
 
 /**
@@ -85,7 +93,9 @@ export interface BackupMetadata {
  * @category services
  * @since 4.0.0
  */
-export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-node/SqliteClient")
+export class SqliteClient
+  extends Context.Service<SqliteClient, SqliteClient.Service>()("@effect/sql-sqlite-node/SqliteClient")
+{}
 
 /**
  * Configuration for a node SQLite client backed by `node:sqlite`, including the database filename, read-only mode, statement cache settings, WAL and busy timeout behavior, span attributes, and query/result name transforms.
@@ -111,7 +121,7 @@ export interface SqliteClientConfig {
   readonly transformQueryNames?: ((str: string) => string) | undefined
 }
 
-interface SqliteConnection extends Connection {
+interface SqliteConnection extends Connection.Service {
   readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 }
@@ -124,7 +134,7 @@ interface SqliteConnection extends Connection {
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient["Service"], never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -328,7 +338,7 @@ export const make = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as SqliteClient,
+      })) as SqliteClient["Service"],
       {
         [TypeId]: TypeId as TypeId,
         config: options,

@@ -53,9 +53,17 @@ export type TypeId = "~@effect/sql-libsql/LibsqlClient"
  * @category services
  * @since 4.0.0
  */
-export interface LibsqlClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: LibsqlClientConfig
+export declare namespace LibsqlClient {
+  /**
+   * Implementation of the LibsqlClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: LibsqlClientConfig
+  }
 }
 
 /**
@@ -68,7 +76,9 @@ export interface LibsqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const LibsqlClient = Context.Service<LibsqlClient>("@effect/sql-libsql/LibsqlClient")
+export class LibsqlClient
+  extends Context.Service<LibsqlClient, LibsqlClient.Service>()("@effect/sql-libsql/LibsqlClient")
+{}
 
 let clientIdCounter = 0
 
@@ -167,7 +177,7 @@ export declare namespace LibsqlClientConfig {
   }
 }
 
-interface LibsqlConnection extends Connection {
+interface LibsqlConnection extends Connection.Service {
   readonly beginTransaction: Effect.Effect<LibsqlConnection, SqlError>
   readonly commit: Effect.Effect<void, SqlError>
   readonly rollback: Effect.Effect<void, SqlError>
@@ -181,11 +191,11 @@ interface LibsqlConnection extends Connection {
  */
 export const make = (
   options: LibsqlClientConfig
-): Effect.Effect<LibsqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<LibsqlClient["Service"], never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
-    const LibsqlTransaction = Context.Service<readonly [LibsqlConnection, counter: number]>(
+    class LibsqlTransaction extends Context.Service<LibsqlTransaction, readonly [LibsqlConnection, counter: number]>()(
       `@effect/sql-libsql/LibsqlClient/LibsqlTransaction/${clientIdCounter++}`
-    )
+    ) {}
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
       Statement.defaultTransforms(

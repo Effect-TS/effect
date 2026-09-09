@@ -277,7 +277,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     readonly _tag: "Queue"
     readonly rpc: Rpc.AnyWithProps
     readonly queue: Queue.Queue<any, any>
-    readonly scope: Scope.Scope
+    readonly scope: Scope.Scope["Service"]
     readonly context: Context.Context<never>
   }
   const entries = new Map<RequestId, ClientEntry>()
@@ -884,7 +884,7 @@ export class Protocol extends Context.Service<Protocol, {
  * @category protocols
  * @since 4.0.0
  */
-export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
+export const makeProtocolHttp = (client: HttpClient.HttpClient["Service"]): Effect.Effect<
   Protocol["Service"],
   never,
   RpcSerialization.RpcSerialization

@@ -8,11 +8,11 @@ import * as Scope from "../../../Scope.ts"
 
 /** @internal */
 export class ResourceMap<K, A, E> {
-  readonly lookup: (key: K, scope: Scope.Scope) => Effect.Effect<A, E>
+  readonly lookup: (key: K, scope: Scope.Scope["Service"]) => Effect.Effect<A, E>
   readonly entries: BackingMap<K, A, E>
   readonly isClosed: MutableRef.MutableRef<boolean>
   constructor(
-    lookup: (key: K, scope: Scope.Scope) => Effect.Effect<A, E>,
+    lookup: (key: K, scope: Scope.Scope["Service"]) => Effect.Effect<A, E>,
     entries: BackingMap<K, A, E>,
     isClosed: MutableRef.MutableRef<boolean>
   ) {

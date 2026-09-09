@@ -35,63 +35,71 @@ const TypeId = "~effect/persistence/KeyValueStore" as const
  * @category models
  * @since 4.0.0
  */
-export interface KeyValueStore {
-  readonly [TypeId]: typeof TypeId
+export declare namespace KeyValueStore {
   /**
-   * Returns the value of the specified key if it exists.
+   * Implementation of the KeyValueStore service.
+   *
+   * @category models
+   * @since 4.0.0
    */
-  readonly get: (key: string) => Effect.Effect<string | undefined, KeyValueStoreError>
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    /**
+     * Returns the value of the specified key if it exists.
+     */
+    readonly get: (key: string) => Effect.Effect<string | undefined, KeyValueStoreError>
 
-  /**
-   * Returns the value of the specified key if it exists.
-   */
-  readonly getUint8Array: (key: string) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
+    /**
+     * Returns the value of the specified key if it exists.
+     */
+    readonly getUint8Array: (key: string) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
 
-  /**
-   * Sets the value of the specified key.
-   */
-  readonly set: (key: string, value: string | Uint8Array) => Effect.Effect<void, KeyValueStoreError>
+    /**
+     * Sets the value of the specified key.
+     */
+    readonly set: (key: string, value: string | Uint8Array) => Effect.Effect<void, KeyValueStoreError>
 
-  /**
-   * Removes the specified key.
-   */
-  readonly remove: (key: string) => Effect.Effect<void, KeyValueStoreError>
+    /**
+     * Removes the specified key.
+     */
+    readonly remove: (key: string) => Effect.Effect<void, KeyValueStoreError>
 
-  /**
-   * Removes all entries.
-   */
-  readonly clear: Effect.Effect<void, KeyValueStoreError>
+    /**
+     * Removes all entries.
+     */
+    readonly clear: Effect.Effect<void, KeyValueStoreError>
 
-  /**
-   * Returns the number of entries.
-   */
-  readonly size: Effect.Effect<number, KeyValueStoreError>
+    /**
+     * Returns the number of entries.
+     */
+    readonly size: Effect.Effect<number, KeyValueStoreError>
 
-  /**
-   * Updates the value of the specified key if it exists.
-   */
-  readonly modify: (
-    key: string,
-    f: (value: string) => string
-  ) => Effect.Effect<string | undefined, KeyValueStoreError>
+    /**
+     * Updates the value of the specified key if it exists.
+     */
+    readonly modify: (
+      key: string,
+      f: (value: string) => string
+    ) => Effect.Effect<string | undefined, KeyValueStoreError>
 
-  /**
-   * Updates the value of the specified key if it exists.
-   */
-  readonly modifyUint8Array: (
-    key: string,
-    f: (value: Uint8Array) => Uint8Array
-  ) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
+    /**
+     * Updates the value of the specified key if it exists.
+     */
+    readonly modifyUint8Array: (
+      key: string,
+      f: (value: Uint8Array) => Uint8Array
+    ) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
 
-  /**
-   * Returns true if the KeyValueStore contains the specified key.
-   */
-  readonly has: (key: string) => Effect.Effect<boolean, KeyValueStoreError>
+    /**
+     * Returns true if the KeyValueStore contains the specified key.
+     */
+    readonly has: (key: string) => Effect.Effect<boolean, KeyValueStoreError>
 
-  /**
-   * Checks whether the KeyValueStore contains any entries.
-   */
-  readonly isEmpty: Effect.Effect<boolean, KeyValueStoreError>
+    /**
+     * Checks whether the KeyValueStore contains any entries.
+     */
+    readonly isEmpty: Effect.Effect<boolean, KeyValueStoreError>
+  }
 }
 
 /**
@@ -105,7 +113,7 @@ export interface KeyValueStore {
  * @category options
  * @since 4.0.0
  */
-export type MakeOptions = Partial<KeyValueStore> & {
+export type MakeOptions = Partial<KeyValueStore["Service"]> & {
   /**
    * Returns the value of the specified key if it exists.
    */
@@ -144,7 +152,7 @@ export type MakeOptions = Partial<KeyValueStore> & {
  * @category options
  * @since 4.0.0
  */
-export type MakeStringOptions = Partial<Omit<KeyValueStore, "set">> & {
+export type MakeStringOptions = Partial<Omit<KeyValueStore["Service"], "set">> & {
   /**
    * Returns the value of the specified key if it exists.
    */
@@ -205,10 +213,9 @@ export class KeyValueStoreError extends Data.TaggedError("KeyValueStoreError")<{
  * @category services
  * @since 4.0.0
  */
-export const KeyValueStore: Context.Service<
-  KeyValueStore,
-  KeyValueStore
-> = Context.Service("effect/persistence/KeyValueStore")
+export class KeyValueStore
+  extends Context.Service<KeyValueStore, KeyValueStore.Service>()("effect/persistence/KeyValueStore")
+{}
 
 /**
  * Constructs a `KeyValueStore` from primitive store operations.
@@ -221,7 +228,7 @@ export const KeyValueStore: Context.Service<
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: MakeOptions): KeyValueStore =>
+export const make = (options: MakeOptions): KeyValueStore["Service"] =>
   KeyValueStore.of({
     [TypeId]: TypeId,
     has: (key) => Effect.map(options.get(key), Predicate.isNotUndefined),
@@ -267,7 +274,7 @@ export const make = (options: MakeOptions): KeyValueStore =>
  */
 export const makeStringOnly = (
   options: MakeStringOptions
-): KeyValueStore => {
+): KeyValueStore["Service"] => {
   const encoder = new TextEncoder()
   return make({
     ...options,
@@ -295,9 +302,9 @@ export const makeStringOnly = (
  * @since 4.0.0
  */
 export const prefix: {
-  (prefix: string): (self: KeyValueStore) => KeyValueStore
-  (self: KeyValueStore, prefix: string): KeyValueStore
-} = dual(2, (self: KeyValueStore, prefix: string): KeyValueStore => ({
+  (prefix: string): (self: KeyValueStore["Service"]) => KeyValueStore["Service"]
+  (self: KeyValueStore["Service"], prefix: string): KeyValueStore["Service"]
+} = dual(2, (self: KeyValueStore["Service"], prefix: string): KeyValueStore["Service"] => ({
   ...self,
   get: (key) => self.get(`${prefix}${key}`),
   getUint8Array: (key) => self.getUint8Array(`${prefix}${key}`),
@@ -765,7 +772,10 @@ export interface SchemaStore<S extends Schema.Constraint> {
  * @category converting
  * @since 4.0.0
  */
-export const toSchemaStore = <S extends Schema.Constraint>(self: KeyValueStore, schema: S): SchemaStore<S> => {
+export const toSchemaStore = <S extends Schema.Constraint>(
+  self: KeyValueStore["Service"],
+  schema: S
+): SchemaStore<S> => {
   const serializer = Schema.toCodecJson(schema)
   const jsonSchema = Schema.fromJsonString(serializer)
   const decode = Schema.decodeEffect(jsonSchema)

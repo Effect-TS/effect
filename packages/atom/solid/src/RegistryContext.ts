@@ -29,7 +29,7 @@ import { createComponent, createContext, onCleanup } from "solid-js"
  * @category context
  * @since 4.0.0
  */
-export const RegistryContext = createContext<AtomRegistry.AtomRegistry>(AtomRegistry.make())
+export const RegistryContext = createContext<AtomRegistry.AtomRegistry["Service"]>(AtomRegistry.make())
 
 /**
  * Creates an `AtomRegistry` for a Solid subtree, optionally seeding initial atom

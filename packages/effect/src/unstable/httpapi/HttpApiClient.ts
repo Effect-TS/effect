@@ -479,7 +479,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 export const make = <ApiId extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<ApiId, Groups>,
   options?: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+    readonly transformClient?:
+      | ((client: HttpClient.HttpClient["Service"]) => HttpClient.HttpClient["Service"])
+      | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
       | undefined

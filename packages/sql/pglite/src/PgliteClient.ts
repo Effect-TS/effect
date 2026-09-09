@@ -63,26 +63,34 @@ export type TypeId = "~@effect/sql-pglite/PgliteClient"
  * @category services
  * @since 4.0.0
  */
-export interface PgliteClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: PgliteClientConfig
-  readonly pglite: PGliteInterface
-  readonly json: (_: unknown) => Fragment
+export declare namespace PgliteClient {
   /**
-   * Subscribes to a PGlite notification channel.
+   * Implementation of the PgliteClient service.
    *
-   * **Details**
-   *
-   * The effect completes after the listener is installed. Notifications are
-   * buffered in the returned dequeue, and the subscription remains active
-   * until the required scope closes.
+   * @category models
+   * @since 4.0.0
    */
-  readonly listen: (
-    channel: string
-  ) => Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope>
-  readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
-  readonly dumpDataDir: (compression?: "none" | "gzip" | "auto") => Effect.Effect<File | Blob, SqlError>
-  readonly refreshArrayTypes: Effect.Effect<void, SqlError>
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: PgliteClientConfig
+    readonly pglite: PGliteInterface
+    readonly json: (_: unknown) => Fragment
+    /**
+     * Subscribes to a PGlite notification channel.
+     *
+     * **Details**
+     *
+     * The effect completes after the listener is installed. Notifications are
+     * buffered in the returned dequeue, and the subscription remains active
+     * until the required scope closes.
+     */
+    readonly listen: (
+      channel: string
+    ) => Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope>
+    readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
+    readonly dumpDataDir: (compression?: "none" | "gzip" | "auto") => Effect.Effect<File | Blob, SqlError>
+    readonly refreshArrayTypes: Effect.Effect<void, SqlError>
+  }
 }
 
 /**
@@ -95,7 +103,9 @@ export interface PgliteClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const PgliteClient = Context.Service<PgliteClient>("@effect/sql-pglite/PgliteClient")
+export class PgliteClient
+  extends Context.Service<PgliteClient, PgliteClient.Service>()("@effect/sql-pglite/PgliteClient")
+{}
 
 /**
  * Configuration for a PGlite client, either by supplying PGlite creation options or an existing live PGlite client.
@@ -164,7 +174,7 @@ export declare namespace PgliteClientConfig {
  */
 export const make = (
   options: PgliteClientConfig = {}
-): Effect.Effect<PgliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<PgliteClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const pglite = "liveClient" in options
       ? options.liveClient
@@ -196,7 +206,7 @@ export const fromClient = (
     & {
       readonly liveClient: PGliteInterface
     }
-): Effect.Effect<PgliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<PgliteClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const pglite = options.liveClient
     const compiler = makeCompiler(options.transformQueryNames, options.transformJson)
@@ -282,7 +292,7 @@ export const fromClient = (
     )
   })
 
-class PgliteConnection implements Connection {
+class PgliteConnection implements Connection.Service {
   readonly pglite: PGliteInterface
   constructor(pglite: PGliteInterface) {
     this.pglite = pglite
@@ -359,7 +369,7 @@ class PgliteConnection implements Connection {
  * @since 4.0.0
  */
 export const layerFrom = <E, R>(
-  acquire: Effect.Effect<PgliteClient, E, R>
+  acquire: Effect.Effect<PgliteClient["Service"], E, R>
 ): Layer.Layer<PgliteClient | Client.SqlClient, E, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
   Layer.effectContext(
     Effect.map(acquire, (client) =>

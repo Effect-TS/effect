@@ -60,28 +60,36 @@ export const TypeId: TypeId = "~effect/Stdio"
  * @category services
  * @since 4.0.0
  */
-export interface Stdio {
-  readonly [TypeId]: TypeId
-  readonly args: Effect.Effect<ReadonlyArray<string>>
+export declare namespace Stdio {
   /**
-   * Whether standard input is attached to a terminal.
+   * Implementation of the Stdio service.
    *
+   * @category models
    * @since 4.0.0
    */
-  readonly stdinIsTerminal: Effect.Effect<boolean>
-  /**
-   * Whether standard output is attached to a terminal.
-   *
-   * @since 4.0.0
-   */
-  readonly stdoutIsTerminal: Effect.Effect<boolean>
-  stdout(options?: {
-    readonly endOnDone?: boolean | undefined
-  }): Sink.Sink<void, string | Uint8Array, never, PlatformError>
-  stderr(options?: {
-    readonly endOnDone?: boolean | undefined
-  }): Sink.Sink<void, string | Uint8Array, never, PlatformError>
-  readonly stdin: Stream.Stream<Uint8Array, PlatformError>
+  export interface Service {
+    readonly [TypeId]: TypeId
+    readonly args: Effect.Effect<ReadonlyArray<string>>
+    /**
+     * Whether standard input is attached to a terminal.
+     *
+     * @since 4.0.0
+     */
+    readonly stdinIsTerminal: Effect.Effect<boolean>
+    /**
+     * Whether standard output is attached to a terminal.
+     *
+     * @since 4.0.0
+     */
+    readonly stdoutIsTerminal: Effect.Effect<boolean>
+    stdout(options?: {
+      readonly endOnDone?: boolean | undefined
+    }): Sink.Sink<void, string | Uint8Array, never, PlatformError>
+    stderr(options?: {
+      readonly endOnDone?: boolean | undefined
+    }): Sink.Sink<void, string | Uint8Array, never, PlatformError>
+    readonly stdin: Stream.Stream<Uint8Array, PlatformError>
+  }
 }
 /**
  * Service tag for process standard I/O.
@@ -97,7 +105,7 @@ export interface Stdio {
  * @category services
  * @since 4.0.0
  */
-export const Stdio: Context.Service<Stdio, Stdio> = Context.Service<Stdio>(TypeId)
+export class Stdio extends Context.Service<Stdio, Stdio.Service>()(TypeId) {}
 
 /**
  * Creates a `Stdio` service implementation from the provided fields and
@@ -121,9 +129,9 @@ export const Stdio: Context.Service<Stdio, Stdio> = Context.Service<Stdio>(TypeI
  */
 export const make = (
   options:
-    & Omit<Stdio, TypeId | "stdinIsTerminal" | "stdoutIsTerminal">
-    & Partial<Pick<Stdio, "stdinIsTerminal" | "stdoutIsTerminal">>
-): Stdio => ({
+    & Omit<Stdio["Service"], TypeId | "stdinIsTerminal" | "stdoutIsTerminal">
+    & Partial<Pick<Stdio["Service"], "stdinIsTerminal" | "stdoutIsTerminal">>
+): Stdio["Service"] => ({
   [TypeId]: TypeId,
   stdinIsTerminal: Effect.succeed(false),
   stdoutIsTerminal: Effect.succeed(false),
@@ -149,7 +157,7 @@ export const make = (
  * @category layers
  * @since 4.0.0
  */
-export const layerTest = (impl: Partial<Stdio>): Layer.Layer<Stdio> =>
+export const layerTest = (impl: Partial<Stdio["Service"]>): Layer.Layer<Stdio> =>
   Layer.succeed(
     Stdio,
     make({

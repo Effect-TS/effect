@@ -1808,4 +1808,6 @@ export const layer: Layer.Layer<
 
 // Utilities
 
-const ClientAddressTag = Context.Service<EntityAddress>("effect/cluster/Sharding/ClientAddress")
+class ClientAddressTag
+  extends Context.Service<ClientAddressTag, EntityAddress>()("effect/cluster/Sharding/ClientAddress")
+{}

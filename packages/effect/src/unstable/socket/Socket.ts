@@ -41,7 +41,7 @@ export const TypeId = "~effect/socket/Socket"
  * @category guards
  * @since 4.0.0
  */
-export const isSocket = (u: unknown): u is Socket => Predicate.hasProperty(u, TypeId)
+export const isSocket = (u: unknown): u is Socket["Service"] => Predicate.hasProperty(u, TypeId)
 
 /**
  * Service tag for bidirectional socket transports.
@@ -54,7 +54,7 @@ export const isSocket = (u: unknown): u is Socket => Predicate.hasProperty(u, Ty
  * @category services
  * @since 4.0.0
  */
-export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("effect/socket/Socket")
+export class Socket extends Context.Service<Socket, Socket.Service>()("effect/socket/Socket") {}
 
 /**
  * Effect-based socket abstraction exposing a pull-based read side and a
@@ -96,10 +96,18 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * @category models
  * @since 4.0.0
  */
-export interface Socket {
-  readonly [TypeId]: typeof TypeId
-  readonly reader: Effect.Effect<Reader, SocketError, Scope.Scope>
-  readonly writer: Effect.Effect<Writer, never, Scope.Scope>
+export declare namespace Socket {
+  /**
+   * Implementation of the Socket service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    readonly reader: Effect.Effect<Reader, SocketError, Scope.Scope>
+    readonly writer: Effect.Effect<Writer, never, Scope.Scope>
+  }
 }
 
 /**
@@ -178,9 +186,9 @@ export interface TlsUpgradeOptions {
  * @since 4.0.0
  */
 export const make = (options: {
-  readonly reader: Socket["reader"]
-  readonly writer: Socket["writer"]
-}): Socket =>
+  readonly reader: Socket["Service"]["reader"]
+  readonly writer: Socket["Service"]["writer"]
+}): Socket["Service"] =>
   Socket.of({
     [TypeId]: TypeId,
     reader: options.reader,
@@ -202,7 +210,7 @@ const encoder = new TextEncoder()
  * @since 4.0.0
  */
 export const readerBytes = (
-  self: Socket
+  self: Socket["Service"]
 ): Effect.Effect<
   Effect.Effect<NonEmptyReadonlyArray<Uint8Array>, SocketError>,
   SocketError,
@@ -235,7 +243,7 @@ export const readerBytes = (
  * @since 4.0.0
  */
 export const readerString = (
-  self: Socket,
+  self: Socket["Service"],
   encoding?: string | undefined
 ): Effect.Effect<
   Effect.Effect<NonEmptyReadonlyArray<string>, SocketError>,
@@ -525,7 +533,7 @@ const writeChunk = (
 }
 
 const toChannelWithReader = <A extends Uint8Array | string, IE>(
-  self: Socket,
+  self: Socket["Service"],
   reader: Effect.Effect<
     Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>,
     SocketError,
@@ -590,7 +598,7 @@ const toChannelWithReader = <A extends Uint8Array | string, IE>(
  * @since 4.0.0
  */
 export const toChannel = <IE = never>(
-  self: Socket
+  self: Socket["Service"]
 ): Channel.Channel<
   NonEmptyReadonlyArray<Uint8Array>,
   SocketError | IE,
@@ -607,7 +615,7 @@ export const toChannel = <IE = never>(
  * @since 4.0.0
  */
 export const toChannelString: {
-  (encoding?: string | undefined): <IE>(self: Socket) => Channel.Channel<
+  (encoding?: string | undefined): <IE>(self: Socket["Service"]) => Channel.Channel<
     NonEmptyReadonlyArray<string>,
     SocketError | IE,
     void,
@@ -615,7 +623,7 @@ export const toChannelString: {
     IE
   >
   <IE>(
-    self: Socket,
+    self: Socket["Service"],
     encoding?: string | undefined
   ): Channel.Channel<
     NonEmptyReadonlyArray<string>,
@@ -625,7 +633,7 @@ export const toChannelString: {
     IE
   >
 } = dual((args) => isSocket(args[0]), <IE>(
-  self: Socket,
+  self: Socket["Service"],
   encoding?: string | undefined
 ): Channel.Channel<
   NonEmptyReadonlyArray<string>,
@@ -644,7 +652,7 @@ export const toChannelString: {
  */
 export const toChannelWith = <IE = never>() =>
 (
-  self: Socket
+  self: Socket["Service"]
 ): Channel.Channel<
   NonEmptyReadonlyArray<Uint8Array>,
   SocketError | IE,
@@ -660,7 +668,7 @@ export const toChannelWith = <IE = never>() =>
  * @category combinators
  * @since 4.0.0
  */
-export const toStream = (self: Socket): Stream.Stream<Uint8Array, SocketError> =>
+export const toStream = (self: Socket["Service"]): Stream.Stream<Uint8Array, SocketError> =>
   Stream.fromChannel(
     Channel.fromTransform((_, scope) => Scope.provide(readerBytes(self), scope))
   )
@@ -809,7 +817,7 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly openTimeout?: Duration.Input | undefined
   readonly protocols?: string | Array<string> | undefined
   readonly highWaterMark?: number | undefined
-}): Effect.Effect<Socket, never, WebSocketConstructor> =>
+}): Effect.Effect<Socket["Service"], never, WebSocketConstructor> =>
   WebSocketConstructor.use((makeWs) =>
     fromWebSocket(
       Effect.acquireRelease(
@@ -854,13 +862,13 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     readonly openTimeout?: Duration.Input | undefined
     readonly highWaterMark?: number | undefined
   } | undefined
-): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
+): Effect.Effect<Socket["Service"], never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     let currentWS: WebSocketLike | undefined
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
 
-    const reader: Socket["reader"] = Effect.gen(function*() {
+    const reader: Socket["Service"]["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const ws = yield* Scope.provide(acquire, scope)
       if ("binaryType" in ws) {
@@ -1048,7 +1056,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
-    ) as Socket["reader"]
+    ) as Socket["Service"]["reader"]
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
@@ -1080,7 +1088,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
         }
       })
-    const writer: Socket["writer"] = Effect.succeed({ write, writeAll })
+    const writer: Socket["Service"]["writer"] = Effect.succeed({ write, writeAll })
 
     return Effect.succeed(make({ reader, writer }))
   })
@@ -1152,7 +1160,7 @@ export interface InputTransformStream {
  */
 export const fromTransformStream = <R>(
   acquire: Effect.Effect<InputTransformStream, SocketError, R>
-): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
+): Effect.Effect<Socket["Service"], never, Exclude<R, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     const latch = Latch.makeUnsafe(false)
     let currentStream: {
@@ -1171,7 +1179,7 @@ export const fromTransformStream = <R>(
       return writer
     }
 
-    const reader: Socket["reader"] = Effect.gen(function*() {
+    const reader: Socket["Service"]["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const stream = yield* Scope.provide(acquire, scope)
       const readerHandle = (stream.readable as ReadableStream<Uint8Array | string>).getReader()
@@ -1212,7 +1220,7 @@ export const fromTransformStream = <R>(
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
-    ) as Socket["reader"]
+    ) as Socket["Service"]["reader"]
 
     const write = (chunk: Uint8Array | string | CloseEvent) =>
       latch.whenOpen(Effect.suspend(() => {
@@ -1238,7 +1246,7 @@ export const fromTransformStream = <R>(
         },
         catch: (cause) => new SocketError({ reason: new SocketWriteError({ cause }) })
       }))
-    const writer: Socket["writer"] = Effect.acquireRelease(
+    const writer: Socket["Service"]["writer"] = Effect.acquireRelease(
       Effect.succeed({ write, writeAll }),
       () =>
         Effect.promise(async () => {

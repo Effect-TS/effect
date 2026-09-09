@@ -189,7 +189,7 @@ export interface AtomContext {
   subscribe<A>(this: AtomContext, atom: Atom<A>, f: (_: A) => void, options?: {
     readonly immediate?: boolean
   }): void
-  readonly registry: Registry.AtomRegistry
+  readonly registry: Registry.AtomRegistry["Service"]
 }
 
 /**
@@ -1034,7 +1034,7 @@ export interface FnContext {
   subscribe<A>(this: FnContext, atom: Atom<A>, f: (_: A) => void, options?: {
     readonly immediate?: boolean
   }): void
-  readonly registry: Registry.AtomRegistry
+  readonly registry: Registry.AtomRegistry["Service"]
 }
 
 /**
@@ -2575,11 +2575,11 @@ export const withServerValueInitial = <A extends Atom<AsyncResult.AsyncResult<an
  * @since 4.0.0
  */
 export const getServerValue: {
-  (registry: Registry.AtomRegistry): <A>(self: Atom<A>) => A
-  <A>(self: Atom<A>, registry: Registry.AtomRegistry): A
+  (registry: Registry.AtomRegistry["Service"]): <A>(self: Atom<A>) => A
+  <A>(self: Atom<A>, registry: Registry.AtomRegistry["Service"]): A
 } = dual(
   2,
-  <A>(self: Atom<A>, registry: Registry.AtomRegistry): A =>
+  <A>(self: Atom<A>, registry: Registry.AtomRegistry["Service"]): A =>
     ServerValueTypeId in self
       ? (self as any)[ServerValueTypeId]((atom: Atom<any>) => registry.get(atom))
       : registry.get(self)

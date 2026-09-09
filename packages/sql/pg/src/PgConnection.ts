@@ -161,53 +161,61 @@ export interface Notification {
  * @category models
  * @since 4.0.0
  */
-export interface PgConnection {
-  readonly [TypeId]: TypeId
-  readonly config: Config
-  readonly processId: number
+export declare namespace PgConnection {
   /**
-   * Reserves the session for exclusive use until the scope closes. Pinning is
-   * reentrant. Calls through the returned connection skip the
-   * ownership queue, while calls through the original connection wait.
+   * Implementation of the PgConnection service.
+   *
+   * @category models
+   * @since 4.0.0
    */
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
-  /** Runs a query and returns rows keyed by column name. Pass `false` to skip the prepared statement cache. */
-  readonly query: (
-    sql: string,
-    params?: ReadonlyArray<unknown>,
-    prepare?: boolean
-  ) => Effect.Effect<Result, SqlError>
-  /** Runs a query and returns positional rows. Pass `false` to skip the prepared statement cache. */
-  readonly queryValues: (
-    sql: string,
-    params?: ReadonlyArray<unknown>,
-    prepare?: boolean
-  ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
-  /**
-   * Streams rows without collecting the full result. The session is pinned for
-   * the lifetime of the stream. Aborting the stream
-   * before the result completes cancels the statement with a `CancelRequest`
-   * and drains the connection back to `ReadyForQuery`.
-   */
-  readonly stream: (
-    sql: string,
-    params?: ReadonlyArray<unknown>
-  ) => Stream.Stream<Row, SqlError>
-  /**
-   * Registers a channel listener and returns its notification queue after
-   * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
-   * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
-   * registration errors fail the acquiring effect.
-   */
-  readonly listen: (
-    channel: string
-  ) => Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope>
-  /**
-   * Attempts to cancel the active query through a side connection. This is a
-   * no-op for an unpinned multiplexed connection because the active
-   * query may belong to another fiber. The effect never fails.
-   */
-  readonly interrupt: Effect.Effect<void>
+  export interface Service {
+    readonly [TypeId]: TypeId
+    readonly config: Config
+    readonly processId: number
+    /**
+     * Reserves the session for exclusive use until the scope closes. Pinning is
+     * reentrant. Calls through the returned connection skip the
+     * ownership queue, while calls through the original connection wait.
+     */
+    readonly pin: Effect.Effect<PgConnection["Service"], never, Scope.Scope>
+    /** Runs a query and returns rows keyed by column name. Pass `false` to skip the prepared statement cache. */
+    readonly query: (
+      sql: string,
+      params?: ReadonlyArray<unknown>,
+      prepare?: boolean
+    ) => Effect.Effect<Result, SqlError>
+    /** Runs a query and returns positional rows. Pass `false` to skip the prepared statement cache. */
+    readonly queryValues: (
+      sql: string,
+      params?: ReadonlyArray<unknown>,
+      prepare?: boolean
+    ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
+    /**
+     * Streams rows without collecting the full result. The session is pinned for
+     * the lifetime of the stream. Aborting the stream
+     * before the result completes cancels the statement with a `CancelRequest`
+     * and drains the connection back to `ReadyForQuery`.
+     */
+    readonly stream: (
+      sql: string,
+      params?: ReadonlyArray<unknown>
+    ) => Stream.Stream<Row, SqlError>
+    /**
+     * Registers a channel listener and returns its notification queue after
+     * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
+     * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
+     * registration errors fail the acquiring effect.
+     */
+    readonly listen: (
+      channel: string
+    ) => Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope>
+    /**
+     * Attempts to cancel the active query through a side connection. This is a
+     * no-op for an unpinned multiplexed connection because the active
+     * query may belong to another fiber. The effect never fails.
+     */
+    readonly interrupt: Effect.Effect<void>
+  }
 }
 
 /**
@@ -216,7 +224,9 @@ export interface PgConnection {
  * @category services
  * @since 4.0.0
  */
-export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConnection")
+export class PgConnection
+  extends Context.Service<PgConnection, PgConnection.Service>()("@effect/sql-pg/PgConnection")
+{}
 
 /**
  * Connects and authenticates a single PostgreSQL session.
@@ -235,7 +245,7 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Scope.Scope> =>
+export const make = (options: Config): Effect.Effect<PgConnection["Service"], SqlError, Scope.Scope> =>
   Effect.flatMap(resolveConfig(options), (config) =>
     Effect.acquireRelease(
       Effect.map(
@@ -291,7 +301,7 @@ const cancelRequestTimeoutMillis = 5000
 const maxPipelineDepth = 128
 const streamPauseThreshold = 512
 
-class PgConnectionImpl implements PgConnection {
+class PgConnectionImpl implements PgConnection.Service {
   readonly [TypeId]: TypeId = TypeId
   readonly config: Config
   readonly processId: number
@@ -320,7 +330,7 @@ class PgConnectionImpl implements PgConnection {
   pipelineHead = 0
   pipelineFlushScheduled = false
   readonly pipelineIdleWaiters = new Set<() => void>()
-  readonly pinnedView: PgConnection
+  readonly pinnedView: PgConnection["Service"]
   readonly [internalsKey]: ConnectionInternals
 
   constructor(config: Config, resolved: ResolvedConfig, session: Session, registry: PgTypes.Registry | undefined) {
@@ -666,12 +676,12 @@ class PgConnectionImpl implements PgConnection {
     return sendCancelRequest(this.resolved, this.session.processId, this.session.secretKey)
   })
 
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.suspend(() => {
+  readonly pin: Effect.Effect<PgConnection["Service"], never, Scope.Scope> = Effect.suspend(() => {
     const reserve = this[internalsKey].reserve
     return reserve === undefined ? this.pinExclusive : Effect.andThen(reserve, this.pinExclusive)
   })
 
-  private readonly pinExclusive: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.acquireRelease(
+  private readonly pinExclusive: Effect.Effect<PgConnection["Service"], never, Scope.Scope> = Effect.acquireRelease(
     Effect.flatMap(this.owner.take(1), () =>
       // Holding `owner` stops new submissions; a pipeline already on the wire
       // still has to drain before this fiber owns the connection.
@@ -731,11 +741,11 @@ class PgConnectionImpl implements PgConnection {
  * queue and re-pinning is a no-op, making `pin` reentrant for `stream` and
  * `listen` running inside a transaction.
  */
-class PinnedPgConnection implements PgConnection {
+class PinnedPgConnection implements PgConnection.Service {
   readonly [TypeId]: TypeId = TypeId
   readonly base: PgConnectionImpl
   readonly [internalsKey]: ConnectionInternals
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
+  readonly pin: Effect.Effect<PgConnection["Service"], never, Scope.Scope>
   readonly interrupt: Effect.Effect<void>
 
   constructor(base: PgConnectionImpl) {
@@ -1546,7 +1556,7 @@ const makeRowBuilder = (fields: ReadonlyArray<PgProtocol.FieldDescription>): Row
 
 const streamRows = (
   conn: PgConnectionImpl,
-  pin: Effect.Effect<PgConnection, never, Scope.Scope>,
+  pin: Effect.Effect<PgConnection["Service"], never, Scope.Scope>,
   sql: string,
   params: ReadonlyArray<unknown>
 ): Stream.Stream<Row, SqlError> =>
@@ -1766,7 +1776,7 @@ const streamRows = (
 
 const listenChannel = (
   conn: PgConnectionImpl,
-  pin: Effect.Effect<PgConnection, never, Scope.Scope>,
+  pin: Effect.Effect<PgConnection["Service"], never, Scope.Scope>,
   channel: string
 ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>

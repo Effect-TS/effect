@@ -66,7 +66,7 @@ export interface Sink<out A, in In = unknown, out L = never, out E = never, out 
 {
   readonly transform: (
     upstream: Pull.Pull<NonEmptyReadonlyArray<In>, never, void>,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect.Effect<End<A, L>, E, R>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: SinkUnify<this>
@@ -303,7 +303,7 @@ export const fromWritableStream = <A, E>(options: {
 export const fromTransform = <In, A, E, R, L = never>(
   transform: (
     upstream: Pull.Pull<NonEmptyReadonlyArray<In>, never, void>,
-    scope: Scope.Scope
+    scope: Scope.Scope["Service"]
   ) => Effect.Effect<End<A, L>, E, R>
 ): Sink<A, In, L, E, R> => {
   const self = Object.create(SinkProto)

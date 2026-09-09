@@ -201,7 +201,7 @@ interface SocketClient {
   readonly read: (bytes: number) => Effect.Effect<void>
 }
 
-const socketClient = Effect.fnUntraced(function*(socket: Socket.Socket) {
+const socketClient = Effect.fnUntraced(function*(socket: Socket.Socket["Service"]) {
   const writer = yield* socket.writer
   const pull = yield* Socket.readerBytes(socket)
   const read = Effect.orDie(pull)

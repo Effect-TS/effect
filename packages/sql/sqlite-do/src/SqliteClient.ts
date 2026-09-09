@@ -66,12 +66,20 @@ export type TypeId = "~@effect/sql-sqlite-do/SqliteClient"
  * @category services
  * @since 4.0.0
  */
-export interface SqliteClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: SqliteClientConfig
+export declare namespace SqliteClient {
+  /**
+   * Implementation of the SqliteClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: SqliteClientConfig
 
-  /** Not supported in sqlite */
-  readonly updateValues: never
+    /** Not supported in sqlite */
+    readonly updateValues: never
+  }
 }
 
 /**
@@ -85,11 +93,14 @@ export interface SqliteClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-do/SqliteClient")
+export class SqliteClient
+  extends Context.Service<SqliteClient, SqliteClient.Service>()("@effect/sql-sqlite-do/SqliteClient")
+{}
 
-const SqliteTransaction = Context.Service<Client.TransactionConnection, Client.TransactionConnection.Service>(
-  "@effect/sql-sqlite-do/SqliteClient/SqliteTransaction"
-)
+const sqliteTransactionKey: string = "@effect/sql-sqlite-do/SqliteClient/SqliteTransaction"
+class SqliteTransaction
+  extends Context.Service<SqliteTransaction, Client.TransactionConnection.Service>()(sqliteTransactionKey)
+{}
 
 /**
  * Configuration for a Cloudflare Durable Object SQLite client, including either a `SqlStorage` handle or the full `DurableObjectStorage` for transaction support, span attributes, and query/result name transforms.
@@ -116,15 +127,15 @@ const unsupportedTransaction = (message: string, operation: string) =>
   })
 
 const makeUnsupportedWithTransaction =
-  (message: string): Client.SqlClient["withTransaction"] =>
+  (message: string): Client.SqlClient["Service"]["withTransaction"] =>
   <R, E, A>(_effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.fail(unsupportedTransaction(message, "transaction"))
 
 const makeStorageBackedWithTransaction = (
   storage: DurableObjectStorage,
-  connection: Connection,
+  connection: Connection["Service"],
   semaphore: Semaphore.Semaphore
-): Client.SqlClient["withTransaction"] =>
+): Client.SqlClient["Service"]["withTransaction"] =>
 <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
   Effect.withFiber((fiber) => {
     const services = fiber.context
@@ -177,7 +188,7 @@ const makeStorageBackedWithTransaction = (
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient["Service"], never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames
@@ -234,7 +245,7 @@ export const make = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
-      return identity<Connection>({
+      return identity<Connection["Service"]>({
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(runStatement(sql, params), transformRows)
@@ -299,7 +310,7 @@ export const make = (
         [ATTR_DB_SYSTEM_NAME, "sqlite"]
       ],
       transformRows
-    })) as SqliteClient
+    })) as SqliteClient["Service"]
 
     return Object.assign(client, {
       [TypeId]: TypeId as TypeId,

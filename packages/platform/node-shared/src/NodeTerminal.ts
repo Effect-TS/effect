@@ -31,7 +31,7 @@ import * as readline from "node:readline"
  */
 export const make: (
   shouldQuit?: (input: Terminal.UserInput) => boolean
-) => Effect.Effect<Terminal.Terminal, never, Scope.Scope> = Effect.fnUntraced(
+) => Effect.Effect<Terminal.Terminal["Service"], never, Scope.Scope> = Effect.fnUntraced(
   function*(shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit) {
     const stdin = process.stdin
     const stdout = process.stdout

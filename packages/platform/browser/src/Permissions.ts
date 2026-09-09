@@ -24,20 +24,28 @@ const ErrorTypeId = "~@effect/platform-browser/Permissions/PermissionsError"
  * @category services
  * @since 4.0.0
  */
-export interface Permissions {
-  readonly [TypeId]: typeof TypeId
-
+export declare namespace Permissions {
   /**
-   * Returns the state of a user permission on the global scope.
+   * Implementation of the Permissions service.
+   *
+   * @category models
+   * @since 4.0.0
    */
-  readonly query: <Name extends PermissionName>(
-    name: Name
-  ) => Effect.Effect<
-    // `name` is identical to the name passed to Permissions.query
-    // https://developer.mozilla.org/en-US/docs/Web/API/PermissionStatus
-    Omit<PermissionStatus, "name"> & { name: Name },
-    PermissionsError
-  >
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+
+    /**
+     * Returns the state of a user permission on the global scope.
+     */
+    readonly query: <Name extends PermissionName>(
+      name: Name
+    ) => Effect.Effect<
+      // `name` is identical to the name passed to Permissions.query
+      // https://developer.mozilla.org/en-US/docs/Web/API/PermissionStatus
+      Omit<PermissionStatus, "name"> & { name: Name },
+      PermissionsError
+    >
+  }
 }
 
 /**
@@ -110,7 +118,7 @@ export class PermissionsError extends Data.TaggedError("PermissionsError")<{
  * @category services
  * @since 4.0.0
  */
-export const Permissions: Context.Service<Permissions, Permissions> = Context.Service<Permissions>(TypeId)
+export class Permissions extends Context.Service<Permissions, Permissions.Service>()(TypeId) {}
 
 /**
  * Provides the `Permissions` service using the browser `navigator.permissions` API.

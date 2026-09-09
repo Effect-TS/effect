@@ -107,28 +107,36 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
  * @category services
  * @since 4.0.0
  */
-export interface ClickhouseClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: ClickhouseClientConfig
-  readonly param: (dataType: string, value: unknown) => Statement.Fragment
-  readonly asCommand: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  readonly insertQuery: <T = unknown>(options: {
-    readonly table: string
-    readonly values: Clickhouse.InsertValues<Readable, T>
-    readonly format?: Clickhouse.DataFormat
-  }) => Effect.Effect<Clickhouse.InsertResult, SqlError>
-  readonly withQueryId: {
-    (queryId: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-    <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string): Effect.Effect<A, E, R>
-  }
-  readonly withClickhouseSettings: {
-    (
-      settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
-    ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-    <A, E, R>(
-      effect: Effect.Effect<A, E, R>,
-      settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
-    ): Effect.Effect<A, E, R>
+export declare namespace ClickhouseClient {
+  /**
+   * Implementation of the ClickhouseClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: ClickhouseClientConfig
+    readonly param: (dataType: string, value: unknown) => Statement.Fragment
+    readonly asCommand: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+    readonly insertQuery: <T = unknown>(options: {
+      readonly table: string
+      readonly values: Clickhouse.InsertValues<Readable, T>
+      readonly format?: Clickhouse.DataFormat
+    }) => Effect.Effect<Clickhouse.InsertResult, SqlError>
+    readonly withQueryId: {
+      (queryId: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+      <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string): Effect.Effect<A, E, R>
+    }
+    readonly withClickhouseSettings: {
+      (
+        settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+      <A, E, R>(
+        effect: Effect.Effect<A, E, R>,
+        settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+      ): Effect.Effect<A, E, R>
+    }
   }
 }
 
@@ -142,7 +150,9 @@ export interface ClickhouseClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const ClickhouseClient = Context.Service<ClickhouseClient>("@effect/sql-clickhouse/ClickhouseClient")
+export class ClickhouseClient
+  extends Context.Service<ClickhouseClient, ClickhouseClient.Service>()("@effect/sql-clickhouse/ClickhouseClient")
+{}
 
 /**
  * Configuration for creating a ClickHouse client, combining
@@ -168,7 +178,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
  */
 export const make = (
   options: ClickhouseClientConfig
-): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<ClickhouseClient["Service"], SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames
@@ -200,7 +210,7 @@ export const make = (
       })
     )
 
-    class ConnectionImpl implements Connection {
+    class ConnectionImpl implements Connection.Service {
       private conn: Clickhouse.ClickHouseClient
       constructor(conn: Clickhouse.ClickHouseClient) {
         this.conn = conn

@@ -87,7 +87,7 @@ export const make = Effect.fnUntraced(function*(options: {
   // reserved connection, including when advisory locks are disabled.
   const acquireLockConn = sql.onDialectOrElse({
     pg: () =>
-      Effect.fnUntraced(function*(scope: Scope.Scope) {
+      Effect.fnUntraced(function*(scope: Scope.Scope["Service"]) {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.provide(scope)
         )
@@ -105,7 +105,7 @@ export const make = Effect.fnUntraced(function*(options: {
         return [conn, pid] as const
       }, Effect.orDie),
     mysql: () =>
-      Effect.fnUntraced(function*(scope: Scope.Scope) {
+      Effect.fnUntraced(function*(scope: Scope.Scope["Service"]) {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.provide(scope)
         )

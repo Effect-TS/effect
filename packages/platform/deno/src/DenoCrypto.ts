@@ -39,7 +39,7 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       return bytes
     }
 
-    const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
+    const digest: EffectCrypto.Crypto["Service"]["digest"] = (algorithm, data) =>
       Effect.map(
         Effect.tryPromise({
           try: () => crypto.subtle.digest(algorithm, new Uint8Array(data)),

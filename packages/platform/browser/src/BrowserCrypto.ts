@@ -66,7 +66,7 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       return bytes
     }
 
-    const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) => {
+    const digest: EffectCrypto.Crypto["Service"]["digest"] = (algorithm, data) => {
       if (typeof crypto.subtle?.digest !== "function") {
         return Effect.fail(PlatformError.systemError({
           module: "Crypto",

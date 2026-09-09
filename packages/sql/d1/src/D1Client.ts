@@ -55,37 +55,45 @@ export type TypeId = "~@effect/sql-d1/D1Client"
  * @category services
  * @since 4.0.0
  */
-export interface D1Client extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: D1ClientConfig
-
+export declare namespace D1Client {
   /**
-   * Executes SQL statements as a single atomic D1 batch and returns their row results in order.
+   * Implementation of the D1Client service.
    *
-   * **When to use**
-   *
-   * Use when you have a fixed collection of statements that should run in one
-   * request and roll back together if any statement fails.
-   *
-   * **Gotchas**
-   *
-   * Each statement uses the query and result name transformations from the
-   * client that created it. Mixing clients can produce differently shaped row
-   * results within the same batch.
-   *
+   * @category models
    * @since 4.0.0
    */
-  readonly batch: <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
-    statements: Statements
-  ) => Effect.Effect<
-    {
-      readonly [K in keyof Statements]: Effect.Success<Statements[K]>
-    },
-    SqlError
-  >
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: D1ClientConfig
 
-  /** Not supported in d1 */
-  readonly updateValues: never
+    /**
+     * Executes SQL statements as a single atomic D1 batch and returns their row results in order.
+     *
+     * **When to use**
+     *
+     * Use when you have a fixed collection of statements that should run in one
+     * request and roll back together if any statement fails.
+     *
+     * **Gotchas**
+     *
+     * Each statement uses the query and result name transformations from the
+     * client that created it. Mixing clients can produce differently shaped row
+     * results within the same batch.
+     *
+     * @since 4.0.0
+     */
+    readonly batch: <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
+      statements: Statements
+    ) => Effect.Effect<
+      {
+        readonly [K in keyof Statements]: Effect.Success<Statements[K]>
+      },
+      SqlError
+    >
+
+    /** Not supported in d1 */
+    readonly updateValues: never
+  }
 }
 
 /**
@@ -99,7 +107,7 @@ export interface D1Client extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const D1Client = Context.Service<D1Client>("@effect/sql-d1/D1Client")
+export class D1Client extends Context.Service<D1Client, D1Client.Service>()("@effect/sql-d1/D1Client") {}
 
 /**
  * Configuration for a Cloudflare D1 client, including the `D1Database`, prepared statement cache settings, span attributes, and query/result name transforms.
@@ -131,8 +139,8 @@ const makeBatch = (options: {
   readonly db: D1Database
   readonly prepareCache: Cache.Cache<string, D1PreparedStatement, SqlError>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
-  readonly getClient: () => D1Client
-}): D1Client["batch"] =>
+  readonly getClient: () => D1Client["Service"]
+}): D1Client["Service"]["batch"] =>
 <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
   statements: Statements
 ) => {
@@ -197,7 +205,7 @@ const makeBatch = (options: {
  */
 export const make = (
   options: D1ClientConfig
-): Effect.Effect<D1Client, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<D1Client["Service"], never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -291,7 +299,7 @@ export const make = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
-      const connection = identity<Connection>({
+      const connection = identity<Connection["Service"]>({
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(runCached(sql, params), transformRows)
@@ -322,7 +330,7 @@ export const make = (
     const acquirer = Effect.succeed(connection)
     const transactionAcquirer = Effect.die("transactions are not supported in D1")
 
-    let client!: D1Client
+    let client!: D1Client["Service"]
     client = Object.assign(
       (yield* Client.make({
         acquirer,
@@ -330,7 +338,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes,
         transformRows
-      })) as D1Client,
+      })) as D1Client["Service"],
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -351,8 +359,8 @@ export const make = (
         spanAttributes,
         transformRows: undefined
       })
-      let clientWithoutTransforms!: D1Client
-      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as D1Client, {
+      let clientWithoutTransforms!: D1Client["Service"]
+      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as D1Client["Service"], {
         [TypeId]: TypeId as TypeId,
         config: options,
         batch: makeBatch({

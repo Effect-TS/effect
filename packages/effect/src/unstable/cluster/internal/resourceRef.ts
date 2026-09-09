@@ -27,8 +27,8 @@ export type State<A, E> = {
 /** @internal */
 export class ResourceRef<A, E = never> {
   static from = Effect.fnUntraced(function*<A, E>(
-    parentScope: Scope.Scope,
-    acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
+    parentScope: Scope.Scope["Service"],
+    acquire: (scope: Scope.Scope["Service"]) => Effect.Effect<A, E>,
     teardownAddress?: EntityAddress
   ) {
     const state = MutableRef.make<State<A, E>>({ _tag: "Closed" })
@@ -52,11 +52,11 @@ export class ResourceRef<A, E = never> {
   })
 
   readonly state: MutableRef.MutableRef<State<A, E>>
-  readonly acquire: (scope: Scope.Scope) => Effect.Effect<A, E>
+  readonly acquire: (scope: Scope.Scope["Service"]) => Effect.Effect<A, E>
   readonly teardownAddress: EntityAddress | undefined
   constructor(
     state: MutableRef.MutableRef<State<A, E>>,
-    acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
+    acquire: (scope: Scope.Scope["Service"]) => Effect.Effect<A, E>,
     teardownAddress?: EntityAddress
   ) {
     this.state = state

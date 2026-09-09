@@ -25,7 +25,7 @@ import type * as Socket from "./Socket.ts"
 export class SocketServer extends Context.Service<SocketServer, {
   readonly address: NetAddress.SocketAddress
   readonly run: <R, E, _>(
-    handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>
+    handler: (socket: Socket.Socket["Service"]) => Effect.Effect<_, E, R>
   ) => Effect.Effect<never, SocketServerError, R>
 }>()("@effect/platform/SocketServer") {}
 

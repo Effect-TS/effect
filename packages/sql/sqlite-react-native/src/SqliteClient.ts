@@ -66,12 +66,20 @@ export type TypeId = "~@effect/sql-sqlite-react-native/SqliteClient"
  * @category services
  * @since 4.0.0
  */
-export interface SqliteClient extends Client.SqlClient {
-  readonly [TypeId]: TypeId
-  readonly config: SqliteClientConfig
+export declare namespace SqliteClient {
+  /**
+   * Implementation of the SqliteClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends Client.SqlClient.Service {
+    readonly [TypeId]: TypeId
+    readonly config: SqliteClientConfig
 
-  /** Not supported in sqlite */
-  readonly updateValues: never
+    /** Not supported in sqlite */
+    readonly updateValues: never
+  }
 }
 
 /**
@@ -80,7 +88,9 @@ export interface SqliteClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-react-native/SqliteClient")
+export class SqliteClient
+  extends Context.Service<SqliteClient, SqliteClient.Service>()("@effect/sql-sqlite-react-native/SqliteClient")
+{}
 
 /**
  * Configuration for a React Native SQLite client, including the database filename, optional location and encryption key, span attributes, and query/result name transforms.
@@ -122,7 +132,7 @@ export const AsyncQuery = Context.Reference<boolean>(
 export const withAsyncQuery = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
   Effect.provideService(effect, AsyncQuery, true)
 
-interface SqliteConnection extends Connection {}
+interface SqliteConnection extends Connection.Service {}
 
 /**
  * Creates a scoped React Native SQLite client from the supplied configuration, using a single serialized connection and honoring `AsyncQuery` for query execution.
@@ -132,7 +142,7 @@ interface SqliteConnection extends Connection {}
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient["Service"], never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const clientOptions: Parameters<typeof open>[0] = {
       name: options.filename
@@ -245,7 +255,7 @@ export const make = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as SqliteClient,
+      })) as SqliteClient["Service"],
       {
         [TypeId]: TypeId,
         config: options

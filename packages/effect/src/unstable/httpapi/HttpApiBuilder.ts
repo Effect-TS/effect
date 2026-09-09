@@ -740,7 +740,7 @@ function buildPayloadDecoders(
 
 function decodePayload(
   payloadBy: Map<string, PayloadDecoder>,
-  httpRequest: HttpServerRequest,
+  httpRequest: HttpServerRequest["Service"],
   query: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, Schema.SchemaError, unknown> | HttpServerResponse | undefined {
   const hasBody = HttpMethod.hasBody(httpRequest.method)

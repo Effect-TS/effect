@@ -91,7 +91,7 @@ export const makeNet = (
   options: Net.NetConnectOpts & {
     readonly openTimeout?: Duration.Input | undefined
   }
-): Effect.Effect<Socket.Socket> =>
+): Effect.Effect<Socket.Socket["Service"]> =>
   fromDuplex(
     Effect.contextWith((context: Context.Context<Scope.Scope>) => {
       let conn: Net.Socket | undefined
@@ -150,15 +150,15 @@ export const fromDuplex = <RO>(
     readonly openTimeout?: Duration.Input | undefined
     readonly tlsServer?: boolean | undefined
   }
-): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
-  Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
+): Effect.Effect<Socket.Socket["Service"], never, Exclude<RO, Scope.Scope>> =>
+  Effect.withFiber<Socket.Socket["Service"], never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
     const secureEvent = isServer ? "secure" : "secureConnect"
 
-    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+    const reader: Socket.Socket["Service"]["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn = yield* Scope.provide(open, scope).pipe(
         options?.openTimeout !== undefined ?
@@ -377,7 +377,7 @@ export const fromDuplex = <RO>(
       return { pull, upgrade }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
-    ) as Socket.Socket["reader"]
+    ) as Socket.Socket["Service"]["reader"]
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {
@@ -463,7 +463,7 @@ export const fromDuplex = <RO>(
         return needsDrain ? awaitDrain(conn) : Effect.void
       })
 
-    const writer: Socket.Socket["writer"] = Effect.acquireRelease(
+    const writer: Socket.Socket["Service"]["writer"] = Effect.acquireRelease(
       Effect.succeed({ write, writeAll }),
       () =>
         Effect.sync(() => {
@@ -530,7 +530,7 @@ export const makeTls = (
   options: Tls.ConnectionOptions & {
     readonly openTimeout?: Duration.Input | undefined
   }
-): Effect.Effect<Socket.Socket> =>
+): Effect.Effect<Socket.Socket["Service"]> =>
   fromDuplex(
     Effect.contextWith((context: Context.Context<Scope.Scope>) => {
       let conn: Tls.TLSSocket | undefined

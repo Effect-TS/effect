@@ -41,7 +41,7 @@ export function scheduleTask(f: () => void): () => void {
  * @category context
  * @since 4.0.0
  */
-export const RegistryContext = React.createContext<AtomRegistry.AtomRegistry>(AtomRegistry.make({
+export const RegistryContext = React.createContext<AtomRegistry.AtomRegistry["Service"]>(AtomRegistry.make({
   scheduleTask,
   defaultIdleTTL: 400
 }))
@@ -80,7 +80,7 @@ export const RegistryProvider = (options: {
   readonly defaultIdleTTL?: number | undefined
 }) => {
   const ref = React.useRef<{
-    readonly registry: AtomRegistry.AtomRegistry
+    readonly registry: AtomRegistry.AtomRegistry["Service"]
     timeout?: number | undefined
   }>(null)
   if (ref.current === null) {

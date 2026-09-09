@@ -51,7 +51,7 @@ const TypeId = "~effect/http/HttpClient"
  * @category guards
  * @since 4.0.0
  */
-export const isHttpClient = (u: unknown): u is HttpClient => Predicate.hasProperty(u, TypeId)
+export const isHttpClient = (u: unknown): u is HttpClient["Service"] => Predicate.hasProperty(u, TypeId)
 
 /**
  * HTTP client whose requests produce `HttpClientResponse` values and can fail with `HttpClientError`.
@@ -59,7 +59,15 @@ export const isHttpClient = (u: unknown): u is HttpClient => Predicate.hasProper
  * @category models
  * @since 4.0.0
  */
-export interface HttpClient extends HttpClient.With<Error.HttpClientError> {}
+export declare namespace HttpClient {
+  /**
+   * Implementation of the HttpClient service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service extends HttpClient.With<Error.HttpClientError> {}
+}
 
 /**
  * Namespace containing type-level members associated with `HttpClient`.
@@ -147,11 +155,9 @@ export declare namespace HttpClient {
  * @category services
  * @since 4.0.0
  */
-export const HttpClient: Context.Service<HttpClient, HttpClient> = Context.Service<HttpClient, HttpClient>(
-  "effect/HttpClient"
-)
+export class HttpClient extends Context.Service<HttpClient, HttpClient.Service>()("effect/HttpClient") {}
 
-const accessor = (method: keyof HttpClient) => (...args: Array<any>): Effect.Effect<any, any, any> =>
+const accessor = (method: keyof HttpClient["Service"]) => (...args: Array<any>): Effect.Effect<any, any, any> =>
   Effect.flatMap(
     HttpClient,
     (client) => (client as any)[method](...args)
@@ -609,7 +615,7 @@ const Proto = {
   ...Object.fromEntries(
     HttpMethod.allShort.map((
       [fullMethod, method]
-    ) => [method, function(this: HttpClient, url: string | URL, options?: HttpClientRequest.Options.NoUrl) {
+    ) => [method, function(this: HttpClient["Service"], url: string | URL, options?: HttpClientRequest.Options.NoUrl) {
       return this.execute(HttpClientRequest.make(fullMethod)(url, options))
     }])
   )
@@ -632,7 +638,7 @@ export const make = (
     signal: AbortSignal,
     fiber: Fiber.Fiber<HttpClientResponse.HttpClientResponse, Error.HttpClientError>
   ) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error.HttpClientError>
-): HttpClient =>
+): HttpClient["Service"] =>
   makeWith((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiber((fiber) => {
@@ -1006,7 +1012,7 @@ export declare namespace WithRateLimiter {
     /**
      * The `RateLimiter` service to use for rate limiting.
      */
-    readonly limiter: RateLimiter.RateLimiter
+    readonly limiter: RateLimiter.RateLimiter["Service"]
     /**
      * The initial rate limit window duration.
      */
@@ -1642,7 +1648,7 @@ export const SpanNameGenerator = Context.Reference<
  * @since 4.0.0
  */
 export const layerMergedContext = <E, R>(
-  effect: Effect.Effect<HttpClient, E, R>
+  effect: Effect.Effect<HttpClient["Service"], E, R>
 ): Layer.Layer<HttpClient, E, R> =>
   Layer.effect(HttpClient)(
     Effect.contextWith((context: Context.Context<never>) =>

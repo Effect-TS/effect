@@ -302,16 +302,13 @@ export type RequirementsHandler<Workflows extends Any> = Workflows extends Workf
     | _Error["EncodingServices"]
   : never
 
-const EngineTag = Context.Service<WorkflowEngine, WorkflowEngine["Service"]>(
+class EngineTag extends Context.Service<EngineTag, WorkflowEngine["Service"]>()(
   "effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
-)
+) {}
 
-const InstanceTag = Context.Service<
-  WorkflowInstance,
-  WorkflowInstance["Service"]
->(
+class InstanceTag extends Context.Service<InstanceTag, WorkflowInstance["Service"]>()(
   "effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
-)
+) {}
 
 const makeExecutionIdFromPayload = (self: AnyWithProps, payload: unknown) =>
   makeHashDigest(`${self._tag}-${self.idempotencyKey(payload)}`)
@@ -765,9 +762,9 @@ interface ActivityRegistration {
   state: "pending" | "adopted" | "released"
 }
 
-const PendingActivityRegistration = Context.Service<ActivityRegistration>(
+class PendingActivityRegistration extends Context.Service<PendingActivityRegistration, ActivityRegistration>()(
   "effect/workflow/Workflow/PendingActivityRegistration"
-)
+) {}
 
 const registerActivityUnsafe = (instance: WorkflowInstance["Service"]): ActivityRegistration => {
   const state = instance.activityState
@@ -835,12 +832,12 @@ const waitForZero = Effect.fnUntraced(function*(instance: WorkflowInstance["Serv
  * @since 4.0.0
  */
 export const scope: Effect.Effect<
-  Scope.Scope,
+  Scope.Scope["Service"],
   never,
   WorkflowInstance
 > = Effect.map(
   InstanceTag,
-  (instance) => instance.scope as Scope.Scope
+  (instance) => instance.scope as Scope.Scope["Service"]
 )
 
 /**

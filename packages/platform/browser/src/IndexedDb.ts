@@ -22,10 +22,18 @@ const TypeId = "~@effect/platform-browser/IndexedDb"
  * @category services
  * @since 4.0.0
  */
-export interface IndexedDb {
-  readonly [TypeId]: typeof TypeId
-  readonly indexedDB: globalThis.IDBFactory
-  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+export declare namespace IndexedDb {
+  /**
+   * Implementation of the IndexedDb service.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Service {
+    readonly [TypeId]: typeof TypeId
+    readonly indexedDB: globalThis.IDBFactory
+    readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+  }
 }
 
 /**
@@ -34,7 +42,7 @@ export interface IndexedDb {
  * @category services
  * @since 4.0.0
  */
-export const IndexedDb: Context.Service<IndexedDb, IndexedDb> = Context.Service<IndexedDb, IndexedDb>(TypeId)
+export class IndexedDb extends Context.Service<IndexedDb, IndexedDb.Service>()(TypeId) {}
 
 /** @internal */
 const IDBFlatKey = Schema.Union([
@@ -88,7 +96,8 @@ export const AutoIncrement = Schema.Int.check(
  * @category constructors
  * @since 4.0.0
  */
-export const make = (impl: Omit<IndexedDb, typeof TypeId>): IndexedDb => IndexedDb.of({ [TypeId]: TypeId, ...impl })
+export const make = (impl: Omit<IndexedDb["Service"], typeof TypeId>): IndexedDb["Service"] =>
+  IndexedDb.of({ [TypeId]: TypeId, ...impl })
 
 /**
  * Layer that provides `IndexedDb` from `window.indexedDB` and `window.IDBKeyRange`, failing with a config error when they are unavailable.

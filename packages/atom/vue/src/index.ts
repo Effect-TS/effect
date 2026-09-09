@@ -50,19 +50,21 @@ export * as AtomRpc from "effect/unstable/reactivity/AtomRpc"
  * @since 4.0.0
  * @category symbols
  */
-export const registryKey = Symbol.for("@effect/atom-vue/registryKey") as InjectionKey<AtomRegistry.AtomRegistry>
+export const registryKey = Symbol.for("@effect/atom-vue/registryKey") as InjectionKey<
+  AtomRegistry.AtomRegistry["Service"]
+>
 
 /**
  * @since 4.0.0
  * @category constants
  */
-export const defaultRegistry: AtomRegistry.AtomRegistry = AtomRegistry.make()
+export const defaultRegistry: AtomRegistry.AtomRegistry["Service"] = AtomRegistry.make()
 
 /**
  * @since 4.0.0
  * @category accessors
  */
-export const injectRegistry = (): AtomRegistry.AtomRegistry => {
+export const injectRegistry = (): AtomRegistry.AtomRegistry["Service"] => {
   return inject(registryKey, defaultRegistry)
 }
 
@@ -113,7 +115,7 @@ const flattenExit = <A, E>(exit: Exit.Exit<A, E>): A => {
 }
 
 function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>(
-  registry: AtomRegistry.AtomRegistry,
+  registry: AtomRegistry.AtomRegistry["Service"],
   atomRef: ComputedRef<Atom.Writable<R, W>>,
   options?: {
     readonly mode?: ([R] extends [AsyncResult.AsyncResult<any, any>] ? Mode : "value") | undefined

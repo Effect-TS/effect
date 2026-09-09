@@ -10,7 +10,7 @@ HttpApiGroup.make("users")
 HttpApiEndpoint.get("warmup", "/warmup")
 
 declare const api: Api<500>
-declare const httpClient: HttpClient.HttpClient
+declare const httpClient: HttpClient.HttpClient["Service"]
 
 const endpointClient = HttpApiClient.endpoint(api, {
   group: "users",

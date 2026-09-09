@@ -51,13 +51,13 @@ class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
   readonly semaphore = Semaphore.makeUnsafe(1)
   readonly acquire: Effect.Effect<A, E>
   readonly context: Context.Context<never>
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   readonly idleTimeToLive: Duration.Duration | undefined
 
   constructor(
     acquire: Effect.Effect<A, E>,
     context: Context.Context<never>,
-    scope: Scope.Scope,
+    scope: Scope.Scope["Service"],
     idleTimeToLive: Duration.Duration | undefined
   ) {
     this.acquire = acquire

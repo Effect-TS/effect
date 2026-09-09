@@ -83,7 +83,7 @@ export interface Residency {
 /** @internal */
 export type EntityState = {
   readonly address: EntityAddress
-  readonly scope: Scope.Scope
+  readonly scope: Scope.Scope["Service"]
   readonly activeRequests: Map<Snowflake.Snowflake, {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>

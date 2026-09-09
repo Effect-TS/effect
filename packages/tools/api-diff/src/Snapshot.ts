@@ -26,16 +26,16 @@ import type {
 
 interface SerializationContext {
   readonly checker: ts.TypeChecker
-  readonly path: Path.Path
+  readonly path: Path.Path["Service"]
   readonly repoRoot: string
   readonly typeParameters: ReadonlyMap<string, string>
   readonly publicSymbols: ReadonlyMap<string, string>
 }
 
-const normalizedPath = (path: Path.Path, root: string, location: string): string =>
+const normalizedPath = (path: Path.Path["Service"], root: string, location: string): string =>
   path.relative(root, location).split(path.sep).join("/")
 
-const sourceLocation = (path: Path.Path, root: string, node: ts.Node): SourceLocation => {
+const sourceLocation = (path: Path.Path["Service"], root: string, node: ts.Node): SourceLocation => {
   const source = node.getSourceFile()
   const position = source.getLineAndCharacterOfPosition(node.getStart(source, false))
   return {
@@ -735,7 +735,7 @@ const snapshotExtractionError = (diagnostics: ReadonlyArray<SnapshotDiagnostic>)
 const extractSnapshot = (
   options: ExtractSnapshotOptions,
   discovered: DiscoveryResult,
-  path: Path.Path
+  path: Path.Path["Service"]
 ): ApiSnapshot => {
   const diagnostics: Array<SnapshotDiagnostic> = discovered.missing.map((module) => ({
     code: "missing-entrypoint",

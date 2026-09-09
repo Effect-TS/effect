@@ -189,7 +189,7 @@ export const makeHandler = <
 >(
   httpEffect: Effect.Effect<HttpServerResponse, E, R>,
   options: {
-    readonly scope: Scope.Scope
+    readonly scope: Scope.Scope["Service"]
     readonly middleware?: Middleware.HttpMiddleware.Applied<App, E, R> | undefined
   }
 ): Effect.Effect<
@@ -233,7 +233,7 @@ export const makeUpgradeHandler = <
   lazyWss: Effect.Effect<NodeWS.WebSocketServer>,
   httpEffect: Effect.Effect<HttpServerResponse, E, R>,
   options: {
-    readonly scope: Scope.Scope
+    readonly scope: Scope.Scope["Service"]
     readonly middleware?: Middleware.HttpMiddleware.Applied<App, E, R> | undefined
   }
 ): Effect.Effect<
@@ -297,17 +297,17 @@ export const makeUpgradeHandler = <
   })
 }
 
-class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
+class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest.Service {
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
-  private upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError> | undefined
+  private upgradeEffect?: Effect.Effect<Socket.Socket["Service"], HttpServerError> | undefined
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
 
   constructor(
     source: Http.IncomingMessage,
     response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
-    upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
+    upgradeEffect?: Effect.Effect<Socket.Socket["Service"], HttpServerError>,
     url = source.url!,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>
@@ -394,7 +394,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     return NodeMultipart.stream(this.source, this.source.headers)
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
+  get upgrade(): Effect.Effect<Socket.Socket["Service"], HttpServerError> {
     return this.upgradeEffect ?? Effect.fail(
       new HttpServerError({
         reason: new RequestParseError({
@@ -516,7 +516,7 @@ export const layerTest: Layer.Layer<
 // -----------------------------------------------------------------------------
 
 const handleResponse = (
-  request: HttpServerRequest,
+  request: HttpServerRequest["Service"],
   response: HttpServerResponse
 ): Effect.Effect<void, HttpServerError> => {
   const nodeResponse = (request as ServerRequestImpl).resolvedResponse

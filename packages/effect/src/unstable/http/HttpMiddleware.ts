@@ -104,7 +104,7 @@ export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effec
  * @category services
  * @since 4.0.0
  */
-export const TracerDisabledWhen = Context.Reference<Predicate<HttpServerRequest>>(
+export const TracerDisabledWhen = Context.Reference<Predicate<HttpServerRequest["Service"]>>(
   "effect/http/HttpMiddleware/TracerDisabledWhen",
   { defaultValue: () => constFalse }
 )
@@ -125,7 +125,7 @@ export const layerTracerDisabledForUrls = (
  * @category services
  * @since 4.0.0
  */
-export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) => string>(
+export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest["Service"]) => string>(
   "@effect/platform/HttpMiddleware/SpanNameGenerator",
   { defaultValue: () => (request) => `http.server ${request.method}` }
 )
@@ -174,7 +174,7 @@ export const logger: <E, R>(
 /** @internal */
 export const isTracerDisabledUnsafe = (
   fiber: Fiber.Fiber<unknown, unknown>,
-  request: HttpServerRequest
+  request: HttpServerRequest["Service"]
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
 /**
@@ -396,7 +396,7 @@ export const cors = (options?: {
     ? { "access-control-max-age": opts.maxAge.toString() }
     : undefined
 
-  const headersFromRequest = (request: HttpServerRequest) => {
+  const headersFromRequest = (request: HttpServerRequest["Service"]) => {
     const origin = request.headers["origin"]
     return Headers.fromRecordUnsafe({
       ...allowOrigin(origin),
@@ -405,7 +405,7 @@ export const cors = (options?: {
     })
   }
 
-  const headersFromRequestOptions = (request: HttpServerRequest) => {
+  const headersFromRequestOptions = (request: HttpServerRequest["Service"]) => {
     const origin = request.headers["origin"]
     const accessControlRequestHeaders = request.headers["access-control-request-headers"]
     const headers = Headers.fromRecordUnsafe({
@@ -429,7 +429,7 @@ export const cors = (options?: {
     )
   }
 
-  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) => {
+  const preResponseHandler = (request: HttpServerRequest["Service"], response: HttpServerResponse) => {
     const headers = headersFromRequest(request)
     return Effect.succeed(Response.setHeaders(
       response,

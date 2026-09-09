@@ -114,7 +114,7 @@ export const makeTransformerSchema = () => {
       }
     }
     return `export interface ${name} {
-  readonly httpClient: HttpClient.HttpClient
+  readonly httpClient: HttpClient.HttpClient["Service"]
   ${methods.join("\n  ")}
 }
 
@@ -300,9 +300,9 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
 export const make = (
-  httpClient: HttpClient.HttpClient,
+  httpClient: HttpClient.HttpClient["Service"],
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient["Service"]) => Effect.Effect<HttpClient.HttpClient["Service"]>) | undefined
   } = {}
 ): ${name} => {
   ${helpers.join("\n  ")}
@@ -554,7 +554,7 @@ export const makeTransformerTs = () => {
       }
     }
     return `export interface ${name} {
-  readonly httpClient: HttpClient.HttpClient
+  readonly httpClient: HttpClient.HttpClient["Service"]
   ${methods.join("\n  ")}
 }
 
@@ -731,9 +731,9 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
 export const make = (
-  httpClient: HttpClient.HttpClient,
+  httpClient: HttpClient.HttpClient["Service"],
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient["Service"]) => Effect.Effect<HttpClient.HttpClient["Service"]>) | undefined
   } = {}
 ): ${name} => {
   ${helpers.join("\n  ")}

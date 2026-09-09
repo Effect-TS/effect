@@ -4330,7 +4330,7 @@ export const ignoreCause: <
  * ```ts import.meta.vitest
  * import { Context, Effect, ExecutionPlan, Layer } from "effect"
  *
- * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ * class Endpoint extends Context.Service<Endpoint, { url: string }>()("Endpoint") {}
  *
  * const fetchUrl = Effect.gen(function*() {
  *   const endpoint = yield* Effect.service(Endpoint)
@@ -4354,7 +4354,7 @@ export const ignoreCause: <
  * ```ts import.meta.vitest
  * import { Context, Effect, ExecutionPlan, Layer } from "effect"
  *
- * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ * class Endpoint extends Context.Service<Endpoint, { url: string }>()("Endpoint") {}
  *
  * const fetchUrl = Effect.gen(function*() {
  *   const endpoint = yield* Effect.service(Endpoint)
@@ -5747,12 +5747,12 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * import { Context, Effect, Option } from "effect"
  * const output: Array<unknown> = []
  *
- * const Logger = Context.Service<{
+ * class Logger extends Context.Service<Logger, {
  *   log: (msg: string) => void
- * }>("Logger")
- * const Database = Context.Service<{
+ * }>()("Logger") {}
+ * class Database extends Context.Service<Database, {
  *   query: (sql: string) => string
- * }>("Database")
+ * }>()("Database") {}
  *
  * const program = Effect.gen(function*() {
  *   const allServices = yield* Effect.context()
@@ -5800,12 +5800,12 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  * import { Context, Effect, Option } from "effect"
  * const output: Array<unknown> = []
  *
- * const Logger = Context.Service<{
+ * class Logger extends Context.Service<Logger, {
  *   log: (msg: string) => void
- * }>("Logger")
- * const Cache = Context.Service<{
+ * }>()("Logger") {}
+ * class Cache extends Context.Service<Cache, {
  *   get: (key: string) => string | null
- * }>("Cache")
+ * }>()("Cache") {}
  *
  * const program = Effect.contextWith((services: Context.Context<Context.Service.Identifier<typeof Cache>>) => {
  *   const cacheOption = Context.getOption(services, Cache)
@@ -5852,11 +5852,11 @@ export const contextWith: <R, A, E, R2>(
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * interface Database {
+ * interface DatabaseShape {
  *   readonly query: (sql: string) => Effect.Effect<string>
  * }
  *
- * const Database = Context.Service<Database>("Database")
+ * class Database extends Context.Service<Database, DatabaseShape>()("Database") {}
  *
  * const DatabaseLayer = Layer.succeed(Database)({
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result for: ${sql}`))
@@ -5939,12 +5939,12 @@ export const provide: {
  * const output: Array<unknown> = []
  *
  * // Define service keys
- * const Logger = Context.Service<{
+ * class Logger extends Context.Service<Logger, {
  *   log: (msg: string) => void
- * }>("Logger")
- * const Database = Context.Service<{
+ * }>()("Logger") {}
+ * class Database extends Context.Service<Database, {
  *   query: (sql: string) => string
- * }>("Database")
+ * }>()("Database") {}
  *
  * // Create a context with multiple services
  * const context = Context.make(Logger, { log: (message) => { output.push(message) } })
@@ -6030,11 +6030,11 @@ export const setContext: {
  * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
- * interface Database {
+ * interface DatabaseShape {
  *   readonly query: (sql: string) => Effect.Effect<string>
  * }
  *
- * const Database = Context.Service<Database>("Database")
+ * class Database extends Context.Service<Database, DatabaseShape>()("Database") {}
  *
  * const program = Effect.gen(function*() {
  *   const db = yield* Effect.service(Database)
@@ -6074,9 +6074,9 @@ export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> 
  * const output: Array<unknown> = []
  *
  * // Define a service key
- * const Logger = Context.Service<{
+ * class Logger extends Context.Service<Logger, {
  *   log: (msg: string) => void
- * }>("Logger")
+ * }>()("Logger") {}
  *
  * // Use serviceOption to optionally access the logger
  * const program = Effect.gen(function*() {
@@ -6112,12 +6112,12 @@ export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> 
  * import { Context, Effect } from "effect"
  *
  * // Define services
- * const Logger = Context.Service<{
+ * class Logger extends Context.Service<Logger, {
  *   log: (msg: string) => void
- * }>("Logger")
- * const Config = Context.Service<{
+ * }>()("Logger") {}
+ * class Config extends Context.Service<Config, {
  *   name: string
- * }>("Config")
+ * }>()("Config") {}
  *
  * const program = Effect.service(Config).pipe(
  *   Effect.map((config) => `Hello ${config.name}!`)
@@ -6166,7 +6166,7 @@ export const updateContext: {
  * const output: Array<unknown> = []
  *
  * // Define a counter service
- * const Counter = Context.Service<{ count: number }>("Counter")
+ * class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
  *
  * const program = Effect.gen(function*() {
  *   const updatedCounter = yield* Effect.service(Counter)
@@ -6283,10 +6283,10 @@ export const updateServiceScoped: <I, A>(
  * const output: Array<unknown> = []
  *
  * // Define a service for configuration
- * const Config = Context.Service<{
+ * class Config extends Context.Service<Config, {
  *   apiUrl: string
  *   timeout: number
- * }>("Config")
+ * }>()("Config") {}
  *
  * const fetchData = Effect.gen(function*() {
  *   const config = yield* Effect.service(Config)
@@ -6354,7 +6354,7 @@ export const provideService: {
  * interface DatabaseConnection {
  *   readonly query: (sql: string) => Effect.Effect<string>
  * }
- * const Database = Context.Service<DatabaseConnection>("Database")
+ * class Database extends Context.Service<Database, DatabaseConnection>()("Database") {}
  *
  * // Effect that creates a database connection
  * const createConnection = Effect.gen(function*() {
@@ -6429,7 +6429,7 @@ export const provideServiceEffect: {
  * @category resource management
  * @since 2.0.0
  */
-export const scope: Effect<Scope, never, Scope> = internal.scope
+export const scope: Effect<Scope["Service"], never, Scope> = internal.scope
 
 /**
  * Runs an effect with a scope that closes when the effect completes.
@@ -6514,7 +6514,7 @@ export const scoped: <A, E, R>(
  * @since 3.11.0
  */
 export const scopedWith: <A, E, R>(
-  f: (scope: Scope) => Effect<A, E, R>
+  f: (scope: Scope["Service"]) => Effect<A, E, R>
 ) => Effect<A, E, R> = internal.scopedWith
 
 /**
@@ -8575,7 +8575,7 @@ export const forkChild: <
  */
 export const forkIn: {
   (
-    scope: Scope,
+    scope: Scope["Service"],
     options?: {
       readonly startImmediately?: boolean | undefined
       readonly uninterruptible?: boolean | "inherit" | undefined
@@ -8583,7 +8583,7 @@ export const forkIn: {
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber<A, E>, never, R>
   <A, E, R>(
     self: Effect<A, E, R>,
-    scope: Scope,
+    scope: Scope["Service"],
     options?: {
       readonly startImmediately?: boolean | undefined
       readonly uninterruptible?: boolean | "inherit" | undefined
@@ -8817,11 +8817,11 @@ export const runFork: <A, E>(effect: Effect<A, E, never>, options?: RunOptions |
  * import { Context, Effect, Fiber } from "effect"
  * const output: Array<unknown> = []
  *
- * interface Logger {
+ * interface LoggerShape {
  *   log: (message: string) => void
  * }
  *
- * const Logger = Context.Service<Logger>("Logger")
+ * class Logger extends Context.Service<Logger, LoggerShape>()("Logger") {}
  *
  * const services = Context.make(Logger, {
  *   log: (message) => void output.push(message)
@@ -8863,11 +8863,11 @@ export const runForkWith: <R>(
  * import { Context, Effect } from "effect"
  * const output: Array<unknown> = []
  *
- * interface Logger {
+ * interface LoggerShape {
  *   log: (message: string) => Effect.Effect<void>
  * }
  *
- * const Logger = Context.Service<Logger>("Logger")
+ * class Logger extends Context.Service<Logger, LoggerShape>()("Logger") {}
  *
  * const services = Context.make(Logger, {
  *   log: (message) => Effect.sync(() => { output.push(message) })
@@ -9000,11 +9000,11 @@ export const runPromise: <A, E>(
  * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
- * interface Config {
+ * interface ConfigShape {
  *   apiUrl: string
  * }
  *
- * const Config = Context.Service<Config>("Config")
+ * class Config extends Context.Service<Config, ConfigShape>()("Config") {}
  *
  * const context = Context.make(Config, {
  *   apiUrl: "https://api.example.com"
@@ -9076,11 +9076,11 @@ export const runPromiseExit: <A, E>(
  * import { Context, Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
- * interface Database {
+ * interface DatabaseShape {
  *   query: (sql: string) => string
  * }
  *
- * const Database = Context.Service<Database>("Database")
+ * class Database extends Context.Service<Database, DatabaseShape>()("Database") {}
  *
  * const services = Context.make(Database, {
  *   query: (sql) => `Result for: ${sql}`
@@ -9177,11 +9177,11 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = internal.runSync
  * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
- * interface MathService {
+ * interface MathServiceShape {
  *   add: (a: number, b: number) => number
  * }
  *
- * const MathService = Context.Service<MathService>("MathService")
+ * class MathService extends Context.Service<MathService, MathServiceShape>()("MathService") {}
  *
  * const context = Context.make(MathService, {
  *   add: (a, b) => a + b
@@ -9267,9 +9267,9 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = inte
  * const output: Array<unknown> = []
  *
  * // Define a logger service
- * const Logger = Context.Service<{
+ * class Logger extends Context.Service<Logger, {
  *   log: (msg: string) => void
- * }>("Logger")
+ * }>()("Logger") {}
  *
  * const program = Effect.gen(function*() {
  *   const logger = yield* Effect.service(Logger)
