@@ -1,4 +1,4 @@
-import type { Brand, Types } from "effect"
+import type { Brand, DateTime, Effect, HashMap, Option, Types } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Types", () => {
@@ -197,19 +197,63 @@ describe("Types", () => {
       expect<Types.DeepMutable<(arg: 1) => 2>>().type.toBe<(arg: 1) => 2>()
     })
 
-    it("built in objects", () => {
+    it("built-in objects", () => {
       expect<
         [
-          Types.DeepMutable<string>,
-          Types.DeepMutable<number>,
-          Types.DeepMutable<boolean>,
-          Types.DeepMutable<bigint>,
-          Types.DeepMutable<symbol>,
           Types.DeepMutable<Date>,
           Types.DeepMutable<RegExp>,
-          Types.DeepMutable<Generator>
+          Types.DeepMutable<Generator>,
+          Types.DeepMutable<ArrayBuffer>,
+          Types.DeepMutable<URL>
         ]
-      >().type.toBeAssignableTo<[string, number, boolean, bigint, symbol, Date, RegExp, Generator]>()
+      >().type.toBe<[Date, RegExp, Generator, ArrayBuffer, URL]>()
+    })
+
+    it("Effect data types", () => {
+      type Value = { readonly value: string }
+      expect<
+        [
+          Types.DeepMutable<DateTime.DateTime>,
+          Types.DeepMutable<Effect.Effect<Value, Error>>,
+          Types.DeepMutable<HashMap.HashMap<string, Value>>,
+          Types.DeepMutable<Option.Option<Value>>
+        ]
+      >().type.toBe<
+        [
+          DateTime.DateTime,
+          Effect.Effect<Value, Error>,
+          HashMap.HashMap<string, Value>,
+          Option.Option<Value>
+        ]
+      >()
+    })
+
+    it("preserves opaque values nested in structural data", () => {
+      type Value = { readonly value: string }
+      expect<
+        Types.DeepMutable<{
+          readonly dates: ReadonlyArray<DateTime.DateTime>
+          readonly option: Option.Option<Value>
+        }>
+      >().type.toBe<{
+        dates: Array<DateTime.DateTime>
+        option: Option.Option<Value>
+      }>()
+    })
+
+    it("preserves objects with methods or symbol-keyed properties", () => {
+      const TypeId = Symbol()
+      type WithMethod = {
+        readonly nested: { readonly value: string }
+        readonly run: () => void
+      }
+      type WithSymbol = {
+        readonly [TypeId]: "WithSymbol"
+        readonly nested: { readonly value: string }
+      }
+      expect<
+        [Types.DeepMutable<WithMethod>, Types.DeepMutable<WithSymbol>]
+      >().type.toBe<[WithMethod, WithSymbol]>()
     })
 
     describe("Branded", () => {
