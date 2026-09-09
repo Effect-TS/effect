@@ -1,5 +1,17 @@
 # @effect/cli
 
+## 0.77.1
+
+### Patch Changes
+
+- [#7173](https://github.com/Effect-TS/effect/pull/7173) [`2059606`](https://github.com/Effect-TS/effect/commit/20596061bd24dd7f18c5b5c839111310d730d6e9) Thanks @dv-waynehaffenden! - Escape quotes in generated shell completion descriptions.
+
+  Single-quoted zsh and fish completion descriptions are escaped to preserve apostrophes in subcommands, options, and arguments.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+  - @effect/platform@0.97.2
+
 ## 0.77.0
 
 ### Patch Changes
