@@ -37,16 +37,13 @@ const runPromise: <E, A>(
 const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
   const promise = runPromise(effect, ctx)
   if (ctx) {
-    // Register only on abort so normally completing concurrent tests keep their
-    // usual teardown order. Keep failures on the original test promise.
+    // Vitest stops awaiting the test promise once the signal aborts (timeout or
+    // cancellation), so only then add a hook that waits for the finalizers.
+    // Registering it unconditionally would change the teardown of every test.
     const onAbort = () => ctx.onTestFinished(() => promise.then(constVoid, constVoid))
-    if (ctx.signal.aborted) {
-      onAbort()
-    } else {
-      ctx.signal.addEventListener("abort", onAbort, { once: true })
-      const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
-      promise.then(cleanup, cleanup)
-    }
+    ctx.signal.addEventListener("abort", onAbort, { once: true })
+    const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
+    promise.then(cleanup, cleanup)
   }
   return promise
 }
