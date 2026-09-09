@@ -136,7 +136,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
             child: { $ref: "#/$defs/ChildEncoded" }
           },
           required: ["child"],
-          additionalProperties: false
+          additionalProperties: true
         }
       })
     })
@@ -368,7 +368,8 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         type: "object",
         patternProperties: {
           "^key$": { type: "string" }
-        }
+        },
+        additionalProperties: true
       }])
     })
 
@@ -415,7 +416,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
               ]
             }
           },
-          additionalProperties: false
+          additionalProperties: true
         },
         NodeEncoded: { $ref: "#/$defs/Objects_" }
       })
@@ -461,7 +462,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
             next: { $ref: "#/$defs/Suspend_" }
           },
           required: ["next"],
-          additionalProperties: false
+          additionalProperties: true
         },
         NodeEncoded: {
           type: "object",
@@ -469,7 +470,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
             next: { $ref: "#/$defs/Suspend_" }
           },
           required: ["next"],
-          additionalProperties: false
+          additionalProperties: true
         },
         Suspend_1: {
           type: "object",
@@ -477,7 +478,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
             next: { $ref: "#/$defs/Suspend_1" }
           },
           required: ["next"],
-          additionalProperties: false
+          additionalProperties: true
         },
         NodeEncoded_1: {
           type: "object",
@@ -485,7 +486,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
             next: { $ref: "#/$defs/Suspend_1" }
           },
           required: ["next"],
-          additionalProperties: false
+          additionalProperties: true
         }
       })
     })
@@ -704,11 +705,12 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       assert.deepStrictEqual(output.schemas, [
         {
           type: "object",
-          patternProperties: { "^a": { type: "string" } }
+          patternProperties: { "^a": { type: "string" } },
+          additionalProperties: true
         },
         {
           type: "object",
-          additionalProperties: { type: "string" }
+          additionalProperties: true
         }
       ])
 

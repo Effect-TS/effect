@@ -274,7 +274,12 @@ export interface Literal extends Keyword<"Literal"> {
 }
 
 /**
- * A unique global symbol representation.
+ * A unique symbol representation.
+ *
+ * **Details**
+ *
+ * Globally registered symbols have an exact JSON string representation. Local
+ * symbols have no JSON representation.
  *
  * @category models
  * @since 4.0.0
@@ -296,7 +301,7 @@ export interface ObjectKeyword extends Keyword<"ObjectKeyword"> {}
  *
  * **Details**
  *
- * Enum members are stored as native string or number values. Persistent
+ * Enum members are stored as native string or finite number values. Persistent
  * codecs add an explicit type discriminator when encoding them.
  *
  * @category models
@@ -2385,22 +2390,24 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * **Details**
  *
- * For representation documents whose validation semantics can be expressed exactly in JSON Schema, importing the
- * emitted document with {@link fromJsonSchemaDocument} reconstructs a schema that accepts the same JSON values. This
- * is a semantic round-trip guarantee; the emitted document and reconstructed representation may have different shapes.
+ * The generated document is intended for preliminary validation. JSON Schema
+ * and Effect checks do not always have identical semantics, so the Effect
+ * decoder remains the final authority. Passing JSON Schema validation does not
+ * guarantee that Effect decoding will succeed.
  *
  * **Gotchas**
  *
  * - Reference allocation is already fixed in the input `Document`. The inherited `referencePolicy` option has no effect
  *   here; pass it to {@link toRepresentation} when creating the document.
- * - Opaque declarations are represented by an unconstrained JSON Schema and are outside the exact round-trip subset.
+ * - String length, RegExp flags, decoded-object property checks, and `oneOf` can differ from Effect validation.
+ * - Opaque declarations are represented by an unconstrained JSON Schema.
  * - Check callback results are used directly, and exceptions raised by a callback pass through unchanged. Callbacks
  *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must
- *   not be mutated after the callback returns.
+ *   not be mutated after the callback returns. The callback author is responsible for the emitted semantics.
  * - Local definition references returned by callbacks are resolved together with compiler-generated references.
  *   Invalid JSON Pointer URI fragments throw an `Error`.
- * - Effect decoding may discard excess object properties by default. Use `onExcessProperty: "error"` when comparing
- *   validation semantics with the emitted JSON Schema.
+ * - The default `onExcessProperty: "ignore"` matches the decoder default. Use `onExcessProperty: "error"` in both
+ *   places when a closed object contract is required.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
@@ -2429,6 +2436,8 @@ export function toJsonSchemaDocument(
  *   their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
  *   mutated after the callback returns. Local definition references returned by callbacks are resolved together with
  *   compiler-generated references. Invalid JSON Pointer URI fragments throw an `Error`.
+ * - String length, RegExp flags, decoded-object property checks, `oneOf`, and custom check callbacks can differ from
+ *   Effect validation, as described by {@link toJsonSchemaDocument}.
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *

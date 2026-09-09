@@ -5119,6 +5119,29 @@ Schema can derive JSON Schemas, test data generators (Arbitraries), equivalence 
 
 By default, a schema produces a draft-2020-12 JSON Schema.
 
+The generated document is intended for preliminary validation. JSON Schema and
+Effect checks do not always have identical semantics, so the Effect decoder
+remains the final authority. Passing JSON Schema validation does not guarantee
+that decoding will succeed.
+
+Properties not modeled by an object schema use `onExcessProperty: "ignore"` by
+default, matching the decoder default. This emits `additionalProperties: true`.
+Pass `{ onExcessProperty: "error" }` to the generator and decoder to reject
+unmatched properties whenever the key space is representable. An
+index-signature key check that cannot be represented leaves unmatched
+properties open so that JSON Schema does not reject inputs Effect may accept.
+The generator does not merge conjunctive key patterns into a new regular
+expression. With `onExcessProperty: "ignore"`, it leaves that index signature
+open. With `onExcessProperty: "error"`, it uses the generated key schemas under
+`propertyNames`. Properties not already selected by `properties` or
+`patternProperties` may satisfy any index-signature value schema; the Effect
+decoder enforces the exact association between keys and values.
+
+Known differences include Unicode code-point versus UTF-16 string length,
+JavaScript RegExp flags, property checks applied before versus after decoding,
+and `oneOf` with overlapping members. Custom `toJsonSchema` callbacks are also
+responsible for the semantics they emit.
+
 The result is a data structure including:
 
 - the source of the JSON Schema (e.g. `draft-2020-12`, `draft-07`, etc...)
@@ -5332,7 +5355,7 @@ console.log(JSON.stringify(document, null, 2))
         "type": "string"
       }
     },
-    "additionalProperties": false
+    "additionalProperties": true
   },
   "definitions": {}
 }
@@ -5370,7 +5393,7 @@ console.log(JSON.stringify(document, null, 2))
         ]
       }
     },
-    "additionalProperties": false
+    "additionalProperties": true
   },
   "definitions": {}
 }
@@ -5451,12 +5474,12 @@ console.log(JSON.stringify(document.schema, null, 2))
   "required": [
     "headers"
   ],
-  "additionalProperties": false
+  "additionalProperties": true
 }
 */
 
 // Example (Decode a JSON-safe value using the same serializer)
-// If a value matches the JSON Schema above, you can decode it with the serializer.
+// JSON Schema is the preliminary check; the serializer remains the final validator.
 console.log(String(Schema.decodeUnknownExit(serializer)(json)))
 // Success({"headers":Headers([["a","b"]])})
 ```
@@ -5558,7 +5581,7 @@ console.log(JSON.stringify(document, null, 2))
       "required": [
         "a"
       ],
-      "additionalProperties": false
+      "additionalProperties": true
     }
   },
   "definitions": {}
@@ -6067,9 +6090,23 @@ with resolved identifiers and leaves anonymous non-recursive candidates inline, 
 candidates still receive references, using a synthetic name when necessary. Pass `referencePolicy` in the options to use a
 different allocation rule.
 
+Generated JSON Schema is a preliminary validation layer. The Effect decoder
+remains the final authority because string length, RegExp flags,
+decoded-object property checks, and `oneOf` can differ between the two
+validators. The default `onExcessProperty: "ignore"` emits
+`additionalProperties: true`; use `onExcessProperty: "error"` in both
+generation and decoding to reject unmatched properties whenever the key space
+is representable. Unrepresentable index-signature key checks leave unmatched
+properties open under the default mode. The compiler does not merge
+conjunctive key patterns into a new regular expression. In `error` mode it uses
+the generated key schemas under `propertyNames`. For properties not otherwise
+selected, it accepts any index-signature value schema and leaves the exact
+key-value association to the Effect decoder.
+
 At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
 `toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
 constraints. Opaque declarations that have not been structurally lowered compile to an unconstrained JSON Schema.
+Callback authors are responsible for the semantics of their output.
 
 `toJsonSchema` callbacks must treat their input schemas as immutable and return a valid JSON Schema object graph. After a
 callback returns, it must not mutate that object or anything reachable from it; returning a new graph is the supported way

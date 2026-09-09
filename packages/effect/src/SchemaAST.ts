@@ -1304,7 +1304,7 @@ export interface Enum extends ASTNode {
 }
 
 /**
- * Constructs a {@link Enum}.
+ * Constructs a {@link Enum}. Numeric values must be finite.
  *
  * @category constructors
  * @since 4.0.0
@@ -1332,6 +1332,11 @@ export const Enum: new(
     context?: Context
   ) {
     super(annotations, checks, encoding, context)
+    for (const [, value] of enums) {
+      if (typeof value === "number" && !globalThis.Number.isFinite(value)) {
+        throw new Error(`A numeric enum value must be finite, got ${format(value)}`)
+      }
+    }
     this.enums = enums
   }
   /** @internal */
@@ -1615,7 +1620,13 @@ export const UniqueSymbol: new(
   }
   /** @internal */
   toCodecStringTree(): AST {
-    return replaceEncoding(this, [symbolToString])
+    const key = globalThis.Symbol.keyFor(this.symbol)
+    return replaceEncoding(this, [
+      new Link(
+        key === undefined ? never : new Literal(globalThis.String(this.symbol)),
+        symbolToString.transformation
+      )
+    ])
   }
   /** @internal */
   getExpected(): string {
@@ -4114,6 +4125,9 @@ const numberToJson = new Link(
  * Arbitrary metadata preserves both `regExp.source` and `regExp.flags`.
  * Implementations that cannot consume all flags may still use the source as a
  * generation hint because the Schema filter validates every generated value.
+ * JSON Schema has no way to carry JavaScript regular-expression flags. The
+ * generated `pattern` contains the source only, so validation can differ when
+ * the RegExp uses flags or relies on JavaScript's non-Unicode behavior.
  *
  * **Example** (Validating an email pattern)
  *
@@ -4809,7 +4823,7 @@ const bigIntToString = new Link(
   SchemaTransformation.bigintFromString
 )
 
-const REGEXP_PATTERN = "Symbol\\((.*)\\)"
+const REGEXP_PATTERN = "Symbol\\(([\\s\\S]*)\\)"
 
 const isStringSymbolRegExp = new globalThis.RegExp(`^${REGEXP_PATTERN}$`)
 

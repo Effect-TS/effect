@@ -679,7 +679,8 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         InternalToRepresentation.toRepresentations(
           Arr.map(pathOps, (op) => InternalToCodec.toCodecJsonAST(op.ast)),
           options
-        )
+        ),
+        { onExcessProperty: "error" }
       )
     )
     const patchOps: Array<JsonPatch.JsonPatchOperation> = pathOps.map((op, i) => {
