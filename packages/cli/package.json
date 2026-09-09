@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "ini": "^4.1.3",
-    "toml": "^3.0.0",
+    "toml": "^4.3.0",
     "yaml": "^2.5.0"
   },
   "effect": {
