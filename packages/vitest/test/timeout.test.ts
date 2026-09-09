@@ -1,5 +1,5 @@
 import { afterAll, assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 
 for (const mode of ["effect", "live"] as const) {
   describe(`it.${mode} timeout finalizers`, { concurrent: false }, () => {
@@ -40,3 +40,53 @@ for (const mode of ["effect", "live"] as const) {
     })
   })
 }
+
+describe("anonymous it.layer timeout finalizers", { concurrent: false }, () => {
+  const events: Array<string> = []
+  const pendingReleases: Array<Promise<void>> = []
+  let signal: AbortSignal | undefined
+
+  // Drain real timers even if an interrupted layer close abandons its finalizer.
+  afterAll(() => Promise.all(pendingReleases))
+
+  const resource = (name: string) =>
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        events.push(`${name}:acquired`)
+      }),
+      () =>
+        Effect.gen(function*() {
+          events.push(`${name}:release:start`)
+          // TestClock cannot drive a finalizer after the test has timed out.
+          yield* Effect.promise(() => {
+            const pending = new Promise<void>((resolve) => setTimeout(resolve, 250))
+            pendingReleases.push(pending)
+            return pending
+          })
+          events.push(`${name}:release:end`)
+        })
+    )
+
+  it.layer(Layer.effectDiscard(resource("layer")))((it) => {
+    it.effect.fails("times out in the last test using the layer", (ctx) =>
+      Effect.gen(function*() {
+        signal = ctx.signal
+        yield* resource("test")
+        return yield* Effect.never
+      }), { timeout: 75 })
+  })
+
+  it("awaits both test and layer finalizers before starting the next test", () => {
+    events.push("next:start")
+    assert.isTrue(signal?.aborted)
+    assert.deepStrictEqual(events, [
+      "layer:acquired",
+      "test:acquired",
+      "test:release:start",
+      "test:release:end",
+      "layer:release:start",
+      "layer:release:end",
+      "next:start"
+    ])
+  })
+})
