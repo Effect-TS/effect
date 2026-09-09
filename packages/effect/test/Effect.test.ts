@@ -4252,6 +4252,8 @@ describe("Effect", () => {
             Array<{
               readonly attempt: number
               readonly retryReason: Effect.TransactionRetryReason | undefined
+              readonly start: number
+              readonly now: number
               readonly elapsed: number
               readonly elapsedSincePrevious: number
               readonly nestedSame: boolean
@@ -4269,6 +4271,8 @@ describe("Effect", () => {
               {
                 attempt: outer.attempt,
                 retryReason: outer.retryReason,
+                start: outer.start,
+                now: outer.now,
                 elapsed: outer.elapsed,
                 elapsedSincePrevious: outer.elapsedSincePrevious,
                 nestedSame
@@ -4289,6 +4293,7 @@ describe("Effect", () => {
           yield* TestClock.adjust("1 second")
           yield* Effect.tx(TxRef.set(ref, 1))
           yield* Deferred.await(readyForConflict)
+          yield* TestClock.adjust("500 millis")
           yield* Effect.tx(TxRef.set(ref, 2))
           yield* Deferred.succeed(resume, undefined)
           yield* Fiber.join(fiber)
@@ -4298,6 +4303,8 @@ describe("Effect", () => {
             {
               attempt: 1,
               retryReason: undefined,
+              start: 0,
+              now: 0,
               elapsed: 0,
               elapsedSincePrevious: 0,
               nestedSame: true
@@ -4305,6 +4312,8 @@ describe("Effect", () => {
             {
               attempt: 2,
               retryReason: "retry",
+              start: 0,
+              now: 1000,
               elapsed: 1000,
               elapsedSincePrevious: 1000,
               nestedSame: true
@@ -4312,8 +4321,10 @@ describe("Effect", () => {
             {
               attempt: 3,
               retryReason: "conflict",
-              elapsed: 1000,
-              elapsedSincePrevious: 0,
+              start: 0,
+              now: 1500,
+              elapsed: 1500,
+              elapsedSincePrevious: 500,
               nestedSame: true
             }
           ])
