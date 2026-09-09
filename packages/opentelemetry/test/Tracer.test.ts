@@ -31,12 +31,18 @@ const TracingLive = Layer.unwrapEffect(Effect.gen(function*() {
 })).pipe(Layer.provideMerge(Exporter.Default))
 
 describe("Tracer", () => {
+  const contextManager = new AsyncHooksContextManager()
+
   beforeAll(() => {
-    OtelApi.context.setGlobalContextManager(new AsyncHooksContextManager().enable())
+    OtelApi.context.setGlobalContextManager(contextManager.enable())
   })
 
   afterAll(() => {
-    OtelApi.context.disable()
+    try {
+      OtelApi.context.disable()
+    } finally {
+      contextManager.disable()
+    }
   })
 
   describe("provided", () => {
