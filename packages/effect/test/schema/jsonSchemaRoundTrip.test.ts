@@ -51,7 +51,7 @@ function assertJsonSchemaImportRoundTrip(
   const source = JsonSchema.fromSchemaDraft2020_12(schema)
   const imported = SchemaRepresentation.fromJsonSchemaDocument(source, { patterns: "apply" })
   const representation = SchemaRepresentation.toRepresentation(imported.ast)
-  const emitted = SchemaRepresentation.toJsonSchemaDocument(representation)
+  const emitted = SchemaRepresentation.toJsonSchemaDocument(representation, { onExcessProperty: "error" })
   assertJsonSchemaEquivalent(source, emitted, inputs)
 
   const validate = compile(source)
@@ -63,9 +63,10 @@ function assertJsonSchemaImportRoundTrip(
 
 function assertRepresentationRoundTrip(
   schema: Schema.ConstraintDecoder<unknown>,
-  inputs: ReadonlyArray<unknown>
+  inputs: ReadonlyArray<unknown>,
+  options: Schema.ToJsonSchemaOptions = { onExcessProperty: "error" }
 ): void {
-  const emitted = Schema.toJsonSchemaDocument(schema)
+  const emitted = Schema.toJsonSchemaDocument(schema, options)
   const imported = SchemaRepresentation.fromJsonSchemaDocument(emitted, { patterns: "apply" })
   const decodeSource = Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })
   const decodeImported = Schema.decodeUnknownExit(imported as unknown as Schema.ConstraintDecoder<unknown>, {
@@ -76,7 +77,7 @@ function assertRepresentationRoundTrip(
     (input) => Exit.isSuccess(decodeSource(input)),
     inputs
   )
-  assertJsonSchemaEquivalent(emitted, Schema.toJsonSchemaDocument(imported), inputs)
+  assertJsonSchemaEquivalent(emitted, Schema.toJsonSchemaDocument(imported, options), inputs)
 }
 
 describe("JSON Schema round-trip laws", () => {
@@ -230,7 +231,8 @@ describe("JSON Schema round-trip laws", () => {
       const schema = Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite)
       assertRepresentationRoundTrip(
         schema,
-        [{}, { A: 1 }, { A: "a" }, []]
+        [{}, { A: 1 }, { A: "a" }, []],
+        { onExcessProperty: "ignore" }
       )
       const emitted = Schema.toJsonSchemaDocument(schema)
       const imported = SchemaRepresentation.fromJsonSchemaDocument(emitted, {
@@ -244,6 +246,100 @@ describe("JSON Schema round-trip laws", () => {
         assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })(input)))
         assert.isTrue(Exit.isSuccess(Schema.decodeUnknownExit(imported, { onExcessProperty: "error" })(input)))
       }
+    })
+
+    it("handles conjunctive key patterns permissively", () => {
+      const schema = Schema.Record(
+        Schema.String.check(Schema.isStartsWith("ab"), Schema.isEndsWith("z")),
+        Schema.Finite
+      )
+      const document = Schema.toJsonSchemaDocument(schema)
+      assert.deepStrictEqual(document.schema, {
+        type: "object",
+        additionalProperties: true
+      })
+      const validate = compile(document)
+
+      assert.strictEqual(validate({ abc: "not a number" }), true)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ abc: "not a number" }), {})
+      assert.strictEqual(validate({ abz: "not a number" }), true)
+      assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(schema)({ abz: "not a number" })))
+      assert.strictEqual(validate({ abz: 1 }), true)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ abz: 1 }), { abz: 1 })
+
+      const strictDocument = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+      assert.deepStrictEqual(strictDocument.schema, {
+        type: "object",
+        propertyNames: {
+          type: "string",
+          pattern: "^ab",
+          allOf: [{ pattern: "z$" }]
+        },
+        additionalProperties: { type: "number" }
+      })
+      const validateStrict = compile(strictDocument)
+      assert.strictEqual(validateStrict({ abc: "not a number" }), false)
+      assert.isTrue(
+        Exit.isFailure(
+          Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })({ abc: "not a number" })
+        )
+      )
+      assert.strictEqual(validateStrict({ abz: "not a number" }), false)
+      assert.strictEqual(validateStrict({ abz: 1 }), true)
+    })
+
+    it("uses permissive value alternatives with strict conjunctive indexes", () => {
+      const schema = Schema.StructWithRest(Schema.Struct({}), [
+        Schema.Record(
+          Schema.String.check(Schema.isStartsWith("a"), Schema.isEndsWith("z")),
+          Schema.Finite
+        ),
+        Schema.Record(
+          Schema.String.check(Schema.isStartsWith("b"), Schema.isEndsWith("z")),
+          Schema.Boolean
+        )
+      ])
+      const document = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+      assert.deepStrictEqual(document.schema, {
+        type: "object",
+        propertyNames: {
+          anyOf: [
+            {
+              type: "string",
+              pattern: "^a",
+              allOf: [{ pattern: "z$" }]
+            },
+            {
+              type: "string",
+              pattern: "^b",
+              allOf: [{ pattern: "z$" }]
+            }
+          ]
+        },
+        additionalProperties: {
+          anyOf: [{ type: "number" }, { type: "boolean" }]
+        }
+      })
+      const validate = compile(document)
+
+      assert.strictEqual(validate({ az: 1 }), true)
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })({ az: 1 }) as unknown,
+        { az: 1 }
+      )
+      assert.strictEqual(validate({ bz: true }), true)
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })({ bz: true }) as unknown,
+        { bz: true }
+      )
+      assert.strictEqual(validate({ az: true }), true)
+      assert.isTrue(
+        Exit.isFailure(Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })({ az: true }))
+      )
+      assert.strictEqual(validate({ cz: 1 }), false)
+      assert.isTrue(
+        Exit.isFailure(Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })({ cz: 1 }))
+      )
     })
 
     it("preserves pattern and string indexes", () => {

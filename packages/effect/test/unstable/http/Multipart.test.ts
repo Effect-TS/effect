@@ -435,7 +435,7 @@ describe("Multipart", () => {
             }
           },
           "required": ["key", "name", "contentType", "path"],
-          "additionalProperties": false
+          "additionalProperties": true
         },
         definitions: {}
       })

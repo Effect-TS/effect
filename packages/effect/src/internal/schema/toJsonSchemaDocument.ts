@@ -106,8 +106,10 @@ function extractJsonSchemaNumberType(schema: JsonSchema.JsonSchema): {
 }
 
 function isJsonSchemaNumberEncoding(schema: JsonSchema.JsonSchema): boolean {
-  return Array.isArray(schema.anyOf) && schema.anyOf.length === 4 && schema.anyOf[0]?.type === "number" &&
-    schema.anyOf.slice(1).every((member) => member.type === "string")
+  if (!Array.isArray(schema.anyOf) || schema.anyOf.length !== 2 || schema.anyOf[0]?.type !== "number") return false
+  const special = schema.anyOf[1]
+  return special?.type === "string" && Array.isArray(special.enum) && special.enum.length === 3 &&
+    special.enum.includes("NaN") && special.enum.includes("Infinity") && special.enum.includes("-Infinity")
 }
 
 // Keep this allowlist closed: applicators and dependent keywords can change meaning when moved across schema objects.
@@ -335,8 +337,11 @@ function compileJsonSchema(
       case "BigInt":
         return { type: "string", allOf: [{ pattern: "^-?\\d+$" }] }
       case "Symbol":
+        return { type: "string", allOf: [{ pattern: "^Symbol\\(([\\s\\S]*)\\)$" }] }
       case "UniqueSymbol":
-        return { type: "string", allOf: [{ pattern: "^Symbol\\((.*)\\)$" }] }
+        return globalThis.Symbol.keyFor(representation.symbol) === undefined
+          ? { not: {} }
+          : { type: "string", enum: [globalThis.String(representation.symbol)] }
       case "Declaration": {
         return {}
       }
@@ -350,9 +355,7 @@ function compileJsonSchema(
         return {
           anyOf: [
             { type: "number" },
-            { type: "string", enum: ["NaN"] },
-            { type: "string", enum: ["Infinity"] },
-            { type: "string", enum: ["-Infinity"] }
+            { type: "string", enum: ["NaN", "Infinity", "-Infinity"] }
           ]
         }
       case "Boolean":
@@ -364,11 +367,15 @@ function compileJsonSchema(
           : { type: typeof literal, enum: [literal] }
       }
       case "Enum": {
-        const types = representation.enums.map(([title, literal]) =>
-          typeof literal === "number" && !globalThis.Number.isFinite(literal)
-            ? { type: "string", enum: [globalThis.String(literal)], title }
-            : { type: typeof literal, enum: [literal], title }
-        )
+        const types = representation.enums.map(([title, literal], index) => {
+          if (typeof literal === "number" && !globalThis.Number.isFinite(literal)) {
+            throw errorWithPath(
+              `Invalid numeric enum value ${globalThis.String(literal)}`,
+              [...path, "enums", index, 1]
+            )
+          }
+          return { type: typeof literal, enum: [literal], title }
+        })
         return types.length === 0 ? { not: {} } : { anyOf: types }
       }
       case "TemplateLiteral":
@@ -402,7 +409,7 @@ function compileJsonSchema(
       }
       case "Objects": {
         if (representation.propertySignatures.length === 0 && representation.indexSignatures.length === 0) {
-          return { anyOf: [{ type: "object" }, { type: "array" }] }
+          return { not: { type: "null" } }
         }
         const out: JsonSchema.JsonSchema = { type: "object" }
         const properties: Record<string, JsonSchema.JsonSchema> = {}
@@ -430,21 +437,28 @@ function compileJsonSchema(
         if (representation.propertySignatures.length > 0) out.properties = properties
         if (required.length > 0) out.required = required
         const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
-        const additionalProperties: Array<JsonSchema.JsonSchema | false> = []
+        const additionalPropertySchemas: Array<JsonSchema.JsonSchema | false> = []
+        const indexValueSchemas: Array<JsonSchema.JsonSchema | false> = []
+        let hasUnrepresentableIndexPattern = false
         for (let index = 0; index < representation.indexSignatures.length; index++) {
           const signature = representation.indexSignatures[index]
           let type: JsonSchema.JsonSchema | false = recur(
             signature.type,
             [...path, "indexSignatures", index, "type"]
           )
-          if (Object.keys(type).length === 1 && "not" in type) type = false
+          if (Equal.equals(type, { not: {} })) type = false
+          indexValueSchemas.push(type)
           const patterns = getParameterPatterns(
             signature.parameter,
             [...path, "indexSignatures", index, "parameter"],
             new Set()
           )
+          if (patterns === undefined) {
+            hasUnrepresentableIndexPattern = true
+            continue
+          }
           if (patterns.length === 0) {
-            additionalProperties.push(type)
+            additionalPropertySchemas.push(type)
           } else {
             for (const pattern of patterns) {
               const previous = patternProperties[pattern]
@@ -464,16 +478,36 @@ function compileJsonSchema(
         if (hasPatternProperties) {
           out.patternProperties = patternProperties
         }
-        if (representation.indexSignatures.length === 0) {
-          out.additionalProperties = options?.additionalProperties ?? false
+        if (hasUnrepresentableIndexPattern && options?.onExcessProperty === "error") {
+          const propertyNames: Array<JsonSchema.JsonSchema> = []
+          if (representation.propertySignatures.length > 0) {
+            propertyNames.push({ enum: Object.keys(properties) })
+          }
+          for (let index = 0; index < representation.indexSignatures.length; index++) {
+            propertyNames.push(
+              recur(
+                representation.indexSignatures[index].parameter,
+                [...path, "indexSignatures", index, "parameter"]
+              )
+            )
+          }
+          out.propertyNames = propertyNames.length === 1 ? propertyNames[0] : { anyOf: propertyNames }
+          out.additionalProperties = indexValueSchemas.length === 1
+            ? indexValueSchemas[0]
+            : { anyOf: indexValueSchemas }
+          if (additionalPropertySchemas.length > 0) {
+            out.allOf = additionalPropertySchemas.map((type) => ({ type: "object", additionalProperties: type }))
+          }
+        } else if (additionalPropertySchemas.length === 0) {
+          out.additionalProperties = hasUnrepresentableIndexPattern || options?.onExcessProperty !== "error"
         } else if (
-          additionalProperties.length === 1 &&
+          additionalPropertySchemas.length === 1 &&
           representation.propertySignatures.length === 0 &&
           !hasPatternProperties
         ) {
-          out.additionalProperties = additionalProperties[0]
-        } else if (additionalProperties.length > 0) {
-          out.allOf = additionalProperties.map((type) => ({ type: "object", additionalProperties: type }))
+          out.additionalProperties = additionalPropertySchemas[0]
+        } else if (additionalPropertySchemas.length > 0) {
+          out.allOf = additionalPropertySchemas.map((type) => ({ type: "object", additionalProperties: type }))
         }
         if (
           typeof out.additionalProperties === "object" &&
@@ -501,25 +535,47 @@ function compileJsonSchema(
     parameter: SchemaRepresentation.Representation,
     path: Path,
     seenReferences: ReadonlySet<string>
-  ): ReadonlyArray<string> {
+  ): ReadonlyArray<string> | undefined {
     switch (parameter._tag) {
       case "Reference": {
         if (!Object.hasOwn(references, parameter.$ref)) {
           throw errorWithPath(`Invalid reference ${parameter.$ref}`, [...path, "$ref"])
         }
         compileDefinition(parameter.$ref, path)
-        if (seenReferences.has(parameter.$ref)) return []
+        if (seenReferences.has(parameter.$ref)) return undefined
         const next = new Set(seenReferences).add(parameter.$ref)
         return getParameterPatterns(references[parameter.$ref], ["references", parameter.$ref], next)
       }
-      case "String":
-        return collectPatterns(recur(parameter, path))
+      case "String": {
+        if (parameter.checks.length === 0) return []
+        if (
+          parameter.checks.length !== 1 ||
+          parameter.checks[0]._tag !== "Filter" ||
+          parameter.checks[0].annotations?.toJsonSchema === undefined
+        ) {
+          return undefined
+        }
+        const schema = recur(parameter, path)
+        return schema.type === "string" && typeof schema.pattern === "string" &&
+            hasOnlyKeywords(schema, "|type|pattern|title|description|default|examples|readOnly|writeOnly|")
+          ? [schema.pattern]
+          : undefined
+      }
       case "TemplateLiteral":
-        return [`^${parameter.parts.map(getPartPattern).join("")}$`]
-      case "Union":
-        return parameter.types.flatMap((type, index) =>
-          getParameterPatterns(type, [...path, "types", index], seenReferences)
-        )
+        return parameter.checks.length === 0 ? [`^${parameter.parts.map(getPartPattern).join("")}$`] : undefined
+      case "Union": {
+        if (parameter.types.length === 0 || parameter.checks.length > 0 || parameter.options?.mode === "oneOf") {
+          return undefined
+        }
+        const patterns: Array<string> = []
+        for (let index = 0; index < parameter.types.length; index++) {
+          const memberPatterns = getParameterPatterns(parameter.types[index], [...path, "types", index], seenReferences)
+          if (memberPatterns === undefined) return undefined
+          if (memberPatterns.length === 0) return []
+          patterns.push(...memberPatterns)
+        }
+        return patterns
+      }
       default:
         throw errorWithPath("Invalid schema representation document", path)
     }
@@ -543,25 +599,12 @@ function compactEnums(
     }
     if (sharedType === undefined) sharedType = schema.type
     else if (schema.type !== sharedType) return undefined
-    values.push(...schema.enum)
-  }
-  return { type: sharedType, enum: values }
-}
-
-function collectPatterns(schema: JsonSchema.JsonSchema): ReadonlyArray<string> {
-  const patterns: Array<string> = []
-  if (typeof schema.pattern === "string") patterns.push(schema.pattern)
-  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
-    const members = schema[key]
-    if (Array.isArray(members)) {
-      for (const member of members) {
-        if (typeof member === "object" && member !== null && !Array.isArray(member)) {
-          patterns.push(...collectPatterns(member))
-        }
-      }
+    for (const value of schema.enum) {
+      if (values.includes(value)) return undefined
+      values.push(value)
     }
   }
-  return patterns
+  return { type: sharedType, enum: values }
 }
 
 function getPartPattern(part: SchemaRepresentation.Representation): string {
@@ -575,7 +618,7 @@ function getPartPattern(part: SchemaRepresentation.Representation): string {
     case "TemplateLiteral":
       return part.parts.map(getPartPattern).join("")
     case "Union":
-      return part.types.map(getPartPattern).join("|")
+      return `(?:${part.types.map(getPartPattern).join("|")})`
     default:
       throw errorWithPath("Invalid schema representation document", [])
   }

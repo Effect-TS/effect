@@ -133,17 +133,19 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     assert.isFalse(Schema.is(schema)("other"))
   })
 
-  it("revives ambiguous Enum values without changing their type", () => {
-    const schema = assertRepresentationRoundtrip(Schema.Enum({
-      StringNaN: "NaN",
-      NumberNaN: Number.NaN,
-      StringInfinity: "Infinity",
-      NumberInfinity: Number.POSITIVE_INFINITY
-    }))
-    assert.isTrue(Schema.is(schema)("NaN"))
-    assert.isTrue(Schema.is(schema)(Number.NaN))
-    assert.isTrue(Schema.is(schema)("Infinity"))
-    assert.isTrue(Schema.is(schema)(Number.POSITIVE_INFINITY))
+  it("rejects non-finite numeric Enum values", () => {
+    throws(
+      () =>
+        SchemaRepresentation.fromRepresentation({
+          representation: {
+            _tag: "Enum",
+            enums: [["NumberNaN", Number.NaN]],
+            checks: []
+          },
+          references: {}
+        }, { revivers: [] }),
+      new Error("A numeric enum value must be finite, got NaN")
+    )
   })
 
   it("revives TemplateLiteral", () => {

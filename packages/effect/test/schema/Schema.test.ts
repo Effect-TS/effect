@@ -1569,6 +1569,27 @@ Expected a string including "c"`
         assertFalse(is(Number("1.042e-321")))
       })
 
+      it("isMultipleOf normalizes negative divisors", async () => {
+        const schema = Schema.Number.check(Schema.isMultipleOf(-2))
+        const asserts = new TestSchema.Asserts(schema)
+
+        const decoding = asserts.decoding()
+        await decoding.succeed(4)
+        await decoding.fail(
+          3,
+          `Expected a value that is a multiple of 2`
+        )
+      })
+
+      it("isMultipleOf rejects invalid divisors", () => {
+        for (const divisor of [0, -0, NaN, Infinity, -Infinity]) {
+          throws(
+            () => Schema.isMultipleOf(divisor),
+            new RangeError(`Expected a finite non-zero number, got ${String(divisor)}`)
+          )
+        }
+      })
+
       describe("isBetween", () => {
         it("included & included", async () => {
           const schema = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 3 }))
@@ -7617,6 +7638,15 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Enum", () => {
+    it("rejects non-finite numeric values", () => {
+      for (const value of [NaN, Infinity, -Infinity]) {
+        throws(
+          () => Schema.Enum({ value }),
+          new Error(`A numeric enum value must be finite, got ${String(value)}`)
+        )
+      }
+    })
+
     it("enums should be exposed", () => {
       enum Fruits {
         Apple,

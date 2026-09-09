@@ -384,7 +384,7 @@ describe("McpServer", () => {
           type: "object",
           properties: { answer: { type: "string" } },
           required: ["answer"],
-          additionalProperties: false
+          additionalProperties: true
         })
         assertTrue(scalarTool !== undefined)
         assert.isFalse("outputSchema" in scalarTool)
