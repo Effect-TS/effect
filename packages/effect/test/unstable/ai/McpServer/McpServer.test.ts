@@ -1756,7 +1756,8 @@ describe("McpServer", () => {
 
         yield* server.notifications["notifications/tools/list_changed"]({})
         yield* Deferred.await(blockedWriteStarted)
-        for (let index = 0; index <= 66; index++) {
+        // Exceed both the 64-message subscription backlog and the STDIO output buffer.
+        for (let index = 0; index < 128; index++) {
           yield* server.notifications["notifications/tools/list_changed"]({})
           yield* Effect.yieldNow
         }

@@ -52,7 +52,7 @@ describe("RpcServer", () => {
       const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()
       const firstWriteStarted = yield* Deferred.make<void>()
       const releaseFirstWrite = yield* Deferred.make<void>()
-      const thirdSendCompleted = yield* Deferred.make<void>()
+      const overflowSendCompleted = yield* Deferred.make<void>()
       const writes = yield* Ref.make(0)
       const stdio = Stdio.layerTest({
         stdin: Stream.never,
@@ -82,20 +82,21 @@ describe("RpcServer", () => {
 
       const first = yield* protocol.send(0, { _tag: "Pong" }).pipe(Effect.forkScoped)
       yield* Deferred.await(firstWriteStarted)
-      const second = yield* protocol.send(0, { _tag: "Pong" }).pipe(Effect.forkScoped)
-      const third = yield* protocol.send(0, { _tag: "Pong" }).pipe(
-        Effect.andThen(Deferred.succeed(thirdSendCompleted, undefined)),
+      for (let i = 0; i < 8; i++) {
+        yield* protocol.send(0, { _tag: "Pong" })
+      }
+      const overflow = yield* protocol.send(0, { _tag: "Pong" }).pipe(
+        Effect.andThen(Deferred.succeed(overflowSendCompleted, undefined)),
         Effect.forkScoped
       )
       yield* Effect.yieldNow
       assert.strictEqual(yield* Ref.get(writes), 1)
-      assert.isFalse(yield* Deferred.isDone(thirdSendCompleted))
+      assert.isFalse(yield* Deferred.isDone(overflowSendCompleted))
 
       yield* Deferred.succeed(releaseFirstWrite, undefined)
       yield* Fiber.join(first)
-      yield* Fiber.join(second)
-      yield* Fiber.join(third)
-      assert.strictEqual(yield* Ref.get(writes), 3)
+      yield* Fiber.join(overflow)
+      assert.strictEqual(yield* Ref.get(writes), 10)
     }))
 
   it.effect("applies backpressure to framed HTTP responses by default", () =>

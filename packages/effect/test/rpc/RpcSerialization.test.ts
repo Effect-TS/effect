@@ -160,6 +160,48 @@ const uvarint = (value: number): Uint8Array => {
 }
 
 describe("RpcSerialization", () => {
+  for (
+    const [name, serialization] of [
+      ["jsonRpc", RpcSerialization.jsonRpc()],
+      ["ndJsonRpc", RpcSerialization.ndJsonRpc()]
+    ] as const
+  ) {
+    describe(`${name} cause roundtrips`, () => {
+      const failure = { _tag: "Fail", error: { code: -32021, message: "Missing capability" } } as const
+      const defect = { _tag: "Die", defect: { message: "boom" } } as const
+      const interrupt = { _tag: "Interrupt", fiberId: 42 } as const
+
+      it.each(
+        [
+          ["typed failure", [failure]],
+          ["defect", [defect]],
+          ["interruption", [interrupt]],
+          ["mixed causes", [failure, defect, interrupt]],
+          ["empty cause", []]
+        ] as const
+      )("preserves %s", (_name, cause) => {
+        const response: RpcMessage.ResponseExitEncoded = {
+          _tag: "Exit",
+          requestId: 1,
+          exit: { _tag: "Failure", cause }
+        }
+        const encoded = serialization.makeUnsafe().encode(response)
+        assert.isDefined(encoded)
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(encoded!), [response])
+      })
+
+      it("preserves a protocol defect", () => {
+        const response: RpcMessage.ResponseDefectEncoded = {
+          _tag: "Defect",
+          defect: { message: "protocol failed" }
+        }
+        const encoded = serialization.makeUnsafe().encode(response)
+        assert.isDefined(encoded)
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(encoded!), [response])
+      })
+    })
+  }
+
   it.each(
     [
       ["Ack", 0],
