@@ -6,7 +6,7 @@ import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { flow, pipe } from "effect/Function"
+import { constVoid, flow, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import type * as Schema from "effect/Schema"
@@ -34,7 +34,21 @@ const runPromise: <E, A>(
 }, (effect, _, ctx) => Effect.runPromise(effect, { signal: ctx?.signal }))
 
 /** @internal */
-const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(effect, ctx)
+const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
+  const promise = runPromise(effect, ctx)
+  if (ctx) {
+    // Vitest stops awaiting the test promise once the signal aborts (timeout or
+    // cancellation), so only then add a hook that waits for the finalizers.
+    // Registering it unconditionally would change the teardown of every test.
+    const onAbort = () => ctx.onTestFinished(() => promise.then(constVoid, constVoid))
+    ctx.signal.addEventListener("abort", onAbort, { once: true })
+    const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
+    promise.then(cleanup, cleanup)
+    // A retry after a timed-out attempt reuses the aborted signal, so no event fires.
+    if (ctx.signal.aborted) onAbort()
+  }
+  return promise
+}
 
 /** @internal */
 export type TestContext = TestConsole.TestConsole | TestClock.TestClock
@@ -255,12 +269,13 @@ export const layer = <R, E>(
     Effect.runSync
   )
   let closed = false
-  const closeScope = (ctx?: Vitest.TestContext) => {
+  const closeScope = () => {
     if (closed) {
       return Promise.resolve()
     }
     closed = true
-    return runPromise(Scope.close(scope, Exit.void), ctx)
+    // Layer cleanup must outlive the last test's already-aborted signal.
+    return runPromise(Scope.close(scope, Exit.void))
   }
 
   const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R> =>
@@ -313,7 +328,7 @@ export const layer = <R, E>(
         ctx.onTestFinished(() => {
           remaining--
           if (remaining === 0) {
-            return closeScope(ctx)
+            return closeScope()
           }
         })
         return runPromise(Effect.asVoid(contextEffect), ctx)
