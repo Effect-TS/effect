@@ -248,20 +248,41 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
         assert.strictEqual(Option.getOrThrow(info.blksize), ByteSize.bytes(oversized))
       }).pipe(Effect.provide(NodeFileSystem.layer)))
 
-    it.effect(`${method} rejects unsafe required dev metadata`, () =>
-      Effect.gen(function*() {
-        state.values.dev = oversized
-        const error = yield* Effect.flip(getInfo)
-        assert.strictEqual(error.reason._tag, "BadArgument")
-      }).pipe(Effect.provide(NodeFileSystem.layer)))
-
-    for (const field of ["ino", "nlink", "uid", "gid", "rdev", "blocks"] as const) {
-      it.effect(`${method} omits unsafe ${field} metadata`, () =>
+    for (const field of ["dev", "mode"] as const) {
+      it.effect(`${method} rejects unsafe ${field} metadata`, () =>
         Effect.gen(function*() {
-          state.values[field] = oversized
+          state.values[field] = maxSafe + 1n
+          const error = yield* Effect.flip(getInfo)
+          assert.strictEqual(error.reason._tag, "BadArgument")
+        }).pipe(Effect.provide(NodeFileSystem.layer)))
+    }
+
+    for (
+      const { expected, name, value } of [
+        {
+          name: "preserves optional metadata at MAX_SAFE_INTEGER",
+          value: maxSafe,
+          expected: Option.some(Number.MAX_SAFE_INTEGER)
+        },
+        { name: "omits optional metadata above MAX_SAFE_INTEGER", value: maxSafe + 1n, expected: Option.none() },
+        { name: "omits missing optional metadata", value: undefined, expected: Option.none() }
+      ]
+    ) {
+      it.effect(`${method} ${name}`, () =>
+        Effect.gen(function*() {
+          const fields = ["ino", "nlink", "uid", "gid", "rdev", "blocks"] as const
+          for (const field of fields) {
+            if (value === undefined) {
+              delete state.values[field]
+            } else {
+              state.values[field] = value
+            }
+          }
           const info = yield* getInfo
-          assert.deepStrictEqual(info[field], Option.none())
-          assert.strictEqual(info.dev, 1)
+          for (const field of fields) {
+            assert.deepStrictEqual(info[field], expected, field)
+          }
+          assert.strictEqual(info.type, "File")
           assert.strictEqual(info.size, ByteSize.bytes(4n))
           assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
         }).pipe(Effect.provide(NodeFileSystem.layer)))
