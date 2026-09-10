@@ -96,7 +96,7 @@
   note: "The separate encoded-bound projection was removed; use the encoded projection and v4 encoding links."
 "effect/SchemaAST#Enums":
   replacement: "SchemaAST.Enum"
-  note: "The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role."
+  note: "Renamed to Enum in the v4 AST model. Numeric enum members must be finite; NaN and positive or negative Infinity throw at construction."
 "effect/SchemaAST#EquivalenceAnnotation":
   replacement: "Schema.Annotations.ToEquivalence.Declaration"
   note: "Equivalence derivation annotations now use the toEquivalence key in Schema.Annotations."
