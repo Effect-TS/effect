@@ -238,7 +238,7 @@ describe("JSON Schema round-trip laws", () => {
       const emitted = Schema.toJsonSchemaDocument(schema)
       throws(
         () => SchemaRepresentation.fromJsonSchemaDocument(emitted, { patterns: "apply" }),
-        `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ["schema"]`
+        `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]`
       )
     })
 
@@ -346,7 +346,7 @@ describe("JSON Schema round-trip laws", () => {
       )
       throws(
         () => SchemaRepresentation.fromJsonSchemaDocument(emitted, { patterns: "apply" }),
-        `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ["schema"]["allOf"][0]`
+        `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]["allOf"][0]`
       )
     })
 

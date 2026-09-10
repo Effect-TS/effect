@@ -16,11 +16,6 @@ interface Checked {
   readonly annotations?: Schema.Annotations.Annotations | undefined
 }
 
-interface CombinedChecks {
-  readonly checks: ReadonlyArray<Check>
-  readonly annotations: Schema.Annotations.Annotations | undefined
-}
-
 type ImportedJsonSchemaRepresentation = Extract<Representation, {
   readonly _tag:
     | "Reference"
@@ -55,21 +50,21 @@ interface ImportedObjectScope {
   readonly additionalProperties: ImportedJsonSchemaRepresentation
 }
 
-interface ImportedObjectMetadata {
-  readonly scopes: ReadonlyArray<ImportedObjectScope>
-  readonly path: Path
-  readonly hasOpenPatterns: boolean
-}
-
 const never: ImportedJsonSchemaRepresentation = { _tag: "Never", checks: [] }
 const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] }
 const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
+const unsupportedStructuredValue = "Only primitive values are supported in \"const\" and \"enum\"."
 
-function makeJsonLiteral(input: unknown): ImportedJsonSchemaRepresentation | undefined {
+function isObject(input: unknown): input is Record<string, unknown> {
+  return typeof input === "object" && input !== null && !Array.isArray(input)
+}
+
+function makeJsonLiteral(input: unknown, path: Path): ImportedJsonSchemaRepresentation | undefined {
   if (input === null) return { _tag: "Null", checks: [] }
-  return typeof input === "string" || typeof input === "number" || typeof input === "boolean"
-    ? { _tag: "Literal", literal: input, checks: [] }
-    : undefined
+  if (typeof input === "string" || typeof input === "number" || typeof input === "boolean") {
+    return { _tag: "Literal", literal: input, checks: [] }
+  }
+  if (typeof input === "object") throw errorWithPath(unsupportedStructuredValue, path)
 }
 
 const jsonSchemaValueTypes = ["null", "string", "number", "boolean", "object", "array"] as const
@@ -173,9 +168,9 @@ function translateJsonSchemaMultiDocument(
 ): SchemaRepresentation.MultiDocument {
   const definitionCache = new Map<string, ImportedJsonSchemaRepresentation | null>()
   const reachableDefinitions = new Map<string, Path>()
-  const objectMetadataByProperties = new WeakMap<
+  const objectScopesByProperties = new WeakMap<
     SchemaRepresentation.Objects["propertySignatures"],
-    ImportedObjectMetadata
+    readonly [ReadonlyArray<ImportedObjectScope>, Path]
   >()
   const annotatedReferences: Array<{
     readonly reference: SchemaRepresentation.Reference
@@ -183,6 +178,7 @@ function translateJsonSchemaMultiDocument(
   }> = []
   const resolvingChoices = new Set<string>()
   const finalReferences = new Set<string>()
+  let inNestedResource = false
 
   function finalize(representation: Representation): Representation {
     switch (representation._tag) {
@@ -205,11 +201,14 @@ function translateJsonSchemaMultiDocument(
       case "Objects":
         // Intersections may reduce open patterns to fixed properties, so reject only
         // if an open pattern remains in the final representation.
-        const metadata = objectMetadataByProperties.get(representation.propertySignatures)!
-        if (metadata.hasOpenPatterns) {
+        const [scopes, path] = objectScopesByProperties.get(representation.propertySignatures)!
+        if (
+          representation.indexSignatures[0]?.parameter === string &&
+          scopes.some((scope) => scope.patterns.length > 0)
+        ) {
           throw errorWithPath(
-            "Cannot import \"patternProperties\" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.",
-            metadata.path
+            "Cannot import open \"patternProperties\": unmatched keys cannot be typed correctly.",
+            path
           )
         }
         return {
@@ -270,7 +269,7 @@ function translateJsonSchemaMultiDocument(
       if (cached === null) {
         throw errorWithPath(
           recursiveReferenceError ??
-            `Cannot expand recursive definition ${JSON.stringify(key)} while it is being imported.`,
+            `Definition ${JSON.stringify(key)} is a circular alias.`,
           [...path, "$ref"]
         )
       }
@@ -285,25 +284,23 @@ function translateJsonSchemaMultiDocument(
   function resolveReference(
     reference: SchemaRepresentation.Reference,
     path: Path,
-    options?: { readonly recursiveReferenceError?: string },
+    recursiveReferenceError?: string,
     seen: Set<string> = new Set()
   ): ImportedJsonSchemaRepresentation {
     if (seen.has(reference.$ref)) {
       throw errorWithPath(
-        `Cannot resolve definition ${
-          JSON.stringify(reference.$ref)
-        }. Its references form a cycle with no concrete schema.`,
+        `Definition ${JSON.stringify(reference.$ref)} is a circular alias.`,
         [...path, "$ref"]
       )
     }
     seen.add(reference.$ref)
-    const representation = translateDefinition(reference.$ref, path, options?.recursiveReferenceError)
+    const representation = translateDefinition(reference.$ref, path, recursiveReferenceError)
     if (representation._tag === "Reference") {
-      return resolveReference(representation, path, options, seen)
+      return resolveReference(representation, path, recursiveReferenceError, seen)
     }
     if (representation._tag === "Suspend" && representation.thunk._tag === "Reference") {
       return annotate(
-        resolveReference(representation.thunk, path, options, seen),
+        resolveReference(representation.thunk, path, recursiveReferenceError, seen),
         representation.annotations
       )
     }
@@ -337,7 +334,7 @@ function translateJsonSchemaMultiDocument(
     left: Checked,
     right: Checked,
     deduplicate: ReadonlyArray<string> = []
-  ): CombinedChecks {
+  ): readonly [ReadonlyArray<Check>, Schema.Annotations.Annotations | undefined] {
     let checks = right.checks
     for (const id of deduplicate) {
       if (left.checks.some((check) => check._tag === "Filter" && check.representation?.id === id)) {
@@ -346,10 +343,7 @@ function translateJsonSchemaMultiDocument(
     }
     if (checks.length === 0) {
       const annotations = mergeAnnotations(left.annotations, right.annotations)
-      return {
-        checks: left.checks,
-        annotations
-      }
+      return [left.checks, annotations]
     }
     if (right.annotations !== undefined) {
       checks = checks.length === 1 && checks[0].annotations === undefined
@@ -360,10 +354,7 @@ function translateJsonSchemaMultiDocument(
           annotations: right.annotations
         }]
     }
-    return {
-      checks: [...left.checks, ...checks],
-      annotations: left.annotations
-    }
+    return [[...left.checks, ...checks], left.annotations]
   }
 
   function satisfiesPrimitiveCheck(check: Check, value: string | number): boolean | undefined {
@@ -498,8 +489,8 @@ function translateJsonSchemaMultiDocument(
     if (!hasFiniteKeyDomain && requiresFiniteKeyDomain && closedPattern === undefined) {
       throw errorWithPath(
         scopes.some((scope) => scope.additionalProperties._tag === "Never")
-          ? "Cannot import this closed patterned object. The importer supports one pattern with no declared or required properties, or patterns restricted to a fixed set of properties by \"allOf\"."
-          : "Cannot import a schema-valued \"additionalProperties\" alongside \"properties\" or \"patternProperties\". Effect index signatures also validate the keys that \"additionalProperties\" excludes.",
+          ? "Cannot import this closed patterned object: only one pattern without properties is supported."
+          : "Cannot combine typed \"additionalProperties\" with other property schemas: Effect index signatures also check excluded keys.",
         path
       )
     }
@@ -528,8 +519,6 @@ function translateJsonSchemaMultiDocument(
       properties.push({ name, type, isOptional, isMutable: false })
     }
 
-    const hasOpenPatterns = closedPattern === undefined && !hasFiniteKeyDomain &&
-      scopes.some((scope) => scope.patterns.length > 0)
     const indexSignatures: ReadonlyArray<SchemaRepresentation.IndexSignature> = closedPattern !== undefined
       ? [{ parameter: closedPattern.parameter, type: closedPattern.type }]
       : !hasFiniteKeyDomain
@@ -550,7 +539,7 @@ function translateJsonSchemaMultiDocument(
       checks,
       annotations
     }
-    objectMetadataByProperties.set(properties, { scopes, path, hasOpenPatterns })
+    objectScopesByProperties.set(properties, [scopes, path])
     return representation
   }
 
@@ -617,7 +606,7 @@ function translateJsonSchemaMultiDocument(
             hasChoices(indexSignature.parameter as ImportedJsonSchemaRepresentation) ||
             hasChoices(indexSignature.type as ImportedJsonSchemaRepresentation)
           ) ||
-          objectMetadataByProperties.get(representation.propertySignatures)!.scopes.some((scope) =>
+          objectScopesByProperties.get(representation.propertySignatures)![0].some((scope) =>
             scope.patterns.some((pattern) => hasChoices(pattern.type))
           ) ||
           representation.checks.some(checkHasChoices)
@@ -724,7 +713,7 @@ function translateJsonSchemaMultiDocument(
 
   function unsupportedIntersection(path: Path): never {
     throw errorWithPath(
-      "Cannot combine these \"anyOf\" or \"oneOf\" alternatives. Importing this intersection would require duplicating branches. Simplify the alternatives before importing.",
+      "Cannot intersect these \"anyOf\" or \"oneOf\" alternatives without expanding their branches.",
       path
     )
   }
@@ -801,15 +790,18 @@ function translateJsonSchemaMultiDocument(
           return intersectPrimitiveWithLiteral(left, right)
         }
         if (right._tag !== "String") return never
-        const stringChecks = intersectChecks(left, right)
-        return annotate({ _tag: "String", checks: stringChecks.checks }, stringChecks.annotations)
+        const [stringChecks, stringAnnotations] = intersectChecks(left, right)
+        return annotate({ _tag: "String", checks: stringChecks }, stringAnnotations)
       case "Number":
         if (right._tag === "Literal") {
           return intersectPrimitiveWithLiteral(left, right)
         }
         if (right._tag !== "Number") return never
-        const numberChecks = intersectChecks(left, right, ["effect/schema/isFinite", "effect/schema/isInt"])
-        return annotate({ _tag: "Number", checks: numberChecks.checks }, numberChecks.annotations)
+        const [numberChecks, numberAnnotations] = intersectChecks(left, right, [
+          "effect/schema/isFinite",
+          "effect/schema/isInt"
+        ])
+        return annotate({ _tag: "Number", checks: numberChecks }, numberAnnotations)
       case "Boolean":
         if (right._tag === "Literal") {
           return intersectPrimitiveWithLiteral(left, right)
@@ -848,20 +840,20 @@ function translateJsonSchemaMultiDocument(
         if (right._tag !== "Arrays") return never
         const arrays = intersectArrays(left, right, path)
         if (arrays === undefined) return never
-        const combined = intersectChecks(left, right, ["effect/schema/isUnique"])
-        return annotate({ _tag: "Arrays", ...arrays, checks: combined.checks }, combined.annotations)
+        const [checks, annotations] = intersectChecks(left, right, ["effect/schema/isUnique"])
+        return annotate({ _tag: "Arrays", ...arrays, checks }, annotations)
       }
       case "Objects": {
         if (right._tag !== "Objects") return never
-        const combined = intersectChecks(left, right)
+        const [checks, annotations] = intersectChecks(left, right)
         const scopes = [
-          ...objectMetadataByProperties.get(left.propertySignatures)!.scopes,
-          ...objectMetadataByProperties.get(right.propertySignatures)!.scopes
+          ...objectScopesByProperties.get(left.propertySignatures)![0],
+          ...objectScopesByProperties.get(right.propertySignatures)![0]
         ]
         return lowerObject(
           scopes,
-          combined.checks,
-          combined.annotations,
+          checks,
+          annotations,
           path
         )
       }
@@ -871,33 +863,24 @@ function translateJsonSchemaMultiDocument(
   function translateSchema(
     input: unknown,
     path: Path,
-    inNestedResource = false,
     isRoot = false
   ): ImportedJsonSchemaRepresentation {
     if (input === false) {
       return never
     }
-    if (typeof input !== "object" || input === null || Array.isArray(input)) return unknown
+    if (!isObject(input)) return unknown
     const schema = options?.onEnter === undefined
       ? input as JsonSchema.JsonSchema
       : options.onEnter(input as JsonSchema.JsonSchema)
     if (schema === undefined) {
       return unknown
     }
-    inNestedResource ||= !isRoot && typeof schema.$id === "string"
     if (
-      typeof schema.not === "object" && schema.not !== null && !Array.isArray(schema.not) &&
+      isObject(schema.not) &&
       Object.keys(schema.not).length === 0
     ) return annotate(never, jsonSchemaAnnotations(schema))
-    const enumIndex = Array.isArray(schema.enum)
-      ? schema.enum.findIndex((value) => typeof value === "object" && value !== null)
-      : -1
-    if (enumIndex !== -1) {
-      throw errorWithPath(
-        "Cannot import an object or array as an \"enum\" member. Only strings, numbers, booleans, and null are supported.",
-        [...path, "enum", enumIndex]
-      )
-    }
+    const wasInNestedResource = inNestedResource
+    inNestedResource ||= !isRoot && typeof schema.$id === "string"
     for (const keyword of Object.keys(schema)) {
       if (keyword === "if" && !Object.hasOwn(schema, "then") && !Object.hasOwn(schema, "else")) continue
       switch (keyword) {
@@ -910,25 +893,20 @@ function translateJsonSchemaMultiDocument(
         case "unevaluatedItems":
         case "unevaluatedProperties":
           throw errorWithPath(
-            `Cannot import the JSON Schema keyword "${keyword}". This validation constraint is not supported.`,
+            `Cannot import JSON Schema keyword "${keyword}": Effect has no equivalent constraint.`,
             [...path, keyword]
           )
       }
     }
 
-    let representation = translateType(schema, path, inNestedResource)
+    let representation = translateType(schema, path)
     if (Object.hasOwn(schema, "const")) {
-      const literal = makeJsonLiteral(schema.const)
-      if (literal === undefined && typeof schema.const === "object") {
-        throw errorWithPath(
-          "Cannot import an object or array as a \"const\" value. Only strings, numbers, booleans, and null are supported.",
-          [...path, "const"]
-        )
-      }
-      if (literal !== undefined) representation = intersect(representation, literal, [...path, "const"])
+      const constPath = [...path, "const"]
+      const literal = makeJsonLiteral(schema.const, constPath)
+      if (literal !== undefined) representation = intersect(representation, literal, constPath)
     }
     if (Array.isArray(schema.enum)) {
-      const types = schema.enum.map((value) => makeJsonLiteral(value) ?? unknown)
+      const types = schema.enum.map((value, index) => makeJsonLiteral(value, [...path, "enum", index]) ?? unknown)
       representation = intersect(
         representation,
         types.length === 1
@@ -940,22 +918,20 @@ function translateJsonSchemaMultiDocument(
     if (typeof schema.$ref === "string") {
       if (inNestedResource) {
         throw errorWithPath(
-          "Cannot resolve $ref inside a subschema with its own \"$id\". Resolve these references before importing.",
+          "Cannot resolve $ref under a nested \"$id\". Resolve or flatten it first.",
           [...path, "$ref"]
         )
       }
       const $ref = JsonSchema.getReferenceKey(schema.$ref)
       if ($ref === undefined) {
         throw errorWithPath(
-          `Cannot resolve $ref ${
-            JSON.stringify(schema.$ref)
-          }. Only references to top-level definitions, such as "#/$defs/Name", are supported.`,
+          `Unsupported $ref ${JSON.stringify(schema.$ref)}. Use "#/$defs/Name".`,
           [...path, "$ref"]
         )
       }
       if (!Object.hasOwn(document.definitions, $ref)) {
         throw errorWithPath(
-          `Cannot resolve $ref ${JSON.stringify(schema.$ref)}. No definition named ${JSON.stringify($ref)} was found.`,
+          `Missing definition ${JSON.stringify($ref)} for $ref ${JSON.stringify(schema.$ref)}.`,
           [...path, "$ref"]
         )
       }
@@ -966,11 +942,11 @@ function translateJsonSchemaMultiDocument(
         : representation._tag === "Never"
         ? never
         : intersect(
-          resolveReference(reference, path, {
-            recursiveReferenceError: `Cannot apply additional constraints alongside a recursive $ref to ${
-              JSON.stringify(reference.$ref)
-            }.`
-          }),
+          resolveReference(
+            reference,
+            path,
+            `Recursive $ref ${JSON.stringify(reference.$ref)} cannot have sibling constraints.`
+          ),
           representation,
           path
         )
@@ -985,7 +961,7 @@ function translateJsonSchemaMultiDocument(
       for (let index = 0; index < schema.allOf.length; index++) {
         representation = intersect(
           representation,
-          translateSchema(schema.allOf[index], [...path, "allOf", index], inNestedResource),
+          translateSchema(schema.allOf[index], [...path, "allOf", index]),
           [...path, "allOf", index]
         )
       }
@@ -996,20 +972,20 @@ function translateJsonSchemaMultiDocument(
       if (Array.isArray(members)) {
         const union: ImportedJsonSchemaRepresentation = {
           _tag: "Union",
-          types: members.map((member, index) => translateSchema(member, [...path, mode, index], inNestedResource)),
+          types: members.map((member, index) => translateSchema(member, [...path, mode, index])),
           ...(mode === "oneOf" ? { options: { mode } } : {}),
           checks: []
         }
         representation = intersect(union, representation, [...path, mode])
       }
     }
+    inNestedResource = wasInNestedResource
     return representation
   }
 
   function translateType(
     schema: JsonSchema.JsonSchema,
-    path: Path,
-    inNestedResource: boolean
+    path: Path
   ): ImportedJsonSchemaRepresentation {
     const types = Array.isArray(schema.type) && schema.type.every(isImportedJsonSchemaType)
       ? schema.type
@@ -1019,7 +995,7 @@ function translateJsonSchemaMultiDocument(
     if (types !== undefined) {
       return {
         _tag: "Union",
-        types: types.map((type) => translateType({ ...schema, type }, path, inNestedResource)),
+        types: types.map((type) => translateType({ ...schema, type }, path)),
         checks: []
       }
     }
@@ -1049,7 +1025,7 @@ function translateJsonSchemaMultiDocument(
         const minItems = typeof schema.minItems === "number" ? schema.minItems : 0
         const elements = prefixItems?.map((element, index) => ({
           isOptional: index + 1 > minItems,
-          type: translateSchema(element, [...path, "prefixItems", index], inNestedResource)
+          type: translateSchema(element, [...path, "prefixItems", index])
         })) ?? []
         const isTupleClosed = schema.items === false ||
           (schema.items === undefined &&
@@ -1064,14 +1040,14 @@ function translateJsonSchemaMultiDocument(
           rest: isTupleClosed
             ? []
             : [
-              schema.items === undefined ? unknown : translateSchema(schema.items, [...path, "items"], inNestedResource)
+              schema.items === undefined ? unknown : translateSchema(schema.items, [...path, "items"])
             ],
           checks: collectArrayChecks(schema, isMaxItemsRedundant)
         }
       }
       case "object": {
-        const scope = collectObjectScope(schema, path, inNestedResource)
-        return lowerObject([scope], collectObjectChecks(schema, path, inNestedResource), undefined, path)
+        const scope = collectObjectScope(schema, path)
+        return lowerObject([scope], collectObjectChecks(schema, path), undefined, path)
       }
       default:
         return unknown
@@ -1082,7 +1058,7 @@ function translateJsonSchemaMultiDocument(
     switch (options?.patterns ?? "error") {
       case "error":
         throw errorWithPath(
-          "Regular expression patterns are disabled by default because they can block validation. Set patterns: \"apply\" for trusted schemas, or patterns: \"ignore\" to discard pattern constraints.",
+          "Patterns may block validation and are disabled. Use patterns: \"apply\" for trusted schemas or \"ignore\" to discard them.",
           path
         )
       case "ignore":
@@ -1132,13 +1108,9 @@ function translateJsonSchemaMultiDocument(
 
   function collectObjectScope(
     schema: JsonSchema.JsonSchema,
-    path: Path,
-    inNestedResource: boolean
+    path: Path
   ): ImportedObjectScope {
-    const sourceProperties =
-      typeof schema.properties === "object" && schema.properties !== null && !Array.isArray(schema.properties)
-        ? schema.properties as Record<string, unknown>
-        : {}
+    const sourceProperties = isObject(schema.properties) ? schema.properties : {}
     const required = new Set(
       Array.isArray(schema.required)
         ? schema.required.filter((key): key is string => typeof key === "string")
@@ -1148,16 +1120,14 @@ function translateJsonSchemaMultiDocument(
     const keys = new Set([...propertyNames, ...required])
     const properties = new Map(Array.from(keys, (name) => [name, {
       type: Object.hasOwn(sourceProperties, name)
-        ? translateSchema(sourceProperties[name], [...path, "properties", name], inNestedResource)
+        ? translateSchema(sourceProperties[name], [...path, "properties", name])
         : undefined,
       isOptional: !required.has(name)
     }]))
     const hasProperties = propertyNames.length > 0
     const patterns: Array<ImportedObjectPattern> = []
     if (
-      typeof schema.patternProperties === "object" &&
-      schema.patternProperties !== null &&
-      !Array.isArray(schema.patternProperties)
+      isObject(schema.patternProperties)
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
         const check = importPatternCheck(pattern, [...path, "patternProperties", pattern])
@@ -1168,22 +1138,21 @@ function translateJsonSchemaMultiDocument(
             _tag: "String",
             checks: [check]
           },
-          type: translateSchema(value, [...path, "patternProperties", pattern], inNestedResource)
+          type: translateSchema(value, [...path, "patternProperties", pattern])
         })
       }
     }
     const additionalProperties = schema.additionalProperties === false
       ? never
-      : typeof schema.additionalProperties === "object" && schema.additionalProperties !== null
-      ? translateSchema(schema.additionalProperties, [...path, "additionalProperties"], inNestedResource)
+      : isObject(schema.additionalProperties)
+      ? translateSchema(schema.additionalProperties, [...path, "additionalProperties"])
       : unknown
     return { properties, hasProperties, patterns, additionalProperties }
   }
 
   function collectObjectChecks(
     schema: JsonSchema.JsonSchema,
-    path: Path,
-    inNestedResource: boolean
+    path: Path
   ): Array<Check> {
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minProperties, "effect/schema/isMinProperties", "minProperties")
@@ -1195,7 +1164,7 @@ function translateJsonSchemaMultiDocument(
         null,
         [intersect(
           string,
-          translateSchema(schema.propertyNames, propertyNamesPath, inNestedResource),
+          translateSchema(schema.propertyNames, propertyNamesPath),
           propertyNamesPath
         )]
       ))
@@ -1205,7 +1174,7 @@ function translateJsonSchemaMultiDocument(
 
   const references: Record<string, Representation> = {}
   const representations = document.schemas.map((schema, index) =>
-    finalize(translateSchema(schema, singleRoot ? ["schema"] : ["schemas", index], false, true))
+    finalize(translateSchema(schema, singleRoot ? ["schema"] : ["schemas", index], true))
   ) as [Representation, ...Array<Representation>]
   // Definitions expanded away by intersections do not need a standalone output schema.
   for (const key of finalReferences) {

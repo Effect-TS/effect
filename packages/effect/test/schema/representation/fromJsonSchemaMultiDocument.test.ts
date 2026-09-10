@@ -35,7 +35,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           schemas: [{ type: "string" }, { type: "array", items: open }],
           definitions: {}
         }, { patterns: "apply" }),
-      `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ["schemas"][1]["items"]`
+      `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schemas"][1]["items"]`
     )
     throws(
       () =>
@@ -44,7 +44,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           schemas: [{ $ref: "#/$defs/Values" }, { type: "array", items: { $ref: "#/$defs/Values" } }],
           definitions: { Values: open }
         }, { patterns: "apply" }),
-      `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ["definitions"]["Values"]`
+      `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["definitions"]["Values"]`
     )
   })
 
@@ -133,7 +133,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           ],
           definitions: { X: { type: "string" } }
         }),
-      `Cannot resolve $ref inside a subschema with its own "$id". Resolve these references before importing.\n  at ["schemas"][1]["items"]["$ref"]`
+      `Cannot resolve $ref under a nested "$id". Resolve or flatten it first.\n  at ["schemas"][1]["items"]["$ref"]`
     )
   })
 
@@ -148,7 +148,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
 
     throws(
       () => SchemaRepresentation.fromJsonSchemaMultiDocument(document),
-      `Regular expression patterns are disabled by default because they can block validation. Set patterns: "apply" for trusted schemas, or patterns: "ignore" to discard pattern constraints.\n  at ["definitions"]["A"]["pattern"]`
+      `Patterns may block validation and are disabled. Use patterns: "apply" for trusted schemas or "ignore" to discard them.\n  at ["definitions"]["A"]["pattern"]`
     )
 
     const schemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, { patterns: "apply" })
@@ -317,7 +317,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           schemas: [{ $ref: "#/$defs/Missing", description: "resolve" }],
           definitions: {}
         }),
-      `Cannot resolve $ref "#/$defs/Missing". No definition named "Missing" was found.\n  at ["schemas"][0]["$ref"]`
+      `Missing definition "Missing" for $ref "#/$defs/Missing".\n  at ["schemas"][0]["$ref"]`
     )
   })
 
@@ -332,7 +332,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
             B: { $ref: "#/$defs/A" }
           }
         }),
-      `Cannot resolve definition "A". Its references form a cycle with no concrete schema.\n  at ["schemas"][0]["$ref"]`
+      `Definition "A" is a circular alias.\n  at ["schemas"][0]["$ref"]`
     )
   })
 })

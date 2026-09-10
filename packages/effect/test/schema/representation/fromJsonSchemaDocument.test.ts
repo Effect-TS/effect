@@ -188,7 +188,7 @@ describe("fromJsonSchemaDocument", () => {
       for (const value of [{}, []]) {
         throws(
           () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ const: value })),
-          `Cannot import an object or array as a "const" value. Only strings, numbers, booleans, and null are supported.\n  at ["schema"]["const"]`
+          `Only primitive values are supported in "const" and "enum".\n  at ["schema"]["const"]`
         )
       }
     })
@@ -836,7 +836,7 @@ describe("fromJsonSchemaDocument", () => {
             required: ["a"],
             additionalProperties: { type: "boolean" }
           })),
-        `Cannot import a schema-valued "additionalProperties" alongside "properties" or "patternProperties". Effect index signatures also validate the keys that "additionalProperties" excludes.\n  at ["schema"]`
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
       )
     })
 
@@ -848,7 +848,7 @@ describe("fromJsonSchemaDocument", () => {
             patternProperties: { "^a": { type: "string" } },
             additionalProperties: { type: "number" }
           })),
-        `Cannot import a schema-valued "additionalProperties" alongside "properties" or "patternProperties". Effect index signatures also validate the keys that "additionalProperties" excludes.\n  at ["schema"]`
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
       )
     })
 
@@ -862,7 +862,7 @@ describe("fromJsonSchemaDocument", () => {
               additionalProperties: false,
               ...fields
             })),
-          `Cannot import this closed patterned object. The importer supports one pattern with no declared or required properties, or patterns restricted to a fixed set of properties by "allOf".\n  at ["schema"]`
+          `Cannot import this closed patterned object: only one pattern without properties is supported.\n  at ["schema"]`
         )
       }
     })
@@ -963,7 +963,7 @@ describe("fromJsonSchemaDocument", () => {
             },
             additionalProperties: false
           })),
-        `Cannot import this closed patterned object. The importer supports one pattern with no declared or required properties, or patterns restricted to a fixed set of properties by "allOf".\n  at ["schema"]`
+        `Cannot import this closed patterned object: only one pattern without properties is supported.\n  at ["schema"]`
       )
     })
 
@@ -1080,12 +1080,12 @@ describe("fromJsonSchemaDocument", () => {
     for (const value of [[], {}, { not: "data" }]) {
       throws(
         () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ enum: ["a", value] })),
-        `Cannot import an object or array as an "enum" member. Only strings, numbers, booleans, and null are supported.\n  at ["schema"]["enum"][1]`
+        `Only primitive values are supported in "const" and "enum".\n  at ["schema"]["enum"][1]`
       )
     }
     throws(
       () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ const: "a", enum: [{}] })),
-      `Cannot import an object or array as an "enum" member. Only strings, numbers, booleans, and null are supported.\n  at ["schema"]["enum"][0]`
+      `Only primitive values are supported in "const" and "enum".\n  at ["schema"]["enum"][0]`
     )
   })
 
@@ -1136,7 +1136,7 @@ describe("fromJsonSchemaDocument", () => {
               properties: { child: { ...nested, ...body } },
               $defs: { X: { type: "string" } }
             })),
-          `Cannot resolve $ref inside a subschema with its own "$id". Resolve these references before importing.\n  at ["schema"]["properties"]["child"]${suffix}["$ref"]`
+          `Cannot resolve $ref under a nested "$id". Resolve or flatten it first.\n  at ["schema"]["properties"]["child"]${suffix}["$ref"]`
         )
       }
     })
@@ -1194,7 +1194,7 @@ describe("fromJsonSchemaDocument", () => {
               onEnter: (schema) => schema.$ref === undefined ? schema : { ...schema, $id: "child" }
             }
           ),
-        `Cannot resolve $ref inside a subschema with its own "$id". Resolve these references before importing.\n  at ["schema"]["items"]["$ref"]`
+        `Cannot resolve $ref under a nested "$id". Resolve or flatten it first.\n  at ["schema"]["items"]["$ref"]`
       )
     })
 
@@ -1212,7 +1212,7 @@ describe("fromJsonSchemaDocument", () => {
               X: { type: "string" }
             }
           })),
-        `Cannot resolve $ref inside a subschema with its own "$id". Resolve these references before importing.\n  at ["definitions"]["Child"]["properties"]["value"]["$ref"]`
+        `Cannot resolve $ref under a nested "$id". Resolve or flatten it first.\n  at ["definitions"]["Child"]["properties"]["value"]["$ref"]`
       )
     })
 
@@ -1236,14 +1236,14 @@ describe("fromJsonSchemaDocument", () => {
               }
             })
           ),
-        `Cannot resolve $ref "#/$defs/outer/properties/inner". Only references to top-level definitions, such as "#/$defs/Name", are supported.\n  at ["schema"]["properties"]["copy"]["$ref"]`
+        `Unsupported $ref "#/$defs/outer/properties/inner". Use "#/$defs/Name".\n  at ["schema"]["properties"]["copy"]["$ref"]`
       )
     })
 
     it("rejects an empty reference", () => {
       throws(
         () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ $ref: "" })),
-        `Cannot resolve $ref "". Only references to top-level definitions, such as "#/$defs/Name", are supported.\n  at ["schema"]["$ref"]`
+        `Unsupported $ref "". Use "#/$defs/Name".\n  at ["schema"]["$ref"]`
       )
     })
 
@@ -1256,14 +1256,14 @@ describe("fromJsonSchemaDocument", () => {
               A: { type: "string" }
             }
           })),
-        `Cannot resolve $ref "https://example.com/schema#/$defs/A". Only references to top-level definitions, such as "#/$defs/Name", are supported.\n  at ["schema"]["$ref"]`
+        `Unsupported $ref "https://example.com/schema#/$defs/A". Use "#/$defs/Name".\n  at ["schema"]["$ref"]`
       )
     })
 
     it("reports the full reference when a direct definition is missing", () => {
       throws(
         () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ $ref: "#/$defs/Missing" })),
-        `Cannot resolve $ref "#/$defs/Missing". No definition named "Missing" was found.\n  at ["schema"]["$ref"]`
+        `Missing definition "Missing" for $ref "#/$defs/Missing".\n  at ["schema"]["$ref"]`
       )
     })
 
@@ -1521,7 +1521,7 @@ describe("fromJsonSchemaDocument", () => {
               }
             })
           ),
-        `Cannot apply additional constraints alongside a recursive $ref to "Node".\n  at ["definitions"]["Node"]["properties"]["child"]["$ref"]`
+        `Recursive $ref "Node" cannot have sibling constraints.\n  at ["definitions"]["Node"]["properties"]["child"]["$ref"]`
       )
     })
   })
@@ -1561,7 +1561,7 @@ describe("fromJsonSchemaDocument", () => {
               ]
             })
           ),
-        `Cannot combine these "anyOf" or "oneOf" alternatives. Importing this intersection would require duplicating branches. Simplify the alternatives before importing.\n  at ["schema"]["allOf"][1]`
+        `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
       )
     })
 
@@ -1586,7 +1586,7 @@ describe("fromJsonSchemaDocument", () => {
               ]
             })
           ),
-        `Cannot combine these "anyOf" or "oneOf" alternatives. Importing this intersection would require duplicating branches. Simplify the alternatives before importing.\n  at ["schema"]["allOf"][1]`
+        `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
       )
     })
 
@@ -1634,7 +1634,7 @@ describe("fromJsonSchemaDocument", () => {
               allOf: [false, { contains: {} }]
             })
           ),
-        `Cannot import the JSON Schema keyword "contains". This validation constraint is not supported.\n  at ["schema"]["allOf"][1]["contains"]`
+        `Cannot import JSON Schema keyword "contains": Effect has no equivalent constraint.\n  at ["schema"]["allOf"][1]["contains"]`
       )
     })
 
@@ -2803,7 +2803,7 @@ describe("fromJsonSchemaDocument", () => {
         } as const
         throws(
           () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
-          `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ["schema"]`
+          `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]`
         )
         assertFromJsonSchema({ schema, options: { patterns: "ignore" } }, {
           codes: makeCode(
@@ -2822,7 +2822,7 @@ describe("fromJsonSchemaDocument", () => {
             properties: { a: { type: "string" } },
             patternProperties: { "^a$": { minLength: 2 } }
           })),
-        `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ["schema"]`
+        `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]`
       )
     })
 
@@ -2837,7 +2837,7 @@ describe("fromJsonSchemaDocument", () => {
       for (const [schema, path] of cases) {
         throws(
           () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
-          `Cannot import "patternProperties" with open additional properties. The generated TypeScript index signatures would give incorrect types to unmatched keys.\n  at ${path}`
+          `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ${path}`
         )
       }
     })
@@ -2897,7 +2897,7 @@ describe("fromJsonSchemaDocument", () => {
               }
             ]
           })),
-        `Cannot import this closed patterned object. The importer supports one pattern with no declared or required properties, or patterns restricted to a fixed set of properties by "allOf".\n  at ["schema"]["allOf"][0]`
+        `Cannot import this closed patterned object: only one pattern without properties is supported.\n  at ["schema"]["allOf"][0]`
       )
     })
 
@@ -2963,7 +2963,7 @@ describe("fromJsonSchemaDocument", () => {
               value: { not: { type: "string" } }
             }
           })),
-        `Cannot import the JSON Schema keyword "not". This validation constraint is not supported.\n  at ["schema"]["properties"]["value"]["not"]`
+        `Cannot import JSON Schema keyword "not": Effect has no equivalent constraint.\n  at ["schema"]["properties"]["value"]["not"]`
       )
     })
 
@@ -2980,7 +2980,7 @@ describe("fromJsonSchemaDocument", () => {
       it(keyword, () => {
         throws(
           () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ [keyword]: value })),
-          `Cannot import the JSON Schema keyword "${keyword}". This validation constraint is not supported.\n  at ["schema"][${
+          `Cannot import JSON Schema keyword "${keyword}": Effect has no equivalent constraint.\n  at ["schema"][${
             JSON.stringify(keyword)
           }]`
         )
@@ -2995,7 +2995,7 @@ describe("fromJsonSchemaDocument", () => {
               if: { type: "string" },
               [branch]: false
             })),
-          `Cannot import the JSON Schema keyword "if". This validation constraint is not supported.\n  at ["schema"]["if"]`
+          `Cannot import JSON Schema keyword "if": Effect has no equivalent constraint.\n  at ["schema"]["if"]`
         )
       })
     }
@@ -3057,7 +3057,7 @@ describe("fromJsonSchemaDocument", () => {
         ) {
           throws(
             () => SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
-            `Regular expression patterns are disabled by default because they can block validation. Set patterns: "apply" for trusted schemas, or patterns: "ignore" to discard pattern constraints.\n  at ${path}`
+            `Patterns may block validation and are disabled. Use patterns: "apply" for trusted schemas or "ignore" to discard them.\n  at ${path}`
           )
         }
       })
