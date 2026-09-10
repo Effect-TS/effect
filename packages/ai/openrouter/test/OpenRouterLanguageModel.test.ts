@@ -295,8 +295,12 @@ describe("OpenRouterLanguageModel", () => {
             Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          deepStrictEqual(result.usage.inputTokens, { uncached: 70, total: 100, cacheRead: 30, cacheWrite: 0 })
-          deepStrictEqual(result.usage.outputTokens, { total: 50, text: 30, reasoning: 20 })
+          deepStrictEqual(
+            result.usage.inputTokens,
+            { uncached: 70, total: 100, cacheRead: 30, cacheWrite: 0 },
+            "subset input usage"
+          )
+          deepStrictEqual(result.usage.outputTokens, { total: 50, text: 30, reasoning: 20 }, "subset output usage")
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
