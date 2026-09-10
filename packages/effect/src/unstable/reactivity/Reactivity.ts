@@ -22,7 +22,7 @@ import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 
 /**
- * Type-level identifier for `Reactivity` service implementations.
+ * Brand type for `Reactivity`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -30,7 +30,7 @@ import * as Stream from "../../Stream.ts"
 export type TypeId = "~effect/reactivity/Reactivity"
 
 /**
- * Runtime identifier stored on `Reactivity` service implementations.
+ * Brand for `Reactivity` implementations.
  *
  * @category type IDs
  * @since 4.0.0
@@ -38,13 +38,7 @@ export type TypeId = "~effect/reactivity/Reactivity"
 export const TypeId: TypeId = "~effect/reactivity/Reactivity"
 
 /**
- * Service for key-based reactive invalidation.
- *
- * **Details**
- *
- * The service can register handlers for keys, invalidate those keys, wrap
- * mutations so successful effects invalidate keys, and turn query effects into
- * queues or streams that rerun when keys are invalidated.
+ * Registers handlers and reruns queries when their keys are invalidated.
  *
  * @category models
  * @since 4.0.0
@@ -75,12 +69,7 @@ export interface Reactivity {
 }
 
 /**
- * Service key for key-based reactive invalidation.
- *
- * **When to use**
- *
- * Use to provide or access the invalidation service that refreshes queries,
- * streams, and atoms when application keys change.
+ * Service key for reactive invalidation.
  *
  * @category services
  * @since 4.0.0

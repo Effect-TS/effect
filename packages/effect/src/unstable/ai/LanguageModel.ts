@@ -38,17 +38,8 @@ import { CurrentSpanTransformer } from "./Telemetry.ts"
 import type * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
-// =============================================================================
-// Service Definition
-// =============================================================================
-
 /**
- * Service tag for AI model services.
- *
- * **When to use**
- *
- * Use to access or provide text generation, streaming generation, structured
- * output, and tool-calling capabilities through the Effect context.
+ * Service key for text generation, structured output, and tool calls.
  *
  * **Example** (Accessing the language model service)
  *
@@ -87,7 +78,7 @@ export const LanguageModel: Context.Service<LanguageModel, LanguageModel> = Cont
 )
 
 /**
- * Type-level identifier for `LanguageModel` service implementations.
+ * Brand type for `LanguageModel`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -95,7 +86,7 @@ export const LanguageModel: Context.Service<LanguageModel, LanguageModel> = Cont
 export type TypeId = "~effect/ai/LanguageModel"
 
 /**
- * Runtime identifier stored on `LanguageModel` service implementations.
+ * Brand for `LanguageModel` implementations.
  *
  * @category type IDs
  * @since 4.0.0
@@ -103,7 +94,7 @@ export type TypeId = "~effect/ai/LanguageModel"
 export const TypeId: TypeId = "~effect/ai/LanguageModel"
 
 /**
- * The service interface for language model operations, defining the contract that all language model implementations must fulfill.
+ * Text generation, streaming, and structured output operations.
  *
  * @category models
  * @since 4.0.0

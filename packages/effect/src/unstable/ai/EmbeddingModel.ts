@@ -19,12 +19,7 @@ import * as Schema from "../../Schema.ts"
 import * as AiError from "./AiError.ts"
 
 /**
- * Service tag for embedding model operations.
- *
- * **When to use**
- *
- * Use to retrieve or provide the embedding model service for an `Effect`
- * program that embeds text into vectors.
+ * Service key for embedding text into vectors.
  *
  * @see {@link make} for constructing an embedding model service from a provider
  * @see {@link Dimensions} for the current embedding vector size service
@@ -37,7 +32,7 @@ export const EmbeddingModel: Context.Service<EmbeddingModel, EmbeddingModel> = C
 )
 
 /**
- * Type-level identifier for `EmbeddingModel` service implementations.
+ * Brand type for `EmbeddingModel`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -45,7 +40,7 @@ export const EmbeddingModel: Context.Service<EmbeddingModel, EmbeddingModel> = C
 export type TypeId = "~effect/ai/EmbeddingModel"
 
 /**
- * Runtime identifier stored on `EmbeddingModel` service implementations.
+ * Brand for `EmbeddingModel` implementations.
  *
  * @category type IDs
  * @since 4.0.0
@@ -166,7 +161,7 @@ export class EmbeddingRequest extends Request.TaggedClass("EmbeddingRequest")<
 > {}
 
 /**
- * Defines the service interface for embedding operations.
+ * Single-input and batch embedding operations.
  *
  * @category models
  * @since 4.0.0

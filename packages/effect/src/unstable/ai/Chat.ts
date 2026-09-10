@@ -33,18 +33,7 @@ import type * as Response from "./Response.ts"
 import type * as Tool from "./Tool.ts"
 
 /**
- * Service tag for stateful AI conversation sessions.
- *
- * **When to use**
- *
- * Use to access or provide conversational AI sessions through the Effect
- * context.
- *
- * **Details**
- *
- * This tag provides access to chat functionality throughout your application,
- * enabling persistent conversational AI interactions with full context
- * management.
+ * Service key for stateful AI conversations.
  *
  * **Example** (Accessing the Chat service)
  *
@@ -85,7 +74,7 @@ import type * as Tool from "./Tool.ts"
 export const Chat: Context.Service<Chat, Chat> = Context.Service("effect/ai/Chat")
 
 /**
- * Type-level identifier for `Chat` service implementations.
+ * Brand type for `Chat`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -93,7 +82,7 @@ export const Chat: Context.Service<Chat, Chat> = Context.Service("effect/ai/Chat
 export type TypeId = "~effect/ai/Chat"
 
 /**
- * Runtime identifier stored on `Chat` service implementations.
+ * Brand for `Chat` implementations.
  *
  * @category type IDs
  * @since 4.0.0
@@ -101,13 +90,7 @@ export type TypeId = "~effect/ai/Chat"
 export const TypeId: TypeId = "~effect/ai/Chat"
 
 /**
- * Represents the interface that the `Chat` service provides.
- *
- * **When to use**
- *
- * Use as the service contract for code that receives or constructs a stateful
- * chat session and needs history, export, text generation, streaming, and
- * structured-output operations.
+ * Chat session with history, export, and generation operations.
  *
  * @see {@link Persisted} for the persistence-backed extension
  *
