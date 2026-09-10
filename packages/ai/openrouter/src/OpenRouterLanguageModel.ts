@@ -1844,18 +1844,9 @@ const getUsage = (usage: Generated.ChatUsage | undefined): Response.Usage => {
   const cacheReadTokens = usage.prompt_tokens_details?.cached_tokens ?? 0
   const cacheWriteTokens = usage.prompt_tokens_details?.cache_write_tokens ?? 0
   const reasoningTokens = usage.completion_tokens_details?.reasoning_tokens ?? 0
-  // OpenRouter documents `cached_tokens` and `reasoning_tokens` as subsets of
-  // `prompt_tokens` and `completion_tokens` respectively, but some upstream
-  // providers report them as disjoint counts (i.e. `reasoning_tokens` exceeds
-  // `completion_tokens`). When a detail exceeds its parent count, treat the
-  // two as disjoint so the derived components never go negative.
-  //
-  // This only catches the provable case. A provider that reports disjoint
-  // counts where the detail is less than or equal to its parent is
-  // indistinguishable from the documented subset accounting: nothing on the
-  // usage block indicates which convention applies (`total_tokens` is just
-  // `prompt_tokens + completion_tokens`), so those responses still use the
-  // subset derivation and will under-report `total` by the detail count.
+  // Some providers report cached or reasoning tokens separately from their parent counts.
+  // Treat details exceeding the parent as disjoint to avoid negative remainders.
+  // Otherwise, retain subset accounting.
   const inputTotal = cacheReadTokens > promptTokens ? promptTokens + cacheReadTokens : promptTokens
   const outputTotal = reasoningTokens > completionTokens ? completionTokens + reasoningTokens : completionTokens
   return {
