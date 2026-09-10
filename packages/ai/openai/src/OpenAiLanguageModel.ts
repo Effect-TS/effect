@@ -1342,7 +1342,7 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-call",
             id: part.id,
             name: toolName,
-            params: { code: part.code, container_id: part.container_id },
+            params: { code: part.code ?? null, container_id: part.container_id },
             providerExecuted: true
           })
           parts.push({
@@ -1761,8 +1761,34 @@ const makeStreamResponse = Effect.fnUntraced(
       }
       readonly codeInterpreter?: {
         readonly containerId: string
+        hasCode: boolean
       }
     }> = {}
+
+    const finishCodeInterpreterCall = (
+      outputIndex: number,
+      code: string | null,
+      parts: Array<Response.StreamPartEncoded>
+    ) => {
+      const toolCall = activeToolCalls[outputIndex]
+      if (Predicate.isUndefined(toolCall?.codeInterpreter)) {
+        return
+      }
+      parts.push({
+        type: "tool-params-delta",
+        id: toolCall.id,
+        delta: toolCall.codeInterpreter.hasCode ? "\"}" : `${JSON.stringify(code)}}`
+      })
+      parts.push({ type: "tool-params-end", id: toolCall.id })
+      parts.push({
+        type: "tool-call",
+        id: toolCall.id,
+        name: toolCall.name,
+        params: { code, container_id: toolCall.codeInterpreter.containerId },
+        providerExecuted: true
+      })
+      delete activeToolCalls[outputIndex]
+    }
 
     const webSearchTool = options.tools.find((tool) =>
       Tool.isProviderDefined(tool) &&
@@ -1875,7 +1901,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 activeToolCalls[event.output_index] = {
                   id: event.item.id,
                   name: toolName,
-                  codeInterpreter: { containerId: event.item.container_id }
+                  codeInterpreter: { containerId: event.item.container_id, hasCode: false }
                 }
                 parts.push({
                   type: "tool-params-start",
@@ -1886,7 +1912,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 parts.push({
                   type: "tool-params-delta",
                   id: event.item.id,
-                  delta: `{"containerId":"${event.item.container_id}","code":"`
+                  delta: `{"container_id":${JSON.stringify(event.item.container_id)},"code":`
                 })
                 break
               }
@@ -2069,7 +2095,7 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               case "code_interpreter_call": {
-                delete activeToolCalls[event.output_index]
+                finishCodeInterpreterCall(event.output_index, event.item.code ?? null, parts)
                 const toolName = toolNameMapper.getCustomName("code_interpreter")
                 const status = event.item.status ?? "completed"
                 parts.push({
@@ -2516,37 +2542,20 @@ const makeStreamResponse = Effect.fnUntraced(
 
           case "response.code_interpreter_call_code.delta": {
             const toolCall = activeToolCalls[event.output_index]
-            if (Predicate.isNotUndefined(toolCall)) {
+            if (Predicate.isNotUndefined(toolCall?.codeInterpreter)) {
               parts.push({
                 type: "tool-params-delta",
                 id: toolCall.id,
-                delta: InternalUtilities.escapeJSONDelta(event.delta)
+                delta: (toolCall.codeInterpreter.hasCode ? "" : "\"") +
+                  InternalUtilities.escapeJSONDelta(event.delta)
               })
+              toolCall.codeInterpreter.hasCode = true
             }
             break
           }
 
           case "response.code_interpreter_call_code.done": {
-            const toolCall = activeToolCalls[event.output_index]
-            if (Predicate.isNotUndefined(toolCall) && Predicate.isNotUndefined(toolCall.codeInterpreter)) {
-              const toolName = toolNameMapper.getCustomName("code_interpreter")
-              parts.push({
-                type: "tool-params-delta",
-                id: toolCall.id,
-                delta: "\"}"
-              })
-              parts.push({ type: "tool-params-end", id: toolCall.id })
-              parts.push({
-                type: "tool-call",
-                id: toolCall.id,
-                name: toolName,
-                params: {
-                  code: event.code,
-                  container_id: toolCall.codeInterpreter.containerId
-                },
-                providerExecuted: true
-              })
-            }
+            finishCodeInterpreterCall(event.output_index, event.code, parts)
             break
           }
 
