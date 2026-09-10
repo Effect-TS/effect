@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`6985be0cf461f0997f28f6798f469d01a2b46ca3`)
+Base: `origin/v3` (`1af4232fea7bc613e1dc68db9bec7b1f596d9e68`)
 
-Head: `HEAD` (`f57836b4418ea7c7d399f51bc1adad3fc0c08e98`)
+Head: `origin/main` (`91abe38c3797b1c290aedef3b01e8c96dd4fee79`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4912,9 +4912,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `AiError.UnknownError` -> `AiError.make + AiError.UnknownError`: UnknownError is now a semantic reason rather than a top-level error. Put module and method on AiError.make and inspect reason.\_tag when handling the outer AiError.
 
+### `@effect/ai/Chat`
+
+- `Chat.Chat` -> `Chat.Chat`: Use the Chat interface for implementations and the Context.Service value as the service key; it is no longer a class. Chat.empty and Chat.fromPrompt construct branded chat sessions.
+
+- `Chat.Service` -> `Chat.Chat`: Service was renamed to Chat. Implementations require [Chat.TypeId]: Chat.TypeId; use Chat.empty or Chat.fromPrompt to create a session.
+
 ### `@effect/ai/EmbeddingModel`
 
+- `EmbeddingModel.EmbeddingModel` -> `EmbeddingModel.EmbeddingModel`: Use the EmbeddingModel interface for implementations and the Context.Service value as the service key; it is no longer a class. Prefer EmbeddingModel.make to construct the branded implementation.
+
 - `EmbeddingModel.Result`: TODO: needs guidance
+
+- `EmbeddingModel.Service` -> `EmbeddingModel.EmbeddingModel`: Service was renamed to EmbeddingModel. Implementations require [EmbeddingModel.TypeId]: EmbeddingModel.TypeId; EmbeddingModel.make supplies the brand.
 
 - `EmbeddingModel.makeDataLoader` -> `EmbeddingModel.make + RequestResolver.setDelay + RequestResolver.batchN`: The dedicated data-loader constructor was removed. EmbeddingModel.make batches concurrent embed requests through its resolver; compose the exposed resolver with setDelay and optional batchN for the old window and maximum-batch behavior.
 
@@ -4927,6 +4937,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `LanguageModel.ConstructorParams` -> `none`: V4 inlines this provider-adapter shape in LanguageModel.make. Pass generateText and streamText directly to make, with optional codecTransformer, instead of naming a constructor-parameter type.
 
 - `LanguageModel.ExtractContext` -> `LanguageModel.ExtractServices`: Renamed in effect/unstable/ai/LanguageModel. ExtractServices infers toolkit handler, result-decoding, and effectful-toolkit service requirements.
+
+- `LanguageModel.LanguageModel` -> `LanguageModel.LanguageModel`: Use the LanguageModel interface for implementations and the Context.Service value as the service key; it is no longer a class. Prefer LanguageModel.make to construct the branded implementation.
+
+- `LanguageModel.Service` -> `LanguageModel.LanguageModel`: Service was renamed to LanguageModel. Implementations require [LanguageModel.TypeId]: LanguageModel.TypeId; LanguageModel.make supplies the brand.
 
 ### `@effect/ai/McpSchema`
 
@@ -6052,9 +6066,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/experimental/Reactivity`
 
-- `Reactivity.Reactivity` -> `effect/unstable/reactivity/Reactivity#Reactivity`: Use the v4 Reactivity Context.Service; unsafe methods were renamed with an Unsafe suffix.
+- `Reactivity.Reactivity` -> `effect/unstable/reactivity/Reactivity#Reactivity`: Use the Reactivity interface for implementations and the Reactivity Context.Service value as the service key. Implementations require the TypeId brand; prefer Reactivity.make. Unsafe methods were renamed with an Unsafe suffix.
 
-- `Reactivity.Reactivity.Service` -> `effect/unstable/reactivity/Reactivity#Reactivity["Service"]`: The named namespace member was removed; derive the service shape from the Context.Service class.
+- `Reactivity.Reactivity.Service` -> `effect/unstable/reactivity/Reactivity#Reactivity`: The named namespace member was removed; use the branded Reactivity interface directly. Prefer Reactivity.make, or include [Reactivity.TypeId]: Reactivity.TypeId in a custom implementation.
 
 - `Reactivity.make` -> `effect/unstable/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
 
@@ -7218,9 +7232,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServer.addressWith` -> `HttpServer.HttpServer.use(({ address }) => effect(address))`: The accessor was removed; read the service and pass its Address to the callback.
 
+- `HttpServer.formatAddress` -> `HttpServer.formatAddress`: Accepts NetAddress.SocketAddress and delegates to NetAddress.formatUrlUnsafe. Scoped IPv6 addresses throw NetAddressError; Unix paths use the unix:// prefix.
+
 - `HttpServer.layerContext` -> `HttpServer.layerServices`: Renamed; it provides the standard HTTP platform services.
 
-- `HttpServer.make` -> `HttpServer.make`: Retained; it returns the Context.Service implementation.
+- `HttpServer.make` -> `HttpServer.make`: Retained; it returns the Context.Service implementation. Supply a NetAddress.SocketAddress for address, using NetAddress.inetAddressUnsafe for a parsed IP and port or NetAddress.unixPathAddress for a Unix path. Use NetAddress.inetAddress to validate the port through Result instead.
 
 - `HttpServer.serve` -> `effect/unstable/http/HttpServer#serve`: Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model.
 
@@ -11439,7 +11455,7 @@ stream.pipe(
 
 **Replacement:** `Schema.toJsonSchemaDocument`
 
-Wrap a low-level AST with Schema.make, then generate a document; v4 generation targets draft 2020-12.
+Wrap a low-level AST with Schema.make, then generate a draft 2020-12 document. Generation defaults to onExcessProperty: 'ignore'; use 'error' for closed objects. JSON Schema validation is approximate and does not replace Effect decoding.
 
 **Example**
 
@@ -11451,7 +11467,7 @@ Schema.toJsonSchemaDocument(Schema.make(ast))
 
 **Replacement:** `Schema.toJsonSchemaDocument`
 
-Generate draft 2020-12, then call JsonSchema.toDocumentDraft07 when draft-07 output is required.
+Generate draft 2020-12, then call JsonSchema.toDocumentDraft07 when draft-07 output is required. Generation now defaults to onExcessProperty: 'ignore'; pass 'error' to retain closed-object output, and use the same option when decoding to reject excess properties. The earlier v4 additionalProperties generation option was removed. JSON Schema validation is approximate and does not replace Effect decoding.
 
 **Example**
 
@@ -14039,7 +14055,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Annotations.Doc` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 
-- `Schema.Annotations.Filter` -> `Schema.Annotations.Filter`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.Annotations.Filter` -> `Schema.Annotations.Filter`: Use the v4 filter annotation shape. arbitraryConstraint uses Schema.Annotations.ToArbitrary.FilterConstraint; the earlier v4 ToArbitrary.Constraint name was removed.
 
 - `Schema.Annotations.GenericSchema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 
@@ -14159,7 +14175,7 @@ Schema.toFormatter(schema)
 
 - `Schema.EndsWithSchemaId` -> `none`: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
 
-- `Schema.Enums` -> `Schema.Enum`: Rename the enum constructor and pass the enum object.
+- `Schema.Enums` -> `Schema.Enum`: Rename the enum constructor and pass the enum object. Numeric members must be finite; NaN and positive or negative Infinity throw at construction.
 
 - `Schema.EnumsDefinition` -> `none`: Compared the v3 declaration with v4 Schema and the schema migration guide; no direct public replacement remains. Rebuild the behavior from public v4 codecs/getters where still required.
 
@@ -14603,7 +14619,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Union` -> `Schema.Union(members)`: Pass union members as one array.
 
-- `Schema.UniqueSymbolFromSelf` -> `Schema.UniqueSymbol`: Use the v4 unique-symbol schema constructor.
+- `Schema.UniqueSymbolFromSelf` -> `Schema.UniqueSymbol`: Use the v4 unique-symbol schema constructor. JSON encoding is available only for globally registered symbols and uses the exact String(symbol) value; local symbols cannot be encoded as JSON.
 
 - `Schema.Unknown` -> `Schema.Unknown`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
@@ -14805,7 +14821,7 @@ Schema.toFormatter(schema)
 
 - `Schema.minLength` -> `Schema.isMinLength`: Rename the string predicate to `isMinLength` and apply it with `Schema.check` or a schema's `check` method.
 
-- `Schema.multipleOf` -> `Schema.isMultipleOf`: Rename the predicate to `isMultipleOf` and apply it with `Schema.check` or a schema's `check` method.
+- `Schema.multipleOf` -> `Schema.isMultipleOf`: Rename the predicate to `isMultipleOf` and apply it with `Schema.check` or a schema's `check` method. The divisor must be finite and nonzero or construction throws RangeError; negative divisors are normalized to their absolute value.
 
 - `Schema.mutable` -> `Schema.mutable`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
@@ -14977,7 +14993,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.DocumentationAnnotationId` -> `Schema.Annotations.Augment["documentation"]`: Symbol annotation IDs were removed; use the documentation key.
 
-- `SchemaAST.Enums` -> `SchemaAST.Enum`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
+- `SchemaAST.Enums` -> `SchemaAST.Enum`: Renamed to Enum in the v4 AST model. Numeric enum members must be finite; NaN and positive or negative Infinity throw at construction.
 
 - `SchemaAST.EquivalenceAnnotation` -> `Schema.Annotations.ToEquivalence.Declaration`: Equivalence derivation annotations now use the toEquivalence key in Schema.Annotations.
 
