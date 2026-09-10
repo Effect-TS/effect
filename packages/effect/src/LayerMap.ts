@@ -8,6 +8,7 @@ import * as Effect from "./Effect.js"
 import * as FiberRefsPatch from "./FiberRefsPatch.js"
 import { identity } from "./Function.js"
 import * as core from "./internal/core.js"
+import * as StackTraceLimit from "./internal/stackTraceLimit.js"
 import * as Layer from "./Layer.js"
 import * as RcMap from "./RcMap.js"
 import * as Runtime from "./Runtime.js"
@@ -357,10 +358,10 @@ export const Service = <Self>() =>
   Options extends { readonly dependencies: ReadonlyArray<any> } ? Options["dependencies"][number] : never
 > => {
   const Err = globalThis.Error as any
-  const limit = Err.stackTraceLimit
-  Err.stackTraceLimit = 2
+  const limit = StackTraceLimit.getStackTraceLimit()
+  StackTraceLimit.setStackTraceLimit(2)
   const creationError = new Err()
-  Err.stackTraceLimit = limit
+  StackTraceLimit.setStackTraceLimit(limit)
 
   function TagClass() {}
   const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, string, any, any, any, any, any>>
