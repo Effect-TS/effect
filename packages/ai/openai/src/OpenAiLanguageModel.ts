@@ -1762,6 +1762,7 @@ const makeStreamResponse = Effect.fnUntraced(
       readonly codeInterpreter?: {
         readonly containerId: string
         hasCode: boolean
+        streamedCode: string
       }
     }> = {}
 
@@ -1784,7 +1785,10 @@ const makeStreamResponse = Effect.fnUntraced(
         type: "tool-call",
         id: toolCall.id,
         name: toolCall.name,
-        params: { code, container_id: toolCall.codeInterpreter.containerId },
+        params: {
+          code: toolCall.codeInterpreter.hasCode ? toolCall.codeInterpreter.streamedCode : code,
+          container_id: toolCall.codeInterpreter.containerId
+        },
         providerExecuted: true
       })
       delete activeToolCalls[outputIndex]
@@ -1901,7 +1905,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 activeToolCalls[event.output_index] = {
                   id: event.item.id,
                   name: toolName,
-                  codeInterpreter: { containerId: event.item.container_id, hasCode: false }
+                  codeInterpreter: { containerId: event.item.container_id, hasCode: false, streamedCode: "" }
                 }
                 parts.push({
                   type: "tool-params-start",
@@ -2550,6 +2554,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   InternalUtilities.escapeJSONDelta(event.delta)
               })
               toolCall.codeInterpreter.hasCode = true
+              toolCall.codeInterpreter.streamedCode += event.delta
             }
             break
           }
