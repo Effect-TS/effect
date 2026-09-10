@@ -16,6 +16,8 @@ const partialFileSearchResults = [{ file_id: "file_123", text: "Matching text", 
 
 const fileSearchOutcomes = [
   { status: "completed", isFailure: false, label: "results", results: partialFileSearchResults },
+  { status: "completed", isFailure: false, label: "null results", results: null },
+  { status: "completed", isFailure: false, label: "omitted results", results: undefined },
   { status: "failed", isFailure: true, label: "partial results", results: partialFileSearchResults },
   { status: "incomplete", isFailure: true, label: "partial results", results: partialFileSearchResults },
   { status: "in_progress", isFailure: true, label: "partial results", results: partialFileSearchResults },
@@ -1819,8 +1821,8 @@ describe("OpenAiLanguageModel", () => {
           deepStrictEqual(toolResult.result, {
             status,
             queries: ["Effect TypeScript"],
-            ...(results == null ? {} : { results })
-          })
+            results: results ?? null
+          }, "File search results should normalize null or omitted results to null")
         })
     )
 
