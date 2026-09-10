@@ -1,4 +1,6 @@
+import { assert } from "@effect/vitest"
 import { JsonSchema, Schema, SchemaRepresentation } from "effect"
+import { TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
 
@@ -1147,6 +1149,42 @@ describe("toCodeDocument", () => {
   })
 
   describe("Struct", () => {
+    it("preserves a required __proto__ property in generated code", async () => {
+      const schema = Schema.Struct({ ["__proto__"]: Schema.String })
+      assertSchema({ schema }, {
+        codes: makeCode(
+          `Schema.Struct({ ["__proto__"]: Schema.String })`,
+          `{ readonly "__proto__": string }`
+        )
+      })
+
+      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+      assert.deepStrictEqual(Object.keys(generated.fields), ["__proto__"])
+      const decoding = new TestSchema.Asserts(generated).decoding()
+      await decoding.succeed({ ["__proto__"]: "value" })
+      await decoding.fail({}, `Missing key\n  at ["__proto__"]`)
+      await decoding.fail({ ["__proto__"]: 123 }, `Expected string\n  at ["__proto__"]`)
+    })
+
+    it("preserves an optional __proto__ property in generated code", async () => {
+      const schema = Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) })
+      assertSchema({ schema }, {
+        codes: makeCode(
+          `Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) })`,
+          `{ readonly "__proto__"?: string }`
+        )
+      })
+
+      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+      assert.deepStrictEqual(Object.keys(generated.fields), ["__proto__"])
+      const decoding = new TestSchema.Asserts(generated).decoding()
+      await decoding.succeed({})
+      await decoding.succeed({ ["__proto__"]: "value" })
+      await decoding.fail({ ["__proto__"]: 123 }, `Expected string\n  at ["__proto__"]`)
+    })
+
     it("empty struct", () => {
       assertSchema({ schema: Schema.Struct({}) }, {
         codes: makeCode("Schema.Struct({  })", "{  }")
