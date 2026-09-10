@@ -12,6 +12,7 @@ import * as Option from "../../../../Option.ts"
 import * as Predicate from "../../../../Predicate.ts"
 import * as PubSub from "../../../../PubSub.ts"
 import * as Queue from "../../../../Queue.ts"
+import * as Record from "../../../../Record.ts"
 import * as Schema from "../../../../Schema.ts"
 import { appendPreResponseHandlerUnsafe } from "../../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../../http/HttpServerRequest.ts"
@@ -134,15 +135,18 @@ const requiredCapabilitiesForInputRequests = (
         Match.when({ method: "roots/list" }, () =>
           capabilities.roots === undefined ? { ...required, roots: {} } : required),
         Match.when({ method: "sampling/createMessage" }, (request) => {
-          const requiresTools = McpProtocol.samplingRequestRequiresTools(request.params)
-          if (capabilities.sampling === undefined) {
-            return {
-              ...required,
-              sampling: requiresTools ? { ...required.sampling, tools: {} } : required.sampling ?? {}
-            }
+          const sampling = { ...required.sampling }
+          if (McpProtocol.samplingRequestRequiresTools(request.params) && capabilities.sampling?.tools === undefined) {
+            sampling.tools = {}
           }
-          return requiresTools && capabilities.sampling.tools === undefined
-            ? { ...required, sampling: { ...required.sampling, tools: {} } }
+          if (
+            (request.params.includeContext === "thisServer" || request.params.includeContext === "allServers") &&
+            capabilities.sampling?.context === undefined
+          ) {
+            sampling.context = {}
+          }
+          return capabilities.sampling === undefined || Object.keys(sampling).length > 0
+            ? { ...required, sampling }
             : required
         }),
         Match.when({ method: "elicitation/create" }, (request) => {
@@ -331,11 +335,17 @@ export const makeHandlers = (
   const decodeListToolsResult = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
   const sendNotification = context.sendNotification
   const supportsSubscriptions = sendNotification !== undefined
+  // Older adapters accept arbitrary JSON; this binding requires extension settings objects.
+  const extensions = context.serverInfo.extensions === undefined ? undefined : Record.filter(
+    context.serverInfo.extensions,
+    (value): value is Schema.JsonObject => Predicate.isReadonlyObject(value)
+  )
   const getDiscovery = Effect.map(context.registrationPresence, (presence): ServerDiscoveryContext => ({
     supportedVersions: context.supportedVersions,
     capabilities: {
       completions: {},
       logging: {},
+      ...(extensions === undefined ? {} : { extensions }),
       ...(presence.tools ? { tools: { listChanged: supportsSubscriptions } } : {}),
       ...(presence.resources
         ? {
@@ -567,6 +577,13 @@ export const makeHandlers = (
     ) {
       const presence = yield* context.registrationPresence
       if (!presence.prompts) {
+        const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
+        if (Option.isSome(httpRequest)) {
+          appendPreResponseHandlerUnsafe(
+            httpRequest.value,
+            (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, 404))
+          )
+        }
         return yield* new McpProtocol.ProtocolError({
           code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
           message: "Method not found"

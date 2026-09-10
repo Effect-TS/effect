@@ -330,6 +330,7 @@ export interface HandlerInstallationContext {
     readonly description?: string | undefined
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
+    readonly extensions?: PublicMcpSchema.ServerCapabilities["extensions"] | undefined
   }
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean

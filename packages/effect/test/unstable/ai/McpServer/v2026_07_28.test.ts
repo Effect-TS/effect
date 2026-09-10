@@ -21,6 +21,9 @@ import * as SubscriptionsTest from "./McpConformance/SubscriptionsTest.ts"
 import * as ToolsTest from "./McpConformance/ToolsTest.ts"
 import * as TransportsTest from "./McpConformance/TransportsTest.ts"
 import * as UtilitiesTest from "./McpConformance/UtilitiesTest.ts"
+import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
+import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 const protocol = McpProtocol.v2026_07_28
@@ -82,6 +85,32 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.strictEqual(discovered.response.status, 200)
         assert.isNull(discovered.sessionId)
         assert.strictEqual(discovered.message.result.protocolVersion, protocol.protocolVersion)
+      }))
+
+    // Modern extension settings are JSON objects; legacy-only scalar settings must not break discovery.
+    // https://modelcontextprotocol.io/specification/2026-07-28/schema#servercapabilities
+    it.effect("should advertise supported extension settings when discovering a server with legacy configuration", () =>
+      Effect.gen(function*() {
+        const extensions = {
+          "example/settings": { enabled: true, formats: ["text/html"], nested: { value: null } },
+          "example/empty": {}
+        }
+        const harness = yield* makeHttpHarness(makeServerLayer({
+          name: "ExtensionServer",
+          protocols: [protocol, McpProtocol.v2025_06_18],
+          extensions: {
+            ...extensions,
+            "example/boolean": true,
+            "example/array": [],
+            "example/null": null
+          }
+        }))
+        const response = yield* harness.post(request("discovery", "server/discover"), headers("server/discover"))
+        assert.strictEqual(response.status, 200)
+        const message = Schema.decodeUnknownSync(Schema.Struct({ result: Schema.JsonObject }))(
+          yield* readMcpHttpResponse(response)
+        )
+        assert.deepStrictEqual(message.result.capabilities, { completions: {}, logging: {}, extensions })
       }))
 
     it.effect("should serve independent requests when no discovery or session exists", () =>

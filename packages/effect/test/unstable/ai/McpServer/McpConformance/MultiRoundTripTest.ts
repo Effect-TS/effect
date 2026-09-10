@@ -1,7 +1,14 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
+import * as McpSchema from "effect/unstable/ai/McpSchema"
+import * as McpServer from "effect/unstable/ai/McpServer"
+import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
+import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 import { MrtrPromptName, mrtrRequestState, MrtrStateOnlyToolName, MrtrToolName } from "./McpConformanceFixtures.ts"
 
@@ -35,6 +42,67 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
     // SEP-2322: https://modelcontextprotocol.io/seps/2322-MRTR
     // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr
     describe("Multi round-trip requests", () => {
+      // Follow the sampling SHOULD NOT recommendation by rejecting context requests without client support.
+      // https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#capabilities
+      it.effect("should require context capability when sampling requests include server context", () =>
+        Effect.gen(function*() {
+          for (const includeContext of ["thisServer", "allServers"] as const) {
+            const sample = {
+              method: "sampling/createMessage",
+              params: {
+                messages: [{ role: "user", content: { type: "text", text: "Summarize context" } }],
+                includeContext,
+                maxTokens: 20
+              }
+            } as const
+            const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+              server.addTool({
+                tool: new McpSchema.Tool({ name: "Context", inputSchema: { type: "object" } }),
+                annotations: Context.empty(),
+                handle: () => Effect.succeed(new McpSchema.InputRequired({ inputRequests: { sample } }))
+              })
+            ))
+            const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+              makeServerLayer({ name: "SamplingContext", protocols: [protocol] })
+            )))
+            for (const supported of [false, true]) {
+              const response = yield* harness.post({
+                jsonrpc: "2.0",
+                id: supported ? "supported" : "unsupported",
+                method: "tools/call",
+                params: {
+                  name: "Context",
+                  arguments: {},
+                  _meta: {
+                    "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+                    "io.modelcontextprotocol/clientCapabilities": { sampling: supported ? { context: {} } : {} }
+                  }
+                }
+              }, {
+                "Mcp-Protocol-Version": protocol.protocolVersion,
+                "Mcp-Method": "tools/call",
+                "Mcp-Name": "Context"
+              })
+              const message = yield* readMcpHttpResponse(response)
+              if (supported) {
+                assert.strictEqual(response.status, 200)
+                const result = Schema.decodeUnknownSync(Schema.Struct({
+                  result: Schema.Struct({ resultType: Schema.String, inputRequests: Schema.JsonObject })
+                }))(message).result
+                assert.strictEqual(result.resultType, "input_required")
+                assert.deepStrictEqual(result.inputRequests, { sample })
+              } else {
+                assert.strictEqual(response.status, 400)
+                const error = Schema.decodeUnknownSync(Schema.Struct({
+                  error: Schema.Struct({ code: Schema.Number, data: Schema.JsonObject })
+                }))(message).error
+                assert.strictEqual(error.code, -32021)
+                assert.deepStrictEqual(error.data, { requiredCapabilities: { sampling: { context: {} } } })
+              }
+            }
+          }
+        }))
+
       // Conformance: input-required-result-non-tool-request
       it.effect("should return input_required and then complete when prompts/get is retried with client input", () =>
         Effect.gen(function*() {

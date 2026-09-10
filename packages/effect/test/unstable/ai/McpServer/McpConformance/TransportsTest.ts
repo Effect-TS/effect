@@ -518,6 +518,22 @@ export const statelessModernSuite = (
           assert.isTrue(Exit.isSuccess(exit) || (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)))
         }))
 
+      // MethodNotFound also covers unadvertised capabilities, and modern HTTP maps it to 404.
+      // https://modelcontextprotocol.io/specification/2026-07-28/schema#methodnotfounderror
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#protocol-version-header
+      it.effect("should return HTTP 404 when a request needs an unavailable server capability", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const discovered = yield* test.initialize()
+          assert.isUndefined(discovered.message.result.capabilities.prompts)
+
+          const response = yield* test.post(request("unavailable", "prompts/list"), headers("prompts/list"))
+          const error = yield* test.decodeError(response)
+          assert.strictEqual(error.id, "unavailable")
+          assert.strictEqual(error.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
+          assert.strictEqual(response.status, 404)
+        }))
+
       // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server
       it.effect("should require application/json content and both supported response media types for HTTP POST", () =>
         Effect.gen(function*() {
