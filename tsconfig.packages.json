@@ -15,6 +15,7 @@
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform/browser" },
     { "path": "packages/platform/bun" },
+    { "path": "packages/platform/cloudflare" },
     { "path": "packages/platform/deno" },
     { "path": "packages/platform/node" },
     { "path": "packages/platform/node-shared" },

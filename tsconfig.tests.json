@@ -14,7 +14,14 @@
     "./packages/**/typetest/**/*.ts",
     "./packages/**/benchmark/**/*.ts"
   ],
-  "exclude": ["**/node_modules/**", "**/dist/**", "./packages/platform/deno/**"],
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "./packages/platform/deno/**",
+    // Compiled by the package's own tsconfig.alchemy.json: the alchemy type
+    // graph loads bun globals that clash with this project's node globals.
+    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts"
+  ],
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
@@ -47,6 +54,8 @@
       "@effect/platform-browser/*": ["./packages/platform/browser/src/*.ts"],
       "@effect/platform-bun": ["./packages/platform/bun/src/index.ts"],
       "@effect/platform-bun/*": ["./packages/platform/bun/src/*.ts"],
+      "@effect/platform-cloudflare": ["./packages/platform/cloudflare/src/index.ts"],
+      "@effect/platform-cloudflare/*": ["./packages/platform/cloudflare/src/*.ts"],
       "@effect/platform-node": ["./packages/platform/node/src/index.ts"],
       "@effect/platform-node/*": ["./packages/platform/node/src/*.ts"],
       "@effect/platform-node-shared": ["./packages/platform/node-shared/src/index.ts"],

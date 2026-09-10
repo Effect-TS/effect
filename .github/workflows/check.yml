@@ -50,6 +50,8 @@ jobs:
         with:
           deno-version: v2.9.4
       - run: pnpm check
+      - name: Typecheck Alchemy integration
+        run: pnpm exec tsc -b packages/platform/cloudflare/tsconfig.alchemy.json
       - run: deno check .
       - run: pnpm test-types --target '>=5.9'
 

@@ -28,6 +28,7 @@
       "@effect/opentelemetry",
       "@effect/platform-browser",
       "@effect/platform-bun",
+      "@effect/platform-cloudflare",
       "@effect/platform-deno",
       "@effect/platform-node",
       "@effect/platform-node-shared",
