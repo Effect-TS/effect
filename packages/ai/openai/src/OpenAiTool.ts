@@ -126,7 +126,9 @@ export const FileSearch = Tool.providerDefined({
     results: Generated.FileSearchToolCall.fields.results
   }),
   failure: Schema.Struct({
-    status: Schema.Literals(["in_progress", "searching", "incomplete", "failed"]),
+    status: Schema.Literals(
+      Generated.FileSearchToolCall.fields.status.literals.filter((status) => status !== "completed")
+    ),
     queries: Generated.FileSearchToolCall.fields.queries,
     results: Generated.FileSearchToolCall.fields.results
   })
@@ -283,7 +285,7 @@ export const Shell = Tool.providerDefined({
 
 const WebSearchFailure = Schema.Struct({
   action: Generated.WebSearchToolCall.fields.action,
-  status: Schema.Literals(["in_progress", "searching", "failed"])
+  status: Schema.Literals(Generated.WebSearchToolCall.fields.status.literals.filter((status) => status !== "completed"))
 })
 
 /**
