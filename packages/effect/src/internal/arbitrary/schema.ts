@@ -14,16 +14,16 @@ import * as InternalRecord from "../record.ts"
 import * as Model from "./model.ts"
 import * as Regexp from "./regexp.ts"
 
-type Constraint = Schema.Annotations.ToArbitrary.Constraint<any>
+type FilterConstraint = Schema.Annotations.ToArbitrary.FilterConstraint<any>
 type GenerationConstraint = Schema.Annotations.ToArbitrary.GenerationConstraint<any>
 
 interface Checks {
-  readonly constraint: Constraint | undefined
+  readonly constraint: FilterConstraint | undefined
   readonly filters: ReadonlyArray<SchemaAST.Filter<any>>
 }
 
 const infinity = Number.POSITIVE_INFINITY
-const finiteNumberConstraint: Constraint = { number: "finite" }
+const finiteNumberConstraint: FilterConstraint = { number: "finite" }
 const optionMatch = { onFailure: Option.none, onSuccess: Option.some }
 
 const optionComputation = <A, E, R>(self: Effect.Effect<A, E, R>): Model.Computation<Option.Option<A>> => {
@@ -79,7 +79,7 @@ function mergeMaximum(self: number | undefined, that: number | undefined): numbe
   return self === undefined ? that : that === undefined ? self : Math.min(self, that)
 }
 
-function mergeConstraint(self: Constraint | undefined, that: Constraint): Constraint {
+function mergeConstraint(self: FilterConstraint | undefined, that: FilterConstraint): FilterConstraint {
   const order = that.order ?? self?.order
   if (self?.order !== undefined && that.order !== undefined && self.order !== that.order) {
     throw new Error("Cannot merge ordered arbitrary constraints with different Order instances")
@@ -142,7 +142,7 @@ function mergeConstraint(self: Constraint | undefined, that: Constraint): Constr
   }
 }
 
-function collectChecks(checks: SchemaAST.Checks | undefined, inherited: Constraint | undefined): Checks {
+function collectChecks(checks: SchemaAST.Checks | undefined, inherited: FilterConstraint | undefined): Checks {
   let constraint = inherited
   const filters: Array<SchemaAST.Filter<any>> = []
   const visit = (check: SchemaAST.Check<any>): void => {
@@ -180,7 +180,7 @@ function applyFilters(
     })
 }
 
-function validateConstraint(constraint: Constraint | undefined, path: ReadonlyArray<PropertyKey>): void {
+function validateConstraint(constraint: FilterConstraint | undefined, path: ReadonlyArray<PropertyKey>): void {
   if (constraint === undefined) return
   const cardinalities = [
     [constraint.minLength, constraint.maxLength],
@@ -207,7 +207,7 @@ function validateConstraint(constraint: Constraint | undefined, path: ReadonlyAr
   }
 }
 
-function withoutOrder(constraint: Constraint | undefined): GenerationConstraint | undefined {
+function withoutOrder(constraint: FilterConstraint | undefined): GenerationConstraint | undefined {
   if (constraint === undefined) return undefined
   const { order: _, ...out } = constraint
   return Object.keys(out).length === 0 ? undefined : out
@@ -352,7 +352,7 @@ function builtInDeclarationLink(
 }
 
 function lengthBounds(
-  constraint: Constraint | undefined,
+  constraint: FilterConstraint | undefined,
   keys: readonly [
     minimum: "minLength" | "minSize" | "minProperties",
     maximum: "maxLength" | "maxSize" | "maxProperties"
@@ -801,7 +801,7 @@ function randomString(state: Model.GenerationState, minimum: number, maximum: nu
   return value
 }
 
-function numberBounds(constraint: Constraint | undefined, integer: boolean, path: ReadonlyArray<PropertyKey>) {
+function numberBounds(constraint: FilterConstraint | undefined, integer: boolean, path: ReadonlyArray<PropertyKey>) {
   const ordered = constraint?.order === Order.Number ? constraint : undefined
   let minimum = ordered?.minimum as number | undefined
   let maximum = ordered?.maximum as number | undefined
@@ -1027,14 +1027,14 @@ function bigIntSample(
 /** @internal */
 export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<S["Type"]> {
   const rootAst = SchemaAST.toType(schema.ast)
-  const cache = new WeakMap<SchemaAST.AST, Map<Constraint | undefined, Model.Compiled<any>>>()
+  const cache = new WeakMap<SchemaAST.AST, Map<FilterConstraint | undefined, Model.Compiled<any>>>()
   const nodes: Array<Model.Compiled<any>> = []
   const suspendBodies = new Map<Model.Compiled<any>, Model.Compiled<any>>()
   const pending: Array<() => void> = []
   const recur = (
     ast: SchemaAST.AST,
     path: ReadonlyArray<PropertyKey>,
-    inherited?: Constraint
+    inherited?: FilterConstraint
   ): Model.Compiled<any> => {
     let entries = cache.get(ast)
     const cached = entries?.get(inherited)
@@ -1079,7 +1079,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   const compileBase = (
     ast: SchemaAST.AST,
     path: ReadonlyArray<PropertyKey>,
-    constraint: Constraint | undefined
+    constraint: FilterConstraint | undefined
   ): Model.Compiled<any> => {
     switch (ast._tag) {
       case "Never":
@@ -1336,7 +1336,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   const compileArrays = (
     ast: SchemaAST.Arrays,
     path: ReadonlyArray<PropertyKey>,
-    constraint: Constraint | undefined
+    constraint: FilterConstraint | undefined
   ): Model.Compiled<ReadonlyArray<any>> => {
     const uniqueBy = constraint?.uniqueBy
     const elements = ast.elements.map((element, index) => ({
@@ -1492,7 +1492,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   const compileObjects = (
     ast: SchemaAST.Objects,
     path: ReadonlyArray<PropertyKey>,
-    constraint: Constraint | undefined
+    constraint: FilterConstraint | undefined
   ): Model.Compiled<Record<PropertyKey, any>> => {
     const constrainedIndexes = ast.indexSignatures.flatMap((index, position) => {
       const constraint = collectChecks(index.type.checks, undefined).constraint
@@ -1517,7 +1517,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         if (cached !== undefined) return cached
         let specialized = compiled
         try {
-          let inherited: Constraint | undefined
+          let inherited: FilterConstraint | undefined
           for (const match of matching) inherited = mergeConstraint(inherited, match.constraint)
           const checks = collectChecks(type.checks, inherited)
           specialized = compileBase(type, path, checks.constraint)
@@ -1668,7 +1668,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   const compileDeclaration = (
     ast: SchemaAST.Declaration,
     path: ReadonlyArray<PropertyKey>,
-    constraint: Constraint | undefined
+    constraint: FilterConstraint | undefined
   ): Model.Compiled<any> => {
     validateConstraint(constraint, path)
     const typeParameters = ast.typeParameters.map((parameter, index) => recur(parameter, [...path, index]))

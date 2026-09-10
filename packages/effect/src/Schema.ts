@@ -62,8 +62,6 @@ import * as Record_ from "./Record.ts"
 import * as Redacted_ from "./Redacted.ts"
 import * as RegExp_ from "./RegExp.ts"
 import * as Result_ from "./Result.ts"
-// oxlint-disable-next-line import/no-self-import -- Qualifies Constraint where Annotations.ToArbitrary.Constraint shadows it.
-import type * as Schema_ from "./Schema.ts"
 import * as SchemaAST from "./SchemaAST.ts"
 import * as SchemaGetter from "./SchemaGetter.ts"
 import * as SchemaIssue from "./SchemaIssue.ts"
@@ -15300,7 +15298,7 @@ export declare namespace Annotations {
      *
      * @since 4.0.0
      */
-    readonly arbitraryConstraint?: ToArbitrary.Constraint<any> | undefined
+    readonly arbitraryConstraint?: ToArbitrary.FilterConstraint<any> | undefined
     /**
      * Marks the filter as *structural*, meaning it applies to the shape or
      * structure of the container (e.g., array length, object keys) rather than
@@ -15366,7 +15364,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface Constraint<T = unknown> extends GenerationConstraint<T> {
+    interface FilterConstraint<T = unknown> extends GenerationConstraint<T> {
       readonly order?: Order.Order<T> | undefined
     }
     /**
@@ -15375,7 +15373,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface DeclarationInput<T, Parameters extends ReadonlyArray<Schema_.Constraint>> {
+    interface DeclarationInput<T, Parameters extends ReadonlyArray<Constraint>> {
       readonly typeParameters: TypeParameters.Type<Parameters>
       readonly constraint: GenerationConstraint<T> | undefined
     }
@@ -15385,7 +15383,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface Declaration<T, Parameters extends ReadonlyArray<Schema_.Constraint>> {
+    interface Declaration<T, Parameters extends ReadonlyArray<Constraint>> {
       (input: DeclarationInput<T, Parameters>): SchemaAST.Link
     }
   }
