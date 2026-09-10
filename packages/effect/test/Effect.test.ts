@@ -3773,6 +3773,145 @@ describe("Effect", () => {
   })
 
   describe("cachedWithTTL", () => {
+    it.effect("selects ttl from each fresh exit without evaluating on cache hits", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<number>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.sync(() => ++count),
+          (exit: Exit.Exit<number>) => {
+            exits.push(exit)
+            return Exit.isSuccess(exit) && exit.value === 1 ? "1 second" : Duration.seconds(3)
+          }
+        )
+
+        assert.strictEqual(count, 0)
+        assert.deepStrictEqual(exits, [])
+        assert.strictEqual(yield* cached, 1)
+        yield* TestClock.adjust("999 millis")
+        assert.strictEqual(yield* cached, 1)
+        assert.deepStrictEqual(exits, [Exit.succeed(1)])
+
+        yield* TestClock.adjust("1 milli")
+        assert.strictEqual(yield* cached, 2)
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(yield* cached, 2)
+        yield* TestClock.adjust("2 seconds")
+        assert.strictEqual(yield* cached, 3)
+        assert.deepStrictEqual(exits, [Exit.succeed(1), Exit.succeed(2), Exit.succeed(3)])
+      }))
+
+    it.effect("caches failures for the ttl selected from their exit", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<never, string>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.suspend(() => Effect.fail(`failure-${++count}`)),
+          (exit: Exit.Exit<never, string>) => {
+            exits.push(exit)
+            return "1 second"
+          }
+        )
+
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("failure-1"))
+        yield* TestClock.adjust("999 millis")
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("failure-1"))
+        assert.deepStrictEqual(exits, [Exit.fail("failure-1")])
+        yield* TestClock.adjust("1 milli")
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("failure-2"))
+        assert.deepStrictEqual(exits, [Exit.fail("failure-1"), Exit.fail("failure-2")])
+      }))
+
+    it.effect("supports a piped callback that skips failures and caches successes", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<number, string>> = []
+        const cached = yield* Effect.suspend(() => ++count === 1 ? Effect.fail("boom") : Effect.succeed(count)).pipe(
+          Effect.cachedWithTTL((exit: Exit.Exit<number, string>) => {
+            exits.push(exit)
+            return Exit.isFailure(exit) ? 0 : "1 second"
+          })
+        )
+
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("boom"))
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2)])
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(yield* cached, 3)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
+      }))
+
+    it.effect("expires successful results immediately when the callback returns zero", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const cached = yield* Effect.cachedWithTTL(Effect.sync(() => ++count), () => 0)
+
+        assert.strictEqual(yield* cached, 1)
+        assert.strictEqual(yield* cached, 2)
+      }))
+
+    it.effect("keeps results when the callback returns infinity", () =>
+      Effect.gen(function*() {
+        let count = 0
+        let ttlCalls = 0
+        const cached = yield* Effect.cachedWithTTL(Effect.sync(() => ++count), () => {
+          ttlCalls++
+          return Duration.infinity
+        })
+
+        assert.strictEqual(yield* cached, 1)
+        yield* TestClock.adjust("1000 hours")
+        assert.strictEqual(yield* cached, 1)
+        assert.strictEqual(ttlCalls, 1)
+      }))
+
+    it.effect("shares pending work and starts the callback ttl at completion", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        let count = 0
+        const exits: Array<Exit.Exit<number>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.gen(function*() {
+            count++
+            yield* Deferred.await(release)
+            return count
+          }),
+          (exit: Exit.Exit<number>) => {
+            exits.push(exit)
+            return "1 second"
+          }
+        )
+
+        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("2 seconds")
+        const waiter = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(count, 1)
+        assert.deepStrictEqual(exits, [])
+
+        yield* Deferred.succeed(release, void 0)
+        assert.strictEqual(yield* Fiber.join(owner), 1)
+        assert.strictEqual(yield* Fiber.join(waiter), 1)
+        yield* TestClock.adjust("999 millis")
+        assert.strictEqual(yield* cached, 1)
+        assert.deepStrictEqual(exits, [Exit.succeed(1)])
+        yield* TestClock.adjust("1 milli")
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.succeed(1), Exit.succeed(2)])
+      }))
+
+    it.effect("preserves fixed ttl in the piped form", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const cached = yield* Effect.sync(() => ++count).pipe(Effect.cachedWithTTL("1 second"))
+
+        assert.strictEqual(yield* cached, 1)
+        yield* TestClock.adjust("999 millis")
+        assert.strictEqual(yield* cached, 1)
+        yield* TestClock.adjust("1 milli")
+        assert.strictEqual(yield* cached, 2)
+      }))
+
     it.effect("starts ttl from value creation", () =>
       Effect.gen(function*() {
         let count = 0
