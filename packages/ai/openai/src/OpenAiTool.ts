@@ -121,7 +121,7 @@ export const FileSearch = Tool.providerDefined({
     vector_store_ids: Generated.FileSearchTool.fields.vector_store_ids
   }),
   success: Schema.Struct({
-    status: Generated.FileSearchToolCall.fields.status,
+    status: Schema.Literal("completed"),
     queries: Generated.FileSearchToolCall.fields.queries,
     results: Generated.FileSearchToolCall.fields.results
   }),
@@ -283,6 +283,11 @@ export const Shell = Tool.providerDefined({
   })
 })
 
+const WebSearchSuccess = Schema.Struct({
+  action: Generated.WebSearchToolCall.fields.action,
+  status: Schema.Literal("completed")
+})
+
 const WebSearchFailure = Schema.Struct({
   action: Generated.WebSearchToolCall.fields.action,
   status: Schema.Literals(Generated.WebSearchToolCall.fields.status.literals.filter((status) => status !== "completed"))
@@ -320,10 +325,7 @@ export const WebSearch = Tool.providerDefined({
   parameters: Schema.Struct({
     action: Generated.WebSearchToolCall.fields.action
   }),
-  success: Schema.Struct({
-    action: Generated.WebSearchToolCall.fields.action,
-    status: Generated.WebSearchToolCall.fields.status
-  }),
+  success: WebSearchSuccess,
   failure: WebSearchFailure
 })
 
@@ -354,9 +356,6 @@ export const WebSearchPreview = Tool.providerDefined({
     user_location: Generated.WebSearchPreviewTool.fields.user_location,
     search_context_size: Generated.WebSearchPreviewTool.fields.search_context_size
   }),
-  success: Schema.Struct({
-    action: Generated.WebSearchToolCall.fields.action,
-    status: Generated.WebSearchToolCall.fields.status
-  }),
+  success: WebSearchSuccess,
   failure: WebSearchFailure
 })

@@ -2105,15 +2105,16 @@ const makeStreamResponse = Effect.fnUntraced(
               case "file_search_call": {
                 delete activeToolCalls[event.output_index]
                 const toolName = toolNameMapper.getCustomName("file_search")
-                const results = Predicate.isNotNullish(event.item.results)
-                  ? { results: event.item.results }
-                  : undefined
                 parts.push({
                   type: "tool-result",
                   id: event.item.id,
                   name: toolName,
                   isFailure: event.item.status !== "completed",
-                  result: { ...results, status: event.item.status, queries: event.item.queries },
+                  result: {
+                    status: event.item.status,
+                    queries: event.item.queries,
+                    results: event.item.results ?? null
+                  },
                   providerExecuted: true
                 })
                 break
