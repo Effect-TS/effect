@@ -447,9 +447,10 @@ export interface FileOptions extends ThemeOptions {
  */
 export interface SelectOptions<A> extends ThemeOptions {
   /**
-   * The message to display in the prompt.
+   * The message to display in the prompt. When omitted, the prompt renders
+   * only the choice list, without a header line.
    */
-  readonly message: string
+  readonly message?: string | undefined
   /**
    * The choices to display to the user.
    */
@@ -468,6 +469,10 @@ export interface SelectOptions<A> extends ThemeOptions {
  * @since 4.0.0
  */
 export interface AutoCompleteOptions<A> extends SelectOptions<A> {
+  /**
+   * The message to display in the prompt.
+   */
+  readonly message: string
   /**
    * The label used for the filter display (defaults to "filter").
    */
@@ -2641,7 +2646,9 @@ const handleFileProcess = (options: FileOptionsReq) => {
   })
 }
 
-interface SelectOptionsReq<A> extends OptionsReq<SelectOptions<A>> {}
+interface SelectOptionsReq<A> extends Omit<OptionsReq<SelectOptions<A>>, "message"> {
+  readonly message?: string | undefined
+}
 interface MultiSelectOptionsReq extends MultiSelectOptions {}
 
 type MultiSelectState = {
@@ -2768,7 +2775,7 @@ const renderMultiSelectNextFrame = Effect.fnUntraced(
     const trailingSymbol = annotateSymbol(figures.pointerSmall, figures.mutedColor)
     const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options)
     const error = renderMultiSelectError(state, figures.pointer, figures)
-    return Ansi.cursorHide + promptMsg + "\n" + choices + error
+    return Ansi.cursorHide + withSelectHeader(promptMsg, choices) + error
   }
 )
 
@@ -2781,7 +2788,7 @@ const renderMultiSelectSubmission = Effect.fnUntraced(
     const selectedText = selectedChoices.join(", ")
     const leadingSymbol = annotateSymbol(figures.tick, figures.successColor)
     const trailingSymbol = annotateSymbol(figures.ellipsis, figures.mutedColor)
-    const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options)
+    const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options) ?? leadingSymbol
     return promptMsg + " " + Ansi.annotate(selectedText, figures.submittedColor) + "\n"
   }
 )
@@ -2843,7 +2850,7 @@ const handleMultiSelectClear = <A>(options: SelectOptionsReq<A>) =>
     const promptText = renderSelectOutput(figures.prefix, figures.pointerSmall, options, { plain: true })
     const choicesText = renderMultiSelectChoices(state, options, figures, { plain: true })
     const errorText = renderMultiSelectError(state, figures.pointer, figures, { plain: true })
-    const clearOutput = clearOutputWithError(`${promptText}\n${choicesText}`, columns, errorText)
+    const clearOutput = clearOutputWithError(withSelectHeader(promptText, choicesText), columns, errorText)
     return clearOutput + clearPrompt
   })
 
@@ -3207,7 +3214,9 @@ type AutoCompleteState = {
   readonly filtered: ReadonlyArray<number>
 }
 
-interface SelectOptionsReq<A> extends OptionsReq<SelectOptions<A>> {}
+interface SelectOptionsReq<A> extends Omit<OptionsReq<SelectOptions<A>>, "message"> {
+  readonly message?: string | undefined
+}
 interface AutoCompleteOptionsReq<A> extends OptionsReq<AutoCompleteOptions<A>> {}
 
 const filterAutoCompleteChoices = <A>(choices: ReadonlyArray<SelectChoice<A>>, query: string) => {
@@ -3244,7 +3253,13 @@ const renderSelectOutput = <A>(
   trailingSymbol: string,
   options: SelectOptionsReq<A>,
   renderOptions?: RenderOptions | undefined
-) => renderPrompt("", options.message, leadingSymbol, trailingSymbol, renderOptions)
+): string | undefined =>
+  options.message === undefined
+    ? undefined
+    : renderPrompt("", options.message, leadingSymbol, trailingSymbol, renderOptions)
+
+const withSelectHeader = (header: string | undefined, body: string): string =>
+  header === undefined ? body : header + "\n" + body
 
 const renderAutoCompleteFilter = <A>(
   state: AutoCompleteState,
@@ -3406,7 +3421,7 @@ const renderSelectNextFrame = Effect.fnUntraced(function*<A>(state: SelectState,
   const leadingSymbol = annotateSymbol(figures.prefix, figures.primaryColor)
   const trailingSymbol = annotateSymbol(figures.pointerSmall, figures.mutedColor)
   const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options)
-  return Ansi.cursorHide + promptMsg + "\n" + choices
+  return Ansi.cursorHide + withSelectHeader(promptMsg, choices)
 })
 
 const renderAutoCompleteNextFrame = Effect.fnUntraced(function*<A>(
@@ -3426,7 +3441,7 @@ const renderSelectSubmission = Effect.fnUntraced(function*<A>(state: SelectState
   const selected = options.choices[state].title
   const leadingSymbol = annotateSymbol(figures.tick, figures.successColor)
   const trailingSymbol = annotateSymbol(figures.ellipsis, figures.mutedColor)
-  const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options)
+  const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options) ?? leadingSymbol
   return promptMsg + " " + Ansi.annotate(selected, figures.submittedColor) + "\n"
 })
 
@@ -3527,7 +3542,7 @@ const handleSelectClear = <A>(options: SelectOptionsReq<A>) =>
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
     const promptText = renderSelectOutput(figures.prefix, figures.pointerSmall, options, { plain: true })
     const choicesText = renderSelectChoices(state, options, figures, { plain: true })
-    const clearOutput = eraseText(`${promptText}\n${choicesText}`, columns)
+    const clearOutput = eraseText(withSelectHeader(promptText, choicesText), columns)
     return clearOutput + clearPrompt
   })
 

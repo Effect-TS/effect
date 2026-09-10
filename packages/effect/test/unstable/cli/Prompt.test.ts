@@ -402,6 +402,48 @@ describe("Prompt.String", () => {
 })
 
 describe("Prompt.Select", () => {
+  it.effect("renders only the choice list when message is omitted", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.Select({
+        choices: [
+          { title: "First", value: "first" },
+          { title: "Second", value: "second" }
+        ]
+      }))
+
+      assert.strictEqual(result, "second")
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      const firstLine = frames[0]?.split("\n")[0] ?? ""
+      assert.include(firstLine, "First")
+      assert.include(frames.at(-1) ?? "", "Second")
+      assert.notInclude(frames.at(-1) ?? "", "First")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("renders only the choice list for a multi-select without a message", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.MultiSelect({
+        choices: [
+          { title: "First", value: "first" },
+          { title: "Second", value: "second" }
+        ]
+      }))
+
+      assert.deepStrictEqual(result, ["first"])
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      const firstLine = frames[0]?.split("\n")[0] ?? ""
+      assert.include(firstLine, "Select All")
+      assert.include(frames.at(-1) ?? "", "First")
+      assert.notInclude(frames.at(-1) ?? "", "Select All")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("renders a per-prompt theme across redraws", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("down")
