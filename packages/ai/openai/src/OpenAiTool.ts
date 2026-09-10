@@ -123,14 +123,14 @@ export const FileSearch = Tool.providerDefined({
   success: Schema.Struct({
     status: Schema.Literal("completed"),
     queries: Generated.FileSearchToolCall.fields.queries,
-    results: Generated.FileSearchToolCall.fields.results
+    results: Generated.FileSearchToolCall.fields.results.schema
   }),
   failure: Schema.Struct({
     status: Schema.Literals(
       Generated.FileSearchToolCall.fields.status.literals.filter((status) => status !== "completed")
     ),
     queries: Generated.FileSearchToolCall.fields.queries,
-    results: Generated.FileSearchToolCall.fields.results
+    results: Generated.FileSearchToolCall.fields.results.schema
   })
 })
 
