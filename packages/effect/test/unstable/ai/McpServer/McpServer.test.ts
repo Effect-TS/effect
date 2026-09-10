@@ -15,6 +15,7 @@ import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
+import * as TestClock from "effect/testing/TestClock"
 import * as AiError from "effect/unstable/ai/AiError"
 import * as McpCore from "effect/unstable/ai/internal/mcpCore"
 import type * as McpProtocolInternal from "effect/unstable/ai/internal/mcpProtocol"
@@ -208,7 +209,181 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
   return content.text
 }
 
+const collectGarbage = Effect.promise(async () => {
+  const { setFlagsFromString } = await import("node:v8")
+  const { runInNewContext } = await import("node:vm")
+  setFlagsFromString("--expose_gc")
+  const collect = runInNewContext("gc") as () => void
+  setFlagsFromString("--no-expose_gc")
+  // WeakRef targets remain alive until the current job ends, so collect across jobs.
+  for (let i = 0; i < 8; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    collect()
+  }
+})
+
 describe("McpServer", () => {
+  // Request metadata retention is a server lifecycle concern, not an MCP wire requirement.
+  // This collection hook is Node-specific; other runtimes still run the request lifecycle tests below.
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "should release request metadata when HTTP requests complete without server notifications",
+    () =>
+      Effect.gen(function*() {
+        const references: Array<WeakRef<object>> = []
+        const controls: Array<WeakRef<object>> = []
+        const harness = yield* makeHttpHarness(
+          Layer.effectDiscard(Effect.gen(function*() {
+            const server = yield* McpServer.McpServer
+            yield* server.addTool({
+              tool: new McpSchema.Tool({ name: "Capture", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () =>
+                Effect.gen(function*() {
+                  const context = yield* McpSchema.McpRequestContext
+                  references.push(new WeakRef(context.requestMetadata!))
+                  controls.push(new WeakRef({ unrelated: true }))
+                  return new McpSchema.CallToolResult({ content: [] })
+                })
+            })
+          })).pipe(Layer.provideMerge(makeServerLayer({
+            name: "HttpRequestLifecycle",
+            protocols: [McpProtocol.v2026_07_28]
+          })))
+        )
+        for (let id = 0; id < 4; id++) {
+          const response = yield* harness.post({
+            jsonrpc: "2.0",
+            id,
+            method: "tools/call",
+            params: {
+              name: "Capture",
+              arguments: {},
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                marker: `request-${id}`
+              }
+            }
+          }, { "mcp-protocol-version": "2026-07-28", "mcp-method": "tools/call", "mcp-name": "Capture" })
+          assert.strictEqual(response.status, 200)
+          yield* Effect.promise(() => response.text())
+        }
+        assert.strictEqual(references.length, 4)
+        yield* collectGarbage
+        assert.isTrue(controls.every((ref) => ref.deref() === undefined), "GC must collect unreachable controls")
+        assert.isTrue(
+          references.every((ref) => ref.deref() === undefined),
+          "completed request metadata must be collectable"
+        )
+      })
+  )
+
+  // Cancelled reverse requests may never receive a reply. Releasing their routing state is
+  // a server lifecycle concern, so this GC regression belongs here rather than conformance.
+  // https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation#behavior-requirements
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "should release disconnected clients when a reverse request is cancelled without a reply",
+    () =>
+      Effect.gen(function*() {
+        const refs = new Map<number, WeakRef<object>>()
+        const connected = new Set([1, 2])
+        const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const disconnects = yield* Queue.unbounded<number>()
+        type Receive = (
+          clientId: number,
+          message: RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded
+        ) => Effect.Effect<void>
+        const ready = yield* Deferred.make<Receive>()
+        const cancelled = yield* Deferred.make<void>()
+        const transport = yield* RpcServer.Protocol.make((write) =>
+          Deferred.succeed(ready, write as Receive).pipe(Effect.as({
+            disconnects,
+            send: (_clientId, message) => Queue.offer(outbound, message).pipe(Effect.asVoid),
+            end: () => Effect.void,
+            clientIds: Effect.succeed(connected),
+            initialMessage: Effect.succeedNone,
+            supportsAck: false,
+            supportsTransferables: false,
+            supportsSpanPropagation: false,
+            supportsNotifications: true,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          }))
+        )
+        const toolkit = Toolkit.make(Tool.make("Probe", {
+          success: Schema.String,
+          dependencies: [McpSchema.McpServerClient]
+        }))
+        yield* Layer.build(
+          McpServer.toolkit(toolkit).pipe(
+            Layer.provide(toolkit.toLayer({
+              Probe: () =>
+                Effect.gen(function*() {
+                  const client = yield* McpSchema.McpServerClient
+                  refs.set(client.clientId, new WeakRef(client.clientInfo))
+                  if (client.clientId === 2) return "control"
+                  yield* McpServer.elicit({ message: "Approve", schema: Schema.Struct({ approved: Schema.Boolean }) })
+                    .pipe(
+                      Effect.orDie,
+                      Effect.onInterrupt(() => Deferred.succeed(cancelled, undefined))
+                    )
+                  return "done"
+                })
+            })),
+            Layer.provide(
+              McpServer.layer({ name: "ReverseLifetime", version: "1", protocols: [McpProtocol.v2025_11_25] }).pipe(
+                Layer.provide(Layer.succeed(RpcServer.Protocol, transport))
+              )
+            )
+          )
+        )
+        const send = yield* Deferred.await(ready)
+        for (const clientId of [1, 2]) {
+          yield* send(clientId, {
+            _tag: "Request",
+            id: clientId,
+            tag: "initialize",
+            payload: {
+              protocolVersion: "2025-11-25",
+              capabilities: { elicitation: { form: {} } },
+              clientInfo: { name: `client-${clientId}`, version: "1" }
+            },
+            headers: []
+          })
+          assert.strictEqual((yield* Queue.take(outbound))._tag, "Exit")
+          yield* send(clientId, {
+            _tag: "Request",
+            id: 10 + clientId,
+            tag: "tools/call",
+            payload: { name: "Probe" },
+            headers: []
+          })
+          const outboundMessage = yield* Queue.take(outbound)
+          assert.strictEqual(outboundMessage._tag, clientId === 1 ? "Request" : "Exit")
+          if (clientId === 1) {
+            yield* send(clientId, {
+              _tag: "Request",
+              id: "",
+              tag: "notifications/cancelled",
+              isNotification: true,
+              payload: { requestId: 11 },
+              headers: []
+            })
+            yield* Deferred.await(cancelled)
+            // The reverse client emits a control Interrupt; consume it before the next connection.
+            assert.strictEqual((yield* Queue.take(outbound))._tag, "Interrupt")
+          }
+          yield* send(clientId, { _tag: "Eof" })
+          connected.delete(clientId)
+          yield* Queue.offer(disconnects, clientId)
+        }
+        // Allow the reverse-client cache to expire its 10-second idle entries.
+        yield* TestClock.adjust("11 seconds")
+        yield* collectGarbage
+        assert.strictEqual(refs.get(2)!.deref(), undefined, "control client must be collectible")
+        assert.strictEqual(refs.get(1)!.deref(), undefined, "cancelled reverse client must be collectible")
+      })
+  )
+
   // This server interrupts non-resumable HTTP work on disconnect; this is not an MCP conformance requirement.
   it.effect("should interrupt tool work when its non-resumable HTTP response is disconnected", () =>
     Effect.gen(function*() {

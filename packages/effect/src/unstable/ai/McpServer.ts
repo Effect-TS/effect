@@ -29,6 +29,7 @@ import { CurrentLogLevel, Scheduler } from "../../References.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import * as Scope from "../../Scope.ts"
 import * as Sink from "../../Sink.ts"
 import type { Stdio } from "../../Stdio.ts"
 import * as Stream from "../../Stream.ts"
@@ -742,6 +743,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
+  const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
+    const waiting = reverseRequestClients.get(requestId)
+    if (waiting === undefined) return
+    const remaining = waiting.filter((entry) => entry !== key)
+    if (remaining.length === 0) reverseRequestClients.delete(requestId)
+    else reverseRequestClients.set(requestId, remaining)
+  }
   // A bounded PubSub would let one slow listener block the shared worker and
   // legacy delivery. Each request scope releases its subscription on exit.
   const serverNotifications = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
@@ -828,7 +836,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 tag: request.tag,
                 payload: request.payload,
                 headers: []
-              })
+              }).pipe(Effect.onError(() => Effect.sync(() => removeReverseRequestClient(requestId, key))))
+            }
+            if (request._tag === "Interrupt") {
+              // A cancelled reverse request may never receive a reply.
+              removeReverseRequestClient(requestKey(request.requestId), key)
             }
             // Ack & co are not part of FromServerEncoded, but the JSON-RPC
             // serializer encodes them symmetrically for reverse control flow
@@ -997,6 +1009,20 @@ const runWithRuntime = Effect.fnUntraced(function*(
               ? runtime.prepareRequest(clientId, headers, request)
               : Effect.succeed(cancellationRequest.prepared)
             return prepare.pipe(
+              Effect.tap(() =>
+                isHttp && !clientProtocols.has(clientId)
+                  // HTTP EOF only ends the request body; handlers and streamed replies may still be running.
+                  ? Scope.addFinalizer(
+                    Context.getUnsafe(fiber.context, Scope.Scope),
+                    Effect.sync(() => {
+                      activeRequests.delete(clientId)
+                      clientProtocols.delete(clientId)
+                      clientProfiles.delete(clientId)
+                      runtime.disconnect(clientId)
+                    })
+                  )
+                  : Effect.void
+              ),
               Effect.flatMap((prepared) => {
                 const session = prepared.binding
                 const selectedProtocol = prepared.protocol
@@ -1197,9 +1223,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
               return Effect.void
             }
             if (reverseKey !== undefined && requestId !== undefined) {
-              const remaining = waiting!.filter((key) => key !== reverseKey)
-              if (remaining.length === 0) reverseRequestClients.delete(requestId)
-              else reverseRequestClients.set(requestId, remaining)
+              removeReverseRequestClient(requestId, reverseKey)
             }
             const targetClientId = reverseKey?.clientId ?? clientId
             const selectedProtocol = getProtocolForClient(clientProtocols, targetClientId, runtime.protocols[0])
