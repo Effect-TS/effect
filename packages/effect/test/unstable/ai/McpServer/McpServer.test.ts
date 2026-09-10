@@ -35,7 +35,7 @@ import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
-import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
@@ -209,6 +209,39 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  // This server interrupts non-resumable HTTP work on disconnect; this is not an MCP conformance requirement.
+  it.effect("should interrupt tool work when its non-resumable HTTP response is disconnected", () =>
+    Effect.gen(function*() {
+      const interrupted = yield* Deferred.make<void>()
+      const protocol = McpProtocol.v2025_03_26
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            server.notifications["notifications/message"]({ level: "error", data: "running" }).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+            )
+        })
+      ))
+      const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+        makeServerLayer({ name: "HttpDisconnect", protocols: [protocol] })
+      )))
+      const headers = yield* initializeHttpSession(harness, protocol)
+      const response = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "wait",
+        method: "tools/call",
+        params: { name: "Wait", arguments: {} }
+      }, headers)
+      const stream = makeMcpSseReader(response)
+      yield* Effect.addFinalizer(() => stream.cancel)
+      assert.strictEqual((yield* stream.take()).method, "notifications/message")
+      yield* stream.cancel
+      yield* Deferred.await(interrupted)
+    }))
+
   it.effect("should frame HTTP batch notifications and results as separate SSE events", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(

@@ -643,6 +643,7 @@ export class McpServer extends Context.Service<McpServer, {
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
+const cancelledHttpResponses = new WeakMap<object, string | number>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 interface ActiveRequest {
@@ -934,7 +935,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
           activeRequests.delete(clientId)
         }
         if (cancelled === true) {
-          return Effect.void
+          if (!isHttp) return Effect.void
+          cancelledHttpResponses.set(response, response.requestId)
+          return protocol.send(clientId, response)
         }
         if (
           response.exit._tag === "Failure" &&
@@ -1055,12 +1058,24 @@ const runWithRuntime = Effect.fnUntraced(function*(
                         return selectedProtocol.normalizeCancellation(payload).pipe(
                           Effect.flatMap((cancellation) => {
                             const key = requestKey(cancellation.requestId)
-                            const requests = activeRequests.get(clientId)
-                            if (requests?.has(key) !== true) {
+                            let ownerClientId = clientId
+                            if (isHttp) {
+                              if (session === undefined) {
+                                return Effect.void
+                              }
+                              // Each HTTP POST has its own transport ID, but cancellation belongs to the session.
+                              const owner = Array.from(activeRequests).find(([, requests]) =>
+                                requests.get(key)?.prepared.binding === session
+                              )
+                              if (owner === undefined) {
+                                return Effect.void
+                              }
+                              ownerClientId = owner[0]
+                            }
+                            if (!cancelRequest(ownerClientId, cancellation.requestId)) {
                               return Effect.void
                             }
-                            requests.set(key, { ...requests.get(key)!, cancelled: true })
-                            return f(clientId, {
+                            return f(ownerClientId, {
                               _tag: "Interrupt",
                               requestId: cancellation.requestId
                             })
@@ -1719,10 +1734,32 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
     codecFor: serialization.codecFor,
     makeUnsafe: () => {
       const parser = serialization.makeUnsafe()
+      const cancelledIds = new Set<string | number>()
       return {
         decode: parser.decode,
         encode: (response) => {
-          const encoded = parser.encode(response)
+          if (Predicate.isReadonlyObject(response)) {
+            const cancelledId = cancelledHttpResponses.get(response)
+            if (cancelledId !== undefined) {
+              cancelledHttpResponses.delete(response)
+              cancelledIds.add(cancelledId)
+            }
+          }
+          let encoded = parser.encode(response)
+          if (typeof encoded === "string" && cancelledIds.size > 0) {
+            // Count cancelled completions toward the batch, but never write their responses.
+            // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
+            const keep = (message: unknown) =>
+              !(Predicate.isReadonlyObject(message) && !Predicate.hasProperty(message, "method") &&
+                (typeof message.id === "string" || typeof message.id === "number") && cancelledIds.delete(message.id))
+            const message: unknown = JSON.parse(encoded)
+            if (Array.isArray(message)) {
+              const remaining = message.filter(keep)
+              encoded = remaining.length === 0 ? undefined : JSON.stringify(remaining)
+            } else if (!keep(message)) {
+              encoded = undefined
+            }
+          }
           // Preserve message boundaries when the HTTP transport joins buffered chunks.
           return typeof encoded === "string" ? `${encoded}\n` : encoded
         }

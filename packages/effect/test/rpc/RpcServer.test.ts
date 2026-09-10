@@ -1,8 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Layer, Ref, Schema, Sink, Stdio, Stream } from "effect"
-import { HttpRouter } from "effect/unstable/http"
+import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Sink, Stdio, Stream } from "effect"
+import { Headers, HttpRouter } from "effect/unstable/http"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
+import * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/unstable/socket"
 
 const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
@@ -47,6 +48,70 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  it.effect("should accept only cancellation of an active request when client input has ended", () =>
+    Effect.gen(function*() {
+      const entered = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const releaseOther = yield* Deferred.make<void>()
+      const group = RpcGroup.make(Rpc.make("wait", {
+        payload: { block: Schema.Boolean },
+        success: Schema.String
+      }))
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
+      const server = yield* RpcServer.makeNoSerialization(group, {
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(group.toLayerHandler("wait", ({ block }) =>
+        block
+          ? Deferred.succeed(entered, void 0).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+          )
+          : Deferred.await(releaseOther).pipe(Effect.as("kept")))))
+      const request = {
+        _tag: "Request" as const,
+        id: RpcMessage.RequestId("same"),
+        tag: "wait" as const,
+        payload: { block: true },
+        headers: Headers.empty
+      }
+      yield* server.write(1, request)
+      yield* server.write(2, { ...request, payload: { block: false } })
+      yield* Deferred.await(entered)
+      yield* server.write(1, RpcMessage.constEof)
+      yield* server.write(2, RpcMessage.constEof)
+      for (
+        const message of [
+          { ...request, id: RpcMessage.RequestId("new") },
+          { _tag: "Ack" as const, requestId: request.id },
+          RpcMessage.constEof,
+          { _tag: "Interrupt" as const, requestId: RpcMessage.RequestId("unknown"), interruptors: [] }
+        ]
+      ) {
+        assert(Exit.isFailure(yield* Effect.exit(server.write(1, message))))
+      }
+      assert(Exit.isSuccess(
+        yield* Effect.exit(server.write(1, {
+          _tag: "Interrupt",
+          requestId: request.id,
+          interruptors: []
+        }))
+      ))
+      yield* Deferred.await(interrupted)
+      const cancelled = yield* Queue.take(messages)
+      assert.strictEqual(cancelled._tag, "Exit")
+      assert.strictEqual(cancelled.clientId, 1)
+      if (cancelled._tag === "Exit") assert(Exit.isFailure(cancelled.exit))
+      assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 1 })
+      yield* Deferred.succeed(releaseOther, void 0)
+      assert.deepStrictEqual(yield* Queue.take(messages), {
+        _tag: "Exit",
+        clientId: 2,
+        requestId: request.id,
+        exit: Exit.succeed("kept")
+      })
+      assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 2 })
+    }))
+
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
     Effect.gen(function*() {
       const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()

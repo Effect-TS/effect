@@ -182,7 +182,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             serverClient: new Rpc.ServerClient(clientId)
           }
           clients.set(clientId, client)
-        } else if (client.ended) {
+        } else if (
+          client.ended &&
+          (message._tag !== "Interrupt" || !client.fibers.has(message.requestId))
+        ) {
           return Effect.interrupt
         }
 
