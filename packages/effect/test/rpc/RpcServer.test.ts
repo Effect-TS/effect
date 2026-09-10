@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Sink, Stdio, Stream } from "effect"
-import { Headers, HttpRouter } from "effect/unstable/http"
+import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
+import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
 import * as RpcMessage from "effect/unstable/rpc/RpcMessage"
@@ -162,6 +162,73 @@ describe("RpcServer", () => {
       yield* Fiber.join(first)
       yield* Fiber.join(overflow)
       assert.strictEqual(yield* Ref.get(writes), 10)
+    }))
+
+  it.effect("should continue sending to other clients when a backpressured HTTP client disconnects", () =>
+    Effect.gen(function*() {
+      const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect({ streamBufferSize: 1 }).pipe(
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const connected = yield* Queue.unbounded<number>()
+      const interrupted = yield* Queue.unbounded<RpcMessage.FromClientEncoded>()
+      yield* protocol.run((clientId, message) => {
+        if (message._tag === "Request") {
+          return Queue.offer(connected, clientId).pipe(
+            Effect.andThen(protocol.send(clientId, { _tag: "Pong" }))
+          )
+        }
+        return message._tag === "Interrupt" ? Queue.offer(interrupted, message) : Effect.void
+      }).pipe(Effect.forkScoped)
+
+      const scope = yield* Scope.Scope
+      const firstScope = yield* Scope.fork(scope)
+      const request = HttpServerRequest.fromWeb(
+        new Request("http://test/rpc", {
+          method: "POST",
+          body: `{"_tag":"Request","id":1,"tag":"events","payload":{},"headers":[]}\n`
+        })
+      )
+      yield* httpEffect.pipe(
+        Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+        Effect.provideService(Scope.Scope, firstScope)
+      )
+      const firstId = yield* Queue.take(connected)
+      const response = yield* httpEffect.pipe(
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(
+            new Request(
+              "http://test/rpc",
+              { method: "POST", body: `{"_tag":"Request","id":2,"tag":"events","payload":{},"headers":[]}\n` }
+            )
+          )
+        )
+      )
+      const secondId = yield* Queue.take(connected)
+      yield* protocol.send(firstId, { _tag: "Pong" })
+      const delivered = yield* Deferred.make<void>()
+      const sender = yield* protocol.send(firstId, { _tag: "Pong" }).pipe(
+        Effect.andThen(protocol.send(secondId, { _tag: "Pong" })),
+        Effect.andThen(Deferred.succeed(delivered, undefined)),
+        Effect.forkScoped
+      )
+      yield* Effect.yieldNow
+      assert.isFalse(yield* Deferred.isDone(delivered))
+
+      yield* Scope.close(firstScope, Exit.void)
+      yield* Effect.yieldNow
+      assert.isTrue(yield* Deferred.isDone(delivered))
+      yield* Fiber.join(sender)
+      assert.deepStrictEqual(yield* Queue.take(interrupted), {
+        _tag: "Interrupt",
+        requestId: RpcMessage.RequestId(1)
+      })
+      yield* protocol.end(secondId)
+      const body = yield* Effect.promise(() => HttpServerResponse.toWeb(response).text())
+      assert.deepStrictEqual(body.trim().split("\n").map((line) => JSON.parse(line)), [
+        { _tag: "Pong" },
+        { _tag: "Pong" }
+      ])
     }))
 
   it.effect("applies backpressure to framed HTTP responses by default", () =>

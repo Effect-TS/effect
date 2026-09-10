@@ -1257,6 +1257,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
         notificationDelivery.consumers--
       })
   )
+  const notificationTails = new Map<number, Deferred.Deferred<void>>()
   yield* Queue.take(notifications).pipe(
     Effect.flatMap(Effect.fnUntraced(function*(queued) {
       const { delivered, notification, targetClientId, requestContext, requestHeaders } = queued
@@ -1278,6 +1279,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
         : targetClientId === undefined
         ? isHttp ? clientProtocols.keys() : runtime.deliveryClientIds()
         : [targetClientId]
+      const deliveries: Array<Effect.Effect<void>> = []
+      let hasOriginDelivery = false
       for (const clientId of deliveryClientIds) {
         if (targetClientId !== undefined && clientId !== targetClientId) {
           continue
@@ -1297,7 +1300,15 @@ const runWithRuntime = Effect.fnUntraced(function*(
         if (!selectedProtocol) {
           continue
         }
-        yield* Effect.gen(function*() {
+        // Reserve delivery order before forking so one blocked client cannot hold up another.
+        const previous = notificationTails.get(clientId)
+        const isOrigin = clientId === requestContext?.clientId
+        hasOriginDelivery ||= isOrigin
+        // The originating request awaits its own delivery, not broadcast delivery to unrelated clients.
+        const completed = isOrigin ? delivered : Deferred.makeUnsafe<void>()
+        notificationTails.set(clientId, completed)
+        const delivery = Effect.gen(function*() {
+          if (previous !== undefined) yield* Deferred.await(previous)
           const projected = yield* selectedProtocol.projectNotification(notification)
           if (projected === undefined) {
             return
@@ -1345,9 +1356,19 @@ const runWithRuntime = Effect.fnUntraced(function*(
             headers: [],
             isNotification: true
           })
-        }).pipe(Effect.ignoreCause)
+        }).pipe(
+          Effect.ignoreCause,
+          Effect.ensuring(Effect.sync(() => {
+            Deferred.doneUnsafe(completed, Exit.void)
+            if (notificationTails.get(clientId) === completed) notificationTails.delete(clientId)
+          }))
+        )
+        deliveries.push(delivery)
       }
-      yield* Deferred.succeed(delivered, undefined)
+      if (!hasOriginDelivery) yield* Deferred.succeed(delivered, undefined)
+      yield* Effect.all(deliveries, { concurrency: "unbounded", discard: true }).pipe(
+        Effect.forkScoped({ startImmediately: true })
+      )
     })),
     Effect.ignoreCause,
     Effect.forever,

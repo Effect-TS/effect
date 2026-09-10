@@ -668,6 +668,114 @@ describe("McpServer", () => {
       assert.strictEqual((yield* subscription.take()).method, "notifications/tools/list_changed")
     }))
 
+  it.effect("should deliver notifications and results to other clients when one client stops reading", () =>
+    Effect.gen(function*() {
+      const outbound = yield* Queue.unbounded<{ clientId: number; message: RpcMessage.FromServerEncoded }>()
+      const disconnects = yield* Queue.unbounded<number>()
+      const blocked = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const ready = yield* Deferred.make<
+        (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+      >()
+      const transport = yield* RpcServer.Protocol.make((write) =>
+        Deferred.succeed(ready, write).pipe(Effect.as({
+          disconnects,
+          send: (clientId, message) =>
+            Effect.gen(function*() {
+              if (
+                clientId === 1 && message._tag === "Request" && (message.payload as { data?: string }).data === "first"
+              ) {
+                yield* Deferred.succeed(blocked, undefined)
+                yield* Deferred.await(release)
+              }
+              yield* Queue.offer(outbound, { clientId, message })
+            }),
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set([1, 2])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: true,
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+        }))
+      )
+      const context = yield* Layer.build(
+        McpServer.layer({ name: "NotificationIsolation", version: "1.0.0", protocols: [McpProtocol.v2025_11_25] })
+          .pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, transport)))
+      )
+      const server = Context.get(context, McpServer.McpServer)
+      yield* server.addTool({
+        tool: new McpSchema.Tool({ name: "Log", inputSchema: { type: "object" } }),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.gen(function*() {
+            yield* Effect.forEach(["first", "second"], (data) =>
+              server.notifications["notifications/message"]({ level: "error", data }), { concurrency: "unbounded" })
+            if ((yield* McpSchema.McpRequestContext).clientId === 2) {
+              yield* server.addTool({
+                tool: new McpSchema.Tool({ name: "Dynamic", inputSchema: { type: "object" } }),
+                annotations: Context.empty(),
+                handle: () =>
+                  Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+              })
+            }
+            return new McpSchema.CallToolResult({ content: [] })
+          })
+      })
+      const take = Effect.fnUntraced(function*(clientId: number) {
+        const event = yield* Queue.take(outbound)
+        assert.strictEqual(event.clientId, clientId)
+        return event.message
+      })
+      const send = yield* Deferred.await(ready)
+      for (const clientId of [1, 2]) {
+        yield* send(clientId, {
+          _tag: "Request",
+          id: "initialize",
+          tag: "initialize",
+          headers: [],
+          payload: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "client", version: "1" } }
+        })
+        assert.deepInclude(yield* take(clientId), { _tag: "Exit", requestId: "initialize" })
+        yield* send(clientId, {
+          _tag: "Request",
+          id: "",
+          tag: "notifications/initialized",
+          payload: {},
+          headers: [],
+          isNotification: true
+        })
+      }
+      const request = { _tag: "Request", id: "log", tag: "tools/call", payload: { name: "Log" }, headers: [] } as const
+      yield* send(1, request)
+      yield* Deferred.await(blocked)
+      yield* send(2, request)
+      for (const data of ["first", "second"]) {
+        assert.deepInclude(yield* take(2), {
+          _tag: "Request",
+          tag: "notifications/message",
+          payload: { level: "error", data }
+        })
+      }
+      assert.deepInclude(yield* take(2), { _tag: "Request", tag: "notifications/tools/list_changed" })
+      assert.deepInclude(yield* take(2), { _tag: "Exit", requestId: "log" })
+      yield* Deferred.succeed(release, undefined)
+      for (const data of ["first", "second"]) {
+        assert.deepInclude(yield* take(1), {
+          _tag: "Request",
+          tag: "notifications/message",
+          payload: { level: "error", data }
+        })
+      }
+      const remaining = yield* Effect.all([take(1), take(1)])
+      assert.strictEqual(remaining.filter((message) => message._tag === "Exit").length, 1)
+      assert.deepInclude(remaining.find((message) => message._tag === "Exit"), { requestId: "log" })
+      assert.deepInclude(remaining.find((message) => message._tag === "Request"), {
+        tag: "notifications/tools/list_changed"
+      })
+    }))
+
   it.effect("should suppress cancelled responses when a custom transport handles MCP messages", () =>
     Effect.gen(function*() {
       const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()

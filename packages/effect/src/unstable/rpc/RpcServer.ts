@@ -1129,10 +1129,13 @@ export const makeProtocolWithHttpEffect: (
       clientIds.delete(id)
       Queue.offerUnsafe(disconnects, id)
       if (queue.state._tag === "Done") return Effect.void
-      return Effect.forEach(
-        requestIds,
-        (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
-        { discard: true }
+      return Effect.andThen(
+        Queue.shutdown(queue),
+        Effect.forEach(
+          requestIds,
+          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
+          { discard: true }
+        )
       )
     })
     clients.set(id, client)
