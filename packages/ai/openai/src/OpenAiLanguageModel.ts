@@ -1348,8 +1348,8 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.id,
             name: toolName,
-            isFailure: false,
-            result: { outputs: part.outputs },
+            isFailure: part.status !== "completed",
+            result: { status: part.status, outputs: part.outputs ?? null },
             providerExecuted: true
           })
           break
@@ -1422,8 +1422,10 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.id,
             name: toolName,
-            isFailure: false,
-            result: { result: part.result }
+            isFailure: part.status !== "completed",
+            result: part.status === "completed"
+              ? { result: part.result }
+              : { status: part.status, result: part.result }
           })
           break
         }
@@ -1463,7 +1465,7 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: toolId,
             name: toolName,
-            isFailure: false,
+            isFailure: Predicate.isNotNullish(part.error),
             providerExecuted: true,
             result: {
               type: "mcp_call",
@@ -2071,8 +2073,8 @@ const makeStreamResponse = Effect.fnUntraced(
                   type: "tool-result",
                   id: event.item.id,
                   name: toolName,
-                  isFailure: false,
-                  result: { outputs: event.item.outputs },
+                  isFailure: event.item.status !== "completed",
+                  result: { status: event.item.status, outputs: event.item.outputs ?? null },
                   providerExecuted: true
                 })
                 break
@@ -2170,8 +2172,10 @@ const makeStreamResponse = Effect.fnUntraced(
                   type: "tool-result",
                   id: event.item.id,
                   name: toolName,
-                  isFailure: false,
-                  result: { result: event.item.result },
+                  isFailure: event.item.status !== "completed",
+                  result: event.item.status === "completed"
+                    ? { result: event.item.result }
+                    : { status: event.item.status, result: event.item.result },
                   providerExecuted: true
                 })
                 break
@@ -2216,7 +2220,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   type: "tool-result",
                   id: toolId,
                   name: toolName,
-                  isFailure: false,
+                  isFailure: Predicate.isNotNullish(event.item.error),
                   providerExecuted: true,
                   result: {
                     type: "mcp_call",

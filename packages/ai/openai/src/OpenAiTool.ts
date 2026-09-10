@@ -67,9 +67,10 @@ export const ApplyPatch = Tool.providerDefined({
  *
  * **Details**
  *
- * The tool is configured with a `container` argument. Successful tool calls
- * expose `outputs`, which may contain logs or generated images, or `null` when
- * no outputs are available.
+ * The tool is configured with a `container` argument. Results include the
+ * call `status` and `outputs`, which may contain logs or generated images, or
+ * `null` when no outputs are available. Only `completed` is successful; all
+ * other statuses produce failure results, preserving any outputs.
  *
  * @category tools
  * @since 4.0.0
@@ -86,6 +87,13 @@ export const CodeInterpreter = Tool.providerDefined({
     container_id: Generated.CodeInterpreterToolCall.fields.container_id
   }),
   success: Schema.Struct({
+    status: Schema.Literal("completed"),
+    outputs: Generated.CodeInterpreterToolCall.fields.outputs
+  }),
+  failure: Schema.Struct({
+    status: Schema.Literals(
+      Generated.CodeInterpreterToolCall.fields.status.literals.filter((status) => status !== "completed")
+    ),
     outputs: Generated.CodeInterpreterToolCall.fields.outputs
   })
 })
@@ -148,7 +156,9 @@ export const FileSearch = Tool.providerDefined({
  * The tool configures the `image_generation` provider tool, including model,
  * size, quality, output format, moderation, background, input-image options,
  * and partial image settings. Successful tool calls expose `result` as base64
- * image data or `null`.
+ * image data or `null`; partial images arrive as preliminary successful
+ * results. Only `completed` is successful; all other statuses produce failure
+ * results that also include the call `status`.
  *
  * @category tools
  * @since 4.0.0
@@ -170,6 +180,12 @@ export const ImageGeneration = Tool.providerDefined({
     size: Generated.ImageGenTool.fields.size
   }),
   success: Schema.Struct({
+    result: Generated.ImageGenToolCall.fields.result
+  }),
+  failure: Schema.Struct({
+    status: Schema.Literals(
+      Generated.ImageGenToolCall.fields.status.literals.filter((status) => status !== "completed")
+    ),
     result: Generated.ImageGenToolCall.fields.result
   })
 })
@@ -206,6 +222,14 @@ export const LocalShell = Tool.providerDefined({
   })
 })
 
+const McpResultFields = {
+  type: Generated.MCPToolCall.fields.type,
+  name: Generated.MCPToolCall.fields.name,
+  arguments: Generated.MCPToolCall.fields.arguments,
+  output: Generated.MCPToolCall.fields.output,
+  server_label: Generated.MCPToolCall.fields.server_label
+}
+
 /**
  * Defines the OpenAI MCP tool that gives the model access to additional tools via remote
  * Model Context Protocol (MCP) servers.
@@ -219,7 +243,8 @@ export const LocalShell = Tool.providerDefined({
  * The tool accepts MCP server configuration such as allowed tools,
  * authorization, connector id, approval requirements, server metadata, and
  * server URL. Tool call results include the called tool name, arguments, output,
- * error, and server label.
+ * and server label. A call that reports an `error` is a failure result carrying
+ * the error message; successful results have no error.
  *
  * **Gotchas**
  *
@@ -243,13 +268,10 @@ export const Mcp = Tool.providerDefined({
     server_url: Generated.MCPTool.fields.server_url
   }),
   parameters: Schema.Unknown,
-  success: Schema.Struct({
-    type: Generated.MCPToolCall.fields.type,
-    name: Generated.MCPToolCall.fields.name,
-    arguments: Generated.MCPToolCall.fields.arguments,
-    output: Generated.MCPToolCall.fields.output,
-    error: Generated.MCPToolCall.fields.error,
-    server_label: Generated.MCPToolCall.fields.server_label
+  success: Schema.Struct(McpResultFields),
+  failure: Schema.Struct({
+    ...McpResultFields,
+    error: Schema.String
   })
 })
 
