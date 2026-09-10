@@ -47,9 +47,12 @@ export const LoggingLevel = Schema.Literals([
 
 /** @internal */
 export const RequestMeta = Schema.Struct({
-  _meta: optional(Schema.Struct({
-    progressToken: optional(ProgressToken)
-  }))
+  _meta: optional(Schema.StructWithRest(
+    Schema.Struct({
+      progressToken: optional(ProgressToken)
+    }),
+    [Schema.JsonObject]
+  ))
 })
 
 /** @internal */

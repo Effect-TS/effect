@@ -145,16 +145,19 @@ export type ProgressToken = typeof ProgressToken.Type
  * @since 4.0.0
  */
 export class RequestMeta extends Schema.Opaque<RequestMeta>()(Schema.Struct({
-  _meta: optional(Schema.Struct({
-    /**
-     * If specified, the caller is requesting out-of-band progress notifications
-     * for this request (as represented by notifications/progress). The value of
-     * this parameter is an opaque token that will be attached to any subsequent
-     * notifications. The receiver is not obligated to provide these
-     * notifications.
-     */
-    progressToken: optional(ProgressToken)
-  }))
+  _meta: optional(Schema.StructWithRest(
+    Schema.Struct({
+      /**
+       * If specified, the caller is requesting out-of-band progress notifications
+       * for this request (as represented by notifications/progress). The value of
+       * this parameter is an opaque token that will be attached to any subsequent
+       * notifications. The receiver is not obligated to provide these
+       * notifications.
+       */
+      progressToken: optional(ProgressToken)
+    }),
+    [Schema.JsonObject]
+  ))
 })) {}
 
 /**

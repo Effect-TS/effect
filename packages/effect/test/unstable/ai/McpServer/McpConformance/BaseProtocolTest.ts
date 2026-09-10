@@ -1,11 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { TestClock } from "effect/testing"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
+import * as McpServer from "effect/unstable/ai/McpServer"
+import * as Tool from "effect/unstable/ai/Tool"
+import * as Toolkit from "effect/unstable/ai/Toolkit"
+import { initializeHttpSession, makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
+import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
@@ -204,6 +211,40 @@ export const statelessModernSuite = (
 export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Base Protocol", () => {
+      // https://modelcontextprotocol.io/specification/2025-11-25/basic#meta
+      it.effect("should preserve custom request metadata when a legacy tool reads either context API", () =>
+        Effect.gen(function*() {
+          const toolkit = Toolkit.make(Tool.make("Metadata", {
+            parameters: Tool.EmptyParams,
+            success: Schema.String,
+            dependencies: [McpSchema.McpRequestContext, McpSchema.McpServerClient]
+          }))
+          const registration = McpServer.toolkit(toolkit).pipe(Layer.provide(toolkit.toLayer({
+            Metadata: () =>
+              Effect.gen(function*() {
+                const context = yield* McpSchema.McpRequestContext
+                const client = yield* McpSchema.McpServerClient
+                return JSON.stringify({ context: context.requestMetadata, client: client.requestMetadata })
+              })
+          })))
+          const harness = yield* makeHttpHarness(
+            registration.pipe(Layer.provideMerge(makeServerLayer({ name: "RequestMetadata", protocols: [protocol] })))
+          )
+          const headers = yield* initializeHttpSession(harness, protocol)
+          const metadata = { marker: "tool-call", progressToken: "progress-1", custom: { values: [null, true, 42] } }
+          const response = yield* harness.post({
+            jsonrpc: "2.0",
+            id: "call",
+            method: "tools/call",
+            params: { name: "Metadata", arguments: {}, _meta: metadata }
+          }, headers)
+          const message = Schema.decodeUnknownSync(Schema.Struct({
+            result: Schema.Struct({ content: Schema.Array(Schema.Struct({ text: Schema.String })) })
+          }))(yield* readMcpHttpResponse(response))
+          const serialized = Schema.decodeUnknownSync(Schema.String)(JSON.parse(message.result.content[0].text))
+          assert.deepStrictEqual(JSON.parse(serialized), { context: metadata, client: metadata })
+        }))
+
       // https://modelcontextprotocol.io/specification/2025-06-18/basic
       describe("Messages", () => {
         describe("Requests", () => {

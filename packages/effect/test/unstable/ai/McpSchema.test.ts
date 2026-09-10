@@ -3,6 +3,17 @@ import { Schema } from "effect"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 
 describe("McpSchema", () => {
+  it("should preserve custom metadata when a request is decoded and encoded", () => {
+    const decode = Schema.decodeUnknownSync(McpSchema.RequestMeta)
+    const encode = Schema.encodeSync(McpSchema.RequestMeta)
+    for (const progress of [{}, { progressToken: "progress-1" }, { progressToken: 1 }]) {
+      const request = {
+        _meta: { ...progress, marker: "request", custom: { values: [null, true, 42, "value"] } }
+      }
+      assert.deepStrictEqual(encode(decode(request)), request)
+    }
+  })
+
   const decodeCreateMessage = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)
 
   it("allows create-message metadata to be omitted", () => {
