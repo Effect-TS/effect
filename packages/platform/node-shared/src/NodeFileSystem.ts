@@ -9,6 +9,7 @@
  *
  * @since 4.0.0
  */
+import * as BI from "effect/BigInt"
 import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
@@ -41,13 +42,8 @@ const bigintToNumber = (value: bigint, field: string): number => {
   return number
 }
 
-const bigintToNumberOption = (value: bigint | undefined): Option.Option<number> => {
-  if (value === undefined) {
-    return Option.none()
-  }
-  const number = Number(value)
-  return Number.isSafeInteger(number) ? Option.some(number) : Option.none()
-}
+const bigintToNumberOption = (value: bigint | undefined): Option.Option<number> =>
+  Option.flatMap(Option.fromNullishOr(value), BI.toNumber)
 
 // fs.write ignores bigint positions.
 const positionToNumber = (position: bigint, method: string) =>
