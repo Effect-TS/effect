@@ -1838,6 +1838,7 @@ const sendCancelRequest = (config: ResolvedConfig, pid: number, secret: number):
         raw.off("close", finish)
         socket = Tls.connect({
           host: config.host,
+          servername: Net.isIP(config.host) === 0 ? config.host : undefined,
           ...(typeof config.ssl === "object" ? config.ssl : {}),
           socket: raw as Net.Socket
         })
@@ -2063,6 +2064,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
       raw.off("close", onClose)
       socket = Tls.connect({
         host: config.host,
+        servername: Net.isIP(config.host) === 0 ? config.host : undefined,
         ...(typeof config.ssl === "object" ? config.ssl : {}),
         socket: raw as Net.Socket
       })

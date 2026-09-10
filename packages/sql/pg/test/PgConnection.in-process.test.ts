@@ -7,6 +7,28 @@ import * as Net from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Duplex } from "node:stream"
+import type * as Tls from "node:tls"
+import { vi } from "vitest"
+
+const tlsOptions = new WeakMap<Duplex, Tls.ConnectionOptions | undefined>()
+
+// Only simulate TLS for streams registered by the SNI tests. Other connections
+// retain the native TLS implementation, including tests running concurrently.
+vi.mock("node:tls", async (importOriginal) => {
+  const original = await importOriginal<typeof Tls>()
+  return {
+    ...original,
+    connect(options: Tls.ConnectionOptions) {
+      const socket = options.socket
+      if (socket === undefined || !tlsOptions.has(socket)) {
+        return original.connect(options)
+      }
+      tlsOptions.set(socket, options)
+      queueMicrotask(() => socket.emit("secureConnect"))
+      return socket
+    }
+  }
+})
 
 const backendMessage = (tag: string, payload: Uint8Array): Buffer => {
   const length = Buffer.allocUnsafe(4)
@@ -288,6 +310,97 @@ describe("PgConnection in-process server", () => {
       assert.isTrue(socket.writableEnded)
       assert.isFalse(socket.destroyed)
     }))
+
+  describe("TLS servername", () => {
+    const makeStream = (cancel: boolean) => {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          writes.push(Buffer.from(chunk))
+          queueMicrotask(() => {
+            if (writes.length === 1) {
+              socket.push(Buffer.from("S"))
+            } else if (cancel) {
+              socket.destroy()
+            } else if (writes.length === 2) {
+              socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+            }
+          })
+          callback()
+        }
+      })
+      tlsOptions.set(socket, undefined)
+      return { socket, writes }
+    }
+
+    const cases: ReadonlyArray<{
+      readonly name: string
+      readonly config: PgConnection.Config
+      readonly servername: string | undefined
+    }> = [
+      { name: "DNS host with ssl=true", config: { host: "db.example.com", ssl: true }, servername: "db.example.com" },
+      {
+        name: "DNS host with SSL options",
+        config: { host: "db.example.com", ssl: { rejectUnauthorized: false } },
+        servername: "db.example.com"
+      },
+      {
+        name: "DNS host from a URL",
+        config: { url: Redacted.make("postgres://test@db.example.com/db?sslmode=require") },
+        servername: "db.example.com"
+      },
+      { name: "IPv4 host", config: { host: "127.0.0.1", ssl: true }, servername: undefined },
+      { name: "IPv6 host", config: { host: "::1", ssl: true }, servername: undefined },
+      ...["db.example.com", "127.0.0.1", "::1"].map((host) => ({
+        name: `explicit servername for ${host}`,
+        config: { host, ssl: { servername: "routing.example.com", rejectUnauthorized: false } },
+        servername: "routing.example.com"
+      })),
+      {
+        name: "explicit empty servername",
+        config: { host: "db.example.com", ssl: { servername: "" } },
+        servername: ""
+      }
+    ]
+
+    for (const path of ["startup", "cancel"] as const) {
+      describe(path, () => {
+        it.effect.each(cases)("$name", ({ config, servername }) =>
+          Effect.gen(function*() {
+            const streams: Array<ReturnType<typeof makeStream>> = []
+            const connection = yield* PgConnection.make({
+              username: "test",
+              ...config,
+              stream: () => {
+                const stream = makeStream(streams.length > 0)
+                streams.push(stream)
+                return stream.socket
+              }
+            })
+            if (path === "cancel") {
+              yield* connection.interrupt
+            }
+
+            assert.strictEqual(streams.length, path === "cancel" ? 2 : 1)
+            const stream = streams[path === "cancel" ? 1 : 0]
+            assert.deepStrictEqual(stream.writes[0], Buffer.concat([int32(8), int32(80877103)]))
+            if (path === "cancel") {
+              assert.deepStrictEqual(
+                stream.writes[1],
+                Buffer.concat([int32(16), int32(80877102), int32(1234), int32(5678)])
+              )
+            }
+            const options = tlsOptions.get(stream.socket)
+            assert.isDefined(options)
+            assert.strictEqual(options!.servername, servername)
+            if (typeof config.ssl === "object") {
+              assert.strictEqual(options!.rejectUnauthorized, config.ssl.rejectUnauthorized)
+            }
+          }))
+      })
+    }
+  })
 
   it.live("preserves an ErrorResponse returned for SSLRequest", () =>
     Effect.scoped(Effect.gen(function*() {
