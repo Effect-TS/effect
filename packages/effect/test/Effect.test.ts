@@ -3900,6 +3900,100 @@ describe("Effect", () => {
         assert.deepStrictEqual(exits, [Exit.succeed(1), Exit.succeed(2)])
       }))
 
+    for (const succeeds of [true, false]) {
+      it.effect(`releases waiters when the ttl callback throws after ${succeeds ? "success" : "failure"}`, () =>
+        Effect.gen(function*() {
+          const release = yield* Deferred.make<void>()
+          const defect = new Error("ttl callback failed")
+          const result = succeeds ? Exit.succeed(42) : Exit.fail("lookup failed")
+          const expected = succeeds
+            ? Exit.die(defect)
+            : Exit.failCause(Cause.combine(Cause.fail("lookup failed"), Cause.die(defect)))
+          const exits: Array<Exit.Exit<number, string>> = []
+          let count = 0
+          const cached = yield* Effect.cachedWithTTL(
+            Effect.gen(function*() {
+              count++
+              yield* Deferred.await(release)
+              return yield* result
+            }),
+            (exit) => {
+              exits.push(exit)
+              if (exits.length === 1) throw defect
+              return "1 second"
+            }
+          )
+
+          const fibers = yield* Effect.forEach(
+            [0, 1, 2],
+            () => cached.pipe(Effect.forkChild({ startImmediately: true }))
+          )
+          assert.strictEqual(count, 1)
+          assert.deepStrictEqual(exits, [])
+          for (const fiber of fibers) {
+            assert.isUndefined(fiber.pollUnsafe())
+          }
+
+          yield* Deferred.succeed(release, void 0)
+          assert.deepStrictEqual(yield* Fiber.awaitAll(fibers), [expected, expected, expected])
+          assert.deepStrictEqual(exits, [result])
+
+          // A callback defect must not leave the cache stuck in its running state.
+          assert.deepStrictEqual(yield* Effect.exit(cached), result)
+          assert.deepStrictEqual(yield* Effect.exit(cached), result)
+          assert.strictEqual(count, 2)
+          assert.deepStrictEqual(exits, [result, result])
+        }))
+    }
+
+    for (const throws of [false, true]) {
+      it.effect(`releases waiters when the owner is interrupted${throws ? " and the ttl callback throws" : ""}`, () =>
+        Effect.gen(function*() {
+          const defect = new Error("ttl callback failed")
+          const exits: Array<Exit.Exit<number>> = []
+          let count = 0
+          const cached = yield* Effect.cachedWithTTL(
+            Effect.suspend(() => ++count === 1 ? Effect.never : Effect.succeed(42)),
+            (exit) => {
+              exits.push(exit)
+              if (throws && exits.length === 1) throw defect
+              return "1 second"
+            }
+          )
+
+          const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+          const waiters = yield* Effect.forEach([0, 1], () => cached.pipe(Effect.forkChild({ startImmediately: true })))
+          assert.strictEqual(count, 1)
+          assert.deepStrictEqual(exits, [])
+          assert.isUndefined(owner.pollUnsafe())
+          for (const waiter of waiters) {
+            assert.isUndefined(waiter.pollUnsafe())
+          }
+
+          yield* Fiber.interrupt(owner)
+          assert.strictEqual(exits.length, 1)
+          const interrupted = exits[0]!
+          assert.isTrue(Exit.hasInterrupts(interrupted))
+          assert.isFalse(Exit.hasDies(interrupted))
+          const expected = throws && Exit.isFailure(interrupted)
+            ? Exit.failCause(Cause.combine(interrupted.cause, Cause.die(defect)))
+            : interrupted
+          assert.deepStrictEqual(yield* Fiber.await(owner), expected)
+          assert.deepStrictEqual(yield* Fiber.awaitAll(waiters), [expected, expected])
+
+          if (!throws) {
+            assert.deepStrictEqual(yield* Effect.exit(cached), expected)
+            assert.strictEqual(count, 1)
+            assert.strictEqual(exits.length, 1)
+            yield* TestClock.adjust("1 second")
+          }
+          assert.strictEqual(yield* cached, 42)
+          assert.strictEqual(yield* cached, 42)
+          assert.strictEqual(count, 2)
+          assert.deepStrictEqual(exits, [interrupted, Exit.succeed(42)])
+        }))
+    }
+
     it.effect("preserves fixed ttl in the piped form", () =>
       Effect.gen(function*() {
         let count = 0
