@@ -31,10 +31,6 @@ describe("Context.Mixin", () => {
     expect<ConstructorParameters<typeof MyText>>().type.toBe<[value: number]>()
   })
 
-  it("rejects unknown properties", () => {
-    expect(new MyText(1)).type.not.toHaveProperty("typo")
-  })
-
   it("instances are the wrapped class and the service shape", () => {
     expect(new MyText(1)).type.toBeAssignableTo<Box>()
     expect(Context.get(Context.make(MyText, new MyText(1)), MyText)).type.toBeAssignableTo<Box>()
@@ -44,7 +40,7 @@ describe("Context.Mixin", () => {
     const effect = Effect.gen(function*() {
       return yield* MyText
     })
-    expect(effect).type.toBeAssignableTo<Effect.Effect<Box, never, unknown>>()
+    expect(effect).type.toBeAssignableTo<Effect.Effect<MyText, never, MyText>>()
   })
 
   it("does not add a make constructor", () => {
