@@ -287,9 +287,129 @@ describe("OpenRouterLanguageModel", () => {
           deepStrictEqual(tool.function.parameters, inputSchema)
         }).pipe(Effect.provide(makeTestLayer())))
     })
+
+    describe("usage", () => {
+      it.effect("derives text and uncached tokens when details are subsets of their totals", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
+          )
+
+          deepStrictEqual(
+            result.usage.inputTokens,
+            { uncached: 70, total: 100, cacheRead: 30, cacheWrite: 0 },
+            "subset input usage"
+          )
+          deepStrictEqual(result.usage.outputTokens, { total: 50, text: 30, reasoning: 20 }, "subset output usage")
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            usage: {
+              prompt_tokens: 100,
+              prompt_tokens_details: { cached_tokens: 30 },
+              completion_tokens: 50,
+              completion_tokens_details: { reasoning_tokens: 20 },
+              total_tokens: 150
+            }
+          }
+        }))))
+
+      it.effect("preserves totals when detail counts equal their parent counts", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
+          )
+
+          deepStrictEqual(
+            result.usage.inputTokens,
+            { uncached: 0, total: 100, cacheRead: 100, cacheWrite: 0 },
+            "input usage at equality"
+          )
+          deepStrictEqual(result.usage.outputTokens, { total: 20, text: 0, reasoning: 20 }, "output usage at equality")
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            usage: {
+              prompt_tokens: 100,
+              prompt_tokens_details: { cached_tokens: 100 },
+              completion_tokens: 20,
+              completion_tokens_details: { reasoning_tokens: 20 },
+              total_tokens: 120
+            }
+          }
+        }))))
+
+      it.effect("treats reasoning tokens as disjoint when they exceed completion tokens", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
+          )
+
+          deepStrictEqual(result.usage.outputTokens, { total: 30, text: 10, reasoning: 20 }, "disjoint reasoning usage")
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            usage: {
+              prompt_tokens: 100,
+              completion_tokens: 10,
+              completion_tokens_details: { reasoning_tokens: 20 },
+              total_tokens: 110
+            }
+          }
+        }))))
+
+      it.effect("treats cached tokens as disjoint when they exceed prompt tokens", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
+          )
+
+          deepStrictEqual(
+            result.usage.inputTokens,
+            { uncached: 100, total: 400, cacheRead: 300, cacheWrite: 0 },
+            "disjoint cached usage"
+          )
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            usage: {
+              prompt_tokens: 100,
+              prompt_tokens_details: { cached_tokens: 300 },
+              completion_tokens: 10,
+              total_tokens: 110
+            }
+          }
+        }))))
+    })
   })
 
   describe("streamText", () => {
+    describe("usage", () => {
+      it.effect("treats streamed reasoning tokens as disjoint when they exceed completion tokens", () =>
+        Effect.gen(function*() {
+          const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+            Stream.runCollect,
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+            Effect.provide(makeStreamTestLayer([{
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [],
+              usage: {
+                prompt_tokens: 100,
+                completion_tokens: 10,
+                completion_tokens_details: { reasoning_tokens: 20 },
+                total_tokens: 110
+              }
+            }]))
+          )
+
+          const finishPart = parts.find((part) => part.type === "finish")
+          deepStrictEqual(
+            finishPart?.usage.outputTokens,
+            { total: 30, text: 10, reasoning: 20 },
+            "streamed disjoint reasoning usage"
+          )
+        }))
+    })
+
     it.effect("preserves streamed citation start and end indexes", () =>
       Effect.gen(function*() {
         const parts = yield* LanguageModel.streamText({ prompt: "cite a source" }).pipe(

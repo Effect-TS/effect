@@ -1844,16 +1844,21 @@ const getUsage = (usage: Generated.ChatUsage | undefined): Response.Usage => {
   const cacheReadTokens = usage.prompt_tokens_details?.cached_tokens ?? 0
   const cacheWriteTokens = usage.prompt_tokens_details?.cache_write_tokens ?? 0
   const reasoningTokens = usage.completion_tokens_details?.reasoning_tokens ?? 0
+  // Some providers report cached or reasoning tokens separately from their parent counts.
+  // Treat details exceeding the parent as disjoint to avoid negative remainders.
+  // Otherwise, retain subset accounting.
+  const inputTotal = cacheReadTokens > promptTokens ? promptTokens + cacheReadTokens : promptTokens
+  const outputTotal = reasoningTokens > completionTokens ? completionTokens + reasoningTokens : completionTokens
   return {
     inputTokens: {
-      uncached: promptTokens - cacheReadTokens,
-      total: promptTokens,
+      uncached: inputTotal - cacheReadTokens,
+      total: inputTotal,
       cacheRead: cacheReadTokens,
       cacheWrite: cacheWriteTokens
     },
     outputTokens: {
-      total: completionTokens,
-      text: completionTokens - reasoningTokens,
+      total: outputTotal,
+      text: outputTotal - reasoningTokens,
       reasoning: reasoningTokens
     }
   }
