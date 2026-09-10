@@ -111,8 +111,9 @@ export type DynamicTypeId = "~effect/ai/Tool/Dynamic"
  * An agent loop can include these results in its next prompt so the model can
  * respond to the failure. This does not retry the tool or roll back side effects.
  *
- * Parameter validation in `Toolkit.handle` follows the same mode; an invalid call
- * never starts its handler. Unknown tool names cannot use a per-tool failure mode.
+ * Parameter validation in a resolved toolkit's `handle` method follows the same
+ * mode; an invalid call never starts its handler. Unknown tool names cannot use
+ * a per-tool failure mode.
  * Validation outside `Toolkit`, including model response validation when
  * `disableToolCallResolution` is `true`, is not controlled by this setting.
  *
