@@ -446,11 +446,11 @@ export const valueTags: {
   <
     const I,
     P extends
-      & ValueTagHandlers<I>
-      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+      & ValueTagHandlers<T.NoInfer<I>>
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", T.NoInfer<I>>>]: never }
   >(
     input: I,
-    fields: Contextual<P, ValueTagHandlers<I>>
+    fields: Contextual<P, ValueTagHandlers<T.NoInfer<I>>>
   ): Unify<ReturnType<P[keyof P]>>
 } = internal.valueTags
 

@@ -286,4 +286,36 @@ describe("Match", () => {
       })
     )
   })
+
+  it("valueTags rejects unknown tags and requires exhaustiveness from the input", () => {
+    Match.valueTags(taggedInput, {
+      A: () => "a",
+      B: () => "b",
+      // @ts-expect-error Type '() => string' is not assignable to type 'never'
+      C: () => "c"
+    })
+
+    // @ts-expect-error Property 'B' is missing
+    Match.valueTags(taggedInput, {
+      A: () => "a"
+    })
+
+    expect(
+      Match.valueTags(taggedInput, {
+        A: (value) => value.a,
+        B: (value) => value.b
+      })
+    ).type.toBe<string | number>()
+
+    Match.valueTags(taggedInput, {
+      A: Effect.fn(function*(value) {
+        expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+        return value.a
+      }),
+      B: Effect.fnUntraced(function*(value) {
+        expect(value).type.toBe<{ readonly _tag: "B"; readonly b: number }>()
+        return value.b
+      })
+    })
+  })
 })

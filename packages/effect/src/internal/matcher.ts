@@ -1,4 +1,5 @@
 import { dual, identity } from "../Function.ts"
+import type { NoInfer } from "../Types.ts"
 import type {
   Case,
   Matcher,
@@ -243,22 +244,22 @@ export const valueTags: {
   <
     const I,
     P extends
-      & ValueTagHandlers<I>
-      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+      & ValueTagHandlers<NoInfer<I>>
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", NoInfer<I>>>]: never }
   >(
     input: I,
-    fields: Contextual<P, ValueTagHandlers<I>>
+    fields: Contextual<P, ValueTagHandlers<NoInfer<I>>>
   ): Unify<ReturnType<P[keyof P]>>
 } = dual(
   2,
   <
     const I,
     P extends
-      & ValueTagHandlers<I>
-      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+      & ValueTagHandlers<NoInfer<I>>
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", NoInfer<I>>>]: never }
   >(
     input: I,
-    fields: Contextual<P, ValueTagHandlers<I>>
+    fields: Contextual<P, ValueTagHandlers<NoInfer<I>>>
   ): Unify<ReturnType<P[keyof P]>> => {
     const match: any = tagsExhaustive(fields as any)(makeTypeMatcher(identity, []))
     return match(input)
