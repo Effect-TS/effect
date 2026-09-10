@@ -7118,8 +7118,8 @@ export const onExitFilter: {
 export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>> = internal.cached
 
 /**
- * Returns an effect that caches its result for a specified `Duration`,
- * known as "timeToLive" (TTL).
+ * Returns an effect that caches its result for a fixed duration or a duration
+ * computed from its `Exit`, known as "timeToLive" (TTL).
  *
  * **When to use**
  *
@@ -7137,6 +7137,17 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  *
  * After the specified duration has passed, the cache expires, and the effect
  * will be recomputed upon the next evaluation.
+ *
+ * `timeToLive` accepts a `Duration.Input` or a function from `Exit<A, E>` to
+ * `Duration.Input`. The function runs once after each fresh computation,
+ * including failures, so successes and failures can have different TTLs. It
+ * does not run when the cache is created or when a cached result is reused.
+ * The callback also receives interruption exits, which are cached for the
+ * returned duration.
+ *
+ * The TTL starts when the computation completes. Concurrent callers share the
+ * pending computation. A zero TTL expires immediately, and an infinite TTL
+ * keeps the result indefinitely.
  *
  * **Example** (Memoizing an effect with TTL)
  *
@@ -7162,6 +7173,26 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  * output // => ["expensive task...", "result 1", "result 1", "result 1"]
  * ```
  *
+ * **Example** (Caching successes while retrying failures)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ *
+ * let attempts = 0
+ * const task = Effect.suspend(() =>
+ *   ++attempts === 1 ? Effect.fail("temporary failure") : Effect.succeed(42)
+ * )
+ * const program = Effect.gen(function*() {
+ *   const cached = yield* task.pipe(
+ *     Effect.cachedWithTTL((exit) => Exit.isSuccess(exit) ? "1 hour" : 0)
+ *   )
+ *   yield* Effect.exit(cached)
+ *   return yield* cached
+ * })
+ *
+ * Effect.runSync(program) // => 42
+ * ```
+ *
  * @see {@link cached} for a similar function that caches the result
  * indefinitely.
  * @see {@link cachedInvalidateWithTTL} for a similar function that includes an
@@ -7170,8 +7201,17 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  * @since 2.0.0
  */
 export const cachedWithTTL: {
+  <A, E>(
+    timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input
+  ): <R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
   (timeToLive: Duration.Input): <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
-  <A, E, R>(self: Effect<A, E, R>, timeToLive: Duration.Input): Effect<Effect<A, E, R>>
+  <A, E>(
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): <R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
+  <A, E, R>(
+    self: Effect<A, E, R>,
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): Effect<Effect<A, E, R>>
 } = internal.cachedWithTTL
 
 /**

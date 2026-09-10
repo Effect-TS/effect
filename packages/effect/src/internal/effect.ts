@@ -50,6 +50,7 @@ import type { Primitive } from "./core.ts"
 import {
   args,
   causeAnnotate,
+  causeDie,
   causeEmpty,
   causeFromReasons,
   CauseImpl,
@@ -4371,20 +4372,27 @@ export const acquireDisposable = <A extends AsyncDisposable | Disposable, E, R>(
 
 /** @internal */
 export const cachedInvalidateWithTTL: {
+  <A, E>(timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input): <R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]>
   (timeToLive: Duration.Input): <A, E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]>
+  <A, E>(timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)): <R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
-    timeToLive: Duration.Input
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
   ): Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]>
 } = dual(2, <A, E, R>(
   self: Effect.Effect<A, E, R>,
-  ttl: Duration.Input
+  ttl: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
 ): Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]> =>
   sync(() => {
-    const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
-    const isFinite = Number.isFinite(ttlMillis)
+    const ttlMillis = typeof ttl === "function"
+      ? (exit: Exit.Exit<A, E>) => Duration.toMillis(Duration.fromInputUnsafe(ttl(exit)))
+      : constant(Duration.toMillis(Duration.fromInputUnsafe(ttl)))
     const latch = makeLatchUnsafe(false)
     let expiresAt = 0
     let running = false
@@ -4393,17 +4401,26 @@ export const cachedInvalidateWithTTL: {
     return [
       withFiber((fiber) => {
         const clock = fiber.getRef(ClockRef)
-        const now = isFinite ? clock.currentTimeMillisUnsafe() : 0
+        const now = expiresAt === Infinity ? 0 : clock.currentTimeMillisUnsafe()
         if (running || now < expiresAt) return exit ?? wait
         running = true
         latch.closeUnsafe()
         exit = undefined
         return onExit(self, (exit_) =>
           sync(() => {
-            running = false
-            expiresAt = clock.currentTimeMillisUnsafe() + ttlMillis
-            exit = exit_
-            latch.openUnsafe()
+            try {
+              const duration = ttlMillis(exit_)
+              expiresAt = clock.currentTimeMillisUnsafe() + duration
+              exit = exit_
+            } catch (error) {
+              const cause = causeDie(error)
+              // Publish the same combined cause that onExit returns to the owner.
+              exit = exitFailCause(exitIsFailure(exit_) ? causeCombine(exit_.cause, cause) : cause)
+              throw error
+            } finally {
+              running = false
+              latch.openUnsafe()
+            }
           }))
       }),
       sync(() => {
@@ -4416,18 +4433,24 @@ export const cachedInvalidateWithTTL: {
 
 /** @internal */
 export const cachedWithTTL: {
+  <A, E>(
+    timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input
+  ): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Effect.Effect<A, E, R>>
   (
     timeToLive: Duration.Input
   ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Effect.Effect<A, E, R>>
+  <A, E>(
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Effect.Effect<A, E, R>>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
-    timeToLive: Duration.Input
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
   ): Effect.Effect<Effect.Effect<A, E, R>>
 } = dual(
   2,
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
-    timeToLive: Duration.Input
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
   ): Effect.Effect<Effect.Effect<A, E, R>> => map(cachedInvalidateWithTTL(self, timeToLive), (tuple) => tuple[0])
 )
 

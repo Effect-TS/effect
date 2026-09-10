@@ -4,6 +4,7 @@ import {
   type Channel,
   Context,
   Data,
+  Duration,
   Effect,
   type ExecutionPlan,
   Exit,
@@ -1382,6 +1383,26 @@ describe("Effect.withExecutionPlan", () => {
   it("without options the requirements are unchanged", () => {
     const result = Effect.withExecutionPlan(self, plan)
     expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
+  })
+})
+
+describe("Effect.cachedWithTTL", () => {
+  it("data-first", () => {
+    const cached = Effect.cachedWithTTL(number, (exit) => {
+      expect(exit).type.toBe<Exit.Exit<number, "err-2">>()
+      return Exit.isSuccess(exit) ? Duration.seconds(exit.value) : 0
+    })
+
+    expect(cached).type.toBe<Effect.Effect<Effect.Effect<number, "err-2", "dep-2">>>()
+  })
+
+  it("data-last", () => {
+    const cached = number.pipe(Effect.cachedWithTTL((exit) => {
+      expect(exit).type.toBe<Exit.Exit<number, "err-2">>()
+      return Exit.isSuccess(exit) ? "1 second" : 0
+    }))
+
+    expect(cached).type.toBe<Effect.Effect<Effect.Effect<number, "err-2", "dep-2">>>()
   })
 })
 

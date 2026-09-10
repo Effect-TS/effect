@@ -3773,6 +3773,54 @@ describe("Effect", () => {
   })
 
   describe("cachedWithTTL", () => {
+    it.effect("selects ttl from each fresh exit without evaluating on cache hits", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<number>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.sync(() => ++count),
+          (exit: Exit.Exit<number>) => {
+            exits.push(exit)
+            return Exit.isSuccess(exit) && exit.value === 1 ? "1 second" : Duration.seconds(3)
+          }
+        )
+
+        assert.strictEqual(count, 0)
+        assert.deepStrictEqual(exits, [])
+        assert.strictEqual(yield* cached, 1)
+        yield* TestClock.adjust("999 millis")
+        assert.strictEqual(yield* cached, 1)
+        assert.deepStrictEqual(exits, [Exit.succeed(1)])
+
+        yield* TestClock.adjust("1 milli")
+        assert.strictEqual(yield* cached, 2)
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(yield* cached, 2)
+        yield* TestClock.adjust("2 seconds")
+        assert.strictEqual(yield* cached, 3)
+        assert.deepStrictEqual(exits, [Exit.succeed(1), Exit.succeed(2), Exit.succeed(3)])
+      }))
+
+    it.effect("supports a piped callback that skips failures and caches successes", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<number, string>> = []
+        const cached = yield* Effect.suspend(() => ++count === 1 ? Effect.fail("boom") : Effect.succeed(count)).pipe(
+          Effect.cachedWithTTL((exit: Exit.Exit<number, string>) => {
+            exits.push(exit)
+            return Exit.isFailure(exit) ? 0 : "1 second"
+          })
+        )
+
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("boom"))
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2)])
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(yield* cached, 3)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
+      }))
+
     it.effect("starts ttl from value creation", () =>
       Effect.gen(function*() {
         let count = 0
