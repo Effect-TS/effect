@@ -248,12 +248,23 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
         assert.strictEqual(Option.getOrThrow(info.blksize), ByteSize.bytes(oversized))
       }).pipe(Effect.provide(NodeFileSystem.layer)))
 
-    const field = method === "stat" ? "dev" : "ino"
-    it.effect(`${method} rejects unsafe ${field} metadata`, () =>
+    it.effect(`${method} rejects unsafe required dev metadata`, () =>
       Effect.gen(function*() {
-        state.values[field] = oversized
+        state.values.dev = oversized
         const error = yield* Effect.flip(getInfo)
         assert.strictEqual(error.reason._tag, "BadArgument")
       }).pipe(Effect.provide(NodeFileSystem.layer)))
+
+    for (const field of ["ino", "nlink", "uid", "gid", "rdev", "blocks"] as const) {
+      it.effect(`${method} omits unsafe ${field} metadata`, () =>
+        Effect.gen(function*() {
+          state.values[field] = oversized
+          const info = yield* getInfo
+          assert.deepStrictEqual(info[field], Option.none())
+          assert.strictEqual(info.dev, 1)
+          assert.strictEqual(info.size, ByteSize.bytes(4n))
+          assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
+        }).pipe(Effect.provide(NodeFileSystem.layer)))
+    }
   }
 })

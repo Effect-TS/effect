@@ -41,8 +41,13 @@ const bigintToNumber = (value: bigint, field: string): number => {
   return number
 }
 
-const bigintToNumberOption = (value: bigint | undefined, field: string): Option.Option<number> =>
-  Option.map(Option.fromNullishOr(value), (value) => bigintToNumber(value, field))
+const bigintToNumberOption = (value: bigint | undefined): Option.Option<number> => {
+  if (value === undefined) {
+    return Option.none()
+  }
+  const number = Number(value)
+  return Number.isSafeInteger(number) ? Option.some(number) : Option.none()
+}
 
 // fs.write ignores bigint positions.
 const positionToNumber = (position: bigint, method: string) =>
@@ -530,15 +535,15 @@ const makeFileInfo = (stat: NFS.BigIntStats): Effect.Effect<FileSystem.File.Info
       atime: Option.fromNullishOr(stat.atime),
       birthtime: Option.fromNullishOr(stat.birthtime),
       dev: bigintToNumber(stat.dev, "dev"),
-      rdev: bigintToNumberOption(stat.rdev, "rdev"),
-      ino: bigintToNumberOption(stat.ino, "ino"),
+      rdev: bigintToNumberOption(stat.rdev),
+      ino: bigintToNumberOption(stat.ino),
       mode: bigintToNumber(stat.mode, "mode"),
-      nlink: bigintToNumberOption(stat.nlink, "nlink"),
-      uid: bigintToNumberOption(stat.uid, "uid"),
-      gid: bigintToNumberOption(stat.gid, "gid"),
+      nlink: bigintToNumberOption(stat.nlink),
+      uid: bigintToNumberOption(stat.uid),
+      gid: bigintToNumberOption(stat.gid),
       size: ByteSize.bytes(stat.size),
       blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(stat.blksize)) : Option.none(),
-      blocks: bigintToNumberOption(stat.blocks, "blocks")
+      blocks: bigintToNumberOption(stat.blocks)
     }),
     catch: handleBadArgument("stat")
   })
