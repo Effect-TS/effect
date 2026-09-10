@@ -12,16 +12,16 @@ const webSearchOutcomes = [
   { status: "searching", isFailure: true }
 ] as const
 
-const partialFileSearchResults = [{ file_id: "file_123", text: "Matching text", score: 0.8 }] as const
+const fileSearchResults = [{ file_id: "file_123", text: "Matching text", score: 0.8 }] as const
 
 const fileSearchOutcomes = [
-  { status: "completed", isFailure: false, label: "results", results: partialFileSearchResults },
+  { status: "completed", isFailure: false, label: "results", results: fileSearchResults },
   { status: "completed", isFailure: false, label: "null results", results: null },
   { status: "completed", isFailure: false, label: "omitted results", results: undefined },
-  { status: "failed", isFailure: true, label: "partial results", results: partialFileSearchResults },
-  { status: "incomplete", isFailure: true, label: "partial results", results: partialFileSearchResults },
-  { status: "in_progress", isFailure: true, label: "partial results", results: partialFileSearchResults },
-  { status: "searching", isFailure: true, label: "partial results", results: partialFileSearchResults },
+  { status: "failed", isFailure: true, label: "results", results: fileSearchResults },
+  { status: "incomplete", isFailure: true, label: "results", results: fileSearchResults },
+  { status: "in_progress", isFailure: true, label: "results", results: fileSearchResults },
+  { status: "searching", isFailure: true, label: "results", results: fileSearchResults },
   { status: "failed", isFailure: true, label: "null results", results: null },
   { status: "failed", isFailure: true, label: "omitted results", results: undefined }
 ] as const
@@ -1822,7 +1822,7 @@ describe("OpenAiLanguageModel", () => {
             status,
             queries: ["Effect TypeScript"],
             results: results ?? null
-          }, "File search results should normalize null or omitted results to null")
+          })
         })
     )
 

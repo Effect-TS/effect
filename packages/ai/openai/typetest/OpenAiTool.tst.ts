@@ -6,14 +6,17 @@ describe("OpenAiTool", () => {
   it("distinguishes completed file searches from failed and unfinished searches", () => {
     const fileSearch = OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] })
 
+    type Results = typeof Generated.FileSearchToolCall.fields.results.schema.Type
+
     type Failure = {
       readonly status: "in_progress" | "searching" | "incomplete" | "failed"
       readonly queries: Generated.FileSearchToolCall["queries"]
-      readonly results?: Exclude<Generated.FileSearchToolCall["results"], undefined>
+      readonly results: Results
     }
 
     expect<Tool.Failure<typeof fileSearch>>().type.toBe<Failure>()
     expect<Tool.Success<typeof fileSearch>["status"]>().type.toBe<"completed">()
+    expect<Pick<Tool.Success<typeof fileSearch>, "results">>().type.toBe<{ readonly results: Results }>()
   })
 
   it("distinguishes completed web searches from failed and unfinished searches for both tools", () => {
