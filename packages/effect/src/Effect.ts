@@ -14486,7 +14486,7 @@ export const trackDuration: {
 export type TransactionRetryReason = "retry" | "conflict"
 
 /**
- * Journal, retry flag, and attempt metadata for an Effect transaction.
+ * Journal and attempt metadata for an Effect transaction.
  *
  * **When to use**
  *
@@ -14508,7 +14508,6 @@ export type TransactionRetryReason = "retry" | "conflict"
  * @since 4.0.0
  */
 export interface TransactionMeta {
-  readonly retry: boolean
   readonly journal: ReadonlyMap<
     TxRef<any>,
     {
@@ -14565,7 +14564,7 @@ export interface TransactionMetaInner {
  * ```
  *
  * @see {@link tx} for the outermost transaction boundary that creates this service
- * @see {@link TransactionMeta} for the journal, retry flag, and attempt metadata
+ * @see {@link TransactionMeta} for the journal and attempt metadata
  *
  * @category services
  * @since 4.0.0
