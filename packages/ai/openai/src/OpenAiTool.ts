@@ -102,10 +102,10 @@ export const CodeInterpreter = Tool.providerDefined({
  * **Details**
  *
  * The tool requires `vector_store_ids` and accepts optional `filters`,
- * `max_num_results`, and `ranking_options`. Successful tool calls expose the
- * search `status`, generated `queries`, and optional `results`.
- * Calls that finish without a `completed` status return failure tool results,
- * preserving the original status, queries, and any partial results.
+ * `max_num_results`, and `ranking_options`. Results include `queries` and a
+ * required `results` field containing matches or `null`. Only `completed` is
+ * successful; all other statuses produce failure results, preserving partial
+ * matches.
  *
  * @category tools
  * @since 4.0.0
@@ -304,9 +304,8 @@ const WebSearchFailure = Schema.Struct({
  * **Details**
  *
  * The tool accepts optional filters, user location, and search context size.
- * Successful calls expose the performed search action and status.
- * Calls that finish without a `completed` status return a failure result with
- * the original action and status, including unfinished searches.
+ * Results preserve the action and status. Only `completed` is successful;
+ * all other statuses produce failure results.
  *
  * @see {@link WebSearchPreview} for the preview web search provider tool
  *
@@ -338,10 +337,9 @@ export const WebSearch = Tool.providerDefined({
  *
  * **Details**
  *
- * The preview tool accepts optional user location and search context size, then
- * exposes the performed search action and status in successful calls.
- * Calls that finish without a `completed` status return a failure result with
- * the original action and status, including unfinished searches.
+ * The preview tool accepts optional user location and search context size.
+ * Results preserve the action and status. Only `completed` is successful;
+ * all other statuses produce failure results.
  *
  * @see {@link WebSearch} for the stable web search provider tool
  *
