@@ -76,6 +76,23 @@ describe("Effect.fn", () => {
     strictEqual(fn2.length, 1)
     strictEqual(Effect.runSync(fn2(2)), 2)
   })
+
+  it.effect("handles a non-generator body that returns an iterator (transpiled generator)", () =>
+    Effect.gen(function*() {
+      // Mimics `babel-preset-expo` lowering `function*({a}) { return a }` into
+      // a plain function that returns a generator IIFE iterator.
+      const body = function(arg: { a: number }) {
+        const a = arg.a
+        return (function*() {
+          return a
+        })()
+      }
+      const fn = Effect.fn("test")(body as any)
+      const v = yield* fn({ a: 42 }) as Effect.Effect<number>
+      strictEqual(v, 42)
+      const v2 = yield* fn({ a: 7 }) as Effect.Effect<number>
+      strictEqual(v2, 7)
+    }))
 })
 
 describe("Effect.fnUntraced", () => {
