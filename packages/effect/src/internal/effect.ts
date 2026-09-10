@@ -4372,6 +4372,9 @@ export const acquireDisposable = <A extends AsyncDisposable | Disposable, E, R>(
 
 /** @internal */
 export const cachedInvalidateWithTTL: {
+  <A, E>(timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input): <R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]>
   (timeToLive: Duration.Input): <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]>
@@ -4430,6 +4433,9 @@ export const cachedInvalidateWithTTL: {
 
 /** @internal */
 export const cachedWithTTL: {
+  <A, E>(
+    timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input
+  ): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Effect.Effect<A, E, R>>
   (
     timeToLive: Duration.Input
   ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Effect.Effect<A, E, R>>
