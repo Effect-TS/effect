@@ -39,14 +39,13 @@ const SearchProducts = Tool.make("SearchProducts", {
     })
   }),
   success: Schema.Array(Product),
-  // The strategy used for handling errors returned from tool call handler
-  // execution.
-  //
-  // If set to `"error"` (the default), errors that occur during tool call handler
-  // execution will be returned in the error channel of the calling effect.
-  //
-  // If set to `"return"`, errors that occur during tool call handler execution
-  // will be captured and returned as part of the tool call result.
+  // "error" is the default: typed handler failures fail the calling model
+  // operation. Declaring a failure schema alone does not enable recovery.
+  // Choose "return" to encode typed failures as results with isFailure: true,
+  // which an agent loop can include in its next prompt for the model to handle.
+  // Toolkit parameter-validation failures follow the same mode without running
+  // the handler. Defects, interruption and result encoding failures still escape.
+  // This setting does not retry the tool or undo its side effects.
   failureMode: "error"
 })
 
