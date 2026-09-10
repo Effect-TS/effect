@@ -3301,6 +3301,21 @@ describe("Effect", () => {
           assert.strictEqual(value, 10)
         }))
 
+      it.effect("should use Object.is when deciding whether to bump TxRef version on commit", () =>
+        Effect.gen(function*() {
+          const nanRef = yield* TxRef.make(NaN)
+          const nanVersion = nanRef.version
+          yield* TxRef.set(nanRef, NaN)
+          assert.strictEqual(nanRef.version, nanVersion)
+          assert.isTrue(Object.is(yield* TxRef.get(nanRef), NaN))
+
+          const zeroRef = yield* TxRef.make(0)
+          const zeroVersion = zeroRef.version
+          yield* TxRef.set(zeroRef, -0)
+          assert.strictEqual(zeroRef.version, zeroVersion + 1)
+          assert.isTrue(Object.is(yield* TxRef.get(zeroRef), -0))
+        }))
+
       it.effect("should roll back nested changes when the outer transaction fails", () =>
         Effect.gen(function*() {
           const ref1 = TxRef.makeUnsafe(0)
