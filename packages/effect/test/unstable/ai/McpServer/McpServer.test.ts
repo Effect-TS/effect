@@ -493,6 +493,73 @@ describe("McpServer", () => {
       assert.strictEqual((yield* subscription.take()).method, "notifications/tools/list_changed")
     }))
 
+  it.effect("should suppress cancelled responses when a custom transport handles MCP messages", () =>
+    Effect.gen(function*() {
+      const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+      const disconnects = yield* Queue.unbounded<number>()
+      const ready = yield* Deferred.make<
+        (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+      >()
+      const transport = yield* RpcServer.Protocol.make((write) =>
+        Deferred.succeed(ready, write).pipe(Effect.as({
+          disconnects,
+          send: (_clientId, message) => Queue.offer(outbound, message).pipe(Effect.asVoid),
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set([1])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: true,
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+        }))
+      )
+      const context = yield* Layer.build(
+        McpServer.layer({
+          name: "CustomCancellation",
+          version: "1.0.0",
+          protocols: [McpProtocol.v2025_03_26]
+        }).pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, transport)))
+      )
+      const entered = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      yield* Context.get(context, McpServer.McpServer).addTool({
+        tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+        annotations: Context.empty(),
+        handle: () =>
+          Deferred.succeed(entered, void 0).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+          )
+      })
+      const send = yield* Deferred.await(ready)
+      yield* send(1, {
+        _tag: "Request",
+        id: "initialize",
+        tag: "initialize",
+        payload: {
+          protocolVersion: "2025-03-26",
+          capabilities: {},
+          clientInfo: { name: "client", version: "1.0.0" }
+        },
+        headers: []
+      })
+      assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "initialize" })
+      yield* send(1, { _tag: "Request", id: "wait", tag: "tools/call", payload: { name: "Wait" }, headers: [] })
+      yield* Deferred.await(entered)
+      yield* send(1, {
+        _tag: "Request",
+        id: "",
+        tag: "notifications/cancelled",
+        payload: { requestId: "wait" },
+        headers: [],
+        isNotification: true
+      })
+      yield* Deferred.await(interrupted)
+      yield* send(1, { _tag: "Request", id: "ping", tag: "ping", payload: {}, headers: [] })
+      assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "ping" })
+    }))
+
   it.effect("should match reverse responses to their originating connection", () =>
     Effect.gen(function*() {
       const outbound = yield* Queue.unbounded<{

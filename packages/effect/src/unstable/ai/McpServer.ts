@@ -643,7 +643,7 @@ export class McpServer extends Context.Service<McpServer, {
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
-const cancelledHttpResponses = new WeakMap<object, string | number>()
+const cancelledResponses = new WeakMap<object, string | number>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 interface ActiveRequest {
@@ -732,7 +732,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly extensions?: ServerExtensions | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
-  transport: "custom" | "http"
+  transport: "custom" | "http" | "stdio"
 ) {
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
@@ -935,8 +935,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
           activeRequests.delete(clientId)
         }
         if (cancelled === true) {
-          if (!isHttp) return Effect.void
-          cancelledHttpResponses.set(response, response.requestId)
+          if (transport === "custom") return Effect.void
+          cancelledResponses.set(response, response.requestId)
           return protocol.send(clientId, response)
         }
         if (
@@ -1390,7 +1390,7 @@ const layerWithRuntime = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
-}, transport: "custom" | "http"): Layer.Layer<
+}, transport: "custom" | "http" | "stdio"): Layer.Layer<
   McpServer | McpServerClient,
   never,
   RpcServer.Protocol | McpRuntime.ServerRuntime
@@ -1434,7 +1434,8 @@ export const layerStdio = (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, Stdio> =>
-  layer(options).pipe(
+  layerWithRuntime(options, "stdio").pipe(
+    Layer.provide(McpRuntime.layer(options.protocols)),
     Layer.provide(RpcServer.layerProtocolStdio),
     Layer.provide(Layer.succeed(
       RpcSerialization.RpcSerialization,
@@ -1734,32 +1735,10 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
     codecFor: serialization.codecFor,
     makeUnsafe: () => {
       const parser = serialization.makeUnsafe()
-      const cancelledIds = new Set<string | number>()
       return {
         decode: parser.decode,
         encode: (response) => {
-          if (Predicate.isReadonlyObject(response)) {
-            const cancelledId = cancelledHttpResponses.get(response)
-            if (cancelledId !== undefined) {
-              cancelledHttpResponses.delete(response)
-              cancelledIds.add(cancelledId)
-            }
-          }
-          let encoded = parser.encode(response)
-          if (typeof encoded === "string" && cancelledIds.size > 0) {
-            // Count cancelled completions toward the batch, but never write their responses.
-            // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
-            const keep = (message: unknown) =>
-              !(Predicate.isReadonlyObject(message) && !Predicate.hasProperty(message, "method") &&
-                (typeof message.id === "string" || typeof message.id === "number") && cancelledIds.delete(message.id))
-            const message: unknown = JSON.parse(encoded)
-            if (Array.isArray(message)) {
-              const remaining = message.filter(keep)
-              encoded = remaining.length === 0 ? undefined : JSON.stringify(remaining)
-            } else if (!keep(message)) {
-              encoded = undefined
-            }
-          }
+          const encoded = parser.encode(response)
           // Preserve message boundaries when the HTTP transport joins buffered chunks.
           return typeof encoded === "string" ? `${encoded}\n` : encoded
         }
@@ -1794,13 +1773,36 @@ function mcpJsonRpcSerialization(options?: {
     ...serialization,
     makeUnsafe: () => {
       const parser = serialization.makeUnsafe()
+      const cancelledIds = new Set<string | number>()
       return {
         decode: parser.decode,
         encode: (response) => {
+          if (Predicate.isReadonlyObject(response)) {
+            const cancelledId = cancelledResponses.get(response)
+            if (cancelledId !== undefined) {
+              cancelledResponses.delete(response)
+              cancelledIds.add(cancelledId)
+            }
+          }
           const encoded = parser.encode(response)
-          return typeof encoded !== "string" || !encoded.includes("\"_tag\":\"Cause\"")
-            ? encoded
-            : JSON.stringify(normalizeMcpJsonRpcResponse(JSON.parse(encoded)))
+          if (typeof encoded !== "string") return encoded
+          if (cancelledIds.size === 0 && !encoded.includes("\"_tag\":\"Cause\"")) return encoded
+          let message: unknown = JSON.parse(encoded)
+          if (cancelledIds.size > 0) {
+            // Count cancelled completions toward the batch, but never write their responses.
+            // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
+            const keep = (message: unknown) =>
+              !(Predicate.isReadonlyObject(message) && !Predicate.hasProperty(message, "method") &&
+                (typeof message.id === "string" || typeof message.id === "number") && cancelledIds.delete(message.id))
+            if (Array.isArray(message)) {
+              const remaining = message.filter(keep)
+              if (remaining.length === 0) return undefined
+              message = remaining
+            } else if (!keep(message)) {
+              return undefined
+            }
+          }
+          return JSON.stringify(normalizeMcpJsonRpcResponse(message))
         }
       }
     }

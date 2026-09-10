@@ -307,6 +307,40 @@ export const statelessModernSuite = (
 
 export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer, { excludeTestServices: true })(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    if (protocol.runtime.transport.jsonRpc.acceptsBatches) {
+      describe("Utilities > Cancellation > STDIO", () => {
+        // Cancellation recipients SHOULD stop work and not send the cancelled request's response.
+        // Batch-capable transports must still deliver the remaining requests' responses.
+        // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation#behavior-requirements
+        // https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#stdio
+        it.effect("should preserve the remaining batch result when a sibling STDIO request is cancelled", () =>
+          Effect.gen(function*() {
+            const entered = yield* Deferred.make<void>()
+            const interrupted = yield* Deferred.make<void>()
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.server.addTool({
+              tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () =>
+                Deferred.succeed(entered, void 0).pipe(
+                  Effect.andThen(Effect.never),
+                  Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+                )
+            })
+            yield* fixture.initialize()
+            yield* fixture.takeFrame
+            yield* fixture.sendRaw([
+              { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "Wait" } },
+              { jsonrpc: "2.0", id: "1", method: "ping" }
+            ])
+            yield* Deferred.await(entered)
+            yield* fixture.sendNotification("notifications/cancelled", { requestId: 1 })
+            yield* Deferred.await(interrupted)
+            const response = yield* fixture.takeFrame.pipe(Effect.timeout("1 second"))
+            assert.deepStrictEqual([response].flat(), [{ jsonrpc: "2.0", id: "1", result: {} }])
+          }))
+      })
+    }
     describe("Utilities > Cancellation > HTTP", () => {
       const serverLayer = makeServerLayer({ name: "HttpCancellation", protocols: [protocol] })
       // https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation
