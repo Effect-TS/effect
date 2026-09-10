@@ -339,7 +339,7 @@ describe("OpenRouterLanguageModel", () => {
             Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          deepStrictEqual(result.usage.outputTokens, { total: 30, text: 10, reasoning: 20 })
+          deepStrictEqual(result.usage.outputTokens, { total: 30, text: 10, reasoning: 20 }, "disjoint reasoning usage")
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
@@ -357,7 +357,11 @@ describe("OpenRouterLanguageModel", () => {
             Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          deepStrictEqual(result.usage.inputTokens, { uncached: 100, total: 400, cacheRead: 300, cacheWrite: 0 })
+          deepStrictEqual(
+            result.usage.inputTokens,
+            { uncached: 100, total: 400, cacheRead: 300, cacheWrite: 0 },
+            "disjoint cached usage"
+          )
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
@@ -394,7 +398,11 @@ describe("OpenRouterLanguageModel", () => {
           )
 
           const finishPart = parts.find((part) => part.type === "finish")
-          deepStrictEqual(finishPart?.usage.outputTokens, { total: 30, text: 10, reasoning: 20 })
+          deepStrictEqual(
+            finishPart?.usage.outputTokens,
+            { total: 30, text: 10, reasoning: 20 },
+            "streamed disjoint reasoning usage"
+          )
         }))
     })
 
