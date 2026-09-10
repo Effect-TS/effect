@@ -2984,6 +2984,24 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(Option.some(1), "1")
   })
 
+  it("UndefinedOrFromNullOr", async () => {
+    const schema = Schema.UndefinedOrFromNullOr(Schema.FiniteFromString)
+    const asserts = new TestSchema.Asserts(schema)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+
+    const decoding = asserts.decoding()
+    await decoding.succeed(null, undefined)
+    await decoding.succeed("1", 1)
+    await decoding.fail("a", `Expected a finite number`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(undefined, null)
+    await encoding.succeed(1, "1")
+  })
+
   it("OptionFromUndefinedOr", async () => {
     const schema = Schema.OptionFromUndefinedOr(Schema.FiniteFromString)
     const asserts = new TestSchema.Asserts(schema)

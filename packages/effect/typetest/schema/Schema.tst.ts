@@ -2028,6 +2028,14 @@ describe("Schema", () => {
       const optionalNullOr = Schema.OptionFromOptionalNullOr(Schema.FiniteFromString)
       expect(optionalNullOr).type.toBe<Schema.OptionFromOptionalNullOr<typeof Schema.FiniteFromString>>()
       expect(optionalNullOr.annotate({})).type.toBe<Schema.OptionFromOptionalNullOr<typeof Schema.FiniteFromString>>()
+
+      const undefinedOrFromNullOr = Schema.UndefinedOrFromNullOr(Schema.FiniteFromString)
+      expect(undefinedOrFromNullOr).type.toBe<Schema.UndefinedOrFromNullOr<typeof Schema.FiniteFromString>>()
+      expect(undefinedOrFromNullOr.annotate({})).type.toBe<
+        Schema.UndefinedOrFromNullOr<typeof Schema.FiniteFromString>
+      >()
+      expect(undefinedOrFromNullOr["Type"]).type.toBe<number | undefined>()
+      expect(undefinedOrFromNullOr["Encoded"]).type.toBe<string | null>()
     })
   })
 
