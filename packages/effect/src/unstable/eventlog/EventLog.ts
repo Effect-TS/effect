@@ -702,7 +702,7 @@ export const makeReplayFromRemote = (options: {
   readonly handlers: ReadonlyMap<string, Handlers.Item<any>>
   readonly storeId: StoreId
   readonly identity: Identity["Service"]
-  readonly reactivity: Reactivity["Service"]
+  readonly reactivity: Reactivity
   readonly reactivityKeys: Record<string, ReadonlyArray<string>>
   readonly logAnnotations: {
     readonly service: string

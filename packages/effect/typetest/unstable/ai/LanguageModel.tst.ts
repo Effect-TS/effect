@@ -340,7 +340,7 @@ describe("LanguageModel", () => {
 
   describe("Chat", () => {
     it("uses encoded tool parameters when tool call resolution is disabled", () => {
-      const chat = null as unknown as Chat.Service
+      const chat = null as unknown as Chat.Chat
       const toolkit = Toolkit.make(TransformTool)
       const program = chat.generateText({
         prompt: "hello",

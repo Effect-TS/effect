@@ -82,9 +82,23 @@ import type * as Tool from "./Tool.ts"
  * @category services
  * @since 4.0.0
  */
-export class Chat extends Context.Service<Chat, Service>()(
-  "effect/ai/Chat"
-) {}
+export const Chat: Context.Service<Chat, Chat> = Context.Service("effect/ai/Chat")
+
+/**
+ * Type-level identifier for `Chat` service implementations.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export type TypeId = "~effect/ai/Chat"
+
+/**
+ * Runtime identifier stored on `Chat` service implementations.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export const TypeId: TypeId = "~effect/ai/Chat"
 
 /**
  * Represents the interface that the `Chat` service provides.
@@ -95,13 +109,14 @@ export class Chat extends Context.Service<Chat, Service>()(
  * chat session and needs history, export, text generation, streaming, and
  * structured-output operations.
  *
- * @see {@link Chat} for the context tag that provides this service
  * @see {@link Persisted} for the persistence-backed extension
  *
  * @category models
  * @since 4.0.0
  */
-export interface Service {
+export interface Chat {
+  readonly [TypeId]: TypeId
+
   /**
    * Reference to the chat history.
    *
@@ -419,6 +434,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
   const semaphore = Semaphore.makeUnsafe(1)
 
   return Chat.of({
+    [TypeId]: TypeId,
     history,
     export: Ref.get(history).pipe(
       Effect.flatMap(encodeHistory),
@@ -455,7 +471,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
       },
       semaphore.withPermits(1),
       (effect) => Effect.withSpan(effect, "Chat.generateText", { captureStackTrace: false })
-    ) as Service["generateText"],
+    ) as Chat["generateText"],
     streamText: Effect.fnUntraced(
       function*(options) {
         let parts = Chunk.empty<Response.AnyPart>()
@@ -487,7 +503,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
         )
       },
       Stream.unwrap
-    ) as Service["streamText"],
+    ) as Chat["streamText"],
     generateObject: Effect.fnUntraced(
       function*(options) {
         const newPrompt = Prompt.make(options.prompt)
@@ -539,7 +555,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
  * @category constructors
  * @since 4.0.0
  */
-export const empty: Effect.Effect<Service> = Effect.sync(() => makeUnsafe(Ref.makeUnsafe(Prompt.empty)))
+export const empty: Effect.Effect<Chat> = Effect.sync(() => makeUnsafe(Ref.makeUnsafe(Prompt.empty)))
 
 /**
  * Creates a new Chat service from an initial prompt.
@@ -655,7 +671,7 @@ export const fromPrompt = (prompt: Prompt.RawInput) =>
  * @since 4.0.0
  */
 export const fromExport = (data: unknown): Effect.Effect<
-  Service,
+  Chat,
   Schema.SchemaError
 > => Effect.flatMap(decodeHistory(data), fromPrompt)
 
@@ -689,7 +705,7 @@ export const fromExport = (data: unknown): Effect.Effect<
  * @since 4.0.0
  */
 export const fromJson = (data: string): Effect.Effect<
-  Service,
+  Chat,
   Schema.SchemaError
 > => Effect.flatMap(decodeHistoryJson(data), fromPrompt)
 
@@ -779,7 +795,7 @@ export declare namespace Persistence {
  * @category models
  * @since 4.0.0
  */
-export interface Persisted extends Service {
+export interface Persisted extends Chat {
   /**
    * The identifier for the chat in the backing persistence store.
    */
@@ -816,7 +832,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
   const store = yield* persistence.make(options.storeId)
 
   const toPersisted = Effect.fnUntraced(
-    function*(chatId: string, chat: Service, ttl: Duration.Input | undefined) {
+    function*(chatId: string, chat: Chat, ttl: Duration.Input | undefined) {
       const idGenerator = yield* Effect.serviceOption(IdGenerator.IdGenerator).pipe(
         Effect.map(Option.getOrElse(() => IdGenerator.defaultIdGenerator))
       )
@@ -865,7 +881,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
           return yield* chat.generateText(options).pipe(
             Effect.ensuring(Effect.orDie(saveChat(history)))
           )
-        }) as Service["generateText"],
+        }) as Chat["generateText"],
         generateObject: Effect.fnUntraced(function*(options) {
           const history = yield* Ref.get(chat.history)
           return yield* chat.generateObject(options).pipe(
@@ -878,7 +894,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
             Stream.ensuring(Effect.orDie(saveChat(history)))
           )
           return stream
-        }, Stream.unwrap) as Service["streamText"]
+        }, Stream.unwrap) as Chat["streamText"]
       }
 
       return persisted

@@ -516,7 +516,7 @@ export const model = (
  *
  * **When to use**
  *
- * Use when you need to construct a `LanguageModel.Service` value backed by
+ * Use when you need to construct a `LanguageModel` value backed by
  * `OpenRouterClient` inside an Effect.
  *
  * **Details**
@@ -541,7 +541,7 @@ export const model = (
 export const make = Effect.fnUntraced(function*({ model, config: providerConfig }: {
   readonly model: string
   readonly config?: Omit<typeof Config.Service, "model"> | undefined
-}): Effect.fn.Return<LanguageModel.Service, never, OpenRouterClient> {
+}): Effect.fn.Return<LanguageModel.LanguageModel, never, OpenRouterClient> {
   const client = yield* OpenRouterClient
   const codecTransformer = getCodecTransformer(model)
 
