@@ -297,6 +297,24 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
    * resolver execution yourself.
    */
   readonly disableToolCallResolution?: boolean | undefined
+
+  /**
+   * Validation of application tool parameters when `disableToolCallResolution`
+   * is `true`. Defaults to `"strict"`, which validates the encoded parameters.
+   *
+   * **Details**
+   *
+   * Use `"deferred"` when an external tool scheduler owns validation and needs
+   * to return corrective feedback for invalid arguments. Tool call parameters
+   * are then typed as `unknown`; the scheduler must validate them against the
+   * tool's parameter schema before executing a handler. Tool definitions sent
+   * to the provider are unchanged, and provider-executed calls and the rest of
+   * the response are still validated.
+   *
+   * This option has no effect when tool call resolution is enabled: `Toolkit`
+   * validates application parameters according to each tool's `failureMode`.
+   */
+  readonly toolCallValidation?: "strict" | "deferred" | undefined
 }
 
 type GenerateTextOptionsWithoutToolkit = Omit<GenerateTextOptions<{}>, "toolkit"> & {
@@ -567,15 +585,16 @@ export type ExtractTools<Options> = Options extends {
   : {}
 
 /**
- * Resolves to `"encoded"` when tool call resolution is
- * disabled, otherwise `"opaque"`.
+ * Resolves to `"encoded"` when tool call resolution is disabled and parameter
+ * validation is strict, otherwise `"opaque"`.
  *
  * @category utility types
  * @since 4.0.0
  */
 export type ExtractToolParametersMode<Options> = Options extends {
   readonly disableToolCallResolution: true
-} ? "encoded"
+} ? "toolCallValidation" extends keyof Options ? "deferred" extends Options["toolCallValidation"] ? "opaque" : "encoded"
+  : "encoded"
   : "opaque"
 
 type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution extends boolean> = ToolkitValue extends
@@ -1209,7 +1228,7 @@ export const make: (params: {
     }
 
     const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
-      options.disableToolCallResolution === true
+      options.disableToolCallResolution === true && options.toolCallValidation !== "deferred"
         ? makeToolkitWithEncodedParameters(toolkit)
         : makeToolkitWithOpaqueParameters(toolkit)
     )))
@@ -1219,6 +1238,9 @@ export const make: (params: {
     if (options.disableToolCallResolution === true) {
       const rawContent = yield* generateWithNonIncrementalFallback()
       const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+      if (options.toolCallValidation === "deferred") {
+        yield* validateProviderExecutedToolCalls(toolkit, rawContent, "encoded")
+      }
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1511,7 +1533,7 @@ export const make: (params: {
     }
 
     const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
-      options.disableToolCallResolution === true
+      options.disableToolCallResolution === true && options.toolCallValidation !== "deferred"
         ? makeToolkitWithEncodedParameters(toolkit)
         : makeToolkitWithOpaqueParameters(toolkit)
     ))
@@ -1523,6 +1545,9 @@ export const make: (params: {
       return streamWithNonIncrementalFallback().pipe(
         Stream.mapArrayEffect((parts) =>
           decodeParts(parts).pipe(
+            options.toolCallValidation === "deferred"
+              ? Effect.tap(() => validateProviderExecutedToolCalls(toolkit, parts, "encoded"))
+              : identity,
             tracker ?
               Effect.tap((decodedParts) => {
                 for (const part of decodedParts) {
@@ -2391,7 +2416,8 @@ const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>
 // Provider-executed tools bypass Toolkit, so validate their parameters here.
 const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>,
-  parts: ReadonlyArray<Response.PartEncoded | Response.StreamPartEncoded>
+  parts: ReadonlyArray<Response.PartEncoded | Response.StreamPartEncoded>,
+  parametersMode: "decoded" | "encoded" = "decoded"
 ): Effect.Effect<void, Schema.SchemaError> =>
   Effect.forEach(
     parts,
@@ -2404,7 +2430,9 @@ const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any
         return Effect.void
       }
       return Effect.asVoid(
-        Schema.decodeUnknownEffect(tool.parametersSchema)(part.params)
+        Schema.decodeUnknownEffect(
+          parametersMode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : tool.parametersSchema
+        )(part.params)
       ) as Effect.Effect<void, Schema.SchemaError>
     },
     { discard: true }

@@ -55,6 +55,50 @@ const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
 })
 
 describe("LanguageModel", () => {
+  it("keeps deferred parameters unknown without handler requirements or errors", () => {
+    const toolkit = Toolkit.make(FailureModeErrorTool, ToolWithRequestContext, AsymmetricParamsTool)
+    const options = {
+      prompt: "hello",
+      toolkit,
+      disableToolCallResolution: true,
+      toolCallValidation: "deferred"
+    } as const
+    const program = LanguageModel.generateText(options)
+    const stream = LanguageModel.streamText(options)
+    const object = LanguageModel.generateObject({ ...options, schema: Schema.Struct({ answer: Schema.String }) })
+    const chat = null as unknown as Chat.Chat
+    const chatProgram = chat.generateText(options)
+
+    type Output = Effect.Success<typeof program>
+    type Part = Stream.Success<typeof stream>
+    expect<Output["toolCalls"][number]["params"]>().type.toBe<unknown>()
+    expect<Extract<Part, { readonly type: "tool-call" }>["params"]>().type.toBe<unknown>()
+    expect<Effect.Success<typeof object>["toolCalls"][number]["params"]>().type.toBe<unknown>()
+    expect<Effect.Success<typeof chatProgram>["toolCalls"][number]["params"]>().type.toBe<unknown>()
+    expect<Effect.Error<typeof program>>().type.toBe<AiError.AiError>()
+    expect<Stream.Error<typeof stream>>().type.toBe<AiError.AiError>()
+    expect<Effect.Services<typeof program>>().type.toBe<LanguageModel.LanguageModel | ParamEncodeService>()
+    expect<Stream.Services<typeof stream>>().type.toBe<LanguageModel.LanguageModel | ParamEncodeService>()
+  })
+
+  it("keeps parameters unknown when validation may be deferred", () => {
+    const toolCallValidation = null as unknown as "strict" | "deferred" | undefined
+    const program = LanguageModel.generateText({
+      prompt: "hello",
+      toolkit: Toolkit.make(TransformTool),
+      disableToolCallResolution: true,
+      toolCallValidation
+    })
+    expect<Effect.Success<typeof program>["toolCalls"][number]["params"]>().type.toBe<unknown>()
+    const strict = LanguageModel.generateText({
+      prompt: "hello",
+      toolkit: Toolkit.make(TransformTool),
+      disableToolCallResolution: true,
+      toolCallValidation: "strict"
+    })
+    expect<Effect.Success<typeof strict>["toolCalls"][number]["params"]>().type.toBe<string>()
+  })
+
   describe("generateText", () => {
     it("uses encoded tool parameters when tool call resolution is disabled", () => {
       const toolkit = Toolkit.make(TransformTool)

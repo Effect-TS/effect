@@ -69,6 +69,179 @@ describe("LanguageModel", () => {
     response: undefined
   }
 
+  describe("deferred tool parameter validation", () => {
+    for (const method of ["generateText", "streamText"] as const) {
+      it.effect(`${method} preserves invalid arguments, provider results, and usage without running handlers`, () =>
+        Effect.gen(function*() {
+          let calls = 0
+          const toolkit = Toolkit.make(ReturnModeTool, MyTool)
+          const handlers = toolkit.toLayer({
+            ReturnModeTool: () =>
+              Effect.sync(() => {
+                calls++
+                return { testSuccess: "unexpected" }
+              }),
+            MyTool: () =>
+              Effect.sync(() => {
+                calls++
+                return { testSuccess: "unexpected" }
+              })
+          })
+          const raw: Array<Response.ToolCallPartEncoded | Response.ToolResultPartEncoded | Response.FinishPartEncoded> =
+            [
+              {
+                type: "tool-call",
+                id: "hosted",
+                name: "MyTool",
+                params: { testParam: "valid" },
+                providerExecuted: true
+              },
+              {
+                type: "tool-result",
+                id: "hosted",
+                name: "MyTool",
+                result: { testSuccess: "retained" },
+                isFailure: false,
+                providerExecuted: true
+              },
+              { type: "tool-call", id: "invalid", name: "ReturnModeTool", params: { testParam: 123 } },
+              { ...finishPart, reason: "tool-calls" }
+            ]
+          const options = {
+            prompt: [],
+            toolkit,
+            disableToolCallResolution: true,
+            toolCallValidation: "deferred"
+          } as const
+          const request: Effect.Effect<
+            ReadonlyArray<
+              | Response.Part<Toolkit.Tools<typeof toolkit>, "opaque">
+              | Response.StreamPart<Toolkit.Tools<typeof toolkit>, "opaque">
+            >,
+            AiError.AiError,
+            LanguageModel.LanguageModel
+          > = method === "generateText"
+            ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.content))
+            : LanguageModel.streamText(options).pipe(Stream.runCollect)
+          const parts = yield* request.pipe(
+            TestUtils.withLanguageModel({
+              generateText: (options) => {
+                strictEqual(options.tools[0], ReturnModeTool)
+                return raw
+              },
+              streamText: (options) => {
+                strictEqual(options.tools[0], ReturnModeTool)
+                return raw
+              }
+            }),
+            Effect.provide(handlers)
+          )
+          const invalid = parts.find((part) => part.type === "tool-call" && part.id === "invalid")
+          assertDefined(invalid)
+          assertTrue(invalid.type === "tool-call")
+          deepStrictEqual(invalid.params, { testParam: 123 })
+          const results = parts.filter((part) => part.type === "tool-result")
+          strictEqual(results.length, 1)
+          strictEqual(results[0].id, "hosted")
+          deepStrictEqual(results[0].result, { testSuccess: "retained" })
+          const finish = parts.find((part) => part.type === "finish")
+          assertDefined(finish)
+          strictEqual(finish.usage.inputTokens.total, 5)
+          strictEqual(finish.usage.outputTokens.total, 5)
+          strictEqual(calls, 0)
+        }))
+
+      for (
+        const call of [
+          {
+            type: "tool-call",
+            id: "hosted-invalid",
+            name: "MyTool",
+            params: { testParam: 123 },
+            providerExecuted: true
+          },
+          { type: "tool-call", id: "unknown", name: "UnknownTool", params: {} }
+        ] satisfies Array<Response.ToolCallPartEncoded>
+      ) {
+        it.effect(`${method} still rejects ${call.id}`, () =>
+          Effect.gen(function*() {
+            const options = {
+              prompt: [],
+              toolkit: MyToolkit,
+              disableToolCallResolution: true,
+              toolCallValidation: "deferred"
+            } as const
+            const request = method === "generateText"
+              ? LanguageModel.generateText(options).pipe(Effect.asVoid)
+              : LanguageModel.streamText(options).pipe(Stream.runDrain)
+            const error = yield* request.pipe(
+              TestUtils.withLanguageModel({ generateText: [call, finishPart], streamText: [call, finishPart] }),
+              Effect.flip
+            )
+            strictEqual(error.reason._tag, "InvalidOutputError")
+          }))
+      }
+    }
+
+    it.effect("keeps transformed parameters encoded for both application and provider calls", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [
+              { type: "tool-call", id: "application", name: "TransformTool", params: "21" },
+              { type: "tool-call", id: "provider", name: "TransformTool", params: "22", providerExecuted: true },
+              finishPart
+            ]
+          })
+        )
+        const calls = parts.filter((part) => part.type === "tool-call")
+        deepStrictEqual(calls.map((call) => call.params), ["21", "22"])
+      }))
+
+    it.effect("preserves provider failure and finalization after an invalid application call", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const failure = AiError.make({
+          module: "Test",
+          method: "streamText",
+          reason: new AiError.InvalidRequestError({ description: "provider failed" })
+        })
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: () =>
+              Stream.succeed(
+                {
+                  type: "tool-call",
+                  id: "invalid",
+                  name: "MyTool",
+                  params: { testParam: 123 }
+                } satisfies Response.StreamPartEncoded
+              ).pipe(
+                Stream.concat(Stream.fail(failure)),
+                Stream.ensuring(Effect.sync(() => {
+                  finalized = true
+                }))
+              )
+          }),
+          Effect.flip
+        )
+        strictEqual(error, failure)
+        strictEqual(finalized, true)
+      }))
+  })
+
   describe("generateText", () => {
     it.effect("does not resolve tool calls after an incomplete finish", () =>
       Effect.gen(function*() {

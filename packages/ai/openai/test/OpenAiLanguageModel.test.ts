@@ -17,6 +17,84 @@ const fileSearchOutcomes = [
 ] as const
 
 describe("OpenAiLanguageModel", () => {
+  for (const method of ["generateText", "streamText"] as const) {
+    it.effect(`${method} defers refined application arguments while retaining completed web search and usage`, () =>
+      Effect.gen(function*() {
+        const Inspect = Tool.make("Inspect", {
+          parameters: Schema.Struct({
+            focus: Schema.String.check(Schema.isMaxLength(240)).annotate({ description: "What to inspect" })
+          }),
+          success: Schema.String
+        })
+        const params = { focus: "x".repeat(241) }
+        const call = makeFunctionCall("Inspect", params)
+        const completed = makeDefaultResponse({
+          output: [makeWebSearchCall(), call],
+          usage: {
+            input_tokens: 20,
+            output_tokens: 10,
+            total_tokens: 30,
+            input_tokens_details: { cached_tokens: 0 },
+            output_tokens_details: { reasoning_tokens: 0 }
+          }
+        })
+        const options = {
+          prompt: "Inspect the result",
+          toolkit: Toolkit.make(Inspect, OpenAiTool.WebSearch({})),
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        } as const
+        const request = method === "generateText"
+          ? LanguageModel.generateText(options).pipe(
+            Effect.map((response) => response.content),
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(makeTestLayer({ body: completed }))
+          )
+          : LanguageModel.streamText(options).pipe(
+            Stream.runCollect,
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(makeStreamTestLayer([
+              {
+                type: "response.created",
+                sequence_number: 1,
+                response: makeDefaultResponse({ status: "in_progress" })
+              },
+              { type: "response.output_item.done", sequence_number: 2, output_index: 0, item: makeWebSearchCall() },
+              {
+                type: "response.output_item.added",
+                sequence_number: 3,
+                output_index: 1,
+                item: { ...call, arguments: "", status: "in_progress" }
+              },
+              {
+                type: "response.function_call_arguments.done",
+                sequence_number: 4,
+                output_index: 1,
+                item_id: "fc_123",
+                name: "Inspect",
+                arguments: call.arguments
+              },
+              { type: "response.completed", sequence_number: 5, response: completed }
+            ]))
+          )
+        const parts = yield* request
+        const invalid = parts.find((part) => part.type === "tool-call" && part.name === "Inspect")
+        assert.isDefined(invalid)
+        if (invalid?.type === "tool-call") {
+          strictEqual(invalid.id, "call_123")
+          deepStrictEqual(invalid.params, params)
+        }
+        const results = parts.filter((part) => part.type === "tool-result")
+        strictEqual(results.length, 1)
+        strictEqual(results[0].id, "ws_123")
+        strictEqual(results[0].isFailure, false)
+        const finish = parts.find((part) => part.type === "finish")
+        assert.isDefined(finish)
+        strictEqual(finish?.usage.inputTokens.total, 20)
+        strictEqual(finish?.usage.outputTokens.total, 10)
+      }))
+  }
+
   describe("make", () => {
     it.effect("sends correct model in request", () =>
       Effect.gen(function*() {
