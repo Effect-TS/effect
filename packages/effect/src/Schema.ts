@@ -62,6 +62,8 @@ import * as Record_ from "./Record.ts"
 import * as Redacted_ from "./Redacted.ts"
 import * as RegExp_ from "./RegExp.ts"
 import * as Result_ from "./Result.ts"
+// oxlint-disable-next-line import/no-self-import -- Qualifies Constraint where Annotations.ToArbitrary.Constraint shadows it.
+import type * as Schema_ from "./Schema.ts"
 import * as SchemaAST from "./SchemaAST.ts"
 import * as SchemaGetter from "./SchemaGetter.ts"
 import * as SchemaIssue from "./SchemaIssue.ts"
@@ -14980,9 +14982,6 @@ export function resolveAnnotations<S extends Constraint>(
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {
   return schema.ast.context?.annotations
 }
-// Alias for the top-level `Constraint`, which `Annotations.ToArbitrary.Constraint` shadows below.
-type AnnotationSchemaConstraint = Constraint
-
 /**
  * The `Annotations` namespace groups all annotation interfaces used to attach
  * metadata to schemas. Annotations control documentation, validation messages,
@@ -15376,7 +15375,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface DeclarationInput<T, Parameters extends ReadonlyArray<AnnotationSchemaConstraint>> {
+    interface DeclarationInput<T, Parameters extends ReadonlyArray<Schema_.Constraint>> {
       readonly typeParameters: TypeParameters.Type<Parameters>
       readonly constraint: GenerationConstraint<T> | undefined
     }
@@ -15386,7 +15385,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface Declaration<T, Parameters extends ReadonlyArray<AnnotationSchemaConstraint>> {
+    interface Declaration<T, Parameters extends ReadonlyArray<Schema_.Constraint>> {
       (input: DeclarationInput<T, Parameters>): SchemaAST.Link
     }
   }
