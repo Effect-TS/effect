@@ -1,9 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
-import { describe, it } from "vitest"
 
 describe("Context", () => {
   const A = Context.Service<number>("ContextTest/A")
@@ -214,5 +215,84 @@ describe("Context", () => {
     const context = Context.makeUnsafe(map)
 
     strictEqual(context.mapUnsafe, map)
+  })
+
+  describe("Mixin", () => {
+    class Box {
+      constructor(readonly value: number) {}
+      double() {
+        return this.value * 2
+      }
+      static origin() {
+        return 0
+      }
+    }
+
+    class MyText extends Context.Mixin("ContextTest/MyText")(Box) {}
+
+    it("stores and retrieves instances as the service", () => {
+      const context = Context.make(MyText, new MyText(1))
+
+      strictEqual(Context.get(context, MyText).value, 1)
+      strictEqual(Context.get(context, MyText).double(), 2)
+    })
+
+    it.effect("yields the wrapped instance from the current context", () =>
+      Effect.gen(function*() {
+        const text = yield* MyText
+        strictEqual(text.value, 2)
+        strictEqual(text.double(), 4)
+      }).pipe(Effect.provideService(MyText, new MyText(2))))
+
+    it.effect("use and useSync read the wrapped instance", () =>
+      Effect.gen(function*() {
+        strictEqual(yield* MyText.use((text) => Effect.succeed(text.value)), 3)
+        strictEqual(yield* MyText.useSync((text) => text.double()), 6)
+      }).pipe(Effect.provideService(MyText, new MyText(3))))
+
+    it("preserves the original constructor and instance members", () => {
+      const text = new MyText(2)
+
+      assertTrue(text instanceof MyText)
+      assertTrue(text instanceof Box)
+      strictEqual(text.constructor, MyText)
+      strictEqual(text.value, 2)
+      strictEqual(text.double(), 4)
+      strictEqual(MyText.origin(), 0)
+    })
+
+    it("makes the class a service key without turning instances into Effects", () => {
+      assertTrue(Context.isKey(MyText))
+      assertTrue(Effect.isEffect(MyText))
+      assertFalse(Effect.isEffect(new MyText(1)))
+      strictEqual(MyText.key, "ContextTest/MyText")
+      strictEqual(MyText.of(new MyText(4)).value, 4)
+      strictEqual(Context.get(MyText.context(new MyText(5)), MyText).value, 5)
+      strictEqual(MyText.pipe((service) => service.key), "ContextTest/MyText")
+    })
+
+    it("does not modify the original class prototype", () => {
+      assertFalse(Context.isKey(Box))
+      assertFalse(Effect.isEffect(Box))
+      assertFalse(Effect.isEffect(new Box(1)))
+    })
+
+    it("invalidates the fiber cache when fiberCached is set", () => {
+      class CachedText extends Context.Mixin("ContextTest/CachedText", { fiberCached: true })(Box) {}
+      const source = Context.make(A, 1)
+
+      assertFalse(Context.hasSameCache(source, Context.add(source, CachedText, new CachedText(1))))
+      assertTrue(Context.hasSameCache(source, Context.add(source, MyText, new MyText(1))))
+    })
+
+    it.effect("exposes make when it is provided", () =>
+      Effect.gen(function*() {
+        class Logger extends Context.Mixin("ContextTest/MixinMake", {
+          make: Effect.succeed({ log: (message: string) => message })
+        })(Box) {}
+
+        const logger = yield* Logger.make
+        strictEqual(logger.log("hello"), "hello")
+      }))
   })
 })

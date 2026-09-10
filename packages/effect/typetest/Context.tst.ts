@@ -1,5 +1,5 @@
-import { Context, Option } from "effect"
-import { expect, it } from "tstyche"
+import { Context, Effect, Option } from "effect"
+import { describe, expect, it } from "tstyche"
 
 it("does not type a service removed with addOrOmit as present", () => {
   const Service = Context.Service<{ readonly value: number }>("TestService")
@@ -15,4 +15,64 @@ it("infers services for a saved curried getter", () => {
   const getService = Context.get(Service)
 
   expect(getService(Context.make(Service, { value: 1 }))).type.toBe<{ readonly value: number }>()
+})
+
+describe("Context.Mixin", () => {
+  class Box {
+    constructor(readonly value: number) {}
+    double() {
+      return this.value * 2
+    }
+  }
+
+  class MyText extends Context.Mixin("MyText")(Box) {}
+
+  it("preserves constructor parameters", () => {
+    expect<ConstructorParameters<typeof MyText>>().type.toBe<[value: number]>()
+  })
+
+  it("rejects unknown properties", () => {
+    expect(new MyText(1)).type.not.toHaveProperty("typo")
+  })
+
+  it("instances are the wrapped class and the service shape", () => {
+    expect(new MyText(1)).type.toBeAssignableTo<Box>()
+    expect(Context.get(Context.make(MyText, new MyText(1)), MyText)).type.toBeAssignableTo<Box>()
+  })
+
+  it("propagates the wrapped instance through yield*", () => {
+    const effect = Effect.gen(function*() {
+      const qwe =  yield* MyText
+    })
+    expect(effect).type.toBeAssignableTo<Effect.Effect<Box, never, unknown>>()
+  })
+
+  it("infers the make success type as the service shape", () => {
+    class Logger extends Context.Mixin("Logger", {
+      make: Effect.succeed({ log: (message: string) => message })
+    })(Box) {}
+
+    expect(Logger.make).type.toBe<Effect.Effect<{ log: (message: string) => string }>>()
+    expect(Context.get(Context.make(Logger, { log: (message) => message }), Logger).log).type.toBe<
+      (message: string) => string
+    >()
+  })
+
+  it("supports abstract base classes", () => {
+    abstract class AbstractBox {
+      constructor(readonly value: number) {}
+      abstract double(): number
+    }
+
+    class ConcreteText extends Context.Mixin("ConcreteText")(AbstractBox) {
+      double() {
+        return this.value * 2
+      }
+    }
+
+    expect<ConstructorParameters<typeof ConcreteText>>().type.toBe<[value: number]>()
+    expect(new ConcreteText(1)).type.toBeAssignableTo<AbstractBox>()
+    // @ts-expect-error does not implement inherited abstract member double
+    class MissingDouble extends Context.Mixin("MissingDouble")(AbstractBox) {}
+  })
 })

@@ -115,6 +115,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
  * The class itself is the `Context` key, and its string `key` identifies the
  * service at runtime.
  *
+ * @see {@link Mixin} for wrapping an existing class constructor
  * @see {@link Service} for creating function-style keys or class-style service keys
  *
  * @category services
@@ -193,6 +194,7 @@ export declare namespace ServiceClass {
  * Context.get(config, Config).port // => 8080
  * ```
  *
+ * @see {@link Mixin} for wrapping an existing class constructor
  * @see {@link Reference} for service keys with default values
  *
  * @category services
@@ -433,6 +435,118 @@ export declare namespace Service {
    */
   export type Identifier<T> = T extends Key<infer I, infer _S> ? I : never
 }
+
+declare class MixinBase<out Identifier extends string = string, out Shape = any> {
+  constructor(...args: ReadonlyArray<any>)
+  readonly [ServiceTypeId]: typeof ServiceTypeId
+  readonly key: Identifier
+  readonly Service: Shape
+}
+
+type MixinService<
+  TBase extends abstract new(...args: ReadonlyArray<any>) => object,
+  Identifier extends string,
+  Shape,
+  Self
+> =
+  & TBase
+  & (abstract new(...args: ReadonlyArray<any>) => MixinBase<Identifier, Shape>)
+  & Service<Self, Shape>
+  & { readonly key: Identifier }
+
+type MixinMakeShape<Make> = Make extends
+  Effect<infer _A, infer _E, infer _R> | ((...args: infer _Args) => Effect<infer _A, infer _E, infer _R>) ? _A
+  : never
+
+/**
+ * Returns a subclass of the provided class that is a `Context` service key.
+ *
+ * **When to use**
+ *
+ * Use to turn an existing class into a `Context.Service` key without moving its
+ * constructor onto a `Context.Service` subclass.
+ *
+ * **Details**
+ *
+ * Call `Context.Mixin("Key")(Base)` with the same optional `make` and
+ * `fiberCached` options used by {@link Service}. The returned class is the
+ * `Context` key, and instances of the wrapped class are the service
+ * implementation. Constructor parameters and instance members are preserved.
+ *
+ * **Gotchas**
+ *
+ * The string key is the runtime identity of the service. Reusing the same key
+ * string for unrelated services makes them occupy the same slot in a
+ * `Context`. Service methods such as `pipe` and `toJSON` are installed on the
+ * constructor and shadow static members of the same name on the wrapped class.
+ *
+ * **Example** (Wrapping an existing class constructor)
+ *
+ * ```ts import.meta.vitest
+ * import { Context } from "effect"
+ *
+ * class Box {
+ *   constructor(readonly value: number) {}
+ * }
+ *
+ * class MyText extends Context.Mixin("MyText")(Box) {}
+ *
+ * const context = Context.make(MyText, new MyText(1))
+ * Context.get(context, MyText).value // => 1
+ * ```
+ *
+ * @see {@link Service} for creating service keys without wrapping a class
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const Mixin: {
+  <const Identifier extends string>(
+    id: Identifier,
+    options?: {
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
+    } | undefined
+  ): <TBase extends abstract new(...args: ReadonlyArray<any>) => object>(
+    klass: TBase
+  ) => MixinService<
+    TBase,
+    Identifier,
+    InstanceType<TBase>,
+    InstanceType<TBase> & MixinBase<Identifier, InstanceType<TBase>>
+  >
+  <
+    const Identifier extends string,
+    Make extends Effect<any, any, any> | ((...args: any) => Effect<any, any, any>)
+  >(
+    id: Identifier,
+    options: {
+      readonly make: Make
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
+    }
+  ): <TBase extends abstract new(...args: ReadonlyArray<any>) => object>(
+    klass: TBase
+  ) => MixinService<TBase, Identifier, MixinMakeShape<Make>, MixinBase<Identifier, MixinMakeShape<Make>>> & {
+    readonly make: Make
+  }
+} =
+  ((id: string, options?: { readonly make?: any; readonly fiberCached?: boolean }) =>
+  (klass: abstract new(...args: ReadonlyArray<any>) => object) => {
+    const Key = Service(id, options)
+    class Mixed extends klass {}
+    const descriptors = Object.getOwnPropertyDescriptors(Object.getPrototypeOf(Key))
+    delete descriptors.prototype
+    delete descriptors.length
+    delete descriptors.name
+    Object.defineProperties(Mixed, descriptors)
+    const mixed = Mixed as any
+    mixed.key = (Key as any).key
+    if ((Key as any).make !== undefined) {
+      mixed.make = (Key as any).make
+    }
+    return Mixed
+  }) as any
 
 const TypeId = "~effect/Context" as const
 
