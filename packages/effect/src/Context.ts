@@ -436,33 +436,30 @@ export declare namespace Service {
   export type Identifier<T> = T extends Key<infer I, infer _S> ? I : never
 }
 
-
-interface MixinBase<Self> extends Service<Self, Self>
-{
+interface MixinBase<Self> extends Service<Self, Self> {
   readonly key: string
 }
-
 /**
  * Returns a subclass of the provided class that is a `Context` service key.
  *
  * **When to use**
  *
- * Use to turn an existing class into a `Context.Service` key without moving its
- * constructor onto a `Context.Service` subclass.
+ * Use to turn an existing class into a `Context.Service` key while preserving
+ * the original class constructor and instance members.
  *
  * **Details**
  *
- * Call `Context.Mixin<Self>("Key")(Base)` with the same optional `make` and
- * `fiberCached` options used by {@link Service}. The returned class is the
- * `Context` key, and instances of the wrapped class are the service
- * implementation. Constructor parameters and instance members are preserved.
+ * Call `Context.Mixin<Self>("Key")(Base)` to create a service key from an
+ * existing class. The returned class can be used with `Context.make`,
+ * `Context.add`, and the Context getter functions. Constructor parameters and
+ * instance members from the base class are preserved.
  *
  * **Gotchas**
  *
  * The string key is the runtime identity of the service. Reusing the same key
- * string for unrelated services makes them occupy the same slot in a
- * `Context`. Service methods such as `pipe` and `toJSON` are installed on the
- * constructor and shadow static members of the same name on the wrapped class.
+ * string for unrelated services makes them occupy the same slot in a `Context`.
+ * Service methods such as `pipe` and `toJSON` are installed on the constructor
+ * and shadow static members of the same name on the wrapped class.
  *
  * **Example** (Wrapping an existing class constructor)
  *
@@ -495,16 +492,13 @@ export const Mixin: {
     klass: TBase
   ) => TBase & MixinBase<Self>
 } =
-  ((id: string, options?: { readonly make?: any; readonly fiberCached?: boolean }) =>
+  ((id: string, options?: { readonly fiberCached?: boolean }) =>
   (klass: abstract new(...args: ReadonlyArray<any>) => object) => {
     const Key = Service(id, options)
     class Mixed extends klass {}
     Object.defineProperties(Mixed, Object.getOwnPropertyDescriptors(ServiceProto))
     const mixed = Mixed as any
     mixed.key = (Key as any).key
-    if ((Key as any).make !== undefined) {
-      mixed.make = (Key as any).make
-    }
     return Mixed
   }) as any
 

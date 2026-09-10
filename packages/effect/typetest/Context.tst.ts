@@ -25,7 +25,7 @@ describe("Context.Mixin", () => {
     }
   }
 
-  class MyText extends Context.Mixin("MyText")(Box) {}
+  class MyText extends Context.Mixin<MyText>("MyText")(Box) {}
 
   it("preserves constructor parameters", () => {
     expect<ConstructorParameters<typeof MyText>>().type.toBe<[value: number]>()
@@ -42,20 +42,16 @@ describe("Context.Mixin", () => {
 
   it("propagates the wrapped instance through yield*", () => {
     const effect = Effect.gen(function*() {
-      const qwe =  yield* MyText
+      return yield* MyText
     })
     expect(effect).type.toBeAssignableTo<Effect.Effect<Box, never, unknown>>()
   })
 
-  it("infers the make success type as the service shape", () => {
-    class Logger extends Context.Mixin("Logger", {
-      make: Effect.succeed({ log: (message: string) => message })
-    })(Box) {}
-
-    expect(Logger.make).type.toBe<Effect.Effect<{ log: (message: string) => string }>>()
-    expect(Context.get(Context.make(Logger, { log: (message) => message }), Logger).log).type.toBe<
-      (message: string) => string
-    >()
+  it("does not add a make constructor", () => {
+    expect(MyText).type.not.toHaveProperty("make")
+    expect(Context.Mixin<MyText>).type.not.toBeCallableWith("MyText", {
+      make: Effect.succeed(new MyText(1))
+    })
   })
 
   it("supports abstract base classes", () => {
