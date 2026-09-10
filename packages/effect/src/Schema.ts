@@ -14980,9 +14980,6 @@ export function resolveAnnotations<S extends Constraint>(
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {
   return schema.ast.context?.annotations
 }
-/** @internal */
-type AnnotationSchemaConstraint = Constraint
-
 /**
  * The `Annotations` namespace groups all annotation interfaces used to attach
  * metadata to schemas. Annotations control documentation, validation messages,
@@ -15301,7 +15298,7 @@ export declare namespace Annotations {
      *
      * @since 4.0.0
      */
-    readonly arbitraryConstraint?: ToArbitrary.Constraint<any> | undefined
+    readonly arbitraryConstraint?: ToArbitrary.FilterConstraint<any> | undefined
     /**
      * Marks the filter as *structural*, meaning it applies to the shape or
      * structure of the container (e.g., array length, object keys) rather than
@@ -15367,7 +15364,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface Constraint<T = unknown> extends GenerationConstraint<T> {
+    interface FilterConstraint<T = unknown> extends GenerationConstraint<T> {
       readonly order?: Order.Order<T> | undefined
     }
     /**
@@ -15376,7 +15373,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface DeclarationInput<T, Parameters extends ReadonlyArray<AnnotationSchemaConstraint>> {
+    interface DeclarationInput<T, Parameters extends ReadonlyArray<Constraint>> {
       readonly typeParameters: TypeParameters.Type<Parameters>
       readonly constraint: GenerationConstraint<T> | undefined
     }
@@ -15386,7 +15383,7 @@ export declare namespace Annotations {
      * @category models
      * @since 4.0.0
      */
-    interface Declaration<T, Parameters extends ReadonlyArray<AnnotationSchemaConstraint>> {
+    interface Declaration<T, Parameters extends ReadonlyArray<Constraint>> {
       (input: DeclarationInput<T, Parameters>): SchemaAST.Link
     }
   }

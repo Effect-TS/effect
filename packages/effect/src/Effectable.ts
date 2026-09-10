@@ -8,7 +8,7 @@
  */
 import type * as Effect from "./Effect.ts"
 import type * as Fiber from "./Fiber.ts"
-import { type EffectTypeId, evaluate, makePrimitiveProto } from "./internal/core.ts"
+import { evaluate, makePrimitiveProto } from "./internal/core.ts"
 
 /**
  * Create a low-level `Effect` prototype.
@@ -78,7 +78,7 @@ type AsEffectReturn<Self> = Self extends {
 
 declare abstract class MixinBase extends Class<any, any, any> {
   constructor(...args: ReadonlyArray<any>)
-  override readonly [EffectTypeId]: AsEffectReturn<this>[typeof EffectTypeId]
+  override readonly [Effect.TypeId]: AsEffectReturn<this>[Effect.TypeId]
   override [Symbol.iterator](): Effect.EffectIterator<AsEffectReturn<this>>
 }
 
