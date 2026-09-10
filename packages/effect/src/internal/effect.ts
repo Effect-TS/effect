@@ -50,6 +50,7 @@ import type { Primitive } from "./core.ts"
 import {
   args,
   causeAnnotate,
+  causeDie,
   causeEmpty,
   causeFromReasons,
   CauseImpl,
@@ -4402,19 +4403,22 @@ export const cachedInvalidateWithTTL: {
         running = true
         latch.closeUnsafe()
         exit = undefined
-        return onExit(
-          onExit(self, (exit_) =>
-            sync(() => {
+        return onExit(self, (exit_) =>
+          sync(() => {
+            try {
               const duration = ttlMillis(exit_)
               expiresAt = clock.currentTimeMillisUnsafe() + duration
-            })),
-          (exit_) =>
-            sync(() => {
-              running = false
               exit = exit_
+            } catch (error) {
+              const cause = causeDie(error)
+              // Publish the same combined cause that onExit returns to the owner.
+              exit = exitFailCause(exitIsFailure(exit_) ? causeCombine(exit_.cause, cause) : cause)
+              throw error
+            } finally {
+              running = false
               latch.openUnsafe()
-            })
-        )
+            }
+          }))
       }),
       sync(() => {
         expiresAt = 0
