@@ -274,6 +274,11 @@ export const Shell = Tool.providerDefined({
   })
 })
 
+const WebSearchFailure = Schema.Struct({
+  action: Generated.WebSearchToolCall.fields.action,
+  status: Schema.Literals(["in_progress", "searching", "failed"])
+})
+
 /**
  * Defines the OpenAI Web Search tool that enables the model to search the web for
  * information.
@@ -286,6 +291,8 @@ export const Shell = Tool.providerDefined({
  *
  * The tool accepts optional filters, user location, and search context size.
  * Successful calls expose the performed search action and status.
+ * Calls that finish without a `completed` status return a failure result with
+ * the original action and status, including unfinished searches.
  *
  * @see {@link WebSearchPreview} for the preview web search provider tool
  *
@@ -307,7 +314,8 @@ export const WebSearch = Tool.providerDefined({
   success: Schema.Struct({
     action: Generated.WebSearchToolCall.fields.action,
     status: Generated.WebSearchToolCall.fields.status
-  })
+  }),
+  failure: WebSearchFailure
 })
 
 /**
@@ -321,6 +329,8 @@ export const WebSearch = Tool.providerDefined({
  *
  * The preview tool accepts optional user location and search context size, then
  * exposes the performed search action and status in successful calls.
+ * Calls that finish without a `completed` status return a failure result with
+ * the original action and status, including unfinished searches.
  *
  * @see {@link WebSearch} for the stable web search provider tool
  *
@@ -338,5 +348,6 @@ export const WebSearchPreview = Tool.providerDefined({
   success: Schema.Struct({
     action: Generated.WebSearchToolCall.fields.action,
     status: Generated.WebSearchToolCall.fields.status
-  })
+  }),
+  failure: WebSearchFailure
 })

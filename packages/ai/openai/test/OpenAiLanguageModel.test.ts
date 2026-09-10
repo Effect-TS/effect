@@ -5,6 +5,13 @@ import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Str
 import { type AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
+const webSearchOutcomes = [
+  { status: "completed", isFailure: false },
+  { status: "failed", isFailure: true },
+  { status: "in_progress", isFailure: true },
+  { status: "searching", isFailure: true }
+] as const
+
 describe("OpenAiLanguageModel", () => {
   describe("make", () => {
     it.effect("sends correct model in request", () =>
@@ -1202,6 +1209,32 @@ describe("OpenAiLanguageModel", () => {
           )
       )
 
+      for (const tool of [OpenAiTool.WebSearch({}), OpenAiTool.WebSearchPreview({})]) {
+        it.effect.each(webSearchOutcomes)(
+          `${tool.name} reports $status results`,
+          ({ status, isFailure }) =>
+            Effect.gen(function*() {
+              const result = yield* LanguageModel.generateText({
+                prompt: "Search the web",
+                toolkit: Toolkit.make(tool)
+              }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+              strictEqual(result.toolResults.length, 1)
+              const toolResult = result.toolResults[0]!
+              strictEqual(toolResult.name, tool.name)
+              strictEqual(toolResult.id, "ws_123")
+              strictEqual(toolResult.providerExecuted, true)
+              strictEqual(toolResult.isFailure, isFailure)
+              deepStrictEqual(toolResult.result, {
+                action: { type: "search", query: "Effect TypeScript" },
+                status
+              })
+            }).pipe(Effect.provide(makeTestLayer({
+              body: { output: [makeWebSearchCall({ status })] }
+            })))
+        )
+      }
+
       it.effect("uses canonical OpenAiMcp name for mcp_approval_request", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
@@ -1673,6 +1706,61 @@ describe("OpenAiLanguageModel", () => {
           status: "completed"
         })
       }))
+
+    for (const tool of [OpenAiTool.WebSearch({}), OpenAiTool.WebSearchPreview({})]) {
+      it.effect.each(webSearchOutcomes)(
+        `${tool.name} reports $status results from output_item.done`,
+        ({ status, isFailure }) =>
+          Effect.gen(function*() {
+            const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
+              {
+                type: "response.created",
+                sequence_number: 1,
+                response: makeDefaultResponse({ status: "in_progress" })
+              },
+              {
+                type: "response.output_item.added",
+                sequence_number: 2,
+                output_index: 0,
+                item: makeWebSearchCall({ status: "in_progress" })
+              },
+              {
+                type: "response.output_item.done",
+                sequence_number: 3,
+                output_index: 0,
+                item: makeWebSearchCall({ status })
+              },
+              {
+                type: "response.completed",
+                sequence_number: 4,
+                response: makeDefaultResponse({ output: [makeWebSearchCall({ status })] })
+              }
+            ]
+
+            const parts = yield* LanguageModel.streamText({
+              prompt: "Search the web",
+              toolkit: Toolkit.make(tool)
+            }).pipe(
+              Stream.runCollect,
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+              Effect.provide(makeStreamTestLayer(streamEvents))
+            )
+
+            const results = parts.filter((part) => part.type === "tool-result")
+            strictEqual(results.length, 1)
+            const toolResult = results[0]!
+            strictEqual(toolResult.name, tool.name)
+            strictEqual(toolResult.id, "ws_123")
+            strictEqual(toolResult.providerExecuted, true)
+            strictEqual(toolResult.isFailure, isFailure)
+            deepStrictEqual(toolResult.result, {
+              action: { type: "search", query: "Effect TypeScript" },
+              status
+            })
+            assert.isDefined(parts.find((part) => part.type === "finish"))
+          })
+      )
+    }
 
     it.effect("handles reasoning summary events when reasoning state is missing", () =>
       Effect.gen(function*() {

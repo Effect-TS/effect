@@ -1661,7 +1661,7 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.id,
             name: toolName,
-            isFailure: false,
+            isFailure: part.status !== "completed",
             result: { action: part.action, status: part.status },
             providerExecuted: true
           })
@@ -2323,7 +2323,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   type: "tool-result",
                   id: event.item.id,
                   name: toolName,
-                  isFailure: false,
+                  isFailure: event.item.status !== "completed",
                   result: { action: event.item.action, status: event.item.status },
                   providerExecuted: true
                 })
