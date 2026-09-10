@@ -67,10 +67,10 @@ export const ApplyPatch = Tool.providerDefined({
  *
  * **Details**
  *
- * The tool is configured with a `container` argument. Results include the
- * call `status` and `outputs`, which may contain logs or generated images, or
- * `null` when no outputs are available. Only `completed` is successful; all
- * other statuses produce failure results, preserving any outputs.
+ * The tool is configured with a `container` argument. Results include `status`
+ * and `outputs`: logs, generated images, or `null` when unavailable. A `completed`
+ * status indicates success; omitted statuses default to it. Other statuses
+ * produce failure results that preserve any outputs.
  *
  * @category tools
  * @since 4.0.0
@@ -155,10 +155,10 @@ export const FileSearch = Tool.providerDefined({
  *
  * The tool configures the `image_generation` provider tool, including model,
  * size, quality, output format, moderation, background, input-image options,
- * and partial image settings. Successful tool calls expose `result` as base64
- * image data or `null`; partial images arrive as preliminary successful
- * results. Only `completed` is successful; all other statuses produce failure
- * results that also include the call `status`.
+ * and partial image settings. Successful calls expose `result` as base64 image
+ * data or `null`. Partial images are preliminary success results. Final results
+ * with a status other than `completed` are failures that include `status`.
+ * Omitted statuses default to `completed`.
  *
  * @category tools
  * @since 4.0.0
@@ -243,8 +243,8 @@ const McpResultFields = {
  * The tool accepts MCP server configuration such as allowed tools,
  * authorization, connector id, approval requirements, server metadata, and
  * server URL. Tool call results include the called tool name, arguments, output,
- * and server label. A call that reports an `error` is a failure result carrying
- * the error message; successful results have no error.
+ * and server label. Calls that report an `error` produce failure results that
+ * include it; successful results omit `error`.
  *
  * **Gotchas**
  *
