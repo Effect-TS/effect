@@ -6127,28 +6127,62 @@ schema with revivers first.
 It does not return a representation document.
 
 Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
-references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
-reference to a missing definition throws an `Invalid reference` error.
+references, external references, and pointers below a definition are rejected with the supported reference format.
+Missing definitions are reported by name. References reached inside a nested schema
+resource introduced by `$id` are rejected with their path instead of being resolved against the top-level definitions.
+A root `$id`, or a nested `$id` without reached references, is supported.
+
+Import errors explain which constraint or reference cannot be translated and include its source path.
 
 `fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
 roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.
 
-Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`,
-active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` throw an
-`Unsupported JSON Schema keyword` error. Inactive conditional keywords and `minContains` / `maxContains` without
+Import translates `{ not: {} }` as `Never`, including in optional properties. Other uses of `not` are unsupported.
+
+Import reuses Effect schemas and built-in checks. It is a best-effort translation, not a guarantee of identical
+validation or a lossless round trip:
+
+- `additionalProperties: true`, `{}`, or an omitted `additionalProperties` imports additional values as `Schema.Json`.
+  These properties are validated and retained, including with `onExcessProperty: "error"`.
+- Closed objects normally have no catch-all for additional properties. The decoder strips excess properties by default;
+  use `onExcessProperty: "error"` to reject them. Closed empty objects instead import as
+  `Schema.Record(Schema.String, Schema.Never)` and reject string-keyed entries regardless of that option.
+  A closed object with a single
+  `patternProperties` entry and no named or required properties imports as a filtered `Schema.Record` when patterns
+  are applied. Object keyword scopes still constrain declared properties when intersecting schemas.
+  Combinations requiring an index signature to exclude
+  explicit properties or patterned keys remain unsupported and are rejected with an explanation of the limitation.
+- With `patterns: "apply"`, open patterned objects are also rejected. Their filtered
+  index and catch-all would produce incompatible TypeScript index signatures. This includes `additionalProperties`
+  set to `true`, `{}`, or omitted. An intersection with a closed object can still be imported when it reduces the
+  result to a finite set of properties.
+- `minProperties`, `maxProperties`, and `propertyNames` use the existing checks on the decoded object, after excess
+  properties have been stripped. No separate validation of the original object is added.
+- String length checks count UTF-16 code units, not Unicode code points. For example, `"😀"` satisfies an imported
+  `minLength: 2` and fails an imported `maxLength: 1`, unlike JSON Schema validation.
+- `integer` uses `Schema.isInt` and rejects integers outside JavaScript's safe integer range.
+- Applied patterns use the existing `Schema.isPattern` check without adding a Unicode flag.
+
+An Effect struct exported with `additionalProperties: true` therefore imports with a JSON-valued index signature,
+even if the original struct had none. The imported decoder retains additional properties that the original decoder
+would strip. Use the imported schema's actual checks and parse options when reasoning about validation.
+
+Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`,
+active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying
+the unsupported keyword. Inactive conditional keywords and `minContains` / `maxContains` without
 `contains` have no validation effect and are ignored. Unknown extension keywords are ignored and their semantics are not
-enforced. Objects and arrays used as `const` values or `enum` members throw an
-`Unsupported structured JSON Schema value` error. The optional `onEnter` callback can normalize each JSON Schema node
+enforced. Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and
+null are supported. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
 
 Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
-sets. Other union intersections, including cases that would duplicate a nested choice, throw an
-`Unsupported intersection of overlapping unions` error.
+sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
-`patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
-the resulting schema accepts values that the source document may reject. The policy includes `pattern`, the keys of
+`patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly.
+This can admit values the source rejects, but it can also reject previously valid values inside `oneOf` when removing
+constraints makes multiple branches match. The policy includes `pattern`, the keys of
 `patternProperties`, and patterns nested in `propertyNames`. Ignoring `patternProperties` also skips its value constraints
 and `additionalProperties`, because matching keys cannot be determined without evaluating the patterns.
 

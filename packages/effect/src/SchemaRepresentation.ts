@@ -2175,7 +2175,8 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
  * **Gotchas**
  *
  * Use `patterns: "apply"` only for trusted documents because regular expression evaluation may block for an unbounded
- * amount of time. `patterns: "ignore"` weakens validation by accepting values that the source document may reject.
+ * amount of time. `patterns: "ignore"` can admit values the source rejects, but can also reject previously valid
+ * values inside `oneOf` when removing constraints makes multiple branches match.
  * Ignoring `patternProperties` also skips its value constraints and `additionalProperties`, because matching keys cannot
  * be determined without evaluating the patterns.
  * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
@@ -2835,30 +2836,39 @@ export function fromRepresentations(
  *
  * **Details**
  *
- * For the Draft 2020-12 subset translated exactly by this importer, compiling the imported schema through
- * {@link toRepresentation} and {@link toJsonSchemaDocument} produces a document that accepts the same JSON values as
- * the input. This is a semantic round-trip guarantee; keyword layout, definitions, and annotations may be normalized.
+ * Translates a Draft 2020-12 subset using Effect schemas and built-in checks. Validation follows those checks and the
+ * decoder's parse options, so import and re-export do not guarantee identical accepted values or a lossless round trip.
+ * Import errors explain the unsupported constraint or reference and include its source path.
  *
  * **Gotchas**
  *
- * - `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`, active `if` / `then` / `else`,
- *   `unevaluatedItems`, and `unevaluatedProperties` throw an `Unsupported JSON Schema keyword` error. Inactive
+ * - `{ not: {} }` imports as `Never`. Other uses of `not` are unsupported.
+ * - When `additionalProperties` is `true`, `{}`, or omitted, additional values use `Schema.Json` and are retained.
+ *   Closed objects normally strip excess properties by default; pass `onExcessProperty: "error"` to reject them.
+ *   Closed empty objects instead use `Schema.Record(Schema.String, Schema.Never)` and reject string-keyed entries
+ *   regardless of that option.
+ *   Object keyword scopes still constrain declared properties in intersections. Combinations requiring index
+ *   signatures that exclude explicit properties or patterned keys are rejected with an explanation of the limitation.
+ * - Property count and name checks run on the decoded object, after excess properties have been stripped.
+ * - String length checks count UTF-16 code units. `integer` uses `Schema.isInt`, which requires safe integers.
+ *   Applied patterns use `Schema.isPattern` without adding a Unicode flag.
+ * - `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, active `if` / `then` / `else`,
+ *   `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying the unsupported keyword. Inactive
  *   conditional keywords and `minContains` / `maxContains` without `contains` have no validation effect and are ignored.
- * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
- *   error.
+ * - Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and null
+ *   are supported.
  * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
- *   literal sets. Other union intersections, including cases that would duplicate a nested choice, throw an
- *   `Unsupported intersection of overlapping unions` error.
+ *   literal sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
  * - Unknown extension keywords are ignored and their semantics are not enforced.
  * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
- *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
- *   reference to a missing definition throws an `Invalid reference` error.
+ *   references, external references, and pointers below a definition are rejected with the supported reference format.
+ *   Missing definitions are reported by name. References reached inside nested schema
+ *   resources introduced by `$id` are rejected instead of resolved against the top-level definitions.
  * - Built-in declarations and checks are reconstructed with importer-owned revivers.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
- *   documents, or `patterns: "ignore"` to weaken validation explicitly; ignored patterns are outside the round-trip
- *   guarantee.
- * - `onEnter` results replace the corresponding input nodes, so the round-trip guarantee applies to the rewritten
- *   document.
+ *   documents, or `patterns: "ignore"` to skip them. Ignoring patterns can both admit invalid values and reject valid
+ *   values when `oneOf` branches start overlapping.
+ * - `onEnter` results replace the corresponding input nodes before translation.
  * - Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
@@ -2881,21 +2891,26 @@ export function fromJsonSchemaDocument(
  *
  * Use when multiple imported roots share reachable definitions, aliases, or recursion.
  *
+ * **Details**
+ *
+ * Uses the same best-effort translation, built-in checks, and excess-property behavior as {@link fromJsonSchemaDocument}.
+ *
  * **Gotchas**
  *
  * - Only definitions reachable from a root are translated.
- * - Unsupported standard validation and applicator keywords throw an `Unsupported JSON Schema keyword` error. Unknown
+ * - Unsupported standard validation and applicator keywords are rejected with an error identifying the keyword. Unknown
  *   extension keywords are ignored and their semantics are not enforced.
- * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
- *   error.
+ * - Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and null
+ *   are supported.
  * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
- *   literal sets. Other union intersections, including cases that would duplicate a nested choice, throw an
- *   `Unsupported intersection of overlapping unions` error.
+ *   literal sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
  * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
- *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
- *   reference to a missing definition throws an `Invalid reference` error.
+ *   references, external references, and pointers below a definition are rejected with the supported reference format.
+ *   Missing definitions are reported by name. References reached inside nested schema
+ *   resources introduced by `$id` are rejected instead of resolved against the top-level definitions.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
- *   documents, or `patterns: "ignore"` to weaken validation explicitly.
+ *   documents, or `patterns: "ignore"` to skip them. Ignoring patterns can both admit invalid values and reject valid
+ *   values when `oneOf` branches start overlapping.
  * - Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaDocument} for a single root
