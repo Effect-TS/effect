@@ -484,7 +484,7 @@ export function toCodeDocument(
             `${element.isOptional ? "Schema.optionalKey(" : ""}${type.runtime}${element.isOptional ? ")" : ""}${
               runtimeAnnotate(element.annotations, "annotateKey")
             }`,
-            `${type.Type}${element.isOptional ? "?" : ""}`
+            element.isOptional ? `(${type.Type})?` : type.Type
           )
         })
         const rest = representation.rest.map((item, index) => recur(item, [...path, "rest", index]))
