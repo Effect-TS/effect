@@ -5,13 +5,14 @@ import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import type { DrizzleConfig } from "drizzle-orm"
 import { MySqlSelectBase } from "drizzle-orm/mysql-core"
+import { MySqlCountBuilder } from "drizzle-orm/mysql-core/query-builders/count"
 import type { MySqlRemoteDatabase } from "drizzle-orm/mysql-proxy"
 import { drizzle } from "drizzle-orm/mysql-proxy"
 import { QueryPromise } from "drizzle-orm/query-promise"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { makeRemoteCallback, patch } from "./internal/patch.js"
+import { makeRemoteCallback, patch, patchCount } from "./internal/patch.js"
 
 /**
  * @since 1.0.0
@@ -65,5 +66,12 @@ export const layerWithConfig: (config: DrizzleConfig) => Layer.Layer<MysqlDrizzl
 declare module "drizzle-orm" {
   export interface QueryPromise<T> extends Effect.Effect<T, SqlError> {}
 }
+
+declare module "drizzle-orm/mysql-core/query-builders/count" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export interface MySqlCountBuilder<TSession = any> extends Effect.Effect<number, SqlError> {}
+}
+
 patch(QueryPromise.prototype)
 patch(MySqlSelectBase.prototype)
+patchCount(MySqlCountBuilder.prototype)

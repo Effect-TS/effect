@@ -42,6 +42,35 @@ export const patch = (prototype: any) => {
 }
 
 /** @internal */
+export const patchCount = (prototype: any) => {
+  if (Effect.EffectTypeId in prototype) {
+    return
+  }
+
+  const originalThen = prototype.then
+  const PatchCountProto = {
+    ...Effectable.CommitPrototype,
+    commit(this: any) {
+      return Effect.runtime().pipe(
+        Effect.flatMap((context) =>
+          Effect.tryPromise({
+            try: () => {
+              const pre = currentRuntime
+              currentRuntime = context
+              const promise = new Promise((resolve, reject) => originalThen.call(this, resolve, reject))
+              currentRuntime = pre
+              return promise
+            },
+            catch: (cause) => new SqlError({ cause, message: "Failed to execute CountBuilder" })
+          })
+        )
+      )
+    }
+  }
+  Object.assign(prototype, PatchCountProto)
+}
+
+/** @internal */
 export const makeRemoteCallback = Effect.gen(function*() {
   const client = yield* Client.SqlClient
   const constructionRuntime = yield* Effect.runtime<never>()
@@ -49,7 +78,12 @@ export const makeRemoteCallback = Effect.gen(function*() {
     const runPromise = Runtime.runPromise(currentRuntime ? currentRuntime : constructionRuntime)
     const statement = client.unsafe(sql, params)
     if (method === "execute") {
-      return runPromise(Effect.either(Effect.map(statement.raw, (header) => ({ rows: [header] })))).then((res) => {
+      return runPromise(Effect.either(Effect.map(statement.raw, (header) => {
+        if (header && typeof header === "object" && "rows" in header) {
+          return { rows: header.rows }
+        }
+        return { rows: [header] }
+      }))).then((res) => {
         if (res._tag === "Left") {
           throw res.left.cause
         }
