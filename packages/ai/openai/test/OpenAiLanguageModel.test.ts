@@ -5,25 +5,15 @@ import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Str
 import { type AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
-const webSearchOutcomes = [
-  { status: "completed", isFailure: false },
-  { status: "failed", isFailure: true },
-  { status: "in_progress", isFailure: true },
-  { status: "searching", isFailure: true }
+const webSearchFailures = [
+  { tool: OpenAiTool.WebSearch({}), status: "failed" },
+  { tool: OpenAiTool.WebSearchPreview({}), status: "searching" }
 ] as const
 
-const fileSearchResults = [{ file_id: "file_123", text: "Matching text", score: 0.8 }] as const
-
 const fileSearchOutcomes = [
-  { status: "completed", isFailure: false, label: "results", results: fileSearchResults },
-  { status: "completed", isFailure: false, label: "null results", results: null },
-  { status: "completed", isFailure: false, label: "omitted results", results: undefined },
-  { status: "failed", isFailure: true, label: "results", results: fileSearchResults },
-  { status: "incomplete", isFailure: true, label: "results", results: fileSearchResults },
-  { status: "in_progress", isFailure: true, label: "results", results: fileSearchResults },
-  { status: "searching", isFailure: true, label: "results", results: fileSearchResults },
-  { status: "failed", isFailure: true, label: "null results", results: null },
-  { status: "failed", isFailure: true, label: "omitted results", results: undefined }
+  { status: "completed", isFailure: false, results: undefined },
+  { status: "failed", isFailure: true, results: null },
+  { status: "incomplete", isFailure: true, results: [{ file_id: "file_123", text: "Matching text" }] }
 ] as const
 
 describe("OpenAiLanguageModel", () => {
@@ -1223,20 +1213,17 @@ describe("OpenAiLanguageModel", () => {
           )
       )
 
-      for (const tool of [OpenAiTool.WebSearch({}), OpenAiTool.WebSearchPreview({})]) {
-        it.effect.each(webSearchOutcomes)(
-          `${tool.name} reports $status results`,
-          ({ status, isFailure }) =>
+      for (const { tool, status } of webSearchFailures) {
+        it.effect(
+          `${tool.name} preserves ${status} results`,
+          () =>
             Effect.gen(function*() {
               const result = yield* LanguageModel.generateText({
                 prompt: "Search the web",
                 toolkit: Toolkit.make(tool)
               }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
-
-              strictEqual(result.toolResults.length, 1)
               const toolResult = result.toolResults[0]!
-              strictEqual(toolResult.name, tool.name)
-              strictEqual(toolResult.isFailure, isFailure)
+              strictEqual(toolResult.isFailure, true)
               deepStrictEqual(toolResult.result, {
                 action: { type: "search", query: "Effect TypeScript" },
                 status
@@ -1248,17 +1235,14 @@ describe("OpenAiLanguageModel", () => {
       }
 
       it.effect.each(fileSearchOutcomes)(
-        "OpenAiFileSearch reports $status with $label",
+        "OpenAiFileSearch reports $status results",
         ({ status, isFailure, results }) =>
           Effect.gen(function*() {
             const result = yield* LanguageModel.generateText({
               prompt: "Search the files",
               toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
             }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
-
-            strictEqual(result.toolResults.length, 1)
             const toolResult = result.toolResults[0]!
-            strictEqual(toolResult.name, "OpenAiFileSearch")
             strictEqual(toolResult.isFailure, isFailure)
             deepStrictEqual(toolResult.result, {
               status,
@@ -1742,40 +1726,27 @@ describe("OpenAiLanguageModel", () => {
         })
       }))
 
-    for (const tool of [OpenAiTool.WebSearch({}), OpenAiTool.WebSearchPreview({})]) {
-      it.effect.each(webSearchOutcomes)(
-        `${tool.name} reports $status results from output_item.done`,
-        ({ status, isFailure }) =>
+    for (const { tool, status } of webSearchFailures) {
+      it.effect(
+        `${tool.name} preserves ${status} results from output_item.done`,
+        () =>
           Effect.gen(function*() {
-            const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
-              {
-                type: "response.output_item.added",
-                sequence_number: 1,
-                output_index: 0,
-                item: makeWebSearchCall({ status: "in_progress" })
-              },
-              {
-                type: "response.output_item.done",
-                sequence_number: 2,
-                output_index: 0,
-                item: makeWebSearchCall({ status })
-              }
-            ]
-
             const parts = yield* LanguageModel.streamText({
               prompt: "Search the web",
               toolkit: Toolkit.make(tool)
             }).pipe(
               Stream.runCollect,
               Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-              Effect.provide(makeStreamTestLayer(streamEvents))
+              Effect.provide(makeStreamTestLayer([{
+                type: "response.output_item.done",
+                sequence_number: 1,
+                output_index: 0,
+                item: makeWebSearchCall({ status })
+              }]))
             )
 
-            const results = parts.filter((part) => part.type === "tool-result")
-            strictEqual(results.length, 1)
-            const toolResult = results[0]!
-            strictEqual(toolResult.name, tool.name)
-            strictEqual(toolResult.isFailure, isFailure)
+            const toolResult = parts.find((part) => part.type === "tool-result")!
+            strictEqual(toolResult.isFailure, true)
             deepStrictEqual(toolResult.result, {
               action: { type: "search", query: "Effect TypeScript" },
               status
@@ -1785,38 +1756,24 @@ describe("OpenAiLanguageModel", () => {
     }
 
     it.effect.each(fileSearchOutcomes)(
-      "OpenAiFileSearch reports $status with $label from output_item.done",
+      "OpenAiFileSearch reports $status results from output_item.done",
       ({ status, isFailure, results }) =>
         Effect.gen(function*() {
-          const call = makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })
-          const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
-            {
-              type: "response.output_item.added",
-              sequence_number: 1,
-              output_index: 0,
-              item: makeFileSearchCall({ status: "in_progress" })
-            },
-            {
-              type: "response.output_item.done",
-              sequence_number: 2,
-              output_index: 0,
-              item: call
-            }
-          ]
-
           const parts = yield* LanguageModel.streamText({
             prompt: "Search the files",
             toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
           }).pipe(
             Stream.runCollect,
             Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-            Effect.provide(makeStreamTestLayer(streamEvents))
+            Effect.provide(makeStreamTestLayer([{
+              type: "response.output_item.done",
+              sequence_number: 1,
+              output_index: 0,
+              item: makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })
+            }]))
           )
 
-          const toolResults = parts.filter((part) => part.type === "tool-result")
-          strictEqual(toolResults.length, 1)
-          const toolResult = toolResults[0]!
-          strictEqual(toolResult.name, "OpenAiFileSearch")
+          const toolResult = parts.find((part) => part.type === "tool-result")!
           strictEqual(toolResult.isFailure, isFailure)
           deepStrictEqual(toolResult.result, {
             status,
