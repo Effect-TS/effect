@@ -6,7 +6,7 @@ describe("OpenAiTool", () => {
   it("distinguishes completed file searches from failed and unfinished searches", () => {
     const fileSearch = OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] })
 
-    type Results = typeof Generated.FileSearchToolCall.fields.results.schema.Type
+    type Results = Exclude<Generated.FileSearchToolCall["results"], undefined>
 
     type Failure = {
       readonly status: "in_progress" | "searching" | "incomplete" | "failed"
