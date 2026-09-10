@@ -7118,8 +7118,8 @@ export const onExitFilter: {
 export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>> = internal.cached
 
 /**
- * Returns an effect that caches its result for a specified `Duration`,
- * known as "timeToLive" (TTL).
+ * Returns an effect that caches its result for a fixed duration or a duration
+ * computed from its `Exit`, known as "timeToLive" (TTL).
  *
  * **When to use**
  *
@@ -7137,6 +7137,15 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  *
  * After the specified duration has passed, the cache expires, and the effect
  * will be recomputed upon the next evaluation.
+ *
+ * `timeToLive` accepts a `Duration.Input` or a function from `Exit<A, E>` to
+ * `Duration.Input`. The function runs once after each fresh computation,
+ * including failures, so successes and failures can have different TTLs. It
+ * does not run when the cache is created or when a cached result is reused.
+ *
+ * The TTL starts when the computation completes. Concurrent callers share the
+ * pending computation. A zero TTL expires immediately, and an infinite TTL
+ * keeps the result indefinitely.
  *
  * **Example** (Memoizing an effect with TTL)
  *
@@ -7171,7 +7180,13 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  */
 export const cachedWithTTL: {
   (timeToLive: Duration.Input): <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
-  <A, E, R>(self: Effect<A, E, R>, timeToLive: Duration.Input): Effect<Effect<A, E, R>>
+  <A, E>(
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): <R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
+  <A, E, R>(
+    self: Effect<A, E, R>,
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): Effect<Effect<A, E, R>>
 } = internal.cachedWithTTL
 
 /**
