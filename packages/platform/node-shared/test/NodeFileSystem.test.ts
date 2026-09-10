@@ -139,8 +139,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("node:fs", async (importOriginal) => {
   const original = await importOriginal<typeof NFS>()
-  // Model Node's default numeric Stats as well as its opt-in BigIntStats.
-  // No real file descriptor or oversized sparse file is involved.
+  // Match Node's number and bigint stat modes.
   const stat = (
     _pathOrFd: string | number,
     optionsOrCallback: { bigint?: boolean } | ((error: null, stats: object) => void),
@@ -248,12 +247,59 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
         assert.strictEqual(Option.getOrThrow(info.blksize), ByteSize.bytes(oversized))
       }).pipe(Effect.provide(NodeFileSystem.layer)))
 
-    const field = method === "stat" ? "dev" : "ino"
-    it.effect(`${method} rejects unsafe ${field} metadata`, () =>
+    for (const field of ["dev", "mode"] as const) {
+      it.effect(`${method} rejects unsafe ${field} metadata`, () =>
+        Effect.gen(function*() {
+          state.values[field] = maxSafe + 1n
+          const error = yield* Effect.flip(getInfo)
+          assert.strictEqual(error.reason._tag, "BadArgument")
+        }).pipe(Effect.provide(NodeFileSystem.layer)))
+    }
+
+    it.effect(`${method} omits only the overflowing optional field`, () =>
       Effect.gen(function*() {
-        state.values[field] = oversized
-        const error = yield* Effect.flip(getInfo)
-        assert.strictEqual(error.reason._tag, "BadArgument")
+        Object.assign(state.values, { ino: maxSafe + 1n, nlink: 3n, uid: 1000n, gid: 1001n, rdev: 0n, blocks: 8n })
+        const info = yield* getInfo
+        assert.deepStrictEqual(info.ino, Option.none())
+        assert.deepStrictEqual(info.nlink, Option.some(3))
+        assert.deepStrictEqual(info.uid, Option.some(1000))
+        assert.deepStrictEqual(info.gid, Option.some(1001))
+        assert.deepStrictEqual(info.rdev, Option.some(0))
+        assert.deepStrictEqual(info.blocks, Option.some(8))
+        assert.strictEqual(info.type, "File")
+        assert.strictEqual(info.size, ByteSize.bytes(4n))
+        assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
       }).pipe(Effect.provide(NodeFileSystem.layer)))
+
+    for (
+      const { expected, name, value } of [
+        {
+          name: "preserves optional metadata at MAX_SAFE_INTEGER",
+          value: maxSafe,
+          expected: Option.some(Number.MAX_SAFE_INTEGER)
+        },
+        { name: "omits optional metadata above MAX_SAFE_INTEGER", value: maxSafe + 1n, expected: Option.none() },
+        { name: "omits missing optional metadata", value: undefined, expected: Option.none() }
+      ]
+    ) {
+      it.effect(`${method} ${name}`, () =>
+        Effect.gen(function*() {
+          const fields = ["ino", "nlink", "uid", "gid", "rdev", "blocks"] as const
+          for (const field of fields) {
+            if (value === undefined) {
+              delete state.values[field]
+            } else {
+              state.values[field] = value
+            }
+          }
+          const info = yield* getInfo
+          for (const field of fields) {
+            assert.deepStrictEqual(info[field], expected, field)
+          }
+          assert.strictEqual(info.type, "File")
+          assert.strictEqual(info.size, ByteSize.bytes(4n))
+          assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
+        }).pipe(Effect.provide(NodeFileSystem.layer)))
+    }
   }
 })
