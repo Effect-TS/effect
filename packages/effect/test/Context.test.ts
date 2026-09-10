@@ -228,7 +228,7 @@ describe("Context", () => {
       }
     }
 
-    class MyText extends Context.Mixin("ContextTest/MyText")(Box) {}
+    class MyText extends Context.Mixin<MyText>("ContextTest/MyText")(Box) {}
 
     it("stores and retrieves instances as the service", () => {
       const context = Context.make(MyText, new MyText(1))
@@ -278,21 +278,11 @@ describe("Context", () => {
     })
 
     it("invalidates the fiber cache when fiberCached is set", () => {
-      class CachedText extends Context.Mixin("ContextTest/CachedText", { fiberCached: true })(Box) {}
+      class CachedText extends Context.Mixin<CachedText>("ContextTest/CachedText", { fiberCached: true })(Box) {}
       const source = Context.make(A, 1)
 
       assertFalse(Context.hasSameCache(source, Context.add(source, CachedText, new CachedText(1))))
       assertTrue(Context.hasSameCache(source, Context.add(source, MyText, new MyText(1))))
     })
-
-    it.effect("exposes make when it is provided", () =>
-      Effect.gen(function*() {
-        class Logger extends Context.Mixin("ContextTest/MixinMake", {
-          make: Effect.succeed({ log: (message: string) => message })
-        })(Box) {}
-
-        const logger = yield* Logger.make
-        strictEqual(logger.log("hello"), "hello")
-      }))
   })
 })

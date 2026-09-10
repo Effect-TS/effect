@@ -436,27 +436,11 @@ export declare namespace Service {
   export type Identifier<T> = T extends Key<infer I, infer _S> ? I : never
 }
 
-declare class MixinBase<out Identifier extends string = string, out Shape = any> {
-  constructor(...args: ReadonlyArray<any>)
-  readonly [ServiceTypeId]: typeof ServiceTypeId
-  readonly key: Identifier
-  readonly Service: Shape
+
+interface MixinBase<Self> extends Service<Self, Self>
+{
+  readonly key: string
 }
-
-type MixinService<
-  TBase extends abstract new(...args: ReadonlyArray<any>) => object,
-  Identifier extends string,
-  Shape,
-  Self
-> =
-  & TBase
-  & (abstract new(...args: ReadonlyArray<any>) => MixinBase<Identifier, Shape>)
-  & Service<Self, Shape>
-  & { readonly key: Identifier }
-
-type MixinMakeShape<Make> = Make extends
-  Effect<infer _A, infer _E, infer _R> | ((...args: infer _Args) => Effect<infer _A, infer _E, infer _R>) ? _A
-  : never
 
 /**
  * Returns a subclass of the provided class that is a `Context` service key.
@@ -468,7 +452,7 @@ type MixinMakeShape<Make> = Make extends
  *
  * **Details**
  *
- * Call `Context.Mixin("Key")(Base)` with the same optional `make` and
+ * Call `Context.Mixin<Self>("Key")(Base)` with the same optional `make` and
  * `fiberCached` options used by {@link Service}. The returned class is the
  * `Context` key, and instances of the wrapped class are the service
  * implementation. Constructor parameters and instance members are preserved.
@@ -489,10 +473,10 @@ type MixinMakeShape<Make> = Make extends
  *   constructor(readonly value: number) {}
  * }
  *
- * class MyText extends Context.Mixin("MyText")(Box) {}
+ * class MyClass extends Context.Mixin<MyClass>("MyClass")(Box) {}
  *
- * const context = Context.make(MyText, new MyText(1))
- * Context.get(context, MyText).value // => 1
+ * const context = Context.make(MyClass, new MyClass(1))
+ * Context.get(context, MyClass).value // => 1
  * ```
  *
  * @see {@link Service} for creating service keys without wrapping a class
@@ -501,45 +485,21 @@ type MixinMakeShape<Make> = Make extends
  * @since 4.0.0
  */
 export const Mixin: {
-  <const Identifier extends string>(
-    id: Identifier,
+  <Self>(
+    id: string,
     options?: {
       /** @internal */
       readonly fiberCached?: boolean | undefined
     } | undefined
   ): <TBase extends abstract new(...args: ReadonlyArray<any>) => object>(
     klass: TBase
-  ) => MixinService<
-    TBase,
-    Identifier,
-    InstanceType<TBase>,
-    InstanceType<TBase> & MixinBase<Identifier, InstanceType<TBase>>
-  >
-  <
-    const Identifier extends string,
-    Make extends Effect<any, any, any> | ((...args: any) => Effect<any, any, any>)
-  >(
-    id: Identifier,
-    options: {
-      readonly make: Make
-      /** @internal */
-      readonly fiberCached?: boolean | undefined
-    }
-  ): <TBase extends abstract new(...args: ReadonlyArray<any>) => object>(
-    klass: TBase
-  ) => MixinService<TBase, Identifier, MixinMakeShape<Make>, MixinBase<Identifier, MixinMakeShape<Make>>> & {
-    readonly make: Make
-  }
+  ) => TBase & MixinBase<Self>
 } =
   ((id: string, options?: { readonly make?: any; readonly fiberCached?: boolean }) =>
   (klass: abstract new(...args: ReadonlyArray<any>) => object) => {
     const Key = Service(id, options)
     class Mixed extends klass {}
-    const descriptors = Object.getOwnPropertyDescriptors(Object.getPrototypeOf(Key))
-    delete descriptors.prototype
-    delete descriptors.length
-    delete descriptors.name
-    Object.defineProperties(Mixed, descriptors)
+    Object.defineProperties(Mixed, Object.getOwnPropertyDescriptors(ServiceProto))
     const mixed = Mixed as any
     mixed.key = (Key as any).key
     if ((Key as any).make !== undefined) {
