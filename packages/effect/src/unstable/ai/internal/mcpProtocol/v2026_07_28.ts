@@ -14,6 +14,7 @@ import * as PubSub from "../../../../PubSub.ts"
 import * as Queue from "../../../../Queue.ts"
 import * as Record from "../../../../Record.ts"
 import * as Schema from "../../../../Schema.ts"
+import * as Scope from "../../../../Scope.ts"
 import { appendPreResponseHandlerUnsafe } from "../../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../../../http/HttpServerResponse.ts"
@@ -409,7 +410,8 @@ export const makeHandlers = (
         })
       }
       const presence = yield* context.registrationPresence
-      const events = yield* context.subscribeServerNotifications
+      const eventsScope = yield* Scope.fork(yield* Effect.scope)
+      const events = yield* Scope.provide(context.subscribeServerNotifications, eventsScope)
       const honored = {
         ...(presence.tools && request.notifications.toolsListChanged === true
           ? { toolsListChanged: true }
@@ -483,9 +485,13 @@ export const makeHandlers = (
             break
           }
         }
-        yield* context.markSubscriptionCancelled?.(client.id, requestId) ?? Effect.void
-        yield* Deferred.succeed(overflowed, undefined)
-      }).pipe(Effect.forkScoped)
+      }).pipe(
+        // Release the upstream listener on overflow even while transport writes remain blocked.
+        Scope.use(eventsScope),
+        Effect.andThen(Effect.suspend(() => context.markSubscriptionCancelled?.(client.id, requestId) ?? Effect.void)),
+        Effect.andThen(Deferred.succeed(overflowed, undefined)),
+        Effect.forkScoped
+      )
       yield* sendNotification(McpSchema.protocolVersion, client.id, {
         tag: McpSchema.SubscriptionsAcknowledgedNotification._tag,
         payload: McpSchema.SubscriptionsAcknowledgedNotification.payloadSchema.make({

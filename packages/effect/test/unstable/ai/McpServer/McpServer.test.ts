@@ -1353,51 +1353,67 @@ describe("McpServer", () => {
   })
 
   describe("resource subscriptions", () => {
-    it.effect("should acknowledge before cancellation when the backlog overflows before acknowledgment", () =>
-      Effect.gen(function*() {
-        const core = yield* McpCore.make
-        const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
-        const acknowledgmentStarted = yield* Deferred.make<void>()
-        const releaseAcknowledgment = yield* Deferred.make<void>()
-        const sent = yield* Queue.unbounded<"acknowledged" | "cancelled">()
-        const handlers = McpProtocol2026.makeHandlers(core, undefined, {
-          subscribeServerNotifications: PubSub.subscribe(events),
-          sendNotification: (_protocolVersion, _clientId, notification) =>
-            notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag
-              ? Deferred.succeed(acknowledgmentStarted, undefined).pipe(
-                Effect.andThen(Deferred.await(releaseAcknowledgment)),
-                Effect.andThen(Queue.offer(sent, "acknowledged")),
+    // Releasing the upstream listener on overflow is this server's memory-bound policy,
+    // not an MCP conformance requirement. Transport writes may stay blocked indefinitely.
+    for (const blockedWrite of ["acknowledgment", "cancellation"] as const) {
+      it.effect(`should release the overflowing listener when its ${blockedWrite} write remains blocked`, () =>
+        Effect.gen(function*() {
+          const core = yield* McpCore.make
+          const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+          const acknowledgmentStarted = yield* Deferred.make<void>()
+          const releaseWrite = yield* Deferred.make<void>()
+          const overflowed = yield* Deferred.make<void>()
+          const subscriptionReleased = yield* Deferred.make<void>()
+          const sent = yield* Queue.unbounded<"acknowledged" | "cancelled">()
+          const handlers = McpProtocol2026.makeHandlers(core, undefined, {
+            subscribeServerNotifications: Effect.acquireRelease(
+              PubSub.subscribe(events),
+              () => Deferred.succeed(subscriptionReleased, undefined)
+            ),
+            sendNotification: (_protocolVersion, _clientId, notification) =>
+              notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag
+                ? Deferred.succeed(acknowledgmentStarted, undefined).pipe(
+                  Effect.andThen(blockedWrite === "acknowledgment" ? Deferred.await(releaseWrite) : Effect.void),
+                  Effect.andThen(Queue.offer(sent, "acknowledged")),
+                  Effect.asVoid
+                )
+                : Effect.never,
+            markSubscriptionCancelled: () => Deferred.succeed(overflowed, undefined).pipe(Effect.asVoid),
+            terminateSubscription: () =>
+              (blockedWrite === "cancellation" ? Deferred.await(releaseWrite) : Effect.void).pipe(
+                Effect.andThen(Queue.offer(sent, "cancelled")),
                 Effect.asVoid
-              )
-              : Effect.void,
-          terminateSubscription: () => Queue.offer(sent, "cancelled").pipe(Effect.asVoid),
-          supportedVersions: [McpSchema2026.protocolVersion],
-          serverInfo: { name: "SubscriptionBacklogTest", version: "1.0.0" },
-          registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
-        })
-        yield* handlers["subscriptions/listen"](
-          {
-            notifications: { toolsListChanged: true },
-            _meta: {
-              "io.modelcontextprotocol/protocolVersion": McpSchema2026.protocolVersion,
-              "io.modelcontextprotocol/clientCapabilities": {}
-            }
-          },
-          { client: new Rpc.ServerClient(1), requestId: RequestId("blocked-acknowledgment") }
-        ).pipe(Effect.scoped, Effect.forkScoped)
-        yield* Deferred.await(acknowledgmentStarted)
-
-        for (let index = 0; index <= 64; index++) {
-          yield* PubSub.publish(events, {
-            notification: McpCore.ServerNotification.ToolsChanged({})
+              ),
+            supportedVersions: [McpSchema2026.protocolVersion],
+            serverInfo: { name: "SubscriptionBacklogTest", version: "1.0.0" },
+            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
           })
-          yield* Effect.yieldNow
-        }
-        yield* Deferred.succeed(releaseAcknowledgment, undefined)
+          yield* handlers["subscriptions/listen"](
+            {
+              notifications: { toolsListChanged: true },
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": McpSchema2026.protocolVersion,
+                "io.modelcontextprotocol/clientCapabilities": {}
+              }
+            },
+            { client: new Rpc.ServerClient(1), requestId: RequestId("blocked-write") }
+          ).pipe(Effect.scoped, Effect.forkScoped)
+          yield* Deferred.await(acknowledgmentStarted)
 
-        assert.strictEqual(yield* Queue.take(sent), "acknowledged")
-        assert.strictEqual(yield* Queue.take(sent), "cancelled")
-      }))
+          for (let index = 0; index <= 65; index++) {
+            yield* PubSub.publish(events, {
+              notification: McpCore.ServerNotification.ToolsChanged({})
+            })
+            yield* Effect.yieldNow
+          }
+          yield* Deferred.await(overflowed)
+          assert.isTrue(yield* Deferred.isDone(subscriptionReleased))
+          yield* Deferred.succeed(releaseWrite, undefined)
+
+          assert.strictEqual(yield* Queue.take(sent), "acknowledged")
+          assert.strictEqual(yield* Queue.take(sent), "cancelled")
+        }))
+    }
 
     it.effect("should terminate only the slow subscription when its pending backlog overflows", () =>
       Effect.gen(function*() {
