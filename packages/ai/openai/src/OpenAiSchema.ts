@@ -766,7 +766,7 @@ const ApplyPatchCall = Schema.Struct({
 const CodeInterpreterCall = Schema.Struct({
   id: Schema.String,
   type: Schema.Literal("code_interpreter_call"),
-  code: Schema.optionalKey(Schema.String),
+  code: Schema.optionalKey(Schema.NullOr(Schema.String)),
   container_id: Schema.String,
   outputs: Schema.optionalKey(Schema.NullOr(Schema.Array(Schema.Unknown))),
   status: Schema.optionalKey(

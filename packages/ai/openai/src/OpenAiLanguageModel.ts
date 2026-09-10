@@ -1337,6 +1337,7 @@ const makeResponse = Effect.fnUntraced(
 
         case "code_interpreter_call": {
           const toolName = toolNameMapper.getCustomName("code_interpreter")
+          const status = part.status ?? "completed"
           parts.push({
             type: "tool-call",
             id: part.id,
@@ -1348,8 +1349,8 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.id,
             name: toolName,
-            isFailure: part.status !== "completed",
-            result: { status: part.status, outputs: part.outputs ?? null },
+            isFailure: status !== "completed",
+            result: { status, outputs: part.outputs ?? null },
             providerExecuted: true
           })
           break
@@ -1411,6 +1412,7 @@ const makeResponse = Effect.fnUntraced(
 
         case "image_generation_call": {
           const toolName = toolNameMapper.getCustomName("image_generation")
+          const status = part.status ?? "completed"
           parts.push({
             type: "tool-call",
             id: part.id,
@@ -1422,10 +1424,10 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.id,
             name: toolName,
-            isFailure: part.status !== "completed",
-            result: part.status === "completed"
+            isFailure: status !== "completed",
+            result: status === "completed"
               ? { result: part.result }
-              : { status: part.status, result: part.result }
+              : { status, result: part.result }
           })
           break
         }
@@ -2069,12 +2071,13 @@ const makeStreamResponse = Effect.fnUntraced(
               case "code_interpreter_call": {
                 delete activeToolCalls[event.output_index]
                 const toolName = toolNameMapper.getCustomName("code_interpreter")
+                const status = event.item.status ?? "completed"
                 parts.push({
                   type: "tool-result",
                   id: event.item.id,
                   name: toolName,
-                  isFailure: event.item.status !== "completed",
-                  result: { status: event.item.status, outputs: event.item.outputs ?? null },
+                  isFailure: status !== "completed",
+                  result: { status, outputs: event.item.outputs ?? null },
                   providerExecuted: true
                 })
                 break
@@ -2168,14 +2171,15 @@ const makeStreamResponse = Effect.fnUntraced(
 
               case "image_generation_call": {
                 const toolName = toolNameMapper.getCustomName("image_generation")
+                const status = event.item.status ?? "completed"
                 parts.push({
                   type: "tool-result",
                   id: event.item.id,
                   name: toolName,
-                  isFailure: event.item.status !== "completed",
-                  result: event.item.status === "completed"
+                  isFailure: status !== "completed",
+                  result: status === "completed"
                     ? { result: event.item.result }
-                    : { status: event.item.status, result: event.item.result },
+                    : { status, result: event.item.result },
                   providerExecuted: true
                 })
                 break
