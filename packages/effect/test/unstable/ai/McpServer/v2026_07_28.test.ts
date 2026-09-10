@@ -157,11 +157,26 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     it.effect("should return HeaderMismatch when a July-only request omits headers and metadata", () =>
       Effect.gen(function*() {
         const test = yield* McpConformance
-        const response = yield* test.post({ jsonrpc: "2.0", id: "missing", method: "tools/list", params: {} })
-        assert.strictEqual(response.status, 400)
-        const error = yield* decodeError(response)
-        assert.strictEqual(error.id, "missing")
-        assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+        const cases = [
+          { jsonrpc: "2.0", id: "missing", method: "tools/list", params: {} },
+          {
+            jsonrpc: "2.0",
+            id: "legacy-initialize",
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              clientInfo: { name: "legacy-client", version: "1.0.0" }
+            }
+          }
+        ]
+        for (const body of cases) {
+          const response = yield* test.post(body)
+          assert.strictEqual(response.status, 400, body.id)
+          const error = yield* decodeError(response)
+          assert.strictEqual(error.id, body.id)
+          assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+        }
       }))
 
     // Nested properties may mirror parameters; missing or mismatched headers must prevent execution.
@@ -267,6 +282,10 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           [
             request("malformed", "resources/read", { uri: "file:///conformance.txt" }),
             headers("resources/read", "=?base64?not-valid!?=")
+          ],
+          [
+            request("invalid-utf8", "resources/read", { uri: "\uFFFD" }),
+            headers("resources/read", "=?base64?/w==?=")
           ]
         ] as const
 

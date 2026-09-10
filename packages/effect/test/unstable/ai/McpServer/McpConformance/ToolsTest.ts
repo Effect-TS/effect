@@ -569,6 +569,18 @@ export const statelessModernSuite = (
               status: 200
             },
             {
+              id: "encoded-invalid-utf8",
+              arguments: { region: "\uFFFD" },
+              headers: { "Mcp-Param-Region": "=?base64?/w==?=" },
+              status: 400
+            },
+            {
+              id: "encoded-replacement-character",
+              arguments: { region: "\uFFFD" },
+              headers: { "Mcp-Param-Region": "=?base64?77+9?=" },
+              status: 200
+            },
+            {
               id: "encoded-leading-bom",
               arguments: { region: "\uFEFFeu-west" },
               headers: { "Mcp-Param-Region": "=?base64?77u/ZXUtd2VzdA==?=" },
@@ -601,6 +613,7 @@ export const statelessModernSuite = (
           ] as const
 
           for (const testCase of cases) {
+            yield* test.resetObservations
             const response = yield* test.send(initialized, {
               jsonrpc: "2.0",
               id: testCase.id,
@@ -611,7 +624,8 @@ export const statelessModernSuite = (
               }
             }, { headers: testCase.headers })
 
-            assert.strictEqual(response.status, testCase.status)
+            assert.strictEqual(response.status, testCase.status, testCase.id)
+            assert.strictEqual((yield* test.observations).toolInvocations, testCase.status === 400 ? 0 : 1, testCase.id)
             if (testCase.status === 400) {
               const error = yield* test.decodeError(response)
               assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)

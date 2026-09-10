@@ -1,6 +1,7 @@
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Encoding from "../../../Encoding.ts"
+import type * as LogLevel from "../../../LogLevel.ts"
 import * as Match from "../../../Match.ts"
 import * as Predicate from "../../../Predicate.ts"
 import type * as PubSub from "../../../PubSub.ts"
@@ -21,7 +22,24 @@ const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
 const BASE64_SENTINEL_PREFIX = "=?base64?"
 const BASE64_SENTINEL_SUFFIX = "?="
 // A leading U+FEFF belongs to the header value and must survive comparison with the JSON body.
-const routingHeaderDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+const routingHeaderDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+
+/** @internal */
+export const mcpLogLevels: Readonly<
+  Record<
+    PublicMcpSchema.LoggingLevel,
+    { readonly effect: LogLevel.LogLevel; readonly order: number }
+  >
+> = {
+  debug: { effect: "Debug", order: 0 },
+  info: { effect: "Info", order: 1 },
+  notice: { effect: "Info", order: 2 },
+  warning: { effect: "Warn", order: 3 },
+  error: { effect: "Error", order: 4 },
+  critical: { effect: "Fatal", order: 5 },
+  alert: { effect: "Fatal", order: 6 },
+  emergency: { effect: "Fatal", order: 7 }
+}
 
 /** @internal */
 export const decodeRoutingHeader = (value: string): string | undefined => {
@@ -33,7 +51,12 @@ export const decodeRoutingHeader = (value: string): string | undefined => {
   const decoded = Encoding.decodeBase64(
     value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
   )
-  return Result.isSuccess(decoded) ? routingHeaderDecoder.decode(decoded.success) : undefined
+  if (Result.isFailure(decoded)) return undefined
+  try {
+    return routingHeaderDecoder.decode(decoded.success)
+  } catch {
+    return undefined
+  }
 }
 
 /** @internal */

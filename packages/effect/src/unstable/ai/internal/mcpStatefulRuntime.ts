@@ -72,20 +72,6 @@ export interface StatefulRuntime {
   readonly disconnect: (clientId: number) => void
 }
 
-const mcpLogLevels: Record<
-  PublicMcpSchema.LoggingLevel,
-  { readonly effect: LogLevel.LogLevel; readonly order: number }
-> = {
-  debug: { effect: "Debug", order: 0 },
-  info: { effect: "Info", order: 1 },
-  notice: { effect: "Info", order: 2 },
-  warning: { effect: "Warn", order: 3 },
-  error: { effect: "Error", order: 4 },
-  critical: { effect: "Fatal", order: 5 },
-  alert: { effect: "Fatal", order: 6 },
-  emergency: { effect: "Fatal", order: 7 }
-}
-
 const makeSession = (registration: Registration): Session => ({
   initializePayload: registration.initializePayload,
   negotiatedProfile: registration.negotiatedProfile,
@@ -112,7 +98,7 @@ export const make = (): StatefulRuntime => {
   ): LogLevel.LogLevel => {
     const session = resolveSession(clientId, headers)
     return session?.logLevel._tag === "Mcp"
-      ? mcpLogLevels[session.logLevel.level].effect
+      ? McpProtocol.mcpLogLevels[session.logLevel.level].effect
       : session?.logLevel.level ?? fallback
   }
 
@@ -166,9 +152,9 @@ export const make = (): StatefulRuntime => {
       if (notification._tag === "LoggingMessage") {
         const minimum = session?.logLevel
         return minimum?._tag === "Mcp"
-          ? mcpLogLevels[notification.level].order >= mcpLogLevels[minimum.level].order
+          ? McpProtocol.mcpLogLevels[notification.level].order >= McpProtocol.mcpLogLevels[minimum.level].order
           : LogLevel.isGreaterThanOrEqualTo(
-            mcpLogLevels[notification.level].effect,
+            McpProtocol.mcpLogLevels[notification.level].effect,
             minimum?.level ?? fallbackLogLevel
           )
       }

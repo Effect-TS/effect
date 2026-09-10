@@ -9,6 +9,8 @@ import * as Context from "../../../Context.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Layer from "../../../Layer.ts"
 import type * as LogLevel from "../../../LogLevel.ts"
+import * as Predicate from "../../../Predicate.ts"
+import * as Result from "../../../Result.ts"
 import type * as Headers from "../../http/Headers.ts"
 import { appendPreResponseHandlerUnsafe } from "../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../http/HttpServerRequest.ts"
@@ -33,35 +35,30 @@ const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
 const asRecord = (input: unknown): Record<string, unknown> | undefined =>
   typeof input === "object" && input !== null ? input as Record<string, unknown> : undefined
 
-const modernVersionClaim = (input: unknown): { readonly present: boolean; readonly value: unknown } => {
-  const params = asRecord(asRecord(input)?.params)
-  const metadata = asRecord(params?._meta)
+const protocolVersionClaim = (input: unknown): { readonly present: boolean; readonly value: unknown } => {
+  const metadata = asRecord(input)
   return metadata !== undefined && PROTOCOL_VERSION_METADATA_KEY in metadata
     ? { present: true, value: metadata[PROTOCOL_VERSION_METADATA_KEY] }
     : { present: false, value: undefined }
 }
 
 /** @internal */
-export const hasRequestProtocolVersion = (input: unknown): boolean => modernVersionClaim(input).present
+export const hasRequestProtocolVersion = (input: unknown): boolean =>
+  protocolVersionClaim(asRecord(asRecord(input)?.params)?._meta).present
 
-const routingName = (input: unknown): string | undefined => {
-  const request = asRecord(input)
-  const params = asRecord(request?.params)
-  switch (request?.method) {
+const routingNameKey = (method: string): "name" | "uri" | undefined => {
+  switch (method) {
     case "tools/call":
     case "prompts/get":
-      return typeof params?.name === "string" ? params.name : undefined
+      return "name"
     case "resources/read":
-      return typeof params?.uri === "string" ? params.uri : undefined
+      return "uri"
     default:
       return undefined
   }
 }
 
-const requiresRoutingName = (method: unknown): boolean =>
-  method === "tools/call" || method === "resources/read" || method === "prompts/get"
-
-const headerMismatch = (message: string): HttpAdmission => ({
+const headerMismatch = (message: string): HttpProtocolSelection => ({
   _tag: "Rejected",
   status: 400,
   error: { code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE, message }
@@ -84,8 +81,7 @@ export interface PreparedRequest {
   readonly requestContext?: PublicMcpSchema.McpRequestContext["Service"] | undefined
 }
 
-/** @internal */
-export type HttpAdmission =
+type HttpProtocolSelection =
   | {
     readonly _tag: "Accepted"
     readonly binding: RequestBinding | undefined
@@ -99,6 +95,18 @@ export type HttpAdmission =
       readonly message: string
       readonly data?: unknown
     } | undefined
+  }
+
+/** @internal */
+export type HttpAdmission =
+  | {
+    readonly _tag: "Accepted"
+    readonly acknowledge: boolean
+    readonly isSubscription: boolean
+  }
+  | {
+    readonly _tag: "Rejected"
+    readonly response: HttpServerResponse.HttpServerResponse
   }
 
 /** @internal */
@@ -145,7 +153,7 @@ export interface ServerRuntimeShape {
     request: RpcMessage.RequestEncoded
   ) => Effect.Effect<PreparedRequest, unknown>
   readonly resolveRequest: (clientId: number, headers: Headers.Headers) => RequestBinding | undefined
-  readonly admitHttp: (headers: Headers.Headers, input: unknown) => HttpAdmission
+  readonly admitHttp: (headers: Headers.Headers, input: Result.Result<unknown, unknown>) => HttpAdmission
   readonly effectLogLevel: (
     clientId: number,
     headers: Headers.Headers,
@@ -199,55 +207,126 @@ export const make = Effect.fnUntraced(function*(
     statelessProtocol = protocol
   }
   const registry = yield* McpProtocolRegistry.make(protocols)
-  const protocolForInternalTag = (tag: string): PublicMcpProtocol.AnyProtocolAdapter => {
-    for (const protocol of registry.protocols) {
-      const routed = registry.routeClientRequest(protocol, {
-        _tag: "Request",
-        id: 0,
-        tag: "",
-        payload: undefined,
-        headers: []
-      })
-      if (tag.startsWith(routed.tag)) {
-        return protocol
+  const selectHttpProtocol = (headers: Headers.Headers, input: unknown): HttpProtocolSelection => {
+    const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
+    const sessionId = headers[MCP_SESSION_ID_HEADER]
+    const inputRecord = asRecord(input)
+    const metadata = asRecord(asRecord(inputRecord?.params)?._meta)
+    const claim = protocolVersionClaim(metadata)
+    const id = inputRecord?.id
+    const isInitialize = inputRecord?.jsonrpc === "2.0" && inputRecord.method === "initialize" &&
+      (typeof id === "string" || typeof id === "number")
+    const isCancellationNotification = inputRecord?.jsonrpc === "2.0" &&
+      inputRecord.method === "notifications/cancelled" && id === undefined
+    const isStatelessRequest = claim.present || ((!isInitialize || stateful === undefined) &&
+      statelessProtocol !== undefined &&
+      (protocolVersion === statelessProtocol.protocolVersion ||
+        (stateful === undefined && inputRecord?.jsonrpc === "2.0" &&
+          typeof inputRecord.method === "string" && (typeof id === "string" || typeof id === "number"))))
+    if (isStatelessRequest) {
+      if (protocolVersion === undefined) {
+        return headerMismatch("MCP-Protocol-Version header is required")
       }
+      if (!isCancellationNotification && (metadata === undefined || typeof claim.value !== "string")) {
+        return {
+          _tag: "Rejected",
+          status: 400,
+          error: {
+            code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+            message: "Required request metadata is missing"
+          }
+        }
+      }
+      if ((!isCancellationNotification || claim.present) && claim.value !== protocolVersion) {
+        return headerMismatch("MCP-Protocol-Version header does not match request metadata")
+      }
+      if (!isCancellationNotification && asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
+        return {
+          _tag: "Rejected",
+          status: 400,
+          error: {
+            code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+            message: `${CLIENT_CAPABILITIES_METADATA_KEY} request metadata is required`
+          }
+        }
+      }
+      if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
+        return {
+          _tag: "Rejected",
+          status: 400,
+          error: {
+            code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+            message: `Unsupported protocol version '${protocolVersion}'`,
+            data: {
+              supported: protocolVersions,
+              requested: protocolVersion
+            }
+          }
+        }
+      }
+      const method = inputRecord?.method
+      if (typeof method !== "string" || headers[MCP_METHOD_HEADER] !== method) {
+        return headerMismatch("Mcp-Method header does not match request method")
+      }
+      const nameKey = routingNameKey(method)
+      if (nameKey !== undefined) {
+        const name = asRecord(inputRecord?.params)?.[nameKey]
+        const header = headers[MCP_NAME_HEADER]
+        if (typeof name !== "string" || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name) {
+          return headerMismatch("Mcp-Name header does not match request parameters")
+        }
+      }
+      return { _tag: "Accepted", binding: undefined, protocol: statelessProtocol }
     }
-    return registry.protocols[0]
+    const binding = sessionId === undefined ? undefined : stateful?.resolveSessionId(sessionId)
+    if (sessionId !== undefined && binding === undefined) {
+      return { _tag: "Rejected", status: 404 }
+    }
+    if (
+      !isInitialize &&
+      protocolVersion !== undefined &&
+      !registry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
+    ) {
+      return { _tag: "Rejected", status: 400 }
+    }
+    if (
+      !isInitialize &&
+      binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
+      protocolVersion !== binding.protocol.protocolVersion
+    ) {
+      return { _tag: "Rejected", status: 400 }
+    }
+    return { _tag: "Accepted", binding, protocol: binding?.protocol }
   }
   return ServerRuntime.of({
     protocols: registry.protocols,
     clientRpcs: registry.clientRpcs,
     selectProtocol: registry.select,
-    protocolForInternalTag,
+    protocolForInternalTag: registry.protocolForInternalTag,
     routeClientRequest: registry.routeClientRequest,
     prepareRequest: Effect.fnUntraced(function*(clientId, headers, request) {
-      const metadata = typeof request.payload === "object" && request.payload !== null && "_meta" in request.payload
-        ? request.payload._meta
-        : undefined
-      const hasStatelessVersion = typeof metadata === "object" && metadata !== null &&
-        "io.modelcontextprotocol/protocolVersion" in metadata
-      const binding = hasStatelessVersion ? undefined : stateful?.resolve(clientId, headers)
-      let protocol: PublicMcpProtocol.AnyProtocolAdapter | undefined = binding?.protocol
-      if (protocol === undefined) {
-        const offeredVersion = hasStatelessVersion &&
-            typeof metadata["io.modelcontextprotocol/protocolVersion"] === "string"
-          ? metadata["io.modelcontextprotocol/protocolVersion"]
-          : undefined
-        if (hasStatelessVersion) {
-          protocol = registry.protocols.find((protocol) => protocol.protocolVersion === offeredVersion) ??
-            statelessProtocol ?? registry.protocols[0]
-        } else if (request.tag === "initialize") {
-          const requestedVersion = (request.payload as any)?.protocolVersion
-          protocol = selectStatefulProtocol(registry.protocols, requestedVersion)
-          if (protocol === undefined) {
-            return yield* new McpProtocol.ProtocolError({
-              code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-              message: `initialize is not supported by the configured MCP protocols (requested '${requestedVersion}')`
-            })
-          }
-        } else {
-          protocol = registry.protocols[0]
+      const metadata = asRecord(request.payload)?._meta
+      const claim = protocolVersionClaim(metadata)
+      const requestedVersion = typeof claim.value === "string" ? claim.value : undefined
+      const binding = claim.present ? undefined : stateful?.resolve(clientId, headers)
+      let protocol: PublicMcpProtocol.AnyProtocolAdapter
+      if (claim.present) {
+        protocol = registry.protocols.find((protocol) => protocol.protocolVersion === requestedVersion) ??
+          statelessProtocol ?? registry.protocols[0]
+      } else if (binding !== undefined) {
+        protocol = binding.protocol
+      } else if (request.tag === "initialize") {
+        const offeredVersion = (request.payload as any)?.protocolVersion
+        const selected = selectStatefulProtocol(registry.protocols, offeredVersion)
+        if (selected === undefined) {
+          return yield* new McpProtocol.ProtocolError({
+            code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+            message: `initialize is not supported by the configured MCP protocols (requested '${offeredVersion}')`
+          })
         }
+        protocol = selected
+      } else {
+        protocol = registry.protocols[0]
       }
       if (protocol.runtime._tag === "Stateful") {
         return { protocol, binding }
@@ -258,11 +337,6 @@ export const make = Effect.fnUntraced(function*(
       if (statelessDescriptor === undefined) {
         return yield* Effect.die("MCP stateless runtime invariant failed")
       }
-      const requestedVersion = typeof metadata === "object" && metadata !== null &&
-          "io.modelcontextprotocol/protocolVersion" in metadata &&
-          typeof metadata["io.modelcontextprotocol/protocolVersion"] === "string"
-        ? metadata["io.modelcontextprotocol/protocolVersion"]
-        : undefined
       if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
         return yield* new McpProtocol.ProtocolError({
           code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
@@ -287,96 +361,82 @@ export const make = Effect.fnUntraced(function*(
       return { protocol, profile, requestContext }
     }),
     resolveRequest: (clientId, headers) => stateful?.resolve(clientId, headers),
-    admitHttp: (headers, input) => {
-      const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
-      const sessionId = headers[MCP_SESSION_ID_HEADER]
-      const claim = modernVersionClaim(input)
-      const inputRecord = asRecord(input)
-      const id = inputRecord?.id
-      const isInitialize = inputRecord?.jsonrpc === "2.0" && inputRecord.method === "initialize" &&
-        (typeof id === "string" || typeof id === "number")
-      const isCancellationNotification = inputRecord?.jsonrpc === "2.0" &&
-        inputRecord.method === "notifications/cancelled" && id === undefined
-      const isStatelessRequest = claim.present || (!isInitialize &&
-        statelessProtocol !== undefined &&
-        (protocolVersion === statelessProtocol.protocolVersion ||
-          (stateful === undefined && inputRecord?.jsonrpc === "2.0" &&
-            typeof inputRecord.method === "string" && (typeof id === "string" || typeof id === "number"))))
-      if (isStatelessRequest) {
-        if (protocolVersion === undefined) {
-          return headerMismatch("MCP-Protocol-Version header is required")
+    admitHttp: (headers, parsed) => {
+      const reject = (status: number, error?: unknown, id: string | number | null = null): HttpAdmission => ({
+        _tag: "Rejected",
+        response: error === undefined
+          ? HttpServerResponse.empty({ status })
+          : HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
+      })
+      if (Result.isFailure(parsed)) {
+        const version = headers[MCP_PROTOCOL_VERSION_HEADER]
+        if (version !== undefined && !registry.protocols.some((protocol) => protocol.protocolVersion === version)) {
+          return reject(400)
         }
-        const metadata = asRecord(asRecord(asRecord(input)?.params)?._meta)
-        if (!isCancellationNotification && (metadata === undefined || typeof claim.value !== "string")) {
-          return {
-            _tag: "Rejected",
-            status: 400,
-            error: {
-              code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
-              message: "Required request metadata is missing"
-            }
-          }
-        }
-        if ((!isCancellationNotification || claim.present) && claim.value !== protocolVersion) {
-          return headerMismatch("MCP-Protocol-Version header does not match request metadata")
-        }
-        if (!isCancellationNotification && asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
-          return {
-            _tag: "Rejected",
-            status: 400,
-            error: {
-              code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
-              message: `${CLIENT_CAPABILITIES_METADATA_KEY} request metadata is required`
-            }
-          }
-        }
-        if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
-          return {
-            _tag: "Rejected",
-            status: 400,
-            error: {
-              code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-              message: `Unsupported protocol version '${protocolVersion}'`,
-              data: {
-                supported: protocolVersions,
-                requested: protocolVersion
-              }
-            }
-          }
-        }
-        const request = asRecord(input)
-        const method = request?.method
-        if (typeof method !== "string" || headers[MCP_METHOD_HEADER] !== method) {
-          return headerMismatch("Mcp-Method header does not match request method")
-        }
-        if (requiresRoutingName(method)) {
-          const name = routingName(input)
-          const header = headers[MCP_NAME_HEADER]
-          if (name === undefined || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name) {
-            return headerMismatch("Mcp-Name header does not match request parameters")
-          }
-        }
-        return { _tag: "Accepted", binding: undefined, protocol: statelessProtocol }
+        const admission = selectHttpProtocol(headers, undefined)
+        return admission._tag === "Rejected" && admission.error === undefined
+          ? reject(admission.status)
+          : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
       }
-      const binding = sessionId === undefined ? undefined : stateful?.resolveSessionId(sessionId)
-      if (sessionId !== undefined && binding === undefined) {
-        return { _tag: "Rejected", status: 404 }
+      const input = parsed.success
+      if (Array.isArray(input)) {
+        if (input.length === 0) {
+          return reject(400, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }))
+        }
+        const admission = selectHttpProtocol(headers, input)
+        if (
+          admission._tag === "Rejected" ||
+          input.some(hasRequestProtocolVersion) ||
+          input.some((message) => Predicate.hasProperty(message, "method") && message.method === "initialize") ||
+          admission.binding?.protocol.runtime.transport.jsonRpc.acceptsBatches !== true
+        ) {
+          return reject(400)
+        }
+        return {
+          _tag: "Accepted",
+          acknowledge: !input.some((message) =>
+            Predicate.hasProperty(message, "method") && Predicate.hasProperty(message, "id")
+          ),
+          isSubscription: false
+        }
+      }
+      const hasId = Predicate.hasProperty(input, "id")
+      const id = hasId && (typeof input.id === "string" || typeof input.id === "number") ? input.id : null
+      const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
+      const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
+      const isRequest = isJsonRpc && hasValidRequestId &&
+        Predicate.hasProperty(input, "method") && typeof input.method === "string"
+      const hasValidResponseId = hasId &&
+        (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
+      const hasResult = Predicate.hasProperty(input, "result")
+      const hasError = Predicate.hasProperty(input, "error")
+      const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
+      const admission = selectHttpProtocol(headers, input)
+      if (admission._tag === "Rejected") {
+        return reject(admission.status, admission.error, id)
+      }
+      if (!isRequest && !isResponse) {
+        return reject(200, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }), id)
+      }
+      const isInitialize = Predicate.hasProperty(input, "method") && input.method === "initialize"
+      const hasSession = headers[MCP_SESSION_ID_HEADER] !== undefined
+      if (isInitialize ? hasSession : !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
+        return reject(400)
       }
       if (
-        !isInitialize &&
-        protocolVersion !== undefined &&
-        !registry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
+        isRequest && admission.protocol?.runtime._tag === "Stateless" &&
+        !((admission.protocol as unknown as McpProtocol.ProtocolAdapter).handlerRpcs?.requests.has(
+          input.method as string
+        ) ??
+          admission.protocol.clientRpcs.requests.has(input.method as string))
       ) {
-        return { _tag: "Rejected", status: 400 }
+        return reject(404, new PublicMcpSchema.MethodNotFound({ message: `Method not found: ${input.method}` }), id)
       }
-      if (
-        !isInitialize &&
-        binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
-        protocolVersion !== binding.protocol.protocolVersion
-      ) {
-        return { _tag: "Rejected", status: 400 }
+      return {
+        _tag: "Accepted",
+        acknowledge: !isRequest || !hasId,
+        isSubscription: Predicate.hasProperty(input, "method") && input.method === "subscriptions/listen"
       }
-      return { _tag: "Accepted", binding, protocol: binding?.protocol }
     },
     effectLogLevel: (clientId, headers, fallback) => stateful?.effectLogLevel(clientId, headers, fallback) ?? fallback,
     disconnect: (clientId) => stateful?.disconnect(clientId),
@@ -411,32 +471,17 @@ export const make = Effect.fnUntraced(function*(
         const lifecycle: McpProtocol.LifecycleRuntime = {
           initialize: Effect.fnUntraced(function*(protocolVersion, profile, clientId) {
             const presence = yield* options.core.registrationPresence
-            let capabilities: McpCore.CanonicalServerCapabilities = {
-              completions: true,
-              logging: true
-            }
-            if (presence.tools) {
-              capabilities = { ...capabilities, tools: { listChanged: true } }
-            }
-            if (presence.resources) {
-              capabilities = {
-                ...capabilities,
-                resources: { listChanged: true, subscribe: true }
-              }
-            }
-            if (presence.prompts) {
-              capabilities = { ...capabilities, prompts: { listChanged: true } }
-            }
-            if (options.serverInfo.extensions) {
-              capabilities = { ...capabilities, extensions: options.serverInfo.extensions }
-            }
             return yield* Effect.withFiber((fiber) => {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
-              if (httpRequest !== undefined && capabilities.resources !== undefined) {
-                capabilities = {
-                  ...capabilities,
-                  resources: { ...capabilities.resources, subscribe: false }
-                }
+              const capabilities: McpCore.CanonicalServerCapabilities = {
+                completions: true,
+                logging: true,
+                ...(presence.tools ? { tools: { listChanged: true } } : {}),
+                ...(presence.resources
+                  ? { resources: { listChanged: true, subscribe: httpRequest === undefined } }
+                  : {}),
+                ...(presence.prompts ? { prompts: { listChanged: true } } : {}),
+                ...(options.serverInfo.extensions ? { extensions: options.serverInfo.extensions } : {})
               }
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,

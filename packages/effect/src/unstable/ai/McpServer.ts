@@ -165,16 +165,7 @@ const provideInvocationContext = <A, E, R>(
     provided = Effect.provideService(
       provided,
       CurrentLogLevel,
-      {
-        debug: "Debug",
-        info: "Info",
-        notice: "Info",
-        warning: "Warn",
-        error: "Error",
-        critical: "Fatal",
-        alert: "Fatal",
-        emergency: "Fatal"
-      }[logLevel]
+      McpProtocolInternal.mcpLogLevels[logLevel].effect
     )
   }
   return (invocation.serverClient === undefined
@@ -319,7 +310,7 @@ export class McpServer extends Context.Service<McpServer, {
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
     const notificationDelivery = { consumers: 0 }
-    const listChangedHandles = new Map<string, any>()
+    const pendingListChanges = new Set<string>()
     const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
@@ -342,15 +333,14 @@ export class McpServer extends Context.Service<McpServer, {
             }
             let enqueued = false
             if (message.tag.includes("list_changed")) {
-              if (!listChangedHandles.has(message.tag)) {
+              if (!pendingListChanges.has(message.tag)) {
                 enqueued = true
-                listChangedHandles.set(
-                  message.tag,
-                  dispatcher.scheduleTask(() => {
-                    Queue.offerUnsafe(notificationsQueue, queued)
-                    listChangedHandles.delete(message.tag)
-                  }, 0)
-                )
+                const tag = message.tag
+                dispatcher.scheduleTask(() => {
+                  Queue.offerUnsafe(notificationsQueue, queued)
+                  pendingListChanges.delete(message.tag)
+                }, 0)
+                pendingListChanges.add(tag)
               }
             } else {
               enqueued = true
@@ -430,12 +420,11 @@ export class McpServer extends Context.Service<McpServer, {
                       })
                     )
                 }),
-                Effect.flatMap((result) => {
-                  if (Predicate.isTagged(result, "InputRequired")) {
-                    return Effect.succeed(McpCore.OperationOutcome.InputRequired(result))
-                  }
-                  return Effect.succeed(McpCore.OperationOutcome.Complete(result))
-                })
+                Effect.map((result) =>
+                  Predicate.isTagged(result, "InputRequired")
+                    ? McpCore.OperationOutcome.InputRequired(result)
+                    : McpCore.OperationOutcome.Complete(result)
+                )
               )
           })
           yield* notifications.client["notifications/tools/list_changed"]({})
@@ -652,32 +641,6 @@ interface ActiveRequest {
   readonly cancelled: boolean
 }
 
-const makeSubscriptionTerminator = (options: {
-  readonly isHttp: boolean
-  readonly cancelRequest: (clientId: number, requestId: RpcMessage.RequestId) => boolean
-  readonly end: (clientId: number) => Effect.Effect<void>
-  readonly sendCancellation: (
-    protocolVersion: string,
-    clientId: number,
-    requestId: RpcMessage.RequestId,
-    reason: string
-  ) => Effect.Effect<void>
-}) =>
-(
-  protocolVersion: string,
-  clientId: number,
-  requestId: RpcMessage.RequestId,
-  reason: string
-): Effect.Effect<void> =>
-  Effect.suspend(() => {
-    if (!options.cancelRequest(clientId, requestId)) {
-      return Effect.void
-    }
-    return options.isHttp
-      ? options.end(clientId)
-      : options.sendCancellation(protocolVersion, clientId, requestId, reason)
-  })
-
 class McpClientKey extends Data.Class<{
   readonly clientId: number
   readonly profile: McpCore.NegotiatedProtocolProfile<string>
@@ -743,6 +706,18 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
+  const disconnectClient = (clientId: number) => {
+    activeRequests.delete(clientId)
+    clientProtocols.delete(clientId)
+    clientProfiles.delete(clientId)
+    runtime.disconnect(clientId)
+  }
+  const sendRequestError = (clientId: number, requestId: string | number, error: unknown) =>
+    protocol.send(clientId, {
+      _tag: "Exit",
+      requestId,
+      exit: { _tag: "Failure", cause: [{ _tag: "Fail", error }] }
+    })
   const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
     const waiting = reverseRequestClients.get(requestId)
     if (waiting === undefined) return
@@ -790,16 +765,23 @@ const runWithRuntime = Effect.fnUntraced(function*(
     requests!.set(key, { ...request, cancelled: true })
     return true
   }
-  const terminateSubscription = makeSubscriptionTerminator({
-    isHttp,
-    cancelRequest,
-    end: (clientId) => protocol.end(clientId),
-    sendCancellation: (protocolVersion, clientId, requestId, reason) =>
-      sendNotification(protocolVersion, clientId, {
-        tag: "notifications/cancelled",
-        payload: { requestId, reason }
-      })
-  })
+  const terminateSubscription = (
+    protocolVersion: string,
+    clientId: number,
+    requestId: RpcMessage.RequestId,
+    reason: string
+  ): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      if (!cancelRequest(clientId, requestId)) {
+        return Effect.void
+      }
+      return isHttp
+        ? protocol.end(clientId)
+        : sendNotification(protocolVersion, clientId, {
+          tag: "notifications/cancelled",
+          payload: { requestId, reason }
+        })
+    })
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
@@ -1008,184 +990,136 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const prepare = cancellationRequest === undefined
               ? runtime.prepareRequest(clientId, headers, request)
               : Effect.succeed(cancellationRequest.prepared)
-            return prepare.pipe(
-              Effect.tap(() =>
-                isHttp && !clientProtocols.has(clientId)
-                  // HTTP EOF only ends the request body; handlers and streamed replies may still be running.
-                  ? Scope.addFinalizer(
-                    Context.getUnsafe(fiber.context, Scope.Scope),
-                    Effect.sync(() => {
-                      activeRequests.delete(clientId)
-                      clientProtocols.delete(clientId)
-                      clientProfiles.delete(clientId)
-                      runtime.disconnect(clientId)
-                    })
-                  )
-                  : Effect.void
-              ),
-              Effect.flatMap((prepared) => {
-                const session = prepared.binding
-                const selectedProtocol = prepared.protocol
-                // Select before dated payload decoding: legacy requests use
-                // their session's adapter; modern requests carry their own version.
-                clientProtocols.set(clientId, selectedProtocol)
-                if (prepared.profile !== undefined) {
-                  clientProfiles.set(clientId, prepared.profile)
-                }
-                if (request.tag === MCP_INVALID_BATCH_METHOD) {
-                  return protocol.send(clientId, {
-                    _tag: "Exit",
-                    requestId: request.id,
-                    exit: {
-                      _tag: "Failure",
-                      cause: [{
-                        _tag: "Fail",
-                        error: new InvalidRequest({ message: "JSON-RPC batches are not supported" })
-                      }]
-                    }
-                  })
-                }
-                if (isHttp) {
-                  const fiber = Fiber.getCurrent()!
-                  const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
-                  if (session) {
-                    appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
-                      Effect.succeed(
-                        HttpServerResponse.setHeader(
-                          res,
-                          MCP_PROTOCOL_VERSION_HEADER,
-                          session.protocol.protocolVersion
-                        )
-                      ))
-                  }
-                }
-                const routedRequest = runtime.routeClientRequest(selectedProtocol, request)
-                const rpc = runtime.clientRpcs.requests.get(routedRequest.tag)
-                const isClientNotification = selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
-                if (rpc && isClientNotification && request.isNotification) {
-                  if (!session && selectedProtocol.runtime._tag === "Stateful") {
-                    if (httpRequest) {
-                      appendPreResponseHandlerUnsafe(
-                        httpRequest,
-                        () =>
-                          Effect.succeed(
-                            HttpServerResponse.empty({
-                              status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
-                            })
-                          )
-                      )
-                    }
-                    return Effect.void
-                  }
-                  const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
-                  return decode.pipe(
-                    Effect.flatMap((payload) => {
-                      if (request.tag === "notifications/cancelled") {
-                        return selectedProtocol.normalizeCancellation(payload).pipe(
-                          Effect.flatMap((cancellation) => {
-                            const key = requestKey(cancellation.requestId)
-                            let ownerClientId = clientId
-                            if (isHttp) {
-                              if (session === undefined) {
-                                return Effect.void
-                              }
-                              // Each HTTP POST has its own transport ID, but cancellation belongs to the session.
-                              const owner = Array.from(activeRequests).find(([, requests]) =>
-                                requests.get(key)?.prepared.binding === session
-                              )
-                              if (owner === undefined) {
-                                return Effect.void
-                              }
-                              ownerClientId = owner[0]
-                            }
-                            if (!cancelRequest(ownerClientId, cancellation.requestId)) {
-                              return Effect.void
-                            }
-                            return f(ownerClientId, {
-                              _tag: "Interrupt",
-                              requestId: cancellation.requestId
-                            })
+            return Effect.gen(function*() {
+              const prepared = yield* prepare
+              if (isHttp && !clientProtocols.has(clientId)) {
+                // HTTP EOF only ends the request body; handlers and streamed replies may still be running.
+                yield* Scope.addFinalizer(
+                  Context.getUnsafe(fiber.context, Scope.Scope),
+                  Effect.sync(() => disconnectClient(clientId))
+                )
+              }
+              const session = prepared.binding
+              const selectedProtocol = prepared.protocol
+              // Select before dated payload decoding: legacy requests use
+              // their session's adapter; modern requests carry their own version.
+              clientProtocols.set(clientId, selectedProtocol)
+              if (prepared.profile !== undefined) {
+                clientProfiles.set(clientId, prepared.profile)
+              }
+              if (request.tag === MCP_INVALID_BATCH_METHOD) {
+                return yield* sendRequestError(
+                  clientId,
+                  request.id,
+                  new InvalidRequest({ message: "JSON-RPC batches are not supported" })
+                )
+              }
+              if (httpRequest !== undefined && session !== undefined) {
+                appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
+                  Effect.succeed(
+                    HttpServerResponse.setHeader(
+                      res,
+                      MCP_PROTOCOL_VERSION_HEADER,
+                      session.protocol.protocolVersion
+                    )
+                  ))
+              }
+              const routedRequest = runtime.routeClientRequest(selectedProtocol, request)
+              const rpc = runtime.clientRpcs.requests.get(routedRequest.tag)
+              const isClientNotification = selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
+              if (rpc && isClientNotification && request.isNotification) {
+                if (!session && selectedProtocol.runtime._tag === "Stateful") {
+                  if (httpRequest) {
+                    appendPreResponseHandlerUnsafe(
+                      httpRequest,
+                      () =>
+                        Effect.succeed(
+                          HttpServerResponse.empty({
+                            status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
                           })
                         )
-                      }
-                      const handler = handlers.mapUnsafe.get(rpc.key) as Rpc.Handler<string> | undefined
-                      const handled = handler
-                        ? handler.handler(payload, {
-                          rpc,
-                          requestId: RpcMessage.RequestId(request.id),
-                          client: new Rpc.ServerClient(clientId),
-                          headers
-                        }) as any as Effect.Effect<void>
-                        : Effect.void
-                      return prepared.requestContext === undefined
-                        ? handled
-                        : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
-                    }),
-                    Effect.ignoreCause
-                  )
-                }
-                if (!rpc || isClientNotification) {
-                  if (request.isNotification) {
-                    return Effect.void
+                    )
                   }
-                  return protocol.send(clientId, {
-                    _tag: "Exit",
-                    requestId: request.id,
-                    exit: {
-                      _tag: "Failure",
-                      cause: [{
-                        _tag: "Fail",
-                        error: new MethodNotFound({ message: `Method not found: ${request.tag}` })
-                      }]
-                    }
-                  })
+                  return
                 }
-                return selectedProtocol.payloadCodecs(rpc).decode(request.payload).pipe(
-                  Effect.matchEffect({
-                    onSuccess: () => {
-                      if (request.isNotification !== true) {
-                        const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
-                        requests.set(requestKey(request.id), { prepared, cancelled: false })
-                        activeRequests.set(clientId, requests)
+                const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
+                return yield* Effect.gen(function*() {
+                  const payload = yield* decode
+                  if (request.tag === "notifications/cancelled") {
+                    const cancellation = yield* selectedProtocol.normalizeCancellation(payload)
+                    const key = requestKey(cancellation.requestId)
+                    let ownerClientId = clientId
+                    if (isHttp) {
+                      if (session === undefined) {
+                        return
                       }
-                      const handled = f(clientId, routedRequest)
-                      return prepared.requestContext === undefined
-                        ? handled
-                        : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
-                    },
-                    onFailure: () =>
-                      request.isNotification
-                        ? Effect.void
-                        : protocol.send(clientId, {
-                          _tag: "Exit",
-                          requestId: request.id,
-                          exit: {
-                            _tag: "Failure",
-                            cause: [{
-                              _tag: "Fail",
-                              error: new InvalidParams({ message: "Invalid method parameters" })
-                            }]
-                          }
-                        })
-                  })
+                      // Each HTTP POST has its own transport ID, but cancellation belongs to the session.
+                      const owner = Array.from(activeRequests).find(([, requests]) =>
+                        requests.get(key)?.prepared.binding === session
+                      )
+                      if (owner === undefined) {
+                        return
+                      }
+                      ownerClientId = owner[0]
+                    }
+                    if (!cancelRequest(ownerClientId, cancellation.requestId)) {
+                      return
+                    }
+                    return yield* f(ownerClientId, {
+                      _tag: "Interrupt",
+                      requestId: cancellation.requestId
+                    })
+                  }
+                  const handler = handlers.mapUnsafe.get(rpc.key) as Rpc.Handler<string> | undefined
+                  const handled = handler
+                    ? handler.handler(payload, {
+                      rpc,
+                      requestId: RpcMessage.RequestId(request.id),
+                      client: new Rpc.ServerClient(clientId),
+                      headers
+                    }) as any as Effect.Effect<void>
+                    : Effect.void
+                  return yield* prepared.requestContext === undefined
+                    ? handled
+                    : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
+                }).pipe(Effect.ignoreCause)
+              }
+              if (!rpc || isClientNotification) {
+                if (request.isNotification) {
+                  return
+                }
+                return yield* sendRequestError(
+                  clientId,
+                  request.id,
+                  new MethodNotFound({ message: `Method not found: ${request.tag}` })
                 )
-              }),
+              }
+              const decoded = yield* Effect.result(selectedProtocol.payloadCodecs(rpc).decode(request.payload))
+              if (Result.isFailure(decoded)) {
+                return yield* request.isNotification
+                  ? Effect.void
+                  : sendRequestError(clientId, request.id, new InvalidParams({ message: "Invalid method parameters" }))
+              }
+              if (request.isNotification !== true) {
+                const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
+                requests.set(requestKey(request.id), { prepared, cancelled: false })
+                activeRequests.set(clientId, requests)
+              }
+              const handled = f(clientId, routedRequest)
+              return yield* prepared.requestContext === undefined
+                ? handled
+                : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
+            }).pipe(
               Effect.catch((error) =>
                 request.isNotification
                   ? Effect.void
-                  : protocol.send(clientId, {
-                    _tag: "Exit",
-                    requestId: request.id,
-                    exit: {
-                      _tag: "Failure",
-                      cause: [{
-                        _tag: "Fail",
-                        error: Predicate.isTagged(error, "ProtocolError")
-                          ? McpProtocolInternal.ProtocolError.fromFeature(error)
-                          : new InvalidParams({ message: "Invalid request metadata" })
-                      }]
-                    }
-                  })
+                  : sendRequestError(
+                    clientId,
+                    request.id,
+                    Predicate.isTagged(error, "ProtocolError")
+                      ? McpProtocolInternal.ProtocolError.fromFeature(error)
+                      : new InvalidParams({ message: "Invalid request metadata" })
+                  )
               )
             )
           }
@@ -1195,10 +1129,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return f(clientId, request)
           case "Eof":
             if (!isHttp) {
-              activeRequests.delete(clientId)
-              clientProtocols.delete(clientId)
-              clientProfiles.delete(clientId)
-              runtime.disconnect(clientId)
+              disconnectClient(clientId)
             }
             return f(clientId, request)
           case "Pong":
@@ -1226,7 +1157,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
               removeReverseRequestClient(requestId, reverseKey)
             }
             const targetClientId = reverseKey?.clientId ?? clientId
-            const selectedProtocol = getProtocolForClient(clientProtocols, targetClientId, runtime.protocols[0])
+            const selectedProtocol = clientProtocols.get(targetClientId) ?? runtime.protocols[0]
             const profile = reverseKey?.profile ?? clientProfiles.get(targetClientId) ?? {
               protocolVersion: selectedProtocol.protocolVersion,
               clientCapabilities: {},
@@ -1640,134 +1571,26 @@ const layerMcpProtocolHttp = (options: {
       if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
         return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
       }
-      const sessionId = request.headers[MCP_SESSION_ID_HEADER]
-      const protocolVersion = request.headers[MCP_PROTOCOL_VERSION_HEADER]
-      const parseErrorResponse = () => {
-        if (
-          protocolVersion !== undefined &&
-          !runtime.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
-        ) {
-          return HttpServerResponse.empty({ status: 400 })
+      return Effect.gen(function*() {
+        const parsed = yield* Effect.result(
+          Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
+        )
+        const admission = runtime.admitHttp(request.headers, parsed)
+        if (admission._tag === "Rejected") {
+          return admission.response
         }
-        const admission = runtime.admitHttp(request.headers, undefined)
-        return admission._tag === "Rejected" && admission.error === undefined
-          ? HttpServerResponse.empty({ status: admission.status })
-          : HttpServerResponse.jsonUnsafe({
-            jsonrpc: "2.0",
-            id: null,
-            error: new McpSchema.ParseError({ message: "Parse error" })
-          })
-      }
-      return request.text.pipe(
-        Effect.matchEffect({
-          onFailure: () => Effect.succeed(parseErrorResponse()),
-          onSuccess: (body) =>
-            Effect.matchEffect(Schema.decodeEffect(Schema.UnknownFromJsonString)(body), {
-              onFailure: () => Effect.succeed(parseErrorResponse()),
-              onSuccess: (input) => {
-                const response = Effect.map(httpEffect, (response) => {
-                  const isSubscription = Predicate.hasProperty(input, "method") &&
-                    input.method === "subscriptions/listen"
-                  // Completed responses may already contain notifications followed by the result.
-                  const hasMultipleMessages = response.body._tag === "Uint8Array" &&
-                    response.body.body.subarray(0, -1).includes(10)
-                  return isSubscription || response.body._tag === "Stream" || hasMultipleMessages
-                    ? toServerSentEvents(response)
-                    : response
-                })
-                if (!Array.isArray(input)) {
-                  const hasId = Predicate.hasProperty(input, "id")
-                  const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
-                    ? input.id
-                    : null
-                  const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
-                  const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
-                  const isRequest = isJsonRpc && hasValidRequestId &&
-                    Predicate.hasProperty(input, "method") && typeof input.method === "string"
-                  const hasValidResponseId = hasId &&
-                    (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
-                  const hasResult = Predicate.hasProperty(input, "result")
-                  const hasError = Predicate.hasProperty(input, "error")
-                  const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
-                  const admission = runtime.admitHttp(request.headers, input)
-                  if (admission._tag === "Rejected") {
-                    return Effect.succeed(
-                      admission.error === undefined
-                        ? HttpServerResponse.empty({ status: admission.status })
-                        : HttpServerResponse.jsonUnsafe({
-                          jsonrpc: "2.0",
-                          id,
-                          error: admission.error
-                        }, { status: admission.status })
-                    )
-                  }
-                  if (!isRequest && !isResponse) {
-                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                      jsonrpc: "2.0",
-                      id,
-                      error: new InvalidRequest({ message: "Invalid Request" })
-                    }))
-                  }
-                  const isInitialize = isInitializeJsonRpcMessage(input)
-                  if (isInitialize && sessionId !== undefined) {
-                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                  }
-                  if (
-                    !isInitialize &&
-                    admission.protocol?.runtime._tag !== "Stateless" &&
-                    sessionId === undefined
-                  ) {
-                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                  }
-                  if (
-                    isRequest &&
-                    admission.protocol?.runtime._tag === "Stateless" &&
-                    !(
-                      (admission.protocol as unknown as McpProtocolInternal.ProtocolAdapter).handlerRpcs?.requests.has(
-                        input.method as string
-                      ) ?? admission.protocol.clientRpcs.requests.has(input.method as string)
-                    )
-                  ) {
-                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                      jsonrpc: "2.0",
-                      id,
-                      error: new MethodNotFound({ message: `Method not found: ${input.method}` })
-                    }, { status: 404 }))
-                  }
-                  return !isRequest || !hasId
-                    ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
-                    : response
-                }
-                if (input.length === 0) {
-                  return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                    jsonrpc: "2.0",
-                    id: null,
-                    error: new InvalidRequest({ message: "Invalid Request" })
-                  }, { status: 400 }))
-                }
-                const admission = runtime.admitHttp(request.headers, input)
-                if (
-                  admission._tag === "Rejected" ||
-                  input.some(McpRuntime.hasRequestProtocolVersion) ||
-                  input.some(isInitializeJsonRpcMessage) ||
-                  admission.binding === undefined
-                ) {
-                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                }
-                const selectedProtocol = admission.binding.protocol
-                if (!selectedProtocol.runtime.transport.jsonRpc.acceptsBatches) {
-                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                }
-                const expectsResponse = input.some((message) =>
-                  Predicate.hasProperty(message, "method") && Predicate.hasProperty(message, "id")
-                )
-                return expectsResponse
-                  ? response
-                  : Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
-              }
-            })
+        const response = Effect.map(httpEffect, (response) => {
+          // Completed responses may already contain notifications followed by the result.
+          const hasMultipleMessages = response.body._tag === "Uint8Array" &&
+            response.body.body.subarray(0, -1).includes(10)
+          return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
+            ? toServerSentEvents(response)
+            : response
         })
-      )
+        return yield* admission.acknowledge
+          ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
+          : response
+      })
     })
     return protocol
   }))
@@ -2640,14 +2463,6 @@ const InvalidBatchExit = Schema.TaggedStruct("Exit", {
 })
 
 const decodeInvalidBatchExit = Schema.decodeUnknownResult(InvalidBatchExit)
-
-const getProtocolForClient = (
-  clientProtocols: Map<number, McpProtocol.AnyProtocolAdapter>,
-  clientId: number,
-  fallback: McpProtocol.AnyProtocolAdapter
-): McpProtocol.AnyProtocolAdapter =>
-  clientProtocols.get(clientId) ??
-    fallback
 
 const isProtocolVersion = (version: string): version is McpProtocol.ProtocolVersion =>
   version === "2024-11-05" ||
