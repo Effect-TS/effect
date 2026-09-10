@@ -525,8 +525,8 @@ export class McpServer extends Context.Service<McpServer, {
           for (const [param, handle] of Object.entries(completions)) {
             yield* internalCore.completions.register(
               `resource/${template.uriTemplate}/${param}`,
-              (request) =>
-                handle(request.argument.value, request.context).pipe(
+              (request, invocation) =>
+                provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
                   Effect.map((result) => ({
                     values: result.completion.values,
                     total: result.completion.total,

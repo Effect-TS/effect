@@ -245,6 +245,49 @@ export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer
           assert.deepStrictEqual(JSON.parse(serialized), { context: metadata, client: metadata })
         }))
 
+      // Request metadata is defined by https://modelcontextprotocol.io/specification/2025-11-25/basic#meta.
+      // Exposing the current metadata through both context services is an Effect handler contract.
+      it.effect("should expose current metadata when a legacy resource completion reads either context API", () =>
+        Effect.gen(function*() {
+          const registration = McpServer.resource`file:///metadata/${McpSchema.param("name", Schema.String)}`({
+            name: "metadata",
+            content: () => Effect.succeed("content"),
+            completion: {
+              name: () =>
+                Effect.gen(function*() {
+                  const context = yield* McpSchema.McpRequestContext
+                  const client = yield* McpSchema.McpServerClient
+                  return [JSON.stringify({ context: context.requestMetadata, client: client.requestMetadata })]
+                })
+            }
+          })
+          const harness = yield* makeHttpHarness(
+            registration.pipe(
+              Layer.provideMerge(makeServerLayer({ name: "CompletionMetadata", protocols: [protocol] }))
+            )
+          )
+          const headers = yield* initializeHttpSession(harness, protocol)
+          const metadata = { marker: "completion", progressToken: "progress-1" }
+          const response = yield* harness.post({
+            jsonrpc: "2.0",
+            id: "complete",
+            method: "completion/complete",
+            params: {
+              ref: { type: "ref/resource", uri: "file:///metadata/{name}" },
+              argument: { name: "name", value: "" },
+              _meta: metadata
+            }
+          }, headers)
+          const message = Schema.decodeUnknownSync(Schema.Struct({
+            result: Schema.Struct({ completion: Schema.Struct({ values: Schema.Array(Schema.String) }) })
+          }))(yield* readMcpHttpResponse(response))
+
+          assert.deepStrictEqual(JSON.parse(message.result.completion.values[0]), {
+            context: metadata,
+            client: metadata
+          })
+        }))
+
       // https://modelcontextprotocol.io/specification/2025-06-18/basic
       describe("Messages", () => {
         describe("Requests", () => {
