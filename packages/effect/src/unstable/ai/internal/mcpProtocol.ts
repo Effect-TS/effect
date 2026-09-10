@@ -20,18 +20,20 @@ import * as McpCore from "./mcpCore.ts"
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
 const BASE64_SENTINEL_PREFIX = "=?base64?"
 const BASE64_SENTINEL_SUFFIX = "?="
+// A leading U+FEFF belongs to the header value and must survive comparison with the JSON body.
+const routingHeaderDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 /** @internal */
 export const decodeRoutingHeader = (value: string): string | undefined => {
   const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
   const endsWithSentinel = value.endsWith(BASE64_SENTINEL_SUFFIX)
   if (!startsWithSentinel || !endsWithSentinel) {
-    return /^[\x20-\x7e]*$/.test(value) ? value : undefined
+    return /^[\t\x20-\x7e]*$/.test(value) ? value : undefined
   }
-  const decoded = Encoding.decodeBase64String(
+  const decoded = Encoding.decodeBase64(
     value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
   )
-  return Result.isSuccess(decoded) ? decoded.success : undefined
+  return Result.isSuccess(decoded) ? routingHeaderDecoder.decode(decoded.success) : undefined
 }
 
 /** @internal */

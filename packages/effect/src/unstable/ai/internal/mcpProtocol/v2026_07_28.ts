@@ -673,7 +673,9 @@ export const makeHandlers = (
             for (const [name, property] of Object.entries(schema.properties)) {
               pending.push({
                 schema: property,
-                argument: Predicate.isReadonlyObject(argument) ? argument[name] : undefined,
+                argument: Predicate.isReadonlyObject(argument) && Object.hasOwn(argument, name)
+                  ? argument[name]
+                  : undefined,
                 path: path === "" ? name : `${path}.${name}`
               })
             }
