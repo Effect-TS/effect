@@ -319,7 +319,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       },
       {
         runtime: `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String)]), [Schema.Number])`,
-        Type: `readonly [string?, ...Array<number>]`
+        Type: `readonly [(string)?, ...Array<number>]`
       },
       {
         runtime: `Schema.Struct({ 1: Schema.Boolean })`,

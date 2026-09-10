@@ -1069,7 +1069,7 @@ describe("toCodeDocument", () => {
       assertSchema(
         { schema: Schema.Tuple([Schema.optionalKey(Schema.String)]) },
         {
-          codes: makeCode(`Schema.Tuple([Schema.optionalKey(Schema.String)])`, "readonly [string?]")
+          codes: makeCode(`Schema.Tuple([Schema.optionalKey(Schema.String)])`, `readonly [(string)?]`)
         }
       )
       assertSchema(
@@ -1077,10 +1077,58 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Tuple([Schema.optionalKey(Schema.String)]).annotate({ "description": "a" })`,
-            "readonly [string?]"
+            `readonly [(string)?]`
           )
         }
       )
+    })
+
+    it("optional union elements", () => {
+      assertSchema(
+        { schema: Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]) },
+        {
+          codes: makeCode(
+            `Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))])`,
+            `readonly [(string | number)?]`
+          )
+        }
+      )
+      assertSchema(
+        { schema: Schema.Tuple([Schema.optionalKey(Schema.Literals(["a", "b"]))]) },
+        {
+          codes: makeCode(
+            `Schema.Tuple([Schema.optionalKey(Schema.Literals(["a", "b"]))])`,
+            `readonly [("a" | "b")?]`
+          )
+        }
+      )
+    })
+
+    it("optional readonly tuple element", () => {
+      assertSchema(
+        { schema: Schema.Tuple([Schema.optionalKey(Schema.Tuple([Schema.String]))]) },
+        {
+          codes: makeCode(
+            `Schema.Tuple([Schema.optionalKey(Schema.Tuple([Schema.String]))])`,
+            `readonly [(readonly [string])?]`
+          )
+        }
+      )
+    })
+
+    it("optional union element imported from JSON Schema", () => {
+      assertJsonSchema({
+        schema: {
+          type: "array",
+          prefixItems: [{ anyOf: [{ type: "string" }, { type: "number" }] }],
+          items: false
+        }
+      }, {
+        codes: makeCode(
+          `Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number.check(Schema.isFinite())]))])`,
+          `readonly [(string | number)?]`
+        )
+      })
     })
 
     it("annotateKey", () => {
@@ -1115,6 +1163,20 @@ describe("toCodeDocument", () => {
   })
 
   it("TupleWithRest", () => {
+    assertSchema(
+      {
+        schema: Schema.TupleWithRest(
+          Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]),
+          [Schema.Boolean]
+        )
+      },
+      {
+        codes: makeCode(
+          `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]), [Schema.Boolean])`,
+          `readonly [(string | number)?, ...Array<boolean>]`
+        )
+      }
+    )
     assertSchema(
       { schema: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]) },
       {
