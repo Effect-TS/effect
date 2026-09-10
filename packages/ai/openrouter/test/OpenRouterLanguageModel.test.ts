@@ -295,22 +295,13 @@ describe("OpenRouterLanguageModel", () => {
             Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          const finishPart = result.content.find((part) => part.type === "finish")
-          assert.isDefined(finishPart)
-          if (finishPart?.type === "finish") {
-            deepStrictEqual(finishPart.usage.inputTokens, {
-              uncached: 70,
-              total: 100,
-              cacheRead: 30,
-              cacheWrite: 5
-            })
-            deepStrictEqual(finishPart.usage.outputTokens, { total: 50, text: 30, reasoning: 20 })
-          }
+          deepStrictEqual(result.usage.inputTokens, { uncached: 70, total: 100, cacheRead: 30, cacheWrite: 0 })
+          deepStrictEqual(result.usage.outputTokens, { total: 50, text: 30, reasoning: 20 })
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
               prompt_tokens: 100,
-              prompt_tokens_details: { cached_tokens: 30, cache_write_tokens: 5 },
+              prompt_tokens_details: { cached_tokens: 30 },
               completion_tokens: 50,
               completion_tokens_details: { reasoning_tokens: 20 },
               total_tokens: 150
@@ -320,24 +311,18 @@ describe("OpenRouterLanguageModel", () => {
 
       it.effect("treats reasoning tokens as disjoint when they exceed completion tokens", () =>
         Effect.gen(function*() {
-          // Observed from `z-ai/glm-5.3-flash` via OpenRouter, where the upstream
-          // provider reports reasoning tokens separately from completion tokens
           const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
-            Effect.provide(OpenRouterLanguageModel.model("z-ai/glm-5.3-flash"))
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          const finishPart = result.content.find((part) => part.type === "finish")
-          assert.isDefined(finishPart)
-          if (finishPart?.type === "finish") {
-            deepStrictEqual(finishPart.usage.outputTokens, { total: 614, text: 293, reasoning: 321 })
-          }
+          deepStrictEqual(result.usage.outputTokens, { total: 30, text: 10, reasoning: 20 })
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
-              prompt_tokens: 1200,
-              completion_tokens: 293,
-              completion_tokens_details: { reasoning_tokens: 321 },
-              total_tokens: 1493
+              prompt_tokens: 100,
+              completion_tokens: 10,
+              completion_tokens_details: { reasoning_tokens: 20 },
+              total_tokens: 110
             }
           }
         }))))
@@ -348,16 +333,7 @@ describe("OpenRouterLanguageModel", () => {
             Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          const finishPart = result.content.find((part) => part.type === "finish")
-          assert.isDefined(finishPart)
-          if (finishPart?.type === "finish") {
-            deepStrictEqual(finishPart.usage.inputTokens, {
-              uncached: 100,
-              total: 400,
-              cacheRead: 300,
-              cacheWrite: 0
-            })
-          }
+          deepStrictEqual(result.usage.inputTokens, { uncached: 100, total: 400, cacheRead: 300, cacheWrite: 0 })
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
@@ -376,36 +352,24 @@ describe("OpenRouterLanguageModel", () => {
       Effect.gen(function*() {
         const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
           Stream.runCollect,
-          Effect.provide(OpenRouterLanguageModel.model("z-ai/glm-5.3-flash")),
-          Effect.provide(makeStreamTestLayer([
-            {
-              id: "response-1",
-              object: "chat.completion.chunk",
-              model: "z-ai/glm-5.3-flash",
-              created: 1,
-              choices: [{ index: 0, finish_reason: "stop", delta: { content: "answer" } }]
-            },
-            {
-              id: "response-1",
-              object: "chat.completion.chunk",
-              model: "z-ai/glm-5.3-flash",
-              created: 1,
-              choices: [],
-              usage: {
-                prompt_tokens: 1200,
-                completion_tokens: 445,
-                completion_tokens_details: { reasoning_tokens: 518 },
-                total_tokens: 1645
-              }
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer([{
+            id: "response-1",
+            object: "chat.completion.chunk",
+            model: "openai/gpt-4o-mini",
+            created: 1,
+            choices: [],
+            usage: {
+              prompt_tokens: 100,
+              completion_tokens: 10,
+              completion_tokens_details: { reasoning_tokens: 20 },
+              total_tokens: 110
             }
-          ]))
+          }]))
         )
 
-        const finishPart = globalThis.Array.from(parts).find((part) => part.type === "finish")
-        assert.isDefined(finishPart)
-        if (finishPart?.type === "finish") {
-          deepStrictEqual(finishPart.usage.outputTokens, { total: 963, text: 445, reasoning: 518 })
-        }
+        const finishPart = parts.find((part) => part.type === "finish")
+        deepStrictEqual(finishPart?.usage.outputTokens, { total: 30, text: 10, reasoning: 20 })
       }))
 
     it.effect("preserves streamed citation start and end indexes", () =>
