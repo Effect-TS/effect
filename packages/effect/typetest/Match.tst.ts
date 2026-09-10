@@ -259,30 +259,22 @@ describe("Match", () => {
     Match.valueTags(myVehicle, { Plane: () => "plane" })
   })
 
-  it("valueTags rejects unknown tags with a complete handler map", () => {
+  it("valueTags rejects missing and unknown tags", () => {
     // @ts-expect-error Type '() => boolean' is not assignable to type 'never'
     Match.valueTags(taggedInput, { A: () => "a", B: () => 1, C: () => true })
-  })
 
-  it("valueTags requires every tag of a union", () => {
     // @ts-expect-error Property 'B' is missing
     Match.valueTags(taggedInput, { A: () => "a" })
-  })
 
-  it("valueTags rejects an empty handler map", () => {
     // @ts-expect-error Type '{}' is missing the following properties
     Match.valueTags(taggedInput, {})
-  })
 
-  it("valueTags rejects unknown tags in a pipeline", () => {
     pipe(
       taggedInput,
       // @ts-expect-error Type '() => boolean' is not assignable to type 'never'
       Match.valueTags({ A: () => "a", B: () => 1, C: () => true })
     )
-  })
 
-  it("valueTags requires every tag of a union in a pipeline", () => {
     pipe(
       taggedInput,
       // @ts-expect-error Property 'B' is missing
