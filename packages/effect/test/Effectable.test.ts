@@ -29,10 +29,7 @@ describe("Effectable", () => {
             return Effect.fail(this.value)
           }
         }
-        type asd = Effect.Success<FailingBox>
-        type asd2 = Effect.Error<FailingBox>
-        type asd3 = Effect.Services<FailingBox>
-
+        
         assert.deepStrictEqual(yield* Effect.exit(new FailingBox(1)), Exit.fail(1))
       }))
 
