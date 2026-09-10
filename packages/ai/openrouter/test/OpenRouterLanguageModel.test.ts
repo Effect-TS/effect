@@ -309,6 +309,26 @@ describe("OpenRouterLanguageModel", () => {
           }
         }))))
 
+      it.effect("preserves totals when detail counts equal their parent counts", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
+          )
+
+          assert.deepStrictEqual(result.usage.inputTokens, { uncached: 0, total: 100, cacheRead: 100, cacheWrite: 0 })
+          assert.deepStrictEqual(result.usage.outputTokens, { total: 20, text: 0, reasoning: 20 })
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            usage: {
+              prompt_tokens: 100,
+              prompt_tokens_details: { cached_tokens: 100 },
+              completion_tokens: 20,
+              completion_tokens_details: { reasoning_tokens: 20 },
+              total_tokens: 120
+            }
+          }
+        }))))
+
       it.effect("treats reasoning tokens as disjoint when they exceed completion tokens", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
