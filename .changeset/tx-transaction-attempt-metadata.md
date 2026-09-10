@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Record attempt count, retry reason, and elapsed timing on `Effect.Transaction` as `TransactionMeta` so transaction bodies can observe retries and conflicts.
+`Effect.Transaction` now stores attempt metadata, analogous to `Schedule.CurrentMetadata`. Yield it inside a transaction body to read `attempt`, `retryReason`, and the same timing fields as a schedule (`start`, `now`, `elapsed`, `elapsedSincePrevious`).
