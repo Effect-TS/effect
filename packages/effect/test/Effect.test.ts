@@ -3484,10 +3484,10 @@ describe("Effect", () => {
 
           yield* Deferred.await(started)
           yield* TestClock.adjust("1 second")
-          yield* Effect.tx(TxRef.set(ref, 1))
+          yield* TxRef.set(ref, 1)
           yield* Deferred.await(readyForConflict)
           yield* TestClock.adjust("500 millis")
-          yield* Effect.tx(TxRef.set(ref, 2))
+          yield* TxRef.set(ref, 2)
           yield* Deferred.succeed(resume, undefined)
           yield* Fiber.join(fiber)
           const recorded = yield* Ref.get(snapshots)
