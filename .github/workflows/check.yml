@@ -68,6 +68,7 @@ jobs:
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
       - run: pnpm build
+      - run: pnpm check-dist-types
 
   bundle:
     name: Bundle

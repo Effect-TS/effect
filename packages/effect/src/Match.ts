@@ -22,7 +22,7 @@ const TypeId = internal.TypeId
 
 // The conditional must stay deferred until P is inferred. Replacing it with an
 // intersection loses contextual typing for nested generic calls (microsoft/TypeScript#52864).
-type Contextual<P, Fallback> = internal.Contextual<P, Fallback>
+type Contextual<P, Fallback> = [P] extends [never] ? Fallback : P
 
 type TagHandlers<D extends string, R, Ret> = {
   readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => Ret

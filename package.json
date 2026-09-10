@@ -22,6 +22,7 @@
     "runtimeperf": "pnpm --dir packages/effect exec node runtimeperf/run.mts",
     "runtimeperf-compare": "pnpm --dir packages/effect exec node runtimeperf/compare.mts",
     "check-recursive": "pnpm --recursive --filter \"./packages/**/*\" exec tsc -b tsconfig.json",
+    "check-dist-types": "node scripts/check-dist-types.mjs",
     "jsdocs": "effect-jsdocs",
     "lint": "oxlint -f unix && dprint check",
     "lint-fix": "oxlint --fix && dprint fmt",

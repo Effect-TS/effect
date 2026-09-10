@@ -14980,7 +14980,7 @@ export function resolveAnnotations<S extends Constraint>(
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {
   return schema.ast.context?.annotations
 }
-/** @internal */
+// Alias for the top-level `Constraint`, which `Annotations.ToArbitrary.Constraint` shadows below.
 type AnnotationSchemaConstraint = Constraint
 
 /**
