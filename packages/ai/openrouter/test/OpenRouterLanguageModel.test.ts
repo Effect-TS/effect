@@ -315,8 +315,12 @@ describe("OpenRouterLanguageModel", () => {
             Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini"))
           )
 
-          assert.deepStrictEqual(result.usage.inputTokens, { uncached: 0, total: 100, cacheRead: 100, cacheWrite: 0 })
-          assert.deepStrictEqual(result.usage.outputTokens, { total: 20, text: 0, reasoning: 20 })
+          deepStrictEqual(
+            result.usage.inputTokens,
+            { uncached: 0, total: 100, cacheRead: 100, cacheWrite: 0 },
+            "input usage at equality"
+          )
+          deepStrictEqual(result.usage.outputTokens, { total: 20, text: 0, reasoning: 20 }, "output usage at equality")
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             usage: {
@@ -368,29 +372,31 @@ describe("OpenRouterLanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect("treats streamed reasoning tokens as disjoint when they exceed completion tokens", () =>
-      Effect.gen(function*() {
-        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
-          Stream.runCollect,
-          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
-          Effect.provide(makeStreamTestLayer([{
-            id: "response-1",
-            object: "chat.completion.chunk",
-            model: "openai/gpt-4o-mini",
-            created: 1,
-            choices: [],
-            usage: {
-              prompt_tokens: 100,
-              completion_tokens: 10,
-              completion_tokens_details: { reasoning_tokens: 20 },
-              total_tokens: 110
-            }
-          }]))
-        )
+    describe("usage", () => {
+      it.effect("treats streamed reasoning tokens as disjoint when they exceed completion tokens", () =>
+        Effect.gen(function*() {
+          const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+            Stream.runCollect,
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+            Effect.provide(makeStreamTestLayer([{
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [],
+              usage: {
+                prompt_tokens: 100,
+                completion_tokens: 10,
+                completion_tokens_details: { reasoning_tokens: 20 },
+                total_tokens: 110
+              }
+            }]))
+          )
 
-        const finishPart = parts.find((part) => part.type === "finish")
-        deepStrictEqual(finishPart?.usage.outputTokens, { total: 30, text: 10, reasoning: 20 })
-      }))
+          const finishPart = parts.find((part) => part.type === "finish")
+          deepStrictEqual(finishPart?.usage.outputTokens, { total: 30, text: 10, reasoning: 20 })
+        }))
+    })
 
     it.effect("preserves streamed citation start and end indexes", () =>
       Effect.gen(function*() {
