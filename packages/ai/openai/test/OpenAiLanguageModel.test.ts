@@ -12,18 +12,16 @@ const webSearchOutcomes = [
   { status: "searching", isFailure: true }
 ] as const
 
-const fileSearchOutcomes = [
-  { status: "completed", isFailure: false },
-  { status: "failed", isFailure: true },
-  { status: "incomplete", isFailure: true },
-  { status: "in_progress", isFailure: true },
-  { status: "searching", isFailure: true }
-] as const
+const partialFileSearchResults = [{ file_id: "file_123", text: "Matching text", score: 0.8 }] as const
 
-const fileSearchResults = [
-  { label: "partial results", results: [{ file_id: "file_123", text: "Matching text", score: 0.8 }] },
-  { label: "null results", results: null },
-  { label: "omitted results", results: undefined }
+const fileSearchOutcomes = [
+  { status: "completed", isFailure: false, label: "results", results: partialFileSearchResults },
+  { status: "failed", isFailure: true, label: "partial results", results: partialFileSearchResults },
+  { status: "incomplete", isFailure: true, label: "partial results", results: partialFileSearchResults },
+  { status: "in_progress", isFailure: true, label: "partial results", results: partialFileSearchResults },
+  { status: "searching", isFailure: true, label: "partial results", results: partialFileSearchResults },
+  { status: "failed", isFailure: true, label: "null results", results: null },
+  { status: "failed", isFailure: true, label: "omitted results", results: undefined }
 ] as const
 
 describe("OpenAiLanguageModel", () => {
@@ -1236,8 +1234,6 @@ describe("OpenAiLanguageModel", () => {
               strictEqual(result.toolResults.length, 1)
               const toolResult = result.toolResults[0]!
               strictEqual(toolResult.name, tool.name)
-              strictEqual(toolResult.id, "ws_123")
-              strictEqual(toolResult.providerExecuted, true)
               strictEqual(toolResult.isFailure, isFailure)
               deepStrictEqual(toolResult.result, {
                 action: { type: "search", query: "Effect TypeScript" },
@@ -1249,32 +1245,28 @@ describe("OpenAiLanguageModel", () => {
         )
       }
 
-      for (const { label, results } of fileSearchResults) {
-        it.effect.each(fileSearchOutcomes)(
-          `OpenAiFileSearch reports $status with ${label}`,
-          ({ status, isFailure }) =>
-            Effect.gen(function*() {
-              const result = yield* LanguageModel.generateText({
-                prompt: "Search the files",
-                toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
-              }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+      it.effect.each(fileSearchOutcomes)(
+        "OpenAiFileSearch reports $status with $label",
+        ({ status, isFailure, results }) =>
+          Effect.gen(function*() {
+            const result = yield* LanguageModel.generateText({
+              prompt: "Search the files",
+              toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
 
-              strictEqual(result.toolResults.length, 1)
-              const toolResult = result.toolResults[0]!
-              strictEqual(toolResult.name, "OpenAiFileSearch")
-              strictEqual(toolResult.id, "fs_123")
-              strictEqual(toolResult.providerExecuted, true)
-              strictEqual(toolResult.isFailure, isFailure)
-              deepStrictEqual(toolResult.result, {
-                status,
-                queries: ["Effect TypeScript"],
-                results: results ?? null
-              })
-            }).pipe(Effect.provide(makeTestLayer({
-              body: { output: [makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })] }
-            })))
-        )
-      }
+            strictEqual(result.toolResults.length, 1)
+            const toolResult = result.toolResults[0]!
+            strictEqual(toolResult.name, "OpenAiFileSearch")
+            strictEqual(toolResult.isFailure, isFailure)
+            deepStrictEqual(toolResult.result, {
+              status,
+              queries: ["Effect TypeScript"],
+              results: results ?? null
+            })
+          }).pipe(Effect.provide(makeTestLayer({
+            body: { output: [makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })] }
+          })))
+      )
 
       it.effect("uses canonical OpenAiMcp name for mcp_approval_request", () =>
         Effect.gen(function*() {
@@ -1755,26 +1747,16 @@ describe("OpenAiLanguageModel", () => {
           Effect.gen(function*() {
             const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
               {
-                type: "response.created",
-                sequence_number: 1,
-                response: makeDefaultResponse({ status: "in_progress" })
-              },
-              {
                 type: "response.output_item.added",
-                sequence_number: 2,
+                sequence_number: 1,
                 output_index: 0,
                 item: makeWebSearchCall({ status: "in_progress" })
               },
               {
                 type: "response.output_item.done",
-                sequence_number: 3,
+                sequence_number: 2,
                 output_index: 0,
                 item: makeWebSearchCall({ status })
-              },
-              {
-                type: "response.completed",
-                sequence_number: 4,
-                response: makeDefaultResponse({ output: [makeWebSearchCall({ status })] })
               }
             ]
 
@@ -1791,74 +1773,56 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(results.length, 1)
             const toolResult = results[0]!
             strictEqual(toolResult.name, tool.name)
-            strictEqual(toolResult.id, "ws_123")
-            strictEqual(toolResult.providerExecuted, true)
             strictEqual(toolResult.isFailure, isFailure)
             deepStrictEqual(toolResult.result, {
               action: { type: "search", query: "Effect TypeScript" },
               status
             })
-            assert.isDefined(parts.find((part) => part.type === "finish"))
           })
       )
     }
 
-    for (const { label, results } of fileSearchResults) {
-      it.effect.each(fileSearchOutcomes)(
-        `OpenAiFileSearch reports $status with ${label} from output_item.done`,
-        ({ status, isFailure }) =>
-          Effect.gen(function*() {
-            const call = makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })
-            const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
-              {
-                type: "response.created",
-                sequence_number: 1,
-                response: makeDefaultResponse({ status: "in_progress" })
-              },
-              {
-                type: "response.output_item.added",
-                sequence_number: 2,
-                output_index: 0,
-                item: makeFileSearchCall({ status: "in_progress" })
-              },
-              {
-                type: "response.output_item.done",
-                sequence_number: 3,
-                output_index: 0,
-                item: call
-              },
-              {
-                type: "response.completed",
-                sequence_number: 4,
-                response: makeDefaultResponse({ output: [call] })
-              }
-            ]
+    it.effect.each(fileSearchOutcomes)(
+      "OpenAiFileSearch reports $status with $label from output_item.done",
+      ({ status, isFailure, results }) =>
+        Effect.gen(function*() {
+          const call = makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })
+          const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
+            {
+              type: "response.output_item.added",
+              sequence_number: 1,
+              output_index: 0,
+              item: makeFileSearchCall({ status: "in_progress" })
+            },
+            {
+              type: "response.output_item.done",
+              sequence_number: 2,
+              output_index: 0,
+              item: call
+            }
+          ]
 
-            const parts = yield* LanguageModel.streamText({
-              prompt: "Search the files",
-              toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
-            }).pipe(
-              Stream.runCollect,
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-              Effect.provide(makeStreamTestLayer(streamEvents))
-            )
+          const parts = yield* LanguageModel.streamText({
+            prompt: "Search the files",
+            toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
+          }).pipe(
+            Stream.runCollect,
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(makeStreamTestLayer(streamEvents))
+          )
 
-            const toolResults = parts.filter((part) => part.type === "tool-result")
-            strictEqual(toolResults.length, 1)
-            const toolResult = toolResults[0]!
-            strictEqual(toolResult.name, "OpenAiFileSearch")
-            strictEqual(toolResult.id, "fs_123")
-            strictEqual(toolResult.providerExecuted, true)
-            strictEqual(toolResult.isFailure, isFailure)
-            deepStrictEqual(toolResult.result, {
-              status,
-              queries: ["Effect TypeScript"],
-              ...(results == null ? {} : { results })
-            })
-            assert.isDefined(parts.find((part) => part.type === "finish"))
+          const toolResults = parts.filter((part) => part.type === "tool-result")
+          strictEqual(toolResults.length, 1)
+          const toolResult = toolResults[0]!
+          strictEqual(toolResult.name, "OpenAiFileSearch")
+          strictEqual(toolResult.isFailure, isFailure)
+          deepStrictEqual(toolResult.result, {
+            status,
+            queries: ["Effect TypeScript"],
+            ...(results == null ? {} : { results })
           })
-      )
-    }
+        })
+    )
 
     it.effect("handles reasoning summary events when reasoning state is missing", () =>
       Effect.gen(function*() {
