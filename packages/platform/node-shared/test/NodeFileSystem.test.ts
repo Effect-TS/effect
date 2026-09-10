@@ -139,8 +139,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("node:fs", async (importOriginal) => {
   const original = await importOriginal<typeof NFS>()
-  // Model Node's default numeric Stats as well as its opt-in BigIntStats.
-  // No real file descriptor or oversized sparse file is involved.
+  // Match Node's number and bigint stat modes.
   const stat = (
     _pathOrFd: string | number,
     optionsOrCallback: { bigint?: boolean } | ((error: null, stats: object) => void),
@@ -259,12 +258,12 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
 
     it.effect(`${method} omits only the overflowing optional field`, () =>
       Effect.gen(function*() {
-        Object.assign(state.values, { ino: maxSafe + 1n, nlink: 3n, uid: 0n, gid: 1000n, rdev: 0n, blocks: 8n })
+        Object.assign(state.values, { ino: maxSafe + 1n, nlink: 3n, uid: 1000n, gid: 1001n, rdev: 0n, blocks: 8n })
         const info = yield* getInfo
         assert.deepStrictEqual(info.ino, Option.none())
         assert.deepStrictEqual(info.nlink, Option.some(3))
-        assert.deepStrictEqual(info.uid, Option.some(0))
-        assert.deepStrictEqual(info.gid, Option.some(1000))
+        assert.deepStrictEqual(info.uid, Option.some(1000))
+        assert.deepStrictEqual(info.gid, Option.some(1001))
         assert.deepStrictEqual(info.rdev, Option.some(0))
         assert.deepStrictEqual(info.blocks, Option.some(8))
         assert.strictEqual(info.type, "File")

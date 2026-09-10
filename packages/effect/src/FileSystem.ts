@@ -906,11 +906,9 @@ export declare namespace File {
    * permissions, and size information. This structure is returned by file
    * stat operations.
    *
-   * Node and Bun preserve `size` and `blksize` exactly. Optional numeric
-   * metadata that does not fit in a safe integer (`ino`, `nlink`, `uid`,
-   * `gid`, `rdev`, `blocks`) is returned as `Option.none()` rather than
-   * failing the whole `stat`. Required numeric fields (`dev`, `mode`) that
-   * overflow still fail with `BadArgument`.
+   * Node and Bun preserve `size` and `blksize` exactly. Optional `number`
+   * metadata is `Option.none()` when absent or outside the safe integer range.
+   * Unsafe `dev` or `mode` values fail the stat operation with `BadArgument`.
    *
    * **Example** (Inspecting file information)
    *
