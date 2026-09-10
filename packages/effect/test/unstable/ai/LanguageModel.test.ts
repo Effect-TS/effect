@@ -71,99 +71,59 @@ describe("LanguageModel", () => {
 
   describe("deferred tool parameter validation", () => {
     for (const method of ["generateText", "streamText"] as const) {
-      it.effect(`${method} preserves invalid arguments, provider results, and usage without running handlers`, () =>
+      it.effect(`${method} defers application parameters without changing definitions or running handlers`, () =>
         Effect.gen(function*() {
-          let calls = 0
-          const toolkit = Toolkit.make(ReturnModeTool, MyTool)
-          const handlers = toolkit.toLayer({
-            ReturnModeTool: () =>
-              Effect.sync(() => {
-                calls++
-                return { testSuccess: "unexpected" }
-              }),
-            MyTool: () =>
-              Effect.sync(() => {
-                calls++
-                return { testSuccess: "unexpected" }
-              })
+          const handlers = ReturnModeToolkit.toLayer({
+            ReturnModeTool: () => Effect.die("handler must not run")
           })
-          const raw: Array<Response.ToolCallPartEncoded | Response.ToolResultPartEncoded | Response.FinishPartEncoded> =
-            [
-              {
-                type: "tool-call",
-                id: "hosted",
-                name: "MyTool",
-                params: { testParam: "valid" },
-                providerExecuted: true
-              },
-              {
-                type: "tool-result",
-                id: "hosted",
-                name: "MyTool",
-                result: { testSuccess: "retained" },
-                isFailure: false,
-                providerExecuted: true
-              },
+          const respond = (options: LanguageModel.ProviderOptions) => {
+            strictEqual(options.tools[0], ReturnModeTool)
+            return [
               { type: "tool-call", id: "invalid", name: "ReturnModeTool", params: { testParam: 123 } },
-              { ...finishPart, reason: "tool-calls" }
-            ]
+              { type: "tool-call", id: "valid", name: "ReturnModeTool", params: { testParam: "valid" } },
+              finishPart
+            ] satisfies Array<Response.PartEncoded>
+          }
           const options = {
             prompt: [],
-            toolkit,
+            toolkit: ReturnModeToolkit,
             disableToolCallResolution: true,
             toolCallValidation: "deferred"
           } as const
-          const request: Effect.Effect<
-            ReadonlyArray<
-              | Response.Part<Toolkit.Tools<typeof toolkit>, "opaque">
-              | Response.StreamPart<Toolkit.Tools<typeof toolkit>, "opaque">
-            >,
-            AiError.AiError,
-            LanguageModel.LanguageModel
-          > = method === "generateText"
-            ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.content))
-            : LanguageModel.streamText(options).pipe(Stream.runCollect)
-          const parts = yield* request.pipe(
-            TestUtils.withLanguageModel({
-              generateText: (options) => {
-                strictEqual(options.tools[0], ReturnModeTool)
-                return raw
-              },
-              streamText: (options) => {
-                strictEqual(options.tools[0], ReturnModeTool)
-                return raw
-              }
-            }),
+          const request = method === "generateText"
+            ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.toolCalls))
+            : LanguageModel.streamText(options).pipe(
+              Stream.filter((part) => part.type === "tool-call"),
+              Stream.runCollect
+            )
+          const calls = yield* request.pipe(
+            TestUtils.withLanguageModel({ generateText: respond, streamText: respond }),
             Effect.provide(handlers)
           )
-          const invalid = parts.find((part) => part.type === "tool-call" && part.id === "invalid")
-          assertDefined(invalid)
-          assertTrue(invalid.type === "tool-call")
-          deepStrictEqual(invalid.params, { testParam: 123 })
-          const results = parts.filter((part) => part.type === "tool-result")
-          strictEqual(results.length, 1)
-          strictEqual(results[0].id, "hosted")
-          deepStrictEqual(results[0].result, { testSuccess: "retained" })
-          const finish = parts.find((part) => part.type === "finish")
-          assertDefined(finish)
-          strictEqual(finish.usage.inputTokens.total, 5)
-          strictEqual(finish.usage.outputTokens.total, 5)
-          strictEqual(calls, 0)
+          deepStrictEqual(calls.map((call) => call.params), [{ testParam: 123 }, { testParam: "valid" }])
         }))
 
       for (
-        const call of [
-          {
+        const [label, part] of [
+          ["invalid provider parameters", {
             type: "tool-call",
-            id: "hosted-invalid",
+            id: "hosted",
             name: "MyTool",
             params: { testParam: 123 },
             providerExecuted: true
-          },
-          { type: "tool-call", id: "unknown", name: "UnknownTool", params: {} }
-        ] satisfies Array<Response.ToolCallPartEncoded>
+          }],
+          ["unknown tool names", { type: "tool-call", id: "unknown", name: "UnknownTool", params: {} }],
+          ["invalid provider results", {
+            type: "tool-result",
+            id: "hosted",
+            name: "MyTool",
+            result: { testSuccess: 123 },
+            isFailure: false,
+            providerExecuted: true
+          }]
+        ] satisfies Array<[string, Response.ToolCallPartEncoded | Response.ToolResultPartEncoded]>
       ) {
-        it.effect(`${method} still rejects ${call.id}`, () =>
+        it.effect(`${method} still rejects ${label}`, () =>
           Effect.gen(function*() {
             const options = {
               prompt: [],
@@ -175,7 +135,7 @@ describe("LanguageModel", () => {
               ? LanguageModel.generateText(options).pipe(Effect.asVoid)
               : LanguageModel.streamText(options).pipe(Stream.runDrain)
             const error = yield* request.pipe(
-              TestUtils.withLanguageModel({ generateText: [call, finishPart], streamText: [call, finishPart] }),
+              TestUtils.withLanguageModel({ generateText: [part, finishPart], streamText: [part, finishPart] }),
               Effect.flip
             )
             strictEqual(error.reason._tag, "InvalidOutputError")

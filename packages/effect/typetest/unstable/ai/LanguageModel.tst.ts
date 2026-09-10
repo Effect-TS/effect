@@ -90,6 +90,14 @@ describe("LanguageModel", () => {
       toolCallValidation
     })
     expect<Effect.Success<typeof program>["toolCalls"][number]["params"]>().type.toBe<unknown>()
+    const options: { readonly toolCallValidation?: "strict" | "deferred" } = {}
+    const optional = LanguageModel.generateText({
+      ...options,
+      prompt: "hello",
+      toolkit: Toolkit.make(TransformTool),
+      disableToolCallResolution: true
+    })
+    expect<Effect.Success<typeof optional>["toolCalls"][number]["params"]>().type.toBe<unknown>()
     const strict = LanguageModel.generateText({
       prompt: "hello",
       toolkit: Toolkit.make(TransformTool),

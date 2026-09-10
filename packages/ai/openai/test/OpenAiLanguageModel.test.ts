@@ -54,27 +54,22 @@ describe("OpenAiLanguageModel", () => {
             Stream.runCollect,
             Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
             Effect.provide(makeStreamTestLayer([
-              {
-                type: "response.created",
-                sequence_number: 1,
-                response: makeDefaultResponse({ status: "in_progress" })
-              },
-              { type: "response.output_item.done", sequence_number: 2, output_index: 0, item: makeWebSearchCall() },
+              { type: "response.output_item.done", sequence_number: 1, output_index: 0, item: makeWebSearchCall() },
               {
                 type: "response.output_item.added",
-                sequence_number: 3,
+                sequence_number: 2,
                 output_index: 1,
                 item: { ...call, arguments: "", status: "in_progress" }
               },
               {
                 type: "response.function_call_arguments.done",
-                sequence_number: 4,
+                sequence_number: 3,
                 output_index: 1,
                 item_id: "fc_123",
                 name: "Inspect",
                 arguments: call.arguments
               },
-              { type: "response.completed", sequence_number: 5, response: completed }
+              { type: "response.completed", sequence_number: 4, response: completed }
             ]))
           )
         const parts = yield* request
@@ -88,6 +83,10 @@ describe("OpenAiLanguageModel", () => {
         strictEqual(results.length, 1)
         strictEqual(results[0].id, "ws_123")
         strictEqual(results[0].isFailure, false)
+        deepStrictEqual(results[0].result, {
+          action: { type: "search", query: "Effect TypeScript" },
+          status: "completed"
+        })
         const finish = parts.find((part) => part.type === "finish")
         assert.isDefined(finish)
         strictEqual(finish?.usage.inputTokens.total, 20)

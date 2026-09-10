@@ -299,17 +299,15 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
   readonly disableToolCallResolution?: boolean | undefined
 
   /**
-   * Validation of application tool parameters when `disableToolCallResolution`
-   * is `true`. Defaults to `"strict"`, which validates the encoded parameters.
+   * Controls application tool parameter validation when
+   * `disableToolCallResolution` is `true`. Defaults to `"strict"`.
    *
    * **Details**
    *
-   * Use `"deferred"` when an external tool scheduler owns validation and needs
-   * to return corrective feedback for invalid arguments. Tool call parameters
-   * are then typed as `unknown`; the scheduler must validate them against the
-   * tool's parameter schema before executing a handler. Tool definitions sent
-   * to the provider are unchanged, and provider-executed calls and the rest of
-   * the response are still validated.
+   * `"strict"` validates encoded parameters. `"deferred"` returns parameters as
+   * `unknown` so an external scheduler can validate them before execution and
+   * return corrective feedback. Tool definitions, provider-executed parameter
+   * validation, and validation of the rest of the response are unchanged.
    *
    * This option has no effect when tool call resolution is enabled: `Toolkit`
    * validates application parameters according to each tool's `failureMode`.
@@ -593,9 +591,9 @@ export type ExtractTools<Options> = Options extends {
  */
 export type ExtractToolParametersMode<Options> = Options extends {
   readonly disableToolCallResolution: true
-} ? "toolCallValidation" extends keyof Options ? "deferred" extends Options["toolCallValidation"] ? "opaque" : "encoded"
-  : "encoded"
-  : "opaque"
+  readonly toolCallValidation?: "strict" | undefined
+} ? "encoded" :
+  "opaque"
 
 type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution extends boolean> = ToolkitValue extends
   Toolkit.WithHandler<infer Tools> ?
