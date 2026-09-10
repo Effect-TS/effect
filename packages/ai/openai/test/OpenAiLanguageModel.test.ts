@@ -12,6 +12,20 @@ const webSearchOutcomes = [
   { status: "searching", isFailure: true }
 ] as const
 
+const fileSearchOutcomes = [
+  { status: "completed", isFailure: false },
+  { status: "failed", isFailure: true },
+  { status: "incomplete", isFailure: true },
+  { status: "in_progress", isFailure: true },
+  { status: "searching", isFailure: true }
+] as const
+
+const fileSearchResults = [
+  { label: "partial results", results: [{ file_id: "file_123", text: "Matching text", score: 0.8 }] },
+  { label: "null results", results: null },
+  { label: "omitted results", results: undefined }
+] as const
+
 describe("OpenAiLanguageModel", () => {
   describe("make", () => {
     it.effect("sends correct model in request", () =>
@@ -1235,6 +1249,33 @@ describe("OpenAiLanguageModel", () => {
         )
       }
 
+      for (const { label, results } of fileSearchResults) {
+        it.effect.each(fileSearchOutcomes)(
+          `OpenAiFileSearch reports $status with ${label}`,
+          ({ status, isFailure }) =>
+            Effect.gen(function*() {
+              const result = yield* LanguageModel.generateText({
+                prompt: "Search the files",
+                toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
+              }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+              strictEqual(result.toolResults.length, 1)
+              const toolResult = result.toolResults[0]!
+              strictEqual(toolResult.name, "OpenAiFileSearch")
+              strictEqual(toolResult.id, "fs_123")
+              strictEqual(toolResult.providerExecuted, true)
+              strictEqual(toolResult.isFailure, isFailure)
+              deepStrictEqual(toolResult.result, {
+                status,
+                queries: ["Effect TypeScript"],
+                results: results ?? null
+              })
+            }).pipe(Effect.provide(makeTestLayer({
+              body: { output: [makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })] }
+            })))
+        )
+      }
+
       it.effect("uses canonical OpenAiMcp name for mcp_approval_request", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
@@ -1762,6 +1803,63 @@ describe("OpenAiLanguageModel", () => {
       )
     }
 
+    for (const { label, results } of fileSearchResults) {
+      it.effect.each(fileSearchOutcomes)(
+        `OpenAiFileSearch reports $status with ${label} from output_item.done`,
+        ({ status, isFailure }) =>
+          Effect.gen(function*() {
+            const call = makeFileSearchCall({ status, ...(results === undefined ? {} : { results }) })
+            const streamEvents: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> = [
+              {
+                type: "response.created",
+                sequence_number: 1,
+                response: makeDefaultResponse({ status: "in_progress" })
+              },
+              {
+                type: "response.output_item.added",
+                sequence_number: 2,
+                output_index: 0,
+                item: makeFileSearchCall({ status: "in_progress" })
+              },
+              {
+                type: "response.output_item.done",
+                sequence_number: 3,
+                output_index: 0,
+                item: call
+              },
+              {
+                type: "response.completed",
+                sequence_number: 4,
+                response: makeDefaultResponse({ output: [call] })
+              }
+            ]
+
+            const parts = yield* LanguageModel.streamText({
+              prompt: "Search the files",
+              toolkit: Toolkit.make(OpenAiTool.FileSearch({ vector_store_ids: ["vs_123"] }))
+            }).pipe(
+              Stream.runCollect,
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+              Effect.provide(makeStreamTestLayer(streamEvents))
+            )
+
+            const toolResults = parts.filter((part) => part.type === "tool-result")
+            strictEqual(toolResults.length, 1)
+            const toolResult = toolResults[0]!
+            strictEqual(toolResult.name, "OpenAiFileSearch")
+            strictEqual(toolResult.id, "fs_123")
+            strictEqual(toolResult.providerExecuted, true)
+            strictEqual(toolResult.isFailure, isFailure)
+            deepStrictEqual(toolResult.result, {
+              status,
+              queries: ["Effect TypeScript"],
+              ...(results == null ? {} : { results })
+            })
+            assert.isDefined(parts.find((part) => part.type === "finish"))
+          })
+      )
+    }
+
     it.effect("handles reasoning summary events when reasoning state is missing", () =>
       Effect.gen(function*() {
         const streamEvents = [
@@ -2183,6 +2281,16 @@ const makeWebSearchCall = (
   id: "ws_123",
   status: "completed",
   action: { type: "search", query: "Effect TypeScript" },
+  ...overrides
+})
+
+const makeFileSearchCall = (
+  overrides: Partial<Generated.FileSearchToolCall> = {}
+): Generated.FileSearchToolCall => ({
+  type: "file_search_call",
+  id: "fs_123",
+  status: "completed",
+  queries: ["Effect TypeScript"],
   ...overrides
 })
 

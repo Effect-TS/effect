@@ -104,6 +104,8 @@ export const CodeInterpreter = Tool.providerDefined({
  * The tool requires `vector_store_ids` and accepts optional `filters`,
  * `max_num_results`, and `ranking_options`. Successful tool calls expose the
  * search `status`, generated `queries`, and optional `results`.
+ * Calls that finish without a `completed` status return failure tool results,
+ * preserving the original status, queries, and any partial results.
  *
  * @category tools
  * @since 4.0.0
@@ -120,6 +122,11 @@ export const FileSearch = Tool.providerDefined({
   }),
   success: Schema.Struct({
     status: Generated.FileSearchToolCall.fields.status,
+    queries: Generated.FileSearchToolCall.fields.queries,
+    results: Generated.FileSearchToolCall.fields.results
+  }),
+  failure: Schema.Struct({
+    status: Schema.Literals(["in_progress", "searching", "incomplete", "failed"]),
     queries: Generated.FileSearchToolCall.fields.queries,
     results: Generated.FileSearchToolCall.fields.results
   })
