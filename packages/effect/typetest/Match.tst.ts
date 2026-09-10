@@ -1,4 +1,4 @@
-import { Effect, Match, Option, pipe, type Result } from "effect"
+import { Effect, Match, Option, pipe, type Result, Schema } from "effect"
 import { describe, expect, it } from "tstyche"
 
 type Closed = { readonly _tag: "Closed" }
@@ -245,6 +245,79 @@ describe("Match", () => {
         C: () => 1
       })
     )
+  })
+
+  it("valueTags rejects the unknown tag in the Schema union reproduction", () => {
+    // https://github.com/Effect-TS/effect/issues/8167
+    const Vehicles = Schema.Union([
+      Schema.TaggedStruct("Car", {}),
+      Schema.TaggedStruct("Bike", {})
+    ])
+    const myVehicle: typeof Vehicles.Type = { _tag: "Bike" }
+
+    // @ts-expect-error Type '() => string' is not assignable to type 'never'
+    Match.valueTags(myVehicle, { Plane: () => "plane" })
+  })
+
+  it("valueTags rejects unknown tags with a complete handler map", () => {
+    // @ts-expect-error Type '() => boolean' is not assignable to type 'never'
+    Match.valueTags(taggedInput, { A: () => "a", B: () => 1, C: () => true })
+  })
+
+  it("valueTags requires every tag of a union", () => {
+    // @ts-expect-error Property 'B' is missing
+    Match.valueTags(taggedInput, { A: () => "a" })
+  })
+
+  it("valueTags rejects an empty handler map", () => {
+    // @ts-expect-error Type '{}' is missing the following properties
+    Match.valueTags(taggedInput, {})
+  })
+
+  it("valueTags rejects unknown tags in a pipeline", () => {
+    pipe(
+      taggedInput,
+      // @ts-expect-error Type '() => boolean' is not assignable to type 'never'
+      Match.valueTags({ A: () => "a", B: () => 1, C: () => true })
+    )
+  })
+
+  it("valueTags requires every tag of a union in a pipeline", () => {
+    pipe(
+      taggedInput,
+      // @ts-expect-error Property 'B' is missing
+      Match.valueTags({ A: () => "a" })
+    )
+  })
+
+  it("valueTags infers handler inputs and the union of return types", () => {
+    const result = Match.valueTags(taggedInput, {
+      A: (value) => {
+        expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+        return value.a
+      },
+      B: (value) => {
+        expect(value).type.toBe<{ readonly _tag: "B"; readonly b: number }>()
+        return value.b
+      }
+    })
+    expect(result).type.toBe<string | number>()
+
+    expect(
+      pipe(
+        taggedInput,
+        Match.valueTags({
+          A: (value) => {
+            expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+            return value.a
+          },
+          B: (value) => {
+            expect(value).type.toBe<{ readonly _tag: "B"; readonly b: number }>()
+            return value.b
+          }
+        })
+      )
+    ).type.toBe<string | number>()
   })
 
   it("related handler maps contextually type nested Effect.fn calls", () => {
