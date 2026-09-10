@@ -257,6 +257,21 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
         }).pipe(Effect.provide(NodeFileSystem.layer)))
     }
 
+    it.effect(`${method} omits only the overflowing optional field`, () =>
+      Effect.gen(function*() {
+        Object.assign(state.values, { ino: maxSafe + 1n, nlink: 3n, uid: 0n, gid: 1000n, rdev: 0n, blocks: 8n })
+        const info = yield* getInfo
+        assert.deepStrictEqual(info.ino, Option.none())
+        assert.deepStrictEqual(info.nlink, Option.some(3))
+        assert.deepStrictEqual(info.uid, Option.some(0))
+        assert.deepStrictEqual(info.gid, Option.some(1000))
+        assert.deepStrictEqual(info.rdev, Option.some(0))
+        assert.deepStrictEqual(info.blocks, Option.some(8))
+        assert.strictEqual(info.type, "File")
+        assert.strictEqual(info.size, ByteSize.bytes(4n))
+        assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
+      }).pipe(Effect.provide(NodeFileSystem.layer)))
+
     for (
       const { expected, name, value } of [
         {
