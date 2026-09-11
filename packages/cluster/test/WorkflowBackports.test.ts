@@ -21,6 +21,7 @@ const clusterEngine = ClusterWorkflowEngine.layer.pipe(
     shardsPerGroup: 10,
     entityTerminationTimeout: 0,
     entityMessagePollInterval: 5000,
+    entityReplyPollInterval: 10,
     sendRetryInterval: 10
   }))
 )
