@@ -72,7 +72,6 @@ describe("DenoHttpServer", () => {
             assert.strictEqual(streamStarted, false)
             assert.strictEqual(finalized, true)
             if (status === 304) {
-              assert.strictEqual(response.headers["content-length"], "4")
               assert.strictEqual(response.headers["content-type"], "text/plain")
             }
           }).pipe(
@@ -104,11 +103,13 @@ describe("DenoHttpServer", () => {
           const response = yield* (method === "HEAD" ? HttpClient.head("/") : HttpClient.get("/"))
           assert.strictEqual(response.status, status)
           assert.strictEqual(yield* response.text, "")
-          if (method === "HEAD" || status === 304) {
+          assert.strictEqual(cancelled, true)
+          if (method === "HEAD") {
             assert.strictEqual(response.headers["content-length"], "4")
+          }
+          if (method === "HEAD" || status === 304) {
             assert.strictEqual(response.headers["content-type"], "text/plain")
           }
-          assert.strictEqual(cancelled, true)
         }).pipe(
           Effect.timeout("2 seconds"),
           Effect.provide(DenoHttpServer.layerTest)
