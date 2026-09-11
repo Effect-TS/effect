@@ -66,10 +66,8 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * socket path, while a `host` beginning with `/` is treated as a socket
  * directory and expands to `${host}/.s.PGSQL.${port}`.
  *
- * URL modes `sslmode=prefer` and `sslmode=allow` enable TLS, like
- * `sslmode=require`. They do not implement libpq's fallback between TLS and
- * plaintext: a server that refuses TLS fails the connection. Explicit `ssl`
- * options override the URL mode; use `ssl: false` to connect in plaintext.
+ * URL modes `sslmode=prefer` and `sslmode=allow` are aliases for
+ * `sslmode=require`, without plaintext fallback.
  *
  * Prepared statements are enabled by default and limited by
  * `preparedStatementCacheSize`. Disable them for statement-mode poolers or

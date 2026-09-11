@@ -455,7 +455,6 @@ describe("PgConnection in-process server", () => {
       })
   )
 
-  // These aliases use the existing strict TLS behavior, without libpq fallback.
   it.effect.each(["require", "prefer", "allow"])(
     "sslmode=%s fails when the server refuses TLS",
     (sslmode) =>
