@@ -2372,6 +2372,132 @@
               "size": 8
             }
           ]
+        },
+        {
+          "file": "suites/compiler-rebuild/fixtures/zod-compiled.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "zod-compiled",
+            "implementation": "zod4-compiled",
+            "astTags": [],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "zod-compiled-parseValid",
+              "export": "parseValid",
+              "scenario": "compiler-rebuild-parseValid"
+            },
+            {
+              "name": "zod-compiled-parseExtra",
+              "export": "parseExtra",
+              "scenario": "compiler-rebuild-parseExtra",
+              "size": 4
+            },
+            {
+              "name": "zod-compiled-parseInvalid",
+              "export": "parseInvalid",
+              "scenario": "compiler-rebuild-parseInvalid",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-compiled-isValid",
+              "export": "isValid",
+              "scenario": "compiler-rebuild-isValid",
+              "operation": "is"
+            },
+            {
+              "name": "zod-compiled-isInvalid",
+              "export": "isInvalid",
+              "scenario": "compiler-rebuild-isInvalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-compiled-encode",
+              "export": "encode",
+              "scenario": "compiler-rebuild-encode",
+              "operation": "encode"
+            },
+            {
+              "name": "zod-compiled-strict",
+              "export": "strict",
+              "scenario": "compiler-rebuild-strict"
+            },
+            {
+              "name": "zod-compiled-nested",
+              "export": "nested",
+              "scenario": "compiler-rebuild-nested",
+              "size": 2
+            },
+            {
+              "name": "zod-compiled-array",
+              "export": "array",
+              "scenario": "compiler-rebuild-array",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-arrayInvalid",
+              "export": "arrayInvalid",
+              "scenario": "compiler-rebuild-arrayInvalid",
+              "path": "invalid",
+              "size": 33
+            },
+            {
+              "name": "zod-compiled-record",
+              "export": "record",
+              "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-union",
+              "export": "union",
+              "scenario": "compiler-rebuild-union",
+              "size": 8
+            },
+            {
+              "name": "zod-compiled-transform",
+              "export": "transform",
+              "scenario": "compiler-rebuild-transform",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-transformInvalid",
+              "export": "transformInvalid",
+              "scenario": "compiler-rebuild-transformInvalid",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "zod-compiled-declaration",
+              "export": "declaration",
+              "scenario": "compiler-rebuild-declaration",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-makeStruct",
+              "export": "makeStruct",
+              "scenario": "compiler-rebuild-makeStruct",
+              "operation": "make",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-makeArray",
+              "export": "makeArray",
+              "scenario": "compiler-rebuild-makeArray",
+              "operation": "make",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-makeUnion",
+              "export": "makeUnion",
+              "scenario": "compiler-rebuild-makeUnion",
+              "operation": "make",
+              "size": 8
+            }
+          ]
         }
       ]
     }
