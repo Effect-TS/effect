@@ -416,7 +416,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
         getMany: (keys) =>
           sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE ${
             sql.in("id", keys)
-          } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.pipe(
+          } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared.pipe(
             Effect.mapError((cause) =>
               new PersistenceError({
                 message: `Failed to getMany from backing store`,
@@ -756,7 +756,7 @@ export const layerBackingSql: Layer.Layer<
         getMany: (keys) =>
           sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE store_id = ${storeId} AND ${
             sql.in("id", keys)
-          } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.pipe(
+          } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared.pipe(
             Effect.mapError((cause) =>
               new PersistenceError({
                 message: `Failed to getMany from backing store`,
