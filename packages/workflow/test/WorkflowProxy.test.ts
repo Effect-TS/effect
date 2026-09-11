@@ -48,5 +48,5 @@ describe("WorkflowProxy", () => {
       const result = yield* awaitResult(TestWorkflow, executionId, "Complete").pipe(Effect.provide(context))
       assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
     }).pipe(Effect.scoped))
-  const awaitResult = makeAwaitResult(Effect.yieldNow())
+  const awaitResult = makeAwaitResult(Effect.yieldNow(), 2000)
 })

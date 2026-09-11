@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
 import { Duration, Effect, Exit, Layer, Schema, TestClock } from "effect"
 
-export const makeAwaitResult = (settle: Effect.Effect<void>) =>
+export const makeAwaitResult = (settle: Effect.Effect<void>, attempts: number) =>
 <A, E>(
   workflow: {
     readonly poll: (
@@ -15,7 +15,7 @@ export const makeAwaitResult = (settle: Effect.Effect<void>) =>
 ) =>
   Effect.gen(function*() {
     let result = yield* workflow.poll(executionId)
-    for (let i = 0; i < 2000 && (result?._tag !== tag || !ready()); i++) {
+    for (let i = 0; i < attempts && (result?._tag !== tag || !ready()); i++) {
       yield* settle
       result = yield* workflow.poll(executionId)
     }
@@ -26,19 +26,18 @@ export const makeAwaitResult = (settle: Effect.Effect<void>) =>
 
 // Engine-agnostic suspension and deferred completion cases, shared by the memory
 // and cluster engines.
-export const suite = (options: {
+export const suite = ({ engineLayer, name, tick }: {
   readonly name: string
   readonly engineLayer: Layer.Layer<WorkflowEngine.WorkflowEngine>
   readonly tick: Effect.Effect<void>
 }) => {
-  const engineLayer = options.engineLayer
   const settle = Effect.gen(function*() {
-    yield* options.tick
+    yield* tick
     yield* TestClock.adjust(1)
   })
-  const awaitResult = makeAwaitResult(settle)
+  const awaitResult = makeAwaitResult(settle, 100)
 
-  describe(`${options.name} suspension and deferred completion`, () => {
+  describe(`${name} suspension and deferred completion`, () => {
     for (
       const { childCount, concurrency, waves } of [
         { childCount: 3, concurrency: "unbounded" as const, waves: [3] },
