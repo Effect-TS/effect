@@ -1,7 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import type { OpenAPISpec } from "effect/unstable/httpapi/OpenApi"
+import type { OpenAPISpec, OpenAPISpecOperation } from "effect/unstable/httpapi/OpenApi"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -2825,6 +2825,38 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    it.effect("quotes static path text with and without parameters", () => {
+      const prefix = "/files/\"`\\\n/"
+      const suffix = "/content\"`"
+      const operation: OpenAPISpecOperation = {
+        operationId: "read",
+        parameters: [],
+        tags: ["Files"],
+        security: [],
+        responses: { "204": { description: "No content" } }
+      }
+      return assertRuntimeIncludes({
+        openapi: "3.1.0",
+        info: { title: "Quoted paths", version: "1.0.0" },
+        components: { schemas: {}, securitySchemes: {} },
+        security: [],
+        tags: [],
+        paths: {
+          [prefix + suffix]: { get: operation },
+          [prefix + "{id}" + suffix]: {
+            get: {
+              ...operation,
+              operationId: "readById",
+              parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }]
+            }
+          }
+        }
+      }, [
+        `HttpClientRequest.get(${JSON.stringify(prefix + suffix)})`,
+        `() => ${JSON.stringify(prefix)} + __encodePathParam(id) + ${JSON.stringify(suffix)}`
+      ])
+    })
+
     it.effect("emits compilable clients when schema examples are invalid", () =>
       assertGeneratedClientsCompile({
         openapi: "3.0.3",
