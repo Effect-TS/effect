@@ -233,6 +233,7 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * backend sends `ReadyForQuery`. When the scope closes, the
  * session sends `Terminate` and ends the socket.
  *
+ * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
  *
  * @category constructors
