@@ -64,7 +64,7 @@ export const layerHttpServer: Layer.Layer<
   if (Option.isNone(listenAddress)) {
     return yield* Effect.die("BunClusterHttp.layerHttpServer: ShardingConfig.runnerAddress is None")
   }
-  return BunHttpServer.layer(listenAddress.value)
+  return BunHttpServer.layer({ hostname: listenAddress.value.host, port: listenAddress.value.port })
 }).pipe(Layer.unwrap)
 
 /**
