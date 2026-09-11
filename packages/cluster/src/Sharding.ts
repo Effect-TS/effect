@@ -1285,10 +1285,18 @@ const make = Effect.gen(function*() {
           readonly context?: Context.Context<never>
         }) {
           const context = options?.context ? Context.merge(options.context, address) : address
-          return client.client(tag, payload, {
+          const response = client.client(tag, payload, {
             ...options,
             context
           })
+          // RpcClient relays write-fiber failures as causes. Restore abandonment
+          // on the requester before user recovery, without overriding its mask.
+          return Effect.isEffect(response)
+            ? Effect.onError(
+              response,
+              (cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.void
+            )
+            : response
         }
         const proxyClient: any = {}
         return new Proxy(proxyClient, {
