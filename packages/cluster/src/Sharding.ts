@@ -959,12 +959,16 @@ const make = Effect.gen(function*() {
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
-        // Volatile interrupts still need a delivery attempt during teardown.
-        if (MutableRef.get(isShutdown) && message.envelope._tag !== "Interrupt") {
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        }
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
+        // Remote discards can still be delivered while local entities shut down.
+        // Interrupt envelopes need a delivery attempt even during local teardown.
+        if (
+          MutableRef.get(isShutdown) && message.envelope._tag !== "Interrupt" &&
+          (shouldFail || runnerIsLocal)
+        ) {
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        }
         if (isPersisted) {
           return runnerIsLocal
             ? notifyLocal(message, discard)
