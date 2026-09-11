@@ -295,7 +295,14 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
 {
   const resolveSymbol = Symbol.for("@effect/platform/HttpApp/resolve")
   const httpApp = toHandled(self, (request, response) => {
-    if (request.method !== "HEAD") response = scopeTransferToStream(response)
+    if (
+      request.method !== "HEAD" &&
+      response.status !== 204 &&
+      response.status !== 205 &&
+      response.status !== 304
+    ) {
+      response = scopeTransferToStream(response)
+    }
     ;(request as any)[resolveSymbol](
       Response.toWeb(response, { withoutBody: request.method === "HEAD", context })
     )
