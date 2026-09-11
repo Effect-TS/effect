@@ -8,8 +8,8 @@ import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
-import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
-import { makeMcpSseReader } from "../TestUtils/McpHttpResponse.ts"
+import { initializeHttpSession, makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
@@ -43,7 +43,7 @@ const setLevel = (level: string) =>
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Logging", () => {
-      // Logging has the same protocol surface in all three dated specifications.
+      // Logging has the same protocol surface in the legacy specifications.
       describe("Capabilities", () => {
         it.effect("MUST advertise logging when log notifications are supported", () =>
           Effect.gen(function*() {
@@ -54,6 +54,158 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
 
       describe("Setting Log Level", () => {
+        // https://modelcontextprotocol.io/specification/2024-11-05/server/utilities/logging#setting-log-level
+        // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging#setting-log-level
+        // https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/logging#setting-log-level
+        // https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/logging#setting-log-level
+        // These HTTP cases exercise the shared logging threshold contract. The 2024 adapter run checks
+        // Effect compatibility through this HTTP harness, not the original 2024 HTTP+SSE transport.
+        for (const level of ["debug", "emergency"] as const) {
+          it.effect(`should filter background HTTP logs when the destination session selects ${level}`, () =>
+            Effect.gen(function*() {
+              const release = yield* Deferred.make<void>()
+              const serverReady = yield* Deferred.make<McpServer.McpServer["Service"]>()
+              const harness = yield* makeHttpHarness(
+                Layer.effectDiscard(Effect.gen(function*() {
+                  const server = yield* McpServer.McpServer
+                  yield* server.addTool({
+                    tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+                    annotations: Context.empty(),
+                    handle: () =>
+                      Effect.gen(function*() {
+                        yield* server.notifications["notifications/message"]({ level: "emergency", data: "ready" })
+                        yield* Deferred.await(release)
+                        return new McpSchema.CallToolResult({ content: [] })
+                      })
+                  })
+                  yield* Deferred.succeed(serverReady, server)
+                })).pipe(Layer.provideMerge(makeServerLayer({ name: "BackgroundLogging", protocols: [protocol] })))
+              )
+              const headers = yield* initializeHttpSession(harness, protocol)
+              const configured = yield* harness.post({
+                jsonrpc: "2.0",
+                id: "set-level",
+                method: "logging/setLevel",
+                params: { level }
+              }, headers).pipe(Effect.flatMap(readMcpHttpResponse))
+              assert.deepInclude(configured, { id: "set-level", result: {} })
+              const response = makeMcpSseReader(
+                yield* harness.post({
+                  jsonrpc: "2.0",
+                  id: "wait",
+                  method: "tools/call",
+                  params: { name: "Wait", arguments: {} }
+                }, headers)
+              )
+              yield* Effect.addFinalizer(() => response.cancel)
+              assert.deepInclude(yield* response.take(), {
+                method: "notifications/message",
+                params: { level: "emergency", data: "ready" }
+              })
+              const server = yield* Deferred.await(serverReady)
+              yield* server.notifications["notifications/message"]({ level: "debug", data: "debug-log" })
+              yield* server.notifications["notifications/message"]({ level: "error", data: "error-log" })
+              yield* server.notifications["notifications/message"]({ level: "emergency", data: "sentinel" })
+              const messages: Array<unknown> = []
+              while (true) {
+                const message = yield* response.take()
+                assert.strictEqual(message.method, "notifications/message")
+                messages.push(message.params)
+                if ((message.params as { data: string }).data === "sentinel") break
+              }
+              assert.deepStrictEqual(
+                messages,
+                level === "debug" ?
+                  [
+                    { level: "debug", data: "debug-log" },
+                    { level: "error", data: "error-log" },
+                    { level: "emergency", data: "sentinel" }
+                  ] :
+                  [{ level: "emergency", data: "sentinel" }]
+              )
+              yield* Deferred.succeed(release, undefined)
+              assert.deepInclude(yield* response.take(), { id: "wait", result: { content: [] } })
+              assert.deepStrictEqual(yield* response.drain(), [])
+            }))
+        }
+
+        it.effect("should isolate background HTTP log levels when concurrent sessions select different thresholds", () =>
+          Effect.gen(function*() {
+            const release = yield* Deferred.make<void>()
+            const serverReady = yield* Deferred.make<McpServer.McpServer["Service"]>()
+            const harness = yield* makeHttpHarness(
+              Layer.effectDiscard(Effect.gen(function*() {
+                const server = yield* McpServer.McpServer
+                yield* server.addTool({
+                  tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+                  annotations: Context.empty(),
+                  handle: () =>
+                    Effect.gen(function*() {
+                      yield* server.notifications["notifications/message"]({ level: "emergency", data: "ready" })
+                      yield* Deferred.await(release)
+                      return new McpSchema.CallToolResult({ content: [] })
+                    })
+                })
+                yield* Deferred.succeed(serverReady, server)
+              })).pipe(
+                Layer.provideMerge(makeServerLayer({ name: "IsolatedBackgroundLogging", protocols: [protocol] }))
+              )
+            )
+            const responses = yield* Effect.forEach(["debug", "emergency"] as const, (level) =>
+              Effect.gen(function*() {
+                const headers = yield* initializeHttpSession(harness, protocol)
+                const configured = yield* harness.post({
+                  jsonrpc: "2.0",
+                  id: "set-level",
+                  method: "logging/setLevel",
+                  params: { level }
+                }, headers).pipe(Effect.flatMap(readMcpHttpResponse))
+                assert.deepInclude(configured, { id: "set-level", result: {} })
+                const response = makeMcpSseReader(
+                  yield* harness.post({
+                    jsonrpc: "2.0",
+                    id: "wait",
+                    method: "tools/call",
+                    params: { name: "Wait", arguments: {} }
+                  }, headers)
+                )
+                yield* Effect.addFinalizer(() => response.cancel)
+                assert.deepInclude(yield* response.take(), {
+                  method: "notifications/message",
+                  params: { level: "emergency", data: "ready" }
+                })
+                return { level, response }
+              }))
+            const server = yield* Deferred.await(serverReady)
+            yield* server.notifications["notifications/message"]({ level: "debug", data: "debug-log" })
+            yield* server.notifications["notifications/message"]({ level: "error", data: "error-log" })
+            yield* server.notifications["notifications/message"]({ level: "emergency", data: "sentinel" })
+            for (const { level, response } of responses) {
+              const messages: Array<unknown> = []
+              while (true) {
+                const message = yield* response.take()
+                assert.strictEqual(message.method, "notifications/message")
+                messages.push(message.params)
+                if ((message.params as { data: string }).data === "sentinel") break
+              }
+              assert.deepStrictEqual(
+                messages,
+                level === "debug" ?
+                  [
+                    { level: "debug", data: "debug-log" },
+                    { level: "error", data: "error-log" },
+                    { level: "emergency", data: "sentinel" }
+                  ] :
+                  [{ level: "emergency", data: "sentinel" }]
+              )
+            }
+            yield* Deferred.succeed(release, undefined)
+            for (const { response } of responses) {
+              assert.deepInclude(yield* response.take(), { id: "wait", result: { content: [] } })
+              assert.deepStrictEqual(yield* response.drain(), [])
+            }
+          }))
+
         it.effect("MUST accept every specified log level", () =>
           Effect.forEach(levels, (level) =>
             Effect.gen(function*() {

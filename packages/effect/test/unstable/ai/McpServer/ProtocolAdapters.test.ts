@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import { CurrentLogLevel } from "effect/References"
 import * as Schema from "effect/Schema"
 import * as McpCore from "effect/unstable/ai/internal/mcpCore"
@@ -10,10 +11,12 @@ import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import * as Tool from "effect/unstable/ai/Tool"
 import * as Toolkit from "effect/unstable/ai/Toolkit"
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
+import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 
 const ServerIcon = McpSchema.Icon.make({
   src: "https://example.com/server.svg",
@@ -812,6 +815,145 @@ describe("McpServer protocol adapters", () => {
         "Info"
       )
     }))
+
+  describe("registration request context", () => {
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#earlier-streamable-http-revisions
+    // Effect must not expose a captured legacy client service to a stateless invocation.
+    it.effect("should omit a legacy client when a toolkit registered in a session handles a stateless request", () =>
+      Effect.gen(function*() {
+        const sessionToolkit = Toolkit.make(Tool.make("session-owner", {
+          success: Schema.Struct({ client: Schema.String, hasSession: Schema.Boolean }),
+          dependencies: [McpSchema.McpRequestContext]
+        }))
+        const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "register", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              McpServer.registerToolkit(sessionToolkit).pipe(
+                Effect.provide(sessionToolkit.toLayer({
+                  "session-owner": () =>
+                    Effect.gen(function*() {
+                      const request = yield* McpSchema.McpRequestContext
+                      const session = yield* Effect.serviceOption(McpSchema.McpServerClient)
+                      return { client: request.clientInfo!.name, hasSession: Option.isSome(session) }
+                    })
+                })),
+                Effect.provideService(McpServer.McpServer, server),
+                Effect.as(new McpSchema.CallToolResult({ content: [] }))
+              )
+          })
+        ))
+        const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(makeServerLayer({
+          name: "RegistrationContext",
+          protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_06_18]
+        }))))
+        const initialized = yield* harness.post({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "Alice", version: "1" }
+          }
+        })
+        yield* readMcpHttpResponse(initialized)
+        const sessionId = initialized.headers.get("mcp-session-id")
+        assert.isNotNull(sessionId)
+        const legacyHeaders = { "mcp-session-id": sessionId, "mcp-protocol-version": "2025-06-18" }
+        // https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle#initialization
+        yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, legacyHeaders)
+        const registered = yield* harness.post({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "register" }
+        }, legacyHeaders).pipe(
+          Effect.flatMap(readMcpHttpResponse)
+        )
+        assert.deepNestedPropertyVal(registered, "result.content", [])
+        const invoked = yield* harness.post({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: {
+            name: "session-owner",
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": { name: "Bob", version: "1" }
+            }
+          }
+        }, {
+          "mcp-protocol-version": "2026-07-28",
+          "mcp-method": "tools/call",
+          "mcp-name": "session-owner"
+        }).pipe(Effect.flatMap(readMcpHttpResponse))
+        assert.deepNestedPropertyVal(invoked, "result.structuredContent", { client: "Bob", hasSession: false })
+      }))
+
+    // https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging#per-request-log-level
+    // Effect registration must preserve the invoking request's metadata, HTTP headers, and derived log level.
+    it.effect("should use the current HTTP request when another request registered the resource", () =>
+      Effect.gen(function*() {
+        const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "register", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              McpServer.registerResource({
+                uri: "file:///http-owner",
+                name: "http-owner",
+                content: Effect.gen(function*() {
+                  const request = yield* McpSchema.McpRequestContext
+                  const http = Option.getOrThrow(yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest))
+                  const level = yield* CurrentLogLevel
+                  return `${request.clientInfo?.name}:${request.requestMetadata?.owner}:${
+                    http.headers["x-owner"]
+                  }:${level}`
+                })
+              }).pipe(
+                Effect.provideService(McpServer.McpServer, server),
+                Effect.as(new McpSchema.CallToolResult({ content: [] }))
+              )
+          })
+        ))
+        const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(makeServerLayer({
+          name: "RegistrationContext",
+          protocols: [McpProtocol.v2026_07_28]
+        }))))
+        const request = (name: string, method: string, params: Record<string, unknown>) =>
+          harness.post({
+            jsonrpc: "2.0",
+            id: name,
+            method,
+            params: {
+              ...params,
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": { name, version: "1" },
+                "io.modelcontextprotocol/logLevel": name === "Alice" ? "error" : "debug",
+                owner: name
+              }
+            }
+          }, {
+            "mcp-protocol-version": "2026-07-28",
+            "mcp-method": method,
+            "mcp-name": method === "tools/call" ? "register" : "file:///http-owner",
+            "x-owner": name
+          }).pipe(Effect.flatMap(readMcpHttpResponse))
+        assert.deepNestedPropertyVal(yield* request("Alice", "tools/call", { name: "register" }), "result.content", [])
+        assert.deepNestedPropertyVal(
+          yield* request("Bob", "resources/read", { uri: "file:///http-owner" }),
+          "result.contents",
+          [
+            { uri: "file:///http-owner", text: "Bob:Bob:Bob:Debug" }
+          ]
+        )
+      }))
+  })
 
   it.effect("should isolate interleaved stateful and stateless request contexts", () =>
     Effect.gen(function*() {

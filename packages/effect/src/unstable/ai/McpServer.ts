@@ -152,6 +152,14 @@ const toInternalServerNotification = (
   }
 }
 
+// Request services must come from the invocation, including when a handler is registered during a request.
+const omitRequestServices = Context.omit(
+  McpRequestContext,
+  McpServerClient,
+  HttpServerRequest.HttpServerRequest,
+  CurrentLogLevel
+)
+
 const provideInvocationContext = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   invocation: McpCore.McpInvocation
@@ -371,7 +379,11 @@ export class McpServer extends Context.Service<McpServer, {
               notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
               targetClientId: clientId,
               delivered
-            })
+            }).pipe(
+              Effect.andThen(
+                Effect.suspend(() => notificationDelivery.consumers > 0 ? Deferred.await(delivered) : Effect.void)
+              )
+            )
           )
         ),
       get tools() {
@@ -702,14 +714,16 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const server = yield* McpServer
   const defaultLogLevel = yield* CurrentLogLevel
   const isHttp = transport === "http"
-  const clientProtocols = new Map<number, McpProtocol.AnyProtocolAdapter>()
+  const clientStates = new Map<number, {
+    protocol: McpProtocol.AnyProtocolAdapter
+    profile: McpCore.NegotiatedProtocolProfile<string> | undefined
+    sessionHeaders: Headers.Headers | undefined
+  }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
-  const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
     activeRequests.delete(clientId)
-    clientProtocols.delete(clientId)
-    clientProfiles.delete(clientId)
+    clientStates.delete(clientId)
     runtime.disconnect(clientId)
   }
   const sendRequestError = (clientId: number, requestId: string | number, error: unknown) =>
@@ -866,8 +880,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
     // and its decoded payload. Restore it once after non-initialize requests
     // without a session have been rejected above.
     const initializePayload = session?.initializePayload ?? payload as typeof McpSchema.Initialize.payloadSchema.Type
+    const clientState = clientStates.get(client.id)
     const selectedProtocol = session?.protocol ??
-      clientProtocols.get(client.id) ??
+      clientState?.protocol ??
       runtime.protocolForInternalTag(rpc._tag)
     if (!isProtocolVersion(selectedProtocol.protocolVersion) || selectedProtocol.protocolVersion === "2026-07-28") {
       return Effect.die(`Unsupported selected MCP protocol version: ${selectedProtocol.protocolVersion}`)
@@ -877,7 +892,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       clientCapabilities: initializePayload.capabilities,
       clientInfo: initializePayload.clientInfo
     }
-    clientProfiles.set(client.id, profile)
+    if (clientState !== undefined) clientState.profile = profile
     const requestContext = McpRequestContext.of({
       clientId: client.id,
       protocolVersion: profile.protocolVersion,
@@ -992,7 +1007,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
               : Effect.succeed(cancellationRequest.prepared)
             return Effect.gen(function*() {
               const prepared = yield* prepare
-              if (isHttp && !clientProtocols.has(clientId)) {
+              const clientState = clientStates.get(clientId)
+              if (isHttp && clientState === undefined) {
                 // HTTP EOF only ends the request body; handlers and streamed replies may still be running.
                 yield* Scope.addFinalizer(
                   Context.getUnsafe(fiber.context, Scope.Scope),
@@ -1003,10 +1019,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
               const selectedProtocol = prepared.protocol
               // Select before dated payload decoding: legacy requests use
               // their session's adapter; modern requests carry their own version.
-              clientProtocols.set(clientId, selectedProtocol)
-              if (prepared.profile !== undefined) {
-                clientProfiles.set(clientId, prepared.profile)
-              }
+              clientStates.set(clientId, {
+                protocol: selectedProtocol,
+                profile: prepared.profile ?? clientState?.profile,
+                sessionHeaders: isHttp && headers[MCP_SESSION_ID_HEADER] !== undefined
+                  ? Headers.fromInput({ [MCP_SESSION_ID_HEADER]: headers[MCP_SESSION_ID_HEADER] })
+                  : clientState?.sessionHeaders
+              })
               if (request.tag === MCP_INVALID_BATCH_METHOD) {
                 return yield* sendRequestError(
                   clientId,
@@ -1157,8 +1176,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
               removeReverseRequestClient(requestId, reverseKey)
             }
             const targetClientId = reverseKey?.clientId ?? clientId
-            const selectedProtocol = clientProtocols.get(targetClientId) ?? runtime.protocols[0]
-            const profile = reverseKey?.profile ?? clientProfiles.get(targetClientId) ?? {
+            const clientState = clientStates.get(targetClientId)
+            const selectedProtocol = clientState?.protocol ?? runtime.protocols[0]
+            const profile = reverseKey?.profile ?? clientState?.profile ?? {
               protocolVersion: selectedProtocol.protocolVersion,
               clientCapabilities: {},
               clientInfo: { name: "unknown", version: "unknown" }
@@ -1196,10 +1216,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
         yield* PubSub.publish(serverNotifications, { notification, targetClientId })
       }
       const clientIds = yield* patchedProtocol.clientIds
-      for (const clientId of clientProtocols.keys()) {
+      for (const clientId of clientStates.keys()) {
         if (!clientIds.has(clientId)) {
-          clientProtocols.delete(clientId)
-          clientProfiles.delete(clientId)
+          clientStates.delete(clientId)
           // HTTP UUID sessions are stored separately and outlive request-scoped client IDs.
           runtime.disconnect(clientId)
         }
@@ -1208,7 +1227,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       const deliveryClientIds = requestNotification && requestContext !== undefined
         ? [requestContext.clientId]
         : targetClientId === undefined
-        ? isHttp ? clientProtocols.keys() : runtime.deliveryClientIds()
+        ? isHttp ? clientStates.keys() : runtime.deliveryClientIds()
         : [targetClientId]
       const deliveries: Array<Effect.Effect<void>> = []
       let hasOriginDelivery = false
@@ -1227,15 +1246,15 @@ const runWithRuntime = Effect.fnUntraced(function*(
         }
         const selectedProtocol = requestNotification && requestContext !== undefined
           ? runtime.selectProtocol(requestContext.protocolVersion)
-          : clientProtocols.get(clientId)
+          : clientStates.get(clientId)?.protocol
         if (!selectedProtocol) {
           continue
         }
         // Reserve delivery order before forking so one blocked client cannot hold up another.
         const previous = notificationTails.get(clientId)
-        const isOrigin = clientId === requestContext?.clientId
+        const isOrigin = clientId === (targetClientId ?? requestContext?.clientId)
         hasOriginDelivery ||= isOrigin
-        // The originating request awaits its own delivery, not broadcast delivery to unrelated clients.
+        // Await delivery to the explicit target or originating request, not unrelated broadcast recipients.
         const completed = isOrigin ? delivered : Deferred.makeUnsafe<void>()
         notificationTails.set(clientId, completed)
         const delivery = Effect.gen(function*() {
@@ -1267,7 +1286,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
           } else if (
             !runtime.canDeliver(
               clientId,
-              requestContext?.clientId === clientId ? requestHeaders ?? Headers.empty : Headers.empty,
+              (requestContext?.clientId === clientId ? requestHeaders : undefined) ??
+                clientStates.get(clientId)?.sessionHeaders ?? Headers.empty,
               notification,
               defaultLogLevel
             )
@@ -1769,8 +1789,18 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     Toolkit.WithHandler<Tools>,
     never,
     Exclude<Tool.HandlersFor<Tools>, McpRequestContext>
-  >)
-  const services = yield* Effect.context<never>()
+  >).pipe(Effect.updateContext((context: Context.Context<Exclude<Tool.HandlersFor<Tools>, McpRequestContext>>) => {
+    // Toolkit handlers also retain the context in which their layer was built.
+    const services = new Map(context.mapUnsafe)
+    for (const tool of Object.values(toolkit.tools)) {
+      const handler = services.get(tool.id) as Tool.Handler<string> | undefined
+      if (handler !== undefined) {
+        services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
+      }
+    }
+    return Context.makeUnsafe(services)
+  }))
+  const services = omitRequestServices(yield* Effect.context<never>())
   const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
   for (const tool of Object.values(built.tools)) {
     const annotations = tool.annotations
@@ -1975,7 +2005,7 @@ export const registerResource: {
       readonly annotations?: Context.Context<never> | undefined
     }
     return Effect.gen(function*() {
-      const services = yield* Effect.context<any>()
+      const services = omitRequestServices(yield* Effect.context<any>())
       const registry = yield* McpServer
       yield* registry.addResource({
         resource: new Resource({
@@ -2022,7 +2052,7 @@ export const registerResource: {
     >
     readonly annotations?: Context.Context<never> | undefined
   }) {
-    const services = yield* Effect.context<any>()
+    const services = omitRequestServices(yield* Effect.context<any>())
     const registry = yield* McpServer
     const decode = Schema.decodeUnknownEffect(schema)
     const template = new ResourceTemplate({
@@ -2220,9 +2250,11 @@ export const registerPrompt = <
   > = options.completion ?? {}
   return Effect.gen(function*() {
     const registry = yield* McpServer
-    const services = yield* Effect.context<
-      Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext>
-    >()
+    const services = omitRequestServices(
+      yield* Effect.context<
+        Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext>
+      >()
+    )
     const completions: Record<
       string,
       (

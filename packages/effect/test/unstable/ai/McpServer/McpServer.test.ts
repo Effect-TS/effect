@@ -37,7 +37,7 @@ import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
-import { makeMcpSseReader } from "./TestUtils/McpHttpResponse.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
@@ -223,6 +223,107 @@ const collectGarbage = Effect.promise(async () => {
 })
 
 describe("McpServer", () => {
+  // Effect delivery contract: an unavailable destination must not leave the caller waiting.
+  it.effect("should return from completion notification when the target client is absent", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25)
+      yield* fixture.initialize()
+      yield* fixture.server.notifyElicitationComplete({ clientId: 999, elicitationId: "not-connected" })
+      assert.deepInclude(yield* fixture.sendRequest("ping", {}), { result: {} })
+    }))
+
+  // URL completion is unavailable in June; this checks that the Effect call returns, not wire suppression.
+  it.effect("should return from completion notification when the target protocol does not support it", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_06_18)
+      yield* fixture.initialize()
+      yield* fixture.server.notifyElicitationComplete({ clientId: 0, elicitationId: "unsupported" })
+      assert.deepInclude(yield* fixture.sendRequest("ping", {}), { result: {} })
+    }))
+
+  // https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation#completion-notifications-for-url-mode-elicitation
+  // MCP defines the completion notification and its recipient. Awaiting delivery before returning is the Effect API contract.
+  it.effect("should deliver URL elicitation completion before the tool result when the tool awaits notification delivery", () =>
+    Effect.gen(function*() {
+      const authorizationCompleted = yield* Deferred.make<void>()
+      const registration = Layer.effectDiscard(Effect.gen(function*() {
+        const server = yield* McpServer.McpServer
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "Authorize", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.gen(function*() {
+              const client = yield* Effect.serviceOption(McpSchema.McpServerClient).pipe(
+                Effect.flatMap(Effect.fromOption)
+              )
+              yield* client.getClient.pipe(
+                Effect.flatMap((reverseClient) =>
+                  reverseClient.elicit(
+                    Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)({
+                      mode: "url",
+                      message: "Authorize access",
+                      url: "https://example.com/authorize",
+                      elicitationId: "authorization-1"
+                    })
+                  )
+                ),
+                Effect.scoped
+              )
+              yield* Deferred.await(authorizationCompleted)
+              yield* server.notifyElicitationComplete({
+                clientId: client.clientId,
+                elicitationId: "authorization-1"
+              })
+              return new McpSchema.CallToolResult({ content: [{ type: "text", text: "Authorized" }] })
+            }).pipe(Effect.orDie)
+        })
+      }))
+      const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+        makeServerLayer({ name: "UrlElicitationCompletion", protocols: [McpProtocol.v2025_11_25] })
+      )))
+      const initialized = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "initialize",
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: { elicitation: { url: {} } },
+          clientInfo: { name: "authorization-client", version: "1.0.0" }
+        }
+      })
+      yield* readMcpHttpResponse(initialized)
+      const sessionId = initialized.headers.get("Mcp-Session-Id")
+      assert.isNotNull(sessionId)
+      const headers = { "Mcp-Session-Id": sessionId, "Mcp-Protocol-Version": "2025-11-25" }
+      yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, headers)
+      const response = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "authorize-tool",
+        method: "tools/call",
+        params: { name: "Authorize", arguments: {} }
+      }, headers)
+      const stream = makeMcpSseReader(response)
+      yield* Effect.addFinalizer(() => stream.cancel)
+      const elicitation = yield* stream.take()
+      assert.strictEqual(elicitation.method, "elicitation/create")
+      assert.isDefined(elicitation.id)
+      const accepted = yield* harness.post({
+        jsonrpc: "2.0",
+        id: elicitation.id,
+        result: { action: "accept" }
+      }, headers)
+      assert.strictEqual(accepted.status, 202)
+      yield* Deferred.succeed(authorizationCompleted, undefined)
+
+      const completed = yield* stream.take()
+      assert.strictEqual(completed.method, "notifications/elicitation/complete")
+      assert.deepStrictEqual(completed.params, { elicitationId: "authorization-1" })
+      const result = yield* stream.take()
+      assert.strictEqual(result.id, "authorize-tool")
+      assert.deepStrictEqual(result.result, { content: [{ type: "text", text: "Authorized" }] })
+      assert.deepStrictEqual(yield* stream.drain(), [])
+    }))
+
   // Request metadata retention is a server lifecycle concern, not an MCP wire requirement.
   // This collection hook is Node-specific; other runtimes still run the request lifecycle tests below.
   it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
@@ -931,6 +1032,147 @@ describe("McpServer", () => {
     }))
 
   describe("direct service", () => {
+    it.effect("should return from completion notification when no transport is running", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* server.notifyElicitationComplete({ clientId: 0, elicitationId: "not-connected" })
+      }))
+
+    describe("registration context", () => {
+      class RegistrationLabel extends Context.Service<RegistrationLabel, string>()("test/RegistrationLabel") {}
+
+      const client = (clientId: number, name: string) =>
+        McpSchema.McpServerClient.of({
+          clientId,
+          protocolVersion: "2025-06-18",
+          clientCapabilities: {},
+          clientInfo: { name, version: "1" },
+          initializePayload: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name, version: "1" }
+          },
+          requestMetadata: { owner: name },
+          getClient: Effect.die("No reverse requests are needed")
+        })
+
+      const alice = client(1, "Alice")
+      const bob = client(2, "Bob")
+      const currentOwner = Effect.gen(function*() {
+        const request = yield* McpSchema.McpRequestContext
+        const label = yield* RegistrationLabel
+        return `${label}:${request.clientId}:${request.clientInfo?.name}:${request.requestMetadata?.owner}`
+      })
+
+      const toolkit = Toolkit.make(Tool.make("owner", {
+        success: Schema.String,
+        dependencies: [McpSchema.McpRequestContext, RegistrationLabel]
+      }))
+
+      // Registration captures application services, but each invocation owns its request identity.
+      // This contract belongs to the public server helpers rather than wire conformance.
+      const makeRegisteredServer = Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "register", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.gen(function*() {
+              yield* McpServer.registerResource({ uri: "file:///owner", name: "owner", content: currentOwner })
+              yield* McpServer.registerResource`file:///owners/${Schema.String}`({
+                name: "owners",
+                content: () => currentOwner,
+                completion: { param0: () => Effect.map(currentOwner, (owner) => [owner]) }
+              })
+              yield* McpServer.registerPrompt({
+                name: "owner",
+                parameters: { name: Schema.String },
+                content: () => currentOwner,
+                completion: { name: () => Effect.map(currentOwner, (owner) => [owner]) }
+              })
+              yield* McpServer.registerToolkit(toolkit).pipe(
+                Effect.provide(toolkit.toLayer({ owner: () => currentOwner }))
+              )
+              return new McpSchema.CallToolResult({ content: [] })
+            }).pipe(
+              Effect.provideService(McpServer.McpServer, server),
+              Effect.provideService(RegistrationLabel, "registered")
+            )
+        })
+        yield* server.callTool({ name: "register" }).pipe(Effect.provideService(McpSchema.McpServerClient, alice))
+        return server
+      })
+
+      const expectedOwner = "registered:2:Bob:Bob"
+
+      it.effect("should use the current request when a resource was registered by another client", () =>
+        Effect.gen(function*() {
+          const server = yield* makeRegisteredServer
+          const result = yield* server.findResource("file:///owner").pipe(
+            Effect.provideService(McpSchema.McpServerClient, bob),
+            Effect.provideService(RegistrationLabel, "invocation")
+          )
+          assert.deepStrictEqual(result.contents, [{ uri: "file:///owner", text: expectedOwner }])
+        }))
+
+      it.effect("should use the current request when a resource template was registered by another client", () =>
+        Effect.gen(function*() {
+          const server = yield* makeRegisteredServer
+          const result = yield* server.findResource("file:///owners/bob").pipe(
+            Effect.provideService(McpSchema.McpServerClient, bob),
+            Effect.provideService(RegistrationLabel, "invocation")
+          )
+          assert.deepStrictEqual(result.contents, [{ uri: "file:///owners/bob", text: expectedOwner }])
+        }))
+
+      it.effect("should use the current request when a prompt was registered by another client", () =>
+        Effect.gen(function*() {
+          const server = yield* makeRegisteredServer
+          const result = yield* server.getPromptResult({ name: "owner", arguments: { name: "bob" } }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, bob),
+            Effect.provideService(RegistrationLabel, "invocation")
+          )
+          assert.deepStrictEqual(result.messages, [{ role: "user", content: { type: "text", text: expectedOwner } }])
+        }))
+
+      it.effect("should use the current request when a resource completion was registered by another client", () =>
+        Effect.gen(function*() {
+          const server = yield* makeRegisteredServer
+          const result = yield* server.completion({
+            ref: { type: "ref/resource", uri: "file:///owners/{param0}" },
+            argument: { name: "param0", value: "b" }
+          }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, bob),
+            Effect.provideService(RegistrationLabel, "invocation")
+          )
+          assert.deepStrictEqual(result.completion.values, [expectedOwner])
+        }))
+
+      it.effect("should use the current request when a prompt completion was registered by another client", () =>
+        Effect.gen(function*() {
+          const server = yield* makeRegisteredServer
+          const result = yield* server.completion({
+            ref: { type: "ref/prompt", name: "owner" },
+            argument: { name: "name", value: "b" }
+          }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, bob),
+            Effect.provideService(RegistrationLabel, "invocation")
+          )
+          assert.deepStrictEqual(result.completion.values, [expectedOwner])
+        }))
+
+      it.effect("should use the current request when a toolkit was registered by another client", () =>
+        Effect.gen(function*() {
+          const server = yield* makeRegisteredServer
+          const result = yield* server.callTool({ name: "owner" }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, bob),
+            Effect.provideService(RegistrationLabel, "invocation")
+          )
+          assert.strictEqual(result.isError, false)
+          assert.strictEqual(result.structuredContent, expectedOwner)
+        }))
+    })
+
     it.effect("should complete notification-emitting tools without a running transport", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
