@@ -2646,8 +2646,8 @@ const handleFileProcess = (options: FileOptionsReq) => {
   })
 }
 
-interface SelectOptionsReq<A> extends Omit<OptionsReq<SelectOptions<A>>, "message"> {
-  readonly message?: string | undefined
+interface SelectOptionsReq<A> extends SelectOptions<A> {
+  readonly maxPerPage: number
 }
 interface MultiSelectOptionsReq extends MultiSelectOptions {}
 
@@ -3214,9 +3214,6 @@ type AutoCompleteState = {
   readonly filtered: ReadonlyArray<number>
 }
 
-interface SelectOptionsReq<A> extends Omit<OptionsReq<SelectOptions<A>>, "message"> {
-  readonly message?: string | undefined
-}
 interface AutoCompleteOptionsReq<A> extends OptionsReq<AutoCompleteOptions<A>> {}
 
 const filterAutoCompleteChoices = <A>(choices: ReadonlyArray<SelectChoice<A>>, query: string) => {
