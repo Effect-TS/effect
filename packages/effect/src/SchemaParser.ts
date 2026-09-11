@@ -109,18 +109,7 @@ export function makeOption<S extends Schema.Constraint>(schema: S) {
  * @since 4.0.0
  */
 export function make<S extends Schema.Constraint>(schema: S) {
-  const parser = makeEffect(schema)
-  return (input: S["~type.make.in"], options?: Schema.MakeOptions): S["Type"] => {
-    const exit = Effect.runSyncExit(parser(input, options))
-    if (Exit.isSuccess(exit)) {
-      return exit.value
-    }
-    const issue = InternalSchemaCause.getSchemaIssueOrThrow(
-      exit.cause,
-      "Constructor adapter can only throw schema issues"
-    )
-    throw new Error("Schema validation failed", { cause: issue })
-  }
+  return makeConstructorSync<S["Type"], S["~type.make.in"]>(SchemaAST.toType(schema.ast))
 }
 
 /**
@@ -153,21 +142,19 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
 /** @internal */
 export function _is<T>(ast: SchemaAST.AST) {
   const typeAST = SchemaAST.toType(ast)
-  const options = SchemaAST.defaultParseOptions
-  let parser: ReturnType<typeof asExit<T, unknown, never>> | undefined
-  let initialized = false
-  let guard: CompilerRegistry.Entry["is"]
+  let entry: CompilerRegistry.Entry | undefined
+  let parser: Parser | undefined
+  let guard: CompilerRegistry.Entry["is"] | null
   return <I>(input: I): input is I & T => {
-    if (!initialized) {
-      const entry = CompilerRegistry.resolve(typeAST)
-      guard = entry.is
+    if (guard === undefined) {
+      entry = CompilerRegistry.resolve(typeAST)
+      guard = entry.is ?? null
       // A value-producing validator can return the invalid symbol as valid data.
       // Without a boolean validator, use the ordinary diagnostic fallback too.
-      initialized = true
     }
-    if (guard !== undefined) {
+    if (guard !== null) {
       try {
-        return guard(input, options)
+        return guard(input, SchemaAST.defaultParseOptions)
       } catch (error) {
         InternalSchemaCause.getSchemaIssueOrThrow(
           Cause.die(error),
@@ -176,7 +163,8 @@ export function _is<T>(ast: SchemaAST.AST) {
         return false
       }
     }
-    const exit = (parser ??= asExit(run<T, never>(typeAST)))(input, options)
+    const result = (parser ??= entry!.parser)(input, SchemaAST.defaultParseOptions)
+    const exit = Effect.runSyncExit(parserResult<T, never>(result, input))
     if (Exit.isSuccess(exit)) {
       return true
     }
@@ -948,6 +936,22 @@ export function run<T, R>(ast: SchemaAST.AST) {
   return runWithCompiler<T, R>(normalCompiler, ast)
 }
 
+function parserResult<T, R>(
+  result: Effect.Effect<unknown, SchemaIssue.Issue, any>,
+  input: unknown
+): Effect.Effect<T, SchemaIssue.Issue, R> {
+  if (result === InternalParser.sameExit) {
+    return Effect.succeed(input) as Effect.Effect<T, SchemaIssue.Issue, R>
+  }
+  if (!effectIsExit(result)) {
+    return Effect.flatMapEager(result, getValue)
+  }
+  return (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args] ===
+      InternalParser.missing
+    ? getValue(InternalParser.missing)
+    : result as Effect.Effect<T, SchemaIssue.Issue, R>
+}
+
 function runWithCompiler<T, R>(compiler: Compiler, ast: SchemaAST.AST) {
   let parser: Parser
   return (input: unknown, options?: SchemaAST.ParseOptions): Effect.Effect<T, SchemaIssue.Issue, R> => {
@@ -1026,6 +1030,7 @@ function makeSync<T>(
 ): (input: unknown, options?: SchemaAST.ParseOptions) => T {
   let entry: CompilerRegistry.Entry | undefined
   let detailed: ((input: unknown, options?: SchemaAST.ParseOptions) => T) | undefined
+  let parser: Parser | undefined
   return (input, overrideOptions) => {
     entry ??= CompilerRegistry.resolve(ast)
     const parseOptions = options === undefined
@@ -1042,6 +1047,10 @@ function makeSync<T>(
       }
       if (output !== CompilerRegistry.invalid) return output as T
     }
+    if (entry.source === undefined) {
+      const result = (parser ??= entry.decodeEffect)(input, parseOptions)
+      return runSync(parserResult<T, never>(result, input), "Sync adapter can only throw schema issues")
+    }
     return (detailed ??= asSync(runWithCompiler<T, never>(() => entry!.decodeEffect, ast)))(input, parseOptions)
   }
 }
@@ -1057,6 +1066,30 @@ function asSync<T, E>(
     }
     const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Sync adapter can only throw schema issues")
     throw new Error("Schema validation failed", { cause: issue })
+  }
+}
+
+function runSync<T>(effect: Effect.Effect<T, SchemaIssue.Issue>, message: string): T {
+  const exit = Effect.runSyncExit(effect)
+  if (Exit.isSuccess(exit)) {
+    return exit.value
+  }
+  const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, message)
+  throw new Error("Schema validation failed", { cause: issue })
+}
+
+function makeConstructorSync<T, E>(
+  ast: SchemaAST.AST
+): (input: E, options?: Schema.MakeOptions) => T {
+  let entry: CompilerRegistry.Entry | undefined
+  let parser: Parser | undefined
+  return (input, options) => {
+    entry ??= CompilerRegistry.resolve(ast)
+    const parseOptions = options?.disableChecks
+      ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
+      : options?.parseOptions ?? SchemaAST.defaultParseOptions
+    const result = (parser ??= entry.makeEffect)(input, parseOptions)
+    return runSync(parserResult<T, never>(result, input), "Constructor adapter can only throw schema issues")
   }
 }
 

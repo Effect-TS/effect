@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs"
 import os from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import process from "node:process"
 import { materializeFixture } from "./materialize.mts"
 import { analyzePairs } from "./stats.mts"
@@ -90,6 +90,22 @@ const createWorktree = (runRoot, name, sha) => {
   return path
 }
 
+const applyWorktreeChanges = (path, untracked) => {
+  const diff = runGit(["diff", "--binary", "HEAD", "--"])
+  if (diff !== "") {
+    const result = run("git", ["apply", "--binary", "-"], { cwd: path, input: `${diff}\n` })
+    if (result.error) throw result.error
+    if (result.status !== 0) {
+      throw new Error(`${result.stdout}${result.stderr}`.trim())
+    }
+  }
+  for (const file of untracked) {
+    const target = join(path, file.path)
+    mkdirSync(dirname(target), { recursive: true })
+    cpSync(join(repoRoot, file.path), target, { recursive: true })
+  }
+}
+
 const worktreeState = () => {
   const diff = runGit(["diff", "--binary", "HEAD", "--"])
   const untrackedOutput = runGit([
@@ -136,16 +152,13 @@ const main = () => {
   try {
     const baseRoot = createWorktree(runRoot, "base", baseSha)
     worktrees.push(baseRoot)
-    const headRoot = options.head === "worktree"
-      ? repoRoot
-      : createWorktree(runRoot, "head", headSha)
-    if (headRoot !== repoRoot) worktrees.push(headRoot)
+    const headRoot = createWorktree(runRoot, "head", headSha)
+    worktrees.push(headRoot)
+    if (options.head === "worktree") applyWorktreeChanges(headRoot, state.untracked)
 
     for (const fixture of selected) {
       const baseFixturePath = materializeFixture(baseRoot, fixture)
-      const headFixturePath = headRoot === repoRoot
-        ? fixture.fixturePath
-        : materializeFixture(headRoot, fixture)
+      const headFixturePath = materializeFixture(headRoot, fixture)
       const baseCalibration = calibrateFixture(fixture, defaults, baseFixturePath)
       const headCalibration = calibrateFixture(fixture, defaults, headFixturePath)
       const batchSize = Math.max(baseCalibration.batchSize, headCalibration.batchSize)
