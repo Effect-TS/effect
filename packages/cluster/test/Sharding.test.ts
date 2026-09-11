@@ -1,5 +1,9 @@
 import type { Runner, ShardId } from "@effect/cluster"
 import {
+  ClusterError,
+  ClusterSchema,
+  Entity,
+  EntityAddress,
   EntityId,
   MachineId,
   MessageStorage,
@@ -10,14 +14,20 @@ import {
   ShardId as ShardIdModule,
   Sharding,
   ShardingConfig,
-  Snowflake
+  Snowflake,
+  SqlMessageStorage
 } from "@effect/cluster"
+import { Rpc } from "@effect/rpc"
+import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import {
   Array,
   Cause,
   Chunk,
+  Clock,
+  Context,
   Effect,
+  ExecutionStrategy,
   Exit,
   Fiber,
   FiberId,
@@ -25,11 +35,17 @@ import {
   Mailbox,
   MutableRef,
   Option,
+  Schema,
+  Scope,
   Stream,
-  TestClock
+  TestClock,
+  TestServices
 } from "effect"
-import type { Clock } from "effect"
+import { EntityReaper } from "../src/internal/entityReaper.js"
+import { ResourceRef } from "../src/internal/resourceRef.js"
 import * as RunnerHealth from "../src/RunnerHealth.js"
+import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
+import { makeAckChunk, makeChunkReply, makeRequest, StreamRpc, StreamTest } from "./fixtures/message-storage.js"
 import {
   CallerId,
   ContextBleedEntity,
@@ -972,3 +988,561 @@ const TestSharding = TestShardingWithoutStorage.pipe(
 )
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
+
+describe("entity registration and outgoing requests", () => {
+  const TestShardingConfig = ShardingConfig.layer({
+    entityMailboxCapacity: 10,
+    entityTerminationTimeout: 0,
+    entityMessagePollInterval: 5000,
+    sendRetryInterval: 100
+  })
+  const TestSharding = TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.Default),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(TestShardingConfig)
+  )
+
+  it.effect("uses services provided when registering an entity", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      yield* sharding.registerEntity(RegistrationContextEntity, RegistrationContextHandlers).pipe(
+        Effect.provideService(RegistrationContext, "registration")
+      )
+      yield* TestClock.adjust(1)
+
+      const client = (yield* RegistrationContextEntity.client)("1")
+      assert.strictEqual(yield* client.Read(), "registration")
+    }).pipe(
+      Effect.provide(TestSharding),
+      Effect.provideService(RegistrationContext, "construction"),
+      Effect.scoped
+    ))
+
+  class RegistrationContext
+    extends Context.Tag("effect/test/cluster/RegistrationContext")<RegistrationContext, string>()
+  {}
+
+  const RegistrationContextEntity = Entity.make("RegistrationContextEntity", [
+    Rpc.make("Read", { success: Schema.String }).annotate(ClusterSchema.Persisted, false)
+  ])
+
+  const RegistrationContextHandlers = Effect.map(
+    RegistrationContext,
+    (value) => RegistrationContextEntity.of({ Read: () => Effect.succeed(value) })
+  )
+
+  it.effect("holds durable messages while entity layers are still building", () =>
+    Effect.gen(function*() {
+      const config = ShardingConfig.layer({
+        entityMailboxCapacity: 10,
+        entityRegistrationTimeout: 6000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 100,
+        sendRetryInterval: 100,
+        refreshAssignmentsInterval: 100
+      })
+      const env = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const delayedEnv = TestEntityNoState.pipe(
+        Layer.provide(Layer.effectDiscard(Effect.sleep(10_000))),
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        yield* client.RequestWithKey({ key: "slow-registration" }).pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+      }).pipe(
+        Effect.provide(env),
+        Effect.scoped
+      )
+
+      assert.strictEqual(driver.journal.length, 1)
+      assert.strictEqual(driver.replyIds.size, 0)
+      assert.strictEqual(driver.unprocessed.size, 1)
+
+      const fiber = yield* Effect.never.pipe(
+        Effect.provide(delayedEnv),
+        Effect.scoped,
+        Effect.fork
+      )
+
+      yield* TestClock.adjust(7500)
+      assert.strictEqual(driver.replyIds.size, 0)
+      assert.strictEqual(driver.unprocessed.size, 1)
+
+      yield* TestClock.adjust(2500)
+      yield* state.messages.offer(void 0)
+      yield* TestClock.adjust(100)
+
+      assert.strictEqual(driver.replyIds.size, 1)
+      assert.strictEqual(driver.unprocessed.size, 0)
+      yield* Fiber.interrupt(fiber)
+    }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+      Layer.provide(ShardingConfig.layer({})),
+      Layer.merge(TestEntityState.Default)
+    ))))
+
+  it.effect("volatile discard returns while the handler is still processing", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const client = (yield* TestEntity.client)("discard")
+      const result = yield* client.NeverVolatile(void 0, { discard: true }).pipe(
+        Effect.timeoutOption(100),
+        TestServices.provideLive
+      )
+      assert(Option.isSome(result), "volatile discard waited for the handler reply")
+      assert.isUndefined(result.value)
+      assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(1))
+    }).pipe(Effect.provide(TestSharding)))
+  for (const persisted of [false, true]) {
+    for (const discard of [false, true]) {
+      for (const preemptiveShutdown of [false, true]) {
+        it.effect(`settles outgoing sends after shutdown (persisted=${persisted}, discard=${discard}, preemptive=${preemptiveShutdown})`, () =>
+          Effect.gen(function*() {
+            const storage = yield* MessageStorage.MessageStorage
+            const rpc = Rpc.make("ShutdownPing").annotate(ClusterSchema.Persisted, persisted)
+            const request = yield* makeRequest({ rpc, payload: undefined })
+            const scope = yield* Scope.make()
+            const context = yield* Layer.build(Sharding.layer.pipe(
+              Layer.provide(RunnerStorage.layerMemory),
+              Layer.provide(RunnerHealth.layerNoop),
+              Layer.provide(Runners.layerNoop),
+              Layer.provide(ShardingConfig.layer({
+                runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+                shardsPerGroup: 1,
+                entityTerminationTimeout: 0,
+                sendRetryInterval: 10,
+                preemptiveShutdown
+              }))
+            )).pipe(Scope.extend(scope))
+            const sharding = Context.get(context, Sharding.Sharding)
+            yield* TestClock.adjust(1)
+            yield* Scope.close(scope, Exit.void)
+            assert.isTrue(yield* sharding.isShutdown)
+            const result = yield* sharding.sendOutgoing(request, discard).pipe(
+              Effect.fork,
+              Effect.flatMap(Fiber.await),
+              Effect.timeoutOption(100),
+              TestServices.provideLive
+            )
+            assert(Option.isSome(result), "outgoing send did not settle after shutdown")
+            if (discard) {
+              assert(Exit.isSuccess(result.value))
+            } else {
+              assert(Exit.isFailure(result.value))
+              if (persisted) {
+                assert(Cause.isInterruptedOnly(result.value.cause))
+              } else {
+                assert.instanceOf(Cause.squash(result.value.cause), ClusterError.EntityNotAssignedToRunner)
+              }
+            }
+            assert.strictEqual(
+              (yield* storage.unprocessedMessages([request.envelope.address.shardId])).length,
+              persisted ? 1 : 0
+            )
+          }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+            Layer.provideMerge(Snowflake.layerGenerator),
+            Layer.provide(ShardingConfig.layerDefaults)
+          ))))
+      }
+    }
+  }
+
+  it.scoped("forwards user interrupts from a fiber that previously rebuilt a resource", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+      const ref = yield* ResourceRef.from(yield* Effect.scope, () => Effect.succeed(1))
+      yield* ref.unsafeRebuild()
+      const client = (yield* TestEntity.client)("after-rebuild")
+      const request = yield* Effect.fork(client.Never())
+      yield* TestClock.adjust(1)
+      yield* Fiber.interrupt(request)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "Interrupt").length, 1)
+      assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(1))
+    }).pipe(Effect.provide(TestSharding)))
+
+  for (const duringTeardown of [false, true]) {
+    it.effect(`forwards persisted cancellation in another Sharding (during teardown=${duringTeardown})`, () =>
+      Effect.gen(function*() {
+        const teardownStarted = yield* Effect.makeLatch()
+        const releaseTeardown = yield* Effect.makeLatch()
+        const callerFinished = yield* Effect.makeLatch()
+        const caller = Entity.make("TeardownIsolationCaller", [
+          Rpc.make("Address", { success: EntityAddress.EntityAddress }),
+          Rpc.make("Run")
+        ]).annotateRpcs(ClusterSchema.Persisted, false)
+        const makeLayer = (holdTeardown: boolean) =>
+          caller.toLayer(Effect.gen(function*() {
+            const address = yield* Entity.CurrentAddress
+            const client = (yield* TestEntity.client)("target")
+            if (holdTeardown) {
+              yield* Effect.addFinalizer(() => teardownStarted.open.pipe(Effect.andThen(releaseTeardown.await)))
+            }
+            return {
+              Address: () => Effect.succeed(address),
+              Run: () => client.Never().pipe(Effect.orDie, Effect.ensuring(callerFinished.open))
+            }
+          })).pipe(Layer.provideMerge(TestSharding))
+        const scope = yield* Effect.scope
+        const closingScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
+        const closingContext = yield* Layer.build(makeLayer(true)).pipe(Scope.extend(closingScope))
+        const activeContext = yield* Layer.build(makeLayer(false))
+        const closingSharding = Context.get(closingContext, Sharding.Sharding)
+        const activeSharding = Context.get(activeContext, Sharding.Sharding)
+        const driver = Context.get(activeContext, MessageStorage.MemoryDriver)
+        const state = Context.get(activeContext, TestEntityState)
+        assert.notStrictEqual(closingSharding, activeSharding)
+        assert.notStrictEqual(Context.get(closingContext, MessageStorage.MemoryDriver), driver)
+        yield* TestClock.adjust(1)
+        const closingClient = (yield* caller.client.pipe(Effect.provide(closingContext)))("same-id")
+        const activeClient = (yield* caller.client.pipe(Effect.provide(activeContext)))("same-id")
+        assert.deepStrictEqual(yield* closingClient.Address(), yield* activeClient.Address())
+        const request = yield* activeClient.Run().pipe(Effect.fork)
+        const envelope = yield* state.envelopes.take
+        assert.strictEqual(envelope.tag, "Never")
+        assert.strictEqual(driver.journal.length, 1)
+        assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(0))
+
+        const closing = yield* Scope.close(closingScope, Exit.void).pipe(Effect.fork)
+        yield* Effect.gen(function*() {
+          yield* TestClock.adjust(1)
+          yield* teardownStarted.await
+          assert.isNull(closing.unsafePoll(), "the other Sharding must be paused inside entity teardown")
+          if (!duringTeardown) {
+            yield* releaseTeardown.open
+            yield* Fiber.join(closing)
+          }
+          assert.isFalse(yield* activeSharding.isShutdown)
+          yield* Fiber.interrupt(request)
+          yield* callerFinished.await
+          yield* TestClock.adjust(1)
+          const interrupts = driver.journal.filter((entry) =>
+            entry._tag === "Interrupt" && entry.requestId === String(envelope.requestId)
+          )
+          assert.deepStrictEqual({
+            persistedInterrupts: interrupts.length,
+            handlerInterrupts: state.interrupts.unsafeSize()
+          }, {
+            persistedInterrupts: 1,
+            handlerInterrupts: Option.some(1)
+          })
+        }).pipe(Effect.ensuring(releaseTeardown.open.pipe(Effect.andThen(Fiber.join(closing)))))
+      }).pipe(Effect.scoped))
+  }
+})
+
+describe("registration", () => {
+  const config = ShardingConfig.layer({
+    shardsPerGroup: 1,
+    entityRegistrationTimeout: 6000,
+    entityTerminationTimeout: 0,
+    entityMessagePollInterval: 100,
+    refreshAssignmentsInterval: 100,
+    sendRetryInterval: 10
+  })
+  const sharding = Sharding.layer.pipe(
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide(config)
+  )
+  const rpc = Rpc.make("Ping", { payload: { id: Schema.Number }, success: Schema.String }).annotate(
+    ClusterSchema.Persisted,
+    true
+  )
+  const entity = Entity.make("test", [rpc])
+
+  for (const backend of ["memory", "sqlite"] as const) {
+    const storage = (backend === "memory" ? MessageStorage.layerMemory : SqlMessageStorage.layer.pipe(
+      Layer.provide(SqliteClient.layer({ filename: ":memory:" }))
+    )).pipe(Layer.provideMerge(Snowflake.layerGenerator), Layer.provide(config))
+
+    it.effect(`${backend} holds persisted rows through slow registration`, () =>
+      Effect.gen(function*() {
+        const store = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest({ rpc })
+        yield* store.saveRequest(request)
+        const delayed = entity.toLayer({ Ping: () => Effect.succeed("done") }).pipe(
+          Layer.provide(Layer.effectDiscard(Effect.sleep(10_000))),
+          Layer.provideMerge(sharding)
+        )
+        const owner = yield* Effect.never.pipe(Effect.provide(delayed), Effect.fork)
+        yield* TestClock.adjust(7500)
+        assert.deepStrictEqual(yield* store.repliesFor([request]), [])
+        yield* TestClock.adjust(3000)
+        const replies = yield* store.repliesFor([request])
+        assert.strictEqual(replies.length, 1)
+        assert(replies[0]._tag === "WithExit")
+        assert.deepStrictEqual(replies[0].exit, Exit.succeed("done"))
+        yield* Fiber.interrupt(owner)
+      }).pipe(Effect.scoped, Effect.provide(storage)))
+
+    it.effect(`${backend} eventually fails a request whose entity never registers`, () =>
+      Effect.gen(function*() {
+        const store = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest({ rpc })
+        yield* store.saveRequest(request)
+        const owner = yield* Effect.never.pipe(Effect.provide(sharding), Effect.fork)
+        yield* TestClock.adjust(7500)
+        assert.deepStrictEqual(yield* store.repliesFor([request]), [], "allow the two-interval fallback")
+        yield* TestClock.adjust(6000)
+        const replies = yield* store.repliesFor([request])
+        assert.strictEqual(replies.length, 1)
+        assert(replies[0]._tag === "WithExit" && Exit.isFailure(replies[0].exit))
+        assert.include(Cause.pretty(replies[0].exit.cause), "not registered")
+        yield* Fiber.interrupt(owner)
+      }).pipe(Effect.scoped, Effect.provide(storage)))
+  }
+
+  it.effect("registration cannot replace the runner's clock, config, reaper or snowflake generator", () =>
+    Effect.gen(function*() {
+      const service = yield* Sharding.Sharding
+      const actualClock = yield* Effect.clock
+      const foreignClock = { ...actualClock, unsafeCurrentTimeMillis: () => -1 }
+      const foreignConfig = { ...(yield* ShardingConfig.ShardingConfig), entityMailboxCapacity: 999 }
+      const foreignReaper = new EntityReaper({ register: () => Effect.die("foreign reaper") })
+      const foreignGenerator = {
+        ...(yield* Snowflake.Generator),
+        unsafeNext: () => {
+          throw new Error("foreign generator")
+        }
+      }
+      const protectedEntity = Entity.make("ProtectedRegistration", [
+        Rpc.make("Read", { success: Schema.Boolean }).annotate(ClusterSchema.Persisted, false)
+      ])
+      yield* service.registerEntity(
+        protectedEntity,
+        Effect.gen(function*() {
+          const ownConfig = yield* ShardingConfig.ShardingConfig
+          const ownClock = yield* Effect.clock
+          const reaper = yield* EntityReaper
+          const generator = yield* Snowflake.Generator
+          return {
+            Read: () =>
+              Effect.succeed(
+                ownConfig !== foreignConfig && ownClock !== foreignClock && reaper !== foreignReaper &&
+                  generator !== foreignGenerator
+              )
+          }
+        })
+      ).pipe(
+        Effect.provideService(Clock.Clock, foreignClock),
+        Effect.provideService(ShardingConfig.ShardingConfig, foreignConfig),
+        Effect.provideService(EntityReaper, foreignReaper),
+        Effect.provideService(Snowflake.Generator, foreignGenerator)
+      )
+      yield* TestClock.adjust(1)
+      assert.isTrue(yield* (yield* protectedEntity.client)("one").Read())
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(sharding),
+      Effect.provide(MessageStorage.layerMemory.pipe(
+        Layer.provideMerge(Snowflake.layerGenerator),
+        Layer.provideMerge(config)
+      ))
+    ))
+})
+
+describe("shutdown", () => {
+  for (const persisted of [false, true]) {
+    for (const discard of [false, true]) {
+      for (const preemptiveShutdown of [false, true]) {
+        it.effect(
+          `finalizing entity settles nested request (persisted=${persisted}, discard=${discard}, preemptive=${preemptiveShutdown})`,
+          () =>
+            Effect.gen(function*() {
+              const ready = yield* Effect.makeLatch()
+              let finalized = false
+              const receiver = Entity.make("FinalizerReceiver", [
+                Rpc.make("Ping").annotate(ClusterSchema.Persisted, persisted)
+              ])
+              const sender = Entity.make("FinalizerSender", [Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)])
+              const env = Layer.merge(
+                receiver.toLayer({ Ping: () => Effect.void }),
+                sender.toLayer(Effect.gen(function*() {
+                  const client = (yield* receiver.client)("peer")
+                  yield* Effect.addFinalizer(() =>
+                    client.Ping(undefined, { discard }).pipe(
+                      Effect.exit,
+                      Effect.tap(() =>
+                        Effect.sync(() => {
+                          finalized = true
+                        })
+                      )
+                    )
+                  )
+                  return { Arm: () => Effect.void }
+                }))
+              ).pipe(
+                Layer.provideMerge(Sharding.layer),
+                Layer.provide(RunnerStorage.layerMemory),
+                Layer.provide(RunnerHealth.layerNoop),
+                Layer.provide(Runners.layerNoop),
+                Layer.provideMerge(MessageStorage.layerMemory),
+                Layer.provide(
+                  ShardingConfig.layer({
+                    shardsPerGroup: 1,
+                    entityTerminationTimeout: 0,
+                    entityMessagePollInterval: 20,
+                    refreshAssignmentsInterval: 20,
+                    sendRetryInterval: 10,
+                    preemptiveShutdown
+                  })
+                )
+              )
+              const fiber = yield* Effect.gen(function*() {
+                const sharding = yield* Sharding.Sharding
+                const shard = sharding.getShardId(EntityId.make("one"), "default")
+                while (!sharding.hasShardId(shard)) yield* Effect.sleep(5)
+                yield* (yield* sender.client)("one").Arm()
+                yield* ready.open
+                return yield* Effect.never
+              }).pipe(Effect.provide(env), Effect.forkDaemon)
+              yield* ready.await.pipe(Effect.timeout("3 seconds"))
+              fiber.unsafeInterruptAsFork(FiberId.none)
+              const exit = yield* Fiber.await(fiber).pipe(Effect.timeoutOption("3 seconds"))
+              assert(Option.isSome(exit), "closing a finalizing entity left an outgoing retry loop running")
+              assert.isTrue(finalized)
+            }).pipe(TestServices.provideLive),
+          10_000
+        )
+      }
+    }
+  }
+
+  for (const persisted of [false, true]) {
+    it.effect(`abandoned AckChunk returns a routing error (persisted=${persisted})`, () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const rpc = StreamRpc.annotate(ClusterSchema.Persisted, persisted)
+        const request = yield* makeRequest({ rpc, payload: new StreamTest({ id: 1 }) })
+        const scope = yield* Scope.make()
+        const context = yield* Layer.build(Sharding.layer.pipe(
+          Layer.provide(RunnerStorage.layerMemory),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(Runners.layerNoop),
+          Layer.provide(ShardingConfig.layer({ entityTerminationTimeout: 0, sendRetryInterval: 10 }))
+        )).pipe(Scope.extend(scope))
+        yield* TestClock.adjust(1)
+        yield* Scope.close(scope, Exit.void)
+        yield* storage.saveRequest(request)
+        const chunk = yield* makeChunkReply(request)
+        yield* storage.saveReply(chunk)
+        const ack = yield* makeAckChunk(request, chunk)
+        const result = yield* Context.get(context, Sharding.Sharding).sendOutgoing(ack, false).pipe(
+          Effect.exit,
+          Effect.timeoutOption(200),
+          TestServices.provideLive
+        )
+        assert(Option.isSome(result), "AckChunk retry loop did not settle")
+        assert(Exit.isFailure(result.value))
+        assert.instanceOf(Cause.squash(result.value.cause), ClusterError.EntityNotAssignedToRunner)
+      }).pipe(Effect.provide(MemoryLive)))
+  }
+
+  it.effect("RPC cleanup does not journal cancellation after a marked abandonment while Sharding is alive", () =>
+    Effect.gen(function*() {
+      const cause = yield* abandonmentCause
+      const storage = yield* MessageStorage.MessageStorage
+      const driver = yield* MessageStorage.MemoryDriver
+      const noop = yield* Runners.makeNoop.pipe(Effect.provide(ShardingConfig.layerDefaults))
+      const entity = Entity.make("RpcAbandonment", [Rpc.make("Run").annotate(ClusterSchema.Persisted, true)])
+      const layer = Sharding.layer.pipe(
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(
+          Layer.succeed(Runners.Runners, {
+            ...noop,
+            notify: ({ message }) =>
+              (message._tag === "OutgoingRequest" ? storage.saveRequest(message) : storage.saveEnvelope(message)).pipe(
+                Effect.orDie,
+                Effect.andThen(Effect.failCause(cause))
+              )
+          })
+        ),
+        Layer.provide(ShardingConfig.layer({ runnerAddress: Option.none(), sendRetryInterval: 10 }))
+      )
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const exit = yield* (yield* entity.client)("one").Run().pipe(Effect.fork, Effect.flatMap(Fiber.await))
+        assert(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause))
+        assert.isFalse(yield* sharding.isShutdown)
+        assert.deepStrictEqual(driver.journal.map((e) => e._tag), ["Request"])
+      }).pipe(Effect.provide(layer))
+    }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
+})
+
+describe("nested teardown", () => {
+  const layer = TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.Default),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(
+      ShardingConfig.layer({
+        shardsPerGroup: 1,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 100,
+        refreshAssignmentsInterval: 100,
+        sendRetryInterval: 10,
+        preemptiveShutdown: false
+      })
+    )
+  )
+
+  for (const reason of ["idle reap", "registration scope close"]) {
+    it.effect(`nested persisted call survives caller ${reason}`, () =>
+      Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const state = yield* TestEntityState
+        const scope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
+        const caller = Entity.make("NestedTeardownCaller", [Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)])
+        yield* sharding.registerEntity(
+          caller,
+          Effect.gen(function*() {
+            yield* (yield* TestEntity.client)("nested-target").Never().pipe(Effect.forkScoped)
+            return { Arm: () => Effect.void }
+          }),
+          { maxIdleTime: 1 }
+        ).pipe(Scope.extend(scope))
+        yield* TestClock.adjust(1)
+        yield* (yield* caller.client)("one").Arm()
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(1))
+        if (reason === "registration scope close") {
+          yield* Scope.close(scope, Exit.void)
+        } else {
+          for (let i = 0; i < 12 && (yield* sharding.activeEntityCount) > 1; i++) yield* TestClock.adjust(5000)
+        }
+        assert.strictEqual(yield* sharding.activeEntityCount, 1)
+        assert.isFalse(yield* sharding.isShutdown)
+        assert.strictEqual(driver.journal.filter((e) => e._tag === "Interrupt").length, 0)
+        assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(0))
+      }).pipe(Effect.scoped, Effect.provide(layer)))
+  }
+})
