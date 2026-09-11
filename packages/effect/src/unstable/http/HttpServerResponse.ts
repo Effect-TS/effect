@@ -991,7 +991,11 @@ export const toWeb = (
       headers.append("set-cookie", header)
     }
   }
-  if (options?.withoutBody) {
+  const omitBody = options?.withoutBody === true ||
+    response.status === 204 ||
+    response.status === 205 ||
+    response.status === 304
+  if (omitBody) {
     return new Response(undefined, {
       status: response.status,
       statusText: response.statusText as string,

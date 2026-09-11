@@ -5,6 +5,16 @@ import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } f
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpServerResponse", () => {
+  it("toWeb drops the body for 204, 205, and 304 so Node can construct the Response", () => {
+    for (const status of [204, 205, 304] as const) {
+      const web = HttpServerResponse.toWeb(
+        HttpServerResponse.text("still a body", { status })
+      )
+      assert.strictEqual(web.status, status)
+      assert.strictEqual(web.body, null)
+    }
+  })
+
   it("setHeader overrides body-derived content headers", () => {
     const response = HttpServerResponse.text("body").pipe(
       HttpServerResponse.setHeader("content-type", "text/custom"),
