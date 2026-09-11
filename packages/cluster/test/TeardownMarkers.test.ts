@@ -1,6 +1,6 @@
 import { EntityAddress, EntityId, EntityType, ShardId } from "@effect/cluster"
 import { assert, it } from "@effect/vitest"
-import { Cause, Effect, Exit, FiberId } from "effect"
+import { Cause, Effect, Exit, Fiber, FiberId } from "effect"
 import * as Abandon from "../src/internal/clusterAbandon.js"
 import * as Teardown from "../src/internal/interruptors.js"
 import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
@@ -10,6 +10,22 @@ const address = EntityAddress.make({
   entityId: EntityId.make("one"),
   shardId: ShardId.make("default", 1)
 })
+
+it.effect("abandonment respects masking and interrupts when the mask is restored", () =>
+  Effect.gen(function*() {
+    const events: Array<string> = []
+    const fiber = yield* Abandon.interrupt.pipe(
+      Effect.andThen(Effect.sync(() => events.push("inside-mask"))),
+      Effect.uninterruptible,
+      Effect.andThen(Effect.yieldNow()),
+      Effect.andThen(Effect.sync(() => events.push("outside-mask"))),
+      Effect.fork
+    )
+    const exit = yield* Fiber.await(fiber)
+    assert.deepStrictEqual(events, ["inside-mask"], "abandonment must remain pending until interruption is restored")
+    assert(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause))
+    assert.isTrue(Abandon.isCause(exit.cause))
+  }))
 
 it.effect("the storage shutdown marker survives composed causes and differs from ordinary interruption", () =>
   Effect.gen(function*() {

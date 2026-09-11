@@ -17,7 +17,103 @@ import { SocketServer } from "@effect/platform/SocketServer"
 import { Rpc, RpcSerialization } from "@effect/rpc"
 import { RpcClientError } from "@effect/rpc/RpcClientError"
 import { assert, it } from "@effect/vitest"
-import { Context, Effect, Layer, Option, Schema, TestServices } from "effect"
+import { Context, Effect, ExecutionStrategy, Exit, Layer, Option, Schema, Scope, TestServices } from "effect"
+
+it.effect("an entity finalizer delivers remote volatile discard during runner shutdown", () =>
+  Effect.gen(function*() {
+    const received: Array<number> = []
+    const delivered = yield* Effect.makeLatch()
+    let shuttingDown = false
+    let finalized = false
+    const receiver = Entity.make("ShutdownDiscardReceiver", [
+      Rpc.make("Ping", { payload: { id: Schema.Number } }).annotate(ClusterSchema.Persisted, false)
+    ]).annotate(ClusterSchema.ShardGroup, () => "receiver")
+    const sender = Entity.make("ShutdownDiscardSender", [
+      Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
+    ]).annotate(ClusterSchema.ShardGroup, () => "sender")
+    const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(RpcSerialization.layerNdjson))
+    const makeRunner = Effect.fnUntraced(function*(group: string) {
+      const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 })
+      assert(server.address._tag === "TcpAddress")
+      return SocketRunner.layer.pipe(
+        Layer.provide(Layer.succeed(SocketServer, server)),
+        Layer.provide(protocol),
+        Layer.provide(RpcSerialization.layerNdjson),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("127.0.0.1", server.address.port)),
+          availableShardGroups: ["sender", "receiver"],
+          assignedShardGroups: [group],
+          shardsPerGroup: 1,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 20,
+          sendRetryInterval: 10,
+          preemptiveShutdown: true
+        }))
+      )
+    })
+    const receiverRunner = yield* makeRunner("receiver")
+    const receiverContext = yield* Layer.build(
+      receiver.toLayer({
+        Ping: ({ payload: { id } }) =>
+          Effect.sync(() => received.push(id)).pipe(
+            Effect.andThen(id === 1 ? delivered.open : Effect.void)
+          )
+      }).pipe(Layer.provideMerge(receiverRunner))
+    )
+    const receiverSharding = Context.get(receiverContext, Sharding.Sharding)
+    const receiverShard = receiverSharding.getShardId(EntityId.make("peer"), "receiver")
+    yield* Effect.whileLoop({
+      while: () => !receiverSharding.hasShardId(receiverShard),
+      body: () => Effect.sleep(5),
+      step: () => {}
+    }).pipe(Effect.timeout("3 seconds"))
+
+    const senderRunner = yield* makeRunner("sender")
+    const senderScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
+    const senderContext = yield* Layer.build(
+      sender.toLayer(Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const client = (yield* receiver.client)("peer")
+        yield* Effect.addFinalizer(() =>
+          Effect.gen(function*() {
+            shuttingDown = yield* sharding.isShutdown
+            yield* client.Ping({ id: 1 }, { discard: true }).pipe(Effect.orDie)
+            finalized = true
+          })
+        )
+        return { Arm: () => client.Ping({ id: 0 }).pipe(Effect.orDie) }
+      })).pipe(Layer.provideMerge(senderRunner))
+    ).pipe(Scope.extend(senderScope))
+    const senderSharding = Context.get(senderContext, Sharding.Sharding)
+    const senderShard = senderSharding.getShardId(EntityId.make("one"), "sender")
+    yield* Effect.whileLoop({
+      while: () => !senderSharding.hasShardId(senderShard),
+      body: () => Effect.sleep(5),
+      step: () => {}
+    }).pipe(Effect.timeout("3 seconds"))
+    assert.isFalse(senderSharding.hasShardId(receiverShard), "the discard target must be on the other runner")
+    yield* Effect.flatMap(sender.client, (client) => client("one").Arm()).pipe(
+      Effect.provide(senderContext),
+      Effect.timeout("3 seconds")
+    )
+    assert.deepStrictEqual(received, [0], "the remote receiver must be reachable before shutdown")
+    yield* Scope.close(senderScope, Exit.void)
+    assert.isTrue(shuttingDown, "send must run inside the graceful-shutdown window")
+    assert.isTrue(finalized)
+    assert.isFalse(yield* receiverSharding.isShutdown)
+    const result = yield* delivered.await.pipe(Effect.timeoutOption("1 second"))
+    assert(Option.isSome(result), `shutdown discarded the remote message; received IDs: ${received}`)
+    assert.deepStrictEqual(received, [0, 1])
+  }).pipe(
+    Effect.scoped,
+    Effect.provide(
+      Layer.mergeAll(MessageStorage.layerMemory, RunnerStorage.layerMemory, Snowflake.layerGenerator).pipe(
+        Layer.provide(ShardingConfig.layerDefaults)
+      )
+    ),
+    TestServices.provideLive
+  ), 15_000)
 
 for (const failFirstSend of [false, true]) {
   it.effect(
