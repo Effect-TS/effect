@@ -93,6 +93,7 @@ export interface PgClientConfig {
   readonly stream?: (() => Duplex) | undefined
 
   readonly applicationName?: string | undefined
+  readonly startupParameters?: Readonly<Record<string, string>> | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined

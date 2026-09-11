@@ -656,6 +656,54 @@ describe("PgConnection in-process server", () => {
       assert.strictEqual(connection.processId, 1234)
     })))
 
+  it.live.each([
+    {
+      applicationName: "explicit-app",
+      parameter: "map-app",
+      urlName: "url-app",
+      encoding: "UTF8",
+      expected: "explicit-app"
+    },
+    { applicationName: undefined, parameter: "map-app", urlName: "url-app", encoding: "utf-8", expected: "map-app" },
+    { applicationName: undefined, parameter: undefined, urlName: "url-app", encoding: "utf8", expected: "url-app" },
+    { applicationName: undefined, parameter: "", urlName: "url-app", encoding: "UTF-8", expected: "" },
+    {
+      applicationName: undefined,
+      parameter: undefined,
+      urlName: undefined,
+      encoding: "UTF8",
+      expected: "@effect/sql-pg"
+    }
+  ])(
+    "resolves startup application name and UTF-8 encoding: %j",
+    ({ applicationName, parameter, urlName, encoding, expected }) =>
+      Effect.scoped(Effect.gen(function*() {
+        let parameters: ReadonlyMap<string, string> | undefined
+        const { port } = yield* withTcpServer((socket) => {
+          consumeFrontend(socket, (tag, message) => {
+            if (tag === undefined) {
+              parameters = startupParameters(message)
+              socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+            }
+          })
+        })
+        const url = new URL(`postgres://test@127.0.0.1:${port}/test`)
+        if (urlName !== undefined) url.searchParams.set("application_name", urlName)
+        yield* PgConnection.make({
+          url: Redacted.make(url.toString()),
+          applicationName,
+          startupParameters: {
+            ...(parameter === undefined ? {} : { APPLICATION_NAME: parameter }),
+            CLIENT_ENCODING: encoding
+          }
+        })
+        assert.strictEqual(parameters!.get("application_name"), expected)
+        assert.strictEqual(parameters!.get("client_encoding"), "UTF8")
+        assert.isFalse(parameters!.has("APPLICATION_NAME"))
+        assert.isFalse(parameters!.has("CLIENT_ENCODING"))
+      }))
+  )
+
   it.live("lets explicit fields override URL connection and startup values", () =>
     Effect.scoped(Effect.gen(function*() {
       let parameters: ReadonlyMap<string, string> | undefined
@@ -674,7 +722,13 @@ describe("PgConnection in-process server", () => {
         port,
         username: "explicit-user",
         database: "explicit-db",
-        applicationName: "explicit-app"
+        applicationName: "explicit-app",
+        startupParameters: {
+          statement_timeout: "17s",
+          search_path: "\"schema with spaces\",public",
+          "custom.greeting": "Hello, 世界! \\ = 'quoted'",
+          "custom.empty": ""
+        }
       })
 
       assert.strictEqual(connection.processId, 1234)
@@ -682,5 +736,9 @@ describe("PgConnection in-process server", () => {
       assert.strictEqual(parameters!.get("database"), "explicit-db")
       assert.strictEqual(parameters!.get("application_name"), "explicit-app")
       assert.strictEqual(parameters!.get("client_encoding"), "UTF8")
+      assert.strictEqual(parameters!.get("statement_timeout"), "17s")
+      assert.strictEqual(parameters!.get("search_path"), "\"schema with spaces\",public")
+      assert.strictEqual(parameters!.get("custom.greeting"), "Hello, 世界! \\ = 'quoted'")
+      assert.strictEqual(parameters!.get("custom.empty"), "")
     })))
 })

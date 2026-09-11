@@ -1,6 +1,6 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Queue, Stream, String } from "effect"
+import { Deferred, Effect, Fiber, Option, Queue, Redacted, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
@@ -10,6 +10,20 @@ import { PgContainer } from "./utils.ts"
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
 const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
+
+it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient startup parameters", (it) => {
+  it.effect("forwards session defaults through the client pool", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const sql = yield* PgClient.make({
+        url: Redacted.make(container.getConnectionUri()),
+        startupParameters: { statement_timeout: "17s", random_page_cost: "2.5" }
+      }).pipe(Effect.provide(Reactivity.layer))
+      const rows = yield* sql`SELECT current_setting('statement_timeout') AS timeout,
+        current_setting('random_page_cost') AS cost`
+      assert.deepStrictEqual(rows, [{ timeout: "17s", cost: "2.5" }])
+    }))
+})
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) => {
   it.effect("insert helper", () =>
