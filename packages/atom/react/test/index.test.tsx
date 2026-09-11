@@ -177,12 +177,13 @@ describe("atom-react", () => {
           </RegistryContext.Provider>
         </React.StrictMode>
       )
-      const node = registry.getNodes().get(atom)!
-      assert.strictEqual(node.listeners.size, 1)
+      const selectedNode = Array.from(registry.getNodes()).find(([candidate]) => candidate !== atom)?.[1]
+      assert.isDefined(selectedNode)
+      assert.strictEqual(selectedNode.listeners.size, 1)
 
       const callsBeforeUnmount = select.mock.calls.length
       view.unmount()
-      assert.strictEqual(node.listeners.size, 0)
+      assert.strictEqual(selectedNode.listeners.size, 0)
 
       act(() => {
         registry.set(atom, 2)

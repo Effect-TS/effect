@@ -58,71 +58,6 @@ function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
 }
 
-interface SelectionInstance<A> {
-  hasValue: boolean
-  value: A
-}
-
-const identity = <A>(value: A): A => value
-
-function useStoreWithSelector<A, B>(
-  registry: AtomRegistry.AtomRegistry,
-  atom: Atom.Atom<A>,
-  select: (_: A) => B,
-  equals: (previous: B, next: B) => boolean
-): B {
-  const store = makeStore(registry, atom)
-  const instanceRef = React.useRef<SelectionInstance<B> | null>(null)
-  if (instanceRef.current === null) {
-    instanceRef.current = { hasValue: false, value: undefined as B }
-  }
-  const instance = instanceRef.current
-
-  const [getSnapshot, getServerSnapshot] = React.useMemo(() => {
-    let hasMemo = false
-    let memoizedSnapshot: A
-    let memoizedSelection: B
-
-    const memoizedSelect = (snapshot: A): B => {
-      if (!hasMemo) {
-        const selection = select(snapshot)
-        let selected = selection
-        if (instance.hasValue && equals(instance.value, selection)) {
-          selected = instance.value
-        }
-        hasMemo = true
-        memoizedSnapshot = snapshot
-        memoizedSelection = selected
-        return selected
-      }
-      if (Object.is(memoizedSnapshot, snapshot)) {
-        return memoizedSelection
-      }
-      const selection = select(snapshot)
-      if (equals(memoizedSelection, selection)) {
-        memoizedSnapshot = snapshot
-        return memoizedSelection
-      }
-      memoizedSnapshot = snapshot
-      memoizedSelection = selection
-      return selection
-    }
-
-    return [
-      () => memoizedSelect(store.snapshot()),
-      () => memoizedSelect(store.getServerSnapshot())
-    ] as const
-  }, [store, select, equals, instance])
-
-  const value = React.useSyncExternalStore(store.subscribe, getSnapshot, getServerSnapshot)
-  React.useEffect(() => {
-    instance.hasValue = true
-    instance.value = value
-  }, [instance, value])
-
-  return value
-}
-
 const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
 
 /**
@@ -167,9 +102,9 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  *
  * **Details**
  *
- * When a selector is provided, the hook subscribes to its result. The component
- * re-renders only when the selected value changes according to `equals`, which
- * defaults to `Object.is`. Selectors do not need stable function identity.
+ * When a selector is provided, the hook subscribes to an internally derived
+ * atom. The derived atom uses `equals`, which defaults to `Object.is`, to
+ * suppress updates when the selected value has not changed.
  *
  * @see {@link useAtom} for reading and updating a writable atom from one component
  * @see {@link useAtomRef} for reading an `AtomRef` directly
@@ -186,12 +121,14 @@ export const useAtomValue: {
   equals?: (previous: B, next: B) => boolean
 ): B => {
   const registry = React.useContext(RegistryContext)
-  return useStoreWithSelector(
-    registry,
-    atom,
-    select ?? identity as (_: A) => B,
-    equals ?? Object.is
+  const selectedAtom = React.useMemo(
+    () =>
+      select === undefined
+        ? atom
+        : Atom.map(atom, select).pipe(Atom.withEquality(equals ?? Object.is)),
+    [atom, equals, select]
   )
+  return useStore(registry, selectedAtom as Atom.Atom<B>)
 }
 
 function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): void {
@@ -413,22 +350,12 @@ const selectAsyncResult = <A, E, B>(
     ? result as unknown as AsyncResult.Failure<B, E>
     : AsyncResult.map(result, select)
 
-function atomResultOrSuspendWithSelector<A, E, B>(
+function atomResultOrSuspend<A, E>(
   registry: AtomRegistry.AtomRegistry,
   atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
-  suspendOnWaiting: boolean,
-  select: ((_: A) => B) | undefined,
-  equals: (previous: B, next: B) => boolean,
-  includeFailure: boolean
+  suspendOnWaiting: boolean
 ) {
-  const value = useStoreWithSelector(
-    registry,
-    atom,
-    select === undefined
-      ? identity as (_: AsyncResult.AsyncResult<A, E>) => AsyncResult.AsyncResult<B, E>
-      : (result) => selectAsyncResult(result, select, includeFailure),
-    select === undefined ? Object.is : selectedResultEquals(equals, includeFailure)
-  )
+  const value = useStore(registry, atom)
   if (value._tag === "Initial" || (suspendOnWaiting && value.waiting)) {
     throw atomToPromise(registry, atom, suspendOnWaiting)
   }
@@ -487,10 +414,10 @@ const selectedResultEquals = <A, E>(
  *
  * `suspendOnWaiting` defaults to `false`. When `includeFailure` is `true`, a
  * failure result is returned instead of being thrown. When `select` is
- * provided, the hook subscribes to the selected success value and uses
- * `equals`, defaulting to `Object.is`, to avoid unrelated re-renders. Changes
- * to the result variant, waiting state, or failure cause are not hidden by
- * selection equality.
+ * provided, the hook subscribes to an internally derived atom whose successful
+ * value is selected. The derived atom uses `equals`, defaulting to `Object.is`,
+ * to avoid unrelated updates. Changes to the result variant, waiting state, or
+ * failure cause are not hidden by selection equality.
  *
  * **Gotchas**
  *
@@ -535,13 +462,22 @@ export const useAtomSuspense: {
   const registry = React.useContext(RegistryContext)
   const suspendOnWaiting = options?.suspendOnWaiting ?? false
   const includeFailure = options?.includeFailure === true
-  const result = atomResultOrSuspendWithSelector(
+  const select = options?.select
+  const equals = options?.equals ?? Object.is
+  const selectedAtom = React.useMemo(
+    () =>
+      select === undefined
+        ? atom
+        : Atom.map(
+          atom,
+          (result) => selectAsyncResult(result, select, includeFailure)
+        ).pipe(Atom.withEquality(selectedResultEquals(equals, includeFailure))),
+    [atom, equals, includeFailure, select]
+  )
+  const result = atomResultOrSuspend(
     registry,
-    atom,
-    suspendOnWaiting,
-    options?.select,
-    options?.equals ?? Object.is,
-    includeFailure
+    selectedAtom as Atom.Atom<AsyncResult.AsyncResult<B, E>>,
+    suspendOnWaiting
   )
   if (result._tag === "Failure" && !includeFailure) {
     throw Cause.squash(result.cause)
