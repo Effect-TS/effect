@@ -552,8 +552,8 @@ const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
 }
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
-  const stream = (body as any).body
-  if ((body._tag === "Raw" || body._tag === "Uint8Array") && stream instanceof ReadableStream) {
+  if (body._tag === "Raw" && typeof ReadableStream !== "undefined" && body.body instanceof ReadableStream) {
+    const stream = body.body
     return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void

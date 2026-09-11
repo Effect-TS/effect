@@ -1001,9 +1001,9 @@ export const toWeb = (
       headers.append("set-cookie", header)
     }
   }
+  const body = response.body
   if (omitsBody(response, options?.withoutBody)) {
-    const body = response.body
-    if ((body._tag === "Raw" || body._tag === "Uint8Array") && body.body instanceof ReadableStream) {
+    if (body._tag === "Raw" && isReadableStream(body.body)) {
       body.body.cancel().catch(constVoid)
     }
     return new Response(undefined, {
@@ -1012,7 +1012,6 @@ export const toWeb = (
       headers
     })
   }
-  const body = response.body
   switch (body._tag) {
     case "Empty": {
       return new Response(undefined, {
