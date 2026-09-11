@@ -7,7 +7,12 @@ import * as HashSet from "effect/HashSet"
 // v3 carries interruption provenance through FiberId rather than cause annotations.
 const interruptor = globalValue("@effect/cluster/internal/clusterAbandon/interruptor", () => FiberId.unsafeMake())
 
-export const interrupt: Effect.Effect<never> = Effect.interruptible(Effect.interruptWith(interruptor))
+export const interrupt: Effect.Effect<void> = Effect.withFiberRuntime((fiber) => {
+  // Signal the fiber so recovery cannot swallow abandonment. The runtime defers
+  // the signal while masked and retains its provenance when interruption resumes.
+  fiber.unsafeInterruptAsFork(interruptor)
+  return Effect.void
+})
 
 export const isInterruptor = (id: FiberId.FiberId): boolean => HashSet.has(FiberId.ids(id), interruptor.id)
 

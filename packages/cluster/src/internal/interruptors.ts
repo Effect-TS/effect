@@ -28,6 +28,7 @@ const shardKey = (shardId: ShardId): string => `shard:${shardId.toString()}`
 
 const entityTypeKey = (entityType: string): string => `type:${entityType}`
 
+/** @internal */
 export const acquireEntity = (address: EntityAddress): void => acquire(entityKey(address))
 
 /** @internal */
