@@ -415,12 +415,24 @@ describe("Prompt.Select", () => {
       }))
 
       assert.strictEqual(result, "second")
-      const frames = toFrames(yield* MockTerminal.displayLines)
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
       assert.deepStrictEqual(frames, [
         "❯ First \n  Second ",
         "  First \n❯ Second ",
         "✔ Second\n"
       ])
+      assert.isTrue(toRawFrames(output)[1]?.startsWith(`${escape}[2K${escape}[1A${escape}[2K${escape}[G`))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps the header when message is empty", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.Select({ message: "", choices: [{ title: "First", value: "first" }] }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.strictEqual(frames[0]?.split("\n")[0], "?  › ")
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("renders a per-prompt theme across redraws", () =>
@@ -1033,12 +1045,42 @@ describe("Prompt.MultiSelect", () => {
       }))
 
       assert.deepStrictEqual(result, ["first", "second"])
-      const frames = toFrames(yield* MockTerminal.displayLines)
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
       assert.deepStrictEqual(frames, [
         "  Select All\n  Inverse Selection\n  ☐ First \n  ☐ Second ",
         "  Select None\n  Inverse Selection\n  ☒ First \n  ☒ Second ",
         "✔ First, Second\n"
       ])
+      const clearChoices = `${escape}[2K${escape}[1A`.repeat(3) + `${escape}[2K${escape}[G`
+      assert.isTrue(toRawFrames(output)[1]?.startsWith(clearChoices))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("clears validation errors without a message", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.MultiSelect({
+        min: 1,
+        choices: [
+          { title: "First", value: "first" },
+          { title: "Second", value: "second" }
+        ]
+      }))
+
+      assert.deepStrictEqual(result, ["first", "second"])
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      assert.isTrue(frames[1]?.endsWith("\n❯ At least 1 are required"))
+      assert.strictEqual(frames.at(-1), "✔ First, Second\n")
+
+      const clearError = `${escape}[1B${escape}[2K${escape}[1A${escape}[2K${escape}[G`
+      const clearChoices = `${escape}[2K${escape}[1A`.repeat(3) + `${escape}[2K${escape}[G`
+      const rawFrames = toRawFrames(output)
+      assert.isTrue(rawFrames[2]?.startsWith(clearError + clearChoices))
+      assert.isTrue(rawFrames[3]?.startsWith(clearError + clearChoices))
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("renders paging and checkbox symbols from the prompt theme", () =>

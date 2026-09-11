@@ -6,6 +6,13 @@ declare const stringEvents: Queue.Dequeue<string, never>
 declare const objectEvents: Queue.Dequeue<{ readonly tick: number }, never>
 
 describe("Prompt", () => {
+  it("allows select messages to be omitted but requires an autocomplete message", () => {
+    const options = { choices: [{ title: "First", value: "first" }] }
+    expect(Prompt.Select).type.toBeCallableWith(options)
+    expect(Prompt.MultiSelect).type.toBeCallableWith(options)
+    expect(Prompt.AutoComplete).type.not.toBeCallableWith(options)
+  })
+
   it("numeric option types match their constructors", () => {
     const intOptions: Prompt.IntOptions = { message: "Count", min: 0, incrementBy: 2 }
     const numberOptions: Prompt.NumberOptions = { ...intOptions, precision: 3 }
