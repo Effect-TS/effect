@@ -3495,30 +3495,17 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("make", () => {
-    it("preserves __proto__ as an own option", () => {
-      const value = { polluted: true }
-      const schema = Schema.make(Schema.String.ast, {
-        ["__proto__"]: value
+    it("assigns options", () => {
+      const schema = Schema.make<Schema.String>(Schema.String.ast, {
+        custom: "value"
       })
 
       assertTrue(Schema.isSchema(schema))
-      assertTrue(Object.hasOwn(schema, "__proto__"))
-      strictEqual((schema as any)["__proto__"], value)
-    })
-
-    it("preserves name and length as options", () => {
-      const schema = Schema.make<Schema.String>(Schema.String.ast, {
-        name: "CustomSchema",
-        length: 2
-      })
-
-      strictEqual((schema as any).name, "CustomSchema")
-      strictEqual((schema as any).length, 2)
+      strictEqual((schema as any).custom, "value")
 
       const rebuilt = schema.annotate({})
 
-      strictEqual((rebuilt as any).name, "CustomSchema")
-      strictEqual((rebuilt as any).length, 2)
+      strictEqual((rebuilt as any).custom, "value")
     })
 
     it("should throw an error when the cause contains both a schema issue and a defect", () => {

@@ -25,10 +25,7 @@ const SchemaProto = {
 /** @internal */
 export function make<S extends Schema.Constraint>(ast: S["ast"], options?: object): S {
   function Schema() {}
-  const self = Object.defineProperties(
-    Object.setPrototypeOf(Schema, SchemaProto),
-    Object.getOwnPropertyDescriptors({ ...options })
-  )
+  const self = Object.assign(Object.setPrototypeOf(Schema, SchemaProto), options)
   self.ast = ast
   self.rebuild = (ast: SchemaAST.AST) => make(ast, options)
   self.makeEffect = SchemaParser.makeEffect(self)
