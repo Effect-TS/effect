@@ -595,6 +595,20 @@ Missing key
       )
     })
 
+    it("should throw an error if a large struct has duplicate property signatures", () => {
+      throws(
+        () =>
+          new SchemaAST.Objects(
+            Array.from(
+              { length: 32 },
+              (_, index) => new SchemaAST.PropertySignature(`field${index === 31 ? 0 : index}`, Schema.String.ast)
+            ),
+            []
+          ),
+        new Error(`Duplicate identifiers: ["field0"]. ts(2300)`)
+      )
+    })
+
     describe("onExcessProperty", () => {
       it("error", async () => {
         const schema = Schema.Struct({
@@ -3505,6 +3519,19 @@ Expected a value between -2147483648 and 2147483647`
 
       strictEqual((rebuilt as any).name, "CustomSchema")
       strictEqual((rebuilt as any).length, 2)
+    })
+
+    it("assigns options", () => {
+      const schema = Schema.make<Schema.String>(Schema.String.ast, {
+        custom: "value"
+      })
+
+      assertTrue(Schema.isSchema(schema))
+      strictEqual((schema as any).custom, "value")
+
+      const rebuilt = schema.annotate({})
+
+      strictEqual((rebuilt as any).custom, "value")
     })
 
     it("should throw an error when the cause contains both a schema issue and a defect", () => {

@@ -9,6 +9,7 @@ import {
   Ref,
   Result,
   Schema,
+  type SchemaAST,
   SchemaGetter,
   SchemaIssue,
   SchemaParser,
@@ -334,6 +335,32 @@ describe("SchemaParser", () => {
         yield* Deferred.await(secondStarted)
         yield* Deferred.succeed(release, undefined)
         deepStrictEqual(yield* Fiber.join(fiber), { a: "a", b: "b" })
+      }))
+  })
+
+  describe("makeEffect", () => {
+    it.effect("defers deriving the type AST until the maker is called and derives it once", () =>
+      Effect.gen(function*() {
+        let encodingReads = 0
+        const ast = new Proxy(Schema.String.ast, {
+          get(target, property, receiver) {
+            if (property === "encoding") {
+              encodingReads++
+            }
+            return Reflect.get(target, property, receiver)
+          }
+        })
+        const schema: { ast: SchemaAST.AST } = { ast }
+        const make = SchemaParser.makeEffect(schema as Schema.Codec<string>)
+        schema.ast = Schema.Number.ast
+
+        strictEqual(encodingReads, 0)
+        const effect = make("a")
+        assertTrue(encodingReads > 0)
+        strictEqual(yield* effect, "a")
+        const reads = encodingReads
+        strictEqual(yield* make("b"), "b")
+        strictEqual(encodingReads, reads)
       }))
   })
 
