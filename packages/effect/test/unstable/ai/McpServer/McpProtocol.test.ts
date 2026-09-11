@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Schema } from "effect"
 import * as McpProtocol from "effect/unstable/ai/internal/mcpProtocol"
 import * as McpProtocolRegistry from "effect/unstable/ai/internal/mcpProtocolRegistry"
+import * as McpRuntime from "effect/unstable/ai/internal/mcpRuntime"
 import * as McpSchema2025_06_18 from "effect/unstable/ai/internal/mcpSchema/v2025_06_18"
 import type * as PublicMcpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
@@ -29,10 +30,10 @@ const makeTestProtocol = <
 
   return McpProtocol.make({
     protocolVersion,
-    transport: {
-      acceptsJsonRpcBatches: false,
-      requiresVersionHeader: true
-    },
+    runtime: McpRuntime.stateful({
+      jsonRpc: { acceptsBatches: false },
+      http: { requiresVersionHeader: true }
+    }),
     clientRpcs: RpcGroup.make(TestRequest),
     clientNotificationRpcs: RpcGroup.make(),
     serverRequestRpcs: RpcGroup.make(),
@@ -196,5 +197,22 @@ describe("MCP v2025-06-18 schema", () => {
 
     assert.notProperty(annotations, "lastModified")
     assert.notProperty(capabilities, "extensions")
+  })
+})
+
+describe("McpProtocol errors", () => {
+  it("should preserve tagged unsupported errors without requiring the local class prototype", () => {
+    const unsupported = {
+      _tag: "McpReverseOperationUnsupported",
+      operation: "roots/list",
+      protocolVersion: "2025-06-18",
+      reason: "Client did not advertise roots"
+    }
+    assert.strictEqual<unknown>(McpProtocol.reverseError("roots/list")(unsupported), unsupported)
+
+    const cause = new Error("Transport failed")
+    const wrapped = McpProtocol.reverseError("roots/list")(cause)
+    assert.strictEqual(wrapped._tag, "McpReverseOperationError")
+    assert.propertyVal(wrapped, "cause", cause)
   })
 })

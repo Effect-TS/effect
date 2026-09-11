@@ -1,10 +1,12 @@
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
+import * as Predicate from "../../../../Predicate.ts"
 import * as Schema from "../../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
+import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2025_11_25.ts"
 
 const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
@@ -14,6 +16,21 @@ const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
 const ClientRpcs = ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
 const AdapterRpcs = ClientRpcs.omit("ping")
+const isToolOutputSchema = (
+  schema: PublicMcpSchema.ToolOutputJson | undefined
+): schema is PublicMcpSchema.ToolJson => {
+  if (schema?.type !== "object") {
+    return false
+  }
+
+  const isPropertiesSupported = schema.properties === undefined ||
+    (Predicate.isReadonlyObject(schema.properties) &&
+      Object.values(schema.properties).every(Predicate.isReadonlyObject))
+  const isRequiredDefined = schema.required === undefined ||
+    (Array.isArray(schema.required) && schema.required.every(Predicate.isString))
+
+  return isPropertiesSupported && isRequiredDefined
+}
 
 const unsupported = (
   operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"],
@@ -35,16 +52,6 @@ const requireCapability = (
     ? Effect.void
     : Effect.fail(unsupported(operation, `Client did not advertise the ${capability} capability`))
 
-const requiresSamplingTools = (request: typeof PublicMcpSchema.CreateMessage.payloadSchema.Type): boolean =>
-  request.tools !== undefined ||
-  request.toolChoice !== undefined ||
-  request.messages.some((message) => {
-    const content = message.content
-    return "type" in content
-      ? content.type === "tool_use" || content.type === "tool_result"
-      : content.some((block) => block.type === "tool_use" || block.type === "tool_result")
-  })
-
 const resultRequiresSamplingTools = (result: typeof McpSchema.CreateMessage.successSchema.Type): boolean =>
   result.stopReason === "toolUse" ||
   ("type" in result.content
@@ -62,7 +69,7 @@ const hasElicitationModeCapability = (
     : elicitation.url !== undefined
 }
 
-const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
+const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.ContentBlock) {
   return Match.value(content).pipe(
     Match.when({ type: Match.is("text", "resource_link") }, (content) => content),
     Match.when({ type: Match.is("image", "audio") }, (content) => ({
@@ -103,23 +110,19 @@ const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSche
   )
 })
 
-const projectStructuredContent = Effect.fnUntraced(function*(content: Schema.Json | undefined) {
-  if (content === undefined || Schema.is(Schema.JsonObject)(content)) {
-    return content
-  }
-  return yield* new McpCore.UnsupportedByProtocol({
-    protocolVersion: McpSchema.protocolVersion,
-    feature: "non-object structured tool content"
-  })
-})
+const projectStructuredContent = (
+  content: Schema.Json | undefined
+): Schema.JsonObject | undefined => content === undefined || isJsonObject(content) ? content : undefined
+
+const isJsonObject = (value: Schema.Json): value is Schema.JsonObject => Predicate.isReadonlyObject(value)
 
 /** @internal */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
-  transport: {
-    acceptsJsonRpcBatches: false,
-    requiresVersionHeader: true
-  },
+  runtime: McpRuntime.stateful({
+    jsonRpc: { acceptsBatches: false },
+    http: { requiresVersionHeader: true }
+  }),
   clientRpcs: ClientRpcs,
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
@@ -229,9 +232,18 @@ export const protocol = McpProtocol.make({
           ),
       "prompts/get": Effect.fnUntraced(function*({ arguments: args, name }) {
         const request = yield* PublicMcpSchema.McpServerClient
-        const result = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
+        const outcome = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromFeature)
         )
+        if (outcome._tag === "InputRequired") {
+          return yield* McpProtocol.ProtocolError.fromFeature(
+            new McpCore.UnsupportedByProtocol({
+              protocolVersion: McpSchema.protocolVersion,
+              feature: "prompt input requirements"
+            })
+          )
+        }
+        const result = outcome.value
         const messages = yield* Effect.forEach(result.messages, (message) =>
           projectContent(message.content).pipe(
             Effect.map((content) => ({ role: message.role, content })),
@@ -278,7 +290,9 @@ export const protocol = McpProtocol.make({
               title: tool.title,
               description: tool.description,
               inputSchema: tool.inputSchema,
-              outputSchema: tool.outputSchema,
+              outputSchema: isToolOutputSchema(tool.outputSchema)
+                ? tool.outputSchema
+                : undefined,
               icons: tool.icons,
               annotations: tool.annotations === undefined
                 ? undefined
@@ -299,6 +313,7 @@ export const protocol = McpProtocol.make({
           { ...call, arguments: call.arguments ?? {} },
           McpProtocol.invocationFromClient(request)
         ).pipe(
+          Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.catchTag("InvalidToolInput", (error) =>
             Effect.succeed(PublicMcpSchema.CallToolResult.make({
               content: [PublicMcpSchema.TextContent.make({
@@ -312,9 +327,7 @@ export const protocol = McpProtocol.make({
         const content = yield* Effect.forEach(result.content, projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const structuredContent = yield* projectStructuredContent(result.structuredContent).pipe(
-          Effect.mapError(McpProtocol.ProtocolError.fromTool)
-        )
+        const structuredContent = projectStructuredContent(result.structuredContent)
         return McpSchema.CallToolResult.make({
           content,
           structuredContent,
@@ -340,7 +353,9 @@ export const protocol = McpProtocol.make({
     }),
     createMessage: Effect.fnUntraced(function*(request) {
       yield* requireCapability(profile, "sampling/createMessage", "sampling")
-      if (requiresSamplingTools(request) && profile.clientCapabilities.sampling?.tools == undefined) {
+      if (
+        McpProtocol.samplingRequestRequiresTools(request) && profile.clientCapabilities.sampling?.tools == undefined
+      ) {
         return yield* unsupported("sampling/createMessage", "Client did not advertise the sampling.tools capability")
       }
       if (

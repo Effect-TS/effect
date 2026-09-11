@@ -1,6 +1,10 @@
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
+import * as Encoding from "../../../Encoding.ts"
+import type * as LogLevel from "../../../LogLevel.ts"
 import * as Match from "../../../Match.ts"
+import * as Predicate from "../../../Predicate.ts"
+import type * as PubSub from "../../../PubSub.ts"
 import * as Result from "../../../Result.ts"
 import * as Schema from "../../../Schema.ts"
 import type * as Scope from "../../../Scope.ts"
@@ -9,9 +13,51 @@ import type * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcClient from "../../rpc/RpcClient.ts"
 import type { RpcClientError } from "../../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../../rpc/RpcGroup.ts"
+import type * as RpcMessage from "../../rpc/RpcMessage.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import * as McpCore from "./mcpCore.ts"
+
+const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
+const BASE64_SENTINEL_PREFIX = "=?base64?"
+const BASE64_SENTINEL_SUFFIX = "?="
+// A leading U+FEFF belongs to the header value and must survive comparison with the JSON body.
+const routingHeaderDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+
+/** @internal */
+export const mcpLogLevels: Readonly<
+  Record<
+    PublicMcpSchema.LoggingLevel,
+    { readonly effect: LogLevel.LogLevel; readonly order: number }
+  >
+> = {
+  debug: { effect: "Debug", order: 0 },
+  info: { effect: "Info", order: 1 },
+  notice: { effect: "Info", order: 2 },
+  warning: { effect: "Warn", order: 3 },
+  error: { effect: "Error", order: 4 },
+  critical: { effect: "Fatal", order: 5 },
+  alert: { effect: "Fatal", order: 6 },
+  emergency: { effect: "Fatal", order: 7 }
+}
+
+/** @internal */
+export const decodeRoutingHeader = (value: string): string | undefined => {
+  const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
+  const endsWithSentinel = value.endsWith(BASE64_SENTINEL_SUFFIX)
+  if (!startsWithSentinel || !endsWithSentinel) {
+    return /^[\t\x20-\x7e]*$/.test(value) ? value : undefined
+  }
+  const decoded = Encoding.decodeBase64(
+    value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
+  )
+  if (Result.isFailure(decoded)) return undefined
+  try {
+    return routingHeaderDecoder.decode(decoded.success)
+  } catch {
+    return undefined
+  }
+}
 
 /** @internal */
 export const profileFromClient = (
@@ -29,8 +75,53 @@ export const invocationFromClient = (
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: profileFromClient(request),
+  requestContext: PublicMcpSchema.McpRequestContext.of({
+    clientId: request.clientId,
+    protocolVersion: request.protocolVersion,
+    clientCapabilities: request.clientCapabilities,
+    clientInfo: request.clientInfo,
+    requestMetadata: request.requestMetadata
+  }),
+  serverClient: request
+})
+
+/** @internal */
+export const invocationFromRequestContext = (
+  request: PublicMcpSchema.McpRequestContext["Service"]
+): McpCore.McpInvocation => ({
+  clientId: request.clientId,
+  protocol: {
+    protocolVersion: request.protocolVersion,
+    clientCapabilities: request.clientCapabilities,
+    clientInfo: request.clientInfo,
+    requestMetadata: request.requestMetadata
+  },
   requestContext: request
 })
+
+/** @internal */
+export const requireCompleteOperation = <A>(
+  protocolVersion: PublicMcpProtocol.ProtocolVersion,
+  outcome: McpCore.OperationOutcome<A>
+): Effect.Effect<A, McpCore.UnsupportedByProtocol> =>
+  outcome._tag === "Complete"
+    ? Effect.succeed(outcome.value)
+    : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
+
+const isSamplingToolContent = (content: unknown): boolean =>
+  Predicate.isReadonlyObject(content) && (content.type === "tool_use" || content.type === "tool_result")
+
+/** @internal */
+export const samplingRequestRequiresTools = (request: unknown): boolean => {
+  if (!Predicate.isReadonlyObject(request)) return false
+  if (request.tools !== undefined || request.toolChoice !== undefined) return true
+  if (!Array.isArray(request.messages)) return false
+  return request.messages.some((message) => {
+    if (!Predicate.isReadonlyObject(message)) return false
+    const content = message.content
+    return Array.isArray(content) ? content.some(isSamplingToolContent) : isSamplingToolContent(content)
+  })
+}
 
 // NOTE: Keep the two codec assertions below as the single documented
 // existential-schema boundary. Rpc.AnyWithProps intentionally erases each
@@ -75,41 +166,56 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       ),
       Match.tags({
         InvalidToolInput: (error) => error.message,
-        ToolExecutionError: (error) => error.message,
-        ToolResultProjectionError: (error) => error.message
+        InvalidToolContinuation: (error) => error.message,
+        ToolExecutionError: (error) => error.message
       }),
       Match.exhaustive
     )
-    return new ProtocolError({ code: -32602, message })
+    return new ProtocolError({ code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE, message })
   }
 
   static fromFeature(error: unknown): ProtocolError {
-    if (error instanceof McpCore.PromptNotFound) {
-      return new ProtocolError({ code: -32602, message: `Prompt '${error.name}' not found` })
+    if (Predicate.hasProperty(error, "_tag")) {
+      if (error._tag === "PromptNotFound" && Predicate.hasProperty(error, "name") && Predicate.isString(error.name)) {
+        return new ProtocolError({
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: `Prompt '${error.name}' not found`
+        })
+      }
+      if (error._tag === "ResourceNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)) {
+        return new ProtocolError({
+          code: LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE,
+          message: `Resource '${error.uri}' not found`
+        })
+      }
     }
-    if (error instanceof McpCore.ResourceNotFound) {
-      return new ProtocolError({ code: -32002, message: `Resource '${error.uri}' not found` })
-    }
-    const decoded = Schema.decodeUnknownResult(ProtocolErrorFields)(error)
-    if (Result.isSuccess(decoded)) {
-      return new ProtocolError(decoded.success)
-    }
-    return new ProtocolError({ code: -32603, message: "MCP feature handler failed" })
+    const decoded = decodeProtocolErrorFields(error)
+    return Result.isSuccess(decoded)
+      ? new ProtocolError(decoded.success)
+      : new ProtocolError({
+        code: PublicMcpSchema.INTERNAL_ERROR_CODE,
+        message: "MCP feature handler failed"
+      })
   }
 }
 
 const ProtocolErrorFields = Schema.Struct({
-  code: Schema.Number,
+  code: Schema.Finite,
   message: Schema.String,
   data: Schema.optionalKey(Schema.Unknown)
 })
+
+const decodeProtocolErrorFields = Schema.decodeUnknownResult(ProtocolErrorFields)
+
+const isReverseOperationUnsupported = (cause: unknown): cause is PublicMcpSchema.McpReverseOperationUnsupported =>
+  Predicate.isTagged(cause, "McpReverseOperationUnsupported")
 
 /** @internal */
 export const reverseError = (
   operation: PublicMcpSchema.McpReverseOperationError["operation"]
 ) =>
 (cause: unknown) =>
-  cause instanceof PublicMcpSchema.McpReverseOperationUnsupported
+  isReverseOperationUnsupported(cause)
     ? cause
     : new PublicMcpSchema.McpReverseOperationError({ operation, cause })
 
@@ -205,6 +311,7 @@ export const makeNotificationProjector = Effect.fn(function*(
 
 /** @internal */
 export interface HandlerInstallationTarget {
+  readonly context: HandlerInstallationContext
   readonly install: <
     Rpcs extends Rpc.Any,
     Handlers extends RpcGroup.HandlersFrom<Rpcs>
@@ -218,8 +325,74 @@ export interface HandlerInstallationTarget {
 }
 
 /** @internal */
+export interface HandlerInstallationContext {
+  readonly subscribeServerNotifications: Effect.Effect<
+    PubSub.Subscription<CanonicalServerNotification>,
+    never,
+    Scope.Scope
+  >
+  readonly sendNotification?: (
+    protocolVersion: string,
+    clientId: number,
+    notification: PublicMcpProtocol.ProjectedNotification
+  ) => Effect.Effect<void>
+  readonly terminateSubscription?: (
+    protocolVersion: string,
+    clientId: number,
+    requestId: RpcMessage.RequestId,
+    reason: string
+  ) => Effect.Effect<void>
+  readonly markSubscriptionCancelled?: (
+    clientId: number,
+    requestId: RpcMessage.RequestId
+  ) => Effect.Effect<void>
+  readonly supportedVersions: ReadonlyArray<string>
+  readonly serverInfo: {
+    readonly name: string
+    readonly version: string
+    readonly description?: string | undefined
+    readonly websiteUrl?: string | undefined
+    readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
+    readonly extensions?: PublicMcpSchema.ServerCapabilities["extensions"] | undefined
+  }
+  readonly registrationPresence: Effect.Effect<{
+    readonly tools: boolean
+    readonly resources: boolean
+    readonly prompts: boolean
+  }>
+}
+
+/** @internal */
+export interface CanonicalServerNotification {
+  readonly notification: SubscriptionServerNotification
+  readonly targetClientId?: number | undefined
+}
+
+/** @internal */
+export type SubscriptionServerNotification = Extract<
+  McpCore.ServerNotification,
+  { readonly _tag: "ToolsChanged" | "PromptsChanged" | "ResourcesChanged" | "ResourceUpdated" }
+>
+
+/** @internal */
+export const isSubscriptionServerNotification = (
+  notification: McpCore.ServerNotification
+): notification is SubscriptionServerNotification => {
+  switch (notification._tag) {
+    case "ToolsChanged":
+    case "PromptsChanged":
+    case "ResourcesChanged":
+    case "ResourceUpdated":
+      return true
+    default:
+      return false
+  }
+}
+
+/** @internal */
 export interface ProtocolAdapter<
   out Version extends string = string,
+  out Runtime extends PublicMcpProtocol.RuntimeDescriptor = PublicMcpProtocol.RuntimeDescriptor,
   ClientRpcs extends Rpc.Any = Rpc.Any,
   ClientNotificationRpcs extends ClientRpcs = ClientRpcs,
   ServerRequestRpcs extends Rpc.Any = Rpc.Any,
@@ -230,10 +403,7 @@ export interface ProtocolAdapter<
   // Each adapter owns its dated RPC vocabulary, transport policy, handler
   // projection, and wire behavior.
   readonly protocolVersion: Version
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
+  readonly runtime: Runtime
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
@@ -242,7 +412,7 @@ export interface ProtocolAdapter<
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly installHandlers: (
     core: McpCore.McpCore,
-    lifecycle: LifecycleRuntime,
+    lifecycle: LifecycleRuntime | undefined,
     target: HandlerInstallationTarget
   ) => Effect.Effect<void, never, HandlerRequirements>
   readonly makeReverseClient: (
@@ -260,9 +430,13 @@ export interface ProtocolAdapter<
   ) => Effect.Effect<McpCore.Cancellation, unknown>
 }
 
+type HandlerLifecycle<Runtime extends PublicMcpProtocol.RuntimeDescriptor> = Runtime extends
+  PublicMcpProtocol.StatefulRuntimeDescriptor ? LifecycleRuntime : undefined
+
 /** @internal */
 export const make = <
   const Version extends string,
+  const Runtime extends PublicMcpProtocol.RuntimeDescriptor,
   ClientRpcs extends Rpc.Any,
   ClientNotificationRpcs extends ClientRpcs,
   ServerRequestRpcs extends Rpc.Any,
@@ -271,10 +445,7 @@ export const make = <
   Handlers extends RpcGroup.HandlersFrom<HandlerRpcs> = RpcGroup.HandlersFrom<HandlerRpcs>
 >(options: {
   readonly protocolVersion: Version
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
+  readonly runtime: Runtime
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
@@ -283,7 +454,8 @@ export const make = <
   readonly makeHandlers?:
     | ((
       core: McpCore.McpCore,
-      lifecycle: LifecycleRuntime
+      lifecycle: HandlerLifecycle<Runtime>,
+      context: HandlerInstallationContext
     ) => Handlers)
     | undefined
   readonly toReverseClient: (
@@ -298,6 +470,7 @@ export const make = <
   ) => Effect.Effect<McpCore.Cancellation, unknown>
 }): ProtocolAdapter<
   Version,
+  Runtime,
   ClientRpcs,
   ClientNotificationRpcs,
   ServerRequestRpcs,
@@ -321,12 +494,24 @@ export const make = <
 
   const installHandlers = (
     core: McpCore.McpCore,
-    lifecycle: LifecycleRuntime,
+    lifecycle: LifecycleRuntime | undefined,
     target: HandlerInstallationTarget
   ): Effect.Effect<void, never, RpcGroup.HandlersServices<HandlerRpcs, Handlers>> =>
     options.handlerRpcs === undefined || options.makeHandlers === undefined
       ? Effect.void
-      : target.install(options, options.handlerRpcs, options.makeHandlers(core, lifecycle))
+      : lifecycle === undefined && options.runtime._tag === "Stateful"
+      ? Effect.die("MCP sessionful handler installation requires a lifecycle runtime")
+      : target.install(
+        options,
+        options.handlerRpcs,
+        options.makeHandlers(
+          core,
+          // TypeScript cannot narrow HandlerLifecycle<Runtime> from the generic runtime tag; the preceding guard
+          // enforces the stateful lifecycle invariant.
+          (options.runtime._tag === "Stateful" ? lifecycle : undefined) as HandlerLifecycle<Runtime>,
+          target.context
+        )
+      )
 
   const makeReverseClient = (
     profile: McpCore.NegotiatedProtocolProfile

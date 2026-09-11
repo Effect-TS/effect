@@ -13,28 +13,33 @@ import * as Previous from "./v2025_03_26.ts"
 
 export * from "./v2025_03_26.ts"
 
+/** @internal */
 export const protocolVersion = "2025-06-18"
 
 const optional = Previous.optional
 const JsonObject = Schema.JsonObject
 const Meta = optional(JsonObject)
 
+/** @internal */
 export const Implementation = Schema.Struct({
   name: Schema.String,
   title: optional(Schema.String),
   version: Schema.String
 })
 
+/** @internal */
 export const ClientCapabilities = Schema.Struct({
   ...Previous.ClientCapabilities.fields,
   elicitation: optional(Schema.Struct({}))
 })
 
+/** @internal */
 export const Annotations = Schema.Struct({
   audience: optional(Schema.Array(Previous.Role)),
   priority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
 })
 
+/** @internal */
 export const Resource = Schema.Struct({
   ...Previous.Resource.fields,
   title: optional(Schema.String),
@@ -42,6 +47,7 @@ export const Resource = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const ResourceTemplate = Schema.Struct({
   ...Previous.ResourceTemplate.fields,
   title: optional(Schema.String),
@@ -49,23 +55,28 @@ export const ResourceTemplate = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const TextResourceContents = Schema.Struct({
   ...Previous.TextResourceContents.fields,
   _meta: Meta
 })
 
+/** @internal */
 export const BlobResourceContents = Schema.Struct({
   ...Previous.BlobResourceContents.fields,
   _meta: Meta
 })
 
+/** @internal */
 export const ResourceContents = Schema.Union([TextResourceContents, BlobResourceContents])
 
+/** @internal */
 export const PromptArgument = Schema.Struct({
   ...Previous.PromptArgument.fields,
   title: optional(Schema.String)
 })
 
+/** @internal */
 export const Prompt = Schema.Struct({
   ...Previous.Prompt.fields,
   title: optional(Schema.String),
@@ -73,6 +84,7 @@ export const Prompt = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const EmbeddedResource = Schema.Struct({
   type: Schema.Literal("resource"),
   resource: ResourceContents,
@@ -80,29 +92,34 @@ export const EmbeddedResource = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const ResourceLink = Schema.Struct({
   ...Resource.fields,
   type: Schema.Literal("resource_link")
 })
 
+/** @internal */
 export const TextContent = Schema.Struct({
   ...Previous.TextContent.fields,
   annotations: optional(Annotations),
   _meta: Meta
 })
 
+/** @internal */
 export const ImageContent = Schema.Struct({
   ...Previous.ImageContent.fields,
   annotations: optional(Annotations),
   _meta: Meta
 })
 
+/** @internal */
 export const AudioContent = Schema.Struct({
   ...Previous.AudioContent.fields,
   annotations: optional(Annotations),
   _meta: Meta
 })
 
+/** @internal */
 export const ContentBlock = Schema.Union([
   TextContent,
   ImageContent,
@@ -111,22 +128,27 @@ export const ContentBlock = Schema.Union([
   ResourceLink
 ])
 
+/** @internal */
 export const SamplingContent = Schema.Union([TextContent, ImageContent, AudioContent])
 
+/** @internal */
 export const PromptMessage = Schema.Struct({
   role: Previous.Role,
   content: ContentBlock
 })
 
+/** @internal */
 export const SamplingMessage = Schema.Struct({
   role: Previous.Role,
   content: SamplingContent
 })
 
+/** @internal */
 export const ServerCapabilities = Schema.Struct({
   ...Previous.ServerCapabilities.fields
 })
 
+/** @internal */
 export const InitializeResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   protocolVersion: Schema.String,
@@ -135,6 +157,7 @@ export const InitializeResult = Schema.Struct({
   instructions: optional(Schema.String)
 })
 
+/** @internal */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
   error: Previous.McpError,
@@ -155,6 +178,7 @@ const ToolJsonSchema = Schema.StructWithRest(
   [Schema.JsonObject]
 )
 
+/** @internal */
 export const Tool = Schema.Struct({
   name: Schema.String,
   title: optional(Schema.String),
@@ -165,6 +189,7 @@ export const Tool = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const CallToolResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   content: Schema.Array(ContentBlock),
@@ -172,6 +197,7 @@ export const CallToolResult = Schema.Struct({
   isError: optional(Schema.Boolean)
 })
 
+/** @internal */
 export const CreateMessageResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   role: Previous.Role,
@@ -180,6 +206,7 @@ export const CreateMessageResult = Schema.Struct({
   stopReason: optional(Schema.String)
 })
 
+/** @internal */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
   error: Previous.McpError,
@@ -196,18 +223,22 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
   }
 }) {}
 
+/** @internal */
 export const PromptReference = Schema.Struct({
   ...Previous.PromptReference.fields,
   title: optional(Schema.String)
 })
 
+/** @internal */
 export const ResourceTemplateReference = Schema.Struct({
   type: Schema.Literal("ref/resource"),
   uri: Schema.String
 })
 
+/** @internal */
 export const CompleteResult = Previous.CompleteResult
 
+/** @internal */
 export class Complete extends Rpc.make("completion/complete", {
   success: CompleteResult,
   error: Previous.McpError,
@@ -224,61 +255,72 @@ export class Complete extends Rpc.make("completion/complete", {
   }
 }) {}
 
+/** @internal */
 export const ListResourcesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   resources: Schema.Array(Resource)
 })
 
+/** @internal */
 export const ListResourceTemplatesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   resourceTemplates: Schema.Array(ResourceTemplate)
 })
 
+/** @internal */
 export const ReadResourceResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   contents: Schema.Array(ResourceContents)
 })
 
+/** @internal */
 export const ListPromptsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   prompts: Schema.Array(Prompt)
 })
 
+/** @internal */
 export const GetPromptResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   description: optional(Schema.String),
   messages: Schema.Array(PromptMessage)
 })
 
+/** @internal */
 export const ListToolsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   tools: Schema.Array(Tool)
 })
 
+/** @internal */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class ReadResource extends Rpc.make("resources/read", {
   success: ReadResourceResult,
   error: Previous.McpError,
   payload: { ...Previous.RequestMeta.fields, uri: Schema.String }
 }) {}
 
+/** @internal */
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
   error: Previous.McpError,
@@ -289,12 +331,14 @@ export class GetPrompt extends Rpc.make("prompts/get", {
   }
 }) {}
 
+/** @internal */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
   error: Previous.McpError,
@@ -305,6 +349,7 @@ export class CallTool extends Rpc.make("tools/call", {
   }
 }) {}
 
+/** @internal */
 export const ElicitResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   action: Schema.Literals(["accept", "decline", "cancel"]),
@@ -351,6 +396,7 @@ const RequestedSchema = Schema.Struct({
   required: optional(Schema.Array(Schema.String))
 })
 
+/** @internal */
 export class Elicit extends Rpc.make("elicitation/create", {
   success: ElicitResult,
   error: Previous.McpError,
@@ -361,6 +407,7 @@ export class Elicit extends Rpc.make("elicitation/create", {
   }
 }) {}
 
+/** @internal */
 export class ClientRequestRpcs extends RpcGroup.make(
   Previous.Ping,
   Initialize,
@@ -377,6 +424,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
   ListTools
 ) {}
 
+/** @internal */
 export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
   Previous.ProgressNotification,
@@ -384,8 +432,7 @@ export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.RootsListChangedNotification
 ) {}
 
-export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) {}
-
+/** @internal */
 export class ServerRequestRpcs extends RpcGroup.make(
   Previous.Ping,
   CreateMessage,
@@ -393,6 +440,7 @@ export class ServerRequestRpcs extends RpcGroup.make(
   Elicit
 ) {}
 
+/** @internal */
 export class ServerNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
   Previous.ProgressNotification,

@@ -20,12 +20,14 @@ export interface ProtocolRegistry<
   readonly protocols: NonEmptyReadonlyArray<Protocol>
   readonly clientRpcs: AnyRpcGroup
   readonly select: (offeredVersion: string) => Protocol
+  readonly protocolForInternalTag: (tag: string) => Protocol
   readonly routeClientRequest: (
     protocol: Protocol,
     request: RpcMessage.RequestEncoded
   ) => RpcMessage.RequestEncoded
   readonly handlerTarget: (
-    contextMap: Map<string, unknown>
+    contextMap: Map<string, unknown>,
+    context: McpProtocolInternal.HandlerInstallationContext
   ) => McpProtocolInternal.HandlerInstallationTarget
 }
 
@@ -65,6 +67,8 @@ export const make = Effect.fnUntraced(function*<
     protocols: snapshot,
     clientRpcs,
     select: (offeredVersion: string) => byVersion.get(offeredVersion) ?? snapshot[0],
+    protocolForInternalTag: (tag: string) =>
+      snapshot.find((protocol) => tag.startsWith(prefix(protocol))) ?? snapshot[0],
     routeClientRequest: (
       protocol: Protocol,
       request: RpcMessage.RequestEncoded
@@ -72,7 +76,8 @@ export const make = Effect.fnUntraced(function*<
       ...request,
       tag: `${prefix(protocol)}${request.tag}`
     }),
-    handlerTarget: (contextMap: Map<string, unknown>): McpProtocolInternal.HandlerInstallationTarget => ({
+    handlerTarget: (contextMap, context): McpProtocolInternal.HandlerInstallationTarget => ({
+      context,
       install: Effect.fnUntraced(function*<
         Rpcs extends Rpc.Any,
         Handlers extends RpcGroup.HandlersFrom<Rpcs>

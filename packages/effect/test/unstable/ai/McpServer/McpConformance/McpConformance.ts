@@ -6,6 +6,7 @@ import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeFeaturesServerLayer, type Observations } from "./McpConformanceFixtures.ts"
 import { makeMcpTestPeer, type McpTestPeerOptions } from "./McpTestPeer.ts"
@@ -36,10 +37,79 @@ const BatchResponse = Schema.Array(Schema.Struct({
   result: Schema.Struct({})
 }))
 
+const StatelessDiscoverResponse = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  id: Schema.Number,
+  result: Schema.Struct({ capabilities: McpSchema.ServerCapabilities })
+})
+
 const decodeInitializeResponse = Schema.decodeUnknownEffect(InitializeResponse)
 const decodeErrorResponse = Schema.decodeUnknownEffect(ErrorResponse)
 const decodeResultResponse = Schema.decodeUnknownEffect(ResultResponse)
 const decodeBatchResponse = Schema.decodeUnknownEffect(BatchResponse)
+
+const statelessBody = (
+  protocol: McpProtocol.ProtocolAdapter,
+  body: unknown,
+  clientCapabilities?: Record<string, unknown>
+): unknown => {
+  if (
+    protocol.runtime._tag !== "Stateless" ||
+    typeof body !== "object" ||
+    body === null ||
+    !("method" in body)
+  ) {
+    return body
+  }
+  const message = body as { readonly params?: unknown }
+  const params = typeof message.params === "object" && message.params !== null
+    ? message.params as Record<string, unknown>
+    : {}
+  const metadata = typeof params._meta === "object" && params._meta !== null && !Array.isArray(params._meta)
+    ? params._meta as Record<string, unknown>
+    : {}
+  return {
+    ...body,
+    params: {
+      ...params,
+      _meta: {
+        ...metadata,
+        "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+        "io.modelcontextprotocol/clientCapabilities": clientCapabilities ?? {
+          elicitation: { form: {} },
+          roots: {},
+          sampling: {}
+        },
+        "io.modelcontextprotocol/clientInfo": { name: "McpConformanceClient", version: "1.0.0" }
+      }
+    }
+  }
+}
+
+const statelessHeaders = (protocol: McpProtocol.ProtocolAdapter, body: unknown): HeadersInit => {
+  if (
+    protocol.runtime._tag !== "Stateless" ||
+    typeof body !== "object" ||
+    body === null ||
+    !("method" in body) ||
+    typeof body.method !== "string"
+  ) {
+    return {}
+  }
+  const params = "params" in body && typeof body.params === "object" && body.params !== null
+    ? body.params as Record<string, unknown>
+    : {}
+  const name = body.method === "resources/read"
+    ? params.uri
+    : body.method === "tools/call" || body.method === "prompts/get"
+    ? params.name
+    : undefined
+  return {
+    "MCP-Protocol-Version": protocol.protocolVersion,
+    "Mcp-Method": body.method,
+    ...(typeof name === "string" ? { "Mcp-Name": name } : {})
+  }
+}
 
 export interface InitializedSession {
   readonly response: Response
@@ -57,6 +127,8 @@ export interface InitializeOptions {
 export interface SendOptions {
   readonly includeProtocolVersion?: boolean | undefined
   readonly protocolVersion?: string | undefined
+  readonly clientCapabilities?: Record<string, unknown> | undefined
+  readonly headers?: HeadersInit | undefined
 }
 
 export interface McpConformanceShape {
@@ -115,6 +187,7 @@ export interface McpConformanceShape {
     options?: McpTestPeerOptions
   ) => ReturnType<typeof makeMcpTestPeer>
   readonly observations: Effect.Effect<Observations>
+  readonly requestCount: Effect.Effect<number>
   readonly resetObservations: Effect.Effect<void>
   readonly decodeError: (response: Response) => Effect.Effect<typeof ErrorResponse.Type, Schema.SchemaError>
   readonly decodeResult: (response: Response) => Effect.Effect<typeof ResultResponse.Type, Schema.SchemaError>
@@ -142,7 +215,18 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
         promptInvocations: 0,
         resourceTemplateInvocations: 0
       })
+      const requestCount = yield* Ref.make(0)
       const featuresHarness = yield* makeHttpHarness(makeFeaturesServerLayer(protocol, observations))
+      const post = (
+        harness: typeof defaultHarness,
+        body: unknown,
+        headers?: HeadersInit
+      ) => Ref.update(requestCount, (count) => count + 1).pipe(Effect.andThen(harness.post(body, headers)))
+      const postText = (
+        harness: typeof defaultHarness,
+        body: string,
+        headers?: HeadersInit
+      ) => Ref.update(requestCount, (count) => count + 1).pipe(Effect.andThen(harness.postText(body, headers)))
 
       const initializeRequest: McpConformanceShape["initializeRequest"] = (options) => ({
         jsonrpc: "2.0",
@@ -173,8 +257,34 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
       const initialize: McpConformanceShape["initialize"] = Effect.fnUntraced(function*(options) {
         const server = options?.server ?? "default"
         const harness = server === "features" ? featuresHarness : defaultHarness
-        const response = yield* harness.post(initializeRequest(options))
-        const body = yield* Effect.promise<unknown>(() => response.json())
+        if (protocol.runtime._tag === "Stateless") {
+          const request = statelessBody(protocol, {
+            jsonrpc: "2.0",
+            id: options?.id ?? 1,
+            method: "server/discover",
+            params: {}
+          })
+          const response = yield* post(harness, request, statelessHeaders(protocol, request))
+          const decoded = yield* Effect.promise<unknown>(() => response.json()).pipe(
+            Effect.flatMap(Schema.decodeUnknownEffect(StatelessDiscoverResponse))
+          )
+          return {
+            response,
+            message: {
+              jsonrpc: "2.0",
+              id: options?.id ?? 1,
+              result: {
+                protocolVersion: protocol.protocolVersion,
+                capabilities: decoded.result.capabilities,
+                serverInfo: { name: SERVER_NAME, version: SERVER_VERSION }
+              }
+            },
+            sessionId: null,
+            server
+          }
+        }
+        const response = yield* post(harness, initializeRequest(options))
+        const body = yield* readMcpHttpResponse(response)
         return {
           response,
           message: yield* decodeInitializeResponse(body),
@@ -189,20 +299,31 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
           ? {
             "Mcp-Protocol-Version": options?.protocolVersion ?? session.message.result.protocolVersion
           }
-          : {})
+          : {}),
+        ...options?.headers
       })
 
       const harnessFor = (session: InitializedSession) =>
         session.server === "features" ? featuresHarness : defaultHarness
 
       const sendText: McpConformanceShape["sendText"] = (session, body, options) =>
-        harnessFor(session).postText(body, sessionHeaders(session, options))
+        postText(harnessFor(session), body, sessionHeaders(session, options))
 
-      const send: McpConformanceShape["send"] = (session, body, options) =>
-        harnessFor(session).post(body, sessionHeaders(session, options))
+      const send: McpConformanceShape["send"] = (session, body, options) => {
+        if (protocol.runtime._tag !== "Stateless") {
+          return post(harnessFor(session), body, sessionHeaders(session, options))
+        }
+        const request = statelessBody(protocol, body, options?.clientCapabilities)
+        return post(harnessFor(session), request, {
+          ...statelessHeaders(protocol, request),
+          ...options?.headers
+        })
+      }
 
       const notifyInitialized: McpConformanceShape["notifyInitialized"] = (session, options) =>
-        send(session, initializedNotification, options)
+        protocol.runtime._tag === "Stateless"
+          ? Effect.succeed(new Response(null, { status: 202 }))
+          : send(session, initializedNotification, options)
 
       const ping: McpConformanceShape["ping"] = (session, options) => send(session, pingRequest(options?.id), options)
 
@@ -215,7 +336,7 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
         initializeRequest,
         initializedNotification,
         pingRequest,
-        post: defaultHarness.post,
+        post: (body, headers) => post(defaultHarness, body, headers),
         request: (request) => Effect.promise(() => defaultHarness.handler(request)),
         initialize,
         send,
@@ -224,21 +345,22 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
         ping,
         makePeer: (options) => makeMcpTestPeer(protocol, options),
         observations: Ref.get(observations),
+        requestCount: Ref.get(requestCount),
         resetObservations: Ref.set(observations, {
           toolInvocations: 0,
           promptInvocations: 0,
           resourceTemplateInvocations: 0
         }),
         decodeError: (response) =>
-          Effect.promise<unknown>(() => response.json()).pipe(
+          readMcpHttpResponse(response).pipe(
             Effect.flatMap(decodeErrorResponse)
           ),
         decodeResult: (response) =>
-          Effect.promise<unknown>(() => response.json()).pipe(
+          readMcpHttpResponse(response).pipe(
             Effect.flatMap(decodeResultResponse)
           ),
         decodeBatchResponseIds: (response) =>
-          Effect.promise<unknown>(() => response.json()).pipe(
+          readMcpHttpResponse(response).pipe(
             Effect.flatMap(decodeBatchResponse),
             Effect.map((responses) => responses.map((message) => message.id))
           )

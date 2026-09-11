@@ -1,6 +1,9 @@
+import { assert } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
+import { readMcpHttpResponse } from "./McpHttpResponse.ts"
 
 export const MCP_ENDPOINT = "http://localhost/mcp"
 
@@ -57,4 +60,26 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
     postText,
     responses
   } as const
+})
+
+export const initializeHttpSession = Effect.fnUntraced(function*(
+  harness: Effect.Success<ReturnType<typeof makeHttpHarness>>,
+  selectedProtocol: McpProtocol.ProtocolAdapter
+) {
+  const response = yield* harness.post({
+    jsonrpc: "2.0",
+    id: "initialize",
+    method: "initialize",
+    params: {
+      protocolVersion: selectedProtocol.protocolVersion,
+      capabilities: {},
+      clientInfo: { name: "test", version: "1.0.0" }
+    }
+  })
+  yield* readMcpHttpResponse(response)
+  const sessionId = response.headers.get("Mcp-Session-Id")
+  assert.isNotNull(sessionId)
+  const headers = { "Mcp-Session-Id": sessionId, "Mcp-Protocol-Version": selectedProtocol.protocolVersion }
+  yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, headers)
+  return headers
 })

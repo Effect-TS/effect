@@ -30,10 +30,14 @@ const getPromptWire = (name: string) =>
     return yield* test.decodeResult(response)
   })
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
+export const suite = (
+  protocol: McpProtocol.ProtocolAdapter,
+  layer: McpConformanceLayer,
+  options?: { readonly additionalPromptNames?: ReadonlyArray<string> }
+) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Prompts", () => {
-      // Identical requirements in the 2024-11-05, 2025-03-26, and 2025-06-18 specifications.
+      // Shared capability contract; each dated entrypoint owns its normative specification revision.
       describe("Capabilities", () => {
         it.effect("MUST advertise prompts when prompts are registered", () =>
           Effect.gen(function*() {
@@ -50,89 +54,91 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.notProperty(initialized.message.result.capabilities, "prompts")
           }))
-
-        it.effect("MUST advertise listChanged when prompt list change notifications are supported", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
-
-            assert.strictEqual(initialized.message.result.capabilities.prompts?.listChanged, true)
-          }))
       })
 
       describe("Listing Prompts", () => {
-        it.effect("MUST list every prompt visible to the initialized client", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
-            yield* test.notifyInitialized(initialized)
-            const response = yield* test.send(initialized, {
-              jsonrpc: "2.0",
-              id: 2,
-              method: "prompts/list",
-              params: {}
+        it.effect(
+          "MUST list every prompt visible to the initialized client",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize({ server: "features" })
+              yield* test.notifyInitialized(initialized)
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                id: 2,
+                method: "prompts/list",
+                params: {}
+              })
+              const result = yield* test.decodeResult(response).pipe(
+                Effect.flatMap((message) => decodePrompts(message.result))
+              )
+
+              const expected = [
+                "AudioPrompt",
+                "ContextCompletionPrompt",
+                "EmbeddedResourcePrompt",
+                "ImagePrompt",
+                "NoArgumentPrompt",
+                "TestPrompt",
+                ...(options?.additionalPromptNames ?? [])
+              ].sort()
+              assert.deepStrictEqual(result.prompts.map((prompt) => prompt.name).sort(), expected)
             })
-            const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodePrompts(message.result))
-            )
+        )
 
-            const expected = [
-              "AudioPrompt",
-              "ContextCompletionPrompt",
-              "EmbeddedResourcePrompt",
-              "ImagePrompt",
-              "NoArgumentPrompt",
-              "TestPrompt"
-            ].sort()
-            assert.deepStrictEqual(result.prompts.map((prompt) => prompt.name).sort(), expected)
-          }))
+        it.effect(
+          "SCHEMA preserves prompt names, descriptions, and arguments",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize({ server: "features" })
+              yield* test.notifyInitialized(initialized)
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                id: 2,
+                method: "prompts/list",
+                params: {}
+              })
+              const result = yield* test.decodeResult(response).pipe(
+                Effect.flatMap((message) => decodePrompts(message.result))
+              )
 
-        it.effect("SCHEMA preserves prompt names, descriptions, and arguments", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
-            yield* test.notifyInitialized(initialized)
-            const response = yield* test.send(initialized, {
-              jsonrpc: "2.0",
-              id: 2,
-              method: "prompts/list",
-              params: {}
+              const prompt = result.prompts.find((prompt) => prompt.name === "TestPrompt")
+              assert.isDefined(prompt)
+              assert.strictEqual(prompt.description, "A test prompt")
+              assert.deepStrictEqual(prompt.arguments?.map((argument) => argument.name), [
+                "required",
+                "optional"
+              ])
             })
-            const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodePrompts(message.result))
-            )
+        )
 
-            const prompt = result.prompts.find((prompt) => prompt.name === "TestPrompt")
-            assert.isDefined(prompt)
-            assert.strictEqual(prompt.description, "A test prompt")
-            assert.deepStrictEqual(prompt.arguments?.map((argument) => argument.name), [
-              "required",
-              "optional"
-            ])
-          }))
+        it.effect(
+          "MUST mark required and optional prompt arguments correctly",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize({ server: "features" })
+              yield* test.notifyInitialized(initialized)
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                id: 2,
+                method: "prompts/list",
+                params: {}
+              })
+              const result = yield* test.decodeResult(response).pipe(
+                Effect.flatMap((message) => decodePrompts(message.result))
+              )
 
-        it.effect("MUST mark required and optional prompt arguments correctly", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
-            yield* test.notifyInitialized(initialized)
-            const response = yield* test.send(initialized, {
-              jsonrpc: "2.0",
-              id: 2,
-              method: "prompts/list",
-              params: {}
+              const prompt = result.prompts.find((prompt) => prompt.name === "TestPrompt")
+              assert.isDefined(prompt)
+              assert.deepStrictEqual(prompt.arguments, [
+                { name: "required", required: true },
+                { name: "optional", required: false }
+              ])
             })
-            const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodePrompts(message.result))
-            )
-
-            const prompt = result.prompts.find((prompt) => prompt.name === "TestPrompt")
-            assert.isDefined(prompt)
-            assert.deepStrictEqual(prompt.arguments, [
-              { name: "required", required: true },
-              { name: "optional", required: false }
-            ])
-          }))
+        )
       })
 
       describe("Getting Prompts", () => {
@@ -318,21 +324,6 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             }])
           }))
-        it.effect.skipIf(["2024-11-05"].includes(protocol.protocolVersion))(
-          "MUST return audio message content",
-          () =>
-            Effect.gen(function*() {
-              const result = yield* getPromptWire("AudioPrompt")
-              assert.deepStrictEqual(result.result.messages, [{
-                role: "user",
-                content: {
-                  type: "audio",
-                  data: "BAUG",
-                  mimeType: "audio/wav"
-                }
-              }])
-            })
-        )
         it.effect("MUST return embedded resource message content", () =>
           Effect.gen(function*() {
             const result = yield* getPrompt("EmbeddedResourcePrompt")
@@ -348,41 +339,68 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             }])
           }))
-      })
 
-      describe("List Changed Notification", () => {
-        it.effect("SHOULD send a prompt list changed notification when the advertised list changes", () =>
-          Effect.gen(function*() {
-            const fixture = yield* makeMcpStdioHarness(protocol)
-            const makePrompt = (name: string) => ({
-              prompt: new McpSchema.Prompt({ name }),
-              annotations: Context.empty(),
-              completions: {},
-              handle: () =>
-                Effect.succeed(
-                  new McpSchema.GetPromptResult({
-                    messages: [{ role: "user", content: { type: "text", text: name } }]
-                  })
-                )
+        it.effect.skipIf(protocol.protocolVersion === "2024-11-05")(
+          "should return base64 audio content when an audio prompt is requested",
+          () =>
+            Effect.gen(function*() {
+              const result = yield* getPromptWire("AudioPrompt")
+              assert.deepStrictEqual(result.result.messages, [{
+                role: "user",
+                content: {
+                  type: "audio",
+                  data: "BAUG",
+                  mimeType: "audio/wav"
+                }
+              }])
             })
-            yield* fixture.server.addPrompt(makePrompt("baseline-list-changed-prompt"))
-            const initialized = yield* fixture.initialize()
-            const initializeResult = yield* Schema.decodeUnknownEffect(McpSchema.InitializeResult)(initialized.result)
-            assert.strictEqual(
-              initializeResult.capabilities.prompts?.listChanged,
-              true
-            )
-
-            yield* fixture.server.addPrompt(makePrompt("dynamic-list-changed-prompt"))
-            const notification = yield* fixture.awaitOutboundMethod("notifications/prompts/list_changed")
-            assert.strictEqual(notification.jsonrpc, "2.0")
-            assert.strictEqual(notification.method, "notifications/prompts/list_changed")
-            assert.notProperty(notification, "id")
-
-            const response = yield* fixture.sendRequest("prompts/list", {})
-            const result = yield* decodePrompts(response.result)
-            assert.isTrue(result.prompts.some((prompt) => prompt.name === "dynamic-list-changed-prompt"))
-          }))
+        )
       })
+    })
+  })
+
+export const statefulLegacySuite = (
+  protocol: McpProtocol.ProtocolAdapter<McpProtocol.StatefulProtocolVersion>,
+  layer: McpConformanceLayer
+) =>
+  it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    // https://modelcontextprotocol.io/specification/2025-11-25/server/prompts
+    describe("Prompts > Legacy notifications", () => {
+      it.effect("should advertise prompt list-change notifications when supported", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+
+          assert.strictEqual(initialized.message.result.capabilities.prompts?.listChanged, true)
+        }))
+
+      it.effect("should send a prompt list-change notification when the advertised list changes", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          const makePrompt = (name: string) => ({
+            prompt: new McpSchema.Prompt({ name }),
+            annotations: Context.empty(),
+            completions: {},
+            handle: () =>
+              Effect.succeed(
+                new McpSchema.GetPromptResult({
+                  messages: [{ role: "user", content: { type: "text", text: name } }]
+                })
+              )
+          })
+          yield* fixture.server.addPrompt(makePrompt("baseline-list-changed-prompt"))
+          yield* fixture.initialize()
+          yield* fixture.server.addPrompt(makePrompt("dynamic-list-changed-prompt"))
+          yield* fixture.flushListChanged
+
+          const notification = yield* fixture.awaitOutboundMethod("notifications/prompts/list_changed")
+          assert.strictEqual(notification.jsonrpc, "2.0")
+          assert.strictEqual(notification.method, "notifications/prompts/list_changed")
+          assert.notProperty(notification, "id")
+
+          const response = yield* fixture.sendRequest("prompts/list", {})
+          const result = yield* decodePrompts(response.result)
+          assert.isTrue(result.prompts.some((prompt) => prompt.name === "dynamic-list-changed-prompt"))
+        }))
     })
   })

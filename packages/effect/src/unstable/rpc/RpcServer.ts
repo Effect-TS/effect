@@ -182,7 +182,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             serverClient: new Rpc.ServerClient(clientId)
           }
           clients.set(clientId, client)
-        } else if (client.ended) {
+        } else if (
+          client.ended &&
+          (message._tag !== "Interrupt" || !client.fibers.has(message.requestId))
+        ) {
           return Effect.interrupt
         }
 
@@ -1126,10 +1129,13 @@ export const makeProtocolWithHttpEffect: (
       clientIds.delete(id)
       Queue.offerUnsafe(disconnects, id)
       if (queue.state._tag === "Done") return Effect.void
-      return Effect.forEach(
-        requestIds,
-        (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
-        { discard: true }
+      return Effect.andThen(
+        Queue.shutdown(queue),
+        Effect.forEach(
+          requestIds,
+          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
+          { discard: true }
+        )
       )
     })
     clients.set(id, client)
@@ -1350,7 +1356,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
 
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
-    const queue = yield* Queue.make<Uint8Array | string, Cause.Done>()
+    const queue = yield* Queue.bounded<Uint8Array | string, Cause.Done>(8)
     const parser = serialization.makeUnsafe()
 
     yield* stdio.stdin.pipe(
