@@ -229,8 +229,10 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * session sends `Terminate` and ends the socket.
  *
  * When `ssl` is enabled, a server that rejects `SSLRequest` fails the
- * connection. Unix sockets and custom streams should set `ssl.servername`
- * explicitly.
+ * connection. A URL with `sslmode=prefer` or `sslmode=allow` (and no explicit
+ * `ssl`) is the exception: TLS is attempted first and the session continues
+ * in plaintext when the server answers `N`, as libpq does. Unix sockets and
+ * custom streams should set `ssl.servername` explicitly.
  *
  * @category constructors
  * @since 4.0.0
@@ -1830,8 +1832,11 @@ const sendCancelRequest = (config: ResolvedConfig, pid: number, secret: number):
       if (config.ssl === false) return send()
       socket.once("data", (chunk: Uint8Array) => {
         if (done) return
-        // Never send the cancel secret over a connection the server refused
-        // to upgrade.
+        // `N`: the server declined TLS. With `sslmode=prefer|allow` the
+        // session itself was negotiated the same way, so the cancel request
+        // follows it over plaintext. Otherwise never send the cancel secret
+        // over a connection the server refused to upgrade.
+        if (chunk.length === 1 && chunk[0] === 0x4e && config.sslOptional) return send()
         if (chunk.length !== 1 || chunk[0] !== 0x53) return finish()
         const raw = socket
         raw.off("error", finish)
@@ -2057,6 +2062,9 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
         return failConnect(response.failure, "PgConnection: Invalid SSLRequest response")
       }
       if (response.success === "N") {
+        // libpq `sslmode=prefer`: the server declined the upgrade, so the
+        // startup message goes over the same, still-open plaintext socket.
+        if (config.sslOptional) return startup()
         return failConnect(new Error("The server does not support TLS"), "PgConnection: Server refused TLS")
       }
       const raw = socket
@@ -2117,6 +2125,12 @@ interface ResolvedConfig {
   readonly port: number
   readonly path: string | undefined
   readonly ssl: boolean | ConnectionOptions
+  /**
+   * `true` when the URL asked for `sslmode=prefer` or `sslmode=allow` without
+   * an explicit `ssl`: TLS is attempted and an `N` reply falls back to
+   * plaintext instead of failing the connection.
+   */
+  readonly sslOptional: boolean
   readonly database: string | undefined
   readonly username: string
   readonly password: string | undefined
@@ -2138,7 +2152,7 @@ const configError = (message: string, cause?: unknown): SqlError =>
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
   Effect.suspend(() => {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
-      ? parseUrl(Redacted.value(options.url), options.ssl !== undefined)
+      ? parseUrl(Redacted.value(options.url))
       : EffectResult.succeed({})
     if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
     const url = parsed.success
@@ -2148,11 +2162,14 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
     }
+    // An explicit `ssl` wins over the URL outright, including over `prefer`.
+    const sslOptional = options.ssl === undefined && url.ssl === "prefer"
     return Effect.succeed<ResolvedConfig>({
       host,
       port,
       path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
-      ssl: options.ssl ?? url.ssl ?? false,
+      ssl: options.ssl ?? (url.ssl === "prefer" ? true : url.ssl ?? false),
+      sslOptional,
       database: options.database ?? url.database,
       username,
       password: options.password !== undefined ? Redacted.value(options.password) : url.password,
@@ -2171,7 +2188,8 @@ interface UrlConfig {
   password?: string | undefined
   applicationName?: string | undefined
   connectTimeout?: Duration.Duration | undefined
-  ssl?: boolean | undefined
+  /** `"prefer"` covers both libpq's `prefer` and `allow`: TLS if offered, plaintext otherwise. */
+  ssl?: boolean | "prefer" | undefined
 }
 
 const decodeComponent = (value: string, what: string): EffectResult.Result<string, SqlError> => {
@@ -2189,7 +2207,7 @@ const parsePort = (value: string, what: string): EffectResult.Result<number, Sql
     : EffectResult.succeed(port)
 }
 
-const parseUrl = (raw: string, hasExplicitSsl: boolean): EffectResult.Result<UrlConfig, SqlError> => {
+const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
   let url: URL
   try {
     url = new URL(raw)
@@ -2270,12 +2288,14 @@ const parseUrl = (raw: string, hasExplicitSsl: boolean): EffectResult.Result<Url
           case "verify-full":
             config.ssl = true
             break
+          // libpq's default. `allow` (plaintext first, TLS on demand) is
+          // folded into `prefer` (TLS first, plaintext on `N`): both accept
+          // either transport, only the order of attempts differs, and the
+          // server's `N` answer settles it in one round trip.
           case "prefer":
           case "allow":
-            if (hasExplicitSsl) break
-            return EffectResult.fail(
-              configError(`sslmode "${value}" is not supported: set ssl explicitly to true or false`)
-            )
+            config.ssl = "prefer"
+            break
           default:
             return EffectResult.fail(configError(`Unrecognized sslmode in URL: "${value}"`))
         }

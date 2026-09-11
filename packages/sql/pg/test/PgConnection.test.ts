@@ -1,24 +1,40 @@
 import { PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
+import { Duplex } from "node:stream"
 
 describe("PgConnection config", () => {
-  it.effect("rejects sslmode=prefer in a URL", () =>
-    Effect.gen(function*() {
-      const error = yield* Effect.flip(PgConnection.make({
-        url: Redacted.make("postgres://user@localhost/db?sslmode=prefer")
-      }))
-      assert.strictEqual(error.reason._tag, "ConnectionError")
-      assert.include(error.reason.message, "sslmode")
-    }))
+  it.effect.each(["prefer", "allow"])(
+    "accepts sslmode=%s in a URL and sends SSLRequest",
+    (mode) =>
+      Effect.gen(function*() {
+        const writes: Array<Buffer> = []
+        const error = yield* Effect.flip(PgConnection.make({
+          url: Redacted.make(`postgres://user@localhost/db?sslmode=${mode}`),
+          stream: () =>
+            new Duplex({
+              read() {},
+              write(chunk: Buffer, _encoding, callback) {
+                writes.push(Buffer.from(chunk))
+                queueMicrotask(() => this.destroy(new Error("test connection")))
+                callback()
+              }
+            })
+        }))
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        assert.strictEqual(error.reason.message, "PgConnection: Failed to connect")
+        // 8-byte SSLRequest (code 80877103), not a StartupMessage.
+        assert.strictEqual(writes[0]?.toString("hex"), "0000000804d2162f")
+      })
+  )
 
-  it.effect("rejects sslmode=allow in a URL", () =>
+  it.effect("rejects an unrecognized sslmode in a URL", () =>
     Effect.gen(function*() {
       const error = yield* Effect.flip(PgConnection.make({
-        url: Redacted.make("postgresql://user@localhost/db?sslmode=allow")
+        url: Redacted.make("postgres://user@localhost/db?sslmode=maybe")
       }))
       assert.strictEqual(error.reason._tag, "ConnectionError")
-      assert.include(error.reason.message, "sslmode")
+      assert.include(error.reason.message, "Unrecognized sslmode")
     }))
 
   it.effect("lets explicit ssl override sslmode=prefer in a URL", () =>

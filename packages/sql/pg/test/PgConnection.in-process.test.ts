@@ -402,6 +402,137 @@ describe("PgConnection in-process server", () => {
     }
   })
 
+  describe("sslmode=prefer", () => {
+    const sslRequest = Buffer.concat([int32(8), int32(80877103)])
+    const cancelRequest = Buffer.concat([int32(16), int32(80877102), int32(1234), int32(5678)])
+
+    // A server that answers SSLRequest with `reply`, then completes startup
+    // (or, for a cancel connection, closes after the CancelRequest frame).
+    const makeStream = (reply: "S" | "N", cancel: boolean) => {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          writes.push(Buffer.from(chunk))
+          queueMicrotask(() => {
+            if (writes.length === 1) {
+              socket.push(Buffer.from(reply))
+            } else if (cancel) {
+              socket.destroy()
+            } else if (writes.length === 2) {
+              socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+            }
+          })
+          callback()
+        }
+      })
+      // Registered so the mocked `tls.connect` records whether an upgrade
+      // was attempted; `N` paths must leave it `undefined`.
+      tlsOptions.set(socket, undefined)
+      return { socket, writes }
+    }
+
+    const url = (mode: string) => Redacted.make(`postgres://test@db.example.com/db?sslmode=${mode}`)
+
+    it.effect.each(["prefer", "allow"])(
+      "upgrades to TLS when the server answers S (sslmode=%s)",
+      (mode) =>
+        Effect.gen(function*() {
+          const stream = makeStream("S", false)
+          yield* PgConnection.make({ url: url(mode), stream: () => stream.socket })
+
+          assert.deepStrictEqual(stream.writes[0], sslRequest)
+          const options = tlsOptions.get(stream.socket)
+          assert.isDefined(options)
+          assert.strictEqual(options!.servername, "db.example.com")
+          assert.deepStrictEqual(startupParameters(stream.writes[1]).get("user"), "test")
+        })
+    )
+
+    it.effect.each(["prefer", "allow"])(
+      "continues in plaintext when the server answers N (sslmode=%s)",
+      (mode) =>
+        Effect.gen(function*() {
+          const stream = makeStream("N", false)
+          yield* PgConnection.make({ url: url(mode), stream: () => stream.socket })
+
+          assert.deepStrictEqual(stream.writes[0], sslRequest)
+          assert.isUndefined(tlsOptions.get(stream.socket))
+          assert.strictEqual(stream.writes.length, 2)
+          assert.deepStrictEqual(startupParameters(stream.writes[1]).get("user"), "test")
+        })
+    )
+
+    it.effect("sends the cancel request in plaintext when the server answers N", () =>
+      Effect.gen(function*() {
+        const streams: Array<ReturnType<typeof makeStream>> = []
+        const connection = yield* PgConnection.make({
+          url: url("prefer"),
+          stream: () => {
+            const stream = makeStream("N", streams.length > 0)
+            streams.push(stream)
+            return stream.socket
+          }
+        })
+        yield* connection.interrupt
+
+        assert.strictEqual(streams.length, 2)
+        const cancel = streams[1]
+        assert.deepStrictEqual(cancel.writes, [sslRequest, cancelRequest])
+        assert.isUndefined(tlsOptions.get(cancel.socket))
+      }))
+
+    it.effect("never sends the cancel secret in plaintext when TLS was required", () =>
+      Effect.gen(function*() {
+        const streams: Array<ReturnType<typeof makeStream>> = []
+        const connection = yield* PgConnection.make({
+          url: url("require"),
+          stream: () => {
+            // Session negotiates TLS; the cancel connection is refused it.
+            const stream = makeStream(streams.length > 0 ? "N" : "S", streams.length > 0)
+            streams.push(stream)
+            return stream.socket
+          }
+        })
+        yield* connection.interrupt
+
+        assert.strictEqual(streams.length, 2)
+        assert.deepStrictEqual(streams[1].writes, [sslRequest])
+      }))
+
+    it.effect("explicit ssl: true wins over sslmode=prefer and fails on N", () =>
+      Effect.gen(function*() {
+        const stream = makeStream("N", false)
+        const error = yield* Effect.flip(PgConnection.make({
+          url: url("prefer"),
+          ssl: true,
+          stream: () => stream.socket
+        }))
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        assert.include(error.reason.message, "refused TLS")
+      }))
+
+    it.effect("explicit ssl: false wins over sslmode=prefer and skips SSLRequest", () =>
+      Effect.gen(function*() {
+        const writes: Array<Buffer> = []
+        const socket: Duplex = new Duplex({
+          read() {},
+          write(chunk: Buffer, _encoding, callback) {
+            writes.push(Buffer.from(chunk))
+            queueMicrotask(() => {
+              if (writes.length === 1) {
+                socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+              }
+            })
+            callback()
+          }
+        })
+        yield* PgConnection.make({ url: url("prefer"), ssl: false, stream: () => socket })
+        assert.strictEqual(writes.length, 1)
+        assert.deepStrictEqual(startupParameters(writes[0]).get("user"), "test")
+      }))
+  })
+
   it.live("preserves an ErrorResponse returned for SSLRequest", () =>
     Effect.scoped(Effect.gen(function*() {
       const { port } = yield* withTcpServer((socket) => {
