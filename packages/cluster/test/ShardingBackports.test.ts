@@ -2,6 +2,7 @@ import {
   ClusterError,
   ClusterSchema,
   Entity,
+  EntityAddress,
   MessageStorage,
   RunnerAddress,
   RunnerHealth,
@@ -13,7 +14,20 @@ import {
 } from "@effect/cluster"
 import { Rpc } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Fiber, Layer, Option, Schema, Scope, TestClock, TestServices } from "effect"
+import {
+  Cause,
+  Context,
+  Effect,
+  ExecutionStrategy,
+  Exit,
+  Fiber,
+  Layer,
+  Option,
+  Schema,
+  Scope,
+  TestClock,
+  TestServices
+} from "effect"
 import { ResourceRef } from "../src/internal/resourceRef.js"
 import { makeRequest } from "./fixtures/message-storage.js"
 import { TestEntity, TestEntityNoState, TestEntityState } from "./TestEntity.js"
@@ -212,3 +226,72 @@ it.scoped("forwards user interrupts from a fiber that previously rebuilt a resou
     assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "Interrupt").length, 1)
     assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(1))
   }).pipe(Effect.provide(TestSharding)))
+
+for (const duringTeardown of [false, true]) {
+  it.effect(`forwards persisted cancellation in another Sharding (during teardown=${duringTeardown})`, () =>
+    Effect.gen(function*() {
+      const teardownStarted = yield* Effect.makeLatch()
+      const releaseTeardown = yield* Effect.makeLatch()
+      const callerFinished = yield* Effect.makeLatch()
+      const caller = Entity.make("TeardownIsolationCaller", [
+        Rpc.make("Address", { success: EntityAddress.EntityAddress }),
+        Rpc.make("Run")
+      ]).annotateRpcs(ClusterSchema.Persisted, false)
+      const makeLayer = (holdTeardown: boolean) =>
+        caller.toLayer(Effect.gen(function*() {
+          const address = yield* Entity.CurrentAddress
+          const client = (yield* TestEntity.client)("target")
+          if (holdTeardown) {
+            yield* Effect.addFinalizer(() => teardownStarted.open.pipe(Effect.andThen(releaseTeardown.await)))
+          }
+          return {
+            Address: () => Effect.succeed(address),
+            Run: () => client.Never().pipe(Effect.orDie, Effect.ensuring(callerFinished.open))
+          }
+        })).pipe(Layer.provideMerge(TestSharding))
+      const scope = yield* Effect.scope
+      const closingScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
+      const closingContext = yield* Layer.build(makeLayer(true)).pipe(Scope.extend(closingScope))
+      const activeContext = yield* Layer.build(makeLayer(false))
+      const closingSharding = Context.get(closingContext, Sharding.Sharding)
+      const activeSharding = Context.get(activeContext, Sharding.Sharding)
+      const driver = Context.get(activeContext, MessageStorage.MemoryDriver)
+      const state = Context.get(activeContext, TestEntityState)
+      assert.notStrictEqual(closingSharding, activeSharding)
+      assert.notStrictEqual(Context.get(closingContext, MessageStorage.MemoryDriver), driver)
+      yield* TestClock.adjust(1)
+      const closingClient = (yield* caller.client.pipe(Effect.provide(closingContext)))("same-id")
+      const activeClient = (yield* caller.client.pipe(Effect.provide(activeContext)))("same-id")
+      assert.deepStrictEqual(yield* closingClient.Address(), yield* activeClient.Address())
+      const request = yield* activeClient.Run().pipe(Effect.fork)
+      const envelope = yield* state.envelopes.take
+      assert.strictEqual(envelope.tag, "Never")
+      assert.strictEqual(driver.journal.length, 1)
+      assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(0))
+
+      const closing = yield* Scope.close(closingScope, Exit.void).pipe(Effect.fork)
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        yield* teardownStarted.await
+        assert.isNull(closing.unsafePoll(), "the other Sharding must be paused inside entity teardown")
+        if (!duringTeardown) {
+          yield* releaseTeardown.open
+          yield* Fiber.join(closing)
+        }
+        assert.isFalse(yield* activeSharding.isShutdown)
+        yield* Fiber.interrupt(request)
+        yield* callerFinished.await
+        yield* TestClock.adjust(1)
+        const interrupts = driver.journal.filter((entry) =>
+          entry._tag === "Interrupt" && entry.requestId === String(envelope.requestId)
+        )
+        assert.deepStrictEqual({
+          persistedInterrupts: interrupts.length,
+          handlerInterrupts: state.interrupts.unsafeSize()
+        }, {
+          persistedInterrupts: 1,
+          handlerInterrupts: Option.some(1)
+        })
+      }).pipe(Effect.ensuring(releaseTeardown.open.pipe(Effect.andThen(Fiber.join(closing)))))
+    }).pipe(Effect.scoped))
+}
