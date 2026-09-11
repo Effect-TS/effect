@@ -2248,12 +2248,6 @@ export const encodeSync: <S extends ConstraintEncoder<unknown>>(
  * the bridge between the untyped AST representation and the strongly-typed
  * schema.
  *
- * **Gotchas**
- *
- * `options` are assigned to the schema constructor. They must not define
- * properties reserved by JavaScript functions, such as `name`, `length`,
- * `prototype`, or `__proto__`.
- *
  * @category constructors
  * @since 3.10.0
  */
