@@ -13,6 +13,50 @@ const makeConnection = (options?: PgConnection.Config) =>
   })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
+  it.effect("accepts application_name and UTF-8 startup parameters without corrupting text", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({
+        startupParameters: { application_name: "startup-app", client_encoding: "utf-8" }
+      })
+      const result = yield* connection.query(
+        "SELECT current_setting('application_name') AS app, current_setting('client_encoding') AS encoding, $1::text AS text",
+        ["héllo 世界"]
+      )
+      assert.deepStrictEqual(result.rows, [{ app: "startup-app", encoding: "UTF8", text: "héllo 世界" }])
+    }))
+
+  it.effect("establishes startup parameters as session defaults", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({
+        startupParameters: {
+          statement_timeout: "17s",
+          random_page_cost: "2.5",
+          search_path: "\"schema with spaces\",public"
+        }
+      })
+      const read = connection.query(
+        "SELECT current_setting('statement_timeout') AS timeout, " +
+          "current_setting('random_page_cost') AS cost, current_setting('search_path') AS path"
+      )
+      const expected = [{ timeout: "17s", cost: "2.5", path: "\"schema with spaces\",public" }]
+      assert.deepStrictEqual((yield* read).rows, expected)
+      yield* connection.query("SET statement_timeout = '1s'")
+      yield* connection.query("RESET ALL")
+      assert.deepStrictEqual((yield* read).rows, expected)
+    }))
+
+  it.effect("fails startup when PostgreSQL rejects a parameter", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(makeConnection({ startupParameters: { statement_timeout: "not-a-duration" } }))
+      assert.strictEqual(error.reason.operation, "connect")
+      assert.propertyVal(error.reason.cause, "code", "22023")
+      assert.propertyVal(
+        error.reason.cause,
+        "message",
+        "invalid value for parameter \"statement_timeout\": \"not-a-duration\""
+      )
+    }))
+
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
