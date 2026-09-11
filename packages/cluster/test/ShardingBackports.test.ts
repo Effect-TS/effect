@@ -168,7 +168,8 @@ describe("v3 sharding backports", () => {
             yield* Scope.close(scope, Exit.void)
             assert.isTrue(yield* sharding.isShutdown)
             const result = yield* sharding.sendOutgoing(request, discard).pipe(
-              Effect.exit,
+              Effect.fork,
+              Effect.flatMap(Fiber.await),
               Effect.timeoutOption(100),
               TestServices.provideLive
             )
