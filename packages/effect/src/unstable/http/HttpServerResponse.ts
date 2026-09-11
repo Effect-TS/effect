@@ -967,7 +967,7 @@ export const setStatus: {
 
 /**
  * Returns whether a response must omit its body because its status is 204, 205,
- * or 304, or `withoutBody` is enabled for a request such as HEAD.
+ * or 304, or `withoutBody` is true.
  *
  * @category predicates
  * @since 4.0.0
@@ -981,8 +981,11 @@ export const omitsBody = (response: HttpServerResponse, withoutBody = false): bo
  * **Details**
  *
  * Cookies are appended as `Set-Cookie` headers. Stream bodies are converted using
- * the supplied context, and `withoutBody` can be used for responses such as HEAD
- * responses.
+ * the supplied context.
+ *
+ * Bodies are omitted for statuses 204, 205, and 304, or when `withoutBody` is true
+ * (for example, for HEAD responses). Omitted raw `ReadableStream` bodies are
+ * cancelled without awaiting completion, and cancellation errors are ignored.
  *
  * @category converting
  * @since 4.0.0
