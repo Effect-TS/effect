@@ -5,7 +5,12 @@ import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import type { EntityAddress } from "../EntityAddress.js"
-import { acquireEntity, releaseEntity } from "./interruptors.js"
+import type { ActiveTeardown } from "./interruptors.js"
+
+interface Teardown {
+  readonly address: EntityAddress
+  readonly tracker: ActiveTeardown
+}
 
 export type State<A, E> = {
   readonly _tag: "Closed"
@@ -26,7 +31,7 @@ export class ResourceRef<A, E = never> {
   static from = Effect.fnUntraced(function*<A, E>(
     parentScope: Scope.Scope,
     acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
-    teardownAddress?: EntityAddress
+    teardown?: Teardown
   ) {
     const state = MutableRef.make<State<A, E>>({ _tag: "Closed" })
 
@@ -45,13 +50,13 @@ export class ResourceRef<A, E = never> {
     const value = yield* acquire(scope)
     MutableRef.set(state, { _tag: "Acquired", scope, value })
 
-    return new ResourceRef(state, acquire, teardownAddress)
+    return new ResourceRef(state, acquire, teardown)
   })
 
   constructor(
     readonly state: MutableRef.MutableRef<State<A, E>>,
     readonly acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
-    readonly teardownAddress?: EntityAddress
+    readonly teardown?: Teardown
   ) {}
 
   latch = Effect.unsafeMakeLatch(true)
@@ -72,12 +77,12 @@ export class ResourceRef<A, E = never> {
     const scope = Effect.runSync(Scope.make())
     this.latch.unsafeClose()
     MutableRef.set(this.state, { _tag: "Acquiring", scope })
-    const teardownAddress = this.teardownAddress
+    const teardown = this.teardown
     return Effect.suspend(() => {
       const close = Scope.close(prevScope, Exit.void)
-      if (!teardownAddress) return close
-      acquireEntity(teardownAddress)
-      return Effect.ensuring(close, Effect.sync(() => releaseEntity(teardownAddress)))
+      if (!teardown) return close
+      teardown.tracker.acquireEntity(teardown.address)
+      return Effect.ensuring(close, Effect.sync(() => teardown.tracker.releaseEntity(teardown.address)))
     }).pipe(
       Effect.andThen(this.acquire(scope)),
       Effect.flatMap((value) => {

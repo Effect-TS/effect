@@ -213,6 +213,7 @@ const make = Effect.gen(function*() {
   const snowflakeGen = yield* Snowflake.Generator
   const shardingScope = yield* Effect.scope
   const isShutdown = MutableRef.make(false)
+  const activeTeardown = ActiveTeardown.make()
   const fiberSet = yield* FiberSet.make()
   const runFork = yield* FiberSet.runtime(fiberSet)<never>().pipe(
     Effect.mapInputContext((context: Context.Context<never>) => Context.omit(Scope.Scope)(context))
@@ -1164,10 +1165,11 @@ const make = Effect.gen(function*() {
   > = yield* ResourceMap.make(
     Effect.fnUntraced(function*(entity: Entity<string, any>) {
       const clientScope = yield* Effect.scope
+      // LIFO finalization acquires below before client teardown and releases last.
       yield* Scope.addFinalizer(
         clientScope,
         Effect.sync(() => {
-          ActiveTeardown.releaseEntityType(entity.type)
+          activeTeardown.releaseEntityType(entity.type)
         })
       )
       const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
@@ -1247,7 +1249,7 @@ const make = Effect.gen(function*() {
               const caller = Context.getOption(entry.services, CurrentAddress)
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
                 options.message.interruptors.some(ClusterAbandon.isInterruptor) ||
-                (Option.isSome(caller) && ActiveTeardown.isActive(caller.value))
+                (Option.isSome(caller) && activeTeardown.isActive(caller.value))
               if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
                 return Effect.void
               }
@@ -1272,7 +1274,7 @@ const make = Effect.gen(function*() {
       yield* Scope.addFinalizer(
         clientScope,
         Effect.sync(() => {
-          ActiveTeardown.acquireEntityType(entity.type)
+          activeTeardown.acquireEntityType(entity.type)
         })
       )
 
@@ -1288,7 +1290,9 @@ const make = Effect.gen(function*() {
           readonly asMailbox?: boolean
         }) {
           const context = options?.context ? Context.merge(options.context, address) : address
-          const isStream = RpcSchema.isStreamSchema(entity.protocol.requests.get(tag)!.successSchema)
+          const rpc = entity.protocol.requests.get(tag)
+          if (!rpc) return Effect.dieMessage(`Unknown tag ${tag} for entity type ${entity.type}`)
+          const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
           const response = client.client(tag, payload, {
             ...options,
             asMailbox: isStream,
@@ -1412,7 +1416,7 @@ const make = Effect.gen(function*() {
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
           yield* Effect.logDebug("Stopping singleton", address)
-          yield* ActiveTeardown.aroundShard(address.shardId, FiberMap.remove(singletonFibers, address))
+          yield* activeTeardown.aroundShard(address.shardId, FiberMap.remove(singletonFibers, address))
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
           yield* FiberMap.run(singletonFibers, address, run)
@@ -1446,6 +1450,7 @@ const make = Effect.gen(function*() {
         ...options,
         storage,
         runnerAddress: config.runnerAddress.value,
+        activeTeardown,
         sharding
       }).pipe(
         Effect.provide(context.pipe(
@@ -1466,7 +1471,7 @@ const make = Effect.gen(function*() {
         scope,
         Effect.suspend(() => {
           state.status = "closing"
-          return ActiveTeardown.aroundEntityType(entity.type, config.preemptiveShutdown ? shutdown() : Effect.void)
+          return activeTeardown.aroundEntityType(entity.type, config.preemptiveShutdown ? shutdown() : Effect.void)
         })
       )
 

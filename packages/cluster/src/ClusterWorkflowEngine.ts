@@ -439,12 +439,15 @@ export const make = Effect.gen(function*() {
                 resumeGate.withPermitsIfAvailable(1)(
                   currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
                 ).pipe(
+                  // Release the gate before reset can start another parent run, so
+                  // later child completions can wake that replay.
                   Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
                   ensureSuccess,
                   Rpc.wrap({ fork: true, uninterruptible: true })
                 )
             }
           }),
+          // Reserve a slot for deferred completions to wake the active run.
           { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
