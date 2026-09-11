@@ -739,30 +739,34 @@ export const make = (
           )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = (value: string): string => {
-    if (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)) {
-      throw new Error("Path parameters must be non-empty and cannot be dot segments")
-    }
-    return encodeURIComponent(value)
-  }
+  const __encodePathParam = encodeURIComponent
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
+    parameters: ReadonlyArray<string>,
     getPath: () => string,
-  ) => Effect.try({
-    try: () => {
-      const path = getPath()
-      if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
-        throw new Error("Request paths cannot contain dot segments")
-      }
-      return method(path)
-    },
-    catch: (cause) => new HttpClientError.HttpClientError({
-      reason: new HttpClientError.InvalidUrlError({
-        request: method(""),
-        cause,
-        description: "Invalid path parameter",
+  ) => Effect.suspend(() => {
+    const fail = (description: string, cause?: unknown) => Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.InvalidUrlError({
+          request: method(""),
+          cause,
+          description,
+        }),
       }),
-    }),
+    )
+    if (parameters.some((value) => value === "" || /^(?:\\.|%2e){1,2}$/i.test(value))) {
+      return fail("Path parameters must be non-empty and cannot be dot segments")
+    }
+    let path: string
+    try {
+      path = getPath()
+    } catch (cause) {
+      return fail("Failed to encode path parameter", cause)
+    }
+    if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
+      return fail("Request paths cannot contain dot segments")
+    }
+    return Effect.succeed(method(path))
   })
   const decodeSuccess =
     <Schema extends Schema.Constraint>(schema: Schema) =>
@@ -777,7 +781,7 @@ export const make = (
       )
   return {
     httpClient,
-    "getUser": (id, options) => __makePathRequest(HttpClientRequest.get, () => "/users/" + __encodePathParam(id) + "").pipe(
+    "getUser": (id, options) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam(id) + "").pipe(
     Effect.flatMap((request) => request.pipe(
       withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeSuccess(GetUser200),
@@ -1217,30 +1221,34 @@ export const make = (
           )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = (value: string): string => {
-    if (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)) {
-      throw new Error("Path parameters must be non-empty and cannot be dot segments")
-    }
-    return encodeURIComponent(value)
-  }
+  const __encodePathParam = encodeURIComponent
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
+    parameters: ReadonlyArray<string>,
     getPath: () => string,
-  ) => Effect.try({
-    try: () => {
-      const path = getPath()
-      if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
-        throw new Error("Request paths cannot contain dot segments")
-      }
-      return method(path)
-    },
-    catch: (cause) => new HttpClientError.HttpClientError({
-      reason: new HttpClientError.InvalidUrlError({
-        request: method(""),
-        cause,
-        description: "Invalid path parameter",
+  ) => Effect.suspend(() => {
+    const fail = (description: string, cause?: unknown) => Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.InvalidUrlError({
+          request: method(""),
+          cause,
+          description,
+        }),
       }),
-    }),
+    )
+    if (parameters.some((value) => value === "" || /^(?:\\.|%2e){1,2}$/i.test(value))) {
+      return fail("Path parameters must be non-empty and cannot be dot segments")
+    }
+    let path: string
+    try {
+      path = getPath()
+    } catch (cause) {
+      return fail("Failed to encode path parameter", cause)
+    }
+    if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
+      return fail("Request paths cannot contain dot segments")
+    }
+    return Effect.succeed(method(path))
   })
   const decodeSuccess = <A>(response: HttpClientResponse.HttpClientResponse) =>
     response.json as Effect.Effect<A, HttpClientError.HttpClientError>
@@ -1278,7 +1286,7 @@ export const make = (
   }
   return {
     httpClient,
-    "getUser": (id, options) => __makePathRequest(HttpClientRequest.get, () => "/users/" + __encodePathParam(id) + "").pipe(
+    "getUser": (id, options) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam(id) + "").pipe(
     Effect.flatMap((request) => request.pipe(
       onRequest(options?.config)(["2xx"])
     ))
