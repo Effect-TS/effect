@@ -1,6 +1,6 @@
 ---
-"@effect/workflow": patch
-"@effect/cluster": patch
+"@effect/workflow": minor
+"@effect/cluster": minor
 ---
 
 Fix child workflow fan-out inside activities so children dispatch before suspension, activity resources are released during durable waits, and child completions during cleanup wake the parent. Interrupted activity acquisition now releases its registration. Activities that suspend run again on replay; side effects before suspension must be idempotent.

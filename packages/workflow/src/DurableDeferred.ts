@@ -164,11 +164,10 @@ export const into: {
     const instance = { ...parentInstance }
     return Effect.onExit(Effect.provideService(effect, InstanceTag, instance), (exit) => {
       if (Exit.isFailure(exit) && Cause.isInterrupted(exit.cause)) {
-        const isInterruptedOnly = Cause.isInterruptedOnly(exit.cause)
-        if (isInterruptedOnly) {
+        if (Cause.isInterruptedOnly(exit.cause)) {
           if (instance.suspended) parentInstance.suspended = true
           return Effect.void
-        } else if (!isInterruptedOnly) {
+        } else {
           exit = Exit.failCause(
             Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
           )

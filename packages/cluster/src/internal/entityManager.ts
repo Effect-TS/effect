@@ -38,7 +38,7 @@ import { ShardingConfig } from "../ShardingConfig.js"
 import * as Snowflake from "../Snowflake.js"
 import { EntityReaper } from "./entityReaper.js"
 import { joinAllDiscard } from "./fiber.js"
-import { acquireEntity, releaseEntity } from "./interruptors.js"
+import type { ActiveTeardown } from "./interruptors.js"
 import { ResourceMap } from "./resourceMap.js"
 import { ResourceRef } from "./resourceRef.js"
 
@@ -93,6 +93,7 @@ export const make = Effect.fnUntraced(function*<
   buildHandlers: Effect.Effect<Handlers, never, RX>,
   options: {
     readonly sharding: Sharding["Type"]
+    readonly activeTeardown: ActiveTeardown
     readonly storage: MessageStorage.MessageStorage["Type"]
     readonly runnerAddress: RunnerAddress
     readonly maxIdleTime?: DurationInput | undefined
@@ -143,10 +144,11 @@ export const make = Effect.fnUntraced(function*<
       force: Effect.unsafeMakeLatch()
     }
 
+    // LIFO finalization acquires below before entity teardown and releases last.
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
-        releaseEntity(address)
+        options.activeTeardown.releaseEntity(address)
       })
     )
 
@@ -332,7 +334,7 @@ export const make = Effect.fnUntraced(function*<
 
         return server.write
       }),
-      address
+      { address, tracker: options.activeTeardown }
     )
 
     function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
@@ -383,7 +385,7 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
-        acquireEntity(address)
+        options.activeTeardown.acquireEntity(address)
         return Effect.raceFirst(
           state.write(0, { _tag: "Eof" }).pipe(
             Effect.andThen(endLatch.await),
