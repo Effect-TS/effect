@@ -120,10 +120,9 @@ export const make = Effect.fnUntraced(
     let listenOptions = options
     if (!("unix" in options) || options.unix === undefined) {
       const internetOptions = options as Bun.Serve.HostnamePortServeOptions<WebSocketContext>
-      const hostname = internetOptions.hostname ?? "0.0.0.0"
-      listenOptions = { ...options, hostname }
+      let hostname = internetOptions.hostname ?? "::"
       if (Result.isFailure(NetAddress.ipFromString(hostname))) {
-        const resolved = yield* Effect.tryPromise({
+        hostname = yield* Effect.tryPromise({
           try: async () => {
             const result = await Bun.dns.lookup(hostname, { socketType: "tcp" })
             if (result.length === 0) throw new globalThis.Error(`Could not resolve hostname: ${hostname}`)
@@ -131,8 +130,8 @@ export const make = Effect.fnUntraced(
           },
           catch: (cause) => new Error.ServeError({ cause })
         })
-        listenOptions = { ...options, hostname: resolved }
       }
+      listenOptions = { ...options, hostname }
     }
     const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
