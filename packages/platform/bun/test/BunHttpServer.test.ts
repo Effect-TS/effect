@@ -113,6 +113,21 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
 })
 
 describe("BunHttpServer", () => {
+  for (const options of [{ port: 0 }, { hostname: undefined, port: 0 }, { unix: undefined, port: 0 }]) {
+    it.effect(`defaults to a numeric wildcard address with ${Object.keys(options).join(", ")}`, () =>
+      Effect.gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        if (!NetAddress.isInetAddressV4(server.address)) {
+          assert.fail("Expected an IPv4 listen address")
+        }
+        assert.strictEqual(NetAddress.formatIp(server.address.address), "0.0.0.0")
+        yield* server.serve(Effect.succeed(HttpServerResponse.text("tcp")))
+        const client = yield* HttpServer.makeTestClient.pipe(Effect.provide(FetchHttpClient.layer))
+        const response = yield* client.get("/")
+        assert.strictEqual(yield* response.text, "tcp")
+      }).pipe(Effect.provide(BunHttpServer.layer(options))))
+  }
+
   it.effect("treats an undefined Unix path as a TCP listener", () =>
     Effect.gen(function*() {
       for (const hostname of ["localhost", "127.0.0.1"]) {

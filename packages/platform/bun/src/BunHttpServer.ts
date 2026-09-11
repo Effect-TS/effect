@@ -131,6 +131,8 @@ export const make = Effect.fnUntraced(
           catch: (cause) => new Error.ServeError({ cause })
         })
         listenOptions = { ...options, hostname: resolved }
+      } else {
+        listenOptions = { ...options, hostname }
       }
     }
     const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
