@@ -1285,14 +1285,12 @@ const make = Effect.gen(function*() {
           entityId: id,
           entityType: entity.type
         }))
-        const clientFn = function(tag: string, payload: any, options?: {
+        const clientFn = (tag: string, isStream: boolean) =>
+        (payload: any, options?: {
           readonly context?: Context.Context<never>
           readonly asMailbox?: boolean
-        }) {
+        }) => {
           const context = options?.context ? Context.merge(options.context, address) : address
-          const rpc = entity.protocol.requests.get(tag)
-          if (!rpc) return Effect.dieMessage(`Unknown tag ${tag} for entity type ${entity.type}`)
-          const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
           const response = client.client(tag, payload, {
             ...options,
             asMailbox: isStream,
@@ -1312,10 +1310,12 @@ const make = Effect.gen(function*() {
           get(target, p) {
             if (p in target) {
               return target[p]
-            } else if (!entity.protocol.requests.has(p as string)) {
+            }
+            const rpc = entity.protocol.requests.get(p as string)
+            if (!rpc) {
               return undefined
             }
-            return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+            return target[p] = clientFn(p as string, RpcSchema.isStreamSchema(rpc.successSchema))
           }
         })
       }

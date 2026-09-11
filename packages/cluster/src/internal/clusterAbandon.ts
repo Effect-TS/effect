@@ -6,7 +6,6 @@ import * as Effectable from "effect/Effectable"
 import type * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { globalValue } from "effect/GlobalValue"
-import * as HashSet from "effect/HashSet"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
@@ -21,14 +20,15 @@ export const interrupt: Effect.Effect<void> = Effect.withFiberRuntime((fiber) =>
   return Effect.void
 })
 
-export const isInterruptor = (id: FiberId.FiberId): boolean => HashSet.has(FiberId.ids(id), interruptor.id)
+export const isInterruptor = (id: FiberId.FiberId): boolean =>
+  id._tag === "Runtime"
+    ? id.id === interruptor.id
+    : id._tag === "Composite" && (isInterruptor(id.left) || isInterruptor(id.right))
 
-export const isCause = (cause: Cause.Cause<unknown>): boolean => {
-  for (const id of Cause.interruptors(cause)) {
-    if (isInterruptor(id)) return true
-  }
-  return false
-}
+export const isCause = (cause: Cause.Cause<unknown>): boolean =>
+  Option.isSome(
+    Cause.find(cause, (c) => c._tag === "Interrupt" && isInterruptor(c.fiberId) ? Option.some(c) : Option.none())
+  )
 
 /** @internal */
 export const onError = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
@@ -66,26 +66,22 @@ class AbandonmentMailbox<A, E> extends Effectable.Class<readonly [Chunk.Chunk<A>
   implements Mailbox.ReadonlyMailbox<A, E>
 {
   readonly [Mailbox.ReadonlyTypeId]: Mailbox.ReadonlyTypeId = Mailbox.ReadonlyTypeId
+  readonly clear: Effect.Effect<Chunk.Chunk<A>, E>
+  readonly takeAll: Effect.Effect<readonly [Chunk.Chunk<A>, boolean], E>
+  readonly take: Effect.Effect<A, E | Cause.NoSuchElementException>
+  readonly await: Effect.Effect<void, E>
   constructor(readonly self: Mailbox.ReadonlyMailbox<A, E>) {
     super()
+    this.clear = onError(self.clear)
+    this.takeAll = onError(self.takeAll)
+    this.take = onError(self.take)
+    this.await = onError(self.await)
   }
   commit() {
     return this.takeAll
   }
-  get clear() {
-    return onError(this.self.clear)
-  }
-  get takeAll() {
-    return onError(this.self.takeAll)
-  }
   takeN(n: number) {
     return onError(this.self.takeN(n))
-  }
-  get take() {
-    return onError(this.self.take)
-  }
-  get await() {
-    return onError(this.self.await)
   }
   get size() {
     return this.self.size

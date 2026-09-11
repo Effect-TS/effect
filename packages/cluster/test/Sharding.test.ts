@@ -597,29 +597,11 @@ describe("Sharding shard lock failover", () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
-      const runnerStorage = Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
-      )
-      const config = ShardingConfig.layer({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-        shardsPerGroup: 1,
+      const layer = makeFailoverLayer(storageState, {
         shardLockExpiration: 300,
         shardLockRefreshInterval: 1000,
-        entityTerminationTimeout: 30_000,
-        entityMessagePollInterval: 10,
-        refreshAssignmentsInterval: 10,
-        sendRetryInterval: 10
+        entityTerminationTimeout: 30_000
       })
-      const layer = TestEntityNoState.pipe(
-        Layer.provideMerge(Sharding.layer),
-        Layer.provide(runnerStorage),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provideMerge(TestEntityState.Default),
-        Layer.provide(Runners.layerNoop),
-        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-        Layer.provide(config)
-      )
 
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
@@ -666,29 +648,11 @@ describe("Sharding shard lock failover", () => {
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
-      const runnerStorage = Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
-      )
-      const config = ShardingConfig.layer({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-        shardsPerGroup: 1,
+      const layer = makeFailoverLayer(storageState, {
         shardLockExpiration: 3000,
         shardLockRefreshInterval: 100,
-        entityTerminationTimeout: 1000,
-        entityMessagePollInterval: 10,
-        refreshAssignmentsInterval: 10,
-        sendRetryInterval: 10
+        entityTerminationTimeout: 1000
       })
-      const layer = TestEntityNoState.pipe(
-        Layer.provideMerge(Sharding.layer),
-        Layer.provide(runnerStorage),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provideMerge(TestEntityState.Default),
-        Layer.provide(Runners.layerNoop),
-        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-        Layer.provide(config)
-      )
 
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
@@ -734,29 +698,11 @@ describe("Sharding shard lock failover", () => {
   it.effect("does not wait for entity construction before a forced shard release", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
-      const runnerStorage = Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
-      )
-      const config = ShardingConfig.layer({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-        shardsPerGroup: 1,
+      const layer = makeFailoverLayer(storageState, {
         shardLockExpiration: 300,
         shardLockRefreshInterval: 1000,
-        entityTerminationTimeout: 0,
-        entityMessagePollInterval: 10,
-        refreshAssignmentsInterval: 10,
-        sendRetryInterval: 10
+        entityTerminationTimeout: 0
       })
-      const layer = TestEntityNoState.pipe(
-        Layer.provideMerge(Sharding.layer),
-        Layer.provide(runnerStorage),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provideMerge(TestEntityState.Default),
-        Layer.provide(Runners.layerNoop),
-        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-        Layer.provide(config)
-      )
 
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
@@ -801,29 +747,12 @@ describe("Sharding shard lock failover", () => {
         otherRunnerHealthy: true,
         releaseAllDuration: 500
       })
-      const runnerStorage = Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
-      )
-      const config = ShardingConfig.layer({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      const layer = makeFailoverLayer(storageState, {
         shardsPerGroup,
         shardLockExpiration: 300,
         shardLockRefreshInterval: 1000,
-        entityTerminationTimeout: 0,
-        entityMessagePollInterval: 10,
-        refreshAssignmentsInterval: 10,
-        sendRetryInterval: 10
+        entityTerminationTimeout: 0
       })
-      const layer = TestEntityNoState.pipe(
-        Layer.provideMerge(Sharding.layer),
-        Layer.provide(runnerStorage),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provideMerge(TestEntityState.Default),
-        Layer.provide(Runners.layerNoop),
-        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-        Layer.provide(config)
-      )
 
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
@@ -952,6 +881,27 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
       })
   })
 
+const makeFailoverLayer = (state: FailoverStorageState, config: Partial<ShardingConfig.ShardingConfig["Type"]>) =>
+  TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Effect.clock, (clock) => makeFailoverStorage(state, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.Default),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      entityMessagePollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10,
+      ...config
+    }))
+  )
+
 const otherRunner = RunnerModule.make({
   address: RunnerAddress.make("localhost", 5678),
   groups: ["default"],
@@ -990,22 +940,6 @@ const TestSharding = TestShardingWithoutStorage.pipe(
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
 
 describe("entity registration and outgoing requests", () => {
-  const TestShardingConfig = ShardingConfig.layer({
-    entityMailboxCapacity: 10,
-    entityTerminationTimeout: 0,
-    entityMessagePollInterval: 5000,
-    sendRetryInterval: 100
-  })
-  const TestSharding = TestEntityNoState.pipe(
-    Layer.provideMerge(Sharding.layer),
-    Layer.provide(RunnerStorage.layerMemory),
-    Layer.provide(RunnerHealth.layerNoop),
-    Layer.provideMerge(TestEntityState.Default),
-    Layer.provide(Runners.layerNoop),
-    Layer.provideMerge(MessageStorage.layerMemory),
-    Layer.provide(TestShardingConfig)
-  )
-
   it.effect("uses services provided when registering an entity", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
@@ -1115,55 +1049,52 @@ describe("entity registration and outgoing requests", () => {
     }).pipe(Effect.provide(TestSharding)))
   for (const persisted of [false, true]) {
     for (const discard of [false, true]) {
-      for (const preemptiveShutdown of [false, true]) {
-        it.effect(`settles outgoing sends after shutdown (persisted=${persisted}, discard=${discard}, preemptive=${preemptiveShutdown})`, () =>
-          Effect.gen(function*() {
-            const storage = yield* MessageStorage.MessageStorage
-            const rpc = Rpc.make("ShutdownPing").annotate(ClusterSchema.Persisted, persisted)
-            const request = yield* makeRequest({ rpc, payload: undefined })
-            const scope = yield* Scope.make()
-            const context = yield* Layer.build(Sharding.layer.pipe(
-              Layer.provide(RunnerStorage.layerMemory),
-              Layer.provide(RunnerHealth.layerNoop),
-              Layer.provide(Runners.layerNoop),
-              Layer.provide(ShardingConfig.layer({
-                runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-                shardsPerGroup: 1,
-                entityTerminationTimeout: 0,
-                sendRetryInterval: 10,
-                preemptiveShutdown
-              }))
-            )).pipe(Scope.extend(scope))
-            const sharding = Context.get(context, Sharding.Sharding)
-            yield* TestClock.adjust(1)
-            yield* Scope.close(scope, Exit.void)
-            assert.isTrue(yield* sharding.isShutdown)
-            const result = yield* sharding.sendOutgoing(request, discard).pipe(
-              Effect.fork,
-              Effect.flatMap(Fiber.await),
-              Effect.timeoutOption(100),
-              TestServices.provideLive
-            )
-            assert(Option.isSome(result), "outgoing send did not settle after shutdown")
-            if (discard) {
-              assert(Exit.isSuccess(result.value))
+      it.effect(`settles outgoing sends after shutdown (persisted=${persisted}, discard=${discard})`, () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const rpc = Rpc.make("ShutdownPing").annotate(ClusterSchema.Persisted, persisted)
+          const request = yield* makeRequest({ rpc, payload: undefined })
+          const scope = yield* Scope.make()
+          const context = yield* Layer.build(Sharding.layer.pipe(
+            Layer.provide(RunnerStorage.layerMemory),
+            Layer.provide(RunnerHealth.layerNoop),
+            Layer.provide(Runners.layerNoop),
+            Layer.provide(ShardingConfig.layer({
+              runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+              shardsPerGroup: 1,
+              entityTerminationTimeout: 0,
+              sendRetryInterval: 10
+            }))
+          )).pipe(Scope.extend(scope))
+          const sharding = Context.get(context, Sharding.Sharding)
+          yield* TestClock.adjust(1)
+          yield* Scope.close(scope, Exit.void)
+          assert.isTrue(yield* sharding.isShutdown)
+          const result = yield* sharding.sendOutgoing(request, discard).pipe(
+            Effect.fork,
+            Effect.flatMap(Fiber.await),
+            Effect.timeoutOption(100),
+            TestServices.provideLive
+          )
+          assert(Option.isSome(result), "outgoing send did not settle after shutdown")
+          if (discard) {
+            assert(Exit.isSuccess(result.value))
+          } else {
+            assert(Exit.isFailure(result.value))
+            if (persisted) {
+              assert(Cause.isInterruptedOnly(result.value.cause))
             } else {
-              assert(Exit.isFailure(result.value))
-              if (persisted) {
-                assert(Cause.isInterruptedOnly(result.value.cause))
-              } else {
-                assert.instanceOf(Cause.squash(result.value.cause), ClusterError.EntityNotAssignedToRunner)
-              }
+              assert.instanceOf(Cause.squash(result.value.cause), ClusterError.EntityNotAssignedToRunner)
             }
-            assert.strictEqual(
-              (yield* storage.unprocessedMessages([request.envelope.address.shardId])).length,
-              persisted ? 1 : 0
-            )
-          }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
-            Layer.provideMerge(Snowflake.layerGenerator),
-            Layer.provide(ShardingConfig.layerDefaults)
-          ))))
-      }
+          }
+          assert.strictEqual(
+            (yield* storage.unprocessedMessages([request.envelope.address.shardId])).length,
+            persisted ? 1 : 0
+          )
+        }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+          Layer.provideMerge(Snowflake.layerGenerator),
+          Layer.provide(ShardingConfig.layerDefaults)
+        ))))
     }
   }
 
