@@ -121,6 +121,7 @@ export const make = Effect.fnUntraced(
     if (!("unix" in options) || options.unix === undefined) {
       const internetOptions = options as Bun.Serve.HostnamePortServeOptions<WebSocketContext>
       const hostname = internetOptions.hostname ?? "0.0.0.0"
+      listenOptions = { ...options, hostname }
       if (Result.isFailure(NetAddress.ipFromString(hostname))) {
         const resolved = yield* Effect.tryPromise({
           try: async () => {
