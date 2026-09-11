@@ -66,6 +66,11 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * socket path, while a `host` beginning with `/` is treated as a socket
  * directory and expands to `${host}/.s.PGSQL.${port}`.
  *
+ * URL modes `sslmode=prefer` and `sslmode=allow` enable TLS, like
+ * `sslmode=require`. They do not implement libpq's fallback between TLS and
+ * plaintext: a server that refuses TLS fails the connection. Explicit `ssl`
+ * options override the URL mode; use `ssl: false` to connect in plaintext.
+ *
  * Prepared statements are enabled by default and limited by
  * `preparedStatementCacheSize`. Disable them for statement-mode poolers or
  * workloads that generate unique SQL. Streams always use unnamed statements.
@@ -2138,7 +2143,7 @@ const configError = (message: string, cause?: unknown): SqlError =>
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
   Effect.suspend(() => {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
-      ? parseUrl(Redacted.value(options.url), options.ssl !== undefined)
+      ? parseUrl(Redacted.value(options.url))
       : EffectResult.succeed({})
     if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
     const url = parsed.success
@@ -2189,7 +2194,7 @@ const parsePort = (value: string, what: string): EffectResult.Result<number, Sql
     : EffectResult.succeed(port)
 }
 
-const parseUrl = (raw: string, hasExplicitSsl: boolean): EffectResult.Result<UrlConfig, SqlError> => {
+const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
   let url: URL
   try {
     url = new URL(raw)
@@ -2268,14 +2273,10 @@ const parseUrl = (raw: string, hasExplicitSsl: boolean): EffectResult.Result<Url
           case "require":
           case "verify-ca":
           case "verify-full":
-            config.ssl = true
-            break
           case "prefer":
           case "allow":
-            if (hasExplicitSsl) break
-            return EffectResult.fail(
-              configError(`sslmode "${value}" is not supported: set ssl explicitly to true or false`)
-            )
+            config.ssl = true
+            break
           default:
             return EffectResult.fail(configError(`Unrecognized sslmode in URL: "${value}"`))
         }
