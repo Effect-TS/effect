@@ -31,7 +31,7 @@ Options:
   --warmup-time <ms>
   --tier <0-3>
   --family <name>
-  --implementation <effect|fast-check-v4|valibot|zod4>
+  --implementation <effect|fast-check-v4|valibot|zod4|zod4-compiled>
 `
 
 const rotate = (items, offset) => items.map((_, index) => items[(index + offset) % items.length])
@@ -81,7 +81,7 @@ const main = () => {
     const effect = group.find((result) => result.fixture.implementation === "effect")
     if (!effect) continue
     for (const candidate of group) {
-      if (candidate === effect) continue
+      if (candidate.fixture.implementation === "effect") continue
       crossLibrary.push({
         scenario,
         implementation: candidate.fixture.implementation,
@@ -119,7 +119,8 @@ const main = () => {
     crossLibraryDecodeApis: {
       effect: "SchemaParser.decodeUnknownExit (SchemaIssue)",
       valibot: "safeParser",
-      zod4: "safeParse ({ jitless: true })"
+      zod4: "safeParse ({ jitless: true })",
+      "zod4-compiled": "z.compile(schema, { strict: true })"
     },
     artifactMode: "repository",
     git: currentGitState(),
@@ -140,11 +141,12 @@ const main = () => {
   writeJson(path, report)
   const comparisons = new Map(crossLibrary.map((item) => [`${item.scenario}/${item.implementation}`, item]))
   printTable(
-    ["scenario", "implementation", "ns/op", "mad", "vs Effect"],
+    ["scenario", "family", "implementation", "ns/op", "mad", "vs Effect"],
     results.map((result) => {
       const comparison = comparisons.get(`${result.fixture.scenario}/${result.fixture.implementation}`)
       return [
         result.fixture.scenario,
+        result.fixture.family,
         result.fixture.implementation,
         formatNs(result.aggregate.median),
         formatNs(result.aggregate.mad),

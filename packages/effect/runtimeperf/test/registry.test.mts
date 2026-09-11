@@ -9,7 +9,7 @@ describe("runtimeperf registry", () => {
     const { fixtures } = loadRegistry()
     assert.equal(new Set(fixtures.map((fixture) => fixture.target)).size, fixtures.length)
     for (const fixture of fixtures) {
-      assert.ok(["effect", "fast-check-v4", "valibot", "zod4"].includes(fixture.implementation))
+      assert.ok(["effect", "fast-check-v4", "valibot", "zod4", "zod4-compiled"].includes(fixture.implementation))
     }
   })
 
@@ -113,6 +113,18 @@ describe("runtimeperf registry", () => {
       assert.doesNotMatch(source, /from "zod\/v4-mini"/)
       assert.match(source, /jitless:\s*true/)
     }
+  })
+
+  it("uses strict Zod compilation for the compiler comparison fixtures", async () => {
+    const { fixtures } = loadRegistry()
+    const compiled = fixtures.filter((fixture) => fixture.implementation === "zod4-compiled")
+    assert.equal(compiled.length, 18)
+    assert.equal(compiled.every((fixture) => fixture.suite === "compiler-rebuild"), true)
+    const paths = new Set(compiled.map((fixture) => fixture.fixturePath))
+    assert.equal(paths.size, 1)
+    const source = await readFile([...paths][0], "utf8")
+    assert.match(source, /from "zod\/v4"/)
+    assert.match(source, /z\.compile\(source, \{ strict: true \}\)/)
   })
 
   it("loads, runs and validates every fixture export", async () => {
