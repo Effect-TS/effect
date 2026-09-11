@@ -43,11 +43,11 @@ export class Entry {
   }
 
   get is(): Is | undefined {
-    return this.save("is", this.source?.is)
+    return this.source === undefined ? undefined : this.save("is", this.source.is)
   }
 
   get validate(): Validate | undefined {
-    return this.save("validate", this.source?.validate)
+    return this.source === undefined ? undefined : this.save("validate", this.source.validate)
   }
 
   get decodeEffect(): Parser {
@@ -62,7 +62,7 @@ export class Entry {
 
   get parser(): Parser {
     const validate = this.validate
-    if (validate === undefined) return this.save("parser", this.decodeEffect)
+    if (validate === undefined) return this.decodeEffect
     return this.save("parser", withValidation(validate, () => this.decodeEffect))
   }
 
@@ -79,9 +79,9 @@ export class Entry {
 
   get makeDefaulted(): Parser {
     const link = this.ast.context?.constructorDefault
-    return this.save(
+    return link === undefined ? this.makeEffect : this.save(
       "makeDefaulted",
-      link === undefined ? this.makeEffect : Interpreter.withDefault(
+      Interpreter.withDefault(
         this.ast,
         (input, options) => this.makeEffect(input, options),
         this.resolve === resolve ? makeChild : (ast) => lazyParser(this.resolve, ast, "makeEffect")
