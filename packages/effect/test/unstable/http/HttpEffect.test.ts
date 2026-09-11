@@ -151,6 +151,32 @@ describe("HttpEffect", () => {
       strictEqual(finalized, true)
     })
 
+    test.each([204, 205, 304])("status %i closes the request scope without starting the stream", async (status) => {
+      let finalized = false
+      let streamStarted = false
+      const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+        return HttpServerResponse.stream(
+          Stream.fromEffect(Effect.sync(() => {
+            streamStarted = true
+            return new Uint8Array([1])
+          })),
+          { status }
+        )
+      }))
+
+      const response = await handler(new Request("http://localhost:3000/"))
+
+      strictEqual(response.status, status)
+      strictEqual(response.body, null)
+      strictEqual(streamStarted, false)
+      strictEqual(finalized, true)
+    })
+
     test("stream runtime", async () => {
       const handler = Effect.succeed(HttpServerResponse.stream(
         Stream.fromEffect(TestValue).pipe(Stream.map(String), Stream.encodeText)
