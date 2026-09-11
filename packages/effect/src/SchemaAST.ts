@@ -2222,7 +2222,11 @@ export interface Arrays extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault?: SchemaParser.Compiler,
+    generate?: (context: ArrayParserContext) => typeof parseArray
+  ): SchemaParser.Parser
   /** @internal */
 
   recur(recur: (ast: AST) => AST): Arrays
@@ -2294,7 +2298,8 @@ export const Arrays: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile
+    compileConstructorDefault: SchemaParser.Compiler = compile,
+    generate?: (context: ArrayParserContext) => typeof parseArray
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -2315,6 +2320,20 @@ export const Arrays: new(
       }
       return rest![0]
     }
+
+    const run = generate !== undefined && elementLen === 0 && ast.rest.length === 1
+      ? generate({
+        getElement: () => rest![0].parser,
+        step: parseArrayOptions.step,
+        resume: (state, item, index, pending, end) =>
+          Effect.flatMap(
+            Effect.exit(pending),
+            (exit) =>
+              parseArrayOptions.step(state, item, exit, index) ??
+                parseArray(state, state.input, index + 1, end) ?? Effect.void
+          )
+      })
+      : parseArray
 
     return Effect.fnUntracedEager(function*(input, options) {
       if (input === InternalParser.missing) {
@@ -2344,7 +2363,7 @@ export const Arrays: new(
       const end = ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
       const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
       const eff = concurrency === 1
-        ? parseArray(state, input, 0, end)
+        ? run(state, input, 0, end)
         : parseArrayConcurrent(state, input, { concurrency, end })
       if (eff) yield* eff
 
@@ -2403,9 +2422,22 @@ export const Arrays: new(
     return "array"
   }
 }
+/** @internal */
+export interface ArrayParserContext {
+  readonly getElement: () => SchemaParser.Parser
+  readonly step: typeof parseArrayOptions.step
+  readonly resume: (
+    state: ArrayParserState,
+    item: unknown,
+    index: number,
+    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>,
+    end: number
+  ) => Effect.Effect<void, SchemaIssue.Issue, any>
+}
+
 type ArrayParserState = {
   readonly ast: AST
-  readonly input: unknown
+  readonly input: ReadonlyArray<unknown>
   readonly len: number
   readonly getParser: (
     tailThreshold: number,
@@ -2707,7 +2739,11 @@ export interface Objects extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault?: SchemaParser.Compiler,
+    generate?: (context: ObjectParserContext) => SchemaParser.Parser
+  ): SchemaParser.Parser
   /** @internal */
 
   flip(recur: (ast: AST) => AST): AST
@@ -2771,7 +2807,8 @@ export const Objects: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile
+    compileConstructorDefault: SchemaParser.Compiler = compile,
+    generate?: (context: ObjectParserContext) => SchemaParser.Parser
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -3010,6 +3047,10 @@ export const Objects: new(
       })
     }
 
+    if (generate !== undefined) {
+      return generate({ ast, getProperties: compileMembers, fallback, resume, step: stepProperty })
+    }
+
     // Fast path: a struct without index signatures, under the default parse
     // options, needs none of the generator the fallback runs per value.
     return (input, options) => {
@@ -3097,6 +3138,19 @@ export const Objects: new(
     if (this.propertySignatures.length === 0 && this.indexSignatures.length === 0) return "object | array"
     return "object"
   }
+}
+
+/** @internal */
+export interface ObjectParserContext {
+  readonly ast: Objects
+  readonly getProperties: () => ReadonlyArray<ParsedProperty>
+  readonly fallback: SchemaParser.Parser
+  readonly resume: (
+    state: ObjectParserState,
+    index: number,
+    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
+  ) => Effect.Effect<unknown, SchemaIssue.Issue, any>
+  readonly step: typeof stepProperty
 }
 
 type ObjectParserState = {
@@ -4738,7 +4792,8 @@ function segmentTemplateLiteralParts(
   return go(0, 0) ? out : undefined
 }
 
-const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+/** @internal */
+export const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast
