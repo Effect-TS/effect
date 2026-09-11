@@ -14,7 +14,7 @@ import type * as ByteSize from "../../ByteSize.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as ErrorReporter from "../../ErrorReporter.ts"
-import { dual } from "../../Function.ts"
+import { constVoid, dual } from "../../Function.ts"
 import * as Inspectable from "../../Inspectable.ts"
 import { PipeInspectableProto } from "../../internal/core.ts"
 import * as Option from "../../Option.ts"
@@ -966,6 +966,16 @@ export const setStatus: {
 )
 
 /**
+ * Returns whether a response must omit its body because its status is 204, 205,
+ * or 304, or `withoutBody` is enabled for a request such as HEAD.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
+  withoutBody || response.status === 204 || response.status === 205 || response.status === 304
+
+/**
  * Converts an `HttpServerResponse` to a Web `Response`.
  *
  * **Details**
@@ -991,11 +1001,11 @@ export const toWeb = (
       headers.append("set-cookie", header)
     }
   }
-  const omitBody = options?.withoutBody === true ||
-    response.status === 204 ||
-    response.status === 205 ||
-    response.status === 304
-  if (omitBody) {
+  if (omitsBody(response, options?.withoutBody)) {
+    const body = response.body
+    if ((body._tag === "Raw" || body._tag === "Uint8Array") && body.body instanceof ReadableStream) {
+      body.body.cancel().catch(constVoid)
+    }
     return new Response(undefined, {
       status: response.status,
       statusText: response.statusText as string,
