@@ -114,18 +114,19 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
 
 describe("BunHttpServer", () => {
   for (
-    const [name, options] of [
-      ["omitted hostname", { port: 0 }],
-      ["undefined Unix path and omitted hostname", { port: 0, unix: undefined }],
-      ["explicit wildcard hostname", { port: 0, hostname: "0.0.0.0" }]
+    const [name, options, expectedTag, expectedIp] of [
+      ["omitted hostname", { port: 0 }, "InetAddressV6", "::"],
+      ["undefined Unix path and omitted hostname", { port: 0, unix: undefined }, "InetAddressV6", "::"],
+      ["explicit wildcard hostname", { port: 0, hostname: "0.0.0.0" }, "InetAddressV4", "0.0.0.0"]
     ] as const
   ) {
     it.effect(`starts a layer with ${name}`, () =>
       Effect.gen(function*() {
         const server = yield* HttpServer.HttpServer
-        assert.strictEqual(server.address._tag, "InetAddressV4")
-        if (server.address._tag !== "InetAddressV4") return
-        assert.strictEqual(NetAddress.formatIp(server.address.address), "0.0.0.0")
+        if (server.address._tag !== expectedTag) {
+          return assert.fail(`expected ${expectedTag}, got ${server.address._tag}`)
+        }
+        assert.strictEqual(NetAddress.formatIp(server.address.address), expectedIp)
         assert.isAbove(server.address.port, 0)
 
         yield* server.serve(Effect.succeed(HttpServerResponse.text("default hostname")))
