@@ -350,6 +350,26 @@ describe("PgConnection in-process server", () => {
         config: { url: Redacted.make("postgres://test@db.example.com/db?sslmode=require") },
         servername: "db.example.com"
       },
+      ...["prefer", "allow"].flatMap((sslmode) => [
+        {
+          name: `sslmode=${sslmode} enables TLS`,
+          config: { url: Redacted.make(`postgresql://test@db.example.com/db?sslmode=${sslmode}`) },
+          servername: "db.example.com"
+        },
+        {
+          name: `ssl=true overrides sslmode=${sslmode}`,
+          config: { url: Redacted.make(`postgres://test@db.example.com/db?sslmode=${sslmode}`), ssl: true },
+          servername: "db.example.com"
+        },
+        {
+          name: `SSL options override sslmode=${sslmode}`,
+          config: {
+            url: Redacted.make(`postgres://test@db.example.com/db?sslmode=${sslmode}`),
+            ssl: { servername: "routing.example.com", rejectUnauthorized: false }
+          },
+          servername: "routing.example.com"
+        }
+      ]),
       { name: "IPv4 host", config: { host: "127.0.0.1", ssl: true }, servername: undefined },
       { name: "IPv6 host", config: { host: "::1", ssl: true }, servername: undefined },
       ...["db.example.com", "127.0.0.1", "::1"].map((host) => ({
@@ -390,6 +410,9 @@ describe("PgConnection in-process server", () => {
                 stream.writes[1],
                 Buffer.concat([int32(16), int32(80877102), int32(1234), int32(5678)])
               )
+            } else {
+              assert.strictEqual(stream.writes[1].readInt32BE(4), 196608)
+              assert.strictEqual(startupParameters(stream.writes[1]).get("user"), "test")
             }
             const options = tlsOptions.get(stream.socket)
             assert.isDefined(options)
@@ -401,6 +424,62 @@ describe("PgConnection in-process server", () => {
       })
     }
   })
+
+  it.effect.each(["prefer", "allow"])(
+    "ssl=false overrides sslmode=%s with plaintext startup",
+    (sslmode) =>
+      Effect.gen(function*() {
+        const writes: Array<Buffer> = []
+        const socket: Duplex = new Duplex({
+          read() {},
+          write(chunk: Buffer, _encoding, callback) {
+            writes.push(Buffer.from(chunk))
+            if (writes.length === 1) {
+              queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+            }
+            callback()
+          }
+        })
+        tlsOptions.set(socket, undefined)
+
+        yield* PgConnection.make({
+          url: Redacted.make(`postgresql://test@db.example.com/db?sslmode=${sslmode}`),
+          ssl: false,
+          stream: () => socket
+        })
+
+        assert.strictEqual(writes.length, 1)
+        assert.strictEqual(writes[0].readInt32BE(4), 196608)
+        assert.strictEqual(startupParameters(writes[0]).get("user"), "test")
+        assert.isUndefined(tlsOptions.get(socket))
+      })
+  )
+
+  // These aliases use the existing strict TLS behavior, without libpq fallback.
+  it.effect.each(["require", "prefer", "allow"])(
+    "sslmode=%s fails when the server refuses TLS",
+    (sslmode) =>
+      Effect.gen(function*() {
+        const writes: Array<Buffer> = []
+        const socket: Duplex = new Duplex({
+          read() {},
+          write(chunk: Buffer, _encoding, callback) {
+            writes.push(Buffer.from(chunk))
+            queueMicrotask(() => socket.push(Buffer.from("N")))
+            callback()
+          }
+        })
+        const error = yield* Effect.flip(PgConnection.make({
+          url: Redacted.make(`postgres://test@db.example.com/db?sslmode=${sslmode}`),
+          stream: () => socket
+        }))
+
+        assert.deepStrictEqual(writes, [Buffer.concat([int32(8), int32(80877103)])])
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        assert.strictEqual(error.reason.message, "PgConnection: Server refused TLS")
+        assert.isTrue(socket.destroyed)
+      })
+  )
 
   it.live("preserves an ErrorResponse returned for SSLRequest", () =>
     Effect.scoped(Effect.gen(function*() {
