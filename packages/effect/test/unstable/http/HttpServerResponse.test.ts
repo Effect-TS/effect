@@ -5,13 +5,20 @@ import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } f
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpServerResponse", () => {
-  it("toWeb drops the body for 204, 205, and 304 so Node can construct the Response", () => {
-    for (const status of [204, 205, 304] as const) {
-      const web = HttpServerResponse.toWeb(
-        HttpServerResponse.text("still a body", { status })
-      )
-      assert.strictEqual(web.status, status)
-      assert.strictEqual(web.body, null)
+  describe("toWeb", () => {
+    for (const status of [204, 205, 304]) {
+      it.each([
+        { name: "text", response: HttpServerResponse.text("body", { status }) },
+        { name: "uint8Array", response: HttpServerResponse.uint8Array(new Uint8Array([1]), { status }) },
+        { name: "raw", response: HttpServerResponse.raw("body", { status }) },
+        { name: "formData", response: HttpServerResponse.formData(new FormData(), { status }) },
+        { name: "stream", response: HttpServerResponse.stream(Stream.succeed(new Uint8Array([1])), { status }) }
+      ])(`omits $name bodies for status ${status}`, ({ response }) => {
+        const web = HttpServerResponse.toWeb(response)
+
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.body, null)
+      })
     }
   })
 
