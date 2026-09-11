@@ -1,5 +1,79 @@
 # effect
 
+## 4.0.0-rc.114
+
+### Patch Changes
+
+- [#8177](https://github.com/Effect-TS/effect/pull/8177) [`3ff4952`](https://github.com/Effect-TS/effect/commit/3ff49521afa6fe6c85c2c230f7e986f7374ef353) Thanks @tim-smart! - Allow `Effect.cachedWithTTL` to compute the TTL from each completed `Exit`, so successes and failures can use different cache durations.
+
+- [#8164](https://github.com/Effect-TS/effect/pull/8164) [`6d55555`](https://github.com/Effect-TS/effect/commit/6d55555b83701c42855758944985a6fdbf57fffe) Thanks @sam-goodwin! - Keep Node and Bun file stats usable when optional numeric metadata exceeds the safe integer range by returning `Option.none()` for those fields.
+
+- [#8162](https://github.com/Effect-TS/effect/pull/8162) [`716e0c0`](https://github.com/Effect-TS/effect/commit/716e0c00942b42d36631b3114b1deb9a4a944ce3) Thanks @tim-smart! - Fix published declarations referencing symbols stripped as `@internal`, which broke consumers compiling with `skipLibCheck: false`. `Effectable.d.ts` now uses the public `Effect.TypeId`, `Match.d.ts` no longer aliases an internal `Contextual` type, `Schema.d.ts` ships the `AnnotationSchemaConstraint` alias it references, and the CLI's `toFlagDoc` helper is marked internal so it no longer leaks `Param.getParamMetadata`.
+
+- [#8160](https://github.com/Effect-TS/effect/pull/8160) [`d4e4ad5`](https://github.com/Effect-TS/effect/commit/d4e4ad57d06d0a30d5e8090ed951f080bcd3a3d7) Thanks @gcanti! - Fix `SchemaRepresentation.toCodeDocument` generating invalid TypeScript for optional tuple elements containing unions or nested readonly tuples. Optional element types are now parenthesized, for example `readonly [(string | number)?]` instead of `readonly [string | number?]`. Generated runtime schemas are unchanged.
+
+- [#8158](https://github.com/Effect-TS/effect/pull/8158) [`b1988f4`](https://github.com/Effect-TS/effect/commit/b1988f496eef07482f10f4cc03ef20b9570ea0ac) Thanks @gcanti! - Fix `SchemaRepresentation.toCodeDocument` dropping Struct fields named `__proto__` from generated schemas. These fields now use computed keys, such as `Schema.Struct({ ["__proto__"]: Schema.String })`, so the generated schema validates them correctly.
+
+- [#8169](https://github.com/Effect-TS/effect/pull/8169) [`482b7d7`](https://github.com/Effect-TS/effect/commit/482b7d7eb08ebe6bc57781414a5a9a12600b2c71) Thanks @gcanti! - Improve `SchemaRepresentation.fromJsonSchemaDocument` and `fromJsonSchemaMultiDocument`:
+  
+  - Import `{ not: {} }` as `Schema.Never` ([#8137](https://github.com/Effect-TS/effect/issues/8137)).
+  
+  - Import closed records with one `patternProperties` entry, `additionalProperties: false`, and no declared or required properties when `patterns: "apply"` is enabled. These were previously rejected.
+  
+    ```json
+    {
+      "type": "object",
+      "patternProperties": { "^a": { "type": "number" } },
+      "additionalProperties": false
+    }
+    ```
+  
+    ```ts
+    Schema.Record(
+      Schema.String.check(Schema.isPattern(/^a/)),
+      Schema.Finite
+    )
+    ```
+  
+  - Reject open patterned objects with `patterns: "apply"` instead of generating incompatible TypeScript index signatures.
+  
+    ```json
+    {
+      "type": "object",
+      "patternProperties": { "^a": { "type": "number" } },
+      "additionalProperties": true
+    }
+    ```
+  
+    Import now explains that the generated TypeScript index signatures would give incorrect types to unmatched keys, and reports the source path. The same applies when `additionalProperties` is omitted or `{}`. Patterns can still be combined with a closed object in `allOf` when the result has a finite set of keys. Use `patterns: "ignore"` only if you intend to discard the pattern and its value constraints.
+  
+  - Reject references inside a subschema with its own `$id` instead of potentially resolving against the wrong definitions. Resolve or flatten these references before importing. A `$id` on the document root remains supported.
+  
+    ```json
+    {
+      "$id": "https://example.com/root",
+      "$defs": { "Value": { "type": "string" } },
+      "type": "object",
+      "properties": {
+        "child": {
+          "$id": "child",
+          "$defs": { "Value": { "type": "number" } },
+          "$ref": "#/$defs/Value"
+        }
+      }
+    }
+    ```
+  
+    Here `child` refers to the nested numeric `Value`, not the root string `Value`. Import now reports that references inside a subschema with its own `$id` are unsupported instead of incorrectly using the root definition.
+  
+  - Explain import failures using JSON Schema keyword names, the reason for rejection, and the source path. Reference errors distinguish missing definitions, unsupported reference formats, and circular aliases. Pattern errors explain how to opt in for trusted schemas or explicitly discard the constraints.
+
+- [#8162](https://github.com/Effect-TS/effect/pull/8162) [`716e0c0`](https://github.com/Effect-TS/effect/commit/716e0c00942b42d36631b3114b1deb9a4a944ce3) Thanks @tim-smart! - Rename `Schema.Annotations.ToArbitrary.Constraint` to `Schema.Annotations.ToArbitrary.FilterConstraint`.
+  
+  Code that refers to the previous type name should update its type annotations to use `FilterConstraint`.
+
+- [#8181](https://github.com/Effect-TS/effect/pull/8181) [`9941e6d`](https://github.com/Effect-TS/effect/commit/9941e6dbf800cfd3723bfb421306e04e36b5882d) Thanks @Ishkirat-Singh! - Make `message` optional for `Prompt.Select` and `Prompt.MultiSelect`. When omitted, prompts display only the choices and submission shows a tick followed by the selected titles. `Prompt.AutoComplete` still requires a message.
+
 ## 4.0.0-rc.113
 
 ### Patch Changes
