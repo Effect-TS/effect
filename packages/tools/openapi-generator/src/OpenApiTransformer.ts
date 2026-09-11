@@ -91,7 +91,9 @@ const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, stre
   if (operation.pathIds.length === 0) {
     return `${request}(${operation.pathTemplate})${pipe}`
   }
-  const effect = `__makePathRequest(${request}, () => ${operation.pathTemplate}).pipe(
+  const effect = `__makePathRequest(${request}, [${
+    operation.pathIds.join(", ")
+  }], () => ${operation.pathTemplate}).pipe(
     Effect.${streaming ? "map" : "flatMap"}((request) => request${pipe})
   )`
   return streaming ? `Stream.unwrap(${effect})` : effect
@@ -967,30 +969,34 @@ export const layerTransformerTs = Layer.sync(
   makeTransformerTs
 )
 
-const pathRequestSource = `const __encodePathParam = (value: string): string => {
-    if (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)) {
-      throw new Error("Path parameters must be non-empty and cannot be dot segments")
-    }
-    return encodeURIComponent(value)
-  }
+const pathRequestSource = `const __encodePathParam = encodeURIComponent
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
+    parameters: ReadonlyArray<string>,
     getPath: () => string,
-  ) => Effect.try({
-    try: () => {
-      const path = getPath()
-      if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
-        throw new Error("Request paths cannot contain dot segments")
-      }
-      return method(path)
-    },
-    catch: (cause) => new HttpClientError.HttpClientError({
-      reason: new HttpClientError.InvalidUrlError({
-        request: method(""),
-        cause,
-        description: "Invalid path parameter",
+  ) => Effect.suspend(() => {
+    const fail = (description: string, cause?: unknown) => Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.InvalidUrlError({
+          request: method(""),
+          cause,
+          description,
+        }),
       }),
-    }),
+    )
+    if (parameters.some((value) => value === "" || /^(?:\\.|%2e){1,2}$/i.test(value))) {
+      return fail("Path parameters must be non-empty and cannot be dot segments")
+    }
+    let path: string
+    try {
+      path = getPath()
+    } catch (cause) {
+      return fail("Failed to encode path parameter", cause)
+    }
+    if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
+      return fail("Request paths cannot contain dot segments")
+    }
+    return Effect.succeed(method(path))
   })`
 
 const commonSource = `const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
