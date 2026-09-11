@@ -1,5 +1,15 @@
 # effect
 
+## 4.0.0-rc.115
+
+### Patch Changes
+
+- [#8196](https://github.com/Effect-TS/effect/pull/8196) [`657254b`](https://github.com/Effect-TS/effect/commit/657254b8218628b0116497d09aaf783cb88279f3) Thanks @gcanti! - Optimize schema initialization while preserving custom constructor options.
+
+- [#8190](https://github.com/Effect-TS/effect/pull/8190) [`f9ef0e9`](https://github.com/Effect-TS/effect/commit/f9ef0e970260b5de143392d00593e6c8b4614cff) Thanks @javascript-unsafe! - Omit response bodies for statuses 204, 205, and 304 in `HttpServerResponse.toWeb` and the Bun/Deno HTTP adapters, preventing invalid Web responses and hung requests. Cancel omitted raw `ReadableStream` bodies, and finalize request resources without starting omitted Effect streams.
+
+- [#8187](https://github.com/Effect-TS/effect/pull/8187) [`4f73f9e`](https://github.com/Effect-TS/effect/commit/4f73f9e0bd9538260f0f7166e0e6abdbd507a0e8) Thanks @tim-smart! - Parameterize persistence lookup keys in both SQL backing stores' `getMany` queries.
+
 ## 4.0.0-rc.114
 
 ### Patch Changes
