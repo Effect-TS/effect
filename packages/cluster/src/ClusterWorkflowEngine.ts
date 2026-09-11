@@ -35,6 +35,7 @@ import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
 import * as Envelope from "./Envelope.js"
+import * as ClusterAbandon from "./internal/clusterAbandon.js"
 import * as Message from "./Message.js"
 import { MessageStorage } from "./MessageStorage.js"
 import type { WithExitEncoded } from "./Reply.js"
@@ -315,7 +316,11 @@ export const make = Effect.gen(function*() {
                 return execute(workflow.payloadSchema.make(payload), executionId).pipe(
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
-                    if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
+                    instance.abandoned ||= exit._tag === "Failure" && ClusterAbandon.isCause(exit.cause)
+                    if (instance.abandoned) {
+                      instance.suspended = false
+                    }
+                    if (!instance.suspended && !instance.abandoned && !(suspendOnFailure && exit._tag === "Failure")) {
                       return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(

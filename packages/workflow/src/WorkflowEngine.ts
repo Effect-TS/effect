@@ -215,6 +215,12 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
     interrupted: boolean
 
     /**
+     * Whether this owner abandoned the run for replay. Durable finalizers are
+     * skipped while owner-local resources are released.
+     */
+    abandoned: boolean
+
+    /**
      * When SuspendOnFailure is triggered, the cause of the failure is stored
      * here.
      */
@@ -236,6 +242,7 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
       scope: Effect.runSync(Scope.make()),
       suspended: false,
       interrupted: false,
+      abandoned: false,
       cause: undefined,
       activityState: {
         count: 0,

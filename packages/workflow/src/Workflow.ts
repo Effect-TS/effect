@@ -522,6 +522,7 @@ export const intoResult = <A, E, R>(
       Effect.interruptible,
       suspendOnFailure ?
         Effect.catchAllCause((cause) => {
+          if (instance.abandoned) return Effect.failCause(cause)
           instance.suspended = true
           if (!Cause.isInterruptedOnly(cause)) {
             instance.cause = Cause.die(Cause.squash(cause))
@@ -535,9 +536,15 @@ export const intoResult = <A, E, R>(
         onFailure(cause): Effect.Effect<Result<A, E>> {
           const isInterruptedOnly = Cause.isInterruptedOnly(cause)
           const filtered = isInterruptedOnly ? cause : withoutInterrupts(cause)
-          return instance.suspended && isInterruptedOnly
-            ? Effect.succeed(new Suspended({ cause: instance.cause }))
-            : (!instance.interrupted && isInterruptedOnly) || (!captureDefects && Cause.isDie(cause))
+          const abandoned = instance.abandoned && !instance.interrupted && isInterruptedOnly
+          instance.abandoned = abandoned
+          if (instance.suspended && isInterruptedOnly && !abandoned) {
+            return Effect.succeed(new Suspended({ cause: instance.cause }))
+          }
+          if (!instance.interrupted && isInterruptedOnly) {
+            return Effect.failCause(filtered as Cause.Cause<never>)
+          }
+          return !captureDefects && Cause.isDie(cause)
             ? Effect.failCause(filtered as Cause.Cause<never>)
             : Effect.succeed(new Complete({ exit: Exit.failCause(filtered) }))
         }
@@ -627,6 +634,9 @@ export const provideScope = <A, E, R>(
 /**
  * @since 1.0.0
  * @category Scope
+ *
+ * Finalizers are skipped when a cluster owner abandons a run for replay.
+ * Owner-local scope finalizers registered with {@link provideScope} still run.
  */
 export const addFinalizer: <R>(
   f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
@@ -637,9 +647,12 @@ export const addFinalizer: <R>(
 > = Effect.fnUntraced(function*<R>(
   f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
 ) {
-  const scope = (yield* InstanceTag).scope
+  const instance = yield* InstanceTag
   const runtime = yield* Effect.runtime<R>()
-  yield* Scope.addFinalizerExit(scope, (exit) => Effect.provide(f(exit), runtime))
+  yield* Scope.addFinalizerExit(
+    instance.scope,
+    (exit) => instance.abandoned ? Effect.void : Effect.provide(f(exit), runtime)
+  )
 })
 
 /**

@@ -20,6 +20,16 @@ import * as ShardingConfig from "./ShardingConfig.js"
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
+// This FNV-1a hash, tag and UTF-8 encoding are a persistent advisory-lock wire format.
+const postgresLockNamespace = (prefix: string): number => {
+  const bytes = new TextEncoder().encode(`effect-cluster:${prefix}`)
+  let hash = 0x811c9dc5
+  for (let i = 0; i < bytes.length; i++) {
+    hash = Math.imul(hash ^ bytes[i], 0x01000193)
+  }
+  return hash | 0
+}
+
 /**
  * @since 1.0.0
  * @category Constructors
@@ -35,6 +45,9 @@ export const make = Effect.fnUntraced(function*(options: {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const layerScope = yield* Effect.scope
   const prefix = options?.prefix ?? "cluster"
+  const pgLockNamespace = postgresLockNamespace(prefix)
+  // pg_locks exposes the signed int4 key as an unsigned oid.
+  const pgLockNamespaceOid = pgLockNamespace >>> 0
   const table = (name: string) => `${prefix}_${name}`
 
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
@@ -367,12 +380,14 @@ export const make = Effect.fnUntraced(function*(options: {
         const acquiredShardIds: Array<string> = []
         const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
         const takenLocks = yield* conn.executeValues(
-          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = ${pid} ORDER BY objid`,
+          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} ORDER BY objid`,
           []
         )
         for (let i = 0; i < takenLocks.length; i++) {
           const lockNum = takenLocks[i][0] as number
-          acquiredShardIds.push(lockNumbersReverse.get(lockNum)!)
+          const shardId = toAcquire.get(lockNum)
+          if (shardId === undefined) continue
+          acquiredShardIds.push(shardId)
           toAcquire.delete(lockNum)
         }
         if (toAcquire.size === 0) {
@@ -473,7 +488,6 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   const lockNumbers = new Map<string, number>()
-  const lockNumbersReverse = new Map<number, string>()
   for (let i = 0; i < availableShardGroups.length; i++) {
     const group = availableShardGroups[i]
     const base = (i + 1) * 1000000
@@ -481,7 +495,6 @@ export const make = Effect.fnUntraced(function*(options: {
       const shardId = ShardId.make(group, shard).toString()
       const lockNum = base + shard
       lockNumbers.set(shardId, lockNum)
-      lockNumbersReverse.set(lockNum, shardId)
     }
   }
 
@@ -505,7 +518,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const pgLocks = (shardIdsMap: Map<number, string>) =>
     Array.from(
       shardIdsMap.entries(),
-      ([lockNum, shardId]) => `pg_try_advisory_lock(${lockNum}) AS "${shardId}"`
+      ([lockNum, shardId]) => `pg_try_advisory_lock(${pgLockNamespace}, ${lockNum}) AS "${shardId}"`
     ).join(", ")
 
   const mysqlLocks = (shardIds: ReadonlyArray<string>) =>
@@ -595,9 +608,9 @@ export const make = Effect.fnUntraced(function*(options: {
           const lockNum = lockNumbers.get(shardId)!
           for (let i = 0; i < 5; i++) {
             const [conn] = yield* lockConn!.await
-            yield* conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
+            yield* conn.executeRaw(`SELECT pg_advisory_unlock(${pgLockNamespace}, ${lockNum})`, [])
             const takenLocks = yield* conn.executeValues(
-              `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
+              `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objid = ${lockNum} AND objsubid = 2 AND pid = pg_backend_pid()`,
               []
             )
             if (takenLocks.length === 0) return
@@ -681,17 +694,16 @@ export const make = Effect.fnUntraced(function*(options: {
         withTracerDisabled
       ),
 
-    refresh: (address, shardIds) =>
-      withLockOperationDeadline(
-        sql`UPDATE ${runnersTableSql} SET last_heartbeat = ${sqlNow} WHERE address = ${address}`.pipe(
-          execWithLockConn,
-          shardIds.length > 0
-            ? Effect.andThen(refreshShards(address, shardIds))
-            : Effect.as([])
-        )
-      ).pipe(
-        PersistenceError.refail
-      ),
+    refresh: (address, shardIds) => {
+      const heartbeat = sql`UPDATE ${runnersTableSql} SET last_heartbeat = ${sqlNow} WHERE address = ${address}`
+      // Empty refreshes probe the shared pool while the reserved connection recovers.
+      if (shardIds.length === 0) {
+        return withDeadline(heartbeat).pipe(Effect.as([]), PersistenceError.refail, withTracerDisabled)
+      }
+      return withLockOperationDeadline(
+        heartbeat.pipe(execWithLockConn, Effect.andThen(refreshShards(address, shardIds)))
+      ).pipe(PersistenceError.refail, withTracerDisabled)
+    },
 
     release: (address, shardId) =>
       withLockOperationDeadline(releaseShard(address, shardId)).pipe(
