@@ -2,9 +2,32 @@
 
 EFF-1347, stage 1 of EFF-1345. Shared branch: `backport/cluster-workflow-v3`.
 
-This follow-up adds 41 tests and test fixtures. Production code is unchanged from implementation commit `ecdffcb8e24521e3c895244c934665958a148c2d`. The comparison baseline is test-only commit `2c2019d133dc633193435c10ff1b4ae76f059e8b`, based on v3 `1af4232fea7bc613e1dc68db9bec7b1f596d9e68`. Baseline runs use the same new test files in a separate checkout with baseline production source unchanged.
+The first follow-up added 41 tests and test fixtures at `373e6babc20b65654d8715100af16e938dfcfaa6`. The correctness follow-up below adds six failing regressions; stage 1 remains open for implementation. Production code is unchanged from implementation commit `ecdffcb8e24521e3c895244c934665958a148c2d`. The original comparison baseline is test-only commit `2c2019d133dc633193435c10ff1b4ae76f059e8b`, based on v3 `1af4232fea7bc613e1dc68db9bec7b1f596d9e68`. Baseline runs use the same new test files in a separate checkout with baseline production source unchanged.
 
 Paths below are relative to `packages/cluster/test/`. Earlier baseline results remain in the issue's original coverage attachment.
+
+## Correctness review follow-up
+
+All six added cases fail on the reviewed tip `373e6babc20b65654d8715100af16e938dfcfaa6`. These are required behavior assertions, left enabled for the next implementation run.
+
+| Review finding / PR | Regression | Reviewed tip result | Original baseline result |
+| --- | --- | --- | --- |
+| Remote shutdown discard / #7134, #7195 | `SocketDiscard.test.ts`: two real TCP runners with separate shard groups. An entity finalizer sends a volatile discard while its runner reports shutdown; the receiving runner stays alive. A preceding request proves the remote route works. | Fails: receiver gets only control ID 0, never finalizer ID 1. Sender finalizer returns successfully. | Passes. This isolates a regression introduced by the broad shutdown guard. |
+| Swallowed abandonment / #7485 | `WorkflowAbandonment.test.ts`: actual storage reply waiter shutdown inside a workflow body wrapped in `catchAllCause` or `exit`, each with and without interruption masking (four cases). No captured cause is re-injected. Retries are held so only the abandoned attempt can finish. | All four fail: the durable run row contains `WithExit(Success(Complete(Success("continued"))))`. Tests require an empty reply journal, no poll result, no durable finalizer, and no durable Interrupt. | All four fail with the same durable success. Baseline resumes a routing error rather than the new abandonment signal; this is a behavior comparison, not evidence of marker semantics on baseline. |
+| Interruption masking / #7485 | `TeardownMarkers.test.ts`: abandonment must permit the remainder of the masked region, then interrupt with the marker when interruptibility is restored. | Fails: the statement inside the mask never executes. | Not applicable: the internal marker API does not exist on baseline. |
+
+Reproduction commands, prefixed with `nix develop -c`:
+
+```sh
+pnpm test run packages/cluster/test/SocketDiscard.test.ts packages/cluster/test/WorkflowAbandonment.test.ts packages/cluster/test/TeardownMarkers.test.ts
+pnpm test run packages/cluster/test packages/workflow/test --exclude '**/Sql*.test.ts'
+```
+
+Focused runs: **6 fail, 9 pass**. Broad non-SQL run: **6 fail, 133 pass**. The existing tests, including the memory nested-workflow case, pass. Original baseline selections: remote finalizer **1 pass**; workflow recovery **4 fail**. SQL tests are unchanged and were not rerun in this test-only cycle; the previous 61-test SQL result below remains historical.
+
+The workflow tests isolate the public storage shutdown boundary and inspect real engine persistence. They do not simulate overlapping runner ownership transfer. The remote test covers preemptive graceful shutdown with healthy TCP delivery; network partitions and non-preemptive registration teardown are not new coverage here. Fix production behavior and release metadata in a separate run before independent review. The earlier all-pass results below describe the previous test set only.
+
+## Original port mapping
 
 | PR | Coverage added or retained | Baseline / implementation |
 | --- | --- | --- |

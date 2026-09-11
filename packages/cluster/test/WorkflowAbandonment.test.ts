@@ -11,6 +11,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Activity, Workflow } from "@effect/workflow"
 import { Context, Effect, ExecutionStrategy, Exit, Layer, Schema, Scope, TestClock } from "effect"
 import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
+import { makeRequest } from "./fixtures/message-storage.js"
 import { runFixture } from "./fixtures/run-fixture.js"
 
 const EngineLive = ClusterWorkflowEngine.layer.pipe(
@@ -29,6 +30,60 @@ const EngineLive = ClusterWorkflowEngine.layer.pipe(
 )
 
 describe("workflow abandonment follow-up", () => {
+  for (const recovery of ["catchAllCause", "exit"] as const) {
+    for (const masked of [false, true]) {
+      it.effect(`body ${recovery} cannot durably complete an abandoned attempt (masked=${masked})`, () =>
+        Effect.gen(function*() {
+          const driver = yield* MessageStorage.MemoryDriver
+          const storage = yield* MessageStorage.make(yield* MessageStorage.MessageStorage)
+          const request = yield* makeRequest()
+          let attempts = 0
+          let durableFinalizers = 0
+          const workflow = Workflow.make({
+            name: `AbandonmentRecovery/${recovery}/${masked}`,
+            payload: { id: Schema.String },
+            success: Schema.String,
+            idempotencyKey: ({ id }) => id
+          })
+          const layer = workflow.toLayer(() =>
+            Effect.gen(function*() {
+              // Hold retries so only the abandoned attempt can write a result.
+              if (++attempts > 1) return yield* Effect.never
+              yield* Workflow.addFinalizer(() => Effect.sync(() => durableFinalizers++))
+              const wait = storage.registerReplyHandler(request)
+              const recovered = recovery === "catchAllCause"
+                ? wait.pipe(Effect.catchAllCause(() => Effect.void))
+                : Effect.exit(wait)
+              const body = recovered.pipe(Effect.andThen(Effect.yieldNow()), Effect.as("continued"))
+              return yield* (masked ? Effect.uninterruptible(body) : body)
+            })
+          ).pipe(Layer.provideMerge(EngineLive))
+          const context = yield* Layer.build(layer)
+          const executionId = yield* workflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(context))
+          yield* TestClock.adjust(1000)
+          assert.strictEqual(attempts, 1)
+          assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
+
+          // Resume the body's actual waiter with the shutdown signal, rather than
+          // replaying a captured Cause (which loses fiber interruption state).
+          yield* storage.unregisterShardReplyHandlers(request.envelope.address.shardId, { interrupt: true })
+          yield* TestClock.adjust(1000)
+          const run = driver.journal.find((e) =>
+            e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
+          )
+          assert(run?._tag === "Request")
+          assert.deepStrictEqual(
+            driver.requests.get(run.requestId)!.replies,
+            [],
+            "catching abandonment must not persist Complete or Suspended"
+          )
+          assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
+          assert.strictEqual(durableFinalizers, 0)
+          assert.strictEqual(driver.journal.filter((e) => e._tag === "Interrupt").length, 0)
+        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
+    }
+  }
+
   for (const suspendOnFailure of [false, true]) {
     it.effect(`replays under a new owner without compensation (SuspendOnFailure=${suspendOnFailure})`, () =>
       Effect.gen(function*() {
