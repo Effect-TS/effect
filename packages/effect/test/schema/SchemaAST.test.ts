@@ -4,6 +4,21 @@ import { describe, it } from "vitest"
 import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaAST", () => {
+  describe("Suspend", () => {
+    it("memoizes the thunk", () => {
+      let calls = 0
+      const ast = new SchemaAST.Suspend(() => {
+        calls++
+        return SchemaAST.string
+      })
+
+      strictEqual(calls, 0)
+      strictEqual(ast.thunk(), SchemaAST.string)
+      strictEqual(ast.thunk(), SchemaAST.string)
+      strictEqual(calls, 1)
+    })
+  })
+
   it("isJson", () => {
     strictEqual(SchemaAST.isJson(null), true)
     strictEqual(SchemaAST.isJson(undefined), false)
@@ -703,6 +718,25 @@ describe("SchemaAST", () => {
       throws(
         () => new SchemaAST.IndexSignature(StringFromBoolean.ast, Schema.Number.ast),
         new Error("Invalid index signature parameter String")
+      )
+      throws(
+        () =>
+          new SchemaAST.IndexSignature(
+            Schema.Union([Schema.String, StringFromBoolean]).ast,
+            Schema.Number.ast
+          ),
+        new Error("Invalid index signature parameter Union")
+      )
+
+      const UnionFromBoolean = Schema.Boolean.pipe(
+        Schema.decodeTo(Schema.Union([Schema.String, Schema.Number]), {
+          decode: SchemaGetter.transform((b: boolean): string | number => b ? "true" : 0),
+          encode: SchemaGetter.transform((_value: string | number) => true)
+        })
+      )
+      throws(
+        () => new SchemaAST.IndexSignature(UnionFromBoolean.ast, Schema.Number.ast),
+        new Error("Invalid index signature parameter Union")
       )
     })
   })

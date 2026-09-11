@@ -1,5 +1,14 @@
 # @effect/openapi-generator
 
+## 4.0.0-rc.115
+
+### Patch Changes
+
+- [#8188](https://github.com/Effect-TS/effect/pull/8188) [`ccad0fe`](https://github.com/Effect-TS/effect/commit/ccad0fe130ce46b9fa57046968d6c6245d4b4341) Thanks @tim-smart! - Quote static paths and percent-encode path parameters in generated HTTP clients, including SSE and binary stream methods. Reject empty parameters and dot segments with an HTTP client error before sending a request.
+- Updated dependencies [[`657254b`](https://github.com/Effect-TS/effect/commit/657254b8218628b0116497d09aaf783cb88279f3), [`f9ef0e9`](https://github.com/Effect-TS/effect/commit/f9ef0e970260b5de143392d00593e6c8b4614cff), [`4f73f9e`](https://github.com/Effect-TS/effect/commit/4f73f9e0bd9538260f0f7166e0e6abdbd507a0e8)]:
+  - effect@4.0.0-rc.115
+  - @effect/platform-node@4.0.0-rc.115
+
 ## 4.0.0-rc.114
 
 ### Patch Changes

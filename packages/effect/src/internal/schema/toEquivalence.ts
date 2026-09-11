@@ -153,8 +153,8 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
       })
     }
     case "Suspend": {
-      const get = SchemaAST.memoizeThunk(() => recur(ast.thunk(), path))
-      return Equivalence.make((a, b) => get()(a, b))
+      let equivalence: Equivalence.Equivalence<any>
+      return Equivalence.make((a, b) => (equivalence ??= recur(ast.thunk(), path))(a, b))
     }
   }
 }

@@ -222,8 +222,8 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
         }
       }
       case "Suspend": {
-        const get = SchemaAST.memoizeThunk(() => recur(ast.thunk()))
-        return (value) => get()(value)
+        let formatter: Formatter<any>
+        return (value) => (formatter ??= recur(ast.thunk()))(value)
       }
     }
   }

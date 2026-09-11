@@ -41,9 +41,10 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  * @since 4.0.0
  */
 export function makeEffect<S extends Schema.Constraint>(schema: S) {
-  const parser = runWithCompiler<S["Type"], never>(constructorCompiler, SchemaAST.toType(schema.ast))
+  const ast = schema.ast
+  let parser: ReturnType<typeof runWithCompiler<S["Type"], never>>
   return (input: S["~type.make.in"], options?: Schema.MakeOptions): Effect.Effect<S["Type"], SchemaIssue.Issue> => {
-    return parser(
+    return (parser ??= runWithCompiler<S["Type"], never>(constructorCompiler, SchemaAST.toType(ast)))(
       input,
       options?.disableChecks
         ? options?.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }

@@ -1172,6 +1172,13 @@
           },
           "cases": [
             {
+              "name": "adapter-make-valid",
+              "export": "makeValid",
+              "scenario": "adapter-make-valid",
+              "operation": "make",
+              "adapter": "Sync"
+            },
+            {
               "name": "adapter-parser-decode-exit-invalid",
               "export": "parserExitInvalid",
               "scenario": "adapter-parser-decode-exit-invalid",
@@ -1247,6 +1254,44 @@
           },
           "cases": [
             {
+              "name": "schema-creation-object-2-effect",
+              "export": "effectSchemaCreationObject2",
+              "scenario": "schema-creation-object-2",
+              "implementation": "effect",
+              "operation": "schema",
+              "size": 2
+            },
+            {
+              "name": "schema-creation-object-32-effect",
+              "export": "effectSchemaCreationObject32",
+              "scenario": "schema-creation-object-32",
+              "implementation": "effect",
+              "operation": "schema"
+            },
+            {
+              "name": "schema-creation-object-256-effect",
+              "export": "effectSchemaCreationObject256",
+              "scenario": "schema-creation-object-256",
+              "implementation": "effect",
+              "operation": "schema",
+              "size": 256
+            },
+            {
+              "name": "schema-creation-encoded-record-effect",
+              "export": "effectSchemaCreationEncodedRecord",
+              "scenario": "schema-creation-encoded-record",
+              "implementation": "effect",
+              "operation": "schema"
+            },
+            {
+              "name": "first-make-object-2-effect",
+              "export": "effectFirstMakeObject2",
+              "scenario": "first-make-object-2",
+              "implementation": "effect",
+              "operation": "first-make",
+              "size": 2
+            },
+            {
               "name": "schema-creation-template-literal-effect",
               "export": "effectSchemaCreationTemplateLiteral",
               "scenario": "schema-creation-template-literal",
@@ -1256,6 +1301,17 @@
                 "TemplateLiteral"
               ],
               "size": 5
+            },
+            {
+              "name": "schema-creation-template-literal-256-effect",
+              "export": "effectSchemaCreationTemplateLiteral256",
+              "scenario": "schema-creation-template-literal-256",
+              "implementation": "effect",
+              "operation": "schema",
+              "astTags": [
+                "TemplateLiteral"
+              ],
+              "size": 256
             },
             {
               "name": "first-decode-checked-object-32-effect",

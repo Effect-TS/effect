@@ -1,7 +1,7 @@
 {
   "name": "effect",
   "type": "module",
-  "version": "4.0.0-rc.114",
+  "version": "4.0.0-rc.115",
   "license": "MIT",
   "description": "The missing standard library for TypeScript, for writing production-grade software.",
   "homepage": "https://effect.website",
@@ -116,6 +116,6 @@
     "immer": "^11.1.18",
     "protobufjs": "^8.8.0",
     "tinybench": "^6.1.6",
-    "valibot": "^1.4.2"
+    "valibot": "^1.5.0"
   }
 }
