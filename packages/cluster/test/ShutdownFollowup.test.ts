@@ -137,7 +137,7 @@ describe("shutdown follow-up", () => {
       )
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
-        const exit = yield* (yield* entity.client)("one").Run().pipe(Effect.exit)
+        const exit = yield* (yield* entity.client)("one").Run().pipe(Effect.fork, Effect.flatMap(Fiber.await))
         assert(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause))
         assert.isFalse(yield* sharding.isShutdown)
         assert.deepStrictEqual(driver.journal.map((e) => e._tag), ["Request"])
