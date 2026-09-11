@@ -36,9 +36,9 @@ export const make = () => {
     aroundEntityType: <A, E, R>(entityType: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       around(entityTypeKey(entityType), effect),
     isActive: (address: EntityAddress): boolean =>
-      counts.has(entityKey(address)) ||
-      counts.has(shardKey(address.shardId)) ||
-      counts.has(entityTypeKey(address.entityType))
+      counts.size > 0 && (counts.has(entityKey(address)) ||
+        counts.has(shardKey(address.shardId)) ||
+        counts.has(entityTypeKey(address.entityType)))
   }
 }
 
@@ -48,15 +48,3 @@ const entityKey = (address: EntityAddress): string =>
 const shardKey = (shardId: ShardId): string => `shard:${shardId.toString()}`
 
 const entityTypeKey = (entityType: string): string => `type:${entityType}`
-
-// Standalone helpers retain an isolated tracker; Sharding instances use make().
-/** @internal */
-export const {
-  acquireEntity,
-  acquireEntityType,
-  aroundEntityType,
-  aroundShard,
-  isActive,
-  releaseEntity,
-  releaseEntityType
-} = make()

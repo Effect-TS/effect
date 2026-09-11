@@ -141,16 +141,19 @@ const retryOnInterrupt = (
   policy: Schedule.Schedule<any, Cause.Cause<unknown>> = interruptRetryPolicy
 ) =>
 <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.flatMap(Effect.serviceOption(InstanceTag), (instance) =>
-    effect.pipe(
+  Effect.flatMap(Effect.serviceOption(InstanceTag), (instance) => {
+    // Outside a workflow there is no instance, so the activity can never be suspended.
+    const suspended = () => Option.isSome(instance) && instance.value.suspended
+    return effect.pipe(
       Effect.sandbox,
-      Effect.retry({ schedule: policy, while: () => Option.isNone(instance) || !instance.value.suspended }),
+      Effect.retry({ schedule: policy, while: () => !suspended() }),
       Effect.catchAll((cause) =>
-        Cause.isInterrupted(cause) && (Option.isNone(instance) || !instance.value.suspended)
+        Cause.isInterrupted(cause) && !suspended()
           ? Effect.die(`Activity "${name}" interrupted and retry attempts exhausted`)
           : Effect.failCause(cause)
       )
-    ))
+    )
+  })
 
 /**
  * @since 1.0.0

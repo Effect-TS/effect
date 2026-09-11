@@ -3,7 +3,7 @@ import { Headers } from "@effect/platform"
 import { Rpc, RpcSchema } from "@effect/rpc"
 import { Context, Effect, Exit, Option, PrimaryKey, Schema } from "effect"
 
-export const GetUserRpc = Rpc.make("GetUser", {
+const GetUserRpc = Rpc.make("GetUser", {
   payload: { id: Schema.Number }
 })
 
@@ -119,11 +119,3 @@ export const makeChunkReply = Effect.fnUntraced(function*(request: Message.Outgo
     rpc: request.rpc
   })
 })
-
-export const makeEmptyReply = (request: Message.OutgoingRequest<any>) => {
-  return new Reply.ReplyWithContext({
-    reply: Reply.Chunk.emptyFrom(request.envelope.requestId),
-    context: request.context,
-    rpc: request.rpc
-  })
-}

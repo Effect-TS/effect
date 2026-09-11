@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -22,16 +21,6 @@ import * as Sharding from "./Sharding.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 
 const constVoid = constant(Effect.void)
-
-const serializeDefectReply = <R extends Rpc.Any>(
-  reply: Reply.ReplyWithContext<R>,
-  defect: unknown
-): Effect.Effect<Reply.ReplyEncoded<any>> =>
-  Effect.orDie(Reply.serialize(Reply.ReplyWithContext.fromDefect({
-    id: reply.reply.id,
-    requestId: reply.reply.requestId,
-    defect
-  })))
 
 /**
  * @since 1.0.0
@@ -118,30 +107,19 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
             envelope: request,
             lastSentReply: Option.none(),
             respond(reply) {
-              return Reply.serialize(reply).pipe(
-                Effect.flatMap((reply) => {
-                  mailbox.unsafeOffer(reply)
-                  if (reply._tag === "WithExit") {
-                    mailbox.unsafeDone(Exit.void)
-                  }
-                  return Effect.void
-                }),
-                Effect.catchTag("MalformedMessage", (error) =>
-                  Effect.flatMap(serializeDefectReply(reply, error), (reply) => {
-                    mailbox.unsafeOffer(reply)
-                    mailbox.unsafeDone(Exit.void)
-                    return Effect.void
-                  }))
-              )
+              return Effect.map(Reply.serializeOrDefect(reply), (reply) => {
+                mailbox.unsafeOffer(reply)
+                if (reply._tag === "WithExit") {
+                  mailbox.unsafeDone(Exit.void)
+                }
+              })
             }
           })
           return Effect.as(
             persisted ?
               Effect.zipRight(
                 storage.registerReplyHandler(message).pipe(
-                  Effect.onError((cause) =>
-                    mailbox.failCause(cause)
-                  ),
+                  Effect.onError((cause) => mailbox.failCause(cause)),
                   Effect.forkScoped,
                   Effect.interruptible
                 ),

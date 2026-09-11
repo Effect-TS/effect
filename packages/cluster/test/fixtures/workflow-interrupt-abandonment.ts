@@ -1,16 +1,9 @@
-import {
-  ClusterWorkflowEngine,
-  MessageStorage,
-  RunnerHealth,
-  Runners,
-  RunnerStorage,
-  Sharding,
-  ShardingConfig
-} from "@effect/cluster"
+import { MessageStorage } from "@effect/cluster"
 import { Workflow } from "@effect/workflow"
 import { Cause, Effect, Exit, Layer, Schema, TestClock, TestContext } from "effect"
 import * as assert from "node:assert/strict"
 import { abandonmentCause, MemoryLive } from "./abandonment.js"
+import { makeEngine } from "./workflow-engine.js"
 
 const program = Effect.gen(function*() {
   const cause = yield* abandonmentCause
@@ -35,22 +28,14 @@ const program = Effect.gen(function*() {
       if (attempts++ === 0) return yield* Effect.failCause(cause)
     })
   ).pipe(
-    Layer.provideMerge(ClusterWorkflowEngine.layer.pipe(
-      Layer.provideMerge(Sharding.layer),
-      Layer.provide(RunnerStorage.layerMemory),
-      Layer.provide(RunnerHealth.layerNoop),
-      Layer.provide(Runners.layerNoop),
-      Layer.provide(
-        ShardingConfig.layer({
-          shardsPerGroup: 1,
-          entityTerminationTimeout: 0,
-          entityMessagePollInterval: 100,
-          entityReplyPollInterval: 100,
-          refreshAssignmentsInterval: 100,
-          sendRetryInterval: 10
-        })
-      )
-    ))
+    Layer.provideMerge(makeEngine({
+      shardsPerGroup: 1,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 100,
+      entityReplyPollInterval: 100,
+      refreshAssignmentsInterval: 100,
+      sendRetryInterval: 10
+    }))
   )
   const context = yield* Layer.build(layer)
   const executionId = yield* workflow.executionId({ id: "one" })

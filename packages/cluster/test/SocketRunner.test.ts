@@ -12,12 +12,41 @@ import {
   Snowflake,
   SocketRunner
 } from "@effect/cluster"
+import type { ShardId } from "@effect/cluster"
 import { NodeClusterSocket, NodeSocketServer } from "@effect/platform-node"
 import { SocketServer } from "@effect/platform/SocketServer"
 import { Rpc, RpcSerialization } from "@effect/rpc"
 import { RpcClientError } from "@effect/rpc/RpcClientError"
 import { assert, it } from "@effect/vitest"
 import { Context, Effect, ExecutionStrategy, Exit, Layer, Option, Schema, Scope, TestServices } from "effect"
+
+const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(RpcSerialization.layerNdjson))
+
+const makeRunner = Effect.fnUntraced(function*(config: Partial<ShardingConfig.ShardingConfig["Type"]>) {
+  const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 })
+  assert(server.address._tag === "TcpAddress")
+  return SocketRunner.layer.pipe(
+    Layer.provide(Layer.succeed(SocketServer, server)),
+    Layer.provide(protocol),
+    Layer.provide(RpcSerialization.layerNdjson),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("127.0.0.1", server.address.port)),
+      shardsPerGroup: 1,
+      entityTerminationTimeout: 0,
+      refreshAssignmentsInterval: 20,
+      sendRetryInterval: 10,
+      ...config
+    }))
+  )
+})
+
+const awaitShard = (sharding: Sharding.Sharding["Type"], shardId: ShardId.ShardId) =>
+  Effect.whileLoop({
+    while: () => !sharding.hasShardId(shardId),
+    body: () => Effect.sleep(5),
+    step: () => {}
+  }).pipe(Effect.timeout("3 seconds"))
 
 it.effect("an entity finalizer delivers remote volatile discard during runner shutdown", () =>
   Effect.gen(function*() {
@@ -31,28 +60,13 @@ it.effect("an entity finalizer delivers remote volatile discard during runner sh
     const sender = Entity.make("ShutdownDiscardSender", [
       Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
     ]).annotate(ClusterSchema.ShardGroup, () => "sender")
-    const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(RpcSerialization.layerNdjson))
-    const makeRunner = Effect.fnUntraced(function*(group: string) {
-      const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 })
-      assert(server.address._tag === "TcpAddress")
-      return SocketRunner.layer.pipe(
-        Layer.provide(Layer.succeed(SocketServer, server)),
-        Layer.provide(protocol),
-        Layer.provide(RpcSerialization.layerNdjson),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provide(ShardingConfig.layer({
-          runnerAddress: Option.some(RunnerAddress.make("127.0.0.1", server.address.port)),
-          availableShardGroups: ["sender", "receiver"],
-          assignedShardGroups: [group],
-          shardsPerGroup: 1,
-          entityTerminationTimeout: 0,
-          refreshAssignmentsInterval: 20,
-          sendRetryInterval: 10,
-          preemptiveShutdown: true
-        }))
-      )
-    })
-    const receiverRunner = yield* makeRunner("receiver")
+    const makeGroupRunner = (group: string) =>
+      makeRunner({
+        availableShardGroups: ["sender", "receiver"],
+        assignedShardGroups: [group],
+        preemptiveShutdown: true
+      })
+    const receiverRunner = yield* makeGroupRunner("receiver")
     const receiverContext = yield* Layer.build(
       receiver.toLayer({
         Ping: ({ payload: { id } }) =>
@@ -63,13 +77,9 @@ it.effect("an entity finalizer delivers remote volatile discard during runner sh
     )
     const receiverSharding = Context.get(receiverContext, Sharding.Sharding)
     const receiverShard = receiverSharding.getShardId(EntityId.make("peer"), "receiver")
-    yield* Effect.whileLoop({
-      while: () => !receiverSharding.hasShardId(receiverShard),
-      body: () => Effect.sleep(5),
-      step: () => {}
-    }).pipe(Effect.timeout("3 seconds"))
+    yield* awaitShard(receiverSharding, receiverShard)
 
-    const senderRunner = yield* makeRunner("sender")
+    const senderRunner = yield* makeGroupRunner("sender")
     const senderScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
     const senderContext = yield* Layer.build(
       sender.toLayer(Effect.gen(function*() {
@@ -87,11 +97,7 @@ it.effect("an entity finalizer delivers remote volatile discard during runner sh
     ).pipe(Scope.extend(senderScope))
     const senderSharding = Context.get(senderContext, Sharding.Sharding)
     const senderShard = senderSharding.getShardId(EntityId.make("one"), "sender")
-    yield* Effect.whileLoop({
-      while: () => !senderSharding.hasShardId(senderShard),
-      body: () => Effect.sleep(5),
-      step: () => {}
-    }).pipe(Effect.timeout("3 seconds"))
+    yield* awaitShard(senderSharding, senderShard)
     assert.isFalse(senderSharding.hasShardId(receiverShard), "the discard target must be on the other runner")
     yield* Effect.flatMap(sender.client, (client) => client("one").Arm()).pipe(
       Effect.provide(senderContext),
@@ -126,10 +132,6 @@ for (const failFirstSend of [false, true]) {
         const entity = Entity.make("SocketDiscardFollowup", [
           Rpc.make("Wait", { payload: { id: Schema.Number } }).annotate(ClusterSchema.Persisted, false)
         ])
-        const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 })
-        assert(server.address._tag === "TcpAddress")
-        const address = RunnerAddress.make("127.0.0.1", server.address.port)
-        const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(RpcSerialization.layerNdjson))
         const receiver = entity.toLayer({
           Wait: () =>
             started.open.pipe(
@@ -138,26 +140,10 @@ for (const failFirstSend of [false, true]) {
                 finished = true
               }))
             )
-        }).pipe(
-          Layer.provideMerge(SocketRunner.layer),
-          Layer.provide(Layer.succeed(SocketServer, server)),
-          Layer.provide(protocol),
-          Layer.provide(RpcSerialization.layerNdjson),
-          Layer.provide(RunnerHealth.layerNoop),
-          Layer.provide(
-            ShardingConfig.layer({
-              runnerAddress: Option.some(address),
-              shardsPerGroup: 1,
-              entityTerminationTimeout: 0,
-              refreshAssignmentsInterval: 20,
-              sendRetryInterval: 10
-            })
-          )
-        )
+        }).pipe(Layer.provideMerge(yield* makeRunner({})))
         const receiverContext = yield* Layer.build(receiver)
         const sharding = Context.get(receiverContext, Sharding.Sharding)
-        const shard = sharding.getShardId(EntityId.make("one"), "default")
-        while (!sharding.hasShardId(shard)) yield* Effect.sleep(5)
+        yield* awaitShard(sharding, sharding.getShardId(EntityId.make("one"), "default"))
 
         const flaky = Layer.effect(
           Runners.RpcClientProtocol,

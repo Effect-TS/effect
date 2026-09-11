@@ -3,6 +3,7 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
+    { "path": "../workflow/tsconfig.test.json" },
     { "path": "../platform-node/tsconfig.src.json" },
     { "path": "../sql-pg/tsconfig.src.json" },
     { "path": "../sql-mysql2/tsconfig.src.json" },

@@ -2,6 +2,7 @@ import { HttpApi, HttpApiBuilder, HttpServer } from "@effect/platform"
 import { assert, describe, it } from "@effect/vitest"
 import { Workflow, WorkflowEngine, WorkflowProxy, WorkflowProxyServer } from "@effect/workflow"
 import { Effect, Exit, Layer, Schema } from "effect"
+import { makeAwaitResult } from "./WorkflowEngineContractTest.js"
 
 describe("WorkflowProxy", () => {
   const TestWorkflow = Workflow.make({ name: "Backports", payload: {}, idempotencyKey: () => "one" })
@@ -47,22 +48,5 @@ describe("WorkflowProxy", () => {
       const result = yield* awaitResult(TestWorkflow, executionId, "Complete").pipe(Effect.provide(context))
       assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
     }).pipe(Effect.scoped))
-  const awaitResult = <A, E>(
-    workflow: {
-      readonly poll: (
-        id: string
-      ) => Effect.Effect<Workflow.Result<A, E> | undefined, never, WorkflowEngine.WorkflowEngine>
-    },
-    executionId: string,
-    tag: "Suspended" | "Complete"
-  ) =>
-    Effect.gen(function*() {
-      let result = yield* workflow.poll(executionId)
-      for (let i = 0; i < 2000 && result?._tag !== tag; i++) {
-        yield* Effect.yieldNow()
-        result = yield* workflow.poll(executionId)
-      }
-      assert.strictEqual(result?._tag, tag)
-      return result
-    })
+  const awaitResult = makeAwaitResult(Effect.yieldNow())
 })
