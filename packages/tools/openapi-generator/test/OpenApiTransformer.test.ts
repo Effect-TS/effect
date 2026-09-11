@@ -26,7 +26,12 @@ const modules = {
 
 type TransformClient = (client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>
 
-async function loadClient(source: string) {
+async function loadClient<
+  Client = {
+    readStream: () => Stream.Stream<unknown, HttpClientError.HttpClientError>
+    readSse: () => Stream.Stream<unknown, HttpClientError.HttpClientError>
+  }
+>(source: string) {
   const bundle = await rolldown({
     input: "client.ts",
     external: (id) => id !== "client.ts",
@@ -41,10 +46,7 @@ async function loadClient(source: string) {
     const compiled = output[0]
     assert.strictEqual(compiled.type, "chunk")
     const exports = {} as {
-      make: (httpClient: HttpClient.HttpClient, options?: { transformClient: TransformClient }) => {
-        readStream: () => Stream.Stream<unknown, HttpClientError.HttpClientError>
-        readSse: () => Stream.Stream<unknown, HttpClientError.HttpClientError>
-      }
+      make: (httpClient: HttpClient.HttpClient, options?: { transformClient: TransformClient }) => Client
     }
     new Function("require", "exports", compiled.code)(
       (id: keyof typeof modules) => {
@@ -68,6 +70,98 @@ const paths = [
 ] as const
 
 describe("OpenApiTransformer", () => {
+  describe("path parameters", () => {
+    const generate = Effect.gen(function*() {
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      const source = yield* generator.generate({
+        openapi: "3.1.0",
+        info: { title: "Files", version: "1.0.0" },
+        components: { schemas: {}, securitySchemes: {} },
+        security: [],
+        tags: [],
+        paths: {
+          "/files/{id}/content": {
+            get: {
+              operationId: "read",
+              parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+              tags: ["Files"],
+              security: [],
+              responses: {
+                "200": {
+                  description: "File contents",
+                  content: { "application/octet-stream": { schema: { type: "string" } } }
+                }
+              }
+            }
+          }
+        }
+      }, { name: "TestClient", format: "httpclient-type-only" })
+      return yield* Effect.promise(() =>
+        loadClient<{
+          read: (id: string) => Effect.Effect<unknown, HttpClientError.HttpClientError>
+          readStream: (id: string) => Stream.Stream<unknown, HttpClientError.HttpClientError>
+        }>(source)
+      )
+    }).pipe(Effect.provide(OpenApiGenerator.layerTransformerTs))
+
+    it.effect("percent-encodes each parameter as one path segment", () =>
+      Effect.gen(function*() {
+        const make = yield* generate
+        const urls: Array<string> = []
+        const client = make(
+          HttpClient.make((request, url) => {
+            urls.push(url.href)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response("")))
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+        )
+        for (
+          const [value, encoded] of [
+            ["alice", "alice"],
+            ["../a/b?c#d\\e%20", "..%2Fa%2Fb%3Fc%23d%5Ce%2520"],
+            ["hello world/é", "hello%20world%2F%C3%A9"]
+          ]
+        ) {
+          yield* client.read(value)
+          assert.strictEqual(urls.at(-1), `https://example.com/files/${encoded}/content`)
+        }
+        assert.strictEqual(urls.length, 3)
+      }))
+
+    it.effect("rejects empty and dot parameters with a typed error before sending", () =>
+      Effect.gen(function*() {
+        const make = yield* generate
+        let requests = 0
+        const client = make(
+          HttpClient.make(() => {
+            requests++
+            return Effect.die("Unexpected request")
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+        )
+        for (const value of ["", ".", ".."]) {
+          const error = yield* Effect.flip(client.read(value))
+          assert.instanceOf(error, HttpClientError.HttpClientError)
+          assert.instanceOf(error.reason, HttpClientError.InvalidUrlError)
+        }
+        assert.strictEqual(requests, 0)
+      }))
+
+    it.effect("propagates path rejection through the stream error channel", () =>
+      Effect.gen(function*() {
+        const make = yield* generate
+        let requests = 0
+        const client = make(
+          HttpClient.make(() => {
+            requests++
+            return Effect.die("Unexpected request")
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+        )
+        const error = yield* Effect.flip(Stream.runCollect(client.readStream("..")))
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        assert.instanceOf(error.reason, HttpClientError.InvalidUrlError)
+        assert.strictEqual(requests, 0)
+      }))
+  })
+
   for (const { encoding, format } of paths) {
     const binary = encoding === "binary"
     const body = binary
