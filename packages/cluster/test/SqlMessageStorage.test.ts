@@ -6,8 +6,6 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { SqlClient } from "@effect/sql/SqlClient"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, Option, TestClock } from "effect"
-import { MysqlContainer } from "./fixtures/utils-mysql.js"
-import { PgContainer } from "./fixtures/utils-pg.js"
 import {
   LongKeyRpc,
   LongKeyTest,
@@ -18,7 +16,9 @@ import {
   PrimaryKeyTest,
   StreamRpc,
   StreamTest
-} from "./MessageStorage.test.js"
+} from "./fixtures/message-storage.js"
+import { MysqlContainer } from "./fixtures/utils-mysql.js"
+import { PgContainer } from "./fixtures/utils-pg.js"
 
 const StorageLive = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -63,6 +63,21 @@ describe("SqlMessageStorage", () => {
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(5)
           expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([6, 7, 8, 9, 10])
+        }))
+
+      it.effect("by-ID reads preserve chunk acknowledgement reply IDs", () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest({ rpc: StreamRpc, payload: new StreamTest({ id: 987654 }) })
+          yield* storage.saveRequest(request)
+          const chunk = yield* makeChunkReply(request)
+          yield* storage.saveReply(chunk)
+          const ack = yield* makeAckChunk(request, chunk)
+          yield* storage.saveEnvelope(ack)
+          const messages = yield* storage.unprocessedMessagesById([ack.envelope.id])
+          assert.strictEqual(messages.length, 1)
+          assert(messages[0].envelope._tag === "AckChunk")
+          assert.strictEqual(messages[0].envelope.replyId, chunk.reply.id)
         }))
 
       it.effect("saveReply + saveRequest duplicate", () =>
