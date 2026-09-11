@@ -4,8 +4,10 @@
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
 import { type FromServer, RequestId } from "@effect/rpc/RpcMessage"
+import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
 import * as Duration from "effect/Duration"
@@ -21,6 +23,7 @@ import { constant } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as HashRing from "effect/HashRing"
 import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as MutableRef from "effect/MutableRef"
@@ -34,17 +37,18 @@ import { AlreadyProcessingMessage, EntityNotAssignedToRunner } from "./ClusterEr
 import * as ClusterMetrics from "./ClusterMetrics.js"
 import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import * as ClusterSchema from "./ClusterSchema.js"
-import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
+import { CurrentAddress, type CurrentRunnerAddress, type Entity, type HandlersFrom } from "./Entity.js"
 import type { EntityAddress } from "./EntityAddress.js"
 import { make as makeEntityAddress } from "./EntityAddress.js"
 import type { EntityId } from "./EntityId.js"
 import { make as makeEntityId } from "./EntityId.js"
 import * as Envelope from "./Envelope.js"
+import * as ClusterAbandon from "./internal/clusterAbandon.js"
 import * as EntityManager from "./internal/entityManager.js"
 import { EntityReaper } from "./internal/entityReaper.js"
 import { joinAllDiscard } from "./internal/fiber.js"
 import { hashString } from "./internal/hash.js"
-import { internalInterruptors } from "./internal/interruptors.js"
+import * as ActiveTeardown from "./internal/interruptors.js"
 import { ResourceMap } from "./internal/resourceMap.js"
 import { effectiveInterval } from "./internal/shardLock.js"
 import * as Message from "./Message.js"
@@ -105,7 +109,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
       entityId: string
     ) => RpcClient.RpcClient.From<
       Rpcs,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
     >
   >
 
@@ -159,7 +163,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
     discard: boolean
   ) => Effect.Effect<
     void,
-    MailboxFull | AlreadyProcessingMessage | PersistenceError
+    MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
   >
 
   /**
@@ -209,6 +213,7 @@ const make = Effect.gen(function*() {
   const snowflakeGen = yield* Snowflake.Generator
   const shardingScope = yield* Effect.scope
   const isShutdown = MutableRef.make(false)
+  const activeTeardown = ActiveTeardown.make()
   const fiberSet = yield* FiberSet.make()
   const runFork = yield* FiberSet.runtime(fiberSet)<never>().pipe(
     Effect.mapInputContext((context: Context.Context<never>) => Context.omit(Scope.Scope)(context))
@@ -219,6 +224,8 @@ const make = Effect.gen(function*() {
   const runnerStorage = yield* RunnerStorage
 
   const entityManagers = new Map<string, EntityManagerState>()
+  let entityRegistrationStartMillis: number | undefined
+  let entityRegistrationFallbackStartMillis: number | undefined
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -288,7 +295,7 @@ const make = Effect.gen(function*() {
       for (const shardId of shardIds) {
         MutableHashSet.remove(releasingShards, shardId)
         MutableHashSet.remove(forceReleasingShards, shardId)
-        yield* storage.unregisterShardReplyHandlers(shardId)
+        yield* storage.unregisterShardReplyHandlers(shardId, { interrupt: MutableRef.get(isShutdown) })
       }
     })
     const retryShardRelease =
@@ -512,7 +519,7 @@ const make = Effect.gen(function*() {
     const probeShardLocks = runnerStorage.refresh(selfAddress, []).pipe(
       Effect.timeout(shardLockInterval),
       Effect.andThen(markShardLocksHealthy),
-      Effect.catchAllCause(() => Effect.void)
+      Effect.catchAllCause((cause) => Effect.logWarning("Shard lock storage is still unhealthy", cause))
     )
 
     yield* Effect.suspend(() => shardLocksHealthy ? refreshShardLocks : probeShardLocks).pipe(
@@ -551,7 +558,6 @@ const make = Effect.gen(function*() {
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
     const entityRegistrationTimeoutMillis = Duration.toMillis(config.entityRegistrationTimeout)
-    const storageStartMillis = clock.unsafeCurrentTimeMillis()
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -577,8 +583,13 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            const sinceStart = clock.unsafeCurrentTimeMillis() - storageStartMillis
-            if (sinceStart < entityRegistrationTimeoutMillis) {
+            const now = clock.unsafeCurrentTimeMillis()
+            const registrationStarted = entityRegistrationStartMillis !== undefined
+            const timeoutStartMillis = entityRegistrationStartMillis ?? (entityRegistrationFallbackStartMillis ??= now)
+            const timeoutMillis = registrationStarted
+              ? entityRegistrationTimeoutMillis
+              : entityRegistrationTimeoutMillis * 2
+            if (now - timeoutStartMillis < timeoutMillis) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
@@ -926,17 +937,41 @@ const make = Effect.gen(function*() {
     retries?: number
   ): Effect.Effect<
     void,
-    MailboxFull | AlreadyProcessingMessage | PersistenceError
+    MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
   > {
+    const isPersisted = Context.get(message.rpc.annotations, Persisted)
+    const shouldFail = !discard && (message._tag === "OutgoingRequest" || message.envelope._tag === "AckChunk")
+    const abandon = (error: EntityNotAssignedToRunner) => {
+      if (!isPersisted) {
+        return shouldFail
+          ? Effect.fail(error)
+          : Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
+      }
+      const persist = message._tag === "OutgoingRequest" ? storage.saveRequest(message) : storage.saveEnvelope(message)
+      return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
+        Effect.andThen(
+          shouldFail
+            ? message._tag === "OutgoingRequest" ? ClusterAbandon.interrupt : Effect.fail(error)
+            : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
+        )
+      )
+    }
     return Effect.catchIf(
       Effect.suspend(() => {
         const address = message.envelope.address
-        const isPersisted = Context.get(message.rpc.annotations, Persisted)
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
+        // Remote discards can still be delivered while local entities shut down.
+        // Interrupt envelopes need a delivery attempt even during local teardown.
+        if (
+          MutableRef.get(isShutdown) && message.envelope._tag !== "Interrupt" &&
+          (shouldFail || runnerIsLocal)
+        ) {
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        }
         if (isPersisted) {
           return runnerIsLocal
             ? notifyLocal(message, discard)
@@ -944,15 +979,21 @@ const make = Effect.gen(function*() {
         } else if (Option.isNone(maybeRunner)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
-        return runnerIsLocal
-          ? sendLocal(message)
+        return runnerIsLocal ?
+          sendLocal(message)
+          : discard ?
+          runnersService.notify({ address: maybeRunner, message, discard })
           : runnersService.send({ address: maybeRunner.value, message })
       }),
       (error) => error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable",
       (error) => {
-        if (retries === 0) {
-          return Effect.die(error)
+        if (error._tag === "EntityNotAssignedToRunner") {
+          const targetManager = entityManagers.get(message.envelope.address.entityType)
+          if (MutableRef.get(isShutdown) || (targetManager !== undefined && targetManager.status !== "alive")) {
+            return abandon(error)
+          }
         }
+        if (retries === 0) return Effect.die(error)
         return Effect.delay(sendOutgoing(message, discard, retries && retries - 1), config.sendRetryInterval)
       }
     )
@@ -1118,11 +1159,19 @@ const make = Effect.gen(function*() {
     Entity<any, any>,
     (entityId: string) => RpcClient.RpcClient<
       any,
-      MailboxFull | AlreadyProcessingMessage
+      MailboxFull | AlreadyProcessingMessage | EntityNotAssignedToRunner
     >,
     never
   > = yield* ResourceMap.make(
     Effect.fnUntraced(function*(entity: Entity<string, any>) {
+      const clientScope = yield* Effect.scope
+      // LIFO finalization acquires below before client teardown and releases last.
+      yield* Scope.addFinalizer(
+        clientScope,
+        Effect.sync(() => {
+          activeTeardown.releaseEntityType(entity.type)
+        })
+      )
       const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
         spanPrefix: `${entity.type}.client`,
         disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
@@ -1131,7 +1180,7 @@ const make = Effect.gen(function*() {
         flatten: true,
         onFromClient(options): Effect.Effect<
           void,
-          MailboxFull | AlreadyProcessingMessage | PersistenceError
+          MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
         > {
           const address = Context.unsafeGet(options.context, ClientAddressTag)
           switch (options.message._tag) {
@@ -1197,8 +1246,10 @@ const make = Effect.gen(function*() {
               }
               // for durable messages, we ignore interrupts on shutdown or as a
               // result of a shard being resassigned
+              const caller = Context.getOption(entry.services, CurrentAddress)
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
-                options.message.interruptors.some((id) => internalInterruptors.has(id))
+                options.message.interruptors.some(ClusterAbandon.isInterruptor) ||
+                (Option.isSome(caller) && activeTeardown.isActive(caller.value))
               if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
                 return Effect.void
               }
@@ -1221,10 +1272,9 @@ const make = Effect.gen(function*() {
       })
 
       yield* Scope.addFinalizer(
-        yield* Effect.scope,
-        Effect.fiberIdWith((fiberId) => {
-          internalInterruptors.add(fiberId)
-          return Effect.void
+        clientScope,
+        Effect.sync(() => {
+          activeTeardown.acquireEntityType(entity.type)
         })
       )
 
@@ -1235,14 +1285,22 @@ const make = Effect.gen(function*() {
           entityId: id,
           entityType: entity.type
         }))
-        const clientFn = function(tag: string, payload: any, options?: {
+        const clientFn = (tag: string, isStream: boolean) =>
+        (payload: any, options?: {
           readonly context?: Context.Context<never>
-        }) {
+          readonly asMailbox?: boolean
+        }) => {
           const context = options?.context ? Context.merge(options.context, address) : address
-          return client.client(tag, payload, {
+          const response = client.client(tag, payload, {
             ...options,
+            asMailbox: isStream,
             context
-          })
+          }) as Effect.Effect<any, any>
+          // Re-signal relayed abandonment at each read, in the consuming fiber.
+          // Unary calls and mailbox reads retain the caller's interruption mask.
+          if (!isStream) return ClusterAbandon.onError(response)
+          const mailbox = Effect.map(ClusterAbandon.onError(response), ClusterAbandon.mailbox)
+          return options?.asMailbox ? mailbox : Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))
         }
         const proxyClient: any = {}
         return new Proxy(proxyClient, {
@@ -1252,10 +1310,12 @@ const make = Effect.gen(function*() {
           get(target, p) {
             if (p in target) {
               return target[p]
-            } else if (!entity.protocol.requests.has(p as string)) {
+            }
+            const rpc = entity.protocol.requests.get(p as string)
+            if (!rpc) {
               return undefined
             }
-            return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+            return target[p] = clientFn(p as string, RpcSchema.isStreamSchema(rpc.successSchema))
           }
         })
       }
@@ -1266,7 +1326,7 @@ const make = Effect.gen(function*() {
   const makeClient = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Effect.Effect<
     (
       entityId: string
-    ) => RpcClient.RpcClient.From<Rpcs, MailboxFull | AlreadyProcessingMessage>
+    ) => RpcClient.RpcClient.From<Rpcs, MailboxFull | AlreadyProcessingMessage | EntityNotAssignedToRunner>
   > => clients.get(entity) as any
 
   const clientRespondDiscard = (_reply: Reply.Reply<any>) => Effect.void
@@ -1356,8 +1416,7 @@ const make = Effect.gen(function*() {
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
           yield* Effect.logDebug("Stopping singleton", address)
-          internalInterruptors.add(Option.getOrThrow(Fiber.getCurrentFiber()).id())
-          yield* FiberMap.remove(singletonFibers, address)
+          yield* activeTeardown.aroundShard(address.shardId, FiberMap.remove(singletonFibers, address))
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
           yield* FiberMap.run(singletonFibers, address, run)
@@ -1379,6 +1438,7 @@ const make = Effect.gen(function*() {
   const registerEntity: Sharding["Type"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
       if (Option.isNone(config.runnerAddress) || entityManagers.has(entity.type)) return
+      const registrationContext = yield* Effect.context<never>()
       const scope = yield* Effect.scope
       yield* Scope.addFinalizer(
         scope,
@@ -1390,9 +1450,13 @@ const make = Effect.gen(function*() {
         ...options,
         storage,
         runnerAddress: config.runnerAddress.value,
+        activeTeardown,
         sharding
       }).pipe(
         Effect.provide(context.pipe(
+          Context.merge(registrationContext),
+          Context.add(ShardingConfig, config),
+          Context.add(Clock.Clock, clock),
           Context.add(EntityReaper, reaper),
           Context.add(Scope.Scope, scope),
           Context.add(Snowflake.Generator, snowflakeGen)
@@ -1405,18 +1469,16 @@ const make = Effect.gen(function*() {
       }
       yield* Scope.addFinalizer(
         scope,
-        Effect.fiberIdWith((id) => {
+        Effect.suspend(() => {
           state.status = "closing"
-          internalInterruptors.add(id)
-          // if preemptive shutdown is enabled, we start shutting down Sharding
-          // too
-          return config.preemptiveShutdown ? shutdown() : Effect.void
+          return activeTeardown.aroundEntityType(entity.type, config.preemptiveShutdown ? shutdown() : Effect.void)
         })
       )
 
       // register entities while storage is idle
       // this ensures message order is preserved
       yield* withStorageReadLock(Effect.sync(() => {
+        entityRegistrationStartMillis ??= clock.unsafeCurrentTimeMillis()
         entityManagers.set(entity.type, state)
         if (entityManagerLatches.has(entity.type)) {
           entityManagerLatches.get(entity.type)!.unsafeOpen()
@@ -1493,7 +1555,6 @@ const make = Effect.gen(function*() {
       )
     }
 
-    internalInterruptors.add(yield* Effect.fiberId)
     if (isShutdown.current) return
 
     MutableRef.set(isShutdown, true)

@@ -6,7 +6,7 @@ import * as HttpApiGroup from "@effect/platform/HttpApiGroup"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as Schema from "effect/Schema"
-import { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, PersistenceError } from "./ClusterError.js"
 import type * as Entity from "./Entity.js"
 
 const clientErrors = [
@@ -14,6 +14,8 @@ const clientErrors = [
   AlreadyProcessingMessage,
   PersistenceError
 ] as const
+
+const requestErrors = [...clientErrors, EntityNotAssignedToRunner] as const
 
 /**
  * Derives an `RpcGroup` from an `Entity`.
@@ -63,7 +65,7 @@ export const toRpcGroup = <Type extends string, Rpcs extends Rpc.Any>(
     }
     const rpc = Rpc.make(`${entity.type}.${parentRpc._tag}`, {
       payload: payloadSchema,
-      error: Schema.Union(parentRpc.errorSchema, ...clientErrors),
+      error: Schema.Union(parentRpc.errorSchema, ...requestErrors),
       success: parentRpc.successSchema
     }).annotateContext(parentRpc.annotations)
     const rpcDiscard = Rpc.make(`${entity.type}.${parentRpc._tag}Discard`, {
@@ -97,10 +99,12 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
         | MailboxFull
         | AlreadyProcessingMessage
         | PersistenceError
+        | EntityNotAssignedToRunner,
         | _Error["Encoded"]
         | typeof MailboxFull["Encoded"]
         | typeof AlreadyProcessingMessage["Encoded"]
-        | typeof PersistenceError["Encoded"],
+        | typeof PersistenceError["Encoded"]
+        | typeof EntityNotAssignedToRunner["Encoded"],
         _Error["Context"]
       >
     >
@@ -170,7 +174,7 @@ export const toHttpApiGroup = <const Name extends string, Type extends string, R
       .setPath(entityIdPath)
       .setPayload(parentRpc.payloadSchema)
       .addSuccess(parentRpc.successSchema)
-      .addError(Schema.Union(parentRpc.errorSchema, ...clientErrors))
+      .addError(Schema.Union(parentRpc.errorSchema, ...requestErrors))
       .annotateContext(parentRpc.annotations)
     const endpointDiscard = HttpApiEndpoint.post(
       `${parentRpc._tag}Discard`,
@@ -210,7 +214,7 @@ export type ConvertHttpApi<Rpcs extends Rpc.Any> = Rpcs extends Rpc.Rpc<
       _Payload["Type"],
       never,
       _Success["Type"],
-      _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError,
+      _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner,
       _Payload["Context"] | _Success["Context"],
       _Error["Context"]
     >

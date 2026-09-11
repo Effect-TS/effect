@@ -1,5 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
+import { Fiber, Scope } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -7,6 +8,8 @@ import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as TestClock from "effect/TestClock"
+import * as WorkflowEngineContractTest from "./WorkflowEngineContractTest.js"
+import { makeAwaitResult } from "./WorkflowEngineContractTest.js"
 
 describe("WorkflowEngine", () => {
   it.effect("works with TestClock", () =>
@@ -184,3 +187,106 @@ const ParentWorkflow = Workflow.make({
 const ParentWorkflowLayer = ParentWorkflow.toLayer(Effect.fnUntraced(function*() {
   yield* ChildWorkflow.execute({ id: "child-1" })
 }))
+
+describe("memory lifecycle", () => {
+  const TestWorkflow = Workflow.make({ name: "Backports", payload: {}, idempotencyKey: () => "one" })
+
+  it.effect("memory closes finalizers from every suspended run on completion", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("scope-gate")
+      const finalized: Array<number> = []
+      let runs = 0
+      const layer = TestWorkflow.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(run)))
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      yield* Effect.gen(function*() {
+        const executionId = yield* TestWorkflow.execute(undefined, { discard: true })
+        yield* awaitResult(TestWorkflow, executionId, "Suspended")
+        assert.deepStrictEqual(finalized, [])
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: TestWorkflow, executionId }),
+          value: undefined
+        })
+        yield* awaitResult(TestWorkflow, executionId, "Complete")
+        assert.deepStrictEqual(finalized, [2, 1])
+      }).pipe(Effect.provide(layer))
+    }))
+
+  for (const observe of ["body", "terminal", "late completion"] as const) {
+    it.effect(`memory deposited interrupt ${observe} ordering`, () =>
+      Effect.gen(function*() {
+        const gate = DurableDeferred.make("interrupt-gate")
+        const body: Array<boolean> = []
+        const terminal: Array<boolean> = []
+        let runs = 0
+        const layer = TestWorkflow.toLayer(() =>
+          Effect.gen(function*() {
+            const instance = yield* WorkflowEngine.WorkflowInstance
+            if (++runs === 2) {
+              yield* Workflow.addFinalizer(() => Effect.sync(() => terminal.push(instance.interrupted)))
+            }
+            yield* DurableDeferred.await(gate).pipe(
+              Effect.onExit(() => Effect.sync(() => body.push(instance.interrupted)))
+            )
+          })
+        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+        yield* Effect.gen(function*() {
+          const executionId = yield* TestWorkflow.execute(undefined, { discard: true })
+          yield* awaitResult(TestWorkflow, executionId, "Suspended")
+          yield* TestWorkflow.interrupt(executionId)
+          const result = yield* awaitResult(TestWorkflow, executionId, "Complete")
+          assert(result?._tag === "Complete" && Exit.isInterrupted(result.exit))
+          if (observe === "terminal") assert.deepStrictEqual(terminal, [true])
+          if (observe === "body") assert.deepStrictEqual(body, [false, false])
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow: TestWorkflow, executionId }),
+            value: undefined
+          })
+          yield* TestWorkflow.resume(executionId)
+          assert.deepStrictEqual(yield* TestWorkflow.poll(executionId), result)
+          assert.strictEqual(runs, 2)
+        }).pipe(Effect.provide(layer))
+      }))
+  }
+  const awaitResult = makeAwaitResult(Effect.yieldNow(), 2000)
+})
+
+describe("shutdown", () => {
+  it.effect("memory engine shutdown runs workflow compensations", () =>
+    Effect.gen(function*() {
+      const ready = yield* Effect.makeLatch()
+      const compensated: Array<string> = []
+      const Stuck = Workflow.make({
+        name: "WorkflowEngine/ShutdownCompensation",
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Stuck.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Effect.succeed("a").pipe(
+            Stuck.withCompensation((value) => Effect.sync(() => compensated.push(value)))
+          )
+          yield* ready.open
+          return yield* Effect.never
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      const scope = yield* Scope.make()
+      const context = yield* Layer.build(layer).pipe(Scope.extend(scope))
+      const fiber = yield* Stuck.execute({ id: "one" }).pipe(Effect.provide(context), Effect.fork)
+      yield* ready.await
+      yield* Scope.close(scope, Exit.void)
+      const exit = yield* Fiber.await(fiber)
+      assert(Exit.isInterrupted(exit))
+      assert.deepStrictEqual(compensated, ["a"])
+    }))
+})
+
+WorkflowEngineContractTest.suite({
+  name: "memory",
+  engineLayer: WorkflowEngine.layerMemory,
+  tick: Effect.yieldNow()
+})

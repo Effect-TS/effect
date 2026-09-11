@@ -311,6 +311,7 @@ export const make = <
           suspendedRetrySchedule: options.suspendedRetrySchedule
         })
       },
+      (effect, _fields, opts) => opts?.discard ? effect : withPendingActivity(effect),
       Effect.withSpan(`${options.name}.execute`, { captureStackTrace: false })
     ),
     poll: Effect.fnUntraced(
@@ -522,6 +523,7 @@ export const intoResult = <A, E, R>(
       Effect.interruptible,
       suspendOnFailure ?
         Effect.catchAllCause((cause) => {
+          if (instance.abandoned) return Effect.failCause(cause)
           instance.suspended = true
           if (!Cause.isInterruptedOnly(cause)) {
             instance.cause = Cause.die(Cause.squash(cause))
@@ -535,9 +537,15 @@ export const intoResult = <A, E, R>(
         onFailure(cause): Effect.Effect<Result<A, E>> {
           const isInterruptedOnly = Cause.isInterruptedOnly(cause)
           const filtered = isInterruptedOnly ? cause : withoutInterrupts(cause)
-          return instance.suspended && isInterruptedOnly
-            ? Effect.succeed(new Suspended({ cause: instance.cause }))
-            : (!instance.interrupted && isInterruptedOnly) || (!captureDefects && Cause.isDie(cause))
+          const abandoned = instance.abandoned && !instance.interrupted && isInterruptedOnly
+          instance.abandoned = abandoned
+          if (instance.suspended && isInterruptedOnly && !abandoned) {
+            return Effect.succeed(new Suspended({ cause: instance.cause }))
+          }
+          if (!instance.interrupted && isInterruptedOnly) {
+            return Effect.failCause(filtered as Cause.Cause<never>)
+          }
+          return !captureDefects && Cause.isDie(cause)
             ? Effect.failCause(filtered as Cause.Cause<never>)
             : Effect.succeed(new Complete({ exit: Exit.failCause(filtered) }))
         }
@@ -569,17 +577,67 @@ export const wrapActivityResult = <A, E, R>(
 ): Effect.Effect<A, E, R | WorkflowInstance> =>
   Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
-    const state = instance.activityState
-    if (state.count === 0) state.latch.unsafeClose()
-    state.count++
-    return Effect.onExit(effect, (exit) => {
-      state.count--
-      const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
-      if (Exit.isSuccess(exit) && isResult(exit.value) && exit.value._tag === "Suspended" && exit.value.cause) {
-        instance.cause = instance.cause ? Cause.sequential(instance.cause, exit.value.cause) : exit.value.cause
+    return Effect.acquireUseRelease(
+      Effect.sync(() => adoptActivityUnsafe(context, instance) ?? registerActivityUnsafe(instance)),
+      () => effect,
+      (registration, exit) => {
+        releaseActivityUnsafe(registration)
+        const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
+        if (Exit.isSuccess(exit) && isResult(exit.value) && exit.value._tag === "Suspended" && exit.value.cause) {
+          instance.cause = instance.cause ? Cause.sequential(instance.cause, exit.value.cause) : exit.value.cause
+        }
+        return isSuspended && instance.activityState.count > 0 ? waitForZero(instance) : Effect.void
       }
-      return state.count === 0 ? state.latch.open : isSuspended ? waitForZero(instance) : Effect.void
-    })
+    )
+  })
+
+interface ActivityRegistration {
+  readonly instance: WorkflowInstance["Type"]
+  state: "pending" | "adopted" | "released"
+}
+
+const PendingActivityRegistration = Context.GenericTag<ActivityRegistration>(
+  "@effect/workflow/Workflow/PendingActivityRegistration"
+)
+
+const registerActivityUnsafe = (instance: WorkflowInstance["Type"]): ActivityRegistration => {
+  const state = instance.activityState
+  if (state.count === 0) state.latch.unsafeClose()
+  state.count++
+  return { instance, state: "pending" }
+}
+
+const adoptActivityUnsafe = (
+  context: Context.Context<never>,
+  instance: WorkflowInstance["Type"]
+): ActivityRegistration | undefined => {
+  const pending = Context.getOption(context, PendingActivityRegistration)
+  if (Option.isNone(pending) || pending.value.instance !== instance) return undefined
+  if (pending.value.state !== "pending") {
+    throw new Error("Workflow.wrapActivityResult: pending child registration has already been consumed")
+  }
+  pending.value.state = "adopted"
+  return pending.value
+}
+
+const releaseActivityUnsafe = (registration: ActivityRegistration) => {
+  if (registration.state === "released") return
+  registration.state = "released"
+  const state = registration.instance.activityState
+  state.count--
+  if (state.count === 0) state.latch.unsafeOpen()
+}
+
+// Register before computing a child's execution ID so siblings wait for dispatch.
+const withPendingActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.contextWithEffect((context: Context.Context<never>) => {
+    const instance = Context.getOption(context, InstanceTag)
+    if (Option.isNone(instance)) return effect
+    return Effect.acquireUseRelease(
+      Effect.sync(() => registerActivityUnsafe(instance.value)),
+      (registration) => Effect.provideService(effect, PendingActivityRegistration, registration),
+      (registration) => Effect.sync(() => releaseActivityUnsafe(registration))
+    )
   })
 
 const waitForZero = Effect.fnUntraced(function*(instance: WorkflowInstance["Type"]) {
@@ -625,6 +683,12 @@ export const provideScope = <A, E, R>(
   Effect.flatMap(scope, (scope) => Scope.extend(effect, scope))
 
 /**
+ * Body-level `Effect.onExit` finalizers cannot observe a deposited workflow
+ * interrupt. Use this function for terminal work that must observe it.
+ *
+ * Finalizers are skipped when a cluster owner abandons a run for replay.
+ * Owner-local scope finalizers registered with {@link provideScope} still run.
+ *
  * @since 1.0.0
  * @category Scope
  */
@@ -637,9 +701,12 @@ export const addFinalizer: <R>(
 > = Effect.fnUntraced(function*<R>(
   f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
 ) {
-  const scope = (yield* InstanceTag).scope
+  const instance = yield* InstanceTag
   const runtime = yield* Effect.runtime<R>()
-  yield* Scope.addFinalizerExit(scope, (exit) => Effect.provide(f(exit), runtime))
+  yield* Scope.addFinalizerExit(
+    instance.scope,
+    (exit) => instance.abandoned ? Effect.void : Effect.provide(f(exit), runtime)
+  )
 })
 
 /**

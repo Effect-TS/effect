@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
@@ -79,6 +80,10 @@ export interface Any {
 }
 
 /**
+ * Only completed activity results are memoized. An activity that suspends while
+ * awaiting a child workflow or durable clock executes again on replay. Side
+ * effects before suspension must be idempotent.
+ *
  * @since 1.0.0
  * @category Constructors
  */
@@ -136,14 +141,19 @@ const retryOnInterrupt = (
   policy: Schedule.Schedule<any, Cause.Cause<unknown>> = interruptRetryPolicy
 ) =>
 <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  effect.pipe(
-    Effect.sandbox,
-    Effect.retry(policy),
-    Effect.catchAll((cause) => {
-      if (!Cause.isInterrupted(cause)) return Effect.failCause(cause)
-      return Effect.die(`Activity "${name}" interrupted and retry attempts exhausted`)
-    })
-  )
+  Effect.flatMap(Effect.serviceOption(InstanceTag), (instance) => {
+    // Outside a workflow there is no instance, so the activity can never be suspended.
+    const suspended = () => Option.isSome(instance) && instance.value.suspended
+    return effect.pipe(
+      Effect.sandbox,
+      Effect.retry({ schedule: policy, while: () => !suspended() }),
+      Effect.catchAll((cause) =>
+        Cause.isInterrupted(cause) && !suspended()
+          ? Effect.die(`Activity "${name}" interrupted and retry attempts exhausted`)
+          : Effect.failCause(cause)
+      )
+    )
+  })
 
 /**
  * @since 1.0.0

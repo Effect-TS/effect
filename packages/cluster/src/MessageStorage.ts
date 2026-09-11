@@ -19,6 +19,7 @@ import { EntityNotAssignedToRunner, MalformedMessage } from "./ClusterError.js"
 import * as DeliverAt from "./DeliverAt.js"
 import type { EntityAddress } from "./EntityAddress.js"
 import * as Envelope from "./Envelope.js"
+import * as ClusterAbandon from "./internal/clusterAbandon.js"
 import * as Message from "./Message.js"
 import * as Reply from "./Reply.js"
 import type { ShardId } from "./ShardId.js"
@@ -98,8 +99,14 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
 
   /**
    * Unregister the reply handlers for the specified ShardId.
+   * By default waiters fail with EntityNotAssignedToRunner so they can retry.
+   * With `interrupt`, waiters receive a cluster abandonment interrupt for replay
+   * after runner shutdown.
    */
-  readonly unregisterShardReplyHandlers: (shardId: ShardId) => Effect.Effect<void>
+  readonly unregisterShardReplyHandlers: (
+    shardId: ShardId,
+    options?: { readonly interrupt?: boolean | undefined }
+  ) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -406,7 +413,7 @@ export const make = (
             ))
           }
         }),
-      unregisterShardReplyHandlers: (shardId) =>
+      unregisterShardReplyHandlers: (shardId, options) =>
         Effect.sync(() => {
           const id = shardId.toString()
           const shardSet = replyHandlersShard.get(id)
@@ -414,11 +421,13 @@ export const make = (
           replyHandlersShard.delete(id)
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
-            handler.resume(Effect.fail(
-              new EntityNotAssignedToRunner({
-                address: handler.message.envelope.address
-              })
-            ))
+            handler.resume(
+              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
+                new EntityNotAssignedToRunner({
+                  address: handler.message.envelope.address
+                })
+              )
+            )
           })
         }),
       saveReply(reply) {
@@ -494,7 +503,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) => Effect.flatMap(Reply.serialize(reply), encoded.saveReply),
+    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -855,15 +864,23 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
         Effect.sync(() => {
+          for (const [primaryKey, entry] of requestsByPrimaryKey) {
+            const envelope = entry.envelope
+            if (address.entityType === envelope.address.entityType && address.entityId === envelope.address.entityId) {
+              requestsByPrimaryKey.delete(primaryKey)
+            }
+          }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
             const sameAddress = address.entityType === envelope.address.entityType &&
               address.entityId === envelope.address.entityId
-            if (!sameAddress || envelope._tag !== "Request") {
+            if (!sameAddress) {
               continue
             }
             unprocessed.delete(envelope)
-            requests.delete(envelope.requestId)
+            if (envelope._tag === "Request") {
+              requests.delete(envelope.requestId)
+            }
             journal.splice(i, 1)
           }
         }),

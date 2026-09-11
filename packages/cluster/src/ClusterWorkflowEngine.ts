@@ -8,7 +8,7 @@ import { DurableDeferred } from "@effect/workflow"
 import * as Activity from "@effect/workflow/Activity"
 import * as DurableClock from "@effect/workflow/DurableClock"
 import * as Workflow from "@effect/workflow/Workflow"
-import { makeUnsafe, WorkflowEngine, WorkflowInstance } from "@effect/workflow/WorkflowEngine"
+import { makeDeferredState, makeUnsafe, WorkflowEngine, WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -35,6 +35,7 @@ import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
 import * as Envelope from "./Envelope.js"
+import * as ClusterAbandon from "./internal/clusterAbandon.js"
 import * as Message from "./Message.js"
 import { MessageStorage } from "./MessageStorage.js"
 import type { WithExitEncoded } from "./Reply.js"
@@ -76,7 +77,7 @@ export const make = Effect.gen(function*() {
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
         Schema.Schema<Workflow.Result<any, any>>
       >
-      | Rpc.Rpc<"resume", Schema.Struct<{}>>
+      | typeof ResumeRpc
     >
   >()
   const partialEntities = new Map<
@@ -89,7 +90,7 @@ export const make = Effect.gen(function*() {
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
         Schema.Schema<Workflow.Result<any, any>>
       >
-      | Rpc.Rpc<"resume">
+      | typeof ResumeRpc
     >
   >()
   const ensureEntity = (workflow: Workflow.Any) => {
@@ -116,6 +117,7 @@ export const make = Effect.gen(function*() {
   }>()
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Effect.Latch>()
+  const deferredState = makeDeferredState()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -279,21 +281,51 @@ export const make = Effect.gen(function*() {
   const sendResumeParent = Effect.fnUntraced(function*(options: {
     readonly workflowName: string
     readonly executionId: string
-  }) {
+  }, childExecutionId: string) {
     const requestId = yield* requestIdFor({
       workflow: workflows.get(options.workflowName)!,
       entityType: `Workflow/${options.workflowName}`,
       executionId: options.executionId,
       tag: "resume",
-      id: ""
+      id: childExecutionId
     })
     if (Option.isNone(requestId)) {
       const client = (yield* RcMap.get(clientsPartial, options.workflowName))(options.executionId)
-      return yield* client.resume({} as any, { discard: true })
+      return yield* client.resume({ childExecutionId }, { discard: true })
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
     yield* sharding.reset(requestId.value)
+  }, Effect.scoped)
+
+  // Subscribe synchronously before reading storage so a suspended reply cannot
+  // arrive between the read and registration. The scoped finalizer owns the fiber.
+  const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
+    const runtime = yield* Effect.runtime<never>()
+    const waiter = yield* Effect.acquireRelease(
+      Effect.sync(() =>
+        Runtime.runFork(runtime)(
+          storage.registerReplyHandler(
+            new Message.OutgoingRequest<any>({
+              envelope: request,
+              context: Context.empty() as Context.Context<any>,
+              rpc: ensureEntity(workflow).protocol.requests.get("run")!,
+              lastReceivedReply: Option.none(),
+              respond: () => Effect.void
+            })
+          ).pipe(Effect.interruptible)
+        )
+      ),
+      Fiber.interrupt
+    )
+    const reply = yield* replyForRequestId(request.requestId)
+    if (Option.isSome(reply)) return
+    yield* Fiber.join(waiter).pipe(
+      Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
+      Effect.catchAllCause((cause) =>
+        ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause)
+      )
+    )
   }, Effect.scoped)
 
   const engine = makeUnsafe({
@@ -304,8 +336,11 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
+            let currentRun: Entity.Request<any> | undefined
+            const resumeGate = yield* Effect.makeSemaphore(1)
             return {
               run: (request: Entity.Request<any>) => {
+                currentRun = request
                 const instance = WorkflowInstance.initial(workflow, executionId)
                 const payload = request.payload
                 let parent: { workflowName: string; executionId: string } | undefined
@@ -313,10 +348,15 @@ export const make = Effect.gen(function*() {
                   parent = payload[payloadParentKey]
                 }
                 return execute(workflow.payloadSchema.make(payload), executionId).pipe(
+                  ClusterAbandon.withOwner,
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
-                    if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
-                      return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
+                    instance.abandoned ||= exit._tag === "Failure" && ClusterAbandon.isCause(exit.cause)
+                    if (instance.abandoned) {
+                      instance.suspended = false
+                    }
+                    if (!instance.suspended && !instance.abandoned && !(suspendOnFailure && exit._tag === "Failure")) {
+                      return parent ? ensureSuccess(sendResumeParent(parent, executionId)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeExit) => {
@@ -334,7 +374,7 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  Effect.provideService(WorkflowInstance, instance)
+                  (effect) => deferredState.trackRun(instance, effect)
                 ) as any
               },
 
@@ -350,6 +390,7 @@ export const make = Effect.gen(function*() {
                     yield* latch.await
                     entry = activities.get(activityId)
                   }
+                  instance.awaitedDeferreds = Context.get(entry.runtime.context, WorkflowInstance).awaitedDeferreds
                   const contextMap = new Map(entry.runtime.context.unsafeMap)
                   contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
                   contextMap.set(WorkflowInstance.key, instance)
@@ -359,6 +400,7 @@ export const make = Effect.gen(function*() {
                     runtimeFlags: Runtime.defaultRuntimeFlags
                   })
                   return yield* entry.activity.executeEncoded.pipe(
+                    ClusterAbandon.withOwner,
                     Effect.provide(runtime)
                   )
                 }).pipe(
@@ -388,13 +430,25 @@ export const make = Effect.gen(function*() {
               },
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
+                yield* deferredState.deferredDone(executionId, request.payload.name, request.payload.exit)
                 yield* ensureSuccess(resume(workflow, executionId))
                 return request.payload.exit
               }),
 
-              resume: () => ensureSuccess(resume(workflow, executionId))
+              resume: () =>
+                resumeGate.withPermitsIfAvailable(1)(
+                  currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
+                ).pipe(
+                  // Release the gate before reset can start another parent run, so
+                  // later child completions can wake that replay.
+                  Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+                  ensureSuccess,
+                  Rpc.wrap({ fork: true, uninterruptible: true })
+                )
             }
-          })
+          }),
+          // Reserve a slot for deferred completions to wake the active run.
+          { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
 
@@ -507,24 +561,22 @@ export const make = Effect.gen(function*() {
 
     deferredResult: (deferred) =>
       WorkflowInstance.pipe(
-        Effect.flatMap((instance) =>
-          requestReply({
+        Effect.flatMap((instance) => {
+          const pending = deferredState.pendingResult(instance.executionId, deferred.name)
+          if (pending) return Effect.succeed(pending)
+          return requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow.name}`,
             executionId: instance.executionId,
             tag: "deferred",
             id: deferred.name
-          })
-        ),
-        Effect.map((oreply) => {
-          if (Option.isNone(oreply)) {
-            return undefined
-          }
-          const reply = oreply.value
-          const decoded = decodeDeferredWithExit(reply as any)
-          return decoded.exit._tag === "Success"
-            ? decoded.exit.value
-            : decoded.exit
+          }).pipe(
+            Effect.map((oreply) => {
+              if (Option.isNone(oreply)) return undefined
+              const decoded = decodeDeferredWithExit(oreply.value as any)
+              return decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
+            })
+          )
         }),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
@@ -658,8 +710,9 @@ const DeferredRpc = Rpc.make("deferred", {
 const decodeDeferredWithExit = Schema.decodeSync(Reply.WithExit.schema(DeferredRpc))
 
 const ResumeRpc = Rpc.make("resume", {
-  payload: {},
-  primaryKey: () => ""
+  payload: { childExecutionId: Schema.optional(Schema.String) },
+  // Retain the empty key for legacy persisted resume envelopes.
+  primaryKey: ({ childExecutionId }) => childExecutionId ?? ""
 })
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
