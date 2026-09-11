@@ -58,6 +58,28 @@ describe("HttpServerResponse", () => {
         assert.strictEqual(web.body, null)
       })
     }
+
+    it.effect("keeps the outer status when wrapping a raw Web Response", () =>
+      Effect.gen(function*() {
+        const inner = new Response("created", {
+          status: 201,
+          statusText: "Created",
+          headers: { "x-inner": "1" }
+        })
+        const web = HttpServerResponse.toWeb(
+          HttpServerResponse.raw(inner, {
+            status: 404,
+            statusText: "Not Found",
+            headers: { "x-outer": "yes" }
+          })
+        )
+
+        assert.strictEqual(web.status, 404)
+        assert.strictEqual(web.statusText, "Not Found")
+        assert.strictEqual(web.headers.get("x-outer"), "yes")
+        assert.strictEqual(web.headers.get("x-inner"), "1")
+        assert.strictEqual(yield* Effect.promise(() => web.text()), "created")
+      }))
   })
 
   it("setHeader overrides body-derived content headers", () => {
