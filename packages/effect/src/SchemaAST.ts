@@ -2754,19 +2754,14 @@ export const Objects: new(
     this.encodingChecks = encodingChecks
 
     // Duplicate property signatures
-    let duplicates: Array<PropertyKey>
-    if (propertySignatures.length < 32) {
-      duplicates = propertySignatures.map((ps) => ps.name).filter((name, i, arr) => arr.indexOf(name) !== i)
-    } else {
-      const seen = new Set<PropertyKey>()
-      duplicates = []
-      for (const propertySignature of propertySignatures) {
-        const name = propertySignature.name
-        if (seen.has(name)) {
-          duplicates.push(name)
-        } else {
-          seen.add(name)
-        }
+    const seen = new Set<PropertyKey>()
+    const duplicates: Array<PropertyKey> = []
+    for (const propertySignature of propertySignatures) {
+      const name = propertySignature.name
+      if (seen.has(name)) {
+        duplicates.push(name)
+      } else {
+        seen.add(name)
       }
     }
     if (duplicates.length > 0) {
