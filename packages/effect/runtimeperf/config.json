@@ -1673,6 +1673,707 @@
           ]
         }
       ]
+    },
+    {
+      "name": "compiler-rebuild",
+      "fixtures": [
+        {
+          "file": "suites/compiler-rebuild/fixtures/interpreted.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "interpreted",
+            "implementation": "effect",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "interpreted-parseValid",
+              "export": "parseValid",
+              "scenario": "compiler-rebuild-parseValid"
+            },
+            {
+              "name": "interpreted-parseExtra",
+              "export": "parseExtra",
+              "scenario": "compiler-rebuild-parseExtra",
+              "size": 4
+            },
+            {
+              "name": "interpreted-parseInvalid",
+              "export": "parseInvalid",
+              "scenario": "compiler-rebuild-parseInvalid",
+              "path": "invalid"
+            },
+            {
+              "name": "interpreted-isValid",
+              "export": "isValid",
+              "scenario": "compiler-rebuild-isValid",
+              "operation": "is"
+            },
+            {
+              "name": "interpreted-isInvalid",
+              "export": "isInvalid",
+              "scenario": "compiler-rebuild-isInvalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "interpreted-encode",
+              "export": "encode",
+              "scenario": "compiler-rebuild-encode",
+              "operation": "encode"
+            },
+            {
+              "name": "interpreted-strict",
+              "export": "strict",
+              "scenario": "compiler-rebuild-strict"
+            },
+            {
+              "name": "interpreted-nested",
+              "export": "nested",
+              "scenario": "compiler-rebuild-nested",
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 2
+            },
+            {
+              "name": "interpreted-array",
+              "export": "array",
+              "scenario": "compiler-rebuild-array",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "interpreted-arrayInvalid",
+              "export": "arrayInvalid",
+              "scenario": "compiler-rebuild-arrayInvalid",
+              "path": "invalid",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 33
+            },
+            {
+              "name": "interpreted-tuple",
+              "export": "tuple",
+              "scenario": "compiler-rebuild-tuple",
+              "astTags": [
+                "Arrays",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 34
+            },
+            {
+              "name": "interpreted-record",
+              "export": "record",
+              "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "interpreted-union",
+              "export": "union",
+              "scenario": "compiler-rebuild-union",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal",
+                "Number"
+              ],
+              "size": 8
+            },
+            {
+              "name": "interpreted-oneOf",
+              "export": "oneOf",
+              "scenario": "compiler-rebuild-oneOf",
+              "astTags": [
+                "Union",
+                "Objects",
+                "String",
+                "Number"
+              ],
+              "size": 2
+            },
+            {
+              "name": "interpreted-transform",
+              "export": "transform",
+              "scenario": "compiler-rebuild-transform",
+              "astTags": [
+                "Objects",
+                "String",
+                "Number"
+              ],
+              "size": 32
+            },
+            {
+              "name": "interpreted-transformInvalid",
+              "export": "transformInvalid",
+              "scenario": "compiler-rebuild-transformInvalid",
+              "path": "invalid",
+              "astTags": [
+                "String",
+                "Number"
+              ],
+              "size": 1
+            },
+            {
+              "name": "interpreted-middleware",
+              "export": "middleware",
+              "scenario": "compiler-rebuild-middleware"
+            },
+            {
+              "name": "interpreted-recursive",
+              "export": "recursive",
+              "scenario": "compiler-rebuild-recursive",
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "Suspend",
+                "Number"
+              ],
+              "size": 31
+            },
+            {
+              "name": "interpreted-declaration",
+              "export": "declaration",
+              "scenario": "compiler-rebuild-declaration",
+              "astTags": [
+                "Declaration",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "interpreted-makeStruct",
+              "export": "makeStruct",
+              "scenario": "compiler-rebuild-makeStruct",
+              "operation": "make",
+              "astTags": [
+                "Objects",
+                "Number"
+              ],
+              "size": 32
+            },
+            {
+              "name": "interpreted-makeArray",
+              "export": "makeArray",
+              "scenario": "compiler-rebuild-makeArray",
+              "operation": "make",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "interpreted-makeUnion",
+              "export": "makeUnion",
+              "scenario": "compiler-rebuild-makeUnion",
+              "operation": "make",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal",
+                "Number"
+              ],
+              "size": 8
+            }
+          ]
+        },
+        {
+          "file": "suites/compiler-rebuild/fixtures/jit.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "jit",
+            "implementation": "effect",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "jit-parseValid",
+              "export": "parseValid",
+              "scenario": "compiler-rebuild-parseValid"
+            },
+            {
+              "name": "jit-parseExtra",
+              "export": "parseExtra",
+              "scenario": "compiler-rebuild-parseExtra",
+              "size": 4
+            },
+            {
+              "name": "jit-parseInvalid",
+              "export": "parseInvalid",
+              "scenario": "compiler-rebuild-parseInvalid",
+              "path": "invalid"
+            },
+            {
+              "name": "jit-isValid",
+              "export": "isValid",
+              "scenario": "compiler-rebuild-isValid",
+              "operation": "is"
+            },
+            {
+              "name": "jit-isInvalid",
+              "export": "isInvalid",
+              "scenario": "compiler-rebuild-isInvalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "jit-encode",
+              "export": "encode",
+              "scenario": "compiler-rebuild-encode",
+              "operation": "encode"
+            },
+            {
+              "name": "jit-strict",
+              "export": "strict",
+              "scenario": "compiler-rebuild-strict"
+            },
+            {
+              "name": "jit-nested",
+              "export": "nested",
+              "scenario": "compiler-rebuild-nested",
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 2
+            },
+            {
+              "name": "jit-array",
+              "export": "array",
+              "scenario": "compiler-rebuild-array",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "jit-arrayInvalid",
+              "export": "arrayInvalid",
+              "scenario": "compiler-rebuild-arrayInvalid",
+              "path": "invalid",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 33
+            },
+            {
+              "name": "jit-tuple",
+              "export": "tuple",
+              "scenario": "compiler-rebuild-tuple",
+              "astTags": [
+                "Arrays",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 34
+            },
+            {
+              "name": "jit-record",
+              "export": "record",
+              "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "jit-union",
+              "export": "union",
+              "scenario": "compiler-rebuild-union",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal",
+                "Number"
+              ],
+              "size": 8
+            },
+            {
+              "name": "jit-oneOf",
+              "export": "oneOf",
+              "scenario": "compiler-rebuild-oneOf",
+              "astTags": [
+                "Union",
+                "Objects",
+                "String",
+                "Number"
+              ],
+              "size": 2
+            },
+            {
+              "name": "jit-transform",
+              "export": "transform",
+              "scenario": "compiler-rebuild-transform",
+              "astTags": [
+                "Objects",
+                "String",
+                "Number"
+              ],
+              "size": 32
+            },
+            {
+              "name": "jit-transformInvalid",
+              "export": "transformInvalid",
+              "scenario": "compiler-rebuild-transformInvalid",
+              "path": "invalid",
+              "astTags": [
+                "String",
+                "Number"
+              ],
+              "size": 1
+            },
+            {
+              "name": "jit-middleware",
+              "export": "middleware",
+              "scenario": "compiler-rebuild-middleware"
+            },
+            {
+              "name": "jit-recursive",
+              "export": "recursive",
+              "scenario": "compiler-rebuild-recursive",
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "Suspend",
+                "Number"
+              ],
+              "size": 31
+            },
+            {
+              "name": "jit-declaration",
+              "export": "declaration",
+              "scenario": "compiler-rebuild-declaration",
+              "astTags": [
+                "Declaration",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "jit-makeStruct",
+              "export": "makeStruct",
+              "scenario": "compiler-rebuild-makeStruct",
+              "operation": "make",
+              "astTags": [
+                "Objects",
+                "Number"
+              ],
+              "size": 32
+            },
+            {
+              "name": "jit-makeArray",
+              "export": "makeArray",
+              "scenario": "compiler-rebuild-makeArray",
+              "operation": "make",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "jit-makeUnion",
+              "export": "makeUnion",
+              "scenario": "compiler-rebuild-makeUnion",
+              "operation": "make",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal",
+                "Number"
+              ],
+              "size": 8
+            }
+          ]
+        },
+        {
+          "file": "suites/compiler-rebuild/fixtures/aot.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "aot",
+            "implementation": "effect",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "aot-parseValid",
+              "export": "parseValid",
+              "scenario": "compiler-rebuild-parseValid"
+            },
+            {
+              "name": "aot-parseExtra",
+              "export": "parseExtra",
+              "scenario": "compiler-rebuild-parseExtra",
+              "size": 4
+            },
+            {
+              "name": "aot-parseInvalid",
+              "export": "parseInvalid",
+              "scenario": "compiler-rebuild-parseInvalid",
+              "path": "invalid"
+            },
+            {
+              "name": "aot-isValid",
+              "export": "isValid",
+              "scenario": "compiler-rebuild-isValid",
+              "operation": "is"
+            },
+            {
+              "name": "aot-isInvalid",
+              "export": "isInvalid",
+              "scenario": "compiler-rebuild-isInvalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "aot-encode",
+              "export": "encode",
+              "scenario": "compiler-rebuild-encode",
+              "operation": "encode"
+            },
+            {
+              "name": "aot-strict",
+              "export": "strict",
+              "scenario": "compiler-rebuild-strict"
+            },
+            {
+              "name": "aot-nested",
+              "export": "nested",
+              "scenario": "compiler-rebuild-nested",
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 2
+            },
+            {
+              "name": "aot-array",
+              "export": "array",
+              "scenario": "compiler-rebuild-array",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "aot-arrayInvalid",
+              "export": "arrayInvalid",
+              "scenario": "compiler-rebuild-arrayInvalid",
+              "path": "invalid",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 33
+            },
+            {
+              "name": "aot-tuple",
+              "export": "tuple",
+              "scenario": "compiler-rebuild-tuple",
+              "astTags": [
+                "Arrays",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 34
+            },
+            {
+              "name": "aot-record",
+              "export": "record",
+              "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "aot-union",
+              "export": "union",
+              "scenario": "compiler-rebuild-union",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal",
+                "Number"
+              ],
+              "size": 8
+            },
+            {
+              "name": "aot-oneOf",
+              "export": "oneOf",
+              "scenario": "compiler-rebuild-oneOf",
+              "astTags": [
+                "Union",
+                "Objects",
+                "String",
+                "Number"
+              ],
+              "size": 2
+            },
+            {
+              "name": "aot-transform",
+              "export": "transform",
+              "scenario": "compiler-rebuild-transform",
+              "astTags": [
+                "Objects",
+                "String",
+                "Number"
+              ],
+              "size": 32
+            },
+            {
+              "name": "aot-transformInvalid",
+              "export": "transformInvalid",
+              "scenario": "compiler-rebuild-transformInvalid",
+              "path": "invalid",
+              "astTags": [
+                "String",
+                "Number"
+              ],
+              "size": 1
+            },
+            {
+              "name": "aot-middleware",
+              "export": "middleware",
+              "scenario": "compiler-rebuild-middleware"
+            },
+            {
+              "name": "aot-recursive",
+              "export": "recursive",
+              "scenario": "compiler-rebuild-recursive",
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "Suspend",
+                "Number"
+              ],
+              "size": 31
+            },
+            {
+              "name": "aot-declaration",
+              "export": "declaration",
+              "scenario": "compiler-rebuild-declaration",
+              "astTags": [
+                "Declaration",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "aot-makeStruct",
+              "export": "makeStruct",
+              "scenario": "compiler-rebuild-makeStruct",
+              "operation": "make",
+              "astTags": [
+                "Objects",
+                "Number"
+              ],
+              "size": 32
+            },
+            {
+              "name": "aot-makeArray",
+              "export": "makeArray",
+              "scenario": "compiler-rebuild-makeArray",
+              "operation": "make",
+              "astTags": [
+                "Arrays",
+                "Objects",
+                "String",
+                "Number",
+                "Boolean"
+              ],
+              "size": 32
+            },
+            {
+              "name": "aot-makeUnion",
+              "export": "makeUnion",
+              "scenario": "compiler-rebuild-makeUnion",
+              "operation": "make",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal",
+                "Number"
+              ],
+              "size": 8
+            }
+          ]
+        }
+      ]
     }
   ]
 }
