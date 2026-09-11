@@ -314,6 +314,7 @@ export const make = Effect.gen(function*() {
                   parent = payload[payloadParentKey]
                 }
                 return execute(workflow.payloadSchema.make(payload), executionId).pipe(
+                  ClusterAbandon.withOwner,
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
                     instance.abandoned ||= exit._tag === "Failure" && ClusterAbandon.isCause(exit.cause)
@@ -364,6 +365,7 @@ export const make = Effect.gen(function*() {
                     runtimeFlags: Runtime.defaultRuntimeFlags
                   })
                   return yield* entry.activity.executeEncoded.pipe(
+                    ClusterAbandon.withOwner,
                     Effect.provide(runtime)
                   )
                 }).pipe(

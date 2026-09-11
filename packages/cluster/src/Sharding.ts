@@ -4,6 +4,7 @@
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
 import { type FromServer, RequestId } from "@effect/rpc/RpcMessage"
+import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
@@ -22,6 +23,7 @@ import { constant } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as HashRing from "effect/HashRing"
 import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as MutableRef from "effect/MutableRef"
@@ -1283,20 +1285,20 @@ const make = Effect.gen(function*() {
         }))
         const clientFn = function(tag: string, payload: any, options?: {
           readonly context?: Context.Context<never>
+          readonly asMailbox?: boolean
         }) {
           const context = options?.context ? Context.merge(options.context, address) : address
+          const isStream = RpcSchema.isStreamSchema(entity.protocol.requests.get(tag)!.successSchema)
           const response = client.client(tag, payload, {
             ...options,
+            asMailbox: isStream,
             context
-          })
-          // RpcClient relays write-fiber failures as causes. Restore abandonment
-          // on the requester before user recovery, without overriding its mask.
-          return Effect.isEffect(response)
-            ? Effect.onError(
-              response,
-              (cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.void
-            )
-            : response
+          }) as Effect.Effect<any, any>
+          // Re-signal relayed abandonment at each read, in the consuming fiber.
+          // Unary calls and mailbox reads retain the caller's interruption mask.
+          if (!isStream) return ClusterAbandon.onError(response)
+          const mailbox = Effect.map(ClusterAbandon.onError(response), ClusterAbandon.mailbox)
+          return options?.asMailbox ? mailbox : Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))
         }
         const proxyClient: any = {}
         return new Proxy(proxyClient, {
