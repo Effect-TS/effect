@@ -33,15 +33,6 @@ const serializeDefectReply = <R extends Rpc.Any>(
     defect
   })))
 
-const serializeReply = <R extends Rpc.Any>(
-  reply: Reply.ReplyWithContext<R>
-): Effect.Effect<Reply.ReplyEncoded<any>> =>
-  Effect.catchTag(
-    Reply.serialize(reply),
-    "MalformedMessage",
-    (error) => serializeDefectReply(reply, error)
-  )
-
 /**
  * @since 1.0.0
  * @category Layers
@@ -52,16 +43,12 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
 
   return {
     Ping: () => Effect.void,
-    Notify: ({ envelope }) =>
-      sharding.notify(
-        envelope._tag === "Request"
-          ? new Message.IncomingRequest({
-            envelope,
-            respond: constVoid,
-            lastSentReply: Option.none()
-          })
-          : new Message.IncomingEnvelope({ envelope })
-      ),
+    Notify: ({ envelope, persisted }) => {
+      const message = envelope._tag === "Request"
+        ? new Message.IncomingRequest({ envelope, respond: constVoid, lastSentReply: Option.none() })
+        : new Message.IncomingEnvelope({ envelope })
+      return persisted ? sharding.notify(message) : sharding.send(message)
+    },
     Effect: ({ persisted, request }) => {
       let replyEncoded:
         | Effect.Effect<
@@ -76,7 +63,7 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         envelope: request,
         lastSentReply: Option.none(),
         respond(reply) {
-          resume(serializeReply(reply))
+          resume(Reply.serializeOrDefect(reply))
           return Effect.void
         }
       })
@@ -134,6 +121,9 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
               return Reply.serialize(reply).pipe(
                 Effect.flatMap((reply) => {
                   mailbox.unsafeOffer(reply)
+                  if (reply._tag === "WithExit") {
+                    mailbox.unsafeDone(Exit.void)
+                  }
                   return Effect.void
                 }),
                 Effect.catchTag("MalformedMessage", (error) =>

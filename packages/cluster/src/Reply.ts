@@ -314,3 +314,23 @@ export const serializeLastReceived = <R extends Rpc.Any>(
     Effect.locally(Schema.encode(schema)(self.lastReceivedReply.value), FiberRef.currentContext, self.context)
   ))
 }
+
+/**
+ * Serializes a reply, falling back to a serializable defect if encoding fails.
+ *
+ * @category serialization
+ * @since 1.0.0
+ */
+export const serializeOrDefect = <R extends Rpc.Any>(
+  self: ReplyWithContext<R>
+): Effect.Effect<ReplyEncoded<any>> =>
+  Effect.catchTag(
+    serialize(self),
+    "MalformedMessage",
+    (error) =>
+      Effect.orDie(serialize(ReplyWithContext.fromDefect({
+        id: self.reply.id,
+        requestId: self.reply.requestId,
+        defect: error
+      })))
+  )
