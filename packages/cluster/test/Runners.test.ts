@@ -236,4 +236,23 @@ describe.concurrent("Runners.makeRpc", () => {
       if (!Exit.isFailure(exit)) return assert.fail("send must fail for a persisted request defect")
       assert.instanceOf(Cause.squash(exit.cause), ClusterError.RunnerUnavailable)
     }).pipe(Effect.provide(layerRunners(layerFakeProtocol(respondWithDefect)))))
+
+  for (const persisted of [false, true]) {
+    it.effect(`notification transport errors (persisted=${persisted})`, () =>
+      Effect.gen(function*() {
+        const runners = yield* Runners.Runners
+        const snowflake = yield* Snowflake.Generator
+        const message = makeOutgoingRequest(persisted ? TestRpcPersisted : TestRpc, snowflake.unsafeNext(), () =>
+          Effect.void)
+        const exit = yield* Effect.exit(runners.notify({ address: Option.some(runnerAddress), message, discard: true }))
+        if (persisted) {
+          assert(Exit.isSuccess(exit))
+        } else {
+          assert(Exit.isFailure(exit), "volatile delivery failure was swallowed")
+          assert.instanceOf(Cause.squash(exit.cause), ClusterError.RunnerUnavailable)
+        }
+      }).pipe(Effect.provide(layerRunners(layerFakeProtocol(() =>
+        Effect.fail(new RpcClientError({ reason: "Protocol", message: "delivery failed" }))
+      )))))
+  }
 })

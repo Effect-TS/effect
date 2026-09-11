@@ -13,6 +13,58 @@ import { PgContainer } from "./fixtures/utils-pg.js"
 const StorageLive = SqlRunnerStorage.layer
 
 describe("SqlRunnerStorage", () => {
+  it.effect("empty liveness probe bypasses a wedged reserved connection", () => {
+    const partition = makePartitionState()
+    const layer = StorageLive.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partition)),
+      Layer.provide(ShardingConfig.layer({ shardLockExpiration: 1000, shardLockRefreshInterval: 100 }))
+    )
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const shards = [ShardId.make("default", 1)]
+      yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
+      yield* storage.acquire(runnerAddress1, shards)
+      partition.current = true
+      const exit = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+      assert(Exit.isFailure(exit))
+      assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, []), [])
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        partition.current = false
+      })),
+      Effect.provide(layer),
+      TestServices.provideLive
+    )
+  }, 60_000)
+
+  it.effect("isolates advisory shard locks by prefix", () =>
+    Effect.gen(function*() {
+      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+      const storageB = yield* SqlRunnerStorage.make({ prefix: "other" })
+      const shard = ShardId.make("default", 1)
+
+      assert.deepStrictEqual(yield* storageA.acquire(runnerAddress1, [shard]), [shard])
+      assert.deepStrictEqual(yield* storageB.acquire(runnerAddress2, [shard]), [shard])
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(PgContainer.ClientLive),
+      Effect.provide(ShardingConfig.layer())
+    ), 60_000)
+
+  it.effect("excludes other storages using the same prefix", () =>
+    Effect.gen(function*() {
+      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+      const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+      const shard = ShardId.make("default", 1)
+
+      assert.deepStrictEqual(yield* storageA.acquire(runnerAddress1, [shard]), [shard])
+      assert.deepStrictEqual(yield* storageB.acquire(runnerAddress2, [shard]), [])
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(PgContainer.ClientLive),
+      Effect.provide(ShardingConfig.layer())
+    ), 60_000)
+
   it.effect("bounds lock operations and rebuilds an unresponsive reserved connection", () => {
     const partition = makePartitionState()
     const layer = StorageLive.pipe(
@@ -149,12 +201,19 @@ describe("SqlRunnerStorage", () => {
           ])
           expect(refreshed.map((_) => _.id)).toEqual([1, 2, 3])
 
+          assert.deepStrictEqual(
+            yield* storage.acquire(runnerAddress1, [ShardId.make("default", 2)]),
+            [ShardId.make("default", 2)]
+          )
+
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
     })
   })
 })
+
+const runnerAddress2 = RunnerAddress.make("localhost", 5678)
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
 
