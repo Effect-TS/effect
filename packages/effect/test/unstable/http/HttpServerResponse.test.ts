@@ -6,6 +6,44 @@ const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: ()
 
 describe("HttpServerResponse", () => {
   describe("toWeb", () => {
+    it.each([
+      { status: 200, withoutBody: true },
+      { status: 304, withoutBody: false }
+    ])(
+      "preserves representation headers for status $status with withoutBody=$withoutBody",
+      ({ status, withoutBody }) => {
+        const web = HttpServerResponse.toWeb(HttpServerResponse.text("body", { status }), { withoutBody })
+
+        assert.strictEqual(web.body, null)
+        assert.strictEqual(web.headers.get("content-length"), "4")
+        assert.strictEqual(web.headers.get("content-type"), "text/plain")
+      }
+    )
+
+    it.each([
+      { status: 200, withoutBody: true },
+      { status: 204, withoutBody: false },
+      { status: 205, withoutBody: false },
+      { status: 304, withoutBody: false }
+    ])("cancels raw streams for status $status with withoutBody=$withoutBody", async ({ status, withoutBody }) => {
+      let cancelled = false
+      const body = new ReadableStream({
+        cancel() {
+          cancelled = true
+        }
+      })
+      try {
+        const web = HttpServerResponse.toWeb(HttpServerResponse.raw(body, { status }), { withoutBody })
+
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.body, null)
+        assert.strictEqual(await web.text(), "")
+        assert.strictEqual(cancelled, true)
+      } finally {
+        await body.cancel()
+      }
+    })
+
     for (const status of [204, 205, 304]) {
       it.each([
         { name: "text", response: HttpServerResponse.text("body", { status }) },
