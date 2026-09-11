@@ -1381,14 +1381,12 @@ function formatTemplateLiteralPath(path: string | number): string {
   return typeof path === "number" ? `parts[${path}]` : path
 }
 
-type TemplateLiteralValidationCache = Array<AST> & { set?: Set<AST> }
-
 function isTemplateLiteralPart(
   ast: AST,
   path: string | number,
-  validated: TemplateLiteralValidationCache
+  validated: Set<AST>
 ): ast is TemplateLiteralPart {
-  if (validated.set?.has(ast) ?? validated.includes(ast)) return true
+  if (validated.has(ast)) return true
   if (ast.encoding) {
     throw new Error(`TemplateLiteral parts cannot have an encoding at ${formatTemplateLiteralPath(path)}`)
   }
@@ -1417,16 +1415,7 @@ function isTemplateLiteralPart(
     default:
       return false
   }
-  if (valid) {
-    if (validated.set) {
-      validated.set.add(ast)
-    } else {
-      validated.push(ast)
-      if (validated.length === 32) {
-        validated.set = new Set(validated)
-      }
-    }
-  }
+  if (valid) validated.add(ast)
   return valid
 }
 
@@ -1500,7 +1489,7 @@ export const TemplateLiteral: new(
     super(annotations, checks, encoding, context)
     const encodedParts: Array<TemplateLiteralPart> = []
     const literals: Array<string | undefined> = []
-    const validated: TemplateLiteralValidationCache = []
+    const validated = new Set<AST>()
     for (let index = 0; index < parts.length; index++) {
       const part = parts[index]
       if (!isTemplateLiteralPart(part, index, validated)) {
