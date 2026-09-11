@@ -5,6 +5,61 @@ import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } f
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpServerResponse", () => {
+  describe("toWeb", () => {
+    it.each([
+      { status: 200, withoutBody: true },
+      { status: 304, withoutBody: false }
+    ])(
+      "preserves representation headers for status $status with withoutBody=$withoutBody",
+      ({ status, withoutBody }) => {
+        const web = HttpServerResponse.toWeb(HttpServerResponse.text("body", { status }), { withoutBody })
+
+        assert.strictEqual(web.body, null)
+        assert.strictEqual(web.headers.get("content-length"), "4")
+        assert.strictEqual(web.headers.get("content-type"), "text/plain")
+      }
+    )
+
+    it.each([
+      { status: 200, withoutBody: true },
+      { status: 204, withoutBody: false },
+      { status: 205, withoutBody: false },
+      { status: 304, withoutBody: false }
+    ])("cancels raw streams for status $status with withoutBody=$withoutBody", async ({ status, withoutBody }) => {
+      let cancelled = false
+      const body = new ReadableStream({
+        cancel() {
+          cancelled = true
+        }
+      })
+      try {
+        const web = HttpServerResponse.toWeb(HttpServerResponse.raw(body, { status }), { withoutBody })
+
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.body, null)
+        assert.strictEqual(await web.text(), "")
+        assert.strictEqual(cancelled, true)
+      } finally {
+        await body.cancel()
+      }
+    })
+
+    for (const status of [204, 205, 304]) {
+      it.each([
+        { name: "text", response: HttpServerResponse.text("body", { status }) },
+        { name: "uint8Array", response: HttpServerResponse.uint8Array(new Uint8Array([1]), { status }) },
+        { name: "raw", response: HttpServerResponse.raw("body", { status }) },
+        { name: "formData", response: HttpServerResponse.formData(new FormData(), { status }) },
+        { name: "stream", response: HttpServerResponse.stream(Stream.succeed(new Uint8Array([1])), { status }) }
+      ])(`omits $name bodies for status ${status}`, ({ response }) => {
+        const web = HttpServerResponse.toWeb(response)
+
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.body, null)
+      })
+    }
+  })
+
   it("setHeader overrides body-derived content headers", () => {
     const response = HttpServerResponse.text("body").pipe(
       HttpServerResponse.setHeader("content-type", "text/custom"),

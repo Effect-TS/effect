@@ -32,7 +32,7 @@ import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
 import * as Server from "effect/unstable/http/HttpServer"
 import * as Error from "effect/unstable/http/HttpServerError"
 import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
-import type * as ServerResponse from "effect/unstable/http/HttpServerResponse"
+import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import type * as Multipart from "effect/unstable/http/Multipart"
 import * as UrlParams from "effect/unstable/http/UrlParams"
 import * as NetAddress from "effect/unstable/net/NetAddress"
@@ -171,7 +171,7 @@ const makeResponse = Effect.fnUntraced(function*(
   }
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
-  if (request.method === "HEAD") {
+  if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
     yield* cancelResponseBody(response.body)
     return new Response(undefined, fields)
   }
@@ -552,8 +552,8 @@ const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
 }
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
-  const stream = (body as any).body
-  if ((body._tag === "Raw" || body._tag === "Uint8Array") && stream instanceof ReadableStream) {
+  if (body._tag === "Raw" && typeof ReadableStream !== "undefined" && body.body instanceof ReadableStream) {
+    const stream = body.body
     return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void

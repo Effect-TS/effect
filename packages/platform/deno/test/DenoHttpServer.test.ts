@@ -42,6 +42,81 @@ const todoResponse = HttpServerResponse.schemaJson(Todo)
 const fixture = `${import.meta.dirname}/fixtures/text.txt`
 
 describe("DenoHttpServer", () => {
+  describe("body omission", () => {
+    for (const status of [204, 205, 304]) {
+      for (const bodyKind of ["text", "stream"]) {
+        it.live(`omits ${bodyKind} bodies for status ${status}`, () =>
+          Effect.gen(function*() {
+            let finalized = false
+            let streamStarted = false
+            yield* HttpServer.serveEffect(Effect.gen(function*() {
+              yield* Effect.addFinalizer(() =>
+                Effect.sync(() => {
+                  finalized = true
+                })
+              )
+              const options = { status, contentType: "text/plain", contentLength: 4 }
+              return bodyKind === "text"
+                ? HttpServerResponse.text("body", options)
+                : HttpServerResponse.stream(
+                  Stream.fromEffect(Effect.sync(() => {
+                    streamStarted = true
+                    return new TextEncoder().encode("body")
+                  })),
+                  options
+                )
+            }))
+            const response = yield* HttpClient.get("/")
+            assert.strictEqual(response.status, status)
+            assert.strictEqual(yield* response.text, "")
+            assert.strictEqual(streamStarted, false)
+            assert.strictEqual(finalized, true)
+            if (status === 304) {
+              assert.strictEqual(response.headers["content-type"], "text/plain")
+            }
+          }).pipe(
+            Effect.timeout("2 seconds"),
+            Effect.provide(DenoHttpServer.layerTest)
+          ), 5000)
+      }
+    }
+
+    for (const [method, status] of [["HEAD", 200], ["GET", 204], ["GET", 205], ["GET", 304]] as const) {
+      it.live(`cancels raw streams for ${method} status ${status}`, () =>
+        Effect.gen(function*() {
+          let cancelled = false
+          const body = new ReadableStream<Uint8Array>({
+            pull(controller) {
+              controller.enqueue(new TextEncoder().encode("body"))
+              controller.close()
+            },
+            cancel() {
+              cancelled = true
+            }
+          }, { highWaterMark: 0 })
+          yield* Effect.addFinalizer(() => Effect.ignoreCause(Effect.promise(() => body.cancel())))
+          yield* HttpServer.serveEffect(Effect.succeed(HttpServerResponse.raw(body, {
+            status,
+            contentType: "text/plain",
+            contentLength: 4
+          })))
+          const response = yield* (method === "HEAD" ? HttpClient.head("/") : HttpClient.get("/"))
+          assert.strictEqual(response.status, status)
+          assert.strictEqual(yield* response.text, "")
+          assert.strictEqual(cancelled, true)
+          if (method === "HEAD") {
+            assert.strictEqual(response.headers["content-length"], "4")
+          }
+          if (method === "HEAD" || status === 304) {
+            assert.strictEqual(response.headers["content-type"], "text/plain")
+          }
+        }).pipe(
+          Effect.timeout("2 seconds"),
+          Effect.provide(DenoHttpServer.layerTest)
+        ), 5000)
+    }
+  })
+
   it.effect("schema", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
