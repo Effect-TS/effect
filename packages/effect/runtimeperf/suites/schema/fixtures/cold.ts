@@ -16,6 +16,14 @@ const makeEffectTemplateLiteralSchema = () =>
 
 const makeEffectRecordSchema = () => Schema.Record(Schema.String, Schema.String)
 
+const makeEffectObject2Schema = () =>
+  Schema.Struct({
+    name: Schema.String,
+    age: Schema.Number
+  })
+
+const object2Input = { name: "John", age: 42 }
+
 const literalValues100 = Array.from({ length: 100 }, (_, index) => `value${index}`)
 
 const makeEffectLiteral100Schema = () => Schema.Literals(literalValues100)
@@ -51,6 +59,16 @@ const makeEffectEncodingChain = (size) => {
 export const effectSchemaCreationTemplateLiteral = () => ({
   run: makeEffectTemplateLiteralSchema,
   validate: (schema) => assert.equal(schema.ast._tag, "TemplateLiteral")
+})
+
+export const effectSchemaCreationObject2 = () => ({
+  run: makeEffectObject2Schema,
+  validate: (schema) => assert.equal(schema.ast._tag, "Objects")
+})
+
+export const effectFirstMakeObject2 = () => ({
+  run: () => makeEffectObject2Schema().make(object2Input),
+  validate: (result) => assert.deepEqual(result, object2Input)
 })
 
 export const effectFirstDecodeCheckedObject32 = () => ({

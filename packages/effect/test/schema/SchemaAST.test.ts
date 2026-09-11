@@ -4,6 +4,21 @@ import { describe, it } from "vitest"
 import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaAST", () => {
+  describe("Suspend", () => {
+    it("memoizes the thunk", () => {
+      let calls = 0
+      const ast = new SchemaAST.Suspend(() => {
+        calls++
+        return SchemaAST.string
+      })
+
+      strictEqual(calls, 0)
+      strictEqual(ast.thunk(), SchemaAST.string)
+      strictEqual(ast.thunk(), SchemaAST.string)
+      strictEqual(calls, 1)
+    })
+  })
+
   it("isJson", () => {
     strictEqual(SchemaAST.isJson(null), true)
     strictEqual(SchemaAST.isJson(undefined), false)

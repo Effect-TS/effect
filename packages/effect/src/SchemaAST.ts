@@ -3780,20 +3780,6 @@ function formatIsOptional(isOptional: boolean | undefined): string {
   return isOptional ? "?" : ""
 }
 
-/** @internal */
-export function memoizeThunk<A>(f: () => A): () => A {
-  let done = false
-  let a: A
-  return () => {
-    if (done) {
-      return a
-    }
-    a = f()
-    done = true
-    return a
-  }
-}
-
 /**
  * AST node for lazy/recursive schemas.
  *
@@ -3866,7 +3852,8 @@ export const Suspend: new(
       throw new Error("Cannot add checks to Suspend")
     }
     super(annotations, undefined, encoding, context)
-    this.thunk = memoizeThunk(thunk)
+    let ast: AST
+    this.thunk = () => ast ??= thunk()
   }
   /** @internal */
   getParser(compile: SchemaParser.Compiler): SchemaParser.Parser {
