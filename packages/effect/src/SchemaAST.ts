@@ -1377,10 +1377,20 @@ type TemplateLiteralPart =
   | TemplateLiteral
   | Union<TemplateLiteralPart>
 
-function isTemplateLiteralPart(ast: AST, path: string, validated: WeakSet<AST>): ast is TemplateLiteralPart {
-  if (validated.has(ast)) return true
+function formatTemplateLiteralPath(path: string | number): string {
+  return typeof path === "number" ? `parts[${path}]` : path
+}
+
+type TemplateLiteralValidationCache = Array<AST> & { set?: Set<AST> }
+
+function isTemplateLiteralPart(
+  ast: AST,
+  path: string | number,
+  validated: TemplateLiteralValidationCache
+): ast is TemplateLiteralPart {
+  if (validated.set?.has(ast) ?? validated.includes(ast)) return true
   if (ast.encoding) {
-    throw new Error(`TemplateLiteral parts cannot have an encoding at ${path}`)
+    throw new Error(`TemplateLiteral parts cannot have an encoding at ${formatTemplateLiteralPath(path)}`)
   }
   let valid: boolean
   switch (ast._tag) {
@@ -1392,18 +1402,31 @@ function isTemplateLiteralPart(ast: AST, path: string, validated: WeakSet<AST>):
     case "Literal":
       valid = !ast.checks
       break
-    case "TemplateLiteral":
+    case "TemplateLiteral": {
+      const currentPath = formatTemplateLiteralPath(path)
       valid = !ast.checks &&
-        ast.parts.every((part, index) => isTemplateLiteralPart(part, `${path}.parts[${index}]`, validated))
+        ast.parts.every((part, index) => isTemplateLiteralPart(part, `${currentPath}.parts[${index}]`, validated))
       break
-    case "Union":
+    }
+    case "Union": {
+      const currentPath = formatTemplateLiteralPath(path)
       valid = !ast.checks &&
-        ast.types.every((part, index) => isTemplateLiteralPart(part, `${path}.types[${index}]`, validated))
+        ast.types.every((part, index) => isTemplateLiteralPart(part, `${currentPath}.types[${index}]`, validated))
       break
+    }
     default:
       return false
   }
-  if (valid) validated.add(ast)
+  if (valid) {
+    if (validated.set) {
+      validated.set.add(ast)
+    } else {
+      validated.push(ast)
+      if (validated.length === 32) {
+        validated.set = new Set(validated)
+      }
+    }
+  }
   return valid
 }
 
@@ -1477,10 +1500,10 @@ export const TemplateLiteral: new(
     super(annotations, checks, encoding, context)
     const encodedParts: Array<TemplateLiteralPart> = []
     const literals: Array<string | undefined> = []
-    const validated = new WeakSet<AST>()
+    const validated: TemplateLiteralValidationCache = []
     for (let index = 0; index < parts.length; index++) {
       const part = parts[index]
-      if (!isTemplateLiteralPart(part, `parts[${index}]`, validated)) {
+      if (!isTemplateLiteralPart(part, index, validated)) {
         throw new Error(`Invalid TemplateLiteral part ${part._tag}`)
       }
       encodedParts.push(part)
@@ -2573,8 +2596,23 @@ function isIndexSignatureParameterSide(ast: AST): ast is IndexSignatureParameter
   }
 }
 
+function isIndexSignatureParameterEncodedSide(ast: AST): boolean {
+  const encoded = getLastEncoding(ast)
+  switch (encoded._tag) {
+    case "String":
+    case "Number":
+    case "Symbol":
+    case "TemplateLiteral":
+      return true
+    case "Union":
+      return encoded.types.every(isIndexSignatureParameterEncodedSide)
+    default:
+      return false
+  }
+}
+
 function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
-  return isIndexSignatureParameterSide(ast) && isIndexSignatureParameterSide(toEncoded(ast))
+  return isIndexSignatureParameterSide(ast) && isIndexSignatureParameterEncodedSide(ast)
 }
 
 /**
@@ -2727,7 +2765,21 @@ export const Objects: new(
     this.encodingChecks = encodingChecks
 
     // Duplicate property signatures
-    const duplicates = propertySignatures.map((ps) => ps.name).filter((name, i, arr) => arr.indexOf(name) !== i)
+    let duplicates: Array<PropertyKey>
+    if (propertySignatures.length < 32) {
+      duplicates = propertySignatures.map((ps) => ps.name).filter((name, i, arr) => arr.indexOf(name) !== i)
+    } else {
+      const seen = new Set<PropertyKey>()
+      duplicates = []
+      for (const propertySignature of propertySignatures) {
+        const name = propertySignature.name
+        if (seen.has(name)) {
+          duplicates.push(name)
+        } else {
+          seen.add(name)
+        }
+      }
+    }
     if (duplicates.length > 0) {
       throw new Error(`Duplicate identifiers: ${JSON.stringify(duplicates)}. ts(2300)`)
     }

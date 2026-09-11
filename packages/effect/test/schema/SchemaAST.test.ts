@@ -719,6 +719,25 @@ describe("SchemaAST", () => {
         () => new SchemaAST.IndexSignature(StringFromBoolean.ast, Schema.Number.ast),
         new Error("Invalid index signature parameter String")
       )
+      throws(
+        () =>
+          new SchemaAST.IndexSignature(
+            Schema.Union([Schema.String, StringFromBoolean]).ast,
+            Schema.Number.ast
+          ),
+        new Error("Invalid index signature parameter Union")
+      )
+
+      const UnionFromBoolean = Schema.Boolean.pipe(
+        Schema.decodeTo(Schema.Union([Schema.String, Schema.Number]), {
+          decode: SchemaGetter.transform((b: boolean): string | number => b ? "true" : 0),
+          encode: SchemaGetter.transform((_value: string | number) => true)
+        })
+      )
+      throws(
+        () => new SchemaAST.IndexSignature(UnionFromBoolean.ast, Schema.Number.ast),
+        new Error("Invalid index signature parameter Union")
+      )
     })
   })
 })

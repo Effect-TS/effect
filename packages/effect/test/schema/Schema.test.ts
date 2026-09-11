@@ -595,6 +595,20 @@ Missing key
       )
     })
 
+    it("should throw an error if a large struct has duplicate property signatures", () => {
+      throws(
+        () =>
+          new SchemaAST.Objects(
+            Array.from(
+              { length: 32 },
+              (_, index) => new SchemaAST.PropertySignature(`field${index === 31 ? 0 : index}`, Schema.String.ast)
+            ),
+            []
+          ),
+        new Error(`Duplicate identifiers: ["field0"]. ts(2300)`)
+      )
+    })
+
     describe("onExcessProperty", () => {
       it("error", async () => {
         const schema = Schema.Struct({
