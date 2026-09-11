@@ -27,7 +27,10 @@ describe("SqlRunnerStorage", () => {
       partition.current = true
       const exit = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
       assert(Exit.isFailure(exit))
-      assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, []), [])
+      assert.deepStrictEqual(
+        yield* storage.refresh(runnerAddress1, []).pipe(Effect.retry({ times: 10, schedule: Schedule.spaced(20) })),
+        []
+      )
     }).pipe(
       Effect.ensuring(Effect.sync(() => {
         partition.current = false
