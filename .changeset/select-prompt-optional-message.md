@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-`Prompt.Select` and `Prompt.MultiSelect` no longer require a `message`. When it is omitted the header line is skipped and only the choice list is rendered; submission, clearing and quitting behave as before. `Prompt.AutoComplete` still requires a message.
+Make `message` optional for `Prompt.Select` and `Prompt.MultiSelect`. When omitted, prompts display only the choices and submission shows a tick followed by the selected titles. `Prompt.AutoComplete` still requires a message.

@@ -447,8 +447,7 @@ export interface FileOptions extends ThemeOptions {
  */
 export interface SelectOptions<A> extends ThemeOptions {
   /**
-   * The message to display in the prompt. When omitted, the prompt renders
-   * only the choice list, without a header line.
+   * The prompt message. Omit to display only the choices.
    */
   readonly message?: string | undefined
   /**
@@ -470,7 +469,7 @@ export interface SelectOptions<A> extends ThemeOptions {
  */
 export interface AutoCompleteOptions<A> extends SelectOptions<A> {
   /**
-   * The message to display in the prompt.
+   * The required prompt message.
    */
   readonly message: string
   /**
