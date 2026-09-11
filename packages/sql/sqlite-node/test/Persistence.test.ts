@@ -29,7 +29,7 @@ const suite = (
   options: {
     /**
      * A crafted `getMany` key which, if request keys are interpolated into SQL
-     * without parameterization (GHSA-jcj9-qx5g-vgh6), escapes the `IN` list and
+     * without parameterization, escapes the `IN` list and
      * reads the `sqli_victim` store's entries from the `sqli_attacker` store.
      */
     readonly injectionProbe: string
@@ -132,13 +132,13 @@ const suite = (
         const store = yield* persistence.make("test_store_quotes")
         yield* store.set("it's-a-key", { name: "Alice" }, undefined)
 
-        // GHSA-jcj9-qx5g-vgh6: keys must be bound as parameters, not
+        // Keys must be bound as parameters, not
         // interpolated into the `IN` list as raw string literals.
         const values = yield* store.getMany(["it's-a-key", "missing'key"])
         expect(values).toEqual([{ name: "Alice" }, undefined])
       }))
 
-    it.effect("getMany does not leak entries across stores (GHSA-jcj9-qx5g-vgh6)", () =>
+    it.effect("getMany preserves store isolation for crafted keys", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.BackingPersistence
         const victim = yield* persistence.make("sqli_victim")
