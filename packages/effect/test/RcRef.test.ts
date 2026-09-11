@@ -1,5 +1,6 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -283,5 +284,16 @@ describe("RcRef", () => {
 
       yield* TestClock.adjust("10 millis")
       assert.strictEqual(released, 2)
+    }))
+
+  it.effect("idleTimeToLive 0 is decoded instead of dropped", () =>
+    Effect.gen(function*() {
+      const spy = yield* Effect.sync(() => vi.spyOn(Duration, "fromInputUnsafe"))
+      yield* RcRef.make({
+        acquire: Effect.succeed("foo"),
+        idleTimeToLive: 0
+      })
+      assert.isTrue(spy.mock.calls.some((call) => Object.is(call[0], 0)))
+      spy.mockRestore()
     }))
 })
