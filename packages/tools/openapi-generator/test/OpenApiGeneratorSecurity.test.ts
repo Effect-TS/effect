@@ -152,7 +152,7 @@ interface RecordedRequest {
  */
 const recordingUpstream = (
   requests: Array<RecordedRequest>,
-  body: string | Uint8Array | null = null,
+  body: string | Uint8Array<ArrayBuffer> | null = null,
   status = 204
 ) =>
   HttpClient.make((request, url) => {
@@ -247,6 +247,7 @@ const codeInjectionSpec = (marker: string, variant: "ordinary" | "sse" | "binary
       [codeInjectionPath(marker)]: {
         get: {
           operationId: "trigger",
+          parameters: [],
           tags: ["Trigger"],
           security: [],
           responses

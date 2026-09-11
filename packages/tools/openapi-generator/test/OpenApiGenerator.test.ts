@@ -739,6 +739,31 @@ export const make = (
           )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
+  const __encodePathParam = (value: string): string => {
+    if (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)) {
+      throw new Error("Path parameters must be non-empty and cannot be dot segments")
+    }
+    return encodeURIComponent(value)
+  }
+  const __makePathRequest = (
+    method: (url: string) => HttpClientRequest.HttpClientRequest,
+    getPath: () => string,
+  ) => Effect.try({
+    try: () => {
+      const path = getPath()
+      if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
+        throw new Error("Request paths cannot contain dot segments")
+      }
+      return method(path)
+    },
+    catch: (cause) => new HttpClientError.HttpClientError({
+      reason: new HttpClientError.InvalidUrlError({
+        request: method(""),
+        cause,
+        description: "Invalid path parameter",
+      }),
+    }),
+  })
   const decodeSuccess =
     <Schema extends Schema.Constraint>(schema: Schema) =>
     (response: HttpClientResponse.HttpClientResponse) =>
@@ -752,11 +777,13 @@ export const make = (
       )
   return {
     httpClient,
-    "getUser": (id, options) => HttpClientRequest.get(\`/users/\${id}\`).pipe(
-    withResponse(options?.config)(HttpClientResponse.matchStatus({
+    "getUser": (id, options) => __makePathRequest(HttpClientRequest.get, () => "/users/" + __encodePathParam(id) + "").pipe(
+    Effect.flatMap((request) => request.pipe(
+      withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeSuccess(GetUser200),
       orElse: unexpectedStatus
     }))
+    ))
   )
   }
 }
@@ -896,7 +923,7 @@ export const TestClientError = <Tag extends string, E>(
         [
           `import * as Sse from "effect/unstable/encoding/Sse"`,
           `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
-          `"streamEventsSse": () => HttpClientRequest.get(\`/events\`).pipe(`,
+          `"streamEventsSse": () => HttpClientRequest.get("/events").pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
         ]
@@ -1040,8 +1067,8 @@ export const TestClientError = <Tag extends string, E>(
         `readonly "downloadArchive": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
-        `"downloadAvatar": (options) => HttpClientRequest.get(\`/avatar\`).pipe(
-    withResponse(options?.config)(HttpClientResponse.matchStatus({
+        `"downloadAvatar": (options) => HttpClientRequest.get("/avatar").pipe(
+      withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeBinary`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"400": decodeError("DownloadMixedContent400", DownloadMixedContent400)`,
@@ -1190,6 +1217,31 @@ export const make = (
           )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
+  const __encodePathParam = (value: string): string => {
+    if (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)) {
+      throw new Error("Path parameters must be non-empty and cannot be dot segments")
+    }
+    return encodeURIComponent(value)
+  }
+  const __makePathRequest = (
+    method: (url: string) => HttpClientRequest.HttpClientRequest,
+    getPath: () => string,
+  ) => Effect.try({
+    try: () => {
+      const path = getPath()
+      if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
+        throw new Error("Request paths cannot contain dot segments")
+      }
+      return method(path)
+    },
+    catch: (cause) => new HttpClientError.HttpClientError({
+      reason: new HttpClientError.InvalidUrlError({
+        request: method(""),
+        cause,
+        description: "Invalid path parameter",
+      }),
+    }),
+  })
   const decodeSuccess = <A>(response: HttpClientResponse.HttpClientResponse) =>
     response.json as Effect.Effect<A, HttpClientError.HttpClientError>
   const decodeVoid = (_response: HttpClientResponse.HttpClientResponse) =>
@@ -1226,8 +1278,10 @@ export const make = (
   }
   return {
     httpClient,
-    "getUser": (id, options) => HttpClientRequest.get(\`/users/\${id}\`).pipe(
-    onRequest(options?.config)(["2xx"])
+    "getUser": (id, options) => __makePathRequest(HttpClientRequest.get, () => "/users/" + __encodePathParam(id) + "").pipe(
+    Effect.flatMap((request) => request.pipe(
+      onRequest(options?.config)(["2xx"])
+    ))
   )
   }
 }
@@ -1274,8 +1328,8 @@ export const TestClientError = <Tag extends string, E>(
         `onRequest(options?.config)([], {"404":"DownloadArchive404"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadArchive": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
-        `"downloadAvatar": (options) => HttpClientRequest.get(\`/avatar\`).pipe(
-    onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
+        `"downloadAvatar": (options) => HttpClientRequest.get("/avatar").pipe(
+      onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `import * as HttpClient from "effect/unstable/http/HttpClient"`,
         `onRequest(options?.config)([], {"400":"DownloadMixedContent400"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
