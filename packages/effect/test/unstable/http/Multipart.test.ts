@@ -273,6 +273,104 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "Parse")
     }))
 
+  it.effect("propagates an upstream failure to an active file part", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      let fileParts = 0
+      let bytesRead = 0
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a".repeat(1024)
+
+      const error = yield* Stream.make(encoder.encode(fileStart)).pipe(
+        Stream.concat(Stream.fail(Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed")))),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => {
+          if (part._tag !== "File") {
+            return Effect.void
+          }
+          fileParts++
+          return Stream.runForEach(part.content, (chunk) =>
+            Effect.sync(() => {
+              bytesRead += chunk.length
+            }))
+        }),
+        Stream.runDrain,
+        Effect.flip
+      )
+
+      strictEqual(fileParts, 1)
+      // bytes received before the failure are delivered, then the part fails
+      strictEqual(bytesRead > 0, true)
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "InternalError")
+    }))
+
+  it.effect("propagates an upstream failure when the file part is never consumed", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      let fileParts = 0
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a"
+
+      const error = yield* Stream.make(encoder.encode(fileStart)).pipe(
+        Stream.concat(Stream.fail(Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed")))),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => {
+          if (part._tag === "File") {
+            fileParts++
+          }
+          return Effect.void
+        }),
+        Stream.runDrain,
+        Effect.flip
+      )
+
+      strictEqual(fileParts, 1)
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "InternalError")
+    }))
+
+  it.effect("propagates an upstream failure to an active file part collected with contentEffect", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      let fileParts = 0
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a"
+
+      const error = yield* Stream.make(encoder.encode(fileStart)).pipe(
+        Stream.concat(Stream.fail(Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed")))),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => {
+          if (part._tag !== "File") {
+            return Effect.void
+          }
+          fileParts++
+          return part.contentEffect
+        }),
+        Stream.runDrain,
+        Effect.flip
+      )
+
+      strictEqual(fileParts, 1)
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "InternalError")
+    }))
+
   it.each<{
     description: string
     options: {
