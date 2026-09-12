@@ -240,6 +240,33 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "BodyTooLarge")
     }))
 
+  it.live("propagates upstream failure while consuming an active file", () =>
+    Effect.gen(function*() {
+      const upstreamError = Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed"))
+      const fileStart = new TextEncoder().encode(
+        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
+      )
+      let bytesRead = 0
+
+      const error = yield* Stream.make(fileStart).pipe(
+        Stream.concat(Stream.fail(upstreamError)),
+        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
+        Stream.runForEach((part) =>
+          part._tag === "File"
+            ? Stream.runForEach(part.content, (chunk) =>
+              Effect.sync(() => {
+                bytesRead += chunk.length
+              }))
+            : Effect.die("expected file")
+        ),
+        Effect.timeout("1 second"),
+        Effect.flip
+      )
+
+      strictEqual(bytesRead, 5)
+      strictEqual(error, upstreamError)
+    }))
+
   it.effect("propagates Parse when the body ends mid-file", () =>
     Effect.gen(function*() {
       const boundary = "----testboundary"
