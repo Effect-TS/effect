@@ -99,16 +99,60 @@ export type DynamicTypeId = "~effect/ai/Tool/Dynamic"
 // =============================================================================
 
 /**
- * The strategy used for handling errors returned from tool call handler
- * execution.
+ * Controls whether typed tool failures propagate or become failed tool results.
  *
  * **Details**
  *
- * If set to `"error"` (the default), errors that occur during tool call handler
- * execution will be returned in the error channel of the calling effect.
+ * `"error"` (the default) propagates handler failures through the Effect error
+ * channel. With automatic tool resolution, such a failure also fails the calling
+ * `LanguageModel` operation. Declaring a `failure` schema does not enable recovery.
  *
- * If set to `"return"`, errors that occur during tool call handler execution
- * will be captured and returned as part of the tool call result.
+ * `"return"` encodes typed handler failures as results with `isFailure: true`.
+ * An agent loop can include these results in its next prompt so the model can
+ * respond to the failure. This does not retry the tool or roll back side effects.
+ *
+ * Parameter validation in a resolved toolkit's `handle` method follows the same
+ * mode; an invalid call never starts its handler. Unknown tool names cannot use
+ * a per-tool failure mode.
+ * Validation outside `Toolkit`, including model response validation when
+ * `disableToolCallResolution` is `true`, is not controlled by this setting.
+ *
+ * **Gotchas**
+ *
+ * `"return"` does not recover defects, interruption, or tool result encoding
+ * failures. A failed result must still be encodable by its failure result schema.
+ * Only include information intended for the model in returned failures.
+ *
+ * **Example** (Returning a declared failure)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema, Stream } from "effect"
+ * import { Tool, Toolkit } from "effect/unstable/ai"
+ *
+ * class LookupUnavailable extends Schema.TaggedError<LookupUnavailable>()(
+ *   "LookupUnavailable",
+ *   { message: Schema.String }
+ * ) {}
+ *
+ * const Lookup = Tool.make("Lookup", {
+ *   parameters: Schema.Struct({ id: Schema.String }),
+ *   success: Schema.String,
+ *   failure: LookupUnavailable,
+ *   failureMode: "return"
+ * })
+ * const tools = Toolkit.make(Lookup)
+ * const program = Effect.gen(function*() {
+ *   const handlers = yield* tools
+ *   const results = yield* handlers.handle("Lookup", { id: "item-1" }).pipe(
+ *     Effect.flatMap(Stream.runCollect)
+ *   )
+ *   return results[0]?.isFailure
+ * }).pipe(Effect.provide(tools.toLayer({
+ *   Lookup: () => Effect.fail(new LookupUnavailable({ message: "Try another source" }))
+ * })))
+ *
+ * await Effect.runPromise(program) // => true
+ * ```
  *
  * @category models
  * @since 4.0.0
@@ -224,17 +268,11 @@ export interface Tool<
   readonly description?: string | undefined
 
   /**
-   * The strategy used for handling errors returned from tool call handler
-   * execution.
+   * The configured strategy for typed handler and Toolkit parameter-validation
+   * failures. `"error"` propagates them; `"return"` emits failed tool results.
+   * Defects, interruption and result encoding failures are not recovered.
    *
-   * **Details**
-   *
-   * If set to `"error"` (the default), errors that occur during tool call
-   * handler execution will be returned in the error channel of the calling
-   * effect.
-   *
-   * If set to `"return"`, errors that occur during tool call handler execution
-   * will be captured and returned as part of the tool call result.
+   * @see {@link FailureMode}
    */
   readonly failureMode: FailureMode
 
@@ -1222,16 +1260,11 @@ export const make = <
    */
   readonly failure?: Failure | undefined
   /**
-   * The strategy used for handling errors returned from tool call handler
-   * execution.
+   * Defaults to `"error"`, which propagates typed failures and can fail the
+   * calling model operation. Choose `"return"` to encode them as failed tool
+   * results. Declaring a `failure` schema alone does not change the default.
    *
-   * **Details**
-   *
-   * If set to `"error"` (the default), errors that occur during tool call handler
-   * execution will be returned in the error channel of the calling effect.
-   *
-   * If set to `"return"`, errors that occur during tool call handler execution
-   * will be captured and returned as part of the tool call result.
+   * @see {@link FailureMode} for parameter validation and unrecovered failures.
    */
   readonly failureMode?: Mode
   /**
