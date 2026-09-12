@@ -1216,27 +1216,78 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("rejects a reference below a definition instead of resolving its final token", () => {
-      throws(
-        () =>
-          toSchemaFromJsonSchemaDocument(
-            JsonSchema.fromSchemaDraft07({
-              definitions: {
-                inner: { type: "number" },
-                outer: {
-                  type: "object",
-                  properties: {
-                    inner: { type: "string" }
-                  }
-                }
-              },
+    it("resolves a reference below a definition to the pointed subschema", () => {
+      const schema = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft07({
+          definitions: {
+            inner: { type: "number" },
+            outer: {
               type: "object",
               properties: {
-                copy: { $ref: "#/definitions/outer/properties/inner" }
+                inner: { type: "string" }
               }
-            })
-          ),
-        `Unsupported $ref "#/$defs/outer/properties/inner". Use "#/$defs/Name".\n  at ["schema"]["properties"]["copy"]["$ref"]`
+            }
+          },
+          type: "object",
+          properties: {
+            copy: { $ref: "#/definitions/outer/properties/inner" }
+          }
+        })
+      )
+      const is = Schema.is(schema)
+      assert.isTrue(is({ copy: "a" }))
+      assert.isFalse(is({ copy: 1 }))
+    })
+
+    it("resolves a reference through an array index below a definition", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/either/anyOf/1",
+        $defs: {
+          either: { anyOf: [{ type: "string" }, { type: "number" }] }
+        }
+      }))
+      const is = Schema.is(schema)
+      assert.isTrue(is(1))
+      assert.isFalse(is("a"))
+    })
+
+    it("resolves a reference below a definition next to other keywords", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/outer/properties/name",
+        minLength: 2,
+        $defs: {
+          outer: { type: "object", properties: { name: { type: "string" } } }
+        }
+      }))
+      const is = Schema.is(schema)
+      assert.isTrue(is("ab"))
+      assert.isFalse(is("a"))
+      assert.isFalse(is(1))
+    })
+
+    it("reports a reference below a definition that leads nowhere", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $ref: "#/$defs/outer/properties/missing",
+            $defs: {
+              outer: { type: "object", properties: { name: { type: "string" } } }
+            }
+          })),
+        `Unresolvable $ref "#/$defs/outer/properties/missing". Nothing exists at that location.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects a reference below a definition that leads back to itself", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $ref: "#/$defs/A/properties/self",
+            $defs: {
+              A: { type: "object", properties: { self: { $ref: "#/$defs/A/properties/self" } } }
+            }
+          })),
+        `Recursive $ref "#/$defs/A/properties/self" cannot be inlined. Use "#/$defs/Name".\n  at ["definitions"]["A"]["properties"]["self"]["$ref"]`
       )
     })
 
