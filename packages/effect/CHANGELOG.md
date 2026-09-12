@@ -1,5 +1,17 @@
 # effect
 
+## 4.0.0-rc.116
+
+### Patch Changes
+
+- [#8206](https://github.com/Effect-TS/effect/pull/8206) [`f110af1`](https://github.com/Effect-TS/effect/commit/f110af1ac5a54a7d62c2b96e35d4521a09f3fa06) Thanks @tim-smart! - Fix multipart file streams hanging on body read errors and preserve error causes when persisting files.
+
+- [#8202](https://github.com/Effect-TS/effect/pull/8202) [`51d4a2f`](https://github.com/Effect-TS/effect/commit/51d4a2f08a5c7691dc876415bc9fc0ecf467e153) Thanks @xia-chao! - Fix `RcRef.make` to treat `idleTimeToLive: 0` like `Duration.zero` and `"0 millis"` instead of an omitted option.
+
+- [#7265](https://github.com/Effect-TS/effect/pull/7265) [`a2c4154`](https://github.com/Effect-TS/effect/commit/a2c4154cf8bcbe455bd43bf7f3f12d9cbf38247c) Thanks @lloydrichards! - Add server support for MCP protocol version 2026-07-28 through 2026_07_28
+
+- [#8212](https://github.com/Effect-TS/effect/pull/8212) [`755e863`](https://github.com/Effect-TS/effect/commit/755e863a793e5621183e7992cb3f85d29030ad7b) Thanks @IMax153! - Restrict `ByteSize.Input` strings to canonical non-negative integers with recognized units, rejecting malformed literals at compile time. Parse external strings and fractional quantities with `ByteSize.fromString` or `ByteSize.fromStringUnsafe` before passing them to APIs accepting `ByteSize.Input`.
+
 ## 4.0.0-rc.115
 
 ### Patch Changes
