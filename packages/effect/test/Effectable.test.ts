@@ -29,7 +29,7 @@ describe("Effectable", () => {
             return Effect.fail(this.value)
           }
         }
-
+        
         assert.deepStrictEqual(yield* Effect.exit(new FailingBox(1)), Exit.fail(1))
       }))
 

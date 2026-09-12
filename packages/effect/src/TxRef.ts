@@ -12,6 +12,7 @@
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
+import type { TransactionMetaInner } from "./Effect.ts"
 import { dual } from "./Function.ts"
 import { pipeArguments } from "./Pipeable.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -173,10 +174,11 @@ export const modify: {
   Effect.Transaction.pipe(
     Effect.flatMap((state) =>
       Effect.sync(() => {
-        if (!state.journal.has(self)) {
-          state.journal.set(self, { version: self.version, value: self.value })
+        const inner = state as TransactionMetaInner
+        if (!inner.journal.has(self)) {
+          inner.journal.set(self, { version: self.version, value: self.value })
         }
-        const current = state.journal.get(self)!
+        const current = inner.journal.get(self)!
         const [returnValue, next] = f(current.value)
         current.value = next
         return returnValue
