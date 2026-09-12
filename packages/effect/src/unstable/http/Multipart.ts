@@ -480,14 +480,21 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
           let chunks: Array<Uint8Array> = []
           let finished = false
           const pullChunks = Channel.fromPull(
-            Effect.succeed(Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>> {
-              if (!Arr.isReadonlyArrayNonEmpty(chunks)) {
-                return finished ? Cause.done() : Effect.flatMap(pump, loop)
-              }
-              const chunk = chunks
-              chunks = []
-              return Effect.succeed(chunk)
-            }))
+            Effect.succeed(
+              Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, IE | MultipartError> {
+                if (!Arr.isReadonlyArrayNonEmpty(chunks)) {
+                  if (finished) {
+                    return Cause.done()
+                  } else if (Option.isSome(exit)) {
+                    return exit.value
+                  }
+                  return Effect.flatMap(pump, loop)
+                }
+                const chunk = chunks
+                chunks = []
+                return Effect.succeed(chunk)
+              })
+            )
           )
           partsBuffer.push(new FileImpl(info, pullChunks))
           return function(chunk) {
@@ -614,17 +621,21 @@ class FileImpl extends PartBase implements File {
 
   constructor(
     info: MP.PartInfo,
-    channel: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>>
+    channel: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown>
   ) {
     super()
     this.key = info.name
     this.name = info.filename ?? info.name
     this.contentType = info.contentType
-    this.content = Stream.fromChannel(channel)
-    this.contentEffect = channel.pipe(
-      Channel.mkUint8Array,
-      Effect.mapError((cause) => MultipartError.fromReason("InternalError", cause))
+    const content = Channel.mapError(
+      channel,
+      (cause) =>
+        Predicate.hasProperty(cause, MultipartErrorTypeId)
+          ? cause as MultipartError
+          : MultipartError.fromReason("InternalError", cause)
     )
+    this.content = Stream.fromChannel(content)
+    this.contentEffect = Channel.mkUint8Array(content)
   }
 
   toJSON(): unknown {
