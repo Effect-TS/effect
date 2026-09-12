@@ -199,6 +199,8 @@ export interface Persisted {
 
 const MultipartErrorTypeId = "~effect/http/Multipart/MultipartError"
 
+const isMultipartError = (u: unknown): u is MultipartError => Predicate.hasProperty(u, MultipartErrorTypeId)
+
 /**
  * Error reason carried by a `MultipartError`.
  *
@@ -629,10 +631,7 @@ class FileImpl extends PartBase implements File {
     this.contentType = info.contentType
     const content = Channel.mapError(
       channel,
-      (cause) =>
-        Predicate.hasProperty(cause, MultipartErrorTypeId)
-          ? cause as MultipartError
-          : MultipartError.fromReason("InternalError", cause)
+      (cause) => isMultipartError(cause) ? cause : MultipartError.fromReason("InternalError", cause)
     )
     this.content = Stream.fromChannel(content)
     this.contentEffect = Channel.mkUint8Array(content)
@@ -655,7 +654,7 @@ const defaultWriteFile = (path: string, file: File) =>
     (fs) =>
       Effect.mapError(
         Stream.run(file.content, fs.sink(path)),
-        (cause) => MultipartError.fromReason("InternalError", cause)
+        (cause) => isMultipartError(cause) ? cause : MultipartError.fromReason("InternalError", cause)
       )
   )
 
