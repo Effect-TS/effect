@@ -281,6 +281,8 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
   }
 }
 
+const isMultipartError = (u: unknown): u is MultipartError => Predicate.hasProperty(u, MultipartErrorTypeId)
+
 /**
  * Schema type for persisted multipart files.
  *
@@ -469,6 +471,7 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
     Effect.map(makeConfig(headers), (config) => {
       let partsBuffer: Array<Part> = []
       let exit = Option.none<Exit.Exit<never, IE | MultipartError | Cause.Done>>()
+      let upstreamFailure = Option.none<Cause.Cause<MultipartError>>()
       let ended = false
 
       const parser = MP.make({
@@ -480,9 +483,19 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
           let chunks: Array<Uint8Array> = []
           let finished = false
           const pullChunks = Channel.fromPull(
-            Effect.succeed(Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>> {
+            Effect.succeed(Effect.suspend(function loop(): Pull.Pull<
+              Arr.NonEmptyReadonlyArray<Uint8Array>,
+              MultipartError
+            > {
               if (!Arr.isReadonlyArrayNonEmpty(chunks)) {
-                return finished ? Cause.done() : Effect.flatMap(pump, loop)
+                if (finished) {
+                  return Cause.done()
+                }
+                // The parser never sees an upstream failure, so it cannot end
+                // this file. Fail the part instead of pumping a dead upstream.
+                return Option.isSome(upstreamFailure)
+                  ? Effect.failCause(upstreamFailure.value)
+                  : Effect.flatMap(pump, loop)
               }
               const chunk = chunks
               chunks = []
@@ -523,6 +536,12 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
             }
           } else {
             exit = Option.some(Exit.failCause(cause)) as any
+            upstreamFailure = Option.some(
+              Cause.map(
+                cause,
+                (error) => isMultipartError(error) ? error : MultipartError.fromReason("InternalError", error)
+              )
+            )
           }
           return Effect.void
         })
@@ -614,17 +633,14 @@ class FileImpl extends PartBase implements File {
 
   constructor(
     info: MP.PartInfo,
-    channel: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>>
+    channel: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, MultipartError>
   ) {
     super()
     this.key = info.name
     this.name = info.filename ?? info.name
     this.contentType = info.contentType
     this.content = Stream.fromChannel(channel)
-    this.contentEffect = channel.pipe(
-      Channel.mkUint8Array,
-      Effect.mapError((cause) => MultipartError.fromReason("InternalError", cause))
-    )
+    this.contentEffect = Channel.mkUint8Array(channel)
   }
 
   toJSON(): unknown {
@@ -644,7 +660,7 @@ const defaultWriteFile = (path: string, file: File) =>
     (fs) =>
       Effect.mapError(
         Stream.run(file.content, fs.sink(path)),
-        (cause) => MultipartError.fromReason("InternalError", cause)
+        (cause) => isMultipartError(cause) ? cause : MultipartError.fromReason("InternalError", cause)
       )
   )
 
