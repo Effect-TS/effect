@@ -158,12 +158,16 @@ export const make: <A, E, R>(
   options: {
     readonly acquire: Effect.Effect<A, E, R>
     /**
-     * When the reference count reaches zero, the resource will be released
-     * after this duration.
+     * How long to keep an idle resource after its last reference is released.
      *
-     * For finite durations, including `0`, release runs in a forked fiber
-     * and is not awaited by the scope releasing the last reference. Omitting
-     * this option releases the resource within that scope and awaits completion.
+     * If the resource has not been invalidated, finite durations, including `0`,
+     * schedule release in a forked fiber that the scope releasing the last
+     * reference does not await. An infinite duration keeps the idle resource
+     * until invalidation or the RcRef's scope closes.
+     *
+     * If this option is omitted or the resource has been invalidated with
+     * `RcRef.invalidate`, the scope releasing the last reference releases the
+     * resource and awaits completion.
      */
     readonly idleTimeToLive?: Duration.Input | undefined
   }
