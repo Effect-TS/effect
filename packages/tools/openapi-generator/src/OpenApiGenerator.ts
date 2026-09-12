@@ -149,8 +149,19 @@ export const make = Effect.gen(function*() {
       const multipartSchemaRefs = options.format === "httpapi"
         ? makeHttpApiMultipartSchemaRefs(spec.components?.schemas ?? {})
         : undefined
+      const clientMultipartFileRef = options.format === "httpapi"
+        ? undefined
+        : makeClientMultipartFileRef(spec.components?.schemas ?? {})
 
-      const parsed = parseOpenApi(spec, generator, resolveRef, options.format, emitWarning, multipartSchemaRefs)
+      const parsed = parseOpenApi(
+        spec,
+        generator,
+        resolveRef,
+        options.format,
+        emitWarning,
+        multipartSchemaRefs,
+        clientMultipartFileRef
+      )
 
       // TODO: make a CLI option ?
       const importName = "Schema"
@@ -166,10 +177,11 @@ export const make = Effect.gen(function*() {
         )
         : generator.generate(
           source,
-          spec.components?.schemas ?? {},
+          withClientMultipartSchemas(spec.components?.schemas ?? {}, clientMultipartFileRef),
           options.format === "httpclient-type-only",
           {
-            onEnter: options.onEnter
+            onEnter: options.onEnter,
+            clientMultipartFileRef
           }
         )
 
@@ -215,7 +227,8 @@ const parseOpenApi = (
   resolveRef: (ref: string) => unknown,
   format: OpenApiGeneratorFormat,
   emitWarning: WarningEmitter,
-  multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined
+  multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined,
+  clientMultipartFileRef: string | undefined
 ): ParsedOperation.ParsedOpenApi => {
   const operations: Array<ParsedOperation.ParsedOperation> = []
   const reservedSchemaNames = new Set<string>(Object.keys(spec.components?.schemas ?? {}))
@@ -420,7 +433,13 @@ const parseOpenApi = (
         if (Predicate.isNotUndefined(content["multipart/form-data"]?.schema)) {
           op.payload = addSchema(
             `${schemaId}RequestFormData`,
-            transformMultipartSchema(content["multipart/form-data"].schema, multipartSchemaRefs, resolveRef),
+            transformMultipartSchemaForFormat(
+              content["multipart/form-data"].schema,
+              format,
+              multipartSchemaRefs,
+              clientMultipartFileRef,
+              resolveRef
+            ),
             op
           )
           op.payloadFormData = true
@@ -450,7 +469,13 @@ const parseOpenApi = (
             let schemaName = requestSchemaNames.get(contentType)
             if (schemaName === undefined) {
               const schema = encoding === "multipart"
-                ? transformMultipartSchema(mediaType.schema as JsonSchema.JsonSchema, multipartSchemaRefs, resolveRef)
+                ? transformMultipartSchemaForFormat(
+                  mediaType.schema as JsonSchema.JsonSchema,
+                  format,
+                  multipartSchemaRefs,
+                  clientMultipartFileRef,
+                  resolveRef
+                )
                 : mediaType.schema as JsonSchema.JsonSchema
               schemaName = addSchema(
                 `${schemaId}Request${mediaTypeToSuffix(contentType)}`,
@@ -849,6 +874,49 @@ const makeHttpApiMultipartSchemaRefs = (definitions: JsonSchema.Definitions): Ht
 
 const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
 
+/**
+ * Synthetic `$ref` used by generated clients for binary multipart fields.
+ *
+ * Clients send request bodies built from `File` / `Blob` values, so these
+ * fields must not reuse the server-side persisted file schema.
+ */
+const makeClientMultipartFileRef = (definitions: JsonSchema.Definitions): string => {
+  const names = new Set(Object.keys(definitions))
+  let candidate = "__ClientMultipartFile"
+  let index = 2
+  while (names.has(candidate)) {
+    candidate = `__ClientMultipartFile${index}`
+    index += 1
+  }
+  return candidate
+}
+
+type MultipartSchemaTransform =
+  | {
+    readonly mode: "httpApi"
+    readonly refs: HttpApiMultipartSchemaRefs
+  }
+  | {
+    readonly mode: "client"
+    readonly fileRef: string
+  }
+
+const withClientMultipartSchemas = (
+  definitions: JsonSchema.Definitions,
+  clientMultipartFileRef: string | undefined
+): JsonSchema.Definitions => {
+  if (clientMultipartFileRef === undefined) {
+    return definitions
+  }
+  return {
+    ...definitions,
+    [clientMultipartFileRef]: {
+      type: "string",
+      format: "binary"
+    }
+  }
+}
+
 const withHttpApiMultipartSchemas = (
   definitions: JsonSchema.Definitions,
   multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined,
@@ -857,8 +925,9 @@ const withHttpApiMultipartSchemas = (
   if (multipartSchemaRefs === undefined) {
     return definitions
   }
+  const transform: MultipartSchemaTransform = { mode: "httpApi", refs: multipartSchemaRefs }
   return {
-    ...Rec.map(definitions, (schema) => transformMultipartSchema(schema, multipartSchemaRefs, resolveRef)),
+    ...Rec.map(definitions, (schema) => transformMultipartSchema(schema, transform, resolveRef)),
     [multipartSchemaRefs.singleFile]: {
       type: "string",
       format: "binary"
@@ -872,17 +941,36 @@ const withHttpApiMultipartSchemas = (
   }
 }
 
-const transformMultipartSchema = (
+const transformMultipartSchemaForFormat = (
   schema: JsonSchema.JsonSchema,
+  format: OpenApiGeneratorFormat,
   multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined,
+  clientMultipartFileRef: string | undefined,
   resolveRef: (ref: string) => unknown
 ): JsonSchema.JsonSchema => {
-  if (multipartSchemaRefs === undefined) {
+  if (format === "httpapi") {
+    return multipartSchemaRefs === undefined
+      ? schema
+      : transformMultipartSchema(schema, { mode: "httpApi", refs: multipartSchemaRefs }, resolveRef)
+  }
+  return clientMultipartFileRef === undefined
+    ? schema
+    : transformMultipartSchema(schema, { mode: "client", fileRef: clientMultipartFileRef }, resolveRef)
+}
+
+const transformMultipartSchema = (
+  schema: JsonSchema.JsonSchema,
+  input: MultipartSchemaTransform | undefined,
+  resolveRef: (ref: string) => unknown
+): JsonSchema.JsonSchema => {
+  if (input === undefined) {
     return schema
   }
 
-  const singleFileRef = toDefinitionRef(multipartSchemaRefs.singleFile)
-  const filesRef = toDefinitionRef(multipartSchemaRefs.files)
+  const singleFileRef = input.mode === "httpApi"
+    ? toDefinitionRef(input.refs.singleFile)
+    : `#/$defs/${input.fileRef}`
+  const filesRef = input.mode === "httpApi" ? toDefinitionRef(input.refs.files) : undefined
   const cache = new Map<string, unknown>()
   const stack = new Set<string>()
 
@@ -922,7 +1010,7 @@ const transformMultipartSchema = (
     }
 
     if (isMultipartBinaryFiles(out, singleFileRef)) {
-      return { $ref: filesRef }
+      return filesRef === undefined ? out : { $ref: filesRef }
     }
 
     return out
