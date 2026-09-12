@@ -1032,10 +1032,16 @@ export const toWeb = (
     }
     case "Raw": {
       if (body.body instanceof Response) {
+        const inner = body.body
+        const merged = new globalThis.Headers(inner.headers)
         for (const [key, value] of headers as any) {
-          body.body.headers.set(key, value)
+          merged.set(key, value)
         }
-        return body.body
+        return new Response(inner.body, {
+          status: response.status,
+          statusText: response.statusText!,
+          headers: merged
+        })
       }
       return new Response(body.body as any, {
         status: response.status,
