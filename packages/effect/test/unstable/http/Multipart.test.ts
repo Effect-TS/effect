@@ -262,7 +262,7 @@ describe("Multipart", () => {
             ? Stream.runForEach(part.content, (chunk) =>
               Effect.sync(() => {
                 bytesRead += chunk.length
-              }))
+              })).pipe(Effect.flatMap(() => Effect.die("content should have failed")))
             : Effect.die("expected file")
         ),
         Effect.timeout("1 second"),
@@ -278,7 +278,11 @@ describe("Multipart", () => {
       const upstreamError = Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed"))
 
       const error = yield* activeFileParts(upstreamError).pipe(
-        Stream.runForEach((part) => part._tag === "File" ? part.contentEffect : Effect.die("expected file")),
+        Stream.runForEach((part) =>
+          part._tag === "File"
+            ? Effect.flatMap(part.contentEffect, () => Effect.die("contentEffect should have failed"))
+            : Effect.die("expected file")
+        ),
         Effect.timeout("1 second"),
         Effect.flip
       )
