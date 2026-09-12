@@ -67,6 +67,17 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
   readonly [TypeId]: typeof TypeId
   readonly request: HttpClientRequest.HttpClientRequest
   /**
+   * The platform response this value was built from, when the client exposes one.
+   *
+   * **Details**
+   *
+   * `FetchHttpClient` exposes the original Web `Response`. Keeping that object
+   * matters on runtimes that attach capabilities to it: on workerd, only a
+   * native response body reports a known length to `R2Bucket.put`, and any
+   * stream rebuilt in JavaScript loses it. Use `toWeb` to narrow this value.
+   */
+  readonly source?: object | undefined
+  /**
    * The resolved URL, including query parameters and excluding the hash.
    * Uses the final URL when redirects are followed. Empty if unknown.
    */
@@ -75,6 +86,30 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
   readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.HttpClientError>
 }
+
+/**
+ * Returns the original Web `Response` backing a client response, when available.
+ *
+ * **When to use**
+ *
+ * Use when you need the native response object instead of the Effect body
+ * accessors, for example to hand its body to a runtime API that inspects it.
+ *
+ * **Details**
+ *
+ * The returned `Response` is the same object the client received, so its body
+ * keeps runtime-specific capabilities that a rebuilt stream cannot carry. On
+ * workerd, `Response.body` reports a known length to `R2Bucket.put` while
+ * `Stream.toReadableStream` output does not. Returns `undefined` for clients
+ * that do not expose a Web `Response`.
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const toWeb = (self: HttpClientResponse): globalThis.Response | undefined =>
+  typeof globalThis.Response !== "undefined" && self.source instanceof globalThis.Response
+    ? self.source
+    : undefined
 
 /**
  * Wraps a Web `Response` and its original `HttpClientRequest` as an `HttpClientResponse`.
@@ -257,7 +292,7 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
   readonly [TypeId]: typeof TypeId
 
   readonly request: HttpClientRequest.HttpClientRequest
-  private readonly source: globalThis.Response
+  readonly source: globalThis.Response
 
   constructor(
     request: HttpClientRequest.HttpClientRequest,
