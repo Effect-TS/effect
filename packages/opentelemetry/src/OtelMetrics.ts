@@ -26,9 +26,12 @@ import { Resource } from "./Resource.ts"
  * **Details**
  *
  * `cumulative` reports total since a fixed start time. Each data point depends
- * on all previous measurements. This is the default behavior. `delta` reports
- * changes since the last export. Each interval is independent with no
- * dependency on previous measurements.
+ * on all previous measurements. `delta` reports changes since the last export.
+ * Each interval is independent with no dependency on previous measurements.
+ *
+ * When no preference is configured, the producer follows the temporality
+ * preference of the `MetricReader` it is registered with, falling back to
+ * cumulative.
  *
  * @category models
  * @since 4.0.0
@@ -45,9 +48,11 @@ export type TemporalityPreference = "cumulative" | "delta"
  *
  * **Details**
  *
- * Requires the current OpenTelemetry `Resource`, captures the current Effect
- * context, and uses cumulative temporality by default. Pass `"delta"` for
- * interval-based values.
+ * Requires the current OpenTelemetry `Resource` and captures the current
+ * Effect context. When no temporality is passed, the producer follows the
+ * temporality preference of the `MetricReader` it is registered with via
+ * {@link registerProducer} or {@link layer}, falling back to cumulative. Pass
+ * `"cumulative"` or `"delta"` to override the reader's preference.
  *
  * @see {@link registerProducer} for attaching a producer to metric readers
  * @see {@link layer} for creating and registering a producer in a scoped layer
@@ -79,7 +84,15 @@ export const registerProducer = (
     Effect.sync(() => {
       const reader = metricReader()
       const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
-      readers.forEach((reader) => reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self))
+      readers.forEach((reader) => {
+        if (self instanceof MetricProducerImpl) {
+          const producer = self.fork()
+          producer.reader = reader
+          reader.setMetricProducer(producer)
+        } else {
+          reader.setMetricProducer(self)
+        }
+      })
       return readers
     }),
     (readers) =>

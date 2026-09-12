@@ -6,7 +6,8 @@ import type {
   Histogram,
   MetricCollectOptions,
   MetricData,
-  MetricProducer
+  MetricProducer,
+  MetricReader
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
 import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
@@ -39,7 +40,10 @@ interface PreviousSummaryState {
 export class MetricProducerImpl implements MetricProducer {
   resource: Resources.Resource
   context: Context.Context<never>
-  temporality: Metrics.TemporalityPreference
+  temporality: Metrics.TemporalityPreference | undefined
+  // set by registerProducer, so collect() can follow the reader's temporality
+  // preference when no explicit temporality was configured
+  reader: MetricReader | undefined
   startTimes: Map<string, HrTime>
   startTimeNanos: HrTime
   previousExportTimeNanos: HrTime
@@ -51,11 +55,12 @@ export class MetricProducerImpl implements MetricProducer {
   constructor(
     resource: Resources.Resource,
     context: Context.Context<never>,
-    temporality: Metrics.TemporalityPreference = "cumulative"
+    temporality?: Metrics.TemporalityPreference
   ) {
     this.resource = resource
     this.context = context
     this.temporality = temporality
+    this.reader = undefined
     this.startTimes = new Map()
     this.startTimeNanos = currentHrTime()
     this.previousExportTimeNanos = this.startTimeNanos
@@ -77,6 +82,20 @@ export class MetricProducerImpl implements MetricProducer {
     return hrTime
   }
 
+  // an explicitly configured temporality wins, then the registered reader's
+  // per-instrument-type preference, then the OpenTelemetry default of
+  // cumulative
+  selectTemporality(instrumentType: InstrumentType): AggregationTemporality {
+    if (this.temporality !== undefined) {
+      return this.temporality === "delta"
+        ? AggregationTemporality.DELTA
+        : AggregationTemporality.CUMULATIVE
+    } else if (this.reader !== undefined) {
+      return this.reader.selectAggregationTemporality(instrumentType)
+    }
+    return AggregationTemporality.CUMULATIVE
+  }
+
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
     const snapshot = Metric.snapshotUnsafe(this.context)
     const hrTimeNow = currentHrTime()
@@ -87,16 +106,13 @@ export class MetricProducerImpl implements MetricProducer {
       metricDataByName.set(data.descriptor.name, data)
     }
 
-    const isDelta = this.temporality === "delta"
-    const aggregationTemporality = isDelta
-      ? AggregationTemporality.DELTA
-      : AggregationTemporality.CUMULATIVE
-    const intervalStartTime = isDelta
-      ? this.previousExportTimeNanos
-      : this.startTimeNanos
-
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const state = snapshot[i]
+      const aggregationTemporality = this.selectTemporality(instrumentTypeFromSnapshot(state))
+      const isDelta = aggregationTemporality === AggregationTemporality.DELTA
+      const intervalStartTime = isDelta
+        ? this.previousExportTimeNanos
+        : this.startTimeNanos
       const attributes = state.attributes
         ? Arr.reduce(Object.entries(state.attributes), {} as Record<string, string>, (acc, [key, value]) => {
           Rec.assignProperty(acc, key, String(value))
@@ -397,9 +413,7 @@ export class MetricProducerImpl implements MetricProducer {
     }
 
     // Update the previous export time for delta calculations
-    if (isDelta) {
-      this.previousExportTimeNanos = hrTimeNow
-    }
+    this.previousExportTimeNanos = hrTimeNow
 
     return Promise.resolve({
       resourceMetrics: {
