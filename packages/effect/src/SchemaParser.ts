@@ -142,6 +142,18 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
 /** @internal */
 export function _is<T>(ast: SchemaAST.AST) {
   const typeAST = SchemaAST.toType(ast)
+  if (!CompilerRegistry.compilerAdaptersEnabled) {
+    const parser = asExit(run<T, never>(typeAST))
+    return <I>(input: I): input is I & T => {
+      const exit = parser(input, SchemaAST.defaultParseOptions)
+      if (Exit.isSuccess(exit)) return true
+      InternalSchemaCause.getSchemaIssueOrThrow(
+        exit.cause,
+        "Type guard adapter can only return false for schema issues"
+      )
+      return false
+    }
+  }
   let entry: CompilerRegistry.Entry | undefined
   let parser: Parser | undefined
   let guard: CompilerRegistry.Entry["is"] | null
@@ -536,7 +548,9 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => S["Type"] {
-  return makeSync(schema.ast, options)
+  return CompilerRegistry.compilerAdaptersEnabled
+    ? makeSync(schema.ast, options)
+    : asSync(decodeUnknownEffect(schema, options))
 }
 
 /**
@@ -881,7 +895,9 @@ export function encodeUnknownSync<S extends Schema.ConstraintEncoder<unknown>>(
   schema: S,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => S["Encoded"] {
-  return makeSync(SchemaAST.flip(schema.ast), options)
+  return CompilerRegistry.compilerAdaptersEnabled
+    ? makeSync(SchemaAST.flip(schema.ast), options)
+    : asSync(encodeUnknownEffect(schema, options))
 }
 
 /**
