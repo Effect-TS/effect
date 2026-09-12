@@ -42,6 +42,7 @@ pnpm runtimeperf object-32-valid
 pnpm runtimeperf schema/object-32-valid-effect
 pnpm runtimeperf --family arrays
 pnpm runtimeperf --implementation zod4
+pnpm runtimeperf --implementation zod4-compiled
 ```
 
 Override measurement settings:
@@ -118,6 +119,9 @@ Zod parsing cases import `zod/v4` and call `safeParse` with `{ jitless: true }`;
 its Standard Schema and codec cases use their native APIs. Valibot uses the
 corresponding `is`, `safeParse` and Standard Schema APIs. The focused Effect
 adapter family measures the overhead of public APIs that wrap parser issues.
+The compiler comparison calls `z.compile(schema, { strict: true })` and uses
+Zod's `validate` API for boolean checks. Ten representative scenarios also run
+against equivalent Valibot schemas using `parse` and `is`.
 
 ## Measurement model
 

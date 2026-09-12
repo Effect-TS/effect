@@ -70,6 +70,115 @@ means that the library does not provide that benchmark.
 | Encode unknown input                  |    **0.3472** |          — |          — |
 | Decode unknown input                  |    **0.3637** |          — |          — |
 
+## Experimental schema compilers
+
+Enable JIT compilation at application startup with a side-effect import:
+
+```ts
+import "effect/unstable/schema/SchemaJITCompiler/enable"
+```
+
+Alternatively, `SchemaJITCompiler.enable(schema.ast)` enables one AST and the
+dependencies reached while parsing it. Importing `SchemaJITCompiler` or the
+`unstable/schema` barrel alone does not enable compilation. Operations are
+prepared on first use. If dynamic function construction is blocked or compilation
+fails, the interpreter remains available. Exceptions from executing a parser are
+not treated as compilation failures and do not trigger a retry.
+
+JIT and AOT use the same source generator. To generate an AOT module at build
+time, call `SchemaAOTCompiler.compile(asts)` with an ordered array of ASTs and
+save the returned JavaScript. The module exports `install(asts)`. Call it with
+the corresponding runtime ASTs before using normal `SchemaParser` functions.
+Use a one-element array for a single schema. Generated modules do not import
+the generator and work where `new Function` is forbidden.
+
+The low-level installation trusts the supplied root order and AST definitions.
+Include `SchemaAST.toType(schema.ast)` for guards and construction, and
+`SchemaAST.flip(schema.ast)` for encoding, when those are distinct ASTs.
+
+`effect/unstable/schema/SchemaAOTCompiler/Build` provides the higher-level
+workflow. Its `build` function loads direct Schema exports, writes a
+self-installing module through `FileSystem`, and prepares decoding by default:
+
+```ts
+import * as SchemaAOTCompilerBuild from "effect/unstable/schema/SchemaAOTCompiler/Build"
+
+SchemaAOTCompilerBuild.build({
+  modules: {
+    "./schemas/User.js": () => import("./schemas/User.js"),
+    "./schemas/Order.js": () => import("./schemas/Order.js")
+  },
+  baseUrl: import.meta.url,
+  outFile: "./generated/schema-aot.js"
+})
+```
+
+Import the generated file at application startup. Module keys identify imports
+relative to `baseUrl`; each loader must return that same module during the
+build. The lazy record produced by `import.meta.glob` can be passed directly.
+Request `encode`, `is`, or `make` explicitly when those directions also need
+AOT roots. Loading executes the selected application modules during the build.
+Run the returned Effect with the platform's `FileSystem` and `Path` services,
+and ensure the bundler retains the generated side-effect import.
+
+Regenerate AOT modules when schema definitions or the Effect version change.
+Callbacks and symbols are read from runtime ASTs, not serialized.
+
+### One registry for all implementations
+
+A single `WeakMap` associates each exact AST with its decoder entry. The cache
+stores functions, never parsing results. The interpreter, JIT, AOT and
+`SchemaCompiler.set(ast, decoder)` all use it.
+
+| Operation      | Result                                      | Purpose                                                                                         |
+| -------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `decodeEffect` | `Effect` with output or detailed issues     | Required complete decoding, including asynchronous work and transformations.                    |
+| `validate`     | Output or `SchemaCompiler.invalid`          | Optional synchronous fast path without detailed diagnostics.                                    |
+| `is`           | Boolean                                     | Optional validation without constructing output.                                                |
+| `makeEffect`   | `Effect` with a constructed value or issues | Optional specialized construction. The registry caches the interpreted constructor when absent. |
+
+Decoding tries `validate` when available. Success provides the output directly;
+failure calls `decodeEffect` for diagnostics. The diagnostic traversal uses child
+decoders directly, without restarting their validation fast paths. A boolean
+guard prefers `is`, otherwise it uses ordinary decoding (including `validate`
+when available). An `invalid` result needs that diagnostic fallback because the
+marker is also a possible input value. Composite checks
+can require stripped, reconstructed values, so `is` is omitted when it cannot
+avoid constructing those values safely.
+
+Each operation initializes independently. Construction calls `makeEffect`
+directly, without validation replay, so defaults and Class constructors execute
+once. Field defaults belong to the parent occurrence, not to construction of the
+root. Runtime parse options, including product concurrency, retain the
+interpreter's semantics.
+
+Installing a decoder replaces the entry for that AST. Existing consumers that
+already captured an entry retain it. Late installation is allowed, but startup
+installation is needed to optimize every consumer. Custom decoders supplied to
+`set` are trusted to implement the AST's semantics.
+
+### What is specialized
+
+Encoding-free graphs of supported primitives, Objects, Arrays, tuples, Unions
+and template literals can use generated validators. Struct and homogeneous Array
+decoding and construction also have generated loops. These loops share the
+interpreter's diagnostic and asynchronous continuation helpers. Other detailed
+traversals and constructors use the existing interpreter with registry-resolved
+children; there is no separate diagnostic interpreter in the compiler.
+
+Transformations and middleware never participate in validation replay. Their
+orchestration uses the same implementation as interpreted parsing, and pure
+child checkpoints can still use generated validators. Suspend is resolved lazily
+by JIT. AOT does not evaluate Suspend thunks at build time, so dynamically reached
+schemas fall back to the interpreter unless installed separately. Declaration
+callbacks remain runtime code; their type parameters can be compiled.
+
+Checks and property getters in replayable validation must be deterministic and
+free of side effects. Proxy inputs and modifications to built-in object behavior
+are not supported by the optimization contract. Large or unsupported graphs
+retain interpreted paths. AOT removes dynamic source generation, not all parser
+initialization or the need for runtime schema objects.
+
 # Defining Elementary Schemas
 
 Schema provides built-in schemas for all common TypeScript types. These schemas represent a single value — like a string or a number — and they are the building blocks you combine into more complex shapes.

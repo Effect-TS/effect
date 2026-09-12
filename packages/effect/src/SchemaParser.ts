@@ -13,9 +13,9 @@
 import * as Cause from "./Cause.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
-import { memoize } from "./Function.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
+import * as CompilerRegistry from "./internal/schema/compilerRegistry.ts"
 import * as InternalParser from "./internal/schema/parser.ts"
 import * as Option from "./Option.ts"
 import * as Result from "./Result.ts"
@@ -109,18 +109,7 @@ export function makeOption<S extends Schema.Constraint>(schema: S) {
  * @since 4.0.0
  */
 export function make<S extends Schema.Constraint>(schema: S) {
-  const parser = makeEffect(schema)
-  return (input: S["~type.make.in"], options?: Schema.MakeOptions): S["Type"] => {
-    const exit = Effect.runSyncExit(parser(input, options))
-    if (Exit.isSuccess(exit)) {
-      return exit.value
-    }
-    const issue = InternalSchemaCause.getSchemaIssueOrThrow(
-      exit.cause,
-      "Constructor adapter can only throw schema issues"
-    )
-    throw new Error("Schema validation failed", { cause: issue })
-  }
+  return makeConstructorSync<S["Type"], S["~type.make.in"]>(SchemaAST.toType(schema.ast))
 }
 
 /**
@@ -152,9 +141,42 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
 
 /** @internal */
 export function _is<T>(ast: SchemaAST.AST) {
-  const parser = asExit(run<T, never>(SchemaAST.toType(ast)))
+  const typeAST = SchemaAST.toType(ast)
+  if (!CompilerRegistry.compilerAdaptersEnabled) {
+    const parser = asExit(run<T, never>(typeAST))
+    return <I>(input: I): input is I & T => {
+      const exit = parser(input, SchemaAST.defaultParseOptions)
+      if (Exit.isSuccess(exit)) return true
+      InternalSchemaCause.getSchemaIssueOrThrow(
+        exit.cause,
+        "Type guard adapter can only return false for schema issues"
+      )
+      return false
+    }
+  }
+  let entry: CompilerRegistry.Entry | undefined
+  let parser: Parser | undefined
+  let guard: CompilerRegistry.Entry["is"] | null
   return <I>(input: I): input is I & T => {
-    const exit = parser(input, SchemaAST.defaultParseOptions)
+    if (guard === undefined) {
+      entry = CompilerRegistry.resolve(typeAST)
+      guard = entry.is ?? null
+      // A value-producing validator can return the invalid symbol as valid data.
+      // Without a boolean validator, use the ordinary diagnostic fallback too.
+    }
+    if (guard !== null) {
+      try {
+        return guard(input, SchemaAST.defaultParseOptions)
+      } catch (error) {
+        InternalSchemaCause.getSchemaIssueOrThrow(
+          Cause.die(error),
+          "Type guard adapter can only return false for schema issues"
+        )
+        return false
+      }
+    }
+    const result = (parser ??= entry!.parser)(input, SchemaAST.defaultParseOptions)
+    const exit = Effect.runSyncExit(parserResult<T, never>(result, input))
     if (Exit.isSuccess(exit)) {
       return true
     }
@@ -526,7 +548,9 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => S["Type"] {
-  return asSync(decodeUnknownEffect(schema, options))
+  return CompilerRegistry.compilerAdaptersEnabled
+    ? makeSync(schema.ast, options)
+    : asSync(decodeUnknownEffect(schema, options))
 }
 
 /**
@@ -871,7 +895,9 @@ export function encodeUnknownSync<S extends Schema.ConstraintEncoder<unknown>>(
   schema: S,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => S["Encoded"] {
-  return asSync(encodeUnknownEffect(schema, options))
+  return CompilerRegistry.compilerAdaptersEnabled
+    ? makeSync(SchemaAST.flip(schema.ast), options)
+    : asSync(encodeUnknownEffect(schema, options))
 }
 
 /**
@@ -924,6 +950,22 @@ const getValue = (value: unknown): Effect.Effect<any, SchemaIssue.Issue> => {
 /** @internal */
 export function run<T, R>(ast: SchemaAST.AST) {
   return runWithCompiler<T, R>(normalCompiler, ast)
+}
+
+function parserResult<T, R>(
+  result: Effect.Effect<unknown, SchemaIssue.Issue, any>,
+  input: unknown
+): Effect.Effect<T, SchemaIssue.Issue, R> {
+  if (result === InternalParser.sameExit) {
+    return Effect.succeed(input) as Effect.Effect<T, SchemaIssue.Issue, R>
+  }
+  if (!effectIsExit(result)) {
+    return Effect.flatMapEager(result, getValue)
+  }
+  return (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args] ===
+      InternalParser.missing
+    ? getValue(InternalParser.missing)
+    : result as Effect.Effect<T, SchemaIssue.Issue, R>
 }
 
 function runWithCompiler<T, R>(compiler: Compiler, ast: SchemaAST.AST) {
@@ -998,6 +1040,37 @@ function asResult<T, E, R>(
   }
 }
 
+function makeSync<T>(
+  ast: SchemaAST.AST,
+  options?: SchemaAST.ParseOptions
+): (input: unknown, options?: SchemaAST.ParseOptions) => T {
+  let entry: CompilerRegistry.Entry | undefined
+  let detailed: ((input: unknown, options?: SchemaAST.ParseOptions) => T) | undefined
+  let parser: Parser | undefined
+  return (input, overrideOptions) => {
+    entry ??= CompilerRegistry.resolve(ast)
+    const parseOptions = options === undefined
+      ? overrideOptions ?? SchemaAST.defaultParseOptions
+      : mergeParseOptions(options, overrideOptions)
+    const validate = entry.validate
+    if (validate !== undefined && input !== InternalParser.missing) {
+      let output: unknown
+      try {
+        output = validate(input, parseOptions)
+      } catch (error) {
+        InternalSchemaCause.getSchemaIssueOrThrow(Cause.die(error), "Sync adapter can only throw schema issues")
+        throw error
+      }
+      if (output !== CompilerRegistry.invalid) return output as T
+    }
+    if (entry.source === undefined) {
+      const result = (parser ??= entry.decodeEffect)(input, parseOptions)
+      return runSync(parserResult<T, never>(result, input), "Sync adapter can only throw schema issues")
+    }
+    return (detailed ??= asSync(runWithCompiler<T, never>(() => entry!.decodeEffect, ast)))(input, parseOptions)
+  }
+}
+
 function asSync<T, E>(
   parser: (input: E, options?: SchemaAST.ParseOptions) => Effect.Effect<T, SchemaIssue.Issue>
 ): (input: E, options?: SchemaAST.ParseOptions) => T {
@@ -1009,6 +1082,30 @@ function asSync<T, E>(
     }
     const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Sync adapter can only throw schema issues")
     throw new Error("Schema validation failed", { cause: issue })
+  }
+}
+
+function runSync<T>(effect: Effect.Effect<T, SchemaIssue.Issue>, message: string): T {
+  const exit = Effect.runSyncExit(effect)
+  if (Exit.isSuccess(exit)) {
+    return exit.value
+  }
+  const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, message)
+  throw new Error("Schema validation failed", { cause: issue })
+}
+
+function makeConstructorSync<T, E>(
+  ast: SchemaAST.AST
+): (input: E, options?: Schema.MakeOptions) => T {
+  let entry: CompilerRegistry.Entry | undefined
+  let parser: Parser | undefined
+  return (input, options) => {
+    entry ??= CompilerRegistry.resolve(ast)
+    const parseOptions = options?.disableChecks
+      ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
+      : options?.parseOptions ?? SchemaAST.defaultParseOptions
+    const result = (parser ??= entry.makeEffect)(input, parseOptions)
+    return runSync(parserResult<T, never>(result, input), "Constructor adapter can only throw schema issues")
   }
 }
 
@@ -1025,186 +1122,5 @@ export interface Compiler {
   (ast: SchemaAST.AST): Parser
 }
 
-const normalCompiler: Compiler = memoize((ast) => makeParser(ast, normalCompiler))
-const constructorCompiler: Compiler = memoize((ast) => makeParser(ast, constructorCompiler, compileConstructorDefault))
-const compileDefaulted = memoize((ast: SchemaAST.AST) =>
-  makeParser(ast, constructorCompiler, compileConstructorDefault, ast.context?.constructorDefault)
-)
-
-function compileConstructorDefault(ast: SchemaAST.AST): Parser {
-  return ast.context?.constructorDefault ? compileDefaulted(ast) : constructorCompiler(ast)
-}
-
-function applyTransformation(
-  result: Effect.Effect<unknown, SchemaIssue.Issue, unknown>,
-  current: unknown,
-  transformation: SchemaAST.Link["transformation"],
-  options: SchemaAST.ParseOptions
-): Effect.Effect<unknown, SchemaIssue.Issue, unknown> {
-  let transformed: Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue, unknown>
-  if (effectIsExit(result) && result._tag === "Success") {
-    const optional = InternalParser.toOption(
-      result === InternalParser.sameExit
-        ? current
-        : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    )
-    transformed = transformation._tag === "Transformation"
-      ? transformation.decode.run(optional, options)
-      : transformation.decode(InternalParser.succeed(optional), options)
-  } else if (transformation._tag === "Transformation") {
-    transformed = Effect.flatMapEager(
-      result,
-      (value) => transformation.decode.run(InternalParser.toOption(value), options)
-    )
-  } else {
-    transformed = transformation.decode(
-      Effect.mapEager(result, InternalParser.toOption),
-      options
-    )
-  }
-  return effectIsExit(transformed) && transformed._tag === "Success"
-    ? InternalParser.fromOptionExit(
-      (transformed as InternalParser.Success<Option.Option<unknown>, SchemaIssue.Issue>)[InternalParser.args]
-    )
-    : Effect.flatMapEager(transformed, InternalParser.fromOptionExit)
-}
-
-function makeConstructorParser(descriptor: SchemaAST.ConstructorDescriptor, compile: Compiler): Parser {
-  let sourceParser: Parser
-  return (input, options) => {
-    if (input === InternalParser.missing) return InternalParser.missingExit
-    if (descriptor.isConstructed(input)) return InternalParser.sameExit
-    const result = (sourceParser ??= compile(descriptor.link.to))(input, options)
-    return applyTransformation(result, input, descriptor.link.transformation, options)
-  }
-}
-
-function makeParser(
-  ast: SchemaAST.AST,
-  compile: Compiler,
-  compileConstructorDefault?: Compiler,
-  constructorDefault?: SchemaAST.Link
-): Parser {
-  const descriptor = compileConstructorDefault ? SchemaAST.getConstructorDescriptor(ast) : undefined
-  const parser = descriptor
-    ? makeConstructorParser(descriptor, compile)
-    : ast.getParser(compile, compileConstructorDefault)
-  const checks = ast.checks
-  const links = constructorDefault
-    ? ast.encoding ? [...ast.encoding, constructorDefault] : [constructorDefault]
-    : ast.encoding
-  const encodingChecks = (ast as any).encodingChecks
-  if (!links && !checks && !encodingChecks) {
-    return parser
-  }
-  let encodingParsers: ReadonlyArray<Parser> | undefined
-  const parseLocal = (
-    input: unknown,
-    options: SchemaAST.ParseOptions
-  ) => {
-    let result = parser(input, options)
-    if (encodingChecks && !options.disableChecks) {
-      if (effectIsExit(result)) {
-        if (result._tag === "Success") {
-          const output = result === InternalParser.sameExit
-            ? input
-            : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          if (input !== InternalParser.missing && output !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
-            if (issues) {
-              result = Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
-            }
-          }
-        }
-      } else {
-        result = Effect.flatMap(result, (value) => {
-          if (input !== InternalParser.missing && value !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
-            }
-          }
-          return Effect.succeed(value)
-        })
-      }
-    }
-
-    if (checks && !options.disableChecks) {
-      if (effectIsExit(result)) {
-        if (result._tag === "Success") {
-          const value = result === InternalParser.sameExit
-            ? input
-            : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          if (value === InternalParser.missing) return result
-          const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
-          if (issues) {
-            result = Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
-          }
-        }
-      } else {
-        result = Effect.flatMap(result, (value) => {
-          if (value !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
-            }
-          }
-          return Effect.succeed(value)
-        })
-      }
-    }
-
-    return result
-  }
-  if (!links) {
-    return parseLocal
-  }
-  return (
-    input: unknown,
-    options: SchemaAST.ParseOptions
-  ) => {
-    const parsers = encodingParsers ??= links.map((link) => compile(link.to))
-    let current = input
-    let result = parsers[parsers.length - 1](input, options)
-    for (let i = links.length - 1; i >= 0; i--) {
-      result = applyTransformation(result, current, links[i].transformation, options)
-      if (i !== 0) {
-        const next = parsers[i - 1]
-        if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
-          current = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          result = next(current, options)
-        } else {
-          result = Effect.flatMapEager(result, (value) => {
-            const nextResult = next(value, options)
-            return nextResult === InternalParser.sameExit ? InternalParser.succeed(value) : nextResult
-          })
-        }
-      }
-    }
-    if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
-      const value = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-      const local = parseLocal(value, options)
-      return local === InternalParser.sameExit ? result : local
-    }
-    result = Effect.catchCause(
-      result,
-      (cause) =>
-        Effect.failCauseSync(() =>
-          Cause.map(
-            cause,
-            (issue) =>
-              new SchemaIssue.Encoding(
-                ast,
-                issue,
-                input,
-                options
-              )
-          )
-        )
-    )
-    return Effect.flatMapEager(result, (value) => {
-      const local = parseLocal(value, options)
-      return local === InternalParser.sameExit ? InternalParser.succeed(value) : local
-    })
-  }
-}
+const normalCompiler: Compiler = (ast) => CompilerRegistry.resolve(ast).parser
+const constructorCompiler: Compiler = (ast) => CompilerRegistry.resolve(ast).makeEffect
