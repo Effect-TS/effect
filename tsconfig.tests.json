@@ -59,6 +59,8 @@
       "@effect/sql-libsql/*": ["./packages/sql/libsql/src/*.ts"],
       "@effect/sql-mssql": ["./packages/sql/mssql/src/index.ts"],
       "@effect/sql-mssql/*": ["./packages/sql/mssql/src/*.ts"],
+      "@effect/sql-mysql": ["./packages/sql/mysql/src/index.ts"],
+      "@effect/sql-mysql/*": ["./packages/sql/mysql/src/*.ts"],
       "@effect/sql-mysql2": ["./packages/sql/mysql2/src/index.ts"],
       "@effect/sql-mysql2/*": ["./packages/sql/mysql2/src/*.ts"],
       "@effect/sql-pg": ["./packages/sql/pg/src/index.ts"],
