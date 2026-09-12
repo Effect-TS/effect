@@ -1,7 +1,7 @@
 import * as BunMultipart from "@effect/platform-bun/BunMultipart"
 import { describe, it } from "@effect/vitest"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import { Effect, Stream } from "effect"
-import { strictEqual } from "node:assert"
 
 describe("BunMultipart", () => {
   it.live("propagates a request body read error while consuming an active file", () =>
@@ -41,10 +41,8 @@ describe("BunMultipart", () => {
       )
 
       strictEqual(bytesRead, 5)
-      strictEqual(error._tag, "MultipartError")
-      if (error._tag === "MultipartError") {
-        strictEqual(error.reason._tag, "InternalError")
-        strictEqual(error.reason.cause, cause)
-      }
+      assertTrue(error._tag === "MultipartError")
+      strictEqual(error.reason._tag, "InternalError")
+      strictEqual(error.reason.cause, cause)
     }))
 })

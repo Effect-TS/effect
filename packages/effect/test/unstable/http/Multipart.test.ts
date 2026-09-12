@@ -240,17 +240,23 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "BodyTooLarge")
     }))
 
+  // A file part whose header and first five bytes arrive, then the upstream body fails.
+  const activeFileParts = (error: Multipart.MultipartError) =>
+    Stream.make(
+      new TextEncoder().encode(
+        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
+      )
+    ).pipe(
+      Stream.concat(Stream.fail(error)),
+      Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" }))
+    )
+
   it.live("propagates upstream failure while consuming an active file", () =>
     Effect.gen(function*() {
       const upstreamError = Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed"))
-      const fileStart = new TextEncoder().encode(
-        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
-      )
       let bytesRead = 0
 
-      const error = yield* Stream.make(fileStart).pipe(
-        Stream.concat(Stream.fail(upstreamError)),
-        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
+      const error = yield* activeFileParts(upstreamError).pipe(
         Stream.runForEach((part) =>
           part._tag === "File"
             ? Stream.runForEach(part.content, (chunk) =>
@@ -270,43 +276,22 @@ describe("Multipart", () => {
   it.live("preserves upstream failure when collecting an active file with contentEffect", () =>
     Effect.gen(function*() {
       const upstreamError = Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed"))
-      let contentError: Multipart.MultipartError | undefined
-      const fileStart = new TextEncoder().encode(
-        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
-      )
 
-      const error = yield* Stream.make(fileStart).pipe(
-        Stream.concat(Stream.fail(upstreamError)),
-        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
-        Stream.runForEach((part) =>
-          part._tag === "File"
-            ? part.contentEffect.pipe(Effect.tapError((error) =>
-              Effect.sync(() => {
-                contentError = error
-              })
-            ))
-            : Effect.die("expected file")
-        ),
+      const error = yield* activeFileParts(upstreamError).pipe(
+        Stream.runForEach((part) => part._tag === "File" ? part.contentEffect : Effect.die("expected file")),
         Effect.timeout("1 second"),
         Effect.flip
       )
 
-      strictEqual(contentError, upstreamError)
       strictEqual(error, upstreamError)
     }))
 
   it.live("preserves the upstream error cause when persisting an active file", () =>
     Effect.gen(function*() {
-      const cause = new Error("body-read-failed")
-      const upstreamError = Multipart.MultipartError.fromReason("InternalError", cause)
-      const fileStart = new TextEncoder().encode(
-        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
-      )
+      const upstreamError = Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed"))
       let bytesWritten = 0
 
-      const error = yield* Stream.make(fileStart).pipe(
-        Stream.concat(Stream.fail(upstreamError)),
-        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
+      const error = yield* activeFileParts(upstreamError).pipe(
         Multipart.toPersisted,
         Effect.provideService(
           FileSystem.FileSystem,
@@ -327,12 +312,7 @@ describe("Multipart", () => {
       )
 
       strictEqual(bytesWritten, 5)
-      strictEqual(error._tag, "MultipartError")
-      if (error._tag === "MultipartError") {
-        strictEqual(error.reason._tag, "InternalError")
-        strictEqual(error.reason.cause, cause)
-        strictEqual(error, upstreamError)
-      }
+      strictEqual(error, upstreamError)
     }))
 
   it.effect("propagates Parse when the body ends mid-file", () =>

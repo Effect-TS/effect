@@ -199,7 +199,10 @@ export interface Persisted {
 
 const MultipartErrorTypeId = "~effect/http/Multipart/MultipartError"
 
-const isMultipartError = (u: unknown): u is MultipartError => Predicate.hasProperty(u, MultipartErrorTypeId)
+const toMultipartError = (cause: unknown): MultipartError =>
+  Predicate.hasProperty(cause, MultipartErrorTypeId)
+    ? cause as MultipartError
+    : MultipartError.fromReason("InternalError", cause)
 
 /**
  * Error reason carried by a `MultipartError`.
@@ -487,7 +490,8 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
                 if (!Arr.isReadonlyArrayNonEmpty(chunks)) {
                   if (finished) {
                     return Cause.done()
-                  } else if (Option.isSome(exit)) {
+                  }
+                  if (Option.isSome(exit)) {
                     return exit.value
                   }
                   return Effect.flatMap(pump, loop)
@@ -498,7 +502,7 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
               })
             )
           )
-          partsBuffer.push(new FileImpl(info, pullChunks))
+          partsBuffer.push(new FileImpl(info, Channel.mapError(pullChunks, toMultipartError)))
           return function(chunk) {
             if (chunk === null) {
               finished = true
@@ -623,18 +627,14 @@ class FileImpl extends PartBase implements File {
 
   constructor(
     info: MP.PartInfo,
-    channel: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown>
+    channel: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, MultipartError>
   ) {
     super()
     this.key = info.name
     this.name = info.filename ?? info.name
     this.contentType = info.contentType
-    const content = Channel.mapError(
-      channel,
-      (cause) => isMultipartError(cause) ? cause : MultipartError.fromReason("InternalError", cause)
-    )
-    this.content = Stream.fromChannel(content)
-    this.contentEffect = Channel.mkUint8Array(content)
+    this.content = Stream.fromChannel(channel)
+    this.contentEffect = Channel.mkUint8Array(channel)
   }
 
   toJSON(): unknown {
@@ -651,11 +651,7 @@ class FileImpl extends PartBase implements File {
 const defaultWriteFile = (path: string, file: File) =>
   Effect.flatMap(
     FileSystem.FileSystem,
-    (fs) =>
-      Effect.mapError(
-        Stream.run(file.content, fs.sink(path)),
-        (cause) => isMultipartError(cause) ? cause : MultipartError.fromReason("InternalError", cause)
-      )
+    (fs) => Effect.mapError(Stream.run(file.content, fs.sink(path)), toMultipartError)
   )
 
 /**
