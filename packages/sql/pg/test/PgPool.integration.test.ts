@@ -37,15 +37,16 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.notStrictEqual(first, second)
     }))
 
-  it.effect("applies URL options to initial and replacement connections", () =>
+  it.effect("applies startup parameters to initial and replacement connections", () =>
     Effect.gen(function*() {
       const config = yield* poolConfig
       const url = new URL(Redacted.value(config.url))
-      url.searchParams.set("options", "-cstatement_timeout=17s -crandom_page_cost=2.5")
+      url.searchParams.set("options", "-crandom_page_cost=2.5")
       const pool = yield* PgPool.make({
         url: Redacted.make(url.toString()),
         connectionTTL: 0,
-        maxConnections: 1
+        maxConnections: 1,
+        startupParameters: { statement_timeout: "17s" }
       })
       const checkout = Effect.scoped(Effect.gen(function*() {
         const connection = yield* pool.get

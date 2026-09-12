@@ -11,13 +11,14 @@ const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
 const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
 
-it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient options", (it) => {
+it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient startup parameters", (it) => {
   it.effect("forwards session defaults through the client pool", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer
       const sql = yield* PgClient.make({
         url: Redacted.make(container.getConnectionUri()),
-        options: "-cstatement_timeout=17s -crandom_page_cost=2.5"
+        options: "-cstatement_timeout=1s -crandom_page_cost=2.5",
+        startupParameters: { statement_timeout: "17s" }
       }).pipe(Effect.provide(Reactivity.layer))
       const rows = yield* sql`SELECT current_setting('statement_timeout') AS timeout,
         current_setting('random_page_cost') AS cost`

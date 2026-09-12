@@ -101,6 +101,7 @@ export interface Config {
   readonly connectTimeout?: Duration.Input | undefined
   readonly applicationName?: string | undefined
   readonly options?: string | undefined
+  readonly startupParameters?: Readonly<Record<string, string>> | undefined
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
@@ -2037,6 +2038,7 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
       parser = PgProtocol.makeParser<unknown>({ maxMessageSize: config.maxMessageSize })
       socket.on("data", onData)
       socket.write(PgProtocol.encodeStartupMessage({
+        ...config.startupParameters,
         user: config.username,
         database: config.database,
         options: config.options,
@@ -2148,6 +2150,7 @@ interface ResolvedConfig {
   readonly connectTimeout: Duration.Duration
   readonly applicationName: string
   readonly options: string | undefined
+  readonly startupParameters: Readonly<Record<string, string>> | undefined
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
 }
@@ -2160,6 +2163,8 @@ const configError = (message: string, cause?: unknown): SqlError =>
       operation: "connect"
     })
   })
+
+const reservedStartupParameters = ["user", "database", "replication", "options"]
 
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
   Effect.gen(function*() {
@@ -2178,6 +2183,26 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     if (startupOptions?.includes("\0")) {
       return yield* Effect.fail(configError("Options must not contain NUL"))
     }
+    const startupParameters: Record<string, string> = {}
+    for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
+      const normalized = name.toLowerCase()
+      if (reservedStartupParameters.includes(normalized) || normalized.startsWith("_pq_.")) {
+        return yield* Effect.fail(configError(`Reserved startup parameter: ${normalized}`))
+      }
+      if (name.length === 0 || name.includes("\0") || value.includes("\0")) {
+        return yield* Effect.fail(
+          configError("Startup parameter names must be nonempty and names and values must not contain NUL")
+        )
+      }
+      if (normalized === "client_encoding") {
+        if (value.toUpperCase() !== "UTF8" && value.toUpperCase() !== "UTF-8") {
+          return yield* Effect.fail(configError("Startup parameter client_encoding must be UTF8"))
+        }
+        startupParameters.client_encoding = "UTF8"
+      } else {
+        Object.defineProperty(startupParameters, normalized, { value, enumerable: true, configurable: true })
+      }
+    }
     return {
       host,
       port,
@@ -2188,8 +2213,10 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       username,
       password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
-      applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
+      applicationName: options.applicationName ?? startupParameters.application_name ?? url.applicationName ??
+        "@effect/sql-pg",
       options: startupOptions,
+      startupParameters,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
     }

@@ -101,6 +101,7 @@ export interface PgClientConfig {
 
   readonly applicationName?: string | undefined
   readonly options?: string | undefined
+  readonly startupParameters?: Readonly<Record<string, string>> | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined
