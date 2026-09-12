@@ -1,4 +1,5 @@
-import { assert, describe, it, vi } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
+import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -286,14 +287,22 @@ describe("RcRef", () => {
       assert.strictEqual(released, 2)
     }))
 
-  it.effect("idleTimeToLive 0 is decoded instead of dropped", () =>
+  it.effect("idleTimeToLive 0 schedules resource release", () =>
     Effect.gen(function*() {
-      const spy = yield* Effect.sync(() => vi.spyOn(Duration, "fromInputUnsafe"))
-      yield* RcRef.make({
+      const clock = yield* Clock.Clock
+      const sleeps: Array<Duration.Duration> = []
+      const ref = yield* RcRef.make({
         acquire: Effect.succeed("foo"),
         idleTimeToLive: 0
-      })
-      assert.isTrue(spy.mock.calls.some((call) => Object.is(call[0], 0)))
-      spy.mockRestore()
+      }).pipe(Effect.provideService(Clock.Clock, {
+        ...clock,
+        sleep: (duration) => {
+          sleeps.push(duration)
+          return clock.sleep(duration)
+        }
+      }))
+
+      yield* Effect.scoped(RcRef.get(ref))
+      assert.deepStrictEqual(sleeps, [Duration.zero])
     }))
 })
