@@ -92,11 +92,37 @@ the corresponding runtime ASTs before using normal `SchemaParser` functions.
 Use a one-element array for a single schema. Generated modules do not import
 the generator and work where `new Function` is forbidden.
 
-Regenerate AOT modules when schema definitions or the Effect version change.
-Installation trusts the supplied root order, definitions and shared AST
-identities. Callbacks and symbols are read from those ASTs, not serialized.
+The low-level installation trusts the supplied root order and AST definitions.
 Include `SchemaAST.toType(schema.ast)` for guards and construction, and
 `SchemaAST.flip(schema.ast)` for encoding, when those are distinct ASTs.
+
+`effect/unstable/schema/SchemaAOTCompiler/Build` provides the higher-level
+workflow. Its `build` function loads direct Schema exports, writes a
+self-installing module through `FileSystem`, and prepares decoding by default:
+
+```ts
+import * as SchemaAOTCompilerBuild from "effect/unstable/schema/SchemaAOTCompiler/Build"
+
+SchemaAOTCompilerBuild.build({
+  modules: {
+    "./schemas/User.js": () => import("./schemas/User.js"),
+    "./schemas/Order.js": () => import("./schemas/Order.js")
+  },
+  baseUrl: import.meta.url,
+  outFile: "./generated/schema-aot.js"
+})
+```
+
+Import the generated file at application startup. Module keys identify imports
+relative to `baseUrl`; each loader must return that same module during the
+build. The lazy record produced by `import.meta.glob` can be passed directly.
+Request `encode`, `is`, or `make` explicitly when those directions also need
+AOT roots. Loading executes the selected application modules during the build.
+Run the returned Effect with the platform's `FileSystem` and `Path` services,
+and ensure the bundler retains the generated side-effect import.
+
+Regenerate AOT modules when schema definitions or the Effect version change.
+Callbacks and symbols are read from runtime ASTs, not serialized.
 
 ### One registry for all implementations
 
