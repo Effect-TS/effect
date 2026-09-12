@@ -92,6 +92,11 @@ function assertGeneratedClientsCompile(
   options: {
     readonly exactOptionalPropertyTypes?: boolean | undefined
     readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+    /**
+     * Extra source checked next to the generated client for the matching
+     * format. Use it to assert that call sites accept real payload values.
+     */
+    readonly usages?: Partial<Record<"httpclient" | "httpclient-type-only", string>> | undefined
   } = {}
 ) {
   const generate = (
@@ -119,6 +124,13 @@ function assertGeneratedClientsCompile(
         const path = join(directory, `Client${index}.ts`)
         writeFileSync(path, client)
         return path
+      })
+      formats.forEach((format, index) => {
+        const usage = options.usages?.[format]
+        if (usage === undefined) return
+        const path = join(directory, `Usage${index}.ts`)
+        writeFileSync(path, usage.replaceAll("__CLIENT__", `./Client${index}.ts`))
+        files.push(path)
       })
       const configPath = join(directory, "tsconfig.json")
       writeFileSync(
@@ -3015,6 +3027,55 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         {
           exactOptionalPropertyTypes: false,
           formats: ["httpclient"]
+        }
+      ))
+
+    it.effect("types multipart binary fields as File | Blob for generated clients", () =>
+      assertGeneratedClientsCompile(
+        {
+          openapi: "3.1.0",
+          info: { title: "Upload API", version: "1.0.0" },
+          paths: {
+            "/upload": {
+              post: {
+                operationId: "upload",
+                parameters: [],
+                requestBody: {
+                  required: true,
+                  content: {
+                    "multipart/form-data": {
+                      schema: {
+                        type: "object",
+                        properties: { file: { type: "string", format: "binary" } },
+                        required: ["file"],
+                        additionalProperties: false
+                      }
+                    }
+                  }
+                },
+                responses: { "204": { description: "Uploaded" } },
+                tags: ["Upload"],
+                security: []
+              }
+            }
+          },
+          components: { schemas: {}, securitySchemes: {} },
+          security: [],
+          tags: [{ name: "Upload" }]
+        },
+        {
+          usages: {
+            httpclient: `import type { UploadRequestFormData } from "__CLIENT__"
+
+// File and Blob must both be assignable (HttpBody.FormDataCoercible).
+export const withFile: UploadRequestFormData = { file: new File(["hello"], "hello.txt") }
+export const withBlob: UploadRequestFormData = { file: new Blob(["hello"]) }
+`,
+            "httpclient-type-only": `import type { UploadRequestFormData } from "__CLIENT__"
+
+export const withFile: UploadRequestFormData = { file: new File(["hello"], "hello.txt") }
+`
+          }
         }
       ))
   })

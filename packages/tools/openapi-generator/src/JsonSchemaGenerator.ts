@@ -35,8 +35,19 @@ interface MultipartSchemaRefs {
   readonly files: string
 }
 
-interface GenerateHttpApiOptions extends GenerateOptions {
+interface GenerateHttpApiOptions extends GenerateOptions, RenderSchemaTypeAndRuntimeOptions {
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
+}
+
+interface RenderSchemaTypeAndRuntimeOptions {
+  readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
+  /**
+   * Synthetic `$ref` name used for binary multipart fields in generated
+   * clients. Clients build request bodies from `File` / `Blob` values, so the
+   * field is rendered as `globalThis.File | globalThis.Blob` instead of a
+   * server-side persisted file.
+   */
+  readonly clientMultipartFileRef?: string | undefined
 }
 
 /**
@@ -70,7 +81,7 @@ function makeWithRepresentation() {
     source: Source,
     components: JsonSchema.Definitions,
     typeOnly: boolean,
-    options?: GenerateOptions
+    options?: GenerateHttpApiOptions
   ) {
     const generated = makeCodeDocument(source, components, options)
     if (generated === undefined) {
@@ -81,7 +92,7 @@ function makeWithRepresentation() {
     const recursiveReferences = Object.entries(generated.codeDocument.references.recursives)
 
     const nonRecursives = nonRecursiveReferences.map(({ $ref, code }) =>
-      renderSchemaTypeAndRuntime($ref, code, typeOnly)
+      renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
     )
 
     const recursiveDeclarations: Array<string> = []
@@ -89,7 +100,7 @@ function makeWithRepresentation() {
 
     if (typeOnly) {
       for (const [$ref, code] of recursiveReferences) {
-        recursives.push(renderSchemaTypeAndRuntime($ref, code, true))
+        recursives.push(renderSchemaTypeAndRuntime($ref, code, true, options))
       }
     } else {
       const recursivelyForwardReferenced = collectForwardReferencedRecursives(
@@ -113,12 +124,12 @@ function makeWithRepresentation() {
           continue
         }
 
-        recursives.push(renderSchemaTypeAndRuntime($ref, code, false))
+        recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
       }
     }
 
     const codes = generated.codeDocument.codes.map((code, i) =>
-      renderSchemaTypeAndRuntime(generated.nameMap[i], code, typeOnly)
+      renderSchemaTypeAndRuntime(generated.nameMap[i], code, typeOnly, options)
     )
 
     return renderImportArtifacts(generated.codeDocument, !typeOnly) +
@@ -142,7 +153,7 @@ function makeWithRepresentation() {
     const recursiveReferences = Object.entries(generated.codeDocument.references.recursives)
 
     const nonRecursives = nonRecursiveReferences.map(({ $ref, code }) =>
-      renderSchemaTypeAndRuntime($ref, code, false, options?.multipartSchemaRefs)
+      renderSchemaTypeAndRuntime($ref, code, false, options)
     )
 
     const recursivelyForwardReferenced = collectForwardReferencedRecursives(nonRecursiveReferences, recursiveReferences)
@@ -166,11 +177,11 @@ function makeWithRepresentation() {
         continue
       }
 
-      recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options?.multipartSchemaRefs))
+      recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
     }
 
     const codes = generated.codeDocument.codes.map((code, i) =>
-      renderSchemaTypeAndRuntime(generated.nameMap[i], code, false, options?.multipartSchemaRefs)
+      renderSchemaTypeAndRuntime(generated.nameMap[i], code, false, options)
     )
 
     return renderImportArtifacts(generated.codeDocument, true) +
@@ -278,8 +289,9 @@ function renderSchemaTypeAndRuntime(
   $ref: string,
   code: SchemaRepresentation.Code,
   typeOnly: boolean,
-  multipartSchemaRefs?: MultipartSchemaRefs
+  options?: RenderSchemaTypeAndRuntimeOptions
 ) {
+  const multipartSchemaRefs = options?.multipartSchemaRefs
   if (!typeOnly && multipartSchemaRefs !== undefined) {
     if ($ref === multipartSchemaRefs.singleFile) {
       return [
@@ -293,6 +305,20 @@ function renderSchemaTypeAndRuntime(
         `export const ${$ref} = Multipart.FilesSchema`
       ].join("\n")
     }
+  }
+  if (options?.clientMultipartFileRef !== undefined && $ref === options.clientMultipartFileRef) {
+    const type = `export type ${$ref} = globalThis.File | globalThis.Blob`
+    if (typeOnly) {
+      return type
+    }
+    return [
+      type,
+      `export const ${$ref} = Schema.declare(` +
+      `(value: unknown): value is globalThis.File | globalThis.Blob => ` +
+      `(typeof globalThis.File !== "undefined" && value instanceof globalThis.File) || ` +
+      `(typeof globalThis.Blob !== "undefined" && value instanceof globalThis.Blob), ` +
+      `{ expected: "File | Blob" })`
+    ].join("\n")
   }
 
   const strings = [`export type ${$ref} = ${code.Type}`]
