@@ -344,6 +344,20 @@ describe("Formatter", () => {
       strictEqual(formatJson([1n, 2n]), `["1n","2n"]`)
     })
 
+    it("should stringify Error messages", () => {
+      strictEqual(formatJson(new Error("boom")), `"Error: boom"`)
+      strictEqual(formatJson({ error: new Error("boom") }), `{"error":"Error: boom"}`)
+    })
+
+    it("should keep structured serialization for Errors that define toJSON", () => {
+      class Tagged extends Error {
+        toJSON() {
+          return { _tag: "Tagged", message: "boom" }
+        }
+      }
+      strictEqual(formatJson(new Tagged("boom")), `{"_tag":"Tagged","message":"boom"}`)
+    })
+
     it("should redact sensitive data", () => {
       const date = Object.assign(new Date(0), {
         [Redactable.symbolRedactable]: () => "[REDACTED]"
