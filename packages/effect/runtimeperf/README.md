@@ -120,7 +120,8 @@ its Standard Schema and codec cases use their native APIs. Valibot uses the
 corresponding `is`, `safeParse` and Standard Schema APIs. The focused Effect
 adapter family measures the overhead of public APIs that wrap parser issues.
 The compiler comparison calls `z.compile(schema, { strict: true })` and uses
-Zod's `validate` API for boolean checks.
+Zod's `validate` API for boolean checks. Ten representative scenarios also run
+against equivalent Valibot schemas using `parse` and `is`.
 
 ## Measurement model
 

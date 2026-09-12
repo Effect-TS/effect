@@ -2374,6 +2374,82 @@
           ]
         },
         {
+          "file": "suites/compiler-rebuild/fixtures/valibot.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "valibot",
+            "implementation": "valibot",
+            "astTags": [],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "valibot-parseValid",
+              "export": "parseValid",
+              "scenario": "compiler-rebuild-parseValid"
+            },
+            {
+              "name": "valibot-parseInvalid",
+              "export": "parseInvalid",
+              "scenario": "compiler-rebuild-parseInvalid",
+              "path": "invalid"
+            },
+            {
+              "name": "valibot-isValid",
+              "export": "isValid",
+              "scenario": "compiler-rebuild-isValid",
+              "operation": "is"
+            },
+            {
+              "name": "valibot-isInvalid",
+              "export": "isInvalid",
+              "scenario": "compiler-rebuild-isInvalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "valibot-array",
+              "export": "array",
+              "scenario": "compiler-rebuild-array",
+              "size": 32
+            },
+            {
+              "name": "valibot-record",
+              "export": "record",
+              "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "valibot-union",
+              "export": "union",
+              "scenario": "compiler-rebuild-union",
+              "size": 8
+            },
+            {
+              "name": "valibot-transform",
+              "export": "transform",
+              "scenario": "compiler-rebuild-transform",
+              "size": 32
+            },
+            {
+              "name": "valibot-makeStruct",
+              "export": "makeStruct",
+              "scenario": "compiler-rebuild-makeStruct",
+              "operation": "make",
+              "size": 32
+            },
+            {
+              "name": "valibot-makeArray",
+              "export": "makeArray",
+              "scenario": "compiler-rebuild-makeArray",
+              "operation": "make",
+              "size": 32
+            }
+          ]
+        },
+        {
           "file": "suites/compiler-rebuild/fixtures/zod-compiled.ts",
           "defaults": {
             "tier": 1,
