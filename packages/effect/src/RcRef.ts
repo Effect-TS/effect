@@ -160,6 +160,10 @@ export const make: <A, E, R>(
     /**
      * When the reference count reaches zero, the resource will be released
      * after this duration.
+     *
+     * For finite durations, including `0`, release runs in a forked fiber
+     * and is not awaited by the scope releasing the last reference. Omitting
+     * this option releases the resource within that scope and awaits completion.
      */
     readonly idleTimeToLive?: Duration.Input | undefined
   }
