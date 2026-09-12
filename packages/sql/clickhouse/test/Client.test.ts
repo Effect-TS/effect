@@ -34,6 +34,21 @@ describe("ClickhouseClient", { concurrent: false }, () => {
     assert.strictEqual(query, "SELECT {p1: Float64}")
   })
 
+  it("uses the ClickHouse dialect for dialect-specific fragments", () => {
+    const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
+
+    assert.strictEqual(
+      sql.onDialect({
+        sqlite: () => "sqlite",
+        pg: () => "pg",
+        mysql: () => "mysql",
+        mssql: () => "mssql",
+        clickhouse: () => "clickhouse"
+      }),
+      "clickhouse"
+    )
+  })
+
   it.effect("closes the client when the connection check times out", () =>
     Effect.gen(function*() {
       connectImmediately = false
