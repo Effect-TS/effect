@@ -17,7 +17,7 @@ describe("BunMultipart", () => {
           controller.error(cause)
         }
       }, {
-        // Keep the error on the next pull so the file bytes are consumed first.
+        // Delay the error until the file bytes are consumed.
         highWaterMark: 0
       })
       const request = new Request("http://localhost/upload", {

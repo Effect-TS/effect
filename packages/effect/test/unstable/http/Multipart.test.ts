@@ -240,7 +240,6 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "BodyTooLarge")
     }))
 
-  // A file part whose header and first five bytes arrive, then the upstream body fails.
   const activeFileParts = (error: Multipart.MultipartError) =>
     Stream.make(
       new TextEncoder().encode(
