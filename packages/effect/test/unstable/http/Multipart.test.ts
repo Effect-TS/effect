@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { ByteSize, Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
+import { ByteSize, Effect, ErrorReporter, FileSystem, identity, Path, Schema, Sink, Stream, Unify } from "effect"
 import {
   HttpClientRequest,
   HttpIncomingMessage,
@@ -265,6 +265,74 @@ describe("Multipart", () => {
 
       strictEqual(bytesRead, 5)
       strictEqual(error, upstreamError)
+    }))
+
+  it.live("preserves upstream failure when collecting an active file with contentEffect", () =>
+    Effect.gen(function*() {
+      const upstreamError = Multipart.MultipartError.fromReason("InternalError", new Error("body-read-failed"))
+      let contentError: Multipart.MultipartError | undefined
+      const fileStart = new TextEncoder().encode(
+        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
+      )
+
+      const error = yield* Stream.make(fileStart).pipe(
+        Stream.concat(Stream.fail(upstreamError)),
+        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
+        Stream.runForEach((part) =>
+          part._tag === "File"
+            ? part.contentEffect.pipe(Effect.tapError((error) =>
+              Effect.sync(() => {
+                contentError = error
+              })
+            ))
+            : Effect.die("expected file")
+        ),
+        Effect.timeout("1 second"),
+        Effect.flip
+      )
+
+      strictEqual(contentError, upstreamError)
+      strictEqual(error, upstreamError)
+    }))
+
+  it.live("preserves the upstream error cause when persisting an active file", () =>
+    Effect.gen(function*() {
+      const cause = new Error("body-read-failed")
+      const upstreamError = Multipart.MultipartError.fromReason("InternalError", cause)
+      const fileStart = new TextEncoder().encode(
+        "--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"
+      )
+      let bytesWritten = 0
+
+      const error = yield* Stream.make(fileStart).pipe(
+        Stream.concat(Stream.fail(upstreamError)),
+        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
+        Multipart.toPersisted,
+        Effect.provideService(
+          FileSystem.FileSystem,
+          FileSystem.makeNoop({
+            makeTempDirectoryScoped: () => Effect.succeed("/tmp/multipart-test"),
+            sink: () =>
+              Sink.forEach((chunk: Uint8Array) =>
+                Effect.sync(() => {
+                  bytesWritten += chunk.length
+                })
+              )
+          })
+        ),
+        Effect.provide(Path.layer),
+        Effect.scoped,
+        Effect.timeout("1 second"),
+        Effect.flip
+      )
+
+      strictEqual(bytesWritten, 5)
+      strictEqual(error._tag, "MultipartError")
+      if (error._tag === "MultipartError") {
+        strictEqual(error.reason._tag, "InternalError")
+        strictEqual(error.reason.cause, cause)
+        strictEqual(error, upstreamError)
+      }
     }))
 
   it.effect("propagates Parse when the body ends mid-file", () =>
