@@ -37,6 +37,29 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.notStrictEqual(first, second)
     }))
 
+  it.effect("applies URL options to initial and replacement connections", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const url = new URL(Redacted.value(config.url))
+      url.searchParams.set("options", "-cstatement_timeout=17s -crandom_page_cost=2.5")
+      const pool = yield* PgPool.make({
+        url: Redacted.make(url.toString()),
+        connectionTTL: 0,
+        maxConnections: 1
+      })
+      const checkout = Effect.scoped(Effect.gen(function*() {
+        const connection = yield* pool.get
+        const result = yield* connection.query(
+          "SELECT current_setting('statement_timeout') AS timeout, current_setting('random_page_cost') AS cost"
+        )
+        assert.deepStrictEqual(result.rows, [{ timeout: "17s", cost: "2.5" }])
+        return connection.processId
+      }))
+      const first = yield* checkout
+      const second = yield* checkout
+      assert.notStrictEqual(first, second)
+    }))
+
   it.effect("streams rows incrementally and cancels on early abort", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make(yield* poolConfig)

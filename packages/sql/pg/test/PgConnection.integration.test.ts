@@ -41,6 +41,47 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       yield* assertInterruptedOnClose(scope, notifications)
     }))
 
+  it.effect("preserves UTF-8 when raw options request another encoding", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({ options: "-cclient_encoding=LATIN1" })
+      const result = yield* connection.query(
+        "SELECT current_setting('client_encoding') AS encoding, $1::text AS text",
+        ["héllo 世界"]
+      )
+      assert.deepStrictEqual(result.rows, [{ encoding: "UTF8", text: "héllo 世界" }])
+    }))
+
+  it.effect("leaves raw option parsing and validation to PostgreSQL", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({ options: String.raw`-c custom.text=hello\ world\\x=y` })
+      assert.deepStrictEqual((yield* connection.query("SHOW custom.text")).rows, [{
+        "custom.text": "hello world\\x=y"
+      }])
+      const error = yield* Effect.flip(makeConnection({ options: "-creplication=database" }))
+      assert.strictEqual(error.reason.operation, "connect")
+      assert.propertyVal(error.reason.cause, "code", "42704")
+      assert.propertyVal(error.reason.cause, "message", "unrecognized configuration parameter \"replication\"")
+    }))
+
+  it.effect("establishes URL options as session defaults", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const url = new URL(container.getConnectionUri())
+      url.searchParams.set("options", "-cstatement_timeout=17s --random_page_cost=2.5")
+      const connection = yield* makeConnection({
+        url: Redacted.make(url.toString())
+      })
+      const read = connection.query(
+        "SELECT current_setting('statement_timeout') AS timeout, " +
+          "current_setting('random_page_cost') AS cost"
+      )
+      const expected = [{ timeout: "17s", cost: "2.5" }]
+      assert.deepStrictEqual((yield* read).rows, expected)
+      yield* connection.query("SET statement_timeout = '1s'")
+      yield* connection.query("RESET ALL")
+      assert.deepStrictEqual((yield* read).rows, expected)
+    }))
+
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()

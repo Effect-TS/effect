@@ -855,6 +855,44 @@ describe("PgConnection in-process server", () => {
       assert.strictEqual(connection.processId, 1234)
     })))
 
+  it.live.each([
+    { explicit: "-cstatement_timeout=3s", urlOptions: "-cstatement_timeout=2s", expected: "-cstatement_timeout=3s" },
+    { explicit: "", urlOptions: "-cstatement_timeout=2s", expected: "" },
+    { explicit: undefined, urlOptions: "", expected: "" },
+    { explicit: undefined, urlOptions: undefined, expected: undefined },
+    {
+      explicit: undefined,
+      urlOptions: String.raw`-c custom.text=hello\ 世界\\x=%20`,
+      expected: String.raw`-c custom.text=hello\ 世界\\x=%20`
+    }
+  ])(
+    "forwards explicit or URL options without reading PGOPTIONS: %j",
+    ({ explicit, urlOptions, expected }) =>
+      Effect.scoped(Effect.gen(function*() {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => vi.stubEnv("PGOPTIONS", "-cstatement_timeout=1s")),
+          () => Effect.sync(() => vi.unstubAllEnvs())
+        )
+        let parameters: ReadonlyMap<string, string> | undefined
+        const { port } = yield* withTcpServer((socket) => {
+          consumeFrontend(socket, (tag, message) => {
+            if (tag === undefined) {
+              parameters = startupParameters(message)
+              socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+            }
+          })
+        })
+        const url = new URL(`postgres://test@127.0.0.1:${port}/test`)
+        if (urlOptions !== undefined) url.searchParams.set("options", urlOptions)
+        yield* PgConnection.make({
+          url: Redacted.make(url.toString()),
+          options: explicit
+        })
+        assert.strictEqual(parameters!.get("application_name"), "@effect/sql-pg")
+        assert.strictEqual(parameters!.get("options"), expected)
+      }))
+  )
+
   it.live("lets explicit fields override URL connection and startup values", () =>
     Effect.scoped(Effect.gen(function*() {
       let parameters: ReadonlyMap<string, string> | undefined

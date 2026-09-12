@@ -100,6 +100,7 @@ export interface Config {
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly applicationName?: string | undefined
+  readonly options?: string | undefined
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
@@ -2038,6 +2039,7 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
       socket.write(PgProtocol.encodeStartupMessage({
         user: config.username,
         database: config.database,
+        options: config.options,
         application_name: config.applicationName
       }))
     }
@@ -2145,6 +2147,7 @@ interface ResolvedConfig {
   readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
   readonly applicationName: string
+  readonly options: string | undefined
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
 }
@@ -2159,19 +2162,23 @@ const configError = (message: string, cause?: unknown): SqlError =>
   })
 
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
-  Effect.suspend(() => {
+  Effect.gen(function*() {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
       ? parseUrl(Redacted.value(options.url))
       : EffectResult.succeed({})
-    if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
+    if (EffectResult.isFailure(parsed)) return yield* Effect.fail(parsed.failure)
     const url = parsed.success
     const host = options.host ?? url.host ?? "localhost"
     const port = options.port ?? url.port ?? 5432
     const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
     if (username === undefined) {
-      return Effect.fail(configError("No username configured"))
+      return yield* Effect.fail(configError("No username configured"))
     }
-    return Effect.succeed<ResolvedConfig>({
+    const startupOptions = options.options ?? url.options
+    if (startupOptions?.includes("\0")) {
+      return yield* Effect.fail(configError("Options must not contain NUL"))
+    }
+    return {
       host,
       port,
       path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
@@ -2182,9 +2189,10 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
       applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
+      options: startupOptions,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
-    })
+    }
   })
 
 interface UrlConfig {
@@ -2194,6 +2202,7 @@ interface UrlConfig {
   username?: string | undefined
   password?: string | undefined
   applicationName?: string | undefined
+  options?: string | undefined
   connectTimeout?: Duration.Duration | undefined
   ssl?: boolean | "prefer" | undefined
 }
@@ -2275,6 +2284,9 @@ const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
         break
       case "application_name":
         config.applicationName = value
+        break
+      case "options":
+        config.options = value
         break
       case "connect_timeout": {
         const seconds = Number(value)

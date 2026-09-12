@@ -32,6 +32,27 @@ describe("PgConnection config", () => {
       assert.isTrue(error.isRetryable)
     }))
 
+  it.effect.each([false, true])(
+    "rejects NUL in options before connecting (URL: %s)",
+    (fromUrl) =>
+      Effect.gen(function*() {
+        let connected = false
+        const url = new URL("postgres://test@localhost/db")
+        const options = "-cname=value\0other"
+        if (fromUrl) url.searchParams.set("options", options)
+        const error = yield* Effect.flip(PgConnection.make({
+          url: Redacted.make(url.toString()),
+          options: fromUrl ? undefined : options,
+          stream: () => {
+            connected = true
+            throw new Error("unexpected connection")
+          }
+        }))
+        assert.isFalse(connected)
+        assert.strictEqual(error.reason.message, "PgConnection: Options must not contain NUL")
+      })
+  )
+
   it.effect.each(["prefer", "allow"])("accepts sslmode=%s in a URL", (sslmode) =>
     Effect.gen(function*() {
       let connected = false
