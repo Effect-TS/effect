@@ -1,0 +1,87 @@
+# Native TDS verification and benchmarks
+
+Run from the repository root after `pnpm install`. The benchmark-only tedious
+dependency does not appear in the runtime dependency graph.
+
+## Live SQL Server
+
+Use a dedicated SQL Server 2022 Docker container. On ARM hosts the official image
+runs under amd64 emulation. This example exposes SQL Server only on localhost and
+accepts Microsoft's container EULA. The password below is for disposable local
+tests, not deployments.
+
+```sh
+docker run --detach --name effect-native-mssql-test --platform linux/amd64 \
+  -e ACCEPT_EULA=Y -e 'MSSQL_SA_PASSWORD=Effect_Tds_Test_7426!' \
+  -p 127.0.0.1:14339:1433 mcr.microsoft.com/mssql/server:2022-latest
+docker logs effect-native-mssql-test
+```
+
+After the server reports that it is ready for client connections:
+
+```sh
+EFFECT_INTEGRATION_TESTS=1 MSSQL_PORT=14339 pnpm test --run packages/sql/mssql/test
+node packages/sql/mssql/benchmark/TdsClient.ts
+node packages/sql/mssql/benchmark/TdsCodec.ts
+FRAGMENT_BYTES=4096 node packages/sql/mssql/benchmark/TdsCodec.ts
+```
+
+`MSSQL_HOST`, `MSSQL_PORT`, and `MSSQL_PASSWORD` override the local connection.
+Live benchmarks use SQL authentication as `sa` with TLS and explicitly trust the
+disposable container's certificate. Tests create and remove their own objects;
+do not point them at a production database.
+
+## Method
+
+`TdsClient.ts` compares a native session and tedious 20.0.0 in the same process.
+Both use Effect callbacks, TLS, identical session settings and row-object
+conversion. Results and session defaults must match before timing. Each workload
+warms both drivers for 300 ms, then measures five alternating pairs of 750 ms.
+`BENCH_ROUNDS` and `BENCH_DURATION_MS` control those values. Transactions count
+one begin/insert/rollback cycle as an operation; the native driver uses SQL
+batches for transaction control and tedious uses its transaction API.
+
+`TdsCodec.ts` reuses the DONEPROC payload/workload from
+`tedious/benchmarks/token-parser/done-token.js`, with identical chunks and a
+callback per token. It verifies token counts and alternates seven pairs after
+warmup. `TOKEN_COUNT`, `REPEATS`, `BENCH_ROUNDS`, and `FRAGMENT_BYTES` control it.
+This is a narrow parser microbenchmark, not a complete codec performance claim.
+
+## Local results, 2026-09-08
+
+Node 24.20.0, SQL Server 2022 CU26 (16.0.4265.3), Linux amd64 container under
+Docker on an ARM Mac. This was not an isolated performance host. Raw samples
+are in [results.jsonl](./results.jsonl); differences are median paired throughput
+changes, not the ratio of independent medians.
+
+| Workload                  | Native operations/s | Tedious operations/s | Paired change |
+| ------------------------- | ------------------: | -------------------: | ------------: |
+| Parameterized SELECT      |               2,202 |                1,963 |        +12.2% |
+| 100 rows × 3 columns      |               1,114 |                  968 |        +19.6% |
+| 100 rows × 20 columns     |               1,065 |                  966 |        +10.2% |
+| Large Unicode result      |               1,107 |                1,031 |         +7.2% |
+| Large Unicode parameter   |               1,085 |                  982 |        +10.4% |
+| Begin / insert / rollback |                 358 |                  316 |        +11.3% |
+| DONEPROC tokens           |           9,540,062 |            5,086,195 |        +87.2% |
+
+These samples were rerun after the TLS write-queue changes, with the live and
+codec benchmarks run sequentially. The large parameter sends and returns 10,000
+Unicode characters, exercising multi-packet requests. Unrelated host activity
+was not controlled, and samples vary materially. Treat these
+numbers as directional evidence and rerun longer, isolated trials before making
+release claims. No latency percentiles, memory/GC measurements, remote-server
+results, or concurrent pool load are established by this harness.
+
+## Coverage and remaining validation
+
+Tests cover packet/token fragmentation and bounds, NTLMv2 published vectors and
+a simulated exchange, SSRP discovery, routing, retries, cancellation races and
+timeouts. Live SQL tests cover TLS, SQL authentication, scalar/LOB/TVP codecs,
+procedures, output parameters, errors, transactions and public adapter behavior.
+Existing persistence/cache/queue integration tests also run against the container.
+
+Security Token FedAuth also has TLS peer tests, including required acknowledgements,
+echo flags and per-connection token acquisition. These do not establish live Azure
+interoperability. Windows-domain NTLM, Extended Protection, live Azure SQL,
+automatic Azure credential flows, and other SQL Server versions remain outside
+verified coverage.

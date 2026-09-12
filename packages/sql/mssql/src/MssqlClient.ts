@@ -1,12 +1,12 @@
 /**
- * Microsoft SQL Server client implementation for Effect SQL, backed by the
- * `tedious` driver.
+ * Microsoft SQL Server client implementation for Effect SQL, built on the native
+ * TDS protocol.
  *
  * This module provides the `MssqlClient` service, constructors, layers, and SQL
- * Server statement compiler. `make` creates a pooled Tedious client, checks the
+ * Server statement compiler. `make` creates a pooled native TDS client, checks the
  * connection with `SELECT 1`, maps SQL Server failures to `SqlError`, and
  * supports transactions with savepoints. The SQL Server-specific service adds
- * typed Tedious parameters with `param`, stored procedure calls with `call`,
+ * typed SQL Server parameters with `param`, stored procedure calls with `call`,
  * direct or config-backed layers, and default parameter type mappings.
  * Streaming queries are not implemented by this driver.
  *
@@ -19,7 +19,6 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Pool from "effect/Pool"
-import * as Rec from "effect/Record"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -40,11 +39,9 @@ import {
   UnknownError
 } from "effect/unstable/sql/SqlError"
 import * as Statement from "effect/unstable/sql/Statement"
-import { Buffer } from "node:buffer"
-import * as Tedious from "tedious"
-import type { ConnectionOptions } from "tedious/lib/connection.ts"
-import type { DataType } from "tedious/lib/data-type.ts"
-import type { ParameterOptions } from "tedious/lib/request.ts"
+import * as TdsConnection from "./internal/tdsConnection.ts"
+import * as TdsRequest from "./internal/tdsRequest.ts"
+import type { DataType, ParameterOptions } from "./internal/tdsRequest.ts"
 import type { Parameter } from "./Parameter.ts"
 import type * as Procedure from "./Procedure.ts"
 
@@ -216,12 +213,17 @@ export interface MssqlClientConfig {
    */
   readonly trustServer?: boolean | undefined
   readonly port?: number | undefined
+  /** Authentication method: `default`, `ntlm` (requires `domain`), or `azure-active-directory-access-token` (requires `accessToken`). */
   readonly authType?: string | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
+  /** Effect obtaining a fresh Azure SQL access token for each physical connection. Requires TLS. */
+  readonly accessToken?: Effect.Effect<Redacted.Redacted, SqlError> | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly cancelTimeout?: Duration.Input | undefined
+  /** Time before requesting cancellation. Defaults to 15 seconds; zero disables the request timer. Cancellation is drained before reuse. */
+  readonly requestTimeout?: Duration.Input | undefined
   readonly connectionRetryInterval?: Duration.Input | undefined
   readonly multiSubnetFailover?: boolean | undefined
   readonly maxRetriesOnTransientErrors?: number | undefined
@@ -287,161 +289,112 @@ export const make = (
     let pool: Pool.Pool<MssqlConnection, SqlError>
 
     const makeConnection = Effect.gen(function*() {
-      const conn = new Tedious.Connection({
-        options: {
-          port: options.port,
-          database: options.database,
-          trustServerCertificate: options.trustServer ?? false,
-          multiSubnetFailover: options.multiSubnetFailover,
-          connectTimeout: options.connectTimeout
-            ? Duration.toMillis(Duration.fromInputUnsafe(options.connectTimeout))
-            : undefined,
-          rowCollectionOnRequestCompletion: true,
-          useColumnNames: false,
-          instanceName: options.instanceName,
-          encrypt: options.encrypt ?? true,
-          cancelTimeout: options.cancelTimeout
-            ? Duration.toMillis(Duration.fromInputUnsafe(options.cancelTimeout))
-            : undefined,
-          connectionRetryInterval: options.connectionRetryInterval
-            ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionRetryInterval))
-            : undefined,
-          maxRetriesOnTransientErrors: options.maxRetriesOnTransientErrors
-        } as ConnectionOptions,
-        server: options.server,
-        authentication: {
-          type: (options.authType as any) ?? "default",
-          options: {
-            domain: options.domain,
-            userName: options.username,
-            password: options.password
-              ? Redacted.value(options.password)
-              : undefined
-          }
-        }
-      })
-
-      yield* Effect.addFinalizer(() => Effect.sync(() => conn.close()))
-
-      yield* Effect.callback<void, SqlError>((resume) => {
-        conn.connect((cause) => {
-          if (cause) {
-            resume(
-              Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to connect", "connect", "connection") }))
-            )
-          } else {
-            resume(Effect.void)
-          }
-        })
-      })
-
-      const run = (
-        sql: string,
-        values?: ReadonlyArray<any>,
-        rowsAsArray = false
-      ) =>
-        Effect.callback<any, SqlError>((resume) => {
-          const req = new Tedious.Request(sql, (cause, _rowCount, result) => {
-            if (cause) {
-              resume(
-                Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") }))
-              )
-              return
-            }
-
-            if (rowsAsArray) {
-              result = result.map((row: any) => row.map((_: any) => _.value))
-            } else {
-              result = rowsToObjects(result)
-            }
-
-            resume(Effect.succeed(result))
+      if (
+        options.authType && options.authType !== "default" && options.authType !== "ntlm" &&
+        options.authType !== "azure-active-directory-access-token"
+      ) {
+        return yield* Effect.fail(
+          new SqlError({
+            reason: new AuthenticationError({
+              cause: undefined,
+              message: `Unsupported native TDS authentication: ${options.authType}`,
+              operation: "connect"
+            })
           })
-
-          if (values) {
-            for (let i = 0, len = values.length; i < len; i++) {
-              const value = values[i]
-              const name = numberToParamName(i)
-
-              if (isMssqlParam(value)) {
-                req.addParameter(name, value.paramA, value.paramB, value.paramC)
-              } else {
-                const kind = Statement.primitiveKind(value)
-                const type = parameterTypes[kind]
-                req.addParameter(name, type, value)
-              }
-            }
-          }
-
-          conn.cancel()
-          conn.execSql(req)
-          return Effect.sync(() => conn.cancel())
-        })
-
-      const runProcedure = (
-        procedure: Procedure.ProcedureWithValues<any, any, any>,
-        transformRows: ((rows: ReadonlyArray<any>) => ReadonlyArray<any>) | undefined
-      ) =>
-        Effect.callback<any, SqlError>((resume) => {
-          const result: Record<string, any> = {}
-
-          const req = new Tedious.Request(
-            escape(procedure.name),
-            (cause, _, rows) => {
-              if (cause) {
-                resume(
-                  Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") }))
-                )
-              } else {
-                rows = rowsToObjects(rows)
-                if (transformRows) {
-                  rows = transformRows(rows) as any
-                }
-                resume(
-                  Effect.succeed({
-                    output: result,
-                    rows
-                  })
-                )
-              }
-            }
+        )
+      }
+      if (
+        (options.authType === "azure-active-directory-access-token" && options.accessToken === undefined) ||
+        (options.accessToken !== undefined && (options.authType === "ntlm" || options.encrypt === false))
+      ) {
+        return yield* Effect.fail(
+          new SqlError({
+            reason: new AuthenticationError({
+              cause: undefined,
+              message: "Access-token authentication requires an accessToken effect, TLS, and no NTLM authentication",
+              operation: "connect"
+            })
+          })
+        )
+      }
+      const accessToken = options.accessToken === undefined ? undefined : yield* options.accessToken.pipe(
+        Effect.timeout(options.connectTimeout ?? Duration.seconds(15)),
+        Effect.map(Redacted.value),
+        Effect.mapError((cause) =>
+          new SqlError({
+            reason: new AuthenticationError({
+              cause,
+              message: "Failed to obtain SQL access token",
+              operation: "connect"
+            })
+          })
+        )
+      )
+      const mapError = (error: SqlError) =>
+        new SqlError({
+          reason: classifyError(
+            error.reason.cause ?? error,
+            error.message,
+            "execute",
+            error.reason._tag === "ConnectionError" ? "connection" : "unknown"
           )
+        })
+      const conn = yield* TdsConnection.make({
+        server: options.server,
+        port: options.port,
+        instanceName: options.instanceName,
+        multiSubnetFailover: options.multiSubnetFailover,
+        authType: options.authType === "ntlm" ? "ntlm" : "default",
+        accessToken,
+        domain: options.domain,
+        maxRetriesOnTransientErrors: options.maxRetriesOnTransientErrors,
+        connectionRetryIntervalMs: options.connectionRetryInterval
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionRetryInterval))
+          : undefined,
+        database: options.database,
+        username: options.username,
+        password: options.password ? Redacted.value(options.password) : undefined,
+        encrypt: options.encrypt,
+        trustServer: options.trustServer,
+        connectTimeoutMs: options.connectTimeout
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.connectTimeout))
+          : undefined,
+        cancelTimeoutMs: options.cancelTimeout
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.cancelTimeout))
+          : undefined,
+        requestTimeoutMs: options.requestTimeout !== undefined
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.requestTimeout))
+          : undefined
+      }).pipe(Effect.mapError(mapError))
 
-          for (const name in procedure.params) {
-            const param = procedure.params[name]
-            const value = procedure.values[name]
-            req.addParameter(name, param.type, value, param.options)
+      const parameters = (values: ReadonlyArray<unknown>): Array<TdsRequest.Parameter> =>
+        values.map((value, i) => {
+          if (isMssqlParam(value)) {
+            return { name: numberToParamName(i), type: value.paramA, value: value.paramB, options: value.paramC }
           }
-
-          for (const name in procedure.outputParams) {
-            const param = procedure.outputParams[name]
-            req.addOutputParameter(name, param.type, undefined, param.options)
+          const kind = Statement.primitiveKind(value)
+          return {
+            name: numberToParamName(i),
+            type: parameterTypes[kind],
+            value: value instanceof Int8Array
+              ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+              : value
           }
-
-          req.on("returnValue", (name, value) => {
-            Rec.assignProperty(result, name, value)
-          })
-
-          conn.cancel()
-          conn.callProcedure(req)
-          return Effect.sync(() => conn.cancel())
         })
 
+      const run = (sql: string, values: ReadonlyArray<unknown>, rowsAsArray = false) =>
+        conn.query(sql, parameters(values), rowsAsArray).pipe(
+          Effect.map((result) => result.rows),
+          Effect.mapError(mapError)
+        )
+      const batch = (sql: string) => conn.batch(sql).pipe(Effect.asVoid, Effect.mapError(mapError))
       const connection = identity<MssqlConnection>({
         execute(sql, params, transformRows) {
-          return transformRows
-            ? Effect.map(run(sql, params), transformRows)
-            : run(sql, params)
+          return transformRows ? Effect.map(run(sql, params), transformRows) : run(sql, params)
         },
-        executeRaw(sql, params) {
-          return run(sql, params)
-        },
-        executeValues(sql, params) {
-          return run(sql, params, true)
-        },
-        executeValuesUnprepared(sql, params) {
-          return run(sql, params, true)
-        },
+        executeRaw: (sql, params) => run(sql, params),
+        executeValues: (sql, params) => run(sql, params, true),
+        executeValuesUnprepared: (sql, params) => run(sql, params, true),
         executeUnprepared(sql, params, transformRows) {
           return this.execute(sql, params, transformRows)
         },
@@ -449,78 +402,38 @@ export const make = (
           return Stream.die("executeStream not implemented")
         },
         call(procedure, transformRows) {
-          return runProcedure(procedure, transformRows)
+          const params: Array<TdsRequest.Parameter> = []
+          for (const name in procedure.params) {
+            const param = procedure.params[name]
+            params.push({ name, type: param.type, value: procedure.values[name], options: param.options })
+          }
+          for (const name in procedure.outputParams) {
+            const param = procedure.outputParams[name]
+            params.push({ name, type: param.type, value: null, options: param.options, output: true })
+          }
+          return conn.call(procedure.name, params).pipe(
+            Effect.map((result) => ({
+              output: result.output,
+              rows: transformRows ? transformRows(result.rows) : result.rows
+            })),
+            Effect.mapError(mapError)
+          )
         },
-        begin: Effect.callback<void, SqlError>((resume) => {
-          conn.beginTransaction((cause) => {
-            if (cause) {
-              resume(
-                Effect.fail(
-                  new SqlError({
-                    reason: classifyError(cause, "Failed to begin transaction", "beginTransaction")
-                  })
-                )
-              )
-            } else {
-              resume(Effect.void)
-            }
-          })
-        }),
-        commit: Effect.callback<void, SqlError>((resume) => {
-          conn.commitTransaction((cause) => {
-            if (cause) {
-              resume(
-                Effect.fail(
-                  new SqlError({
-                    reason: classifyError(cause, "Failed to commit transaction", "commitTransaction")
-                  })
-                )
-              )
-            } else {
-              resume(Effect.void)
-            }
-          })
-        }),
-        savepoint: (name: string) =>
-          Effect.callback<void, SqlError>((resume) => {
-            conn.saveTransaction((cause) => {
-              if (cause) {
-                resume(
-                  Effect.fail(
-                    new SqlError({ reason: classifyError(cause, "Failed to create savepoint", "createSavepoint") })
-                  )
-                )
-              } else {
-                resume(Effect.void)
-              }
-            }, name)
-          }),
-        rollback: (name?: string) =>
-          Effect.callback<void, SqlError>((resume) => {
-            conn.rollbackTransaction((cause) => {
-              if (cause) {
-                resume(
-                  Effect.fail(
-                    new SqlError({
-                      reason: classifyError(cause, "Failed to rollback transaction", "rollbackTransaction")
-                    })
-                  )
-                )
-              } else {
-                resume(Effect.void)
-              }
-            }, name)
-          })
+        begin: batch("BEGIN TRANSACTION"),
+        commit: batch("COMMIT TRANSACTION"),
+        savepoint: (name) => batch(`SAVE TRANSACTION ${escape(name)}`),
+        rollback: (name) =>
+          batch(name ? `ROLLBACK TRANSACTION ${escape(name)}` : "IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION")
       })
 
-      yield* Effect.callback<never, unknown>((resume) => {
-        conn.on("error", (_) => resume(Effect.fail(_)))
+      yield* Effect.callback<void>((resume) => {
+        const remove = conn.onClose(() => resume(Effect.void))
+        return Effect.sync(remove)
       }).pipe(
-        Effect.catch(() => Pool.invalidate(pool, connection)),
+        Effect.flatMap(() => Pool.invalidate(pool, connection)),
         Effect.interruptible,
         Effect.forkScoped
       )
-
       return connection
     })
 
@@ -554,6 +467,10 @@ export const make = (
     )
 
     const transactionService = TransactionConnection(clientIdCounter++)
+    const getConnection = Effect.flatMap(
+      Effect.serviceOption(transactionService),
+      (transaction) => transaction._tag === "Some" ? Effect.succeed(transaction.value[0]) : Pool.get(pool)
+    )
 
     const withTransaction = Client.makeWithTransaction({
       transactionService,
@@ -593,9 +510,9 @@ export const make = (
           A
         >(
           procedure: Procedure.ProcedureWithValues<I, O, A>
-        ) => Effect.scoped(Effect.flatMap(Pool.get(pool), (_) => _.call(procedure, transformRows))),
+        ) => Effect.scoped(Effect.flatMap(getConnection, (_) => _.call(procedure, transformRows))),
         withoutTransforms() {
-          const statement = Statement.make(Pool.get(pool), compiler.withoutTransform, spanAttributes, undefined)
+          const statement = Statement.make(getConnection, compiler.withoutTransform, spanAttributes, undefined)
           const client = Object.assign(
             statement,
             this,
@@ -607,7 +524,7 @@ export const make = (
                 A
               >(
                 procedure: Procedure.ProcedureWithValues<I, O, A>
-              ) => Effect.scoped(Effect.flatMap(Pool.get(pool), (_) => _.call(procedure, undefined)))
+              ) => Effect.scoped(Effect.flatMap(getConnection, (_) => _.call(procedure, undefined)))
             }
           )
           ;(client as any).safe = client
@@ -708,32 +625,21 @@ function numberToParamName(n: number) {
   return `${Math.ceil(n + 1)}`
 }
 
-const byteArrayParameterType: DataType = {
-  ...Tedious.TYPES.VarBinary,
-  validate(value, collation, options) {
-    return Tedious.TYPES.VarBinary.validate(
-      Buffer.isBuffer(value) ? value : Buffer.from(value.buffer, value.byteOffset, value.byteLength),
-      collation,
-      options
-    )
-  }
-}
-
 /**
- * Default mapping from Effect SQL primitive value kinds to Tedious SQL Server parameter data types.
+ * Default mapping from Effect SQL primitive value kinds to SQL Server parameter data types.
  *
  * @category constants
  * @since 4.0.0
  */
 export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = {
-  string: Tedious.TYPES.NVarChar,
-  number: Tedious.TYPES.Float,
-  bigint: Tedious.TYPES.BigInt,
-  boolean: Tedious.TYPES.Bit,
-  Date: Tedious.TYPES.DateTime,
-  Uint8Array: byteArrayParameterType,
-  Int8Array: byteArrayParameterType,
-  null: Tedious.TYPES.Bit
+  string: TdsRequest.TYPES.NVarChar,
+  number: TdsRequest.TYPES.Float,
+  bigint: TdsRequest.TYPES.BigInt,
+  boolean: TdsRequest.TYPES.Bit,
+  Date: TdsRequest.TYPES.DateTime,
+  Uint8Array: TdsRequest.TYPES.VarBinary,
+  Int8Array: TdsRequest.TYPES.VarBinary,
+  null: TdsRequest.TYPES.Bit
 }
 
 // custom types
@@ -751,19 +657,3 @@ interface MssqlParam extends
 
 const mssqlParam = Statement.custom<MssqlParam>("MssqlParam")
 const isMssqlParam = Statement.isCustom<MssqlParam>("MssqlParam")
-
-function rowsToObjects(rows: ReadonlyArray<any>) {
-  const newRows = new Array(rows.length)
-
-  for (let i = 0, len = rows.length; i < len; i++) {
-    const row = rows[i]
-    const newRow: any = {}
-    for (let j = 0, columnLen = row.length; j < columnLen; j++) {
-      const column = row[j]
-      Rec.assignProperty(newRow, column.metadata.colName, column.value)
-    }
-    newRows[i] = newRow
-  }
-
-  return newRows
-}
