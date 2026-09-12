@@ -79,7 +79,9 @@ export const make = <A, E, R>(options: {
       options.acquire as Effect.Effect<A, E>,
       context,
       scope,
-      options.idleTimeToLive ? Duration.fromInputUnsafe(options.idleTimeToLive) : undefined
+      options.idleTimeToLive !== undefined
+        ? Duration.fromInputUnsafe(options.idleTimeToLive)
+        : undefined
     )
     return Effect.as(
       Scope.addFinalizerExit(scope, () => {

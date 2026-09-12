@@ -1,5 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -283,5 +285,32 @@ describe("RcRef", () => {
 
       yield* TestClock.adjust("10 millis")
       assert.strictEqual(released, 2)
+    }))
+
+  it.effect("idleTimeToLive 0 releases resources after a zero-duration sleep", () =>
+    Effect.gen(function*() {
+      const clock = yield* Clock.Clock
+      const sleeps: Array<number> = []
+      let released = 0
+      const ref = yield* RcRef.make({
+        acquire: Effect.acquireRelease(
+          Effect.succeed("foo"),
+          () =>
+            Effect.sync(() => {
+              released++
+            })
+        ),
+        idleTimeToLive: 0
+      }).pipe(Effect.provideService(Clock.Clock, {
+        ...clock,
+        sleep: (duration) => {
+          sleeps.push(Duration.toMillis(duration))
+          return clock.sleep(duration)
+        }
+      }))
+
+      yield* Effect.scoped(RcRef.get(ref))
+      assert.deepStrictEqual(sleeps, [0])
+      assert.strictEqual(released, 1)
     }))
 })
