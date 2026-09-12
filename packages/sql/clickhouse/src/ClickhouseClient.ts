@@ -3,7 +3,7 @@
  *
  * This module provides both the ClickHouse-specific {@link ClickhouseClient}
  * service and the generic {@link Client.SqlClient} service. `make` creates a
- * scoped client, checks the connection with `SELECT 1`, maps ClickHouse errors
+ * scoped client, checks the connection with `ping()`, maps ClickHouse errors
  * to `SqlError`, and aborts in-flight queries when interrupted. The
  * ClickHouse-specific service adds typed parameters, command execution, insert
  * queries, query id and settings helpers, a statement compiler, and direct or
@@ -159,7 +159,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 }
 
 /**
- * Creates a scoped `ClickhouseClient`, verifies connectivity with `SELECT 1`,
+ * Creates a scoped `ClickhouseClient`, verifies connectivity with `ping()`,
  * closes the underlying client when the scope ends, maps ClickHouse failures
  * to `SqlError`, and aborts plus kills in-flight queries when interrupted.
  *
@@ -181,7 +181,13 @@ export const make = (
     )
 
     yield* Effect.tryPromise({
-      try: () => client.exec({ query: "SELECT 1" }),
+      try: async () => {
+        const result = await client.ping()
+        if (!result.success) {
+          throw result.error
+        }
+        return result
+      },
       catch: (cause) =>
         new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
     }).pipe(
