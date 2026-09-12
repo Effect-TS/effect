@@ -287,22 +287,30 @@ describe("RcRef", () => {
       assert.strictEqual(released, 2)
     }))
 
-  it.effect("idleTimeToLive 0 schedules resource release", () =>
+  it.effect("idleTimeToLive 0 releases resources after a zero-duration sleep", () =>
     Effect.gen(function*() {
       const clock = yield* Clock.Clock
-      const sleeps: Array<Duration.Duration> = []
+      const sleeps: Array<number> = []
+      let released = 0
       const ref = yield* RcRef.make({
-        acquire: Effect.succeed("foo"),
+        acquire: Effect.acquireRelease(
+          Effect.succeed("foo"),
+          () =>
+            Effect.sync(() => {
+              released++
+            })
+        ),
         idleTimeToLive: 0
       }).pipe(Effect.provideService(Clock.Clock, {
         ...clock,
         sleep: (duration) => {
-          sleeps.push(duration)
+          sleeps.push(Duration.toMillis(duration))
           return clock.sleep(duration)
         }
       }))
 
       yield* Effect.scoped(RcRef.get(ref))
-      assert.deepStrictEqual(sleeps, [Duration.zero])
+      assert.deepStrictEqual(sleeps, [0])
+      assert.strictEqual(released, 1)
     }))
 })
