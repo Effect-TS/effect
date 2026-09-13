@@ -106,6 +106,10 @@ export const suite = (
 
               const prompt = result.prompts.find((prompt) => prompt.name === "TestPrompt")
               assert.isDefined(prompt)
+              // https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
+              if (!["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion)) {
+                assert.strictEqual(prompt.title, "Test prompt")
+              }
               assert.strictEqual(prompt.description, "A test prompt")
               assert.deepStrictEqual(prompt.arguments?.map((argument) => argument.name), [
                 "required",

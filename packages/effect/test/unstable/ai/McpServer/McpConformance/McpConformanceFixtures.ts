@@ -516,6 +516,7 @@ export const makeFeaturesServerLayer = (
     makeNumericResourceTemplate(observations),
     McpServer.prompt({
       name: "TestPrompt",
+      title: "Test prompt",
       description: "A test prompt",
       parameters: {
         required: Schema.String,

@@ -2242,6 +2242,7 @@ export const registerPrompt = <
 >(
   options: {
     readonly name: string
+    readonly title?: string | undefined
     readonly description?: string | undefined
     readonly parameters?: Params | undefined
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
@@ -2266,6 +2267,7 @@ export const registerPrompt = <
   }
   const prompt = new Prompt({
     name: options.name,
+    title: options.title,
     description: options.description,
     arguments: args
   })
@@ -2377,6 +2379,7 @@ export const prompt = <
 >(
   options: {
     readonly name: string
+    readonly title?: string | undefined
     readonly description?: string | undefined
     readonly parameters?: Params | undefined
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
