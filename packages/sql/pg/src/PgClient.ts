@@ -53,9 +53,11 @@ export interface PgClient extends Client.SqlClient {
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
   /**
-   * Registers a channel listener and returns its non-empty payload queue after
+   * Registers a channel listener and returns its notification queue after
    * PostgreSQL confirms `LISTEN`. The listener holds a connection until the
    * scope closes.
+   * Connection failures after registration fail the queue with the original
+   * `SqlError`. Intentional scope closure interrupts consumers.
    */
   readonly listen: (
     channel: string

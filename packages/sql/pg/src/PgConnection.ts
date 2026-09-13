@@ -203,6 +203,8 @@ export interface PgConnection {
    * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
    * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
    * registration errors fail the acquiring effect.
+   * Connection failures after registration fail the queue with the original
+   * `SqlError`. Intentional scope closure interrupts consumers.
    */
   readonly listen: (
     channel: string
