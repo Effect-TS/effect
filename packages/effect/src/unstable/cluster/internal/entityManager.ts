@@ -556,10 +556,9 @@ export const make = Effect.fnUntraced(function*<
               } else if (
                 message.envelope._tag === "Interrupt" &&
                 message.callerTeardown === true &&
-                (ClusterSchema.isUninterruptibleForClient(entry.message.annotations) ||
-                  ClusterSchema.isUninterruptibleForServer(entry.message.annotations))
+                Context.get(entry.message.annotations, ClusterSchema.Uninterruptible) !== false
               ) {
-                // Caller teardown respects annotations; explicit interrupts still apply.
+                // Caller teardown respects any Uninterruptible annotation; explicit interrupts still apply.
                 return Effect.void
               } else if (
                 message.envelope._tag === "AckChunk" &&
@@ -656,12 +655,7 @@ export const make = Effect.fnUntraced(function*<
           },
           onSuccess: (decoded) => {
             if (decoded._tag === "IncomingEnvelope") {
-              return sendLocal(
-                new Message.IncomingEnvelope({
-                  envelope: decoded.envelope,
-                  callerTeardown: decoded.callerTeardown
-                })
-              )
+              return sendLocal(decoded)
             }
             const request = message as Message.IncomingRequest<any>
             const rpc = entityRpcs.get(decoded.envelope.tag)!
