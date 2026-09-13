@@ -13,12 +13,12 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
-import * as Redacted from "effect/Redacted"
 import * as ChildProcess from "effect/unstable/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import type { SqlClient } from "effect/unstable/sql/SqlClient"
 import type { SqlError } from "effect/unstable/sql/SqlError"
+import * as Password from "./internal/password.ts"
 import { PgClient } from "./PgClient.ts"
 
 /**
@@ -49,15 +49,18 @@ export const run: <R2 = never>(
       Effect.gen(function*() {
         const sql = yield* PgClient
         const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+        const password = sql.config.password === undefined
+          ? undefined
+          : yield* Password.resolve(sql.config.password).pipe(
+            Effect.mapError((cause) => new Error("Failed to resolve PostgreSQL password", { cause }))
+          )
         const dump = yield* ChildProcess.make("pg_dump", [...args, "--no-owner", "--no-privileges"], {
           env: {
             PATH: (globalThis as any).process?.env.PATH,
             PGHOST: sql.config.host,
             PGPORT: sql.config.port?.toString(),
             PGUSER: sql.config.username,
-            PGPASSWORD: sql.config.password
-              ? Redacted.value(sql.config.password)
-              : undefined,
+            PGPASSWORD: password,
             PGDATABASE: sql.config.database,
             PGSSLMODE: sql.config.ssl ? "require" : "prefer"
           }

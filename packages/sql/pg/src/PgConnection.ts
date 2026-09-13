@@ -34,6 +34,7 @@ import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 import type { ConnectionOptions } from "node:tls"
 import { type ConnectionInternals, internalsKey } from "./internal/connection.ts"
+import * as PasswordInternal from "./internal/password.ts"
 import { classifySqlState, validateChannelName } from "./internal/sqlError.ts"
 import * as PgAuth from "./PgAuth.ts"
 import * as PgProtocol from "./PgProtocol.ts"
@@ -54,6 +55,16 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
  * @since 4.0.0
  */
 export type TypeId = "~@effect/sql-pg/PgConnection"
+
+/**
+ * A static password or an Effect that produces one for each connection attempt.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Password =
+  | Redacted.Redacted
+  | Effect.Effect<Redacted.Redacted, unknown, never>
 
 /**
  * Connection settings for a PostgreSQL session.
@@ -91,7 +102,10 @@ export interface Config {
   readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Redacted.Redacted | undefined
+  /**
+   * A static password or an Effect that produces one for each connection attempt.
+   */
+  readonly password?: Password | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly applicationName?: string | undefined
   readonly stream?: (() => Duplex) | undefined
@@ -2146,20 +2160,31 @@ const configError = (message: string, cause?: unknown): SqlError =>
     })
   })
 
+const resolvePassword = (
+  password: Config["password"],
+  urlPassword: string | undefined
+): Effect.Effect<string | undefined, SqlError> => {
+  if (password === undefined) return Effect.succeed(urlPassword)
+  return PasswordInternal.resolve(password).pipe(
+    Effect.mapError((cause) => configError("Password provider failed", cause))
+  )
+}
+
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
-  Effect.suspend(() => {
+  Effect.gen(function*() {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
       ? parseUrl(Redacted.value(options.url))
       : EffectResult.succeed({})
-    if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
+    if (EffectResult.isFailure(parsed)) return yield* Effect.fail(parsed.failure)
     const url = parsed.success
     const host = options.host ?? url.host ?? "localhost"
     const port = options.port ?? url.port ?? 5432
     const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
     if (username === undefined) {
-      return Effect.fail(configError("No username configured"))
+      return yield* Effect.fail(configError("No username configured"))
     }
-    return Effect.succeed<ResolvedConfig>({
+    const password = yield* resolvePassword(options.password, url.password)
+    return {
       host,
       port,
       path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
@@ -2167,12 +2192,12 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       sslOptional: options.ssl === undefined && url.ssl === "prefer",
       database: options.database ?? url.database,
       username,
-      password: options.password !== undefined ? Redacted.value(options.password) : url.password,
+      password,
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
       applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
-    })
+    }
   })
 
 interface UrlConfig {

@@ -86,7 +86,10 @@ export interface PgClientConfig {
   readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Redacted.Redacted | undefined
+  /**
+   * A static password or an Effect that produces one for each connection attempt.
+   */
+  readonly password?: PgConnection.Password | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
 
