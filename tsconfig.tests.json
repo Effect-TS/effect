@@ -4,6 +4,7 @@
   "references": [{ "path": "tsconfig.packages.json" }],
   "include": [
     "**/vitest.*.ts", // All vitest config files across all packages
+    "**/rstest.*.ts", // All rstest config files across all packages
     "./bundle/**/*.ts", // Bundle size test files
     "./packages/*/test/**/*.ts",
     "./packages/*/test/**/*.json",
@@ -90,6 +91,8 @@
       "@effect/oxc/*": ["./packages/tools/oxc/src/*.ts"],
       "@effect/tools-utils": ["./packages/tools/utils/src/index.ts"],
       "@effect/tools-utils/*": ["./packages/tools/utils/src/*.ts"],
+      "@effect/rstest": ["./packages/rstest/src/index.ts"],
+      "@effect/rstest/*": ["./packages/rstest/src/*.ts"],
       "@effect/vitest": ["./packages/vitest/src/index.ts"],
       "@effect/vitest/*": ["./packages/vitest/src/*.ts"],
       // TODO: This is a special alias used by some tests. We should try to get rid of it.

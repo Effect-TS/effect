@@ -46,6 +46,7 @@
     "@effect/doctest": "workspace:^",
     "@effect/jsdocs": "workspace:^",
     "@effect/oxc": "workspace:^",
+    "@effect/rstest": "workspace:^",
     "@effect/tsgo": "^0.41.0",
     "@effect/utils": "workspace:^",
     "@effect/vitest": "workspace:^",
