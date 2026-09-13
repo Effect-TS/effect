@@ -213,7 +213,11 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     /**
      * The unique identifier of the tool call.
      */
-    toolCallId?: string
+    toolCallId?: string,
+    /**
+     * Options used when decoding the tool parameters.
+     */
+    options?: HandleOptions
   ) => Effect.Effect<
     Stream.Stream<
       Tool.HandlerResult<Tools[Name]>,
@@ -222,6 +226,19 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     >,
     AiError.AiError
   >
+}
+
+/**
+ * Options for executing a tool handler.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface HandleOptions {
+  /**
+   * How excess properties should be handled when decoding tool parameters.
+   */
+  readonly onExcessProperty?: "ignore" | "error" | undefined
 }
 
 /**
@@ -242,7 +259,10 @@ const Proto = {
       const schemasCache = new WeakMap<any, {
         readonly context: Context.Context<never>
         readonly handler: Tool.Handler<any>["handler"]
-        readonly decodeParameters: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
+        readonly decodeParameters: (
+          u: unknown,
+          options?: HandleOptions
+        ) => Effect.Effect<unknown, Schema.SchemaError>
         readonly encodeResult: (u: unknown, isFailure: boolean) => Effect.Effect<unknown, Schema.SchemaError>
       }>()
 
@@ -267,7 +287,12 @@ const Proto = {
         return schemas
       }
 
-      const handle = Effect.fnUntraced(function*(name: string, params: unknown, toolCallId?: string) {
+      const handle = Effect.fnUntraced(function*(
+        name: string,
+        params: unknown,
+        toolCallId?: string,
+        options?: HandleOptions
+      ) {
         const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
 
         yield* Effect.annotateCurrentSpan({
@@ -305,7 +330,7 @@ const Proto = {
             )
           )
 
-        const decodedParamsResult = yield* Effect.result(schemas.decodeParameters(params))
+        const decodedParamsResult = yield* Effect.result(schemas.decodeParameters(params, options))
         if (Result.isFailure(decodedParamsResult)) {
           const error = AiError.make({
             module: "Toolkit",

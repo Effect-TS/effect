@@ -46,6 +46,30 @@ const OptionalStringTool = Tool.make("OptionalStringTool", {
   success: Schema.String
 })
 
+const StrictObjectTool = Tool.make("StrictObjectTool", {
+  parameters: Schema.Struct({
+    config: Schema.Struct({ value: Schema.FiniteFromString })
+  }),
+  success: Schema.String
+}).annotate(Tool.Strict, true)
+
+const StrictReturnModeTool = Tool.make("StrictReturnModeTool", {
+  parameters: Schema.Struct({ value: Schema.String }),
+  success: Schema.String,
+  failureMode: "return"
+}).annotate(Tool.Strict, true)
+
+const StrictIdentifiedTool = Tool.make("StrictIdentifiedTool", {
+  parameters: Schema.Struct({ value: Schema.String }).annotate({ identifier: "Strict / ~ % Input" }),
+  success: Schema.String
+}).annotate(Tool.Strict, true)
+
+const ReturnFailureTool = Tool.make("ReturnFailureTool", {
+  success: Schema.String,
+  failure: Schema.String,
+  failureMode: "return"
+})
+
 const PublicFailureTool = Tool.make("PublicFailureTool", {
   success: Schema.String,
   failure: Schema.ErrorInstance()
@@ -83,6 +107,10 @@ const ArrayResultTool = Tool.make("ArrayResultTool", {
 
 const TestToolkit = Toolkit.make(
   OptionalStringTool,
+  StrictObjectTool,
+  StrictReturnModeTool,
+  StrictIdentifiedTool,
+  ReturnFailureTool,
   PublicFailureTool,
   InternalAiErrorTool,
   DefectTool,
@@ -105,6 +133,10 @@ const privateDefect = new Error("private defect details")
 
 const testToolkitHandlers = TestToolkit.of({
   OptionalStringTool: ({ signature }) => Effect.succeed(signature ?? "omitted"),
+  StrictObjectTool: ({ config }) => Effect.succeed(config.value.toFixed(0)),
+  StrictReturnModeTool: ({ value }) => Effect.succeed(value),
+  StrictIdentifiedTool: ({ value }) => Effect.succeed(value),
+  ReturnFailureTool: () => Effect.fail("expected failure"),
   PublicFailureTool: () => Effect.fail(publicFailure),
   InternalAiErrorTool: () => Effect.fail(internalAiError),
   DefectTool: () => Effect.die(privateDefect),
@@ -1385,6 +1417,173 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
+    it.effect("should advertise closed input schemas when a toolkit tool is strict", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+
+        const listed = yield* client["tools/list"]({})
+        const tool = listed.tools.find((tool) => tool.name === "StrictObjectTool")
+        assert.isDefined(tool)
+        assert.strictEqual(tool.inputSchema.additionalProperties, false)
+        assert.deepInclude(tool.inputSchema.properties, {
+          config: {
+            type: "object",
+            properties: { value: { type: "string" } },
+            required: ["value"],
+            additionalProperties: false
+          }
+        })
+      }))
+
+    it.effect("should reject unknown arguments without invoking the handler when a toolkit tool is strict", () =>
+      Effect.gen(function*() {
+        let handlerInvoked = false
+        const { client } = yield* makeToolkitTestClient(TestToolkit.of({
+          ...testToolkitHandlers,
+          StrictObjectTool: ({ config }) => {
+            handlerInvoked = true
+            return Effect.succeed(config.value.toFixed(0))
+          }
+        }))
+
+        const error = yield* client["tools/call"]({
+          name: "StrictObjectTool",
+          arguments: { config: { value: "1", typo: true } }
+        }).pipe(Effect.flip)
+
+        assert.isFalse(handlerInvoked)
+        assert.isTrue("code" in error)
+        if ("code" in error) assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+      }))
+
+    it.effect("should decode transformed arguments exactly once when a toolkit tool is strict", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+
+        const result = yield* client["tools/call"]({
+          name: "StrictObjectTool",
+          arguments: { config: { value: "1" } }
+        })
+
+        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"1\"" }])
+      }))
+
+    it.effect("should advertise and execute strict tools when schema identifiers contain escaped characters", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+
+        const listed = yield* client["tools/list"]({})
+        const tool = listed.tools.find((tool) => tool.name === "StrictIdentifiedTool")
+        assert.isDefined(tool)
+        assert.strictEqual(tool.inputSchema.type, "object")
+        assert.strictEqual(tool.inputSchema.additionalProperties, false)
+
+        const result = yield* client["tools/call"]({
+          name: "StrictIdentifiedTool",
+          arguments: { value: "ok" }
+        })
+        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"ok\"" }])
+      }))
+
+    it.effect("should report invalid arguments as tool errors when the toolkit failure mode is return", () =>
+      Effect.gen(function*() {
+        let handlerInvoked = false
+        const { client } = yield* makeToolkitTestClient(TestToolkit.of({
+          ...testToolkitHandlers,
+          StrictReturnModeTool: ({ value }) => {
+            handlerInvoked = true
+            return Effect.succeed(value)
+          }
+        }))
+
+        const result = yield* client["tools/call"]({
+          name: "StrictReturnModeTool",
+          arguments: { value: "ok", typo: true }
+        })
+
+        assert.isFalse(handlerInvoked)
+        assert.isTrue(result.isError)
+        assert.include(JSON.stringify(result.content), "ToolParameterValidationError")
+      }))
+
+    it.effect("should mark returned handler failures as MCP tool errors", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+
+        const result = yield* client["tools/call"]({ name: "ReturnFailureTool" })
+
+        assert.isTrue(result.isError)
+        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"expected failure\"" }])
+      }))
+
+    it.effect("should reject strict raw JSON Schema tools before registering any toolkit tools", () =>
+      Effect.gen(function*() {
+        const ValidTool = Tool.make("ValidTool", { success: Schema.String })
+        const DynamicTool = Tool.dynamic("DynamicTool", {
+          parameters: {
+            type: "object",
+            properties: { value: { type: "string" } },
+            required: ["value"]
+          },
+          success: Schema.String
+        }).annotate(Tool.Strict, true)
+        const toolkit = Toolkit.make(ValidTool, DynamicTool)
+        const server = yield* McpServer.McpServer.make
+
+        const exit = yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            ValidTool: () => Effect.succeed("ok"),
+            DynamicTool: () => Effect.succeed("ok")
+          })),
+          Effect.exit
+        )
+
+        assertTrue(exit._tag === "Failure")
+        assert.match(
+          String(Cause.squash(exit.cause)),
+          /cannot strictly validate the raw JSON Schema for tool 'DynamicTool'/
+        )
+        assert.deepStrictEqual(server.tools, [])
+      }))
+
+    it.effect("should preserve existing tools when a later toolkit schema is invalid for MCP", () =>
+      Effect.gen(function*() {
+        const ValidTool = Tool.make("ValidTool", { success: Schema.String })
+        const InvalidTool = Tool.make("InvalidTool", {
+          parameters: Schema.String,
+          success: Schema.String
+        }).annotate(Tool.Strict, true)
+        const toolkit = Toolkit.make(ValidTool, InvalidTool)
+        const server = yield* McpServer.McpServer.make
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "ValidTool", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.succeed(
+              new McpSchema.CallToolResult({
+                content: [{ type: "text", text: "existing" }]
+              })
+            )
+        })
+
+        const exit = yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            ValidTool: () => Effect.succeed("replacement"),
+            InvalidTool: () => Effect.succeed("invalid")
+          })),
+          Effect.exit
+        )
+        const existing = yield* server.callTool({ name: "ValidTool" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assertTrue(exit._tag === "Failure")
+        assert.deepStrictEqual(server.tools.map(({ tool }) => tool.name), ["ValidTool"])
+        assert.deepStrictEqual(existing.content, [{ type: "text", text: "existing" }])
+      }))
+
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
         const { client } = yield* makeToolkitTestClient()

@@ -19,6 +19,7 @@ import * as Effect from "../../Effect.ts"
 import * as ErrorReporter from "../../ErrorReporter.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
+import * as JsonSchema from "../../JsonSchema.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -1802,7 +1803,14 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   }))
   const services = omitRequestServices(yield* Effect.context<never>())
   const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
+  const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
   for (const tool of Object.values(built.tools)) {
+    const strict = Tool.getStrictMode(tool) === true
+    if (strict && Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+      return yield* Effect.die(
+        `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
+      )
+    }
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
@@ -1810,7 +1818,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      Tool.getJsonSchema(tool)
+      strict ? getStrictToolJsonSchema(tool.parametersSchema) : Tool.getJsonSchema(tool)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({
       name: tool.name,
@@ -1829,17 +1837,22 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       },
       _meta: toolMeta
     })
-    yield* registry.addTool({
+    registrations.push({
       tool: mcpTool,
       annotations,
       handle(payload) {
-        return built.handle(tool.name as keyof Tools, payload ?? {}).pipe(
+        return built.handle(
+          tool.name as keyof Tools,
+          payload ?? {},
+          undefined,
+          strict ? { onExcessProperty: "error" } : undefined
+        ).pipe(
           Stream.unwrap,
           Stream.run(Sink.last()),
           Effect.flatMap(Effect.fromOption),
           Effect.map((result) =>
             new CallToolResult({
-              isError: false,
+              isError: result.isFailure,
               structuredContent: result.encodedResult,
               content: result.encodedResult === undefined ? [] : [{
                 type: "text",
@@ -1874,7 +1887,18 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       }
     })
   }
+  for (const registration of registrations) {
+    yield* registry.addTool(registration)
+  }
 })
+
+const getStrictToolJsonSchema = (schema: Schema.Constraint): JsonSchema.JsonSchema => {
+  const document = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+  const key = typeof document.schema.$ref === "string" ? JsonSchema.getReferenceKey(document.schema.$ref) : undefined
+  // MCP requires an object root even when the schema generator extracts it into $defs.
+  const root = key === undefined ? document.schema : document.definitions[key] ?? document.schema
+  return Object.keys(document.definitions).length === 0 ? root : { ...root, $defs: document.definitions }
+}
 
 /**
  * Registers an `AiToolkit` with the `McpServer`.
