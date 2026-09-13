@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Effect, Layer, Option, PubSub, Queue, Schema, Stream } from "effect"
+import { Deferred, Effect, Layer, Option, PubSub, Queue, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
@@ -54,12 +54,13 @@ const layerProtocol = (codecFor: RpcSerialization.CodecFor) =>
 
 const makeHandlers = (
   entities: Layer.Layer<never, never, any>,
-  codecFor: RpcSerialization.CodecFor
+  codecFor: RpcSerialization.CodecFor,
+  shardingLayer: typeof Sharding.layer = Sharding.layer
 ) =>
   RunnerServer.layerHandlers.pipe(
     Layer.provide(layerProtocol(codecFor)),
     Layer.provideMerge(entities),
-    Layer.provideMerge(Sharding.layer),
+    Layer.provideMerge(shardingLayer),
     Layer.provideMerge(Snowflake.layerGenerator),
     Layer.provide(RunnerStorage.layerMemory),
     Layer.provide(RunnerHealth.layerNoop),
@@ -74,68 +75,160 @@ const makeHandlers = (
     }))
   )
 
-const handlers = makeHandlers(
-  ReproEntity.toLayer({ ReproStream: () => Stream.make(1) }),
-  Schema.toCodecJson as RpcSerialization.CodecFor
-)
-
 const holeCodecHandlers = makeHandlers(
   HoleCodecEntity.toLayer({ Double: ({ payload }) => Effect.succeed(payload.id * 2) }),
   codecForJsonString
 )
 
-it.effect("completes a successful runner stream", () =>
+it.effect("releases the subscription when a runner stream completes naturally", () =>
   Effect.gen(function*() {
-    yield* TestClock.adjust(1)
-    const sharding = yield* Sharding.Sharding
-    const snowflake = yield* Snowflake.Generator
-    const entityId = EntityId.make("one")
-    const request = {
-      _tag: "Request",
-      requestId: snowflake.nextUnsafe(),
-      address: EntityAddress.make({
-        shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-        entityType: EntityType.make("ReproRunnerServer"),
-        entityId
-      }),
-      tag: "ReproStream",
-      payload: { id: 1 },
-      headers: Headers.empty
-    } as Envelope.PartialRequest
-    const client = yield* RpcTest.makeClient(Runners.Rpcs)
-    const queue = yield* client.Stream({ request, persisted: false }, { asQueue: true })
-    const first = yield* Queue.take(queue).pipe(
-      Effect.timeout("1 second"),
-      TestClock.withLive
-    )
-    if (first._tag !== "Chunk") {
-      return assert.fail("expected the stream value before the terminal reply")
-    }
-    assert.deepStrictEqual(first.values, [1])
+    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
+    let finalizations = 0
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const snowflake = yield* Snowflake.Generator
+      const entityId = EntityId.make("one")
+      const request = {
+        _tag: "Request",
+        requestId: snowflake.nextUnsafe(),
+        address: EntityAddress.make({
+          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
+          entityType: EntityType.make("ReproRunnerServer"),
+          entityId
+        }),
+        tag: "ReproStream",
+        payload: { id: 1 },
+        headers: Headers.empty
+      } as Envelope.PartialRequest
+      const client = yield* RpcTest.makeClient(Runners.Rpcs)
+      const queue = yield* client.Stream({ request, persisted: false }, { asQueue: true })
+      yield* TestClock.adjust(1)
+      assert.strictEqual(pubsub.subscribers.size, 1)
+      yield* PubSub.publish(pubsub, 1)
+      const first = yield* Queue.take(queue).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      if (first._tag !== "Chunk") {
+        return assert.fail("expected the stream value before the terminal reply")
+      }
+      assert.deepStrictEqual(first.values, [1])
 
-    yield* client.Envelope({
-      envelope: new Envelope.AckChunk({
-        id: snowflake.nextUnsafe(),
-        address: request.address,
-        requestId: request.requestId,
-        replyId: Snowflake.Snowflake(first.id)
-      }),
-      persisted: false
-    })
+      yield* client.Envelope({
+        envelope: new Envelope.AckChunk({
+          id: snowflake.nextUnsafe(),
+          address: request.address,
+          requestId: request.requestId,
+          replyId: Snowflake.Snowflake(first.id)
+        }),
+        persisted: false
+      })
 
-    const completion = yield* Effect.gen(function*() {
-      const last = yield* Queue.take(queue)
-      yield* Queue.take(queue).pipe(Effect.catchTag("Done", () => Effect.void))
-      return last
-    }).pipe(
-      Effect.timeoutOption("1 second"),
-      TestClock.withLive
-    )
-    if (Option.isNone(completion)) {
-      return assert.fail("expected the runner stream to complete")
-    }
-    assert.strictEqual(completion.value._tag, "WithExit")
-  }).pipe(Effect.provide(handlers)))
+      const completion = yield* Effect.gen(function*() {
+        const last = yield* Queue.take(queue)
+        yield* Queue.take(queue).pipe(Effect.catchTag("Done", () => Effect.void))
+        return last
+      }).pipe(
+        Effect.timeoutOption("1 second"),
+        TestClock.withLive
+      )
+      if (Option.isNone(completion)) {
+        return assert.fail("expected the runner stream to complete")
+      }
+      if (completion.value._tag !== "WithExit") {
+        return assert.fail("expected a terminal reply")
+      }
+      assert.strictEqual(completion.value.exit._tag, "Success")
+      yield* TestClock.adjust(1)
+      assert.strictEqual(pubsub.subscribers.size, 0)
+      assert.strictEqual(finalizations, 1)
+    }).pipe(Effect.provide(makeHandlers(
+      ReproEntity.toLayer({
+        ReproStream: () =>
+          Rpc.fork(
+            Stream.fromPubSub(pubsub).pipe(
+              Stream.take(1),
+              Stream.ensuring(Effect.sync(() => {
+                finalizations++
+              }))
+            )
+          )
+      }),
+      Schema.toCodecJson as RpcSerialization.CodecFor
+    )))
+  }))
+
+it.effect("disconnects an admitted stream while the real send return is held", () =>
+  Effect.gen(function*() {
+    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
+    const admitted = yield* Deferred.make<void>()
+    const release = yield* Deferred.make<void>()
+    const stopped = yield* Deferred.make<void>()
+    // Hold only the request's send return, after the real Sharding has admitted
+    // it. Control envelopes must still be deliverable during cleanup.
+    const gatedSharding = Layer.effect(Sharding.Sharding)(
+      Effect.map(Sharding.Sharding, (actual) => ({
+        ...actual,
+        send: (message) =>
+          message._tag === "IncomingRequest"
+            ? actual.send(message).pipe(
+              Effect.andThen(Deferred.succeed(admitted, undefined)),
+              Effect.andThen(Deferred.await(release))
+            )
+            : actual.send(message)
+      }))
+    ).pipe(Layer.provide(Sharding.layer))
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const snowflake = yield* Snowflake.Generator
+      const entityId = EntityId.make("held-send")
+      const request: Envelope.PartialRequest = {
+        _tag: "Request",
+        requestId: snowflake.nextUnsafe(),
+        address: EntityAddress.make({
+          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
+          entityType: EntityType.make(ReproEntity.type),
+          entityId
+        }),
+        tag: "ReproStream",
+        payload: { id: 1 },
+        headers: Headers.empty
+      }
+      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
+        onFromServer: () => Effect.void
+      })
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId("stream"),
+        tag: "Stream",
+        payload: { request, persisted: false },
+        headers: Headers.empty
+      })
+      yield* TestClock.adjust(1)
+      assert.isTrue(yield* Deferred.isDone(admitted))
+      assert.strictEqual(pubsub.subscribers.size, 1)
+      assert.isFalse(yield* Deferred.isDone(stopped))
+
+      yield* server.disconnect(0)
+      yield* TestClock.adjust(1)
+      assert.isFalse(yield* Deferred.isDone(release))
+      assert.strictEqual(pubsub.subscribers.size, 0)
+      assert.isTrue(yield* Deferred.isDone(stopped))
+    }).pipe(Effect.provide(makeHandlers(
+      ReproEntity.toLayer({
+        ReproStream: () =>
+          Rpc.fork(
+            Stream.fromPubSub(pubsub).pipe(
+              Stream.ensuring(Deferred.succeed(stopped, undefined))
+            )
+          )
+      }),
+      Schema.toCodecJson as RpcSerialization.CodecFor,
+      gatedSharding
+    )))
+  }))
 
 for (
   const { disconnect, entity, expectedSubscribers, name, persisted } of [
