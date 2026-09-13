@@ -1125,7 +1125,7 @@ export const durationFromMillis: Transformation<Duration.Duration, number> = tra
  */
 export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = transformEffect({
   decode: (input, options) =>
-    Option.match(ByteSize.fromInput(input), {
+    Option.match(ByteSize.fromString(input), {
       onNone: () =>
         Effect.fail(
           new SchemaIssue.InvalidValue(

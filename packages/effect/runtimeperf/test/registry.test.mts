@@ -19,7 +19,7 @@ describe("runtimeperf registry", () => {
       fixtures.filter((fixture) => fixture.suite === "arbitrary"),
       (fixture) => fixture.scenario
     )
-    assert.equal(scenarios.size, 31)
+    assert.equal(scenarios.size, 33)
     for (const fixtures of scenarios.values()) {
       assert.deepEqual(fixtures.map((fixture) => fixture.implementation).sort(), ["effect", "fast-check-v4"])
       const metadata = (fixture) => ({

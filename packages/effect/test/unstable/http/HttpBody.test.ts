@@ -35,7 +35,8 @@ it.each([
     size: oversized + 3n,
     options: { offset: 1, bytesToRead: oversized }
   },
-  { name: "malformed byte count", size: 6n, options: { bytesToRead: "garbage" } },
+  // Bypass the input type to exercise runtime validation.
+  { name: "malformed byte count", size: 6n, options: { bytesToRead: "garbage" as ByteSize.Input } },
   { name: "negative offset with zero bytes requested", size: 6n, options: { offset: -1n, bytesToRead: 0 } },
   { name: "negative byte count at EOF", size: 6n, options: { offset: 6, bytesToRead: -1 } },
   { name: "fractional offset", size: 6n, options: { offset: 1.5 } },
@@ -56,7 +57,8 @@ for (const constructor of ["file", "fileFromInfo"] as const) {
     const options = {
       get offset() {
         reads++
-        return "garbage"
+        // Bypass the input type to exercise deferred runtime validation.
+        return "garbage" as ByteSize.Input
       }
     }
     // Construct outside Effect.gen so eager validation fails the test.
@@ -86,7 +88,7 @@ for (const constructor of ["file", "fileFromInfo"] as const) {
 }
 
 it("fileFromInfo preserves a small selected range and stream options", async () => {
-  const options = { offset: "2 B", bytesToRead: ByteSize.bytes(2), contentType: "text/plain", chunkSize: 2 }
+  const options = { offset: "2 B", bytesToRead: ByteSize.bytes(2), contentType: "text/plain", chunkSize: 2 } as const
   const body = await Effect.runPromise(
     HttpBody.fileFromInfo("x", fileInfo(6n), options).pipe(
       Effect.provideService(

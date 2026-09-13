@@ -4,13 +4,16 @@ import { identity } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
 import * as Option from "../../Option.ts"
 import * as Order from "../../Order.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
+import * as InternalArray from "../array.ts"
 import { effectIsExit } from "../effect.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
+import { sample as arraySample } from "./array.ts"
 import * as Model from "./model.ts"
 import * as Regexp from "./regexp.ts"
 
@@ -376,60 +379,6 @@ function constant<A>(value: A): Model.Compiled<A> {
   return Model.makeCompiled([], () => 0, () => sample)
 }
 
-function replaceAt<A>(values: ReadonlyArray<A>, index: number, value: A): Array<A> {
-  const out = values.slice()
-  out[index] = value
-  return out
-}
-
-function arraySample(
-  children: ReadonlyArray<Model.Sample<any>>,
-  shape: {
-    readonly fixedCount: number
-    readonly optionalCount: number
-    readonly repeatCount: number
-    readonly tailCount: number
-    readonly minimum: number
-  },
-  shrinks = true
-): Model.Sample<ReadonlyArray<any>> {
-  if (!shrinks) return Model.makeSample(children.map((child) => child.value))
-  const product = Model.productSample(
-    children,
-    (children) => children.map((child) => child.value),
-    (children) => arraySample(children, shape)
-  )
-  // Like fast-check v4.9.0's ArrayArbitrary (MIT), structural shrinks are tried before element shrinks.
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/ArrayArbitrary.ts
-  const structural: Array<() => Model.Sample<ReadonlyArray<any>>> = []
-  if (shape.repeatCount > 0 && children.length - 1 >= shape.minimum) {
-    const index = shape.fixedCount + shape.repeatCount - 1
-    structural.push(() =>
-      arraySample(children.slice(0, index).concat(children.slice(index + 1)), {
-        ...shape,
-        repeatCount: shape.repeatCount - 1
-      })
-    )
-  } else if (
-    shape.optionalCount > 0 && shape.repeatCount === 0 && shape.tailCount === 0 &&
-    children.length - 1 >= shape.minimum
-  ) {
-    structural.push(() =>
-      arraySample(children.slice(0, -1), {
-        ...shape,
-        fixedCount: shape.fixedCount - 1,
-        optionalCount: shape.optionalCount - 1
-      })
-    )
-  }
-  if (structural.length === 0) return product
-  const structuralPull = Effect.map(Model.pullFromArray(structural), (make) => make())
-  return Model.makeSample(
-    product.value,
-    product.shrinks === undefined ? structuralPull : Model.concatPulls([structuralPull, product.shrinks])
-  )
-}
-
 interface ObjectEntry {
   readonly key: PropertyKey
   readonly keySample?: Model.Sample<PropertyKey> | undefined
@@ -437,12 +386,13 @@ interface ObjectEntry {
   readonly removable: boolean
 }
 
+interface RetainedObjectEntry extends Omit<ObjectEntry, "sample" | "keySample"> {
+  readonly sample: Model.Retained<any>
+  readonly keySample?: Model.Retained<PropertyKey> | undefined
+}
+
 function normalizePropertyKeySample(sample: Model.Sample<any>): Model.Sample<PropertyKey> | undefined {
-  const filtered = Model.filterSample(
-    sample,
-    (value): value is string | number | symbol =>
-      typeof value === "string" || typeof value === "number" || typeof value === "symbol"
-  )
+  const filtered = Model.filterSample(sample, Predicate.isPropertyKey)
   return filtered === undefined
     ? undefined
     : Model.mapSample(filtered, (value) => typeof value === "symbol" ? value : globalThis.String(value))
@@ -454,62 +404,75 @@ function objectSample(
   nullPrototype: boolean,
   shrinks = true
 ): Model.Sample<Record<PropertyKey, any>> {
-  const make = (entries: ReadonlyArray<ObjectEntry>) => {
+  const make = (entries: ReadonlyArray<ObjectEntry | RetainedObjectEntry>) => {
     const out = Model.makeObject(nullPrototype)
     for (const entry of entries) InternalRecord.assignProperty(out, entry.key, entry.sample.value)
     return out
   }
   if (!shrinks) return Model.makeSample(make(entries))
-  const childPulls = entries.flatMap((entry, index) =>
-    entry.sample.shrinks === undefined
-      ? []
-      : [
-        Effect.map(
-          entry.sample.shrinks,
-          (attempt) =>
-            Model.mapAttempt(
-              attempt,
-              (sample) => objectSample(replaceAt(entries, index, { ...entry, sample }), minimum, nullPrototype)
+  const rebuild = (
+    entries: ReadonlyArray<RetainedObjectEntry>,
+    valueStart = 0,
+    keyStart = 0
+  ): Model.Sample<Record<PropertyKey, any>> => {
+    const pulls: Array<Model.ShrinkPull<Model.Attempt<Record<PropertyKey, any>>>> = []
+    if (entries.length > minimum) {
+      const structural = entries.flatMap((entry, index) =>
+        entry.removable
+          ? [() => rebuild(entries.slice(0, index).concat(entries.slice(index + 1)))]
+          : []
+      )
+      if (structural.length > 0) pulls.push(Effect.map(Model.pullFromArray(structural), (make) => make()))
+    }
+    for (let index = valueStart; index < entries.length; index++) {
+      const entry = entries[index]
+      if (entry.sample.shrinks === undefined) continue
+      pulls.push(Effect.map(
+        entry.sample.shrinks(),
+        (attempt) =>
+          attempt._tag === "Discarded"
+            ? attempt
+            : rebuild(InternalArray.replaceAt(entries, index, { ...entry, sample: attempt }), index)
+      ))
+    }
+    // Key shrinking uses the same uniqueness-preserving descendant filtering principle as fast-check v4.9.0's
+    // ArrayArbitrary (MIT). Structural removals and value shrinks retain their established precedence.
+    // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/ArrayArbitrary.ts
+    for (let index = keyStart; index < entries.length; index++) {
+      const entry = entries[index]
+      if (entry.keySample === undefined || entry.keySample.shrinks === undefined) continue
+      const filtered = Model.filterSample(
+        Model.fromRetained(entry.keySample),
+        (key) => !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
+      )
+      if (filtered?.shrinks === undefined) continue
+      pulls.push(Effect.map(
+        filtered.shrinks,
+        (attempt) =>
+          attempt._tag === "Discarded"
+            ? attempt
+            : rebuild(
+              InternalArray.replaceAt(entries, index, {
+                ...entry,
+                key: attempt.value,
+                keySample: Model.retain(attempt)
+              }),
+              entries.length,
+              index
             )
-        )
-      ]
+      ))
+    }
+    return Model.makeSample(make(entries), pulls.length === 0 ? undefined : Model.concatPulls(pulls))
+  }
+  return Model.makeSampleWithLazyShrinks(
+    make(entries),
+    () =>
+      rebuild(entries.map((entry) => ({
+        ...entry,
+        sample: Model.retain(entry.sample),
+        keySample: entry.keySample === undefined ? undefined : Model.retain(entry.keySample)
+      }))).shrinks
   )
-  // Key shrinking uses the same uniqueness-preserving descendant filtering principle as fast-check v4.9.0's
-  // ArrayArbitrary (MIT). Structural removals and value shrinks retain their established precedence.
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/ArrayArbitrary.ts
-  const keyPulls = entries.flatMap((entry, index) => {
-    if (entry.keySample === undefined || entry.keySample.shrinks === undefined) return []
-    const filtered = Model.filterSample(
-      entry.keySample,
-      (key) => !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
-    )
-    if (filtered?.shrinks === undefined) return []
-    return [Effect.map(
-      filtered.shrinks,
-      (attempt) =>
-        Model.mapAttempt(
-          attempt,
-          (keySample) =>
-            objectSample(
-              replaceAt(entries, index, { ...entry, key: keySample.value, keySample }),
-              minimum,
-              nullPrototype
-            )
-        )
-    )]
-  })
-  const structural: Array<() => Model.Sample<Record<PropertyKey, any>>> = entries.length <= minimum
-    ? []
-    : entries.flatMap((entry, index) =>
-      entry.removable
-        ? [() => objectSample(entries.slice(0, index).concat(entries.slice(index + 1)), minimum, nullPrototype)]
-        : []
-    )
-  const descendantPulls = [...childPulls, ...keyPulls]
-  const pulls = structural.length === 0
-    ? descendantPulls
-    : [Effect.map(Model.pullFromArray(structural), (make) => make()), ...descendantPulls]
-  return Model.makeSample(make(entries), pulls.length === 0 ? undefined : Model.concatPulls(pulls))
 }
 
 const generateSamples = (

@@ -36,6 +36,20 @@ describe("Arbitrary", () => {
     const strings = Arbitrary.schema(Schema.String)
     const stringOrNumber = Arbitrary.schema(Schema.Union([Schema.String, Schema.Number]))
 
+    expect(Arbitrary.array(strings)).type.toBe<Arbitrary.Arbitrary<Array<string>>>()
+    expect(Arbitrary.array(stringOrNumber, { minLength: 1, maxLength: 50 })).type.toBe<
+      Arbitrary.Arbitrary<Array<string | number>>
+    >()
+    const commands = Arbitrary.array(Arbitrary.Constant({ _tag: "Stop" }))
+    expect(commands).type.toBe<Arbitrary.Arbitrary<Array<{ readonly _tag: "Stop" }>>>()
+    expect(Arbitrary.all([commands, strings])).type.toBe<
+      Arbitrary.Arbitrary<[Array<{ readonly _tag: "Stop" }>, string]>
+    >()
+    expect(Arbitrary.checkEffect(commands, (values) => {
+      expect(values).type.toBe<Array<{ readonly _tag: "Stop" }>>()
+      return true
+    })).type.toBe<Effect.Effect<Arbitrary.CheckResult<Array<{ readonly _tag: "Stop" }>, never>>>()
+
     expect(Arbitrary.Constant({ _tag: "Constant" })).type.toBe<
       Arbitrary.Arbitrary<{ readonly _tag: "Constant" }>
     >()

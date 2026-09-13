@@ -103,6 +103,11 @@ end-to-end public API comparison, but the work is not identical: native replay
 verifies the original failure and its full shrink path, while fast-check can
 start directly from its recorded path.
 
+Array cases cover passing checks and shrinking a four-command sequence while preserving an ordered pair. The latter
+starts from the same explicit sequence in both engines, using a fixed seed for native generation and an example for
+fast-check. Base/head validation preserves the failure without requiring identical shrunk outputs, so its timing also
+reflects changes in how much of the shrink tree is explored. The runtime regression tests assert the smaller result.
+
 The regular-expression fixtures validate the same language, and both fixed-seed warm fixtures must reach multiple
 lengths and every alternative family. Their exact distributions remain implementation-defined, so cross-library
 timings are diagnostic while base/head comparisons protect the cost of each implementation's established behavior.

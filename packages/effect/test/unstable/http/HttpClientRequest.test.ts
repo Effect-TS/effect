@@ -36,6 +36,7 @@ describe("HttpClientRequest", () => {
 
     it("propagates typed BadArgument from file range validation", async () => {
       const request = HttpClientRequest.bodyFile(HttpClientRequest.post("https://example.com"), "x", {
+        // @ts-expect-error Exercise runtime validation of malformed input.
         bytesToRead: "garbage"
       })
       const error = await Effect.runPromise(request.pipe(
