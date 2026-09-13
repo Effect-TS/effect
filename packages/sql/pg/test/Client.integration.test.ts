@@ -552,8 +552,7 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
       assert.isDefined(listener)
       yield* sql`SELECT pg_terminate_backend(${listener.pid})`
 
-      // Wait for LISTEN to finish again: notifications sent while disconnected
-      // are not replayed by PostgreSQL.
+      // Wait for registration; PostgreSQL does not replay missed notifications.
       yield* Queue.take(registered)
       const [replacement] = yield* sql<{ pid: number }>`
         SELECT pid FROM pg_stat_activity

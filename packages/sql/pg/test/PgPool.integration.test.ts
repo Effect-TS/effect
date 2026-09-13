@@ -101,7 +101,6 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       const error = yield* Effect.flip(Fiber.join(consumer))
       assert.strictEqual(error._tag, "SqlError")
       assert.propertyVal(error.reason.cause, "code", "57P01")
-      // Later operations see the same fatal error, including its original cause.
       assert.strictEqual(yield* Effect.flip(listener.query("SELECT 1")), error)
     }))
 
