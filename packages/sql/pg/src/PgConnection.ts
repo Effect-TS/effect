@@ -62,9 +62,7 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * @category models
  * @since 4.0.0
  */
-export type Password =
-  | Redacted.Redacted
-  | Effect.Effect<Redacted.Redacted, unknown, never>
+export type Password = Redacted.Redacted | Effect.Effect<Redacted.Redacted>
 
 /**
  * Connection settings for a PostgreSQL session.
@@ -257,9 +255,7 @@ export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Sco
   Effect.flatMap(resolveConfig(options), (config) =>
     Effect.acquireRelease(
       Effect.gen(function*() {
-        const password = yield* PasswordInternal.resolve(config.password).pipe(
-          Effect.mapError((cause) => configError("Password provider failed", cause))
-        )
+        const password = yield* PasswordInternal.resolve(config.password)
         const session = yield* connect(config, password)
         return new PgConnectionImpl(options, config, session, options.types)
       }),

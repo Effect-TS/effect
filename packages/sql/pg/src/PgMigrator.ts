@@ -74,9 +74,7 @@ export const run: <R2 = never>(
 
     const pgDumpAll = Effect.gen(function*() {
       const sql = yield* PgClient
-      const password = yield* Password.resolve(sql.config.password).pipe(
-        Effect.mapError((cause) => new Error("Failed to resolve PostgreSQL password", { cause }))
-      )
+      const password = yield* Password.resolve(sql.config.password)
       const [schema, migrations] = yield* Effect.all([
         pgDump(["--schema-only"], password),
         pgDump(["--column-inserts", "--data-only", `--table=${table}`], password)
