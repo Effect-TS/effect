@@ -763,7 +763,7 @@ describe("PgConnection in-process server", () => {
     })))
 
   it.live("resolves a password Effect for each connection", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const passwords: Array<string> = []
       const { port } = yield* withTcpServer((socket) => {
         consumeFrontend(socket, (tag, message) => {
@@ -784,11 +784,11 @@ describe("PgConnection in-process server", () => {
       })
 
       yield* Effect.scoped(acquire)
-      yield* Effect.scoped(acquire)
+      yield* acquire
 
       assert.strictEqual(calls, 2)
       assert.deepStrictEqual(passwords, ["secret-1", "secret-2"])
-    })))
+    }))
 
   it.live("authenticates with an MD5 password request", () =>
     Effect.scoped(Effect.gen(function*() {
