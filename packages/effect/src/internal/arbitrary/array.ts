@@ -18,12 +18,12 @@ function rebuild<A>(
   elementStart = 0
 ): Model.Sample<Array<A>> {
   let index = 0
-  let remove: number | undefined
-  let items: Model.ShrinkPull<Model.Retained<A> | Model.Discarded> | undefined
-  let optional = shape.repeatCount === 0 && shape.tailCount === 0
+  let removable: number | undefined
+  let itemShrinks: Model.ShrinkPull<Model.Retained<A> | Model.Discarded> | undefined
+  let removableOptional = shape.repeatCount === 0 && shape.tailCount === 0
     ? Math.min(shape.optionalCount, children.length - shape.minimum)
     : 0
-  const end = shape.fixedCount + shape.repeatCount
+  const repeatEnd = shape.fixedCount + shape.repeatCount
   // Adapt fast-check v4.9.0's ArrayArbitrary (MIT): remove progressively smaller prefixes,
   // shrink the head, then visit the tail. The index loop avoids recursive slice traversal.
   // Unlike a suffix-local minimum, the whole-array minimum lets us remove interior elements
@@ -31,9 +31,9 @@ function rebuild<A>(
   // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/ArrayArbitrary.ts
   const loop = (): Model.ShrinkPull<Model.Attempt<Array<A>>> =>
     Effect.suspend(() => {
-      if (optional > 0) {
-        const count = optional
-        optional = Math.floor(optional / 2)
+      if (removableOptional > 0) {
+        const count = removableOptional
+        removableOptional = Math.floor(removableOptional / 2)
         return Effect.succeed(rebuild(children.slice(0, -count), {
           ...shape,
           fixedCount: shape.fixedCount - count,
@@ -41,23 +41,23 @@ function rebuild<A>(
         }))
       }
       while (index < children.length) {
-        remove ??= index >= shape.fixedCount && index < end
-          ? Math.min(end - index, children.length - shape.minimum)
+        removable ??= index >= shape.fixedCount && index < repeatEnd
+          ? Math.min(repeatEnd - index, children.length - shape.minimum)
           : 0
-        if (remove > 0) {
-          const count = remove
-          remove = Math.floor(remove / 2)
+        if (removable > 0) {
+          const count = removable
+          removable = Math.floor(removable / 2)
           return Effect.succeed(rebuild(children.slice(0, index).concat(children.slice(index + count)), {
             ...shape,
             repeatCount: shape.repeatCount - count
           }))
         }
-        if (index >= elementStart) items ??= children[index].shrinks?.()
-        if (items !== undefined) {
-          return Effect.matchEffect(items, {
+        if (index >= elementStart) itemShrinks ??= children[index].shrinks?.()
+        if (itemShrinks !== undefined) {
+          return Effect.matchEffect(itemShrinks, {
             onFailure: () => {
-              items = undefined
-              remove = undefined
+              itemShrinks = undefined
+              removable = undefined
               index++
               return loop()
             },
@@ -68,7 +68,7 @@ function rebuild<A>(
           })
         }
         index++
-        remove = undefined
+        removable = undefined
       }
       return done()
     })
@@ -81,16 +81,10 @@ export function sample<A>(
   shape: Shape,
   shrinks = true
 ): Model.Sample<Array<A>> {
-  if (!shrinks) return Model.makeSample(children.map((child) => child.value))
+  const value = children.map((child) => child.value)
+  if (!shrinks) return Model.makeSample(value)
   if (children.length <= shape.minimum || shape.repeatCount === 0 && shape.optionalCount === 0) {
     return Model.productSample(children, (children) => children.map((child) => child.value))
   }
-  let pull: Model.ShrinkPull<Model.Attempt<Array<A>>> | undefined
-  return Model.makeSample(
-    children.map((child) => child.value),
-    Effect.suspend(() => {
-      pull ??= rebuild(children.map(Model.retain), shape).shrinks!
-      return pull
-    })
-  )
+  return Model.makeSampleWithLazyShrinks(value, () => rebuild(children.map(Model.retain), shape).shrinks)
 }

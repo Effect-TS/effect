@@ -145,6 +145,21 @@ export const makeSample = <A>(value: A, shrinks?: ShrinkPull<Attempt<A>>): Sampl
 })
 
 /** @internal */
+export function makeSampleWithLazyShrinks<A>(
+  value: A,
+  makeShrinks: () => ShrinkPull<Attempt<A>> | undefined
+): Sample<A> {
+  let shrinks: ShrinkPull<Attempt<A>> | undefined
+  return makeSample(
+    value,
+    Effect.suspend(() => {
+      shrinks ??= makeShrinks() ?? done()
+      return shrinks
+    })
+  )
+}
+
+/** @internal */
 export interface Retained<out A> {
   readonly _tag: "Retained"
   readonly value: A
@@ -215,20 +230,17 @@ export function sampleFromValidatedShrink<A>(
   shrink: (value: A) => ReadonlyArray<A>,
   validate: (value: A) => Computation<Option.Option<A>>
 ): Sample<A> {
-  let candidates: ShrinkPull<A> | undefined
-  return makeSample(
+  return makeSampleWithLazyShrinks(
     value,
-    Effect.suspend(() => {
-      candidates ??= pullFromArray(shrink(value))
-      return Effect.flatMapEager(
-        candidates,
+    () =>
+      Effect.flatMapEager(
+        pullFromArray(shrink(value)),
         (candidate) =>
           Effect.mapEager(toEffect(validate(candidate)), (validated) =>
             Option.isSome(validated)
               ? sampleFromValidatedShrink(validated.value, shrink, validate)
               : discarded)
       )
-    })
   )
 }
 
@@ -264,14 +276,7 @@ export function productSample<A>(
     }
     return makeSample(make(children), pulls.length === 0 ? undefined : concatPulls(pulls))
   }
-  let pull: ShrinkPull<Attempt<A>> | undefined
-  return makeSample(
-    value,
-    Effect.suspend(() => {
-      pull ??= rebuild(children.map(retain)).shrinks!
-      return pull
-    })
-  )
+  return makeSampleWithLazyShrinks(value, () => rebuild(children.map(retain)).shrinks)
 }
 
 function filterMapPull<A, B>(

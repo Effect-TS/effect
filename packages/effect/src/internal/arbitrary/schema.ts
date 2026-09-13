@@ -418,71 +418,63 @@ function objectSample(
     valueStart = 0,
     keyStart = 0
   ): Model.Sample<Record<PropertyKey, any>> => {
-    const childPulls = entries.flatMap((entry, index) =>
-      index < valueStart || entry.sample.shrinks === undefined
-        ? []
-        : [
-          Effect.map(
-            entry.sample.shrinks(),
-            (attempt) =>
-              attempt._tag === "Discarded"
-                ? attempt
-                : rebuild(InternalArray.replaceAt(entries, index, { ...entry, sample: attempt }), index)
-          )
-        ]
-    )
-    // Key shrinking uses the same uniqueness-preserving descendant filtering principle as fast-check v4.9.0's
-    // ArrayArbitrary (MIT). Structural removals and value shrinks retain their established precedence.
-    // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/ArrayArbitrary.ts
-    const keyPulls = entries.flatMap((entry, index) => {
-      if (index < keyStart || entry.keySample === undefined || entry.keySample.shrinks === undefined) return []
-      const filtered = Model.filterSample(
-        Model.fromRetained(entry.keySample),
-        (key) => !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
-      )
-      if (filtered?.shrinks === undefined) return []
-      return [Effect.map(
-        filtered.shrinks,
-        (attempt) =>
-          Model.mapAttempt(
-            attempt,
-            (keySample) =>
-              rebuild(
-                InternalArray.replaceAt(entries, index, {
-                  ...entry,
-                  key: keySample.value,
-                  keySample: Model.retain(keySample)
-                }),
-                entries.length,
-                index
-              )
-          )
-      )]
-    })
-    const structural: Array<() => Model.Sample<Record<PropertyKey, any>>> = entries.length <= minimum
-      ? []
-      : entries.flatMap((entry, index) =>
+    const pulls: Array<Model.ShrinkPull<Model.Attempt<Record<PropertyKey, any>>>> = []
+    if (entries.length > minimum) {
+      const structural = entries.flatMap((entry, index) =>
         entry.removable
           ? [() => rebuild(entries.slice(0, index).concat(entries.slice(index + 1)))]
           : []
       )
-    const descendantPulls = [...childPulls, ...keyPulls]
-    const pulls = structural.length === 0
-      ? descendantPulls
-      : [Effect.map(Model.pullFromArray(structural), (make) => make()), ...descendantPulls]
+      if (structural.length > 0) pulls.push(Effect.map(Model.pullFromArray(structural), (make) => make()))
+    }
+    for (let index = valueStart; index < entries.length; index++) {
+      const entry = entries[index]
+      if (entry.sample.shrinks === undefined) continue
+      pulls.push(Effect.map(
+        entry.sample.shrinks(),
+        (attempt) =>
+          attempt._tag === "Discarded"
+            ? attempt
+            : rebuild(InternalArray.replaceAt(entries, index, { ...entry, sample: attempt }), index)
+      ))
+    }
+    // Key shrinking uses the same uniqueness-preserving descendant filtering principle as fast-check v4.9.0's
+    // ArrayArbitrary (MIT). Structural removals and value shrinks retain their established precedence.
+    // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/ArrayArbitrary.ts
+    for (let index = keyStart; index < entries.length; index++) {
+      const entry = entries[index]
+      if (entry.keySample === undefined || entry.keySample.shrinks === undefined) continue
+      const filtered = Model.filterSample(
+        Model.fromRetained(entry.keySample),
+        (key) => !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
+      )
+      if (filtered?.shrinks === undefined) continue
+      pulls.push(Effect.map(
+        filtered.shrinks,
+        (attempt) =>
+          attempt._tag === "Discarded"
+            ? attempt
+            : rebuild(
+              InternalArray.replaceAt(entries, index, {
+                ...entry,
+                key: attempt.value,
+                keySample: Model.retain(attempt)
+              }),
+              entries.length,
+              index
+            )
+      ))
+    }
     return Model.makeSample(make(entries), pulls.length === 0 ? undefined : Model.concatPulls(pulls))
   }
-  let pull: Model.ShrinkPull<Model.Attempt<Record<PropertyKey, any>>> | undefined
-  return Model.makeSample(
+  return Model.makeSampleWithLazyShrinks(
     make(entries),
-    Effect.suspend(() => {
-      pull ??= rebuild(entries.map((entry) => ({
+    () =>
+      rebuild(entries.map((entry) => ({
         ...entry,
         sample: Model.retain(entry.sample),
         keySample: entry.keySample === undefined ? undefined : Model.retain(entry.keySample)
-      }))).shrinks ?? Model.pullFromArray([])
-      return pull
-    })
+      }))).shrinks
   )
 }
 
