@@ -31,9 +31,13 @@ interface GenerateOptions {
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
 }
 
-type MultipartSchemaRefs =
-  | { readonly kind: "httpapi"; readonly singleFile: string; readonly files: string }
-  | { readonly kind: "client"; readonly singleFile: string }
+interface HttpApiMultipartSchemaRefs {
+  readonly kind: "httpapi"
+  readonly singleFile: string
+  readonly files: string
+}
+
+type MultipartSchemaRefs = HttpApiMultipartSchemaRefs | { readonly kind: "client"; readonly singleFile: string }
 
 /**
  * Create a stateful JSON Schema code generator for OpenAPI-derived schemas.
@@ -276,41 +280,30 @@ function renderSchemaTypeAndRuntime(
   typeOnly: boolean,
   options?: GenerateOptions
 ) {
-  const multipartSchemaRefs = options?.multipartSchemaRefs
-  if (!typeOnly && multipartSchemaRefs?.kind === "httpapi") {
-    if ($ref === multipartSchemaRefs.singleFile) {
-      return [
-        `export type ${$ref} = Multipart.PersistedFile`,
-        `export const ${$ref} = Multipart.SingleFileSchema`
-      ].join("\n")
-    }
-    if ($ref === multipartSchemaRefs.files) {
-      return [
-        `export type ${$ref} = ReadonlyArray<Multipart.PersistedFile>`,
-        `export const ${$ref} = Multipart.FilesSchema`
-      ].join("\n")
-    }
-  }
-  if (multipartSchemaRefs?.kind === "client" && $ref === multipartSchemaRefs.singleFile) {
-    const type = `export type ${$ref} = globalThis.File | globalThis.Blob`
-    if (typeOnly) {
-      return type
-    }
-    return [
-      type,
-      `export const ${$ref} = Schema.declare(` +
-      `(value: unknown): value is globalThis.File | globalThis.Blob => ` +
-      `(typeof globalThis.File !== "undefined" && value instanceof globalThis.File) || ` +
-      `(typeof globalThis.Blob !== "undefined" && value instanceof globalThis.Blob), ` +
-      `{ expected: "File | Blob" })`
-    ].join("\n")
-  }
-
+  code = multipartCode($ref, options?.multipartSchemaRefs) ?? code
   const strings = [`export type ${$ref} = ${code.Type}`]
   if (!typeOnly) {
     strings.push(`export const ${$ref} = ${code.runtime}`)
   }
   return strings.join("\n")
+}
+
+function multipartCode(
+  $ref: string,
+  refs: MultipartSchemaRefs | undefined
+): SchemaRepresentation.Code | undefined {
+  if (refs === undefined) {
+    return undefined
+  }
+  if ($ref === refs.singleFile) {
+    return refs.kind === "httpapi"
+      ? { Type: "Multipart.PersistedFile", runtime: "Multipart.SingleFileSchema" }
+      : { Type: "globalThis.File | globalThis.Blob", runtime: "Schema.instanceOf(globalThis.Blob)" }
+  }
+  if (refs.kind === "httpapi" && $ref === refs.files) {
+    return { Type: "ReadonlyArray<Multipart.PersistedFile>", runtime: "Multipart.FilesSchema" }
+  }
+  return undefined
 }
 
 function renderRecursiveReferenceDeclaration(
@@ -340,7 +333,7 @@ function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, 
 function omitSupersededMultipartDefinitions(
   definitions: JsonSchema.Definitions,
   schemas: ReadonlyArray<JsonSchema.JsonSchema>,
-  multipartSchemaRefs: Extract<MultipartSchemaRefs, { readonly kind: "httpapi" }>
+  multipartSchemaRefs: HttpApiMultipartSchemaRefs
 ): JsonSchema.Definitions {
   const rootReferences = collectReferenceKeys(schemas)
   const multipartReferences = new Set([multipartSchemaRefs.singleFile, multipartSchemaRefs.files])
