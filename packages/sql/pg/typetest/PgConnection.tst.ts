@@ -1,5 +1,5 @@
 import { PgClient, PgConnection } from "@effect/sql-pg"
-import { Effect, Redacted } from "effect"
+import { Context, Effect, Redacted } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("PostgreSQL passwords", () => {
@@ -13,6 +13,13 @@ describe("PostgreSQL passwords", () => {
 
   it("rejects fallible providers", () => {
     const password = Effect.fail("token fetch failed")
+    expect(PgConnection.make).type.not.toBeCallableWith({ password })
+    expect(PgClient.make).type.not.toBeCallableWith({ password })
+  })
+
+  it("rejects providers requiring services", () => {
+    class PasswordService extends Context.Service<PasswordService, Redacted.Redacted>()("PasswordService") {}
+    const password = Effect.service(PasswordService)
     expect(PgConnection.make).type.not.toBeCallableWith({ password })
     expect(PgClient.make).type.not.toBeCallableWith({ password })
   })
