@@ -206,7 +206,7 @@ export interface PgConnection {
    */
   readonly listen: (
     channel: string
-  ) => Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope>
+  ) => Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope>
   /**
    * Attempts to cancel the active query through a side connection. This is a
    * no-op for an unpinned multiplexed connection because the active
@@ -316,7 +316,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  readonly channels = new Map<string, Set<Queue.Queue<Notification>>>()
+  readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
   readonly pipelinePending: Array<PipelineEntry> = []
@@ -417,8 +417,9 @@ class PgConnectionImpl implements PgConnection {
     consumer?.onFatal(error)
     const sets = Array.from(this.channels.values())
     this.channels.clear()
+    const cause = this.closed ? Cause.interrupt() : Cause.fail(error)
     for (const set of sets) {
-      for (const queue of set) Queue.failCauseUnsafe(queue, Cause.interrupt())
+      for (const queue of set) Queue.failCauseUnsafe(queue, cause)
     }
     if (!this.closed) {
       for (const hook of this.fatalHooks) hook()
@@ -724,7 +725,8 @@ class PgConnectionImpl implements PgConnection {
 
   readonly listen = (
     channel: string
-  ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> => listenChannel(this, this.pin, channel)
+  ): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
+    listenChannel(this, this.pin, channel)
 
   readonly interrupt: Effect.Effect<void> = Effect.suspend(() =>
     this.multiplex && !this.pinned ? Effect.void : this.cancel
@@ -773,7 +775,8 @@ class PinnedPgConnection implements PgConnection {
 
   readonly listen = (
     channel: string
-  ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> => listenChannel(this.base, this.pin, channel)
+  ): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
+    listenChannel(this.base, this.pin, channel)
 }
 
 interface QueryOutput {
@@ -1773,7 +1776,7 @@ const listenChannel = (
   conn: PgConnectionImpl,
   pin: Effect.Effect<PgConnection, never, Scope.Scope>,
   channel: string
-): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> =>
+): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
       const channelError = validateChannelName(channel, "listen")
@@ -1783,7 +1786,7 @@ const listenChannel = (
       return yield* restore(Effect.gen(function*() {
         const pinned = yield* Scope.provide(pin, scope)
         if (conn.deadWith !== undefined) return yield* conn.deadWith
-        const queue = yield* Queue.unbounded<Notification>()
+        const queue = yield* Queue.unbounded<Notification, SqlError>()
         const identifier = escapeIdentifier(channel)
         let queues = conn.channels.get(channel)
         if (queues === undefined) {

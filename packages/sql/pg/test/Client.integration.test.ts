@@ -1,6 +1,6 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Queue, Stream, String } from "effect"
+import { Deferred, Effect, Fiber, Option, Queue, Schedule, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
@@ -529,6 +529,47 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
       )
       expect(payload.payload).toEqual("payload")
     }).pipe(TestClock.withLive), { timeout: 20_000 })
+
+  it.effect("retries a failed listener and receives notifications on a new connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const channel = "retry_listener"
+      const registered = yield* Queue.unbounded<void>()
+      let attempts = 0
+      const consumer = yield* Stream.unwrap(Effect.gen(function*() {
+        const notifications = yield* sql.listen(channel)
+        attempts++
+        yield* Queue.offer(registered, undefined)
+        return Stream.fromQueue(notifications)
+      })).pipe(
+        Stream.retry(Schedule.recurs(1)),
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.forkScoped
+      )
+
+      yield* Queue.take(registered)
+      const [listener] = yield* sql<{ pid: number }>`
+        SELECT pid FROM pg_stat_activity WHERE query = ${`LISTEN "${channel}"`}
+      `
+      assert.isDefined(listener)
+      yield* sql`SELECT pg_terminate_backend(${listener.pid})`
+
+      // Wait for LISTEN to finish again: notifications sent while disconnected
+      // are not replayed by PostgreSQL.
+      yield* Queue.take(registered)
+      const [replacement] = yield* sql<{ pid: number }>`
+        SELECT pid FROM pg_stat_activity WHERE query = ${`LISTEN "${channel}"`}
+      `
+      assert.isDefined(replacement)
+      assert.notStrictEqual(replacement.pid, listener.pid)
+      yield* sql.notify(channel, "after reconnect")
+      const notifications = yield* Fiber.join(consumer)
+      assert.strictEqual(attempts, 2)
+      assert.strictEqual(notifications.length, 1)
+      assert.strictEqual(notifications[0].channel, channel)
+      assert.strictEqual(notifications[0].payload, "after reconnect")
+    }), { timeout: 20_000 })
 
   it.effect("listen rejects channel names longer than 63 UTF-8 bytes", () =>
     Effect.gen(function*() {

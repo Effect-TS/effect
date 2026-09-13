@@ -1,6 +1,6 @@
 import { PgConnection, PgPool } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Queue, Redacted, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Queue, Redacted, Schedule, Scope, Stream } from "effect"
 import { PgContainer } from "./utils.ts"
 
 // `it.effect` runs under the TestClock, so poll loops sleep in real time.
@@ -87,6 +87,53 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       const result = yield* connection.query("SELECT 1 AS one")
       assert.deepStrictEqual(result.rows, [{ one: 1 }])
     }))
+
+  it.effect("preserves the server error when a listener backend is terminated", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const pool = yield* PgPool.make({ ...config, maxConnections: 1, multiplex: true })
+      const listener = yield* pool.reserve
+      const notifications = yield* listener.listen("terminated_listener")
+      const consumer = yield* Effect.forkScoped(Queue.take(notifications))
+      const terminator = yield* PgConnection.make(config)
+
+      yield* terminator.query("SELECT pg_terminate_backend($1)", [listener.processId])
+      const error = yield* Effect.flip(Fiber.join(consumer))
+      assert.strictEqual(error._tag, "SqlError")
+      assert.instanceOf(error.reason.cause, Error)
+      assert.propertyVal(error.reason.cause, "code", "57P01")
+      assert.strictEqual(error.reason.cause.message, "terminating connection due to administrator command")
+      // Later operations see the same fatal error, including its original cause.
+      assert.strictEqual(yield* Effect.flip(listener.query("SELECT 1")), error)
+    }))
+
+  for (const close of ["connection", "listener"] as const) {
+    it.effect(`interrupts notification consumers when the ${close} scope closes`, () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.fork(yield* Scope.Scope)
+        const config = yield* poolConfig
+        const connection = yield* close === "connection"
+          ? Scope.provide(PgConnection.make(config), scope)
+          : PgConnection.make(config)
+        const notifications = yield* close === "listener"
+          ? Scope.provide(connection.listen("closed_listener"), scope)
+          : connection.listen("closed_listener")
+        yield* Scope.close(scope, Exit.void)
+
+        let attempts = 0
+        const exit = yield* Stream.unwrap(Effect.sync(() => {
+          attempts++
+          return Stream.fromQueue(notifications)
+        })).pipe(
+          Stream.retry(Schedule.recurs(1)),
+          Stream.runDrain,
+          Effect.exit
+        )
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) assert.isTrue(Cause.hasInterruptsOnly(exit.cause))
+        assert.strictEqual(attempts, 1)
+      }))
+  }
 
   it.effect("returns a multiplexed reservation to shared circulation", () =>
     Effect.gen(function*() {
