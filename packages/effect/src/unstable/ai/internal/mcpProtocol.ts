@@ -350,6 +350,7 @@ export interface HandlerInstallationContext {
   readonly serverInfo: {
     readonly name: string
     readonly version: string
+    readonly instructions?: string | undefined
     readonly description?: string | undefined
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined

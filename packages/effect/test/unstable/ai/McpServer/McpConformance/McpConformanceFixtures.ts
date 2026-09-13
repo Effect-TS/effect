@@ -546,6 +546,7 @@ export const makeFeaturesServerLayer = (
   ).pipe(
     Layer.provide(makeServerLayer({
       name: "McpConformance",
+      instructions: "Follow the test server instructions.",
       protocols: [protocol],
       extensions: { "example/lifecycle": { enabled: true } }
     }))

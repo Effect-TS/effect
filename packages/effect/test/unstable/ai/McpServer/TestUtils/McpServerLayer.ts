@@ -11,6 +11,7 @@ const noopLogger = Logger.make(constVoid)
 export const makeServerLayer = (options: {
   readonly name: string
   readonly version?: string | undefined
+  readonly instructions?: string | undefined
   readonly protocols?:
     | readonly [
       McpProtocol.ProtocolAdapter,
@@ -23,6 +24,7 @@ export const makeServerLayer = (options: {
   McpServer.layerHttp({
     name: options.name,
     version: options.version ?? "1.0.0",
+    instructions: options.instructions,
     path: "/mcp",
     protocols: options.protocols ?? [McpProtocol.v2025_06_18],
     allowedOrigins: ["https://allowed.example"],

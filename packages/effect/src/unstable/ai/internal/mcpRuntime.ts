@@ -122,6 +122,7 @@ export interface HandlerInstallationOptions {
   readonly serverInfo: {
     readonly name: string
     readonly version: string
+    readonly instructions?: string | undefined
     readonly description?: string | undefined
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
@@ -513,6 +514,7 @@ export const make = Effect.fnUntraced(function*(
               }
               return Effect.succeed({
                 capabilities,
+                instructions: options.serverInfo.instructions,
                 serverInfo: PublicMcpSchema.Implementation.make({
                   name: options.serverInfo.name,
                   version: options.serverInfo.version,

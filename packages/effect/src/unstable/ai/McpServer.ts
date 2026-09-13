@@ -674,6 +674,7 @@ class McpClientKey extends Data.Class<{
 export const run: (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -686,6 +687,7 @@ export const run: (options: {
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -703,6 +705,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   options: {
     readonly name: string
     readonly version: string
+    readonly instructions?: string | undefined
     readonly description?: string | undefined
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1370,6 +1373,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
 export const layer = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1383,6 +1387,7 @@ export const layer = (options: {
 const layerWithRuntime = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1425,6 +1430,7 @@ const layerWithRuntime = (options: {
 export const layerStdio = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1536,6 +1542,7 @@ const mcpStdioSerialization = (
 export const layerHttp = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
