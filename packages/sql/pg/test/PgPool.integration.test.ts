@@ -88,6 +88,22 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.deepStrictEqual(result.rows, [{ one: 1 }])
     }))
 
+  it.effect("preserves the server error when a listener backend is terminated", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const pool = yield* PgPool.make({ ...config, maxConnections: 1, multiplex: true })
+      const listener = yield* pool.reserve
+      const notifications = yield* listener.listen("terminated_listener")
+      const consumer = yield* Effect.forkScoped(Queue.take(notifications))
+      const terminator = yield* PgConnection.make(config)
+
+      yield* terminator.query("SELECT pg_terminate_backend($1)", [listener.processId])
+      const error = yield* Effect.flip(Fiber.join(consumer))
+      assert.strictEqual(error._tag, "SqlError")
+      assert.propertyVal(error.reason.cause, "code", "57P01")
+      assert.strictEqual(yield* Effect.flip(listener.query("SELECT 1")), error)
+    }))
+
   it.effect("returns a multiplexed reservation to shared circulation", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1, multiplex: true })

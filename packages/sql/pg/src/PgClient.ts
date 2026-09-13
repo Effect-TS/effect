@@ -53,13 +53,15 @@ export interface PgClient extends Client.SqlClient {
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
   /**
-   * Registers a channel listener and returns its non-empty payload queue after
+   * Registers a channel listener and returns its notification queue after
    * PostgreSQL confirms `LISTEN`. The listener holds a connection until the
    * scope closes.
+   * Connection failures after registration fail the queue with the original
+   * `SqlError`. Intentional scope closure interrupts consumers.
    */
   readonly listen: (
     channel: string
-  ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification>, SqlError, Scope.Scope>
+  ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
 }
 
@@ -203,7 +205,7 @@ const makeImpl = Effect.fnUntraced(function*(
 
   const listen = (
     channel: string
-  ): Effect.Effect<Queue.Dequeue<PgConnection.Notification>, SqlError, Scope.Scope> =>
+  ): Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope> =>
     Effect.flatMap(options.listenAcquirer, (connection) => connection.listen(channel))
 
   return Object.assign(
