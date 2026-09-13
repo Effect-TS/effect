@@ -137,49 +137,87 @@ it.effect("completes a successful runner stream", () =>
     assert.strictEqual(completion.value._tag, "WithExit")
   }).pipe(Effect.provide(handlers)))
 
-it.effect("releases a non-persisted entity stream subscription when the runner caller disconnects", () =>
-  Effect.gen(function*() {
-    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
-    yield* Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const sharding = yield* Sharding.Sharding
-      const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("disconnected-caller")
-      const request: Envelope.PartialRequest = {
-        _tag: "Request",
-        requestId: snowflake.nextUnsafe(),
-        address: EntityAddress.make({
-          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-          entityType: EntityType.make(ReproEntity.type),
-          entityId
-        }),
-        tag: "ReproStream",
-        payload: { id: 1 },
-        headers: Headers.empty
-      }
-      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
-        onFromServer: () => Effect.void
-      })
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("stream"),
-        tag: "Stream",
-        payload: { request, persisted: false },
-        headers: Headers.empty
-      })
-      yield* TestClock.adjust(1)
-      assert.strictEqual(pubsub.subscribers.size, 1)
+for (
+  const { entity, expectedSubscribers, name, persisted } of [
+    {
+      name: "releases a non-persisted entity stream subscription when the runner caller disconnects",
+      entity: ReproEntity,
+      persisted: false,
+      expectedSubscribers: 0
+    },
+    {
+      name: "preserves a volatile stream annotated Uninterruptible: true when the runner caller disconnects",
+      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, true),
+      persisted: false,
+      expectedSubscribers: 1
+    },
+    {
+      name: "preserves a volatile stream annotated Uninterruptible: client when the runner caller disconnects",
+      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, "client"),
+      persisted: false,
+      expectedSubscribers: 1
+    },
+    {
+      name: "preserves a persisted entity stream subscription when the runner caller disconnects",
+      entity: ReproEntity.annotateRpcs(ClusterSchema.Persisted, true),
+      persisted: true,
+      expectedSubscribers: 1
+    }
+  ]
+) {
+  it.effect(name, () =>
+    Effect.gen(function*() {
+      const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const snowflake = yield* Snowflake.Generator
+        const entityId = EntityId.make("disconnected-caller")
+        const request: Envelope.PartialRequest = {
+          _tag: "Request",
+          requestId: snowflake.nextUnsafe(),
+          address: EntityAddress.make({
+            shardId: sharding.getShardId(entityId, entity.getShardGroup(entityId)),
+            entityType: EntityType.make(entity.type),
+            entityId
+          }),
+          tag: "ReproStream",
+          payload: { id: 1 },
+          headers: Headers.empty
+        }
+        if (persisted) {
+          // The sending runner stores durable requests before notifying the host.
+          const driver = yield* MessageStorage.MemoryDriver
+          yield* driver.encoded.saveEnvelope({
+            envelope: yield* Schema.encodeEffect(Envelope.PartialJson)(request),
+            primaryKey: null,
+            deliverAt: null
+          })
+        }
+        const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
+          onFromServer: () => Effect.void
+        })
+        yield* server.write(0, {
+          _tag: "Request",
+          id: RpcMessage.RequestId("stream"),
+          tag: "Stream",
+          payload: { request, persisted },
+          headers: Headers.empty
+        })
+        yield* TestClock.adjust(1)
+        assert.strictEqual(pubsub.subscribers.size, 1)
 
-      // A transport disconnect interrupts the runner RPC without sending the
-      // entity an Envelope.Interrupt, unlike a clean Entity.client close.
-      yield* server.disconnect(0)
-      yield* TestClock.adjust(1)
-      assert.strictEqual(pubsub.subscribers.size, 0)
-    }).pipe(Effect.provide(makeHandlers(
-      ReproEntity.toLayer({ ReproStream: () => Rpc.fork(Stream.fromPubSub(pubsub)) }),
-      Schema.toCodecJson as RpcSerialization.CodecFor
-    )))
-  }))
+        // A transport disconnect interrupts the runner RPC without sending the
+        // entity an Envelope.Interrupt, unlike a clean Entity.client close.
+        yield* server.disconnect(0)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(pubsub.subscribers.size, expectedSubscribers)
+      }).pipe(Effect.provide(makeHandlers(
+        entity.toLayer({ ReproStream: () => Rpc.fork(Stream.fromPubSub(pubsub)) }),
+        Schema.toCodecJson as RpcSerialization.CodecFor
+      )))
+    }))
+}
 
 it.effect("fills the entity payload and reply holes with the serialization's codec", () =>
   Effect.gen(function*() {
