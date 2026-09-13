@@ -51,6 +51,8 @@ export interface EntityManager {
     message: Message.Incoming<any>
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
+  readonly interruptOnDisconnect: (address: EntityAddress, requestId: Snowflake.Snowflake) => Effect.Effect<void>
+
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
     readonly excludeReplies?: boolean
   }) => boolean
@@ -90,9 +92,11 @@ export type EntityState = {
     sentReply: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
+    callerDisconnected?: boolean
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
+  readonly interruptOnDisconnect: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
   readonly keepAliveLatch: Latch.Latch
   keepAliveEnabled: boolean
 }
@@ -186,6 +190,7 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
+    let interruptRequest: ((requestId: Snowflake.Snowflake) => Effect.Effect<void>) | undefined
     let defectRequestIds = new Set<Snowflake.Snowflake>()
     let isRestartingDueToDefect = false
 
@@ -335,8 +340,16 @@ export const make = Effect.fnUntraced(function*<
           scope,
           Effect.sync(() => {
             isShuttingDown = true
+            interruptRequest = undefined
           })
         )
+
+        interruptRequest = (requestId) =>
+          server.write(0, {
+            _tag: "Interrupt",
+            requestId: requestId as any,
+            interruptors: []
+          })
 
         if (defectRequestIds.size > 0) {
           for (const id of defectRequestIds) {
@@ -358,6 +371,9 @@ export const make = Effect.fnUntraced(function*<
                 ? { onRequest: options.storage.withTransaction }
                 : undefined
             )
+            if (request.callerDisconnected) {
+              yield* interruptRequest(id)
+            }
           }
           defectRequestIds.clear()
         }
@@ -402,6 +418,22 @@ export const make = Effect.fnUntraced(function*<
         return writeRef.state.current.value(clientId, message, writeOptions)
       },
       activeRequests,
+      interruptOnDisconnect(requestId) {
+        return Effect.suspend(() => {
+          const request = activeRequests.get(requestId)
+          if (
+            !request ||
+            Context.get(request.message.annotations, Persisted) ||
+            Context.get(request.message.annotations, ClusterSchema.Uninterruptible) !== false
+          ) {
+            return Effect.void
+          }
+          // If the server is rebuilding, interrupt the replay without making
+          // caller cleanup wait. The normal Exit path still removes the request.
+          request.callerDisconnected = true
+          return interruptRequest ? interruptRequest(requestId) : Effect.void
+        })
+      },
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
       keepAliveLatch,
       keepAliveEnabled: false
@@ -554,13 +586,6 @@ export const make = Effect.fnUntraced(function*<
               if (!entry) {
                 return Effect.void
               } else if (
-                message.envelope._tag === "Interrupt" &&
-                message.callerTeardown === true &&
-                Context.get(entry.message.annotations, ClusterSchema.Uninterruptible) !== false
-              ) {
-                // Caller teardown respects any Uninterruptible annotation; explicit interrupts still apply.
-                return Effect.void
-              } else if (
                 message.envelope._tag === "AckChunk" &&
                 Option.isSome(entry.lastSentChunk) &&
                 message.envelope.replyId !== entry.lastSentChunk.value.id
@@ -613,6 +638,11 @@ export const make = Effect.fnUntraced(function*<
         })
         if (fibers.length === 0) return Effect.void
         return Effect.flatMap(Fiber.joinAll(fibers), loop)
+      }),
+    interruptOnDisconnect: (address, requestId) =>
+      Effect.suspend(() => {
+        const state = activeServers.get(address.entityId)
+        return state && Equal.equals(state.address, address) ? state.interruptOnDisconnect(requestId) : Effect.void
       }),
     isProcessingFor(message, options) {
       if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {

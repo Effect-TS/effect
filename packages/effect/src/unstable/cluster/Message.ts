@@ -127,11 +127,6 @@ export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("I
 export class IncomingEnvelope extends Data.TaggedClass("IncomingEnvelope")<{
   readonly _tag: "IncomingEnvelope"
   readonly envelope: Envelope.AckChunk | Envelope.Interrupt
-  /**
-   * Local marker for interruption caused by the caller's runner RPC ending.
-   * Explicit interrupts leave this unset and bypass teardown annotation checks.
-   */
-  readonly callerTeardown?: boolean | undefined
 }> {}
 
 /**
