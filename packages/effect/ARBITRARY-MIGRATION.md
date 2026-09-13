@@ -142,6 +142,12 @@ engine, then record the new token from its `Falsified` result.
 Replay tokens are intended for reproducing and diagnosing a current failure. Because the module is unstable, they are
 not guaranteed to survive upgrades. Preserve important failing inputs as explicit regression tests.
 
+Array shrinking now tries deleting prefixes and interior blocks as well as suffixes. Products and objects retain child
+shrink candidates when exploring other branches. Shrunk outputs and replay paths can therefore differ from earlier
+native releases, including RC.115. Re-run affected properties to record new tokens.
+For arrays of composed Arbitraries, use `Arbitrary.array(item, { maxLength: 50 })` instead of shrinking a generated
+length through `flatMap` and `all`; deletions then preserve the remaining generated elements.
+
 ## Migrating Declaration Annotations
 
 The old `toArbitrary` annotation directly constructed a fast-check arbitrary and exposed fast-check recursion and

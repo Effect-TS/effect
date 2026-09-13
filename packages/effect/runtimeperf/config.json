@@ -323,6 +323,21 @@
               "size": 1
             },
             {
+              "name": "array-check-pass-100-native",
+              "export": "arrayCheckPass100",
+              "scenario": "arbitrary-array-check-pass-100",
+              "operation": "check-array",
+              "size": 50
+            },
+            {
+              "name": "array-check-falsify-shrink-native",
+              "export": "arrayCheckFalsifyAndShrink",
+              "scenario": "arbitrary-array-check-falsify-shrink",
+              "operation": "check-array-and-shrink",
+              "path": "failure",
+              "size": 4
+            },
+            {
               "name": "check-pass-100-native",
               "export": "checkPass100",
               "scenario": "arbitrary-check-pass-100",
@@ -570,6 +585,21 @@
               "operation": "replay-flat-map",
               "path": "failure",
               "size": 1
+            },
+            {
+              "name": "array-check-pass-100-fast-check-v4",
+              "export": "arrayCheckPass100",
+              "scenario": "arbitrary-array-check-pass-100",
+              "operation": "check-array",
+              "size": 50
+            },
+            {
+              "name": "array-check-falsify-shrink-fast-check-v4",
+              "export": "arrayCheckFalsifyAndShrink",
+              "scenario": "arbitrary-array-check-falsify-shrink",
+              "operation": "check-array-and-shrink",
+              "path": "failure",
+              "size": 4
             },
             {
               "name": "check-pass-100-fast-check-v4",
