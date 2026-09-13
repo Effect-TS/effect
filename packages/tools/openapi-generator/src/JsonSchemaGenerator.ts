@@ -298,7 +298,10 @@ function multipartCode(
   if ($ref === refs.singleFile) {
     return refs.kind === "httpapi"
       ? { Type: "Multipart.PersistedFile", runtime: "Multipart.SingleFileSchema" }
-      : { Type: "globalThis.File | globalThis.Blob", runtime: "Schema.instanceOf(globalThis.Blob)" }
+      : {
+        Type: "globalThis.File | globalThis.Blob",
+        runtime: `Schema.instanceOf(globalThis.Blob, { expected: "File | Blob" })`
+      }
   }
   if (refs.kind === "httpapi" && $ref === refs.files) {
     return { Type: "ReadonlyArray<Multipart.PersistedFile>", runtime: "Multipart.FilesSchema" }
