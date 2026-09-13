@@ -21,6 +21,7 @@ import * as Queue from "../../Queue.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import type * as ClusterError from "./ClusterError.ts"
+import * as Envelope from "./Envelope.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import * as Reply from "./Reply.ts"
@@ -163,7 +164,22 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
                 ),
                 sharding.notify(message, constWaitUntilRead)
               ) :
-              sharding.send(message),
+              Effect.acquireRelease(
+                sharding.send(message),
+                // The runner RPC scope owns non-persisted entity requests.
+                () =>
+                  Effect.ignore(sharding.send(
+                    new Message.IncomingEnvelope({
+                      envelope: new Envelope.Interrupt({
+                        id: request.requestId,
+                        address: request.address,
+                        requestId: request.requestId
+                      })
+                    })
+                  )),
+                // Sending may wait for the entity type to be registered.
+                { interruptible: true }
+              ),
             queue
           )
         }
