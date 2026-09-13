@@ -173,6 +173,7 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
                     (id) =>
                       sharding.send(
                         new Message.IncomingEnvelope({
+                          callerTeardown: true,
                           envelope: new Envelope.Interrupt({
                             id,
                             address: request.address,

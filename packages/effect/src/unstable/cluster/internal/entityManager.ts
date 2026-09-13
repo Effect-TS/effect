@@ -555,9 +555,11 @@ export const make = Effect.fnUntraced(function*<
                 return Effect.void
               } else if (
                 message.envelope._tag === "Interrupt" &&
-                ClusterSchema.isUninterruptibleForClient(entry.message.annotations)
+                message.callerTeardown === true &&
+                (ClusterSchema.isUninterruptibleForClient(entry.message.annotations) ||
+                  ClusterSchema.isUninterruptibleForServer(entry.message.annotations))
               ) {
-                // Runner disconnects must respect the same policy as client interrupts.
+                // Caller teardown respects annotations; explicit interrupts still apply.
                 return Effect.void
               } else if (
                 message.envelope._tag === "AckChunk" &&
@@ -655,7 +657,10 @@ export const make = Effect.fnUntraced(function*<
           onSuccess: (decoded) => {
             if (decoded._tag === "IncomingEnvelope") {
               return sendLocal(
-                new Message.IncomingEnvelope(decoded)
+                new Message.IncomingEnvelope({
+                  envelope: decoded.envelope,
+                  callerTeardown: decoded.callerTeardown
+                })
               )
             }
             const request = message as Message.IncomingRequest<any>
@@ -716,10 +721,7 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
       readonly _tag: "IncomingRequest"
       readonly envelope: Envelope.Request.Any
       readonly lastSentReply: Option.Option<Reply.Reply<Rpcs>>
-    } | {
-      readonly _tag: "IncomingEnvelope"
-      readonly envelope: Envelope.AckChunk | Envelope.Interrupt
-    },
+    } | Message.IncomingEnvelope,
     Schema.SchemaError,
     Rpc.ServicesServer<Rpcs>
   > => {
