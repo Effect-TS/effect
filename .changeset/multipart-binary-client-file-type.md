@@ -2,6 +2,6 @@
 "@effect/openapi-generator": patch
 ---
 
-Generated HTTP clients now type `multipart/form-data` fields that use `format: binary` as `globalThis.File | globalThis.Blob`.
+Generated HTTP clients now type `multipart/form-data` fields with `format: binary` as `File | Blob` instead of `string`. `httpapi` output is unchanged.
 
-A binary field was previously emitted as `string`, so passing a `File` (the value accepted by `HttpClientRequest.bodyFormDataRecord`) failed to type-check even though it worked at runtime. `httpapi` output is unchanged.
+Referenced components containing binary fields use `*Multipart` exports, such as `UploadBodyMultipart`. If a component is used only by multipart requests, update imports from its original name to the generated name. Components also used by JSON requests or responses keep their original exports and string fields.

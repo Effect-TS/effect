@@ -131,7 +131,6 @@ export const make = Effect.gen(function*() {
       const openApiTransformer = yield* OpenApiTransformer.OpenApiTransformer
       const emitWarning = makeWarningEmitter(options)
 
-      // If we receive a Swagger 2.0 spec, convert it to an OpenApi 3.0 spec
       if (isSwaggerSpec(spec)) {
         spec = yield* convertSwaggerSpec(spec)
       }
@@ -859,6 +858,7 @@ const makeMultipartSchemas = (
       }
     })
   }
+  // Client transforms populate definitions during parsing; render schemas only after parseOpenApi completes.
   return { refs, definitions: output, transform }
 }
 
