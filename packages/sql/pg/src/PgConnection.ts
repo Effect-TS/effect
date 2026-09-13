@@ -257,11 +257,9 @@ export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Sco
   Effect.flatMap(resolveConfig(options), (config) =>
     Effect.acquireRelease(
       Effect.gen(function*() {
-        const password = config.password === undefined
-          ? undefined
-          : yield* PasswordInternal.resolve(config.password).pipe(
-            Effect.mapError((cause) => configError("Password provider failed", cause))
-          )
+        const password = yield* PasswordInternal.resolve(config.password).pipe(
+          Effect.mapError((cause) => configError("Password provider failed", cause))
+        )
         const session = yield* connect(config, password)
         return new PgConnectionImpl(options, config, session, options.types)
       }),

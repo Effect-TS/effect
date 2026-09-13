@@ -45,15 +45,10 @@ export const run: <R2 = never>(
   | R2
 > = Migrator.make({
   dumpSchema(path, table) {
-    const pgDump = (args: Array<string>) =>
+    const pgDump = (args: Array<string>, password: string | undefined) =>
       Effect.gen(function*() {
         const sql = yield* PgClient
         const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-        const password = sql.config.password === undefined
-          ? undefined
-          : yield* Password.resolve(sql.config.password).pipe(
-            Effect.mapError((cause) => new Error("Failed to resolve PostgreSQL password", { cause }))
-          )
         const dump = yield* ChildProcess.make("pg_dump", [...args, "--no-owner", "--no-privileges"], {
           env: {
             PATH: (globalThis as any).process?.env.PATH,
@@ -72,21 +67,22 @@ export const run: <R2 = never>(
           .replace(/\n{2,}/gm, "\n\n")
           .trim()
       }).pipe(
-        Effect.mapError((error) => new Migrator.MigrationError({ kind: "Failed", message: error.message }))
+        Effect.mapError((error) =>
+          new Migrator.MigrationError({ kind: "Failed", message: error.message, cause: error })
+        )
       )
 
-    const pgDumpSchema = pgDump(["--schema-only"])
-
-    const pgDumpMigrations = pgDump([
-      "--column-inserts",
-      "--data-only",
-      `--table=${table}`
-    ])
-
-    const pgDumpAll = Effect.map(
-      Effect.all([pgDumpSchema, pgDumpMigrations], { concurrency: 2 }),
-      ([schema, migrations]) => schema + "\n\n" + migrations
-    )
+    const pgDumpAll = Effect.gen(function*() {
+      const sql = yield* PgClient
+      const password = yield* Password.resolve(sql.config.password).pipe(
+        Effect.mapError((cause) => new Error("Failed to resolve PostgreSQL password", { cause }))
+      )
+      const [schema, migrations] = yield* Effect.all([
+        pgDump(["--schema-only"], password),
+        pgDump(["--column-inserts", "--data-only", `--table=${table}`], password)
+      ], { concurrency: 2 })
+      return schema + "\n\n" + migrations
+    })
 
     const pgDumpFile = (path: string) =>
       Effect.gen(function*() {
@@ -96,7 +92,9 @@ export const run: <R2 = never>(
         yield* fs.makeDirectory(path_.dirname(path), { recursive: true })
         yield* fs.writeFileString(path, dump)
       }).pipe(
-        Effect.mapError((error) => new Migrator.MigrationError({ kind: "Failed", message: error.message }))
+        Effect.mapError((error) =>
+          new Migrator.MigrationError({ kind: "Failed", message: error.message, cause: error })
+        )
       )
 
     return pgDumpFile(path)
