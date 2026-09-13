@@ -87,7 +87,7 @@ export interface PgClientConfig {
   readonly database?: string | undefined
   readonly username?: string | undefined
   /**
-   * A static password or an Effect that produces one for each connection attempt.
+   * See {@link PgConnection.Password} for provider requirements.
    */
   readonly password?: PgConnection.Password | undefined
 

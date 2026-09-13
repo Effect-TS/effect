@@ -57,7 +57,13 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 export type TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
- * A static password or an Effect that produces one for each connection attempt.
+ * A static password or an infallible Effect evaluated for each connection attempt.
+ *
+ * **Details**
+ *
+ * Providers must handle typed errors and require no services. Supply required
+ * services before passing the Effect. {@link Effect.orDie} converts typed errors
+ * to defects, which are not retryable SQL errors.
  *
  * @category models
  * @since 4.0.0
@@ -101,7 +107,7 @@ export interface Config {
   readonly database?: string | undefined
   readonly username?: string | undefined
   /**
-   * A static password or an Effect that produces one for each connection attempt.
+   * See {@link Password} for provider requirements.
    */
   readonly password?: Password | undefined
   readonly connectTimeout?: Duration.Input | undefined
@@ -240,10 +246,10 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  *
  * **Details**
  *
- * Password resolution, transport, optional `SSLRequest`, startup, and authentication run
- * under `connectTimeout` (5 seconds by default). The effect resolves once the
- * backend sends `ReadyForQuery`. When the scope closes, the
- * session sends `Terminate` and ends the socket.
+ * Password resolution, transport, optional `SSLRequest`, startup, and
+ * authentication run under `connectTimeout` (5 seconds by default). The effect
+ * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
+ * `Terminate` and ends the socket.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
