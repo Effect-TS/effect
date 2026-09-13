@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Layer, Option, PubSub, Queue, Schema, Stream } from "effect"
+import { Deferred, Effect, Exit, Layer, Option, PubSub, Queue, Schema, Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
@@ -8,6 +8,7 @@ import {
   EntityId,
   EntityType,
   Envelope,
+  Message,
   MessageStorage,
   RunnerHealth,
   Runners,
@@ -230,7 +231,7 @@ it.effect("disconnects an admitted stream while the real send return is held", (
     )))
   }))
 
-it.effect("interrupts a replayed stream when the caller disconnects during entity rebuild", () =>
+it.effect("does not replay a stream whose caller disconnects during entity rebuild", () =>
   Effect.gen(function*() {
     const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
     const rebuilding = yield* Deferred.make<void>()
@@ -241,8 +242,8 @@ it.effect("interrupts a replayed stream when the caller disconnects during entit
     const entityLayer = ReproEntity.toLayer(Effect.gen(function*() {
       builds++
       if (builds === 2) {
-        // The old server has closed here. Disconnect must record cleanup until
-        // the replacement server can replay the request.
+        // The old server has closed here. The departed caller's request must
+        // be forgotten before the replacement server replays active requests.
         yield* Deferred.succeed(rebuilding, undefined)
         yield* Deferred.await(releaseBuild)
       }
@@ -299,11 +300,198 @@ it.effect("interrupts a replayed stream when the caller disconnects during entit
       yield* Deferred.succeed(releaseBuild, undefined)
       yield* TestClock.adjust(1)
       assert.strictEqual(builds, 2)
-      assert.strictEqual(calls, 2)
+      assert.strictEqual(calls, 1)
       assert.strictEqual(pubsub.subscribers.size, 0)
-      assert.isTrue(yield* Deferred.isDone(stopped))
+      assert.isFalse(yield* Deferred.isDone(stopped))
     }).pipe(Effect.provide(makeHandlers(
       entityLayer,
+      Schema.toCodecJson as RpcSerialization.CodecFor
+    )))
+  }))
+
+it.effect("releases a non-persisted Effect handler when the runner caller disconnects", () =>
+  Effect.gen(function*() {
+    const started = yield* Deferred.make<void>()
+    const stopped = yield* Deferred.make<void>()
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const snowflake = yield* Snowflake.Generator
+      const entityId = EntityId.make("effect-disconnect")
+      const request: Envelope.PartialRequest = {
+        _tag: "Request",
+        requestId: snowflake.nextUnsafe(),
+        address: EntityAddress.make({
+          shardId: sharding.getShardId(entityId, HoleCodecEntity.getShardGroup(entityId)),
+          entityType: EntityType.make(HoleCodecEntity.type),
+          entityId
+        }),
+        tag: "Double",
+        payload: { id: 1 },
+        headers: Headers.empty
+      }
+      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
+        onFromServer: () => Effect.void
+      })
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId("effect"),
+        tag: "Effect",
+        payload: { request, persisted: false },
+        headers: Headers.empty
+      })
+      yield* TestClock.adjust(1)
+      assert.isTrue(yield* Deferred.isDone(started))
+      assert.isFalse(yield* Deferred.isDone(stopped))
+      yield* server.disconnect(0)
+      yield* TestClock.adjust(1)
+      assert.isTrue(yield* Deferred.isDone(stopped))
+    }).pipe(Effect.provide(makeHandlers(
+      HoleCodecEntity.toLayer({
+        Double: () =>
+          Rpc.fork(
+            Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.ensuring(Deferred.succeed(stopped, undefined))
+            )
+          )
+      }),
+      Schema.toCodecJson as RpcSerialization.CodecFor
+    )))
+  }))
+
+it.effect("releases mailbox capacity when a second caller disconnects during a held rebuild", () =>
+  Effect.gen(function*() {
+    const rebuilding = yield* Deferred.make<void>()
+    const releaseBuild = yield* Deferred.make<void>()
+    const starts: Array<number> = []
+    let builds = 0
+    const entityLayer = ReproEntity.toLayer(
+      Effect.gen(function*() {
+        builds++
+        if (builds === 2) {
+          yield* Deferred.succeed(rebuilding, undefined)
+          yield* Deferred.await(releaseBuild)
+        }
+        return {
+          ReproStream: ({ payload }) => {
+            starts.push(payload.id)
+            return Rpc.fork(starts.length === 1 ? Stream.die("trigger entity rebuild") : Stream.never)
+          }
+        }
+      }),
+      { mailboxCapacity: 2 }
+    )
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const snowflake = yield* Snowflake.Generator
+      const entityId = EntityId.make("mailbox-during-rebuild")
+      const address = EntityAddress.make({
+        shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
+        entityType: EntityType.make(ReproEntity.type),
+        entityId
+      })
+      const request = (id: number): Envelope.PartialRequest => ({
+        _tag: "Request",
+        requestId: snowflake.nextUnsafe(),
+        address,
+        tag: "ReproStream",
+        payload: { id },
+        headers: Headers.empty
+      })
+      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
+        onFromServer: () => Effect.void
+      })
+      const send = (clientId: number, id: number) =>
+        server.write(clientId, {
+          _tag: "Request",
+          id: RpcMessage.RequestId(String(id)),
+          tag: "Stream",
+          payload: { request: request(id), persisted: false },
+          headers: Headers.empty
+        })
+      yield* send(0, 1)
+      yield* TestClock.adjust("5 seconds")
+      assert.isTrue(yield* Deferred.isDone(rebuilding))
+      yield* send(1, 2)
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(starts, [1])
+
+      const probe = () =>
+        sharding.send(
+          new Message.IncomingRequest({
+            envelope: request(3),
+            lastSentReply: Option.none(),
+            respond: () => Effect.void,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          })
+        )
+      // A and B fill both slots, proving B was admitted before its disconnect.
+      const full = yield* probe().pipe(Effect.flip)
+      assert.strictEqual(full._tag, "MailboxFull")
+      yield* server.disconnect(1).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      assert.isFalse(yield* Deferred.isDone(releaseBuild))
+      yield* Deferred.succeed(releaseBuild, undefined)
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(starts, [1, 1])
+
+      const admitted = yield* probe().pipe(Effect.match({
+        onFailure: (error) => error._tag,
+        onSuccess: () => "accepted"
+      }))
+      assert.strictEqual(admitted, "accepted")
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(starts, [1, 1, 3])
+    }).pipe(Effect.provide(makeHandlers(
+      entityLayer,
+      Schema.toCodecJson as RpcSerialization.CodecFor
+    )))
+  }))
+
+it.effect("does not admit a request with an already-closed caller scope", () =>
+  Effect.gen(function*() {
+    let starts = 0
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const snowflake = yield* Snowflake.Generator
+      const entityId = EntityId.make("closed-scope")
+      const address = EntityAddress.make({
+        shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
+        entityType: EntityType.make(ReproEntity.type),
+        entityId
+      })
+      const callerScope = yield* Scope.make()
+      yield* Scope.close(callerScope, Exit.void)
+      const request = () => ({
+        envelope: {
+          _tag: "Request" as const,
+          requestId: snowflake.nextUnsafe(),
+          address,
+          tag: "ReproStream",
+          payload: { id: 1 },
+          headers: Headers.empty
+        },
+        lastSentReply: Option.none(),
+        respond: () => Effect.void,
+        codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+      })
+      yield* Effect.exit(sharding.send(new Message.IncomingRequest({ ...request(), callerScope })))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(starts, 0)
+      // A live request must still fit in the only mailbox slot.
+      const admitted = yield* Effect.exit(sharding.send(new Message.IncomingRequest(request())))
+      assert.strictEqual(admitted._tag, "Success")
+      yield* TestClock.adjust(1)
+      assert.strictEqual(starts, 1)
+    }).pipe(Effect.provide(makeHandlers(
+      ReproEntity.toLayer({
+        ReproStream: () => {
+          starts++
+          return Rpc.fork(Stream.never)
+        }
+      }, { mailboxCapacity: 1 }),
       Schema.toCodecJson as RpcSerialization.CodecFor
     )))
   }))
