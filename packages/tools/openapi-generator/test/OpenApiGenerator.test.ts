@@ -1,6 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import type * as JsonSchema from "effect/JsonSchema"
 import type { OpenAPISpec, OpenAPISpecOperation } from "effect/unstable/httpapi/OpenApi"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -609,6 +610,31 @@ const voidSuccessSpec: OpenAPISpec = {
   },
   security: [],
   tags: [{ name: "VoidSuccess" }]
+}
+
+function multipartSpec(schema: JsonSchema.JsonSchema, schemas: JsonSchema.Definitions = {}): OpenAPISpec {
+  return {
+    openapi: "3.1.0",
+    info: { title: "Upload API", version: "1.0.0" },
+    paths: {
+      "/upload": {
+        post: {
+          operationId: "upload",
+          parameters: [],
+          requestBody: {
+            required: true,
+            content: { "multipart/form-data": { schema } }
+          },
+          responses: { "204": { description: "Uploaded" } },
+          tags: ["Upload"],
+          security: []
+        }
+      }
+    },
+    components: { schemas, securitySchemes: {} },
+    security: [],
+    tags: [{ name: "Upload" }]
+  }
 }
 
 describe("OpenApiGenerator", () => {
@@ -3021,42 +3047,89 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
 
     it.effect("types multipart binary fields as File | Blob for generated clients", () =>
       assertGeneratedClientsCompile(
-        {
-          openapi: "3.1.0",
-          info: { title: "Upload API", version: "1.0.0" },
-          paths: {
-            "/upload": {
-              post: {
-                operationId: "upload",
-                parameters: [],
-                requestBody: {
-                  required: true,
-                  content: {
-                    "multipart/form-data": {
-                      schema: {
-                        type: "object",
-                        properties: { file: { type: "string", format: "binary" } },
-                        required: ["file"],
-                        additionalProperties: false
-                      }
-                    }
-                  }
-                },
-                responses: { "204": { description: "Uploaded" } },
-                tags: ["Upload"],
-                security: []
-              }
-            }
-          },
-          components: { schemas: {}, securitySchemes: {} },
-          security: [],
-          tags: [{ name: "Upload" }]
-        },
+        multipartSpec({
+          type: "object",
+          properties: { file: { type: "string", format: "binary" } },
+          required: ["file"],
+          additionalProperties: false
+        }),
         {
           usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt") }
 export const withBlob: UploadRequestFormData = { file: new Blob([]) }
 // @ts-expect-error Binary multipart fields do not accept strings.
 export const withString: UploadRequestFormData = { file: "upload.txt" }
+`
+        }
+      ))
+
+    it.effect("types recursive multipart binary references as File | Blob for generated clients", () =>
+      assertGeneratedClientsCompile(
+        multipartSpec({ $ref: "#/components/schemas/Node" }, {
+          Node: {
+            type: "object",
+            properties: {
+              file: { type: "string", format: "binary" },
+              child: { $ref: "#/components/schemas/Node" }
+            },
+            required: ["file"],
+            additionalProperties: false
+          }
+        }),
+        {
+          usage: `const file = new File([], "upload.txt")
+const blob = new Blob([])
+export const payload: UploadRequestFormData = { file, child: { file: blob, child: { file } } }
+// @ts-expect-error Recursive binary fields do not accept strings.
+export const withString: UploadRequestFormData = { file, child: { file: "upload.txt" } }
+`
+        }
+      ))
+
+    for (
+      const [format, assertIncludes] of [
+        ["httpclient", assertRuntimeIncludes],
+        ["httpclient-type-only", assertTypeOnlyIncludes]
+      ] as const
+    ) {
+      it.effect(`preserves named multipart components without binary fields (${format})`, () =>
+        assertIncludes(
+          multipartSpec({ $ref: "#/components/schemas/FormBody" }, {
+            FormBody: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                meta: { $ref: "#/components/schemas/Meta" }
+              },
+              required: ["name"],
+              additionalProperties: false
+            },
+            Meta: {
+              type: "object",
+              properties: { k: { type: "string" } },
+              required: ["k"],
+              additionalProperties: false
+            }
+          }),
+          [
+            "export type Meta =",
+            "export type FormBody =",
+            "export type UploadRequestFormData = FormBody"
+          ]
+        ))
+    }
+
+    it.effect("types multipart binary arrays as File | Blob arrays for generated clients", () =>
+      assertGeneratedClientsCompile(
+        multipartSpec({
+          type: "object",
+          properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
+          required: ["files"],
+          additionalProperties: false
+        }),
+        {
+          usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
+// @ts-expect-error Binary multipart arrays do not accept strings.
+export const withString: UploadRequestFormData = { files: ["upload.txt"] }
 `
         }
       ))
