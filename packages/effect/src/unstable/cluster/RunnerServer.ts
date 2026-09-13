@@ -164,10 +164,10 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
                 ),
                 sharding.notify(message, constWaitUntilRead)
               ) :
-              Effect.andThen(
+              Effect.acquireRelease(
                 sharding.send(message),
                 // The runner RPC scope owns non-persisted entity requests.
-                Effect.addFinalizer(() =>
+                () =>
                   Effect.ignoreCause(Effect.flatMap(
                     sharding.getSnowflake,
                     (id) =>
@@ -181,8 +181,9 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
                           })
                         })
                       )
-                  ))
-                )
+                  )),
+                // Sending may wait for the entity type to be registered.
+                { interruptible: true }
               ),
             queue
           )
