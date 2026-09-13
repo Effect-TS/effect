@@ -138,31 +138,50 @@ it.effect("completes a successful runner stream", () =>
   }).pipe(Effect.provide(handlers)))
 
 for (
-  const { entity, expectedSubscribers, name, persisted } of [
+  const { disconnect, entity, expectedSubscribers, name, persisted } of [
     {
       name: "releases a non-persisted entity stream subscription when the runner caller disconnects",
       entity: ReproEntity,
+      disconnect: true,
       persisted: false,
       expectedSubscribers: 0
     },
     {
       name: "preserves a volatile stream annotated Uninterruptible: true when the runner caller disconnects",
       entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, true),
+      disconnect: true,
       persisted: false,
       expectedSubscribers: 1
     },
     {
       name: "preserves a volatile stream annotated Uninterruptible: client when the runner caller disconnects",
       entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, "client"),
+      disconnect: true,
+      persisted: false,
+      expectedSubscribers: 1
+    },
+    {
+      name: "preserves a volatile stream annotated Uninterruptible: server when the runner caller disconnects",
+      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, "server"),
+      disconnect: true,
       persisted: false,
       expectedSubscribers: 1
     },
     {
       name: "preserves a persisted entity stream subscription when the runner caller disconnects",
       entity: ReproEntity.annotateRpcs(ClusterSchema.Persisted, true),
+      disconnect: true,
       persisted: true,
       expectedSubscribers: 1
-    }
+    },
+    ...([true, "client", "server"] as const).map((annotation) => ({
+      name:
+        `delivers an explicit interrupt to a volatile stream annotated Uninterruptible: ${annotation} while connected`,
+      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, annotation),
+      disconnect: false,
+      persisted: false,
+      expectedSubscribers: 0
+    }))
   ]
 ) {
   it.effect(name, () =>
@@ -172,7 +191,7 @@ for (
         yield* TestClock.adjust(1)
         const sharding = yield* Sharding.Sharding
         const snowflake = yield* Snowflake.Generator
-        const entityId = EntityId.make("disconnected-caller")
+        const entityId = EntityId.make("stream-caller")
         const request: Envelope.PartialRequest = {
           _tag: "Request",
           requestId: snowflake.nextUnsafe(),
@@ -207,9 +226,27 @@ for (
         yield* TestClock.adjust(1)
         assert.strictEqual(pubsub.subscribers.size, 1)
 
-        // A transport disconnect interrupts the runner RPC without sending the
-        // entity an Envelope.Interrupt, unlike a clean Entity.client close.
-        yield* server.disconnect(0)
+        if (disconnect) {
+          // A transport disconnect interrupts the runner RPC without sending the
+          // entity an Envelope.Interrupt, unlike a clean Entity.client close.
+          yield* server.disconnect(0)
+        } else {
+          // Send an explicit interruption over the same connected runner client.
+          yield* server.write(0, {
+            _tag: "Request",
+            id: RpcMessage.RequestId("interrupt"),
+            tag: "Envelope",
+            payload: {
+              envelope: new Envelope.Interrupt({
+                id: snowflake.nextUnsafe(),
+                address: request.address,
+                requestId: request.requestId
+              }),
+              persisted: false
+            },
+            headers: Headers.empty
+          })
+        }
         yield* TestClock.adjust(1)
         assert.strictEqual(pubsub.subscribers.size, expectedSubscribers)
       }).pipe(Effect.provide(makeHandlers(
