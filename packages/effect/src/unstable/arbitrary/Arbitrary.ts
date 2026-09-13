@@ -69,6 +69,22 @@ export interface SchemaOptions<A> {
 }
 
 /**
+ * Configures the lengths generated and preserved during shrinking by {@link array}.
+ *
+ * **Details**
+ *
+ * `minLength` defaults to zero. Generation grows with `size`, honors `minLength` even at size zero, and is capped by
+ * `maxLength` when provided. Both bounds must be integers between zero and 4294967295, with `minLength <= maxLength`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ArrayOptions {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+}
+
+/**
  * Checks whether a value is an `Arbitrary`.
  *
  * **When to use**
@@ -370,6 +386,55 @@ export function Constant<const A>(value: A): Arbitrary<A> {
 }
 
 /**
+ * Generates variable-length arrays from an existing element `Arbitrary`.
+ *
+ * **When to use**
+ *
+ * Use when generating command sequences or collections whose elements are built with Arbitrary composition.
+ *
+ * **Details**
+ *
+ * Shrinking tries removing blocks, including prefixes and interior blocks, while preserving the order and values of
+ * retained elements. It also tries the elements' own shrink candidates. Length bounds remain valid during shrinking,
+ * and elements share the generation budget for recursion.
+ *
+ * **Gotchas**
+ *
+ * Invalid length bounds throw a `RangeError` when this function is called. Retained objects are not cloned, so
+ * properties must not mutate generated values. Bounded shrinking does not guarantee a globally minimal failure.
+ *
+ * **Example** (Removing irrelevant commands)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema } from "effect"
+ * import { Arbitrary } from "effect/unstable/arbitrary"
+ *
+ * const command = Arbitrary.schema(Schema.Literals(["Add", "Reset", "Stop"]))
+ * const commands = Arbitrary.array(command, { maxLength: 50 })
+ * const result = await Effect.runPromise(
+ *   Arbitrary.checkEffect(commands, (values) => {
+ *     // The state machine fails when Reset occurs before a later Stop.
+ *     const reset = values.indexOf("Reset")
+ *     return reset === -1 || !values.slice(reset + 1).includes("Stop")
+ *   }, { runs: 1, size: 4, seed: 0 })
+ * )
+ *
+ * result._tag // => "Falsified"
+ * if (result._tag === "Falsified") {
+ *   result.initialInput // => ["Add", "Add", "Reset", "Stop"]
+ *   result.shrunkInput // => ["Reset", "Stop"]
+ * }
+ * ```
+ *
+ * @see {@link ArrayOptions} for length bounds
+ * @see {@link all} for fixed tuples and records of Arbitraries
+ * @see {@link schema} for deriving arrays described by Schema
+ * @category constructors
+ * @since 4.0.0
+ */
+export const array: <A>(item: Arbitrary<A>, options?: ArrayOptions) => Arbitrary<Array<A>> = Internal.array
+
+/**
  * Transforms every generated value and its shrink candidates.
  *
  * **When to use**
@@ -479,6 +544,7 @@ export const flatMap: {
  * Iterable inputs are consumed when `all` is called. If any member discards a generated root, the complete generated
  * value is discarded.
  *
+ * @see {@link array} for variable-length arrays that shrink by removing elements
  * @category constructors
  * @since 4.0.0
  */

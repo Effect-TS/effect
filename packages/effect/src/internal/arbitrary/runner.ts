@@ -7,6 +7,7 @@ import * as Scheduler from "../../Scheduler.ts"
 import type * as Schema from "../../Schema.ts"
 import type {
   Arbitrary,
+  ArrayOptions,
   CheckOptions,
   CheckResult,
   PropertyError,
@@ -19,6 +20,7 @@ import type {
 } from "../../unstable/arbitrary/Arbitrary.ts"
 import { done } from "../core.ts"
 import * as InternalRecord from "../record.ts"
+import * as Arrays from "./array.ts"
 import * as Model from "./model.ts"
 import * as Compiler from "./schema.ts"
 
@@ -275,6 +277,43 @@ export function filterMap<A, B, X>(
           return Option.isSome(result) ? Model.makeSample(result.value) : Model.discarded
         })
   ))
+}
+
+/** @internal */
+export function array<A>(item: Arbitrary<A>, options?: ArrayOptions): Arbitrary<Array<A>> {
+  const minimum = options?.minLength ?? 0
+  const maximum = options?.maxLength ?? 0xffffffff
+  if (
+    !Number.isInteger(minimum) || minimum < 0 || minimum > 0xffffffff ||
+    !Number.isInteger(maximum) || maximum < minimum || maximum > 0xffffffff
+  ) {
+    throw new RangeError("Arbitrary.array: expected 0 <= minLength <= maxLength <= 4294967295 with integer lengths")
+  }
+  const child = item.gen
+  const minCost = minimum === 0 ? 0 : minimum * child.minCost
+  return make(Model.makeGenerator(minCost, (state) => {
+    const upper = Math.min(
+      maximum,
+      Math.max(minimum, state.size),
+      child.minCost > 0 ? Math.floor(state.budget.remaining / child.minCost) : maximum
+    )
+    if (upper < minimum) return Model.discarded
+    const length = Model.randomLength(state, minimum, upper)
+    const children = Array.from({ length }, () => child)
+    const order = length < 2 ? undefined : Model.shuffle(state, children.keys())
+    const itemState = state.size >= length ? state : { ...state, size: length }
+    return Model.mapComputation(
+      Model.generateProduct(children, itemState, order, length === 0 ? 0 : length * child.minCost),
+      (samples) =>
+        samples === undefined ? Model.discarded : Arrays.sample<A>(samples, {
+          fixedCount: 0,
+          optionalCount: 0,
+          repeatCount: length,
+          tailCount: 0,
+          minimum
+        }, state.shrinks)
+    )
+  }))
 }
 
 /** @internal */
