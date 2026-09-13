@@ -776,17 +776,15 @@ describe("PgConnection in-process server", () => {
         })
       })
       let calls = 0
-      const password = Effect.sync(() => Redacted.make(`secret-${++calls}`))
-      const config = {
+      const acquire = PgConnection.make({
         host: "127.0.0.1",
         port,
         username: "test",
-        password
-      }
-      const acquire = PgConnection.make(config)
+        password: Effect.sync(() => Redacted.make(`secret-${++calls}`))
+      })
 
-      yield* acquire
-      yield* acquire
+      yield* Effect.scoped(acquire)
+      yield* Effect.scoped(acquire)
 
       assert.strictEqual(calls, 2)
       assert.deepStrictEqual(passwords, ["secret-1", "secret-2"])
