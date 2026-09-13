@@ -242,7 +242,7 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  *
  * **Details**
  *
- * The transport, optional `SSLRequest`, startup, and authentication steps run
+ * Password resolution, transport, optional `SSLRequest`, startup, and authentication run
  * under `connectTimeout` (5 seconds by default). The effect resolves once the
  * backend sends `ReadyForQuery`. When the scope closes, the
  * session sends `Terminate` and ends the socket.
@@ -256,10 +256,15 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
 export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Scope.Scope> =>
   Effect.flatMap(resolveConfig(options), (config) =>
     Effect.acquireRelease(
-      Effect.map(
-        connect(config),
-        (session) => new PgConnectionImpl(options, config, session, options.types)
-      ),
+      Effect.gen(function*() {
+        const password = config.password === undefined
+          ? undefined
+          : yield* PasswordInternal.resolve(config.password).pipe(
+            Effect.mapError((cause) => configError("Password provider failed", cause))
+          )
+        const session = yield* connect(config, password)
+        return new PgConnectionImpl(options, config, session, options.types)
+      }),
       (connection) => Effect.sync(() => connection.closeUnsafe()),
       { interruptible: true }
     ).pipe(
@@ -1885,7 +1890,7 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
     return Effect.sync(finish)
   })
 
-const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
+const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): Effect.Effect<Session, SqlError> =>
   Effect.callback<Session, SqlError>((resume) => {
     let done = false
     let socket: Duplex
@@ -1912,14 +1917,14 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
       failConnect(new Error("Connection closed unexpectedly"), "PgConnection: Connection closed during startup")
 
     const password = (): string | undefined => {
-      if (config.password === undefined) {
+      if (resolvedPassword === undefined) {
         failAuth(
           new Error("The server requested password authentication"),
           "PgConnection: No password configured"
         )
         return undefined
       }
-      return config.password
+      return resolvedPassword
     }
 
     const handleMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
@@ -2144,7 +2149,7 @@ interface ResolvedConfig {
   readonly sslOptional: boolean
   readonly database: string | undefined
   readonly username: string
-  readonly password: string | undefined
+  readonly password: Password | undefined
   readonly connectTimeout: Duration.Duration
   readonly applicationName: string
   readonly stream: (() => Duplex) | undefined
@@ -2160,31 +2165,20 @@ const configError = (message: string, cause?: unknown): SqlError =>
     })
   })
 
-const resolvePassword = (
-  password: Config["password"],
-  urlPassword: string | undefined
-): Effect.Effect<string | undefined, SqlError> => {
-  if (password === undefined) return Effect.succeed(urlPassword)
-  return PasswordInternal.resolve(password).pipe(
-    Effect.mapError((cause) => configError("Password provider failed", cause))
-  )
-}
-
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
-  Effect.gen(function*() {
+  Effect.suspend(() => {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
       ? parseUrl(Redacted.value(options.url))
       : EffectResult.succeed({})
-    if (EffectResult.isFailure(parsed)) return yield* Effect.fail(parsed.failure)
+    if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
     const url = parsed.success
     const host = options.host ?? url.host ?? "localhost"
     const port = options.port ?? url.port ?? 5432
     const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
     if (username === undefined) {
-      return yield* Effect.fail(configError("No username configured"))
+      return Effect.fail(configError("No username configured"))
     }
-    const password = yield* resolvePassword(options.password, url.password)
-    return {
+    return Effect.succeed<ResolvedConfig>({
       host,
       port,
       path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
@@ -2192,12 +2186,12 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       sslOptional: options.ssl === undefined && url.ssl === "prefer",
       database: options.database ?? url.database,
       username,
-      password,
+      password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
       applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
-    }
+    })
   })
 
 interface UrlConfig {
