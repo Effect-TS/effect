@@ -554,6 +554,12 @@ export const make = Effect.fnUntraced(function*<
               if (!entry) {
                 return Effect.void
               } else if (
+                message.envelope._tag === "Interrupt" &&
+                ClusterSchema.isUninterruptibleForClient(entry.message.annotations)
+              ) {
+                // Runner disconnects must respect the same policy as client interrupts.
+                return Effect.void
+              } else if (
                 message.envelope._tag === "AckChunk" &&
                 Option.isSome(entry.lastSentChunk) &&
                 message.envelope.replyId !== entry.lastSentChunk.value.id

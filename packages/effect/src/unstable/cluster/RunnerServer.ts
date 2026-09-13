@@ -168,14 +168,18 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
                 sharding.send(message),
                 // The runner RPC scope owns non-persisted entity requests.
                 () =>
-                  Effect.ignore(sharding.send(
-                    new Message.IncomingEnvelope({
-                      envelope: new Envelope.Interrupt({
-                        id: request.requestId,
-                        address: request.address,
-                        requestId: request.requestId
-                      })
-                    })
+                  Effect.ignoreCause(Effect.flatMap(
+                    sharding.getSnowflake,
+                    (id) =>
+                      sharding.send(
+                        new Message.IncomingEnvelope({
+                          envelope: new Envelope.Interrupt({
+                            id,
+                            address: request.address,
+                            requestId: request.requestId
+                          })
+                        })
+                      )
                   )),
                 // Sending may wait for the entity type to be registered.
                 { interruptible: true }
