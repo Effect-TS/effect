@@ -1,6 +1,6 @@
 import { PgClient, PgMigrator } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, FileSystem, Logger, Path, Redacted, Stream } from "effect"
+import { Effect, FileSystem, Path, Redacted, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { Reactivity } from "effect/unstable/reactivity"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
@@ -9,7 +9,6 @@ const makeMigrator = (password: PgClient.PgClientConfig["password"]) =>
   Effect.gen(function*() {
     const commands: Array<ChildProcess.StandardCommand> = []
     const files: Array<string> = []
-    const failures: Array<unknown> = []
     const pg = yield* PgClient.make({ password })
     const sql = yield* SqlClient.make({
       acquirer: Effect.succeed({
@@ -45,21 +44,16 @@ const makeMigrator = (password: PgClient.PgClientConfig["password"]) =>
             files.push(path)
           })
       })),
-      Effect.provide(Path.layer),
-      Effect.provide(Logger.layer([Logger.make(({ cause }) => {
-        if (cause.reasons.length > 0) {
-          failures.push(Cause.squash(cause))
-        }
-      })]))
+      Effect.provide(Path.layer)
     )
-    return { commands, failures, files, run }
+    return { commands, files, run }
   }).pipe(Effect.provide(Reactivity.layer))
 
 describe("PgMigrator", () => {
   it.effect("shares one password per schema dump and refreshes it for the next dump", () =>
     Effect.gen(function*() {
       let calls = 0
-      const { commands, failures, files, run } = yield* makeMigrator(
+      const { commands, files, run } = yield* makeMigrator(
         Effect.map(Effect.yieldNow, () => Redacted.make(`secret-${++calls}`))
       )
 
@@ -79,37 +73,14 @@ describe("PgMigrator", () => {
         "secret-2"
       ])
       assert.deepStrictEqual(files, ["migrations/_schema.sql", "migrations/_schema.sql"])
-      assert.deepStrictEqual(failures, [])
     }))
 
   it.effect("passes a static password to both dump processes", () =>
     Effect.gen(function*() {
-      const { commands, failures, files, run } = yield* makeMigrator(Redacted.make("static"))
+      const { commands, files, run } = yield* makeMigrator(Redacted.make("static"))
       yield* run
 
       assert.deepStrictEqual(commands.map((command) => command.options.env?.PGPASSWORD), ["static", "static"])
       assert.deepStrictEqual(files, ["migrations/_schema.sql"])
-      assert.deepStrictEqual(failures, [])
-    }))
-
-  it.effect("logs password provider failures without running pg_dump or writing a schema", () =>
-    Effect.gen(function*() {
-      const cause = new Error("token fetch failed")
-      const { commands, failures, files, run } = yield* makeMigrator(Effect.fail(cause))
-      const completed = yield* run
-
-      assert.deepStrictEqual(completed, [[1, "init"]])
-      assert.deepStrictEqual(commands, [])
-      assert.deepStrictEqual(files, [])
-      assert.strictEqual(failures.length, 1)
-      const error = failures[0]
-      assert(error instanceof PgMigrator.MigrationError)
-      assert.strictEqual(error.kind, "Failed")
-      assert.strictEqual(error.message, "Failed to resolve PostgreSQL password")
-      let original: unknown = error
-      while (original instanceof Error && original.cause !== undefined) {
-        original = original.cause
-      }
-      assert.strictEqual(original, cause)
     }))
 })

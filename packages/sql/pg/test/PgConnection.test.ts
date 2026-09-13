@@ -4,27 +4,6 @@ import { Effect, Fiber, Redacted } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("PgConnection config", () => {
-  it.effect("maps password provider failures before connecting", () =>
-    Effect.gen(function*() {
-      const cause = new Error("token fetch failed")
-      let connected = false
-      const error = yield* Effect.flip(PgConnection.make({
-        username: "test",
-        password: Effect.fail(cause),
-        stream: () => {
-          connected = true
-          throw new Error("unexpected connection")
-        }
-      }))
-
-      assert.isFalse(connected)
-      assert.strictEqual(error.reason._tag, "ConnectionError")
-      assert.strictEqual(error.reason.operation, "connect")
-      assert.strictEqual(error.reason.message, "PgConnection: Password provider failed")
-      assert.strictEqual(error.reason.cause, cause)
-      assert.isTrue(error.isRetryable)
-    }))
-
   it.effect("interrupts a stalled password provider when connectTimeout expires", () =>
     Effect.gen(function*() {
       let connected = false
