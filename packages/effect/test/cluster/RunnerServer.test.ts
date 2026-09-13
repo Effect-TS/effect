@@ -230,6 +230,84 @@ it.effect("disconnects an admitted stream while the real send return is held", (
     )))
   }))
 
+it.effect("interrupts a replayed stream when the caller disconnects during entity rebuild", () =>
+  Effect.gen(function*() {
+    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
+    const rebuilding = yield* Deferred.make<void>()
+    const releaseBuild = yield* Deferred.make<void>()
+    const stopped = yield* Deferred.make<void>()
+    let builds = 0
+    let calls = 0
+    const entityLayer = ReproEntity.toLayer(Effect.gen(function*() {
+      builds++
+      if (builds === 2) {
+        // The old server has closed here. Disconnect must record cleanup until
+        // the replacement server can replay the request.
+        yield* Deferred.succeed(rebuilding, undefined)
+        yield* Deferred.await(releaseBuild)
+      }
+      return {
+        ReproStream: () => {
+          calls++
+          return Rpc.fork(
+            calls === 1
+              ? Stream.die("trigger entity rebuild")
+              : Stream.fromPubSub(pubsub).pipe(
+                Stream.ensuring(Deferred.succeed(stopped, undefined))
+              )
+          )
+        }
+      }
+    }))
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const snowflake = yield* Snowflake.Generator
+      const entityId = EntityId.make("disconnect-during-rebuild")
+      const request: Envelope.PartialRequest = {
+        _tag: "Request",
+        requestId: snowflake.nextUnsafe(),
+        address: EntityAddress.make({
+          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
+          entityType: EntityType.make(ReproEntity.type),
+          entityId
+        }),
+        tag: "ReproStream",
+        payload: { id: 1 },
+        headers: Headers.empty
+      }
+      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
+        onFromServer: () => Effect.void
+      })
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId("stream"),
+        tag: "Stream",
+        payload: { request, persisted: false },
+        headers: Headers.empty
+      })
+      yield* TestClock.adjust("5 seconds")
+      assert.isTrue(yield* Deferred.isDone(rebuilding))
+      assert.strictEqual(builds, 2)
+      assert.strictEqual(calls, 1)
+
+      yield* server.disconnect(0).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* TestClock.adjust(1)
+      assert.isFalse(yield* Deferred.isDone(releaseBuild))
+      assert.strictEqual(calls, 1)
+
+      yield* Deferred.succeed(releaseBuild, undefined)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(builds, 2)
+      assert.strictEqual(calls, 2)
+      assert.strictEqual(pubsub.subscribers.size, 0)
+      assert.isTrue(yield* Deferred.isDone(stopped))
+    }).pipe(Effect.provide(makeHandlers(
+      entityLayer,
+      Schema.toCodecJson as RpcSerialization.CodecFor
+    )))
+  }))
+
 for (
   const { disconnect, entity, expectedSubscribers, name, persisted } of [
     {
