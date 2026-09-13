@@ -21,6 +21,7 @@ import * as Queue from "../../Queue.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import type * as ClusterError from "./ClusterError.ts"
+import * as Envelope from "./Envelope.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import * as Reply from "./Reply.ts"
@@ -152,20 +153,36 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
               )
             }
           })
-          return Effect.as(
-            persisted ?
-              Effect.andThen(
-                storage.registerReplyHandler(message).pipe(
-                  Effect.onError((cause) =>
-                    Queue.failCause(queue, cause)
-                  ),
-                  Effect.forkScoped
+          const send = persisted
+            ? Effect.andThen(
+              storage.registerReplyHandler(message).pipe(
+                Effect.onError((cause) =>
+                  Queue.failCause(queue, cause)
                 ),
-                sharding.notify(message, constWaitUntilRead)
-              ) :
-              sharding.send(message),
-            queue
-          )
+                Effect.forkScoped
+              ),
+              sharding.notify(message, constWaitUntilRead)
+            )
+            : Effect.gen(function*() {
+              yield* Effect.addFinalizer(() =>
+                Effect.uninterruptible(
+                  Effect.ignore(
+                    Effect.flatMap(sharding.getSnowflake, (id) =>
+                      sharding.interrupt(
+                        new Message.IncomingEnvelope({
+                          envelope: new Envelope.Interrupt({
+                            id,
+                            address: request.address,
+                            requestId: request.requestId
+                          })
+                        }) as Message.IncomingEnvelope & { readonly envelope: Envelope.Interrupt }
+                      ))
+                  )
+                )
+              )
+              yield* sharding.send(message)
+            })
+          return Effect.as(send, queue)
         }
       ),
     Envelope: ({ envelope }) => sharding.send(new Message.IncomingEnvelope({ envelope }))

@@ -1060,6 +1060,46 @@ describe.concurrent("Sharding", () => {
       assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 4)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("does not replay a canceled request while the entity ResourceRef rebuilds", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+
+      const never = yield* client.NeverFork().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      const admitted = yield* Queue.take(state.envelopes)
+
+      MutableRef.set(state.holdRebuild, true)
+      MutableRef.set(state.defectTrigger, true)
+      const defect = yield* client.GetUser({ id: 123 }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Deferred.await(state.rebuildStarted).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+
+      yield* sharding.interrupt(
+        new Message.IncomingEnvelope({
+          envelope: new Envelope.Interrupt({
+            id: yield* sharding.getSnowflake,
+            address: admitted.address,
+            requestId: admitted.requestId
+          })
+        }) as Message.IncomingEnvelope & { readonly envelope: Envelope.Interrupt }
+      )
+      yield* Deferred.succeed(state.rebuildRelease, void 0)
+      expect(yield* Fiber.join(defect)).toEqual(new User({ id: 123, name: "User 123" }))
+
+      yield* Fiber.interrupt(never)
+      yield* TestClock.adjust(1)
+      const afterRebuild = yield* Queue.takeAll(state.envelopes)
+      expect(afterRebuild.some((envelope) => envelope.requestId === admitted.requestId)).toBe(false)
+    }).pipe(Effect.provide(TestSharding)))
+
   it.effect("WithTransaction is propagated to the entity handler", () =>
     Effect.gen(function*() {
       let isTransaction = false

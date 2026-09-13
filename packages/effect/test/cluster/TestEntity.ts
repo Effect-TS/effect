@@ -1,4 +1,17 @@
-import { type Cause, Context, Effect, Latch, Layer, MutableRef, Option, Queue, Schedule, Schema, Stream } from "effect"
+import {
+  type Cause,
+  Context,
+  Deferred,
+  Effect,
+  Latch,
+  Layer,
+  MutableRef,
+  Option,
+  Queue,
+  Schedule,
+  Schema,
+  Stream
+} from "effect"
 import type { Envelope } from "effect/unstable/cluster"
 import { ClusterSchema, Entity } from "effect/unstable/cluster"
 import { MemoryTransaction } from "effect/unstable/cluster/MessageStorage"
@@ -64,6 +77,9 @@ export class TestEntityState extends Context.Service<TestEntityState>()("TestEnt
     const defectTrigger = MutableRef.make(false)
     const layerBuilds = MutableRef.make(0)
     const buildLatch = Latch.makeUnsafe(true)
+    const holdRebuild = MutableRef.make(false)
+    const rebuildStarted = yield* Deferred.make<void>()
+    const rebuildRelease = yield* Deferred.make<void>()
 
     return {
       messages,
@@ -72,7 +88,10 @@ export class TestEntityState extends Context.Service<TestEntityState>()("TestEnt
       interrupts,
       defectTrigger,
       layerBuilds,
-      buildLatch
+      buildLatch,
+      holdRebuild,
+      rebuildStarted,
+      rebuildRelease
     } as const
   })
 }) {
@@ -85,6 +104,10 @@ export const TestEntityNoState = TestEntity.toLayer(
 
     MutableRef.update(state.layerBuilds, (count) => count + 1)
     yield* state.buildLatch.await
+    if (state.layerBuilds.current === 2 && state.holdRebuild.current) {
+      yield* Deferred.succeed(state.rebuildStarted, void 0)
+      yield* Deferred.await(state.rebuildRelease)
+    }
 
     const never = (envelope: any) =>
       Effect.suspend(() => {

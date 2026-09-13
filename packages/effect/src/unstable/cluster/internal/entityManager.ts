@@ -51,6 +51,11 @@ export interface EntityManager {
     message: Message.Incoming<any>
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
+  /** Interrupt an admitted request without initializing a missing entity. */
+  readonly interrupt: (
+    message: Message.IncomingEnvelope & { readonly envelope: Envelope.Interrupt }
+  ) => Effect.Effect<void>
+
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
     readonly excludeReplies?: boolean
   }) => boolean
@@ -93,6 +98,9 @@ export type EntityState = {
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
+  readonly interrupt: (
+    message: Message.IncomingEnvelope & { readonly envelope: Envelope.Interrupt }
+  ) => Effect.Effect<void>
   readonly keepAliveLatch: Latch.Latch
   keepAliveEnabled: boolean
 }
@@ -401,6 +409,18 @@ export const make = Effect.fnUntraced(function*<
         }
         return writeRef.state.current.value(clientId, message, writeOptions)
       },
+      interrupt(message) {
+        return Effect.suspend(() => {
+          if (!activeRequests.delete(message.envelope.requestId)) return Effect.void
+          defectRequestIds.delete(message.envelope.requestId)
+          if (writeRef.state.current._tag !== "Acquired") return Effect.void
+          return state.write(0, {
+            _tag: "Interrupt",
+            requestId: message.envelope.requestId as any,
+            interruptors: []
+          })
+        })
+      },
       activeRequests,
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
       keepAliveLatch,
@@ -607,6 +627,10 @@ export const make = Effect.fnUntraced(function*<
         if (fibers.length === 0) return Effect.void
         return Effect.flatMap(Fiber.joinAll(fibers), loop)
       }),
+    interrupt(message) {
+      const state = activeServers.get(message.envelope.address.entityId)
+      return state ? state.interrupt(message) : Effect.void
+    },
     isProcessingFor(message, options) {
       if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {
         return true

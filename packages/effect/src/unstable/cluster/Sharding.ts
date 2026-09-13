@@ -164,6 +164,16 @@ export class Sharding extends Context.Service<Sharding, {
   ) => Effect.Effect<void, never, R | Scope.Scope>
 
   /**
+   * Interrupts an admitted request without initializing a missing entity.
+   *
+   * This is used for transient, non-persisted caller teardown after the request
+   * has been admitted to the entity manager.
+   */
+  readonly interrupt: (
+    message: Message.IncomingEnvelope & { readonly envelope: Envelope.Interrupt }
+  ) => Effect.Effect<void>
+
+  /**
    * Sends a message to the specified entity.
    */
   readonly send: (message: Message.Incoming<any>) => Effect.Effect<
@@ -1004,6 +1014,16 @@ const make = Effect.gen(function*() {
 
   // --- Sending messages ---
 
+  const interrupt = (
+    message: Message.IncomingEnvelope & { readonly envelope: Envelope.Interrupt }
+  ) =>
+    Effect.suspend(() => {
+      if (!isEntityOnLocalShards(message.envelope.address)) return Effect.void
+      const state = entityManagers.get(message.envelope.address.entityType)
+      if (!state) return Effect.void
+      return state.manager.interrupt(message)
+    })
+
   const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) =>
     Effect.suspend(function loop(): Effect.Effect<
       void,
@@ -1760,6 +1780,7 @@ const make = Effect.gen(function*() {
     registerEntity,
     registerSingleton,
     makeClient,
+    interrupt,
     send: sendLocal,
     sendOutgoing: (message, discard) => sendOutgoing(message, discard),
     notify: (message, options) => notifyLocal(message, false, options),
