@@ -34,6 +34,7 @@ import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 import type { ConnectionOptions } from "node:tls"
 import { type ConnectionInternals, internalsKey } from "./internal/connection.ts"
+import * as PasswordInternal from "./internal/password.ts"
 import { classifySqlState, validateChannelName } from "./internal/sqlError.ts"
 import * as PgAuth from "./PgAuth.ts"
 import * as PgProtocol from "./PgProtocol.ts"
@@ -91,7 +92,12 @@ export interface Config {
   readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Redacted.Redacted | undefined
+  /**
+   * A static password or an Effect evaluated for each connection attempt.
+   * Providers must handle typed errors and require no services.
+   * {@link Effect.orDie} converts typed errors to defects, not retryable SQL errors.
+   */
+  readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly applicationName?: string | undefined
   readonly stream?: (() => Duplex) | undefined
@@ -230,10 +236,10 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  *
  * **Details**
  *
- * The transport, optional `SSLRequest`, startup, and authentication steps run
- * under `connectTimeout` (5 seconds by default). The effect resolves once the
- * backend sends `ReadyForQuery`. When the scope closes, the
- * session sends `Terminate` and ends the socket.
+ * Password resolution, transport, optional `SSLRequest`, startup, and
+ * authentication run under `connectTimeout` (5 seconds by default). The effect
+ * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
+ * `Terminate` and ends the socket.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -244,10 +250,11 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
 export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Scope.Scope> =>
   Effect.flatMap(resolveConfig(options), (config) =>
     Effect.acquireRelease(
-      Effect.map(
-        connect(config),
-        (session) => new PgConnectionImpl(options, config, session, options.types)
-      ),
+      Effect.gen(function*() {
+        const password = yield* PasswordInternal.resolve(config.password)
+        const session = yield* connect(config, password)
+        return new PgConnectionImpl(options, config, session, options.types)
+      }),
       (connection) => Effect.sync(() => connection.closeUnsafe()),
       { interruptible: true }
     ).pipe(
@@ -1876,7 +1883,7 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
     return Effect.sync(finish)
   })
 
-const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
+const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): Effect.Effect<Session, SqlError> =>
   Effect.callback<Session, SqlError>((resume) => {
     let done = false
     let socket: Duplex
@@ -1903,14 +1910,14 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
       failConnect(new Error("Connection closed unexpectedly"), "PgConnection: Connection closed during startup")
 
     const password = (): string | undefined => {
-      if (config.password === undefined) {
+      if (resolvedPassword === undefined) {
         failAuth(
           new Error("The server requested password authentication"),
           "PgConnection: No password configured"
         )
         return undefined
       }
-      return config.password
+      return resolvedPassword
     }
 
     const handleMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
@@ -2135,7 +2142,7 @@ interface ResolvedConfig {
   readonly sslOptional: boolean
   readonly database: string | undefined
   readonly username: string
-  readonly password: string | undefined
+  readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
   readonly applicationName: string
   readonly stream: (() => Duplex) | undefined
@@ -2172,7 +2179,7 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       sslOptional: options.ssl === undefined && url.ssl === "prefer",
       database: options.database ?? url.database,
       username,
-      password: options.password !== undefined ? Redacted.value(options.password) : url.password,
+      password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
       applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
       stream: options.stream,

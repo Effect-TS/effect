@@ -88,7 +88,12 @@ export interface PgClientConfig {
   readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Redacted.Redacted | undefined
+  /**
+   * A static password or an Effect evaluated for each connection attempt.
+   * Providers must handle typed errors and require no services.
+   * {@link Effect.orDie} converts typed errors to defects, not retryable SQL errors.
+   */
+  readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
 
