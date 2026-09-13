@@ -556,10 +556,10 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
       // are not replayed by PostgreSQL.
       yield* Queue.take(registered)
       const [replacement] = yield* sql<{ pid: number }>`
-        SELECT pid FROM pg_stat_activity WHERE query = ${`LISTEN "${channel}"`}
+        SELECT pid FROM pg_stat_activity
+        WHERE query = ${`LISTEN "${channel}"`} AND pid <> ${listener.pid}
       `
       assert.isDefined(replacement)
-      assert.notStrictEqual(replacement.pid, listener.pid)
       yield* sql.notify(channel, "after reconnect")
       const notification = Option.getOrThrow(yield* Fiber.join(consumer))
       assert.strictEqual(notification.channel, channel)
