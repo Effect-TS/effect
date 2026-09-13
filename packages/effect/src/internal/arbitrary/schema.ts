@@ -4,6 +4,7 @@ import { identity } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
 import * as Option from "../../Option.ts"
 import * as Order from "../../Order.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
@@ -391,11 +392,7 @@ interface RetainedObjectEntry extends Omit<ObjectEntry, "sample" | "keySample"> 
 }
 
 function normalizePropertyKeySample(sample: Model.Sample<any>): Model.Sample<PropertyKey> | undefined {
-  const filtered = Model.filterSample(
-    sample,
-    (value): value is string | number | symbol =>
-      typeof value === "string" || typeof value === "number" || typeof value === "symbol"
-  )
+  const filtered = Model.filterSample(sample, Predicate.isPropertyKey)
   return filtered === undefined
     ? undefined
     : Model.mapSample(filtered, (value) => typeof value === "symbol" ? value : globalThis.String(value))
