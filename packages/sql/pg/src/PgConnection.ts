@@ -57,20 +57,6 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 export type TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
- * A static password or an infallible Effect evaluated for each connection attempt.
- *
- * **Details**
- *
- * Providers must handle typed errors and require no services. Supply required
- * services before passing the Effect. {@link Effect.orDie} converts typed errors
- * to defects, which are not retryable SQL errors.
- *
- * @category models
- * @since 4.0.0
- */
-export type Password = Redacted.Redacted | Effect.Effect<Redacted.Redacted>
-
-/**
  * Connection settings for a PostgreSQL session.
  *
  * **Details**
@@ -107,9 +93,11 @@ export interface Config {
   readonly database?: string | undefined
   readonly username?: string | undefined
   /**
-   * See {@link Password} for provider requirements.
+   * A static password or an Effect evaluated for each connection attempt.
+   * Providers must handle typed errors and require no services.
+   * {@link Effect.orDie} converts typed errors to defects, not retryable SQL errors.
    */
-  readonly password?: Password | undefined
+  readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly applicationName?: string | undefined
   readonly stream?: (() => Duplex) | undefined
@@ -2149,7 +2137,7 @@ interface ResolvedConfig {
   readonly sslOptional: boolean
   readonly database: string | undefined
   readonly username: string
-  readonly password: Password | undefined
+  readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
   readonly applicationName: string
   readonly stream: (() => Duplex) | undefined

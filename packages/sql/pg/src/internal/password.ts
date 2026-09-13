@@ -1,8 +1,9 @@
 import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
-import type * as PgConnection from "../PgConnection.ts"
 
-export const resolve = (password: PgConnection.Password | undefined): Effect.Effect<string | undefined> =>
+export const resolve = (
+  password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
+): Effect.Effect<string | undefined> =>
   password === undefined
     ? Effect.succeed(undefined)
     : Effect.isEffect(password)
