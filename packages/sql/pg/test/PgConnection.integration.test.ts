@@ -1,6 +1,6 @@
 import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Redacted, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
 import { PgContainer } from "./utils.ts"
 
 const makeConnection = (options?: PgConnection.Config) =>
@@ -13,6 +13,26 @@ const makeConnection = (options?: PgConnection.Config) =>
   })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
+  for (const close of ["connection", "listener"] as const) {
+    it.effect(`interrupts notification consumers when the ${close} scope closes`, () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.fork(yield* Scope.Scope)
+        const connection = yield* close === "connection"
+          ? Scope.provide(makeConnection(), scope)
+          : makeConnection()
+        const notifications = yield* close === "listener"
+          ? Scope.provide(connection.listen("closed_listener"), scope)
+          : connection.listen("closed_listener")
+        const consumer = yield* Effect.forkScoped(Queue.take(notifications))
+
+        yield* Scope.close(scope, Exit.void)
+
+        const exit = yield* Fiber.await(consumer)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) assert.isTrue(Cause.hasInterruptsOnly(exit.cause))
+      }))
+  }
+
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()

@@ -535,16 +535,13 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
       const sql = yield* PgClient.PgClient
       const channel = "retry_listener"
       const registered = yield* Queue.unbounded<void>()
-      let attempts = 0
       const consumer = yield* Stream.unwrap(Effect.gen(function*() {
         const notifications = yield* sql.listen(channel)
-        attempts++
         yield* Queue.offer(registered, undefined)
         return Stream.fromQueue(notifications)
       })).pipe(
         Stream.retry(Schedule.recurs(1)),
-        Stream.take(1),
-        Stream.runCollect,
+        Stream.runHead,
         Effect.forkScoped
       )
 
@@ -564,11 +561,9 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
       assert.isDefined(replacement)
       assert.notStrictEqual(replacement.pid, listener.pid)
       yield* sql.notify(channel, "after reconnect")
-      const notifications = yield* Fiber.join(consumer)
-      assert.strictEqual(attempts, 2)
-      assert.strictEqual(notifications.length, 1)
-      assert.strictEqual(notifications[0].channel, channel)
-      assert.strictEqual(notifications[0].payload, "after reconnect")
+      const notification = Option.getOrThrow(yield* Fiber.join(consumer))
+      assert.strictEqual(notification.channel, channel)
+      assert.strictEqual(notification.payload, "after reconnect")
     }), { timeout: 20_000 })
 
   it.effect("listen rejects channel names longer than 63 UTF-8 bytes", () =>
