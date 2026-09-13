@@ -28,26 +28,12 @@ import * as SchemaRepresentation from "effect/SchemaRepresentation"
 type Source = "openapi-3.0" | "openapi-3.1"
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
+  readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
 }
 
 interface MultipartSchemaRefs {
   readonly singleFile: string
-  readonly files: string
-}
-
-interface GenerateHttpApiOptions extends GenerateOptions, RenderSchemaTypeAndRuntimeOptions {
-  readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
-}
-
-interface RenderSchemaTypeAndRuntimeOptions {
-  readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
-  /**
-   * Synthetic `$ref` name used for binary multipart fields in generated
-   * clients. Clients build request bodies from `File` / `Blob` values, so the
-   * field is rendered as `globalThis.File | globalThis.Blob` instead of a
-   * server-side persisted file.
-   */
-  readonly clientMultipartFileRef?: string | undefined
+  readonly files?: string | undefined
 }
 
 /**
@@ -81,7 +67,7 @@ function makeWithRepresentation() {
     source: Source,
     components: JsonSchema.Definitions,
     typeOnly: boolean,
-    options?: GenerateHttpApiOptions
+    options?: GenerateOptions
   ) {
     const generated = makeCodeDocument(source, components, options)
     if (generated === undefined) {
@@ -142,7 +128,7 @@ function makeWithRepresentation() {
   function generateHttpApi(
     source: Source,
     components: JsonSchema.Definitions,
-    options?: GenerateHttpApiOptions
+    options?: GenerateOptions
   ) {
     const generated = makeCodeDocument(source, components, options)
     if (generated === undefined) {
@@ -194,7 +180,7 @@ function makeWithRepresentation() {
   function makeCodeDocument(
     source: Source,
     components: JsonSchema.Definitions,
-    options?: GenerateHttpApiOptions
+    options?: GenerateOptions
   ): {
     readonly nameMap: Array<string>
     readonly codeDocument: SchemaRepresentation.CodeDocument
@@ -215,7 +201,7 @@ function makeWithRepresentation() {
     if (!Arr.isArrayNonEmpty(schemas)) {
       return
     }
-    if (options?.multipartSchemaRefs !== undefined) {
+    if (options?.multipartSchemaRefs?.files !== undefined) {
       definitions = omitSupersededMultipartDefinitions(definitions, schemas, options.multipartSchemaRefs)
     }
 
@@ -289,10 +275,10 @@ function renderSchemaTypeAndRuntime(
   $ref: string,
   code: SchemaRepresentation.Code,
   typeOnly: boolean,
-  options?: RenderSchemaTypeAndRuntimeOptions
+  options?: GenerateOptions
 ) {
   const multipartSchemaRefs = options?.multipartSchemaRefs
-  if (!typeOnly && multipartSchemaRefs !== undefined) {
+  if (!typeOnly && multipartSchemaRefs?.files !== undefined) {
     if ($ref === multipartSchemaRefs.singleFile) {
       return [
         `export type ${$ref} = Multipart.PersistedFile`,
@@ -306,7 +292,7 @@ function renderSchemaTypeAndRuntime(
       ].join("\n")
     }
   }
-  if (options?.clientMultipartFileRef !== undefined && $ref === options.clientMultipartFileRef) {
+  if (multipartSchemaRefs?.files === undefined && $ref === multipartSchemaRefs?.singleFile) {
     const type = `export type ${$ref} = globalThis.File | globalThis.Blob`
     if (typeOnly) {
       return type
@@ -358,7 +344,10 @@ function omitSupersededMultipartDefinitions(
   multipartSchemaRefs: MultipartSchemaRefs
 ): JsonSchema.Definitions {
   const rootReferences = collectReferenceKeys(schemas)
-  const multipartReferences = new Set([multipartSchemaRefs.singleFile, multipartSchemaRefs.files])
+  const multipartReferences = new Set([multipartSchemaRefs.singleFile])
+  if (multipartSchemaRefs.files !== undefined) {
+    multipartReferences.add(multipartSchemaRefs.files)
+  }
   const output: JsonSchema.Definitions = {}
 
   for (const [key, schema] of Object.entries(definitions)) {
