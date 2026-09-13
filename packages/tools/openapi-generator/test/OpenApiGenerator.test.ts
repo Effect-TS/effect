@@ -92,11 +92,7 @@ function assertGeneratedClientsCompile(
   options: {
     readonly exactOptionalPropertyTypes?: boolean | undefined
     readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
-    /**
-     * Extra source checked next to the generated client for the matching
-     * format. Use it to assert that call sites accept real payload values.
-     */
-    readonly usages?: Partial<Record<"httpclient" | "httpclient-type-only", string>> | undefined
+    readonly usage?: string | undefined
   } = {}
 ) {
   const generate = (
@@ -122,15 +118,8 @@ function assertGeneratedClientsCompile(
     try {
       const files = clients.map((client, index) => {
         const path = join(directory, `Client${index}.ts`)
-        writeFileSync(path, client)
+        writeFileSync(path, `${client}\n${options.usage ?? ""}`)
         return path
-      })
-      formats.forEach((format, index) => {
-        const usage = options.usages?.[format]
-        if (usage === undefined) return
-        const path = join(directory, `Usage${index}.ts`)
-        writeFileSync(path, usage.replaceAll("__CLIENT__", `./Client${index}.ts`))
-        files.push(path)
       })
       const configPath = join(directory, "tsconfig.json")
       writeFileSync(
@@ -3064,18 +3053,11 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           tags: [{ name: "Upload" }]
         },
         {
-          usages: {
-            httpclient: `import type { UploadRequestFormData } from "__CLIENT__"
-
-// File and Blob must both be assignable (HttpBody.FormDataCoercible).
-export const withFile: UploadRequestFormData = { file: new File(["hello"], "hello.txt") }
-export const withBlob: UploadRequestFormData = { file: new Blob(["hello"]) }
-`,
-            "httpclient-type-only": `import type { UploadRequestFormData } from "__CLIENT__"
-
-export const withFile: UploadRequestFormData = { file: new File(["hello"], "hello.txt") }
+          usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt") }
+export const withBlob: UploadRequestFormData = { file: new Blob([]) }
+// @ts-expect-error Binary multipart fields do not accept strings.
+export const withString: UploadRequestFormData = { file: "upload.txt" }
 `
-          }
         }
       ))
   })
