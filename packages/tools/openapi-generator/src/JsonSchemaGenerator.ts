@@ -31,10 +31,9 @@ interface GenerateOptions {
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
 }
 
-interface MultipartSchemaRefs {
-  readonly singleFile: string
-  readonly files?: string | undefined
-}
+type MultipartSchemaRefs =
+  | { readonly kind: "httpapi"; readonly singleFile: string; readonly files: string }
+  | { readonly kind: "client"; readonly singleFile: string }
 
 /**
  * Create a stateful JSON Schema code generator for OpenAPI-derived schemas.
@@ -201,7 +200,7 @@ function makeWithRepresentation() {
     if (!Arr.isArrayNonEmpty(schemas)) {
       return
     }
-    if (options?.multipartSchemaRefs?.files !== undefined) {
+    if (options?.multipartSchemaRefs?.kind === "httpapi") {
       definitions = omitSupersededMultipartDefinitions(definitions, schemas, options.multipartSchemaRefs)
     }
 
@@ -278,7 +277,7 @@ function renderSchemaTypeAndRuntime(
   options?: GenerateOptions
 ) {
   const multipartSchemaRefs = options?.multipartSchemaRefs
-  if (!typeOnly && multipartSchemaRefs?.files !== undefined) {
+  if (!typeOnly && multipartSchemaRefs?.kind === "httpapi") {
     if ($ref === multipartSchemaRefs.singleFile) {
       return [
         `export type ${$ref} = Multipart.PersistedFile`,
@@ -292,7 +291,7 @@ function renderSchemaTypeAndRuntime(
       ].join("\n")
     }
   }
-  if (multipartSchemaRefs?.files === undefined && $ref === multipartSchemaRefs?.singleFile) {
+  if (multipartSchemaRefs?.kind === "client" && $ref === multipartSchemaRefs.singleFile) {
     const type = `export type ${$ref} = globalThis.File | globalThis.Blob`
     if (typeOnly) {
       return type
@@ -341,13 +340,10 @@ function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, 
 function omitSupersededMultipartDefinitions(
   definitions: JsonSchema.Definitions,
   schemas: ReadonlyArray<JsonSchema.JsonSchema>,
-  multipartSchemaRefs: MultipartSchemaRefs
+  multipartSchemaRefs: Extract<MultipartSchemaRefs, { readonly kind: "httpapi" }>
 ): JsonSchema.Definitions {
   const rootReferences = collectReferenceKeys(schemas)
-  const multipartReferences = new Set([multipartSchemaRefs.singleFile])
-  if (multipartSchemaRefs.files !== undefined) {
-    multipartReferences.add(multipartSchemaRefs.files)
-  }
+  const multipartReferences = new Set([multipartSchemaRefs.singleFile, multipartSchemaRefs.files])
   const output: JsonSchema.Definitions = {}
 
   for (const [key, schema] of Object.entries(definitions)) {
