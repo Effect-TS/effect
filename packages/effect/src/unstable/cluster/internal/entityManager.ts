@@ -9,6 +9,7 @@ import * as Equal from "../../../Equal.ts"
 import * as Exit from "../../../Exit.ts"
 import * as Fiber from "../../../Fiber.ts"
 import { identity } from "../../../Function.ts"
+import { scopeAddFinalizerUnsafe } from "../../../internal/effect.ts"
 import * as Latch from "../../../Latch.ts"
 import * as Metric from "../../../Metric.ts"
 import * as Option from "../../../Option.ts"
@@ -51,8 +52,6 @@ export interface EntityManager {
     message: Message.Incoming<any>
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
-  readonly interruptOnDisconnect: (address: EntityAddress, requestId: Snowflake.Snowflake) => Effect.Effect<void>
-
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
     readonly excludeReplies?: boolean
   }) => boolean
@@ -92,11 +91,11 @@ export type EntityState = {
     sentReply: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
-    callerDisconnected?: boolean
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
-  readonly interruptOnDisconnect: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
+  /** Forget a volatile request whose caller is gone and interrupt its handler. */
+  readonly onCallerClosed: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
   readonly keepAliveLatch: Latch.Latch
   keepAliveEnabled: boolean
 }
@@ -190,7 +189,6 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
-    let interruptRequest: ((requestId: Snowflake.Snowflake) => Effect.Effect<void>) | undefined
     let defectRequestIds = new Set<Snowflake.Snowflake>()
     let isRestartingDueToDefect = false
 
@@ -340,16 +338,8 @@ export const make = Effect.fnUntraced(function*<
           scope,
           Effect.sync(() => {
             isShuttingDown = true
-            interruptRequest = undefined
           })
         )
-
-        interruptRequest = (requestId) =>
-          server.write(0, {
-            _tag: "Interrupt",
-            requestId: requestId as any,
-            interruptors: []
-          })
 
         if (defectRequestIds.size > 0) {
           for (const id of defectRequestIds) {
@@ -371,9 +361,6 @@ export const make = Effect.fnUntraced(function*<
                 ? { onRequest: options.storage.withTransaction }
                 : undefined
             )
-            if (request.callerDisconnected) {
-              yield* interruptRequest(id)
-            }
           }
           defectRequestIds.clear()
         }
@@ -418,20 +405,25 @@ export const make = Effect.fnUntraced(function*<
         return writeRef.state.current.value(clientId, message, writeOptions)
       },
       activeRequests,
-      interruptOnDisconnect(requestId) {
+      onCallerClosed(requestId) {
         return Effect.suspend(() => {
-          const request = activeRequests.get(requestId)
-          if (
-            !request ||
-            Context.get(request.message.annotations, Persisted) ||
-            Context.get(request.message.annotations, ClusterSchema.Uninterruptible) !== false
-          ) {
-            return Effect.void
+          if (!activeRequests.delete(requestId)) return Effect.void
+          defectRequestIds.delete(requestId)
+          if (activeRequests.size === 0) {
+            state.lastActiveCheck = clock.currentTimeMillisUnsafe()
           }
-          // If the server is rebuilding, interrupt the replay without making
-          // caller cleanup wait. The normal Exit path still removes the request.
-          request.callerDisconnected = true
-          return interruptRequest ? interruptRequest(requestId) : Effect.void
+          const interrupt = (write: RpcServer.RpcServer<any>["write"]) =>
+            Effect.ignoreCause(write(0, {
+              _tag: "Interrupt",
+              requestId: requestId as any,
+              interruptors: []
+            }))
+          if (writeRef.state.current._tag === "Acquired") {
+            return interrupt(writeRef.state.current.value)
+          }
+          // During a rebuild, forgetting the request prevents replay. A delivery
+          // waiting for the rebuild belongs to the departing caller's fiber.
+          return Effect.void
         })
       },
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
@@ -562,7 +554,20 @@ export const make = Effect.fnUntraced(function*<
                   onSome: (reply) => reply._tag === "Chunk" ? reply.sequence + 1 : 0
                 })
               }
+              const callerScope = message.callerScope
+              const followsCaller = callerScope !== undefined &&
+                !Context.get(message.annotations, Persisted) &&
+                Context.get(message.annotations, ClusterSchema.Uninterruptible) === false
+              if (followsCaller && callerScope.state._tag === "Closed") {
+                // The caller is already gone; there is nobody to deliver to.
+                return Effect.void
+              }
               server.activeRequests.set(message.envelope.requestId, entry)
+              if (followsCaller) {
+                // Registered synchronously with admission, so no interruption can
+                // separate the two. Fires when the caller's RPC scope closes.
+                scopeAddFinalizerUnsafe(callerScope, {}, () => server.onCallerClosed(message.envelope.requestId))
+              }
               return server.write(
                 0,
                 {
@@ -639,11 +644,6 @@ export const make = Effect.fnUntraced(function*<
         if (fibers.length === 0) return Effect.void
         return Effect.flatMap(Fiber.joinAll(fibers), loop)
       }),
-    interruptOnDisconnect: (address, requestId) =>
-      Effect.suspend(() => {
-        const state = activeServers.get(address.entityId)
-        return state && Equal.equals(state.address, address) ? state.interruptOnDisconnect(requestId) : Effect.void
-      }),
     isProcessingFor(message, options) {
       if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {
         return true
@@ -697,6 +697,7 @@ export const make = Effect.fnUntraced(function*<
                 ),
                 envelope: decoded.envelope,
                 lastSentReply: decoded.lastSentReply,
+                callerScope: request.callerScope,
                 respond: (reply) =>
                   request.respond(
                     new Reply.ReplyWithContext({

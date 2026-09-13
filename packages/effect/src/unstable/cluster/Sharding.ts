@@ -172,13 +172,6 @@ export class Sharding extends Context.Service<Sharding, {
   >
 
   /**
-   * Interrupts an active, interruptible, non-persisted request after its caller
-   * disconnects, without starting or waiting for an entity.
-   * @internal
-   */
-  readonly interruptOnDisconnect: (address: EntityAddress, requestId: Snowflake.Snowflake) => Effect.Effect<void>
-
-  /**
    * Sends an outgoing message
    */
   readonly sendOutgoing: (
@@ -1767,11 +1760,6 @@ const make = Effect.gen(function*() {
     registerEntity,
     registerSingleton,
     makeClient,
-    interruptOnDisconnect: (address, requestId) =>
-      Effect.suspend(() => {
-        const state = entityManagers.get(address.entityType)
-        return state ? state.manager.interruptOnDisconnect(address, requestId) : Effect.void
-      }),
     send: sendLocal,
     sendOutgoing: (message, discard) => sendOutgoing(message, discard),
     notify: (message, options) => notifyLocal(message, false, options),
