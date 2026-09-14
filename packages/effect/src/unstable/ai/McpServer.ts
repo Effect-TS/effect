@@ -19,7 +19,7 @@ import * as Effect from "../../Effect.ts"
 import * as ErrorReporter from "../../ErrorReporter.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import * as JsonSchema from "../../JsonSchema.ts"
+import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -50,6 +50,7 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
@@ -1813,7 +1814,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
   for (const tool of Object.values(built.tools)) {
     const strict = Tool.getStrictMode(tool) === true
-    if (strict && Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+    const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
+    if (strict && rawJsonSchema !== undefined) {
       return yield* Effect.die(
         `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
       )
@@ -1826,7 +1828,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      getToolInputJsonSchema(tool, strict)
+      rawJsonSchema ?? toolInputJsonSchema(tool.parametersSchema, strict)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({
       name: tool.name,
@@ -1858,24 +1860,20 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Stream.unwrap,
           Stream.run(Sink.last()),
           Effect.flatMap(Effect.fromOption),
-          Effect.flatMap((result) => {
-            if (
-              result.isFailure && AiError.isAiError(result.result) &&
-              result.result.reason._tag === "ToolParameterValidationError"
-            ) {
-              return Effect.fail(result.result)
-            }
-            return Effect.succeed(
-              new CallToolResult({
-                isError: result.isFailure,
-                structuredContent: result.isFailure ? undefined : result.encodedResult,
-                content: result.encodedResult === undefined ? [] : [{
-                  type: "text",
-                  text: JSON.stringify(result.encodedResult)
-                }]
-              })
-            )
-          }),
+          Effect.flatMap((result) =>
+            result.isFailure && isParameterValidationError(result.result)
+              ? Effect.fail(result.result)
+              : Effect.succeed(
+                new CallToolResult({
+                  isError: result.isFailure,
+                  structuredContent: result.isFailure ? undefined : result.encodedResult,
+                  content: result.encodedResult === undefined ? [] : [{
+                    type: "text",
+                    text: JSON.stringify(result.encodedResult)
+                  }]
+                })
+              )
+          ),
           Effect.provideContext(
             services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
           ),
@@ -1889,9 +1887,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             }
             const error: unknown = failure.success
             if (AiError.isAiError(error)) {
-              const reason = error.reason
-              return reason._tag === "ToolParameterValidationError"
-                ? Effect.fail(new InvalidParams({ message: reason.message }))
+              return isParameterValidationError(error)
+                ? Effect.fail(new InvalidParams({ message: error.reason.message }))
                 : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
             }
             const message = isDeclaredFailure(error) && error instanceof Error
@@ -1908,17 +1905,19 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   }
 })
 
-const getToolInputJsonSchema = (tool: Tool.Any, strict: boolean): JsonSchema.JsonSchema => {
-  if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
-    return tool.jsonSchema
-  }
-  const document = Schema.toJsonSchemaDocument(tool.parametersSchema, {
-    onExcessProperty: strict ? "error" : "ignore"
-  })
-  const key = typeof document.schema.$ref === "string" ? JsonSchema.getReferenceKey(document.schema.$ref) : undefined
-  // Inline the root definition to expose the object type required by MCP.
-  const root = key === undefined ? document.schema : document.definitions[key] ?? document.schema
-  return Object.keys(document.definitions).length === 0 ? root : { ...root, $defs: document.definitions }
+const isParameterValidationError = (
+  error: unknown
+): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
+  AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
+
+// MCP requires an object root, so a top-level `$ref` is inlined.
+const toolInputJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
+  const document = InternalStructuredOutput.resolveTopLevelReference(
+    Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
+  )
+  return Object.keys(document.definitions).length === 0
+    ? document.schema
+    : { ...document.schema, $defs: document.definitions }
 }
 
 /**
