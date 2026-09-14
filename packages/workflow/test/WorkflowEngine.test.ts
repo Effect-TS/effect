@@ -297,6 +297,16 @@ describe("deferred completion", () => {
         assert.include(result.output, "deferred-completion-passed")
       }), 30_000)
   }
+
+  for (const scenario of ["teardown-finalizer", "teardown-interruptible"] as const) {
+    it.effect(`cancels the self-completion wake during ${scenario}`, () =>
+      Effect.gen(function*() {
+        const result = yield* runDeferredCompletion(scenario)
+        assert.isFalse(result.timedOut, `engine teardown deadlocked (${scenario}):\n${result.output}`)
+        assert.strictEqual(result.code, 0, `engine teardown did not settle (${scenario}):\n${result.output}`)
+        assert.include(result.output, "deferred-completion-passed")
+      }), 30_000)
+  }
 })
 
 // Joining a workflow from its own uninterruptible finalizer can also wedge test
