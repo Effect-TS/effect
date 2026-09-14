@@ -15,7 +15,8 @@ const program = Effect.gen(function*() {
   const events: Array<string> = []
   let runs = 0
   let finalizers = 0
-  const selfCompletion = scenario === "self-success" || scenario === "self-failure"
+  const selfReplay = scenario === "self-replay"
+  const selfCompletion = scenario === "self-success" || scenario === "self-failure" || selfReplay
   const internalCompletion = selfCompletion || scenario === "plain"
   const workflow = Workflow.make("DeferredCompletion", {
     payload: {},
@@ -41,7 +42,24 @@ const program = Effect.gen(function*() {
           Effect.andThen(Effect.yieldNow),
           Effect.tap(() => Effect.sync(() => events.push("completing-signal"))),
           Effect.andThen(scenario === "self-failure" ? Effect.fail("boom") : Effect.succeed("ok")),
-          (effect) => selfCompletion ? DurableDeferred.into(effect, signal) : effect
+          (effect) => selfCompletion ? DurableDeferred.into(effect, signal) : effect,
+          (effect) =>
+            selfReplay
+              ? effect.pipe(
+                // Keep the producer alive after recording so only preemption and replay can finish the run.
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() =>
+                  run === 1
+                    ? Effect.gen(function*() {
+                      events.push("cleanup-start")
+                      yield* cleanup.open
+                      yield* releaseCleanup.await
+                      events.push("cleanup-end")
+                    })
+                    : Effect.void
+                )
+              )
+              : effect
         )
         : active.open.pipe(
           Effect.andThen(finishActive.await),
@@ -79,6 +97,14 @@ const program = Effect.gen(function*() {
     const executionId = yield* workflow.execute({}, { discard: true })
     yield* read.await
     process.stdout.write("deferred-completion-ready\n")
+    if (selfReplay) {
+      yield* cleanup.await
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+      assert.equal(runs, 1, "self-completion replay must wait for cleanup")
+      assert.equal(finalizers, 0, "self-completion must preserve the workflow scope during cleanup")
+      assert.equal(yield* workflow.poll(executionId).pipe(Effect.map(Option.getOrUndefined)), undefined)
+      yield* releaseCleanup.open
+    }
     if (!internalCompletion) {
       yield* active.await
       if (scenario === "external") {
@@ -127,10 +153,11 @@ const program = Effect.gen(function*() {
       assert.ok(previousEnd !== -1 && previousEnd < events.indexOf(`start-${run}`), "cleanup must precede replay")
     }
     assert.equal(finalizers, 1, "terminal finalization must happen exactly once")
-    if (scenario === "external") {
-      assert.equal(runs, 2)
+    if (scenario === "external" || selfReplay) {
+      assert.equal(runs, 2, "completion must replay the workflow")
       assert.deepEqual(events, [
         "start-1",
+        ...(selfReplay ? ["completing-signal"] : []),
         "cleanup-start",
         "cleanup-end",
         "body-end-1",

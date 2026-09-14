@@ -6,7 +6,7 @@ import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 describe("deferred completion", () => {
-  for (const scenario of ["self-success", "self-failure", "plain", "external", "unrelated"] as const) {
+  for (const scenario of ["self-success", "self-failure", "self-replay", "plain", "external", "unrelated"] as const) {
     it.effect(`settles ${scenario} completion without violating replay ordering`, () =>
       Effect.gen(function*() {
         const result = yield* runDeferredCompletion(scenario)
