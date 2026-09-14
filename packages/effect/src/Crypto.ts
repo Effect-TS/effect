@@ -152,6 +152,20 @@ export interface Crypto {
    * Generates a cryptographically secure UUIDv7 string.
    */
   readonly randomUUIDv7: Effect.Effect<string, PlatformError.PlatformError>
+
+  /**
+   * Generates a cryptographically secure ULID string.
+   *
+   * **Details**
+   *
+   * A ULID is a 26 character Crockford base32 string: the leading 10 characters
+   * encode the `Clock` timestamp in milliseconds and the remaining 16 random
+   * characters, so ULIDs sort by creation time. The alphabet omits `I`, `L`,
+   * `O` and `U`, making ULIDs case-insensitive and free of visually ambiguous
+   * characters. ULIDs generated within the same millisecond are only ordered by
+   * their random characters.
+   */
+  readonly randomULID: Effect.Effect<string, PlatformError.PlatformError>
 }
 
 /**
@@ -275,6 +289,9 @@ export const make = (
     randomUUIDv4: Effect.sync(() => Uuid.v4String(randomBytesUnsafe(16))),
     randomUUIDv7: Effect.clockWith((clock) =>
       Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16)))
+    ),
+    randomULID: Effect.clockWith((clock) =>
+      Effect.succeed(Uuid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
     )
   })
 }

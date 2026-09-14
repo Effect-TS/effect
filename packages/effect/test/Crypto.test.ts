@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import * as TestClock from "effect/testing/TestClock"
 
 const testCrypto = Crypto.make({
@@ -107,6 +108,35 @@ describe("Crypto", () => {
       const uuid = yield* crypto.randomUUIDv7
       assert.strictEqual(uuid, "01234567-89ab-7607-8809-0a0b0c0d0e0f")
     }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
+
+  it.effect("randomULID encodes the Clock timestamp and random bytes", () =>
+    Effect.gen(function*() {
+      yield* TestClock.setTime(0x0123456789ab)
+      const crypto = yield* Crypto.Crypto
+      const ulid = yield* crypto.randomULID
+
+      assert.strictEqual(ulid, "014D2PF2DB000G40R40M30E209")
+      assert.isTrue(Schema.is(Schema.String.check(Schema.isULID()))(ulid))
+    }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
+
+  it.effect("randomULID places the timestamp ahead of the random bytes", () => {
+    const chunks = [0x00, 0xff]
+    const crypto = Crypto.make({
+      randomBytes: (size) => new Uint8Array(size).fill(chunks.shift()!),
+      digest: (_algorithm, data) => Effect.succeed(data)
+    })
+
+    return Effect.gen(function*() {
+      yield* TestClock.setTime(1000)
+      const earlier = yield* crypto.randomULID
+      yield* TestClock.setTime(1001)
+      const later = yield* crypto.randomULID
+
+      assert.strictEqual(earlier, "00000000Z80000000000000000")
+      assert.strictEqual(later, "00000000Z9ZZZZZZZZZZZZZZZZ")
+      assert.isTrue(earlier < later)
+    })
+  })
 
   it.effect("digest delegates to the service", () =>
     Effect.gen(function*() {
