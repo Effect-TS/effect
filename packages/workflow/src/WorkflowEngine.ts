@@ -302,8 +302,9 @@ export const makeDeferredState = (): DeferredState => {
     deferredDone: (executionId, name, exit) =>
       Effect.withFiberRuntime((current) => {
         const run = running.get(executionId)
-        const entries = pending.get(executionId)
-        if (!entries) return Effect.void
+        // A new owner can receive completion before its first local run.
+        let entries = pending.get(executionId)
+        if (!entries) pending.set(executionId, entries = new Map())
         entries.set(name, exit)
         if (!run || run.fiber === current || run.fiber.unsafePoll() || !run.instance.awaitedDeferreds.has(name)) {
           return Effect.void
