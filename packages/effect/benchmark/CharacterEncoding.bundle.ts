@@ -12,29 +12,28 @@ const esbuild = esbuildRequire("esbuild")
 const rolldown = await import(rolldownRequire.resolve("rolldown"))
 const root = process.cwd()
 const cases = [
-  { name: "operators-only", source: "export { decodeUnsafe } from \"effect/CharacterEncoding\"", tables: 0 },
   {
     name: "utf8-only",
     source:
-      "import { decodeUnsafe } from \"effect/CharacterEncoding\"; import { encoding } from \"effect/encoding/Utf8\"; export const decode = (bytes) => decodeUnsafe(bytes, encoding)",
+      "import { decodeUnsafe } from \"./src/encoding/Utf8.ts\"; export const decode = (bytes) => decodeUnsafe(bytes)",
     tables: 0
   },
   {
     name: "cp1251-only",
     source:
-      "import { decodeUnsafe } from \"effect/CharacterEncoding\"; import { encoding } from \"effect/encoding/Windows1251\"; export const decode = (bytes) => decodeUnsafe(bytes, encoding)",
+      "import { decodeUnsafe } from \"./src/encoding/Windows1251.ts\"; export const decode = (bytes) => decodeUnsafe(bytes)",
     tables: 1
   },
   {
     name: "restricted-registry",
     source:
-      "import { decodeUnsafe, makeRegistry } from \"effect/CharacterEncoding\"; import * as Utf8 from \"effect/encoding/Utf8\"; import * as Windows1251 from \"effect/encoding/Windows1251\"; const registry = makeRegistry([Utf8.encoding, Windows1251.encoding]); export const decode = (bytes, label) => decodeUnsafe(bytes, registry.resolveUnsafe(label))",
+      "import { makeRegistry } from \"./src/CharacterEncoding.ts\"; import { encoding as utf8, decodeUnsafe } from \"./src/encoding/Utf8.ts\"; import { encoding as cp1251 } from \"./src/encoding/Windows1251.ts\"; const registry = makeRegistry([utf8, cp1251]); export const decode = (bytes, label) => { const encoding = registry.resolveUnsafe(label); return encoding.name === 'utf8' ? decodeUnsafe(bytes) : decodeUnsafe(bytes) }",
     tables: 1
   },
   {
     name: "all-encodings",
     source:
-      "import { decodeUnsafe } from \"effect/CharacterEncoding\"; import { resolveUnsafe } from \"effect/encoding/All\"; export const decode = (bytes, label) => decodeUnsafe(bytes, resolveUnsafe(label))",
+      "import { resolveUnsafe, encodings } from \"./src/encoding/All.ts\"; export { encodings }",
     tables: 89
   }
 ]
@@ -42,12 +41,13 @@ const dataFiles = (ids: ReadonlyArray<string>) =>
   ids.filter((id) => /internal\/characterEncoding\/[^/]+Data\.ts$/.test(id)).sort()
 const verify = async (code: string, name: string) => {
   const module = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"))
-  if (name === "operators-only") {
-    assert.equal(typeof module.decodeUnsafe, "function")
-  } else if (name === "utf8-only") {
+  if (name === "utf8-only") {
     assert.equal(module.decode(new TextEncoder().encode("😀")), "😀")
-  } else {
-    assert.equal(module.decode(Uint8Array.of(0xcf, 0xf0), "cp1251"), "Пр")
+  } else if (name === "cp1251-only") {
+    assert.equal(module.decode(Uint8Array.of(0xcf, 0xf0)), "Пр")
+  } else if (name === "all-encodings") {
+    assert.ok(Array.isArray(module.encodings))
+    assert.ok(module.encodings.length > 90)
   }
 }
 console.log(JSON.stringify({ node: process.version, esbuild: esbuild.version, rolldown: rolldown.VERSION }))

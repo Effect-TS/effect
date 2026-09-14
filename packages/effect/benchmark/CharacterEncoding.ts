@@ -1,6 +1,9 @@
-import * as C from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
-import * as All from "effect/encoding/All"
+import * as Gb18030 from "effect/encoding/Gb18030"
+import * as ShiftJis from "effect/encoding/ShiftJis"
+import * as Utf16LE from "effect/encoding/Utf16LE"
+import * as Utf8 from "effect/encoding/Utf8"
+import * as Windows1251 from "effect/encoding/Windows1251"
 import * as Stream from "effect/Stream"
 import type * as IconvLite from "iconv-lite"
 import { strict as assert } from "node:assert"
@@ -98,6 +101,14 @@ console.log(JSON.stringify({
   chunkSize
 }))
 
+const codecMap = {
+  utf8: Utf8,
+  utf16le: Utf16LE,
+  cp1251: Windows1251,
+  cp932: ShiftJis,
+  gb18030: Gb18030
+}
+
 for (
   const [encoding, phrase] of [
     ["utf8", "Hello λ 😀 漢字! "],
@@ -108,21 +119,21 @@ for (
   ]
 ) {
   const text = phrase.repeat(Math.ceil(size / Buffer.byteLength(phrase)))
-  const codec = All.resolveUnsafe(encoding)
+  const codecModule = codecMap[encoding as keyof typeof codecMap]
   const input = iconv.encode(text, encoding)
   const encodeNative = new Native("UTF-8", encoding)
   const decodeNative = new Native(encoding, "UTF-8")
-  assert.deepEqual(C.encodeUnsafe(text, codec), Uint8Array.from(input))
+  assert.deepEqual(codecModule.encodeUnsafe(text), Uint8Array.from(input))
   assert.deepEqual(encodeNative.convert(text), input)
-  assert.equal(C.decodeUnsafe(input, codec), text)
+  assert.equal(codecModule.decodeUnsafe(input), text)
   assert.equal(decodeNative.convert(input).toString("utf8"), text)
   await compare(`${encoding}/encode`, Buffer.byteLength(text), false, [
-    () => C.encodeUnsafe(text, codec),
+    () => codecModule.encodeUnsafe(text),
     () => iconv.encode(text, encoding),
     () => encodeNative.convert(text)
   ])
   await compare(`${encoding}/decode`, input.length, false, [
-    () => C.decodeUnsafe(input, codec),
+    () => codecModule.decodeUnsafe(input),
     () => iconv.decode(input, encoding),
     () => decodeNative.convert(input).toString("utf8")
   ])
@@ -131,8 +142,9 @@ for (
   const chunks: Array<Buffer> = []
   for (let i = 0; i < input.length; i += chunkSize) chunks.push(input.subarray(i, i + chunkSize))
   const target = encoding === "utf8" ? "utf16le" : "utf8"
+  const targetModule = target === "utf8" ? Utf8 : Utf16LE
   const expected = iconv.encode(text, target)
-  const converted = Stream.fromIterable(chunks).pipe(C.transcodeStream(codec, All.resolveUnsafe(target)))
+  const converted = Stream.fromIterable(chunks).pipe(codecModule.decodeStream(), targetModule.encodeStream())
   const collected = await Effect.runPromise(Stream.runCollect(converted))
   assert.deepEqual(Buffer.concat(collected), expected)
   assert.deepEqual(await nodeStream(chunks, [iconv.decodeStream(encoding), iconv.encodeStream(target)], true), expected)
