@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -6,6 +7,8 @@ import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
+import * as Tool from "effect/unstable/ai/Tool"
+import * as Toolkit from "effect/unstable/ai/Toolkit"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
 import { readMcpHttpResponse } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
@@ -21,6 +24,35 @@ const decodeJsonSchema2020Tools = Schema.decodeUnknownEffect(Schema.Struct({
     outputSchema: Schema.optional(Schema.JsonObject)
   }))
 }))
+
+const makeValidationClient = Effect.fnUntraced(function*(
+  protocol: McpProtocol.ProtocolAdapter,
+  failureMode: "error" | "return",
+  strict = true
+) {
+  let handlerInvoked = false
+  const toolkit = Toolkit.make(
+    Tool.make("ValidatedTool", {
+      parameters: Schema.Struct({ value: Schema.String }),
+      success: Schema.String,
+      failureMode
+    }).annotate(Tool.Strict, strict)
+  )
+  const client = yield* makeMcpStdioHarness(
+    protocol,
+    [protocol],
+    McpServer.toolkit(toolkit).pipe(
+      Layer.provide(toolkit.toLayer({
+        ValidatedTool: ({ value }) => {
+          handlerInvoked = true
+          return Effect.succeed(value)
+        }
+      }))
+    )
+  )
+  yield* client.initialize()
+  return { client, wasInvoked: () => handlerInvoked }
+})
 
 const callTool = (name: string, arguments_: Record<string, unknown> = {}) =>
   Effect.gen(function*() {
@@ -144,6 +176,62 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
 
       describe("Calling Tools", () => {
+        for (const failureMode of ["error", "return"] as const) {
+          for (
+            const [name, args, detail, strict] of [
+              ["unknown strict arguments", { value: "ok", typo: true }, "Expected no excess property", true],
+              ["invalid non-strict argument types", { value: 123 }, "Expected string", false]
+            ] as const
+          ) {
+            it.effect(`reports ${name} with the protocol's validation error shape in ${failureMode} mode`, () =>
+              Effect.gen(function*() {
+                const { client, wasInvoked } = yield* makeValidationClient(protocol, failureMode, strict)
+                const message = yield* client.sendRequest("tools/call", { name: "ValidatedTool", arguments: args })
+
+                assert.isFalse(wasInvoked())
+                let text: string
+                if (["2025-11-25", "2026-07-28"].includes(protocol.protocolVersion)) {
+                  assert.isUndefined(message.error)
+                  const result = yield* decodeCallTool(message.result)
+                  assert.isTrue(result.isError)
+                  assert.isUndefined(result.structuredContent)
+                  assert.lengthOf(result.content, 1)
+                  const content = result.content[0]
+                  assertTrue(content.type === "text")
+                  text = content.text
+                } else {
+                  assert.isUndefined(message.result)
+                  const error = yield* Schema.decodeUnknownEffect(McpSchema.McpError)(message.error)
+                  assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+                  text = error.message
+                }
+                assert.include(text, "Invalid parameters for tool 'ValidatedTool'")
+                assert.include(text, detail)
+                assert.notInclude(text, "AiError")
+                assert.notInclude(text, "ToolParameterValidationError")
+                assert.notInclude(text, "Toolkit")
+                assert.notInclude(text, "ValidatedTool.handle")
+              }))
+          }
+
+          it.effect(`rejects malformed tool-call requests with InvalidParams in ${failureMode} mode`, () =>
+            Effect.gen(function*() {
+              const { client, wasInvoked } = yield* makeValidationClient(protocol, failureMode)
+              for (
+                const params of [
+                  { arguments: { value: "ok" } },
+                  { name: "ValidatedTool", arguments: "invalid" }
+                ]
+              ) {
+                const message = yield* client.sendRequest("tools/call", params)
+                assert.isUndefined(message.result)
+                const error = yield* Schema.decodeUnknownEffect(McpSchema.McpError)(message.error)
+                assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+                assert.isFalse(wasInvoked())
+              }
+            }))
+        }
+
         it.effect("MUST call a registered tool with valid arguments", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
