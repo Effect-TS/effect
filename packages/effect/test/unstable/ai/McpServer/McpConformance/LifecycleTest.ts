@@ -14,6 +14,14 @@ export const suite = (
       // version entrypoints that compose this suite.
       describe("Lifecycle Phases", () => {
         describe("Initialization", () => {
+          it.effect("returns configured server instructions", () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const { message } = yield* test.initialize({ server: "features" })
+
+              assert.strictEqual(message.result.instructions, "Follow the test server instructions.")
+            }))
+
           it.effect("MUST reject non-ping requests before initialize", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance

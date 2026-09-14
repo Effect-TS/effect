@@ -88,7 +88,7 @@ export const suite = (
         )
 
         it.effect(
-          "SCHEMA preserves prompt names, descriptions, and arguments",
+          "SCHEMA preserves prompt names, titles, descriptions, and arguments",
           () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
@@ -106,10 +106,10 @@ export const suite = (
 
               const prompt = result.prompts.find((prompt) => prompt.name === "TestPrompt")
               assert.isDefined(prompt)
-              // https://modelcontextprotocol.io/specification/2025-06-18/server/prompts
-              if (!["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion)) {
-                assert.strictEqual(prompt.title, "Test prompt")
-              }
+              assert.strictEqual(
+                prompt.title,
+                ["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion) ? undefined : "Test prompt"
+              )
               assert.strictEqual(prompt.description, "A test prompt")
               assert.deepStrictEqual(prompt.arguments?.map((argument) => argument.name), [
                 "required",

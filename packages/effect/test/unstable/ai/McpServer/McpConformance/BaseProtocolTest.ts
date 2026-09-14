@@ -211,15 +211,6 @@ export const statelessModernSuite = (
 export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Base Protocol", () => {
-      // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
-      it.effect("should include configured server instructions when initializing a stateful protocol", () =>
-        Effect.gen(function*() {
-          const test = yield* McpConformance
-          const initialized = yield* test.initialize({ server: "features" })
-
-          assert.strictEqual(initialized.message.result.instructions, "Follow the test server instructions.")
-        }))
-
       // https://modelcontextprotocol.io/specification/2025-11-25/basic#meta
       it.effect("should preserve custom request metadata when a legacy tool reads either context API", () =>
         Effect.gen(function*() {
