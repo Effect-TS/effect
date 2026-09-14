@@ -2224,8 +2224,7 @@ export interface Arrays extends ASTNode {
 
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault?: SchemaParser.Compiler,
-    generate?: (context: ArrayParserContext) => typeof parseArray
+    compileConstructorDefault?: SchemaParser.Compiler
   ): SchemaParser.Parser
   /** @internal */
 
@@ -2298,8 +2297,7 @@ export const Arrays: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile,
-    generate?: (context: ArrayParserContext) => typeof parseArray
+    compileConstructorDefault: SchemaParser.Compiler = compile
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -2320,20 +2318,6 @@ export const Arrays: new(
       }
       return rest![0]
     }
-
-    const run = generate !== undefined && elementLen === 0 && ast.rest.length === 1
-      ? generate({
-        getElement: () => rest![0].parser,
-        step: parseArrayOptions.step,
-        resume: (state, item, index, pending, end) =>
-          Effect.flatMap(
-            Effect.exit(pending),
-            (exit) =>
-              parseArrayOptions.step(state, item, exit, index) ??
-                parseArray(state, state.input, index + 1, end) ?? Effect.void
-          )
-      })
-      : parseArray
 
     return Effect.fnUntracedEager(function*(input, options) {
       if (input === InternalParser.missing) {
@@ -2363,7 +2347,7 @@ export const Arrays: new(
       const end = ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
       const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
       const eff = concurrency === 1
-        ? run(state, input, 0, end)
+        ? parseArray(state, input, 0, end)
         : parseArrayConcurrent(state, input, { concurrency, end })
       if (eff) yield* eff
 
@@ -2422,18 +2406,6 @@ export const Arrays: new(
     return "array"
   }
 }
-/** @internal */
-export interface ArrayParserContext {
-  readonly getElement: () => SchemaParser.Parser
-  readonly step: typeof parseArrayOptions.step
-  readonly resume: (
-    state: ArrayParserState,
-    item: unknown,
-    index: number,
-    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>,
-    end: number
-  ) => Effect.Effect<void, SchemaIssue.Issue, any>
-}
 
 type ArrayParserState = {
   readonly ast: AST
@@ -2446,7 +2418,37 @@ type ArrayParserState = {
   readonly tailThreshold: number
   readonly options: ParseOptions
   readonly output: Array<unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
+}
+
+/** @internal */
+export function stepArray(
+  s: ArrayParserState,
+  item: unknown,
+  exit: Exit.Exit<unknown, SchemaIssue.Issue>,
+  i: number
+) {
+  if (exit._tag === "Failure") {
+    return wrapPropertyKeyIssue(s, s.ast, i, exit)
+  }
+  const value = exit === InternalParser.sameExit
+    ? item
+    : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+  if (value !== InternalParser.missing) {
+    s.output[i] = value
+  } else {
+    const p = s.getParser(s.tailThreshold, i)
+    if (isOptional(p.ast)) return
+    const issue = new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(p.ast.context?.annotations))
+    if (s.options.errors === "all") {
+      if (s.issues) s.issues.push(issue)
+      else s.issues = [issue]
+    } else {
+      return Exit.fail(
+        new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
+      )
+    }
+  }
 }
 
 const parseArrayOptions = {
@@ -2454,32 +2456,11 @@ const parseArrayOptions = {
     const value = i < s.len ? item : InternalParser.missing
     return s.getParser(s.tailThreshold, i).parser(value, s.options)
   },
-  step(s: ArrayParserState, item: unknown, exit: Exit.Exit<unknown, SchemaIssue.Issue>, i: number) {
-    if (exit._tag === "Failure") {
-      return wrapPropertyKeyIssue(s, s.ast, i, exit)
-    }
-    const value = exit === InternalParser.sameExit
-      ? item
-      : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    if (value !== InternalParser.missing) {
-      s.output[i] = value
-    } else {
-      const p = s.getParser(s.tailThreshold, i)
-      if (isOptional(p.ast)) return
-      const issue = new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(p.ast.context?.annotations))
-      if (s.options.errors === "all") {
-        if (s.issues) s.issues.push(issue)
-        else s.issues = [issue]
-      } else {
-        return Exit.fail(
-          new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
-        )
-      }
-    }
-  }
+  step: stepArray
 }
 
-const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
+/** @internal */
+export const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
 const parseArrayConcurrent = iterateConcurrent<ArrayParserState, unknown>()(parseArrayOptions)
 
 const wrapPropertyKeyIssue = (
@@ -2741,8 +2722,7 @@ export interface Objects extends ASTNode {
 
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault?: SchemaParser.Compiler,
-    generate?: (context: ObjectParserContext) => SchemaParser.Parser
+    compileConstructorDefault?: SchemaParser.Compiler
   ): SchemaParser.Parser
   /** @internal */
 
@@ -2807,8 +2787,7 @@ export const Objects: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile,
-    generate?: (context: ObjectParserContext) => SchemaParser.Parser
+    compileConstructorDefault: SchemaParser.Compiler = compile
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -3047,10 +3026,6 @@ export const Objects: new(
       })
     }
 
-    if (generate !== undefined) {
-      return generate({ ast, getProperties: compileMembers, fallback, resume, step: stepProperty })
-    }
-
     // Fast path: a struct without index signatures, under the default parse
     // options, needs none of the generator the fallback runs per value.
     return (input, options) => {
@@ -3140,25 +3115,12 @@ export const Objects: new(
   }
 }
 
-/** @internal */
-export interface ObjectParserContext {
-  readonly ast: Objects
-  readonly getProperties: () => ReadonlyArray<ParsedProperty>
-  readonly fallback: SchemaParser.Parser
-  readonly resume: (
-    state: ObjectParserState,
-    index: number,
-    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
-  ) => Effect.Effect<unknown, SchemaIssue.Issue, any>
-  readonly step: typeof stepProperty
-}
-
 type ObjectParserState = {
   readonly ast: Objects
   readonly input: Record<PropertyKey, unknown>
   readonly options: ParseOptions
   readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
 }
 
 type ParsedProperty = {
@@ -3167,7 +3129,8 @@ type ParsedProperty = {
   readonly type: AST
 }
 
-function stepProperty(
+/** @internal */
+export function stepProperty(
   s: ObjectParserState,
   p: ParsedProperty,
   exit: Exit.Exit<unknown, SchemaIssue.Issue>
@@ -3208,7 +3171,8 @@ const parsePropertiesOptions = {
   step: stepProperty
 }
 
-const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
+/** @internal */
+export const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 const parsePropertiesConcurrent = iterateConcurrent<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {

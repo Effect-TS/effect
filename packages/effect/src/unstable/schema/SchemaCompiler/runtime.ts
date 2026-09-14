@@ -6,17 +6,129 @@
  * @since 4.0.0
  */
 import * as Effect from "../../../Effect.ts"
-import { effectIsExit } from "../../../internal/effect.ts"
+import { effectIsExit, resolveConcurrency } from "../../../internal/effect.ts"
 import { lazyParser, type Resolve, resolve, set, withValidation } from "../../../internal/schema/compilerRegistry.ts"
 import * as Interpreter from "../../../internal/schema/interpreter.ts"
 import * as InternalParser from "../../../internal/schema/parser.ts"
 import * as SchemaAST from "../../../SchemaAST.ts"
 import * as SchemaIssue from "../../../SchemaIssue.ts"
+import type { Compiler } from "../../../SchemaParser.ts"
 import { invalid, type Validate } from "../SchemaCompiler.ts"
 
-type GenerateObject = (context: SchemaAST.ObjectParserContext) => SchemaIssueParser
-type GenerateArray = NonNullable<Parameters<SchemaAST.Arrays["getParser"]>[2]>
 type SchemaIssueParser = ReturnType<typeof Interpreter.compile>
+type ObjectParserState = Parameters<typeof SchemaAST.stepProperty>[0]
+type ParsedProperty = Parameters<typeof SchemaAST.stepProperty>[1]
+type ArrayParserState = Parameters<typeof SchemaAST.stepArray>[0]
+type GenerateObject = (context: {
+  readonly ast: SchemaAST.Objects
+  readonly getProperties: () => ReadonlyArray<ParsedProperty>
+  readonly fallback: SchemaIssueParser
+  readonly resume: (
+    state: ObjectParserState,
+    index: number,
+    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
+  ) => Effect.Effect<unknown, SchemaIssue.Issue, any>
+  readonly step: typeof SchemaAST.stepProperty
+}) => SchemaIssueParser
+type GenerateArray = (context: {
+  readonly getElement: () => SchemaIssueParser
+  readonly step: typeof SchemaAST.stepArray
+  readonly resume: (
+    state: ArrayParserState,
+    item: unknown,
+    index: number,
+    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>,
+    end: number
+  ) => Effect.Effect<void, SchemaIssue.Issue, any>
+}) => typeof SchemaAST.parseArray
+
+const makeObjectBase = (
+  ast: SchemaAST.Objects,
+  compile: Compiler,
+  compileConstructorDefault: Compiler,
+  generate: GenerateObject
+): SchemaIssueParser => {
+  let properties: Array<ParsedProperty> | undefined
+  const getProperties = (): Array<ParsedProperty> =>
+    properties ??= ast.propertySignatures.map((property) => ({
+      parser: compileConstructorDefault(property.type),
+      name: property.name,
+      type: property.type
+    }))
+  let fallback: SchemaIssueParser | undefined
+  const runFallback: SchemaIssueParser = (input, options) =>
+    (fallback ??= ast.getParser(compile, compileConstructorDefault))(input, options)
+  const resume = (
+    state: ObjectParserState,
+    index: number,
+    pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
+  ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+    const property = properties![index]
+    return Effect.flatMap(Effect.exit(pending), (exit) => {
+      const terminal = SchemaAST.stepProperty(state, property, exit)
+      if (terminal) return terminal
+      const done = () => InternalParser.succeed(state.out)
+      const effect = SchemaAST.parseProperties(state, properties!.slice(index + 1))
+      return effect ? Effect.flatMapEager(effect, done) : done()
+    })
+  }
+  return generate({ ast, getProperties, fallback: runFallback, resume, step: SchemaAST.stepProperty })
+}
+
+const makeArrayBase = (
+  ast: SchemaAST.Arrays,
+  compile: Compiler,
+  compileConstructorDefault: Compiler,
+  generate: GenerateArray
+): SchemaIssueParser => {
+  let element: { readonly ast: SchemaAST.AST; readonly parser: SchemaIssueParser } | undefined
+  const getElement = () => (element ??= {
+    ast: ast.rest[0],
+    parser: compileConstructorDefault(ast.rest[0])
+  })
+  let fallback: SchemaIssueParser | undefined
+  const runFallback: SchemaIssueParser = (input, options) =>
+    (fallback ??= ast.getParser(compile, compileConstructorDefault))(input, options)
+  const run = generate({
+    getElement: () => getElement().parser,
+    step: SchemaAST.stepArray,
+    resume: (state, item, index, pending, end) =>
+      Effect.flatMap(
+        Effect.exit(pending),
+        (exit) =>
+          SchemaAST.stepArray(state, item, exit, index) ??
+            SchemaAST.parseArray(state, state.input, index + 1, end) ?? Effect.void
+      )
+  })
+  const specialized = Effect.fnUntracedEager(function*(input: unknown, options: SchemaAST.ParseOptions) {
+    if (input === InternalParser.missing) return InternalParser.missing
+    if (!Array.isArray(input)) {
+      return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+    }
+    const descriptor = getElement()
+    const len = input.length
+    const state: ArrayParserState = {
+      ast,
+      getParser: () => descriptor,
+      input,
+      len,
+      tailThreshold: len,
+      output: new globalThis.Array(len),
+      issues: undefined,
+      options
+    }
+    const effect = run(state, input, 0, len)
+    if (effect) yield* effect
+    if (state.issues) {
+      return yield* Effect.fail(new SchemaIssue.Composite(ast, state.issues, input, options))
+    }
+    return state.output
+  })
+  return (input, options) =>
+    options.concurrency !== undefined && resolveConcurrency(options.concurrency) !== 1
+      ? runFallback(input, options)
+      : specialized(input, options)
+}
 
 const decode = (
   ast: SchemaAST.AST,
@@ -31,9 +143,9 @@ const decode = (
     ? child
     : (ast: SchemaAST.AST) => lazyParser(resolve, ast, "decodeEffect")
   const base = ast._tag === "Objects" && generate !== undefined ?
-    ast.getParser(localChild, undefined, generate)
+    makeObjectBase(ast, localChild, localChild, generate)
     : ast._tag === "Arrays" && generateArray !== undefined
-    ? ast.getParser(localChild, undefined, generateArray)
+    ? makeArrayBase(ast, localChild, localChild, generateArray)
     : makeValidate !== undefined
     ? ast.getParser(localChild)
     : undefined
@@ -57,9 +169,9 @@ const make = (
   const child = (ast: SchemaAST.AST) => lazyParser(resolve, ast, "makeEffect")
   const field = (ast: SchemaAST.AST) => lazyParser(resolve, ast, "makeDefaulted")
   const base = generate !== undefined && ast._tag === "Objects" ?
-    ast.getParser(child, field, generate)
+    makeObjectBase(ast, child, field, generate)
     : generateArray !== undefined && ast._tag === "Arrays"
-    ? ast.getParser(child, field, generateArray)
+    ? makeArrayBase(ast, child, field, generateArray)
     : undefined
   return Interpreter.compile(ast, child, field, base)
 }

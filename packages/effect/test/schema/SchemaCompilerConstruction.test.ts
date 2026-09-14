@@ -256,24 +256,6 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     assert.throws(() => SchemaParser.make(required)("a"), /Schema validation failed/)
   })
 
-  it("runs generated Struct construction with shared diagnostic helpers", () => {
-    const schema = Schema.Struct({
-      a: Schema.String,
-      b: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(1)))
-    })
-    SchemaJITCompiler.enable(schema.ast)
-    const setup = vi.spyOn(schema.ast, "getParser")
-    const make = SchemaParser.make(schema)
-    try {
-      assert.deepStrictEqual(make({ a: "a" }), { a: "a", b: 1 })
-      assert.throws(() => make({ a: 1 } as never), /Schema validation failed/)
-      assert.strictEqual(setup.mock.calls.length, 1)
-      assert.strictEqual(typeof setup.mock.calls[0][2], "function")
-    } finally {
-      setup.mockRestore()
-    }
-  })
-
   it.effect("executes async defaults once, including on later failure", () =>
     Effect.gen(function*() {
       let defaults = 0

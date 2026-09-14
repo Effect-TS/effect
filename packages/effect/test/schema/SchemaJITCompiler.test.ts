@@ -317,27 +317,17 @@ describe("SchemaJITCompiler", () => {
       Schema.check(Schema.makeFilter((input) => input.value !== "01")),
       Schema.flip
     )
-    let interpreted = 0
-    const getParser = schema.ast.getParser.bind(schema.ast)
-    Object.defineProperty(schema.ast, "getParser", {
-      value(...args: Parameters<typeof getParser>) {
-        interpreted++
-        return getParser(...args)
-      }
-    })
     const decode = SchemaParser.decodeUnknownSync(schema)
     deepStrictEqual(decode({ value: "1", extra: true }), { value: 1 })
     throws(() => decode({ value: "-1", extra: true }))
     strictEqual(transformations, 2)
     strictEqual(checks, 2)
-    strictEqual(interpreted, 1)
 
     deepStrictEqual(decode({ value: "-1" }, { disableChecks: true }), { value: -1 })
     strictEqual(checks, 2)
     throws(() => decode({ value: "-1" }, { errors: "all" }))
     strictEqual(transformations, 4)
     strictEqual(checks, 3)
-    strictEqual(interpreted, 1)
     throws(() => decode({ value: "01" }))
     strictEqual(transformations, 5)
     strictEqual(checks, 3)

@@ -1,20 +1,8 @@
-import { assert, describe, it, vi } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Schema, SchemaGetter, SchemaParser } from "effect"
 import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
 
 describe("compiled homogeneous Array traversal", () => {
-  it("uses the generated sequential driver for construction", () => {
-    const schema = Schema.Array(Schema.Struct({ value: Schema.Number }))
-    const parser = vi.spyOn(schema.ast, "getParser")
-    try {
-      SchemaJITCompiler.enable(schema.ast)
-      assert.deepStrictEqual(SchemaParser.make(schema)([{ value: 1 }]), [{ value: 1 }])
-      assert.strictEqual(typeof parser.mock.calls[0][2], "function")
-    } finally {
-      parser.mockRestore()
-    }
-  })
-
   it.effect("keeps detailed errors and sparse input behavior", () =>
     Effect.gen(function*() {
       const schema = Schema.Array(Schema.NumberFromString)

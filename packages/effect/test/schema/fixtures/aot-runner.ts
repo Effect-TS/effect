@@ -78,14 +78,6 @@ const snapshotConstruction = async () => {
 const interpretedConstruction = await snapshotConstruction()
 assert.equal(suspendEvaluations, 0)
 
-const prepareProof = proof.ast.getParser.bind(proof.ast)
-Object.defineProperty(proof.ast, "getParser", {
-  value(...args: Parameters<typeof prepareProof>) {
-    assert.equal(typeof args[2], "function", "AOT must supply the generated property loop")
-    return prepareProof(...args)
-  }
-})
-
 const before = CompilerRegistry.resolve(schemas.struct.ast)
 const empty = await import(pathToFileURL(join(process.argv[2], "empty.mjs")).href)
 assert.equal(empty.install([]), undefined)
