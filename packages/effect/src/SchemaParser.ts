@@ -139,11 +139,9 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
   return _is<S["Type"]>(schema.ast)
 }
 
-/** @internal */
-export function _is<T>(ast: SchemaAST.AST) {
-  const typeAST = SchemaAST.toType(ast)
+function makeIs<T>(ast: SchemaAST.AST): <I>(input: I) => input is I & T {
   if (!CompilerRegistry.compilerAdaptersEnabled) {
-    const parser = asExit(run<T, never>(typeAST))
+    const parser = asExit(run<T, never>(ast))
     return <I>(input: I): input is I & T => {
       const exit = parser(input, SchemaAST.defaultParseOptions)
       if (Exit.isSuccess(exit)) return true
@@ -154,17 +152,10 @@ export function _is<T>(ast: SchemaAST.AST) {
       return false
     }
   }
-  let entry: CompilerRegistry.Entry | undefined
-  let parser: Parser | undefined
-  let guard: CompilerRegistry.Entry["is"] | null
-  return <I>(input: I): input is I & T => {
-    if (guard === undefined) {
-      entry = CompilerRegistry.resolve(typeAST)
-      guard = entry.is ?? null
-      // A value-producing validator can return the invalid symbol as valid data.
-      // Without a boolean validator, use the ordinary diagnostic fallback too.
-    }
-    if (guard !== null) {
+  const entry = CompilerRegistry.resolve(ast)
+  const guard = entry.is
+  if (guard !== undefined) {
+    return <I>(input: I): input is I & T => {
       try {
         return guard(input, SchemaAST.defaultParseOptions)
       } catch (error) {
@@ -175,13 +166,25 @@ export function _is<T>(ast: SchemaAST.AST) {
         return false
       }
     }
-    const result = (parser ??= entry!.parser)(input, SchemaAST.defaultParseOptions)
-    const exit = Effect.runSyncExit(parserResult<T, never>(result, input))
-    if (Exit.isSuccess(exit)) {
-      return true
-    }
+  }
+  const parser = entry.parser
+  return <I>(input: I): input is I & T => {
+    const exit = Effect.runSyncExit(parserResult<T, never>(parser(input, SchemaAST.defaultParseOptions), input))
+    if (Exit.isSuccess(exit)) return true
     InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Type guard adapter can only return false for schema issues")
     return false
+  }
+}
+
+/** @internal */
+export function _is<T>(ast: SchemaAST.AST) {
+  const typeAST = SchemaAST.toType(ast)
+  let guard: <I>(input: I) => input is I & T = <I>(input: I): input is I & T => {
+    guard = makeIs<T>(typeAST)
+    return guard(input)
+  }
+  return <I>(input: I): input is I & T => {
+    return guard(input)
   }
 }
 

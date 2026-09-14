@@ -4,6 +4,34 @@ import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
 import { deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaCompiler", () => {
+  it("resolves a type guard on first invocation", () => {
+    const schema = Schema.String.annotate({ title: "lazy type guard" })
+    const ast = SchemaAST.toType(schema.ast)
+    const guard = SchemaParser.is(schema)
+    let calls = 0
+
+    SchemaCompiler.set(ast, {
+      is: () => {
+        calls++
+        return true
+      },
+      decodeEffect: Effect.succeed
+    })
+
+    strictEqual(guard(1), true)
+    strictEqual(guard(2), true)
+    strictEqual(calls, 2)
+
+    SchemaCompiler.set(ast, {
+      is: () => false,
+      decodeEffect: Effect.succeed
+    })
+
+    strictEqual(guard(3), true)
+    strictEqual(SchemaParser.is(schema)(3), false)
+    strictEqual(calls, 3)
+  })
+
   it("reuses interpreted candidates inside a selectively compiled Union", () => {
     const child = Schema.String.annotate({ title: "interpreted Union candidate" })
     const schema = Schema.Union([child, Schema.Number])
