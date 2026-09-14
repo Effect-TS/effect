@@ -905,8 +905,7 @@ describe("abandonment", () => {
           assert.strictEqual(attempts, 1)
           assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
 
-          // Resume the body's actual waiter with the shutdown signal, rather than
-          // replaying a captured Cause (which loses fiber interruption state).
+          // Signal the actual waiter; replaying a Cause loses fiber interruption state.
           yield* storage.unregisterShardReplyHandlers(request.envelope.address.shardId, { interrupt: true })
           yield* TestClock.adjust(1000)
           const run = driver.journal.find((e) =>
@@ -1084,8 +1083,7 @@ describe("workflow send-time abandonment", () => {
               Effect.map(Runners.Runners, (runners) =>
                 Runners.Runners.of({
                   ...runners,
-                  // Inject only the transport routing error. Sharding and RpcClient
-                  // must create and propagate abandonment through their real send path.
+                  // Inject a routing error and let the real send path propagate abandonment.
                   notify: (options) => {
                     assert.isTrue(closing)
                     routeFailures++

@@ -683,11 +683,8 @@ export const provideScope = <A, E, R>(
   Effect.flatMap(scope, (scope) => Scope.extend(effect, scope))
 
 /**
- * Body-level `Effect.onExit` finalizers cannot observe a deposited workflow
- * interrupt. Use this function for terminal work that must observe it.
- *
- * Finalizers are skipped when a cluster owner abandons a run for replay.
- * Owner-local scope finalizers registered with {@link provideScope} still run.
+ * Registers terminal cleanup that observes workflow interrupts after body finalizers.
+ * Skipped on cluster abandonment; {@link provideScope} finalizers still run.
  *
  * @since 1.0.0
  * @category Scope

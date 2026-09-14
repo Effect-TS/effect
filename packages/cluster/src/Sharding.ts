@@ -964,8 +964,7 @@ const make = Effect.gen(function*() {
         }
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
-        // Remote discards can still be delivered while local entities shut down.
-        // Interrupt envelopes need a delivery attempt even during local teardown.
+        // Still deliver remote discards and interrupts during local shutdown.
         if (
           MutableRef.get(isShutdown) && message.envelope._tag !== "Interrupt" &&
           (shouldFail || runnerIsLocal)
@@ -1165,7 +1164,7 @@ const make = Effect.gen(function*() {
   > = yield* ResourceMap.make(
     Effect.fnUntraced(function*(entity: Entity<string, any>) {
       const clientScope = yield* Effect.scope
-      // LIFO finalization acquires below before client teardown and releases last.
+      // Register first so the teardown marker is released last.
       yield* Scope.addFinalizer(
         clientScope,
         Effect.sync(() => {
@@ -1296,8 +1295,7 @@ const make = Effect.gen(function*() {
             asMailbox: isStream,
             context
           }) as Effect.Effect<any, any>
-          // Re-signal relayed abandonment at each read, in the consuming fiber.
-          // Unary calls and mailbox reads retain the caller's interruption mask.
+          // Re-signal abandonment in the caller or mailbox reader, preserving its mask.
           if (!isStream) return ClusterAbandon.onError(response)
           const mailbox = Effect.map(ClusterAbandon.onError(response), ClusterAbandon.mailbox)
           return options?.asMailbox ? mailbox : Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))

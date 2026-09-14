@@ -20,7 +20,7 @@ import * as ShardingConfig from "./ShardingConfig.js"
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
-// This FNV-1a hash, tag and UTF-8 encoding are a persistent advisory-lock wire format.
+// FNV-1a, the tag and UTF-8 encoding define the advisory-lock protocol.
 const postgresLockNamespace = (prefix: string): number => {
   const bytes = new TextEncoder().encode(`effect-cluster:${prefix}`)
   let hash = 0x811c9dc5

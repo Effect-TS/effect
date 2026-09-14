@@ -2,8 +2,7 @@ import { Effect } from "effect"
 import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
-// A separate process lets the regression detect a busy interruption loop that
-// prevents even live timers in the affected runtime from firing.
+// A child process lets the watchdog detect loops that block the event loop.
 export const runFixture = (url: URL) =>
   Effect.async<{ code: number | null; timedOut: boolean; output: string }>((resume) => {
     const child = spawn(process.execPath, ["--import", "tsx", fileURLToPath(url)], {

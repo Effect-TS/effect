@@ -24,8 +24,6 @@ export const makeAwaitResult = (settle: Effect.Effect<void>, attempts: number) =
     return result
   })
 
-// Engine-agnostic suspension and deferred completion cases, shared by the memory
-// and cluster engines.
 export const suite = ({ engineLayer, name, tick }: {
   readonly name: string
   readonly engineLayer: Layer.Layer<WorkflowEngine.WorkflowEngine>

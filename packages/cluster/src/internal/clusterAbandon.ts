@@ -10,12 +10,11 @@ import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 
-// v3 carries interruption provenance through FiberId rather than cause annotations.
+// Identify abandonment by its interruptor ID.
 const interruptor = globalValue("@effect/cluster/internal/clusterAbandon/interruptor", () => FiberId.unsafeMake())
 
 export const interrupt: Effect.Effect<void> = Effect.withFiberRuntime((fiber) => {
-  // Signal the fiber so recovery cannot swallow abandonment. The runtime defers
-  // the signal while masked and retains its provenance when interruption resumes.
+  // Signal the fiber so recovery cannot swallow abandonment; masking still applies.
   fiber.unsafeInterruptAsFork(interruptor)
   return Effect.void
 })

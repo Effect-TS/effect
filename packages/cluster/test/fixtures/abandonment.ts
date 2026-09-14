@@ -8,8 +8,7 @@ export const MemoryLive = MessageStorage.layerMemory.pipe(
   Layer.provide(ShardingConfig.layerDefaults)
 )
 
-// Isolate reply handlers while using the public storage shutdown boundary.
-// This also runs on the baseline, where shutdown incorrectly returns a routing error.
+// Exercise reply-handler shutdown through the public storage API.
 export const abandonmentCause = Effect.gen(function*() {
   const storage = yield* MessageStorage.make(yield* MessageStorage.MessageStorage)
   const request = yield* makeRequest()

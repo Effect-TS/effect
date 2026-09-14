@@ -20,7 +20,6 @@ const make = (config: Layer.Layer<ShardingConfig.ShardingConfig>) =>
     Layer.provide(config)
   )
 
-// Cluster engine over the caller's MessageStorage, so tests can inspect it.
 export const makeEngine = (config: Config) => make(ShardingConfig.layer(config))
 
 export const makeMemoryEngine = (config: Config) => {

@@ -144,7 +144,7 @@ export const make = Effect.fnUntraced(function*<
       force: Effect.unsafeMakeLatch()
     }
 
-    // LIFO finalization acquires below before entity teardown and releases last.
+    // Register first so the teardown marker is released last.
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
