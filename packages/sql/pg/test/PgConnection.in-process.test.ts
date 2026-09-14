@@ -193,6 +193,150 @@ const withUnixServer = (
       })
   )
 
+describe("PgConnection startup packet", () => {
+  // Keep the runtime cases runnable on main; PgConnection.test.ts also checks
+  // that these fields are exposed by the public configuration types.
+  type StartupConfig = PgConnection.Config & {
+    readonly startupParameters?: Readonly<Record<string, string>>
+    readonly options?: string
+  }
+
+  const captureStartup = (config: StartupConfig) =>
+    Effect.gen(function*() {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          writes.push(Buffer.from(chunk))
+          if (writes.length === 1) {
+            queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+          }
+          callback()
+        }
+      })
+      yield* PgConnection.make({ username: "test", database: "test-db", ...config, stream: () => socket })
+      assert.strictEqual(writes.length, 1)
+      const message = writes[0]
+      assert.strictEqual(message.readInt32BE(0), message.length)
+      assert.strictEqual(message.readInt32BE(4), 196608)
+      const parameters = startupParameters(message)
+      const fields = message.subarray(8, -1).toString().split("\0")
+      // Count the raw pairs as well: decoding to a Map alone would hide duplicates.
+      assert.strictEqual(fields.length, parameters.size * 2 + 1)
+      assert.strictEqual(parameters.get("user"), "test")
+      assert.strictEqual(parameters.get("database"), "test-db")
+      assert.strictEqual(parameters.get("client_encoding"), "UTF8")
+      return parameters
+    })
+
+  it.effect("normalizes names and preserves values in the startup packet", () =>
+    Effect.gen(function*() {
+      const named = Object.freeze({ Statement_Timeout: "1250ms", SEARCH_PATH: "\"Mixed Case\", public" })
+      const parameters = yield* captureStartup({ startupParameters: named })
+      assert.strictEqual(parameters.get("statement_timeout"), "1250ms")
+      assert.strictEqual(parameters.get("search_path"), "\"Mixed Case\", public")
+      assert.isFalse(parameters.has("Statement_Timeout"))
+      assert.isFalse(parameters.has("SEARCH_PATH"))
+      assert.deepStrictEqual(named, { Statement_Timeout: "1250ms", SEARCH_PATH: "\"Mixed Case\", public" })
+    }))
+
+  it.effect.each(["UTF8", "UTF-8", "utf8", "uTf-8"])(
+    "canonicalizes client_encoding=%s",
+    (encoding) =>
+      Effect.gen(function*() {
+        const parameters = yield* captureStartup({ startupParameters: { CLIENT_ENCODING: encoding } })
+        assert.isFalse(parameters.has("CLIENT_ENCODING"))
+        assert.strictEqual(parameters.get("client_encoding"), "UTF8")
+      })
+  )
+
+  const applications: ReadonlyArray<{
+    readonly name: string
+    readonly config: StartupConfig
+    readonly expected: string
+  }> = [
+    { name: "default", config: {}, expected: "@effect/sql-pg" },
+    {
+      name: "URL",
+      config: { url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app") },
+      expected: "url-app"
+    },
+    {
+      name: "named parameter over URL",
+      config: {
+        url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app"),
+        startupParameters: { application_name: "named-app" }
+      },
+      expected: "named-app"
+    },
+    {
+      name: "mixed case named parameter",
+      config: { startupParameters: { APPLICATION_NAME: "named-app" } },
+      expected: "named-app"
+    },
+    {
+      name: "explicit over named parameter and URL",
+      config: {
+        url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app"),
+        startupParameters: { application_name: "named-app" },
+        applicationName: "explicit-app"
+      },
+      expected: "explicit-app"
+    },
+    {
+      name: "empty explicit value",
+      config: { applicationName: "", startupParameters: { application_name: "named-app" } },
+      expected: ""
+    },
+    {
+      name: "empty named value over URL",
+      config: {
+        url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app"),
+        startupParameters: { application_name: "" }
+      },
+      expected: ""
+    }
+  ]
+  it.effect.each(applications)("resolves application_name: $name", ({ config, expected }) =>
+    Effect.gen(function*() {
+      const parameters = yield* captureStartup(config)
+      assert.strictEqual(parameters.get("application_name"), expected)
+    }))
+
+  const opaque = "-c search_path=one\\ two,public -c statement_timeout=1234 --application_name=opaque-app"
+  it.effect.each([
+    { name: "URL", config: {}, expected: opaque },
+    { name: "explicit overrides URL", config: { options: "-c lock_timeout=4321" }, expected: "-c lock_timeout=4321" },
+    { name: "empty explicit overrides URL", config: { options: "" }, expected: "" }
+  ])("forwards opaque options: $name", ({ config, expected }) =>
+    Effect.gen(function*() {
+      const parameters = yield* captureStartup({
+        url: Redacted.make(`postgres://test@localhost/test-db?options=${encodeURIComponent(opaque)}`),
+        ...config
+      })
+      assert.strictEqual(parameters.get("options"), expected)
+      assert.strictEqual(parameters.get("application_name"), "@effect/sql-pg")
+      assert.isFalse(parameters.has("search_path"))
+      assert.isFalse(parameters.has("statement_timeout"))
+    }))
+
+  it.effect("sends named parameters alongside explicit opaque options", () =>
+    Effect.gen(function*() {
+      const parameters = yield* captureStartup({
+        startupParameters: { search_path: "public" },
+        options: "-c statement_timeout=1234"
+      })
+      assert.strictEqual(parameters.get("search_path"), "public")
+      assert.strictEqual(parameters.get("options"), "-c statement_timeout=1234")
+    }))
+
+  it.effect("leaves other GUC validity to the server", () =>
+    Effect.gen(function*() {
+      const parameters = yield* captureStartup({ startupParameters: { unknown_startup_guc: "not-validated" } })
+      assert.strictEqual(parameters.get("unknown_startup_guc"), "not-validated")
+    }))
+})
+
 describe("PgConnection in-process server", () => {
   it.effect("accepts backend messages over the default limit when configured", () =>
     Effect.gen(function*() {

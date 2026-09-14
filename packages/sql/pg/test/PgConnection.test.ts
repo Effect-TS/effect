@@ -1,9 +1,49 @@
-import { PgConnection } from "@effect/sql-pg"
+import { type PgClient, PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Redacted } from "effect"
 import * as TestClock from "effect/testing/TestClock"
+import { expectTypeOf } from "vitest"
 
 describe("PgConnection config", () => {
+  it("exposes startup parameters and options on connection and client configs", () => {
+    expectTypeOf<PgConnection.Config["startupParameters"]>().toEqualTypeOf<
+      Readonly<Record<string, string>> | undefined
+    >()
+    expectTypeOf<PgClient.PgClientConfig["startupParameters"]>().toEqualTypeOf<
+      Readonly<Record<string, string>> | undefined
+    >()
+    expectTypeOf<PgConnection.Config["options"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<PgClient.PgClientConfig["options"]>().toEqualTypeOf<string | undefined>()
+  })
+
+  it.effect.each([
+    ...["user", "database", "replication", "options", "USER", "Database", "RePlIcAtIoN", "OPTIONS"].map((name) => ({
+      name: `reserved ${name}`,
+      startupParameters: { [name]: "value" }
+    })),
+    ...["LATIN1", "SQL_ASCII", "", "UTF16"].map((value) => ({
+      name: `unsupported client_encoding ${JSON.stringify(value)}`,
+      startupParameters: { CLIENT_ENCODING: value }
+    })),
+    { name: "empty name", startupParameters: { "": "value" } },
+    { name: "NUL in name", startupParameters: { "search\0_path": "public" } },
+    { name: "NUL in value", startupParameters: { search_path: "public\0private" } }
+  ])("rejects $name before connecting", ({ startupParameters }) =>
+    Effect.gen(function*() {
+      let connected = false
+      const config = {
+        username: "test",
+        startupParameters,
+        stream: () => {
+          connected = true
+          throw new Error("unexpected connection")
+        }
+      }
+      const error = yield* Effect.flip(PgConnection.make(config))
+      assert.isFalse(connected)
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+    }))
+
   it.effect("interrupts a stalled password provider when connectTimeout expires", () =>
     Effect.gen(function*() {
       let connected = false
