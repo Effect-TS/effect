@@ -339,6 +339,9 @@ importers:
       ast-types:
         specifier: ^0.16.3
         version: 0.16.3
+      iconv-lite:
+        specifier: ^0.7.3
+        version: 0.7.3
       immer:
         specifier: ^11.1.18
         version: 11.1.18
