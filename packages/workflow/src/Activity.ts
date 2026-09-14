@@ -80,9 +80,8 @@ export interface Any {
 }
 
 /**
- * Only completed activity results are memoized. An activity that suspends while
- * awaiting a child workflow or durable clock executes again on replay. Side
- * effects before suspension must be idempotent.
+ * Suspended activities run again on replay; only completed results are memoized.
+ * Side effects before suspension must be idempotent.
  *
  * @since 1.0.0
  * @category Constructors
@@ -142,7 +141,6 @@ const retryOnInterrupt = (
 ) =>
 <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.flatMap(Effect.serviceOption(InstanceTag), (instance) => {
-    // Outside a workflow there is no instance, so the activity can never be suspended.
     const suspended = () => Option.isSome(instance) && instance.value.suspended
     return effect.pipe(
       Effect.sandbox,

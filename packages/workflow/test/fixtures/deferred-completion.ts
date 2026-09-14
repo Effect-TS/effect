@@ -52,8 +52,7 @@ const teardown = Effect.gen(function*() {
       )
     })
   )
-  // The engine owns the wake; registration owns the workflow run. Closing one
-  // must not wait for the other's deliberately blocked body finalizer.
+  // Separate wake cancellation from the workflow's blocked cleanup.
   const engineScope = yield* Scope.make()
   const workflowScope = yield* Scope.make()
   const context = yield* Layer.build(WorkflowEngine.layerMemory).pipe(Scope.extend(engineScope))
@@ -68,8 +67,7 @@ const teardown = Effect.gen(function*() {
   const closeWorkflow = yield* Scope.close(workflowScope, Exit.void).pipe(Effect.fork)
   for (let i = 0; i < 100; i++) yield* Effect.yieldNow()
   const workflowClosed = closeWorkflow.unsafePoll()
-  // Release real workflow cleanup even on the failing baseline. The assertion
-  // below diagnoses the wake's lifetime, not an unreleased test finalizer.
+  // Release cleanup before asserting, including on the failing baseline.
   yield* releaseCleanup.open
   yield* Fiber.join(closeWorkflow)
   yield* Fiber.join(closeEngine)
@@ -224,8 +222,7 @@ const program = Effect.gen(function*() {
   }).pipe(Effect.provide(layer))
 })
 
-// An unresolved Effect need not keep Node's event loop alive. Early exit must
-// fail too, even when the parent's watchdog never needs to kill the process.
+// An unresolved Effect can let Node exit; require explicit success.
 process.exitCode = 1
 Effect.runPromise(program).then(
   () => {

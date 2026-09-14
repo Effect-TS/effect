@@ -298,8 +298,7 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
-  // Subscribe synchronously before reading storage so a suspended reply cannot
-  // arrive between the read and registration. The scoped finalizer owns the fiber.
+  // Subscribe before reading storage to avoid missing a concurrent reply.
   const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
     const runtime = yield* Effect.runtime<never>()
     const waiter = yield* Effect.acquireRelease(
@@ -439,8 +438,7 @@ export const make = Effect.gen(function*() {
                 resumeGate.withPermitsIfAvailable(1)(
                   currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
                 ).pipe(
-                  // Release the gate before reset can start another parent run, so
-                  // later child completions can wake that replay.
+                  // Release the gate before replay so later completions can wake it.
                   Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
                   ensureSuccess,
                   Rpc.wrap({ fork: true, uninterruptible: true })

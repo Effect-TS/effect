@@ -309,8 +309,7 @@ describe("deferred completion", () => {
   }
 })
 
-// Joining a workflow from its own uninterruptible finalizer can also wedge test
-// scope cleanup. Bound the process and wait for it to exit before finishing.
+// A child process bounds deadlocks that also block test cleanup.
 const runDeferredCompletion = (scenario: string) =>
   Effect.acquireUseRelease(
     Effect.sync(() => {

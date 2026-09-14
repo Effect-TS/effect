@@ -99,9 +99,8 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
 
   /**
    * Unregister the reply handlers for the specified ShardId.
-   * By default waiters fail with EntityNotAssignedToRunner so they can retry.
-   * With `interrupt`, waiters receive a cluster abandonment interrupt for replay
-   * after runner shutdown.
+   * Waiters fail with EntityNotAssignedToRunner, or receive an abandonment
+   * interrupt for replay when `interrupt` is set.
    */
   readonly unregisterShardReplyHandlers: (
     shardId: ShardId,

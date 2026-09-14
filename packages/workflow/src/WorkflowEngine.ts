@@ -215,8 +215,7 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
     interrupted: boolean
 
     /**
-     * Whether this owner abandoned the run for replay. Durable finalizers are
-     * skipped while owner-local resources are released.
+     * Abandoned runs skip durable finalizers but release local resources.
      */
     abandoned: boolean
 
@@ -290,8 +289,7 @@ export const makeDeferredState = (): DeferredState => {
       Effect.withFiberRuntime((fiber) => {
         const run = { instance, fiber: fiber as Fiber.RuntimeFiber<unknown, unknown> }
         running.set(instance.executionId, run)
-        // Keep known suspended executions so v3 replays can read a completion
-        // before the deferred handler has persisted its reply.
+        // Retain completions for replay before their replies are persisted.
         if (!pending.has(instance.executionId)) pending.set(instance.executionId, new Map())
         return Effect.ensuring(
           Effect.provideService(effect, WorkflowInstance, instance),
@@ -310,7 +308,6 @@ export const makeDeferredState = (): DeferredState => {
         if (!run || run.fiber === current || run.fiber.unsafePoll() || !run.instance.awaitedDeferreds.has(name)) {
           return Effect.void
         }
-        // Retain the completion while the interrupted attempt suspends for replay.
         run.instance.suspended = true
         return Fiber.interrupt(run.fiber).pipe(Effect.asVoid)
       })
@@ -721,8 +718,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.scoped(
             resume(options.executionId)
           )
           return Effect.flatMap(Effect.serviceOption(WorkflowInstance), (instance) =>
-            // A workflow finalizer cannot wait for its own run's cleanup.
-            // External callers still wait until cleanup and replay are scheduled.
+            // Self-completion must not wait for its own run to finish.
             Option.isSome(instance) && instance.value.executionId === options.executionId
               ? wake.pipe(Effect.interruptible, Effect.forkIn(scope), Effect.asVoid)
               : wake)

@@ -77,8 +77,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
   >
 
   /**
-   * Notify a Runner that a message is available. Persisted messages recover replies
-   * from storage; volatile messages complete after delivery.
+   * Notify a Runner that a message is available.
    */
   readonly notify: <R extends Rpc.Any>(
     options: {
