@@ -318,7 +318,11 @@ export interface DeferredState {
   /** Tracks and provides a run, retaining pending results across suspension. */
   readonly trackRun: <A, E, R>(
     instance: WorkflowInstance["Service"],
-    effect: Effect.Effect<A, E, R>
+    effect: Effect.Effect<A, E, R>,
+    options?: {
+      /** Prevents a retiring owner from clearing its replacement's results. */
+      readonly isCurrentOwner?: (() => boolean) | undefined
+    }
   ) => Effect.Effect<A, E, Exclude<R, WorkflowInstance>>
 
   /** Records a completion, preempting a run parked on that deferred. */
@@ -352,17 +356,17 @@ export const makeDeferredState = (options?: {
       Effect.sync(() => {
         pending?.delete(executionId)
       }),
-    trackRun: (instance, effect) =>
+    trackRun: (instance, effect, options) =>
       Effect.withFiber((fiber) => {
         const run = { instance, fiber: fiber as Fiber.Fiber<unknown, unknown> }
         running.set(instance.executionId, run)
         return Effect.ensuring(
           Effect.provideService(effect, WorkflowInstance, instance),
           Effect.sync(() => {
-            if (!instance.suspended) {
-              pending?.delete(instance.executionId)
-            }
             if (running.get(instance.executionId) === run) {
+              if (!instance.suspended && (options?.isCurrentOwner?.() ?? true)) {
+                pending?.delete(instance.executionId)
+              }
               running.delete(instance.executionId)
             }
           })

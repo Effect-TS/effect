@@ -20,7 +20,7 @@ import * as RcMap from "../../RcMap.ts"
 import type * as Record from "../../Record.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
-import type * as Scope from "../../Scope.ts"
+import * as Scope from "../../Scope.ts"
 import * as Semaphore from "../../Semaphore.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -38,6 +38,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
+import { CurrentActivationScope } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -130,6 +131,8 @@ export const make = Effect.gen(function*() {
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
   const deferredState = WorkflowEngine.makeDeferredState()
+  const deferredOwners = new Map<string, Scope.Scope>()
+  const claimedActivations = new WeakSet<Scope.Scope>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -381,7 +384,22 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
-            yield* Effect.addFinalizer(() => deferredState.clear(executionId))
+            const activation = yield* CurrentActivationScope
+            const isCurrentOwner = () => deferredOwners.get(executionId) === activation
+            // Rebuilding handlers keeps the same owner. A retiring activation
+            // must neither reclaim ownership nor clear its replacement's results.
+            if (!claimedActivations.has(activation)) {
+              claimedActivations.add(activation)
+              deferredOwners.set(executionId, activation)
+              yield* Scope.addFinalizer(
+                activation,
+                Effect.suspend(() => {
+                  if (!isCurrentOwner()) return Effect.void
+                  deferredOwners.delete(executionId)
+                  return deferredState.clear(executionId)
+                })
+              )
+            }
             // Latest run request for this entity; replays reuse its request id.
             let currentRun: Entity.Request<any> | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
@@ -426,7 +444,7 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  (effect) => deferredState.trackRun(instance, effect)
+                  (effect) => deferredState.trackRun(instance, effect, { isCurrentOwner })
                 ) as any
               },
 

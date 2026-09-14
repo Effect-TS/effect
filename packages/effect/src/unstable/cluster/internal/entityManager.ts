@@ -37,6 +37,7 @@ import type { ShardId } from "../ShardId.ts"
 import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
+import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
@@ -196,14 +197,15 @@ export const make = Effect.fnUntraced(function*<
     // swap the server without losing the active requests
     const writeRef = yield* ResourceRef.from(
       scope,
-      Effect.fnUntraced(function*(scope) {
+      Effect.fnUntraced(function*(handlerScope) {
         let isShuttingDown = false
 
         const handlerContext = context.pipe(
           Context.add(CurrentAddress, address),
           Context.add(CurrentRunnerAddress, options.runnerAddress),
           Context.add(KeepAliveLatch, keepAliveLatch),
-          Context.add(Scope.Scope, scope),
+          Context.add(CurrentActivationScope, scope),
+          Context.add(Scope.Scope, handlerScope),
           Context.add(CurrentLogAnnotations, {})
         )
 
@@ -264,7 +266,7 @@ export const make = Effect.fnUntraced(function*<
                       },
                       requestWriteOptions(request)
                     ).pipe(
-                      Effect.forkIn(scope)
+                      Effect.forkIn(handlerScope)
                     )
                   }
                   activeRequests.delete(Snowflake.Snowflake(response.requestId))
@@ -328,12 +330,12 @@ export const make = Effect.fnUntraced(function*<
             }
           }
         }).pipe(
-          Scope.provide(scope),
+          Scope.provide(handlerScope),
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
         yield* Scope.addFinalizer(
-          scope,
+          handlerScope,
           Effect.sync(() => {
             isShuttingDown = true
           })
