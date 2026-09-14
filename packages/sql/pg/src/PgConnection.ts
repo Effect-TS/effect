@@ -310,10 +310,23 @@ interface Consumer {
 
 /** One statement waiting in, or travelling through, a multiplexed pipeline. */
 interface PipelineEntry {
+  readonly kind: "query"
   readonly plan: Plan
   readonly deferred: Deferred.Deferred<QueryOutput, SqlError>
   readonly machine: QueryMachine
   abandoned: boolean
+}
+
+interface PipelineExclusive {
+  readonly kind: "exclusive"
+  readonly deferred: Deferred.Deferred<void, SqlError>
+  started: boolean
+  abandoned: boolean
+}
+
+interface NumericDiscovery {
+  readonly savepoint: boolean
+  executed: boolean
 }
 
 const abortDrainTimeoutMillis = 5000
@@ -347,7 +360,10 @@ class PgConnectionImpl implements PgConnection {
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
-  readonly pipelinePending: Array<PipelineEntry> = []
+  readonly pipelinePending: Array<PipelineEntry | PipelineExclusive> = []
+  pipelineBarrier = false
+  discovery: NumericDiscovery | undefined
+  discoveryPending = false
   /** Written and awaiting their `ReadyForQuery`, oldest first. */
   readonly pipelineInFlight: Array<PipelineEntry> = []
   pipelineHead = 0
@@ -446,6 +462,7 @@ class PgConnectionImpl implements PgConnection {
     const consumer = this.consumer
     this.consumer = undefined
     consumer?.onFatal(error)
+    if (consumer !== this.pipelineConsumer) this.pipelineConsumer.onFatal(error)
     const sets = Array.from(this.channels.values())
     this.channels.clear()
     const cause = this.closed ? Cause.interrupt() : Cause.fail(error)
@@ -485,9 +502,8 @@ class PgConnectionImpl implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     cache: PreparedCache | undefined,
-    resolve = this.transactionStatus === "T",
-    run?: (plan: Plan) => Effect.Effect<QueryOutput, SqlError>
-  ): Effect.Effect<Plan, SqlError> => encodeQuery(this, sql, params, cache, resolve, run)
+    resolve = this.transactionStatus === "T"
+  ): Effect.Effect<Plan, SqlError> => encodeQuery(this, sql, params, cache, resolve)
 
   /**
    * Routes backend messages to the oldest statement still on the wire.
@@ -519,7 +535,10 @@ class PgConnectionImpl implements PgConnection {
       this.pipelinePending.length = 0
       this.pipelineFlushScheduled = false
       for (const entry of entries) {
-        if (!entry.abandoned) Deferred.doneUnsafe(entry.deferred, Effect.fail(error))
+        if (!entry.abandoned) {
+          if (entry.kind === "query") Deferred.doneUnsafe(entry.deferred, Effect.fail(error))
+          else Deferred.doneUnsafe(entry.deferred, Effect.fail(error))
+        }
       }
       this.notifyPipelineIdle()
     }
@@ -527,12 +546,15 @@ class PgConnectionImpl implements PgConnection {
 
   private readonly pipelineDepth = (): number => this.pipelineInFlight.length - this.pipelineHead
 
-  private readonly pipelineIsIdle = (): boolean => this.pipelineDepth() === 0 && this.pipelinePending.length === 0
+  private readonly pipelineIsIdle = (): boolean =>
+    !this.pipelineBarrier && this.pipelineDepth() === 0 && this.pipelinePending.length === 0
 
   private readonly notifyPipelineIdle = (): void => {
     if (!this.pipelineIsIdle()) return
-    this.consumer = undefined
-    this.session.parser.readField = undefined
+    if (this.consumer === this.pipelineConsumer) {
+      this.consumer = undefined
+      this.session.parser.readField = undefined
+    }
     if (this.pipelineActive > 0) return
     const waiters = Array.from(this.pipelineIdleWaiters)
     this.pipelineIdleWaiters.clear()
@@ -571,14 +593,28 @@ class PgConnectionImpl implements PgConnection {
   /** Writes everything queued since the last flush as one batch. */
   private readonly flushPipeline = (): void => {
     this.pipelineFlushScheduled = false
-    if (this.deadWith !== undefined) return
+    if (this.deadWith !== undefined || this.pipelineBarrier) return
     let capacity = maxPipelineDepth - this.pipelineDepth()
     if (capacity <= 0) return
     const wasEmpty = this.pipelineDepth() === 0
     const batch: Array<PipelineEntry> = []
     let index = 0
     while (capacity > 0 && index < this.pipelinePending.length) {
-      const entry = this.pipelinePending[index++]
+      const entry = this.pipelinePending[index]
+      if (entry.kind === "exclusive") {
+        if (entry.abandoned) {
+          index++
+          continue
+        }
+        if (this.pipelineDepth() === 0) {
+          index++
+          this.pipelineBarrier = true
+          entry.started = true
+          Deferred.doneUnsafe(entry.deferred, Effect.void)
+        }
+        break
+      }
+      index++
       if (entry.abandoned) {
         if (entry.plan.parses && entry.plan.prepared !== undefined) {
           entry.plan.prepared.parsing = false
@@ -594,6 +630,7 @@ class PgConnectionImpl implements PgConnection {
       this.notifyPipelineIdle()
       return
     }
+    this.consumer = this.pipelineConsumer
     if (wasEmpty) this.session.parser.readField = batch[0].machine.readField
     const frame = batch.length === 1
       ? batch[0].plan.frame
@@ -617,9 +654,8 @@ class PgConnectionImpl implements PgConnection {
     const deferred = Deferred.makeUnsafe<QueryOutput, SqlError>()
     let entry: PipelineEntry
     const machine = new QueryMachine(this, plan, wantRows, (result) => this.finishPipelineEntry(entry, result))
-    entry = { plan, deferred, machine, abandoned: false }
+    entry = { kind: "query", plan, deferred, machine, abandoned: false }
     this.pipelinePending.push(entry)
-    this.consumer = this.pipelineConsumer
     this.schedulePipelineFlush()
     return entry
   }
@@ -633,12 +669,27 @@ class PgConnectionImpl implements PgConnection {
       )
     )
 
-  /** Continuations belong to an existing submission and do not retake `owner`. */
-  private readonly pipelinePlan = (plan: Plan, wantRows: boolean): Effect.Effect<QueryOutput, SqlError> =>
-    Effect.suspend(() => {
-      if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
-      return this.awaitEntry(this.enqueuePlan(plan, wantRows))
-    })
+  /** Reserve a wire slot without retaking owner: a waiting pin must not overtake recovery. */
+  private readonly enqueueExclusive = (
+    run: Effect.Effect<QueryOutput, SqlError>
+  ): Effect.Effect<QueryOutput, SqlError> => {
+    const entry: PipelineExclusive = {
+      kind: "exclusive",
+      deferred: Deferred.makeUnsafe<void, SqlError>(),
+      started: false,
+      abandoned: false
+    }
+    this.pipelinePending.push(entry)
+    this.schedulePipelineFlush()
+    return Effect.andThen(Deferred.await(entry.deferred), run).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        entry.abandoned = true
+        if (entry.started) this.pipelineBarrier = false
+        this.schedulePipelineFlush()
+        this.notifyPipelineIdle()
+      }))
+    )
+  }
 
   /**
    * Outside a transaction, `owner` only protects submission. A pin waits for
@@ -652,6 +703,7 @@ class PgConnectionImpl implements PgConnection {
   ): Effect.Effect<QueryOutput, SqlError> =>
     Effect.suspend(() => {
       let entry: PipelineEntry | undefined
+      let submitted = false
       return Effect.flatten(
         this.owner.withPermit(Effect.gen({ self: this }, function*() {
           if (this.deadWith !== undefined) return yield* this.deadWith
@@ -661,24 +713,37 @@ class PgConnectionImpl implements PgConnection {
             yield* this.waitPipelineIdle
             return Effect.succeed(yield* this.attempt(sql, params, wantRows, cache))
           }
-          const plan = yield* this.encodeQuery(sql, params, cache)
+          const timestamp = yield* Effect.try({
+            try: () => needsTimestampDiscovery(this, sql, params),
+            catch: (cause) => queryError(cause, "PgConnection: Failed to encode query")
+          })
+          if (timestamp) {
+            this.pipelineActive++
+            submitted = true
+            return this.enqueueExclusive(this.attempt(sql, params, wantRows, cache, true))
+          }
+          const plan = yield* this.encodeQuery(sql, params, cache, false)
           entry = this.enqueuePlan(plan, wantRows)
           this.pipelineActive++
+          submitted = true
           // @effect-diagnostics-next-line returnEffectInGen:off
           return retryQuery(this, plan, cache, this.awaitEntry(entry), () =>
-            Effect.flatMap(
-              this.encodeQuery(sql, params, undefined, true, (plan) => this.pipelinePlan(plan, false)),
-              (plan) => this.pipelinePlan(plan, wantRows)
+            Effect.suspend(() =>
+              this.enqueueExclusive(this.attempt(sql, params, wantRows, undefined, true, false))
             ))
         }))
       ).pipe(
         Effect.onInterrupt(() =>
           Effect.sync(() => {
-            if (entry !== undefined) entry.abandoned = true
+            if (entry !== undefined) {
+              entry.abandoned = true
+            }
           })
         ),
         Effect.ensuring(Effect.sync(() => {
-          if (entry === undefined) return
+          if (!submitted) {
+            return
+          }
           this.pipelineActive--
           this.notifyPipelineIdle()
         }))
@@ -717,16 +782,21 @@ class PgConnectionImpl implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
-    cache: PreparedCache | undefined
+    cache: PreparedCache | undefined,
+    resolve = this.transactionStatus === "T",
+    retry = true
   ): Effect.Effect<QueryOutput, SqlError> =>
     Effect.gen({ self: this }, function*() {
       if (this.deadWith !== undefined) return yield* this.deadWith
-      const plan = yield* this.encodeQuery(sql, params, cache)
+      const plan = yield* this.encodeQuery(sql, params, cache, resolve)
       const run = runQuery(this, plan, wantRows)
+      if (!retry) return yield* run
       return yield* retryQuery(this, plan, cache, run, () =>
-        Effect.flatMap(this.encodeQuery(sql, params, undefined, true), (plan) =>
-          runQuery(this, plan, wantRows)))
-    })
+        Effect.andThen(
+          finishNumericDiscovery(this, Exit.succeed(undefined)),
+          Effect.flatMap(this.encodeQuery(sql, params, undefined, true), (plan) => runQuery(this, plan, wantRows))
+        ))
+    }).pipe(Effect.onExit((exit) => finishNumericDiscovery(this, exit)))
 
   /** Sends a `CancelRequest` for this session on a side connection. */
   readonly cancel: Effect.Effect<void> = Effect.suspend(() => {
@@ -998,7 +1068,7 @@ interface Prepared {
 
 /** One planned execution: the bytes to write and what to expect back. */
 interface Plan {
-  readonly kind: "execute" | "parameters"
+  readonly kind: "execute" | "parameters" | "sync"
   readonly frame: Uint8Array
   /** `CloseComplete` messages to consume before the cycle proper. */
   readonly closes: number
@@ -1047,8 +1117,7 @@ const encodeQuery = (
   sql: string,
   params: ReadonlyArray<unknown>,
   cache: PreparedCache | undefined,
-  resolve: boolean,
-  run?: (plan: Plan) => Effect.Effect<QueryOutput, SqlError>
+  resolve: boolean
 ): Effect.Effect<Plan, SqlError> =>
   Effect.gen(function*() {
     const parameters = yield* Effect.try({
@@ -1060,8 +1129,8 @@ const encodeQuery = (
     if (params.some((value) => typeof value === "number")) {
       key = statementKey(sql, parameterTypes)
       let resolved = conn.numericTypes.get(key)
-      if (resolve && resolved === undefined) {
-        resolved = yield* resolveNumericParameters(conn, sql, params, parameterTypes, run)
+      if ((resolve && resolved === undefined) || hasTimestampParameter(params, resolved)) {
+        resolved = yield* resolveNumericParameters(conn, sql, params, parameterTypes)
         conn.numericTypes.set(key, resolved)
       }
       for (let index = 0; index < params.length; index++) {
@@ -1168,8 +1237,7 @@ const resolveNumericParameters = (
   conn: PgConnectionImpl,
   sql: string,
   params: ReadonlyArray<unknown>,
-  parameterTypes: ReadonlyArray<number>,
-  run: (plan: Plan) => Effect.Effect<QueryOutput, SqlError> = (plan) => runQuery(conn, plan, false)
+  parameterTypes: ReadonlyArray<number>
 ): Effect.Effect<ReadonlyArray<number>, SqlError> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
@@ -1187,7 +1255,7 @@ const resolveNumericParameters = (
             frame: concat([
               parse.success,
               PgProtocol.encodeDescribe({ target: "statement", name: "" }),
-              PgProtocol.encodeSync()
+              PgProtocol.encodeFlush()
             ]),
             closes: 0,
             parses: true,
@@ -1206,17 +1274,9 @@ const resolveNumericParameters = (
       // Pinned/exclusive ownership serializes these scopes. PostgreSQL also
       // permits this name to shadow an existing caller-owned savepoint.
       if (savepoint) yield* command("SAVEPOINT effect_numeric_parameters")
-      const exit = yield* Effect.exit(restore(run(plan)))
-      if (savepoint && conn.deadWith === undefined) {
-        const rollback = Exit.isFailure(exit)
-          ? yield* Effect.exit(command("ROLLBACK TO SAVEPOINT effect_numeric_parameters"))
-          : Exit.succeed(undefined)
-        const release = yield* Effect.exit(command("RELEASE SAVEPOINT effect_numeric_parameters"))
-        // Release is attempted even when rollback fails. Keep the first
-        // bookkeeping error instead of masking it with a later 25P02.
-        if (Exit.isFailure(rollback)) return yield* Effect.failCause(rollback.cause)
-        if (Exit.isFailure(release)) return yield* Effect.failCause(release.cause)
-      }
+      conn.discovery = { savepoint, executed: false }
+      const exit = yield* Effect.exit(restore(runQuery(conn, plan, false)))
+      if (Exit.isFailure(exit)) yield* finishNumericDiscovery(conn, exit)
       if (Exit.isFailure(exit)) {
         // Only a discovery parse can fall back. Savepoint errors above must
         // reach the caller, including when the server classifies them as 42*.
@@ -1235,6 +1295,55 @@ const resolveNumericParameters = (
       return resolved
     })
   )
+
+/** A positive memo is a scheduling hint; timestamp types must be revalidated under locks. */
+const hasTimestampParameter = (params: ReadonlyArray<unknown>, types: ReadonlyArray<number> | undefined): boolean =>
+  types !== undefined &&
+  params.some((value, index) =>
+    typeof value === "number" && (types[index] === PgTypes.OID.timestamp || types[index] === PgTypes.OID.timestamptz)
+  )
+
+const needsTimestampDiscovery = (conn: PgConnectionImpl, sql: string, params: ReadonlyArray<unknown>): boolean =>
+  params.some((value) => typeof value === "number") && hasTimestampParameter(
+    params,
+    conn.numericTypes.get(statementKey(sql, params.map((value) => inferParameter(value, conn.registry).oid)))
+  )
+
+/** Flush retains the implicit transaction. Sync or rollback must run before ownership is released. */
+const finishNumericDiscovery = (
+  conn: PgConnectionImpl,
+  exit: Exit.Exit<unknown, unknown>
+): Effect.Effect<void, SqlError> =>
+  Effect.uninterruptible(Effect.gen(function*() {
+    const discovery = conn.discovery
+    conn.discovery = undefined
+    if (discovery === undefined || conn.deadWith !== undefined) return
+    if (conn.discoveryPending) {
+      yield* runQuery(conn, {
+        kind: "sync",
+        frame: PgProtocol.encodeSync(),
+        closes: 0,
+        parses: false,
+        describes: false,
+        prepared: undefined,
+        description: undefined,
+        stale: false,
+        parameterMismatch: false,
+        parameterKey: undefined
+      }, false)
+    }
+    if (!discovery.savepoint) return
+    const interrupted = Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)
+    // Preserve ordinary execution errors and the caller's aborted-transaction semantics.
+    if (discovery.executed && !interrupted && conn.transactionStatus === "E") return
+    const command = (sql: string) => runQuery(conn, encodeUnnamed(sql, [], [], conn.bindEncoder), false)
+    const rollback = !discovery.executed || interrupted
+      ? yield* Effect.exit(command("ROLLBACK TO SAVEPOINT effect_numeric_parameters"))
+      : Exit.succeed(undefined)
+    const release = yield* Effect.exit(command("RELEASE SAVEPOINT effect_numeric_parameters"))
+    if (Exit.isFailure(rollback)) return yield* Effect.failCause(rollback.cause)
+    if (Exit.isFailure(release)) return yield* Effect.failCause(release.cause)
+  }))
 
 const statementKey = (sql: string, types: ReadonlyArray<number>): string =>
   types.length === 0 ? sql : `${sql}\u0000${types.join(",")}`
@@ -1515,7 +1624,7 @@ class QueryMachine implements Consumer {
     this.rows = wantRows ? [] : undefined
     this.values = wantRows ? undefined : []
     this.closes = plan.closes
-    this.phase = plan.closes > 0 ? "close" : plan.parses ? "parse" : "bind"
+    this.phase = plan.kind === "sync" ? "complete" : plan.closes > 0 ? "close" : plan.parses ? "parse" : "bind"
     const description = plan.description
     this.readField = description?.readField
     this.fieldCount = description?.resultFields.length ?? 0
@@ -1588,8 +1697,11 @@ class QueryMachine implements Consumer {
         return
       case "RowDescription": {
         if (this.phase === "parameterRows") {
-          this.phase = "complete"
-          return
+          return this.complete(Effect.succeed({
+            result: { command: "", rowCount: 0, oid: null, rows: emptyRows, fields: emptyFields },
+            values: emptyValues,
+            parameterTypes: this.parameterTypes
+          }))
         }
         if (this.phase !== "describe") return this.failDesync(`Unexpected RowDescription during ${this.phase}`)
         const description = describe(message.fields, this.conn.registry)
@@ -1612,8 +1724,11 @@ class QueryMachine implements Consumer {
       }
       case "NoData": {
         if (this.phase === "parameterRows") {
-          this.phase = "complete"
-          return
+          return this.complete(Effect.succeed({
+            result: { command: "", rowCount: 0, oid: null, rows: emptyRows, fields: emptyFields },
+            values: emptyValues,
+            parameterTypes: this.parameterTypes
+          }))
         }
         if (this.phase !== "describe") return this.failDesync(`Unexpected NoData during ${this.phase}`)
         const prepared = this.plan.prepared
@@ -1674,6 +1789,10 @@ class QueryMachine implements Consumer {
           reason: classifyFields(message.fields, "PgConnection: Query failed", "query")
         })
         this.phase = "error"
+        if (this.plan.kind === "parameters") {
+          this.conn.discoveryPending = false
+          this.conn.session.socket.write(PgProtocol.encodeSync())
+        }
         return
       }
       case "ReadyForQuery":
@@ -1723,6 +1842,8 @@ const runQuery = (
     // A reused statement has no `RowDescription` coming, so its reader has to
     // be in place before the rows are.
     conn.session.parser.readField = machine.readField
+    conn.discoveryPending = plan.kind === "parameters"
+    if (plan.parameterKey !== undefined && conn.discovery !== undefined) conn.discovery.executed = true
     try {
       conn.session.socket.write(plan.frame)
     } catch (cause) {
@@ -1733,22 +1854,34 @@ const runQuery = (
     // ReadyForQuery so it stays usable, destroying it when the drain stalls.
     return Effect.suspend(() => {
       if (machine.isDone()) return Effect.void
-      const wait = Effect.callback<void>((resumeWait) => {
-        const timer = setTimeout(
-          () =>
-            conn.fatal(connectionQueryError(
+      const drained = Deferred.makeUnsafe<void>()
+      const timer = setTimeout(
+        () =>
+          conn.fatal(
+            connectionQueryError(
               new Error("Query cancellation timed out"),
               "PgConnection: Query cancellation timed out"
-            )),
-          abortDrainTimeoutMillis
-        )
-        machine.abort(() => {
-          clearTimeout(timer)
-          conn.consumer = undefined
-          resumeWait(Effect.void)
-        })
+            )
+          ),
+        abortDrainTimeoutMillis
+      )
+      machine.abort(() => {
+        clearTimeout(timer)
+        conn.consumer = undefined
+        Deferred.doneUnsafe(drained, Effect.void)
       })
-      return Effect.andThen(conn.cancel, wait)
+      return Effect.andThen(
+        conn.cancel,
+        Effect.andThen(
+          Effect.sync(() => {
+            if (conn.discoveryPending && conn.deadWith === undefined) {
+              conn.discoveryPending = false
+              conn.session.socket.write(PgProtocol.encodeSync())
+            }
+          }),
+          Deferred.await(drained)
+        )
+      )
     })
   })
 
@@ -1837,6 +1970,7 @@ const streamRows = (
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the
     // stale-plan retry to unwind rows already delivered.
+    yield* Scope.addFinalizerExit(scope, (exit) => Effect.orDie(finishNumericDiscovery(conn, exit)))
     const plan = yield* conn.encodeQuery(sql, params, undefined, true)
     const frame = plan.frame
 
@@ -2025,6 +2159,8 @@ const streamRows = (
     )
 
     conn.consumer = { onMessage, onBatchEnd, onFatal }
+    conn.discoveryPending = false
+    if (conn.discovery !== undefined) conn.discovery.executed = true
     parser.readField = undefined
     // @effect-diagnostics-next-line tryCatchInEffectGen:off
     try {
