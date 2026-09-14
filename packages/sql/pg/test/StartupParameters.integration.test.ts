@@ -10,7 +10,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PostgreSQL startup defau
       const pool = yield* PgPool.make({
         url: Redacted.make(container.getConnectionUri()),
         startupParameters: { statement_timeout: "1234ms", search_path: "pg_catalog, public" },
-        options: "-c lock_timeout=2345",
+        startupOptions: "-c lock_timeout=2345",
         maxConnections: 1
       })
       const query = "SELECT current_setting('statement_timeout') AS timeout, " +

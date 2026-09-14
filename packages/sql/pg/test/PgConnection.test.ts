@@ -5,15 +5,15 @@ import * as TestClock from "effect/testing/TestClock"
 import { expectTypeOf } from "vitest"
 
 describe("PgConnection config", () => {
-  it("exposes startup parameters and options on connection and client configs", () => {
+  it("exposes startupParameters and startupOptions on connection and client configs", () => {
     expectTypeOf<PgConnection.Config["startupParameters"]>().toEqualTypeOf<
       Readonly<Record<string, string>> | undefined
     >()
     expectTypeOf<PgClient.PgClientConfig["startupParameters"]>().toEqualTypeOf<
       Readonly<Record<string, string>> | undefined
     >()
-    expectTypeOf<PgConnection.Config["options"]>().toEqualTypeOf<string | undefined>()
-    expectTypeOf<PgClient.PgClientConfig["options"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<PgConnection.Config["startupOptions"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<PgClient.PgClientConfig["startupOptions"]>().toEqualTypeOf<string | undefined>()
   })
 
   it.effect.each([
@@ -37,6 +37,24 @@ describe("PgConnection config", () => {
         }
       }
       const error = yield* Effect.flip(PgConnection.make(config))
+      assert.isFalse(connected)
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+    }))
+
+  it.effect.each([
+    { name: "config", config: { startupOptions: "-c lock_timeout=2345\0" } },
+    { name: "URL", config: { url: Redacted.make("postgres://test@localhost/db?options=-c%20lock_timeout%3D2345%00") } }
+  ])("rejects NUL in $name options before connecting", ({ config }) =>
+    Effect.gen(function*() {
+      let connected = false
+      const error = yield* Effect.flip(PgConnection.make({
+        ...config,
+        username: "test",
+        stream: () => {
+          connected = true
+          throw new Error("unexpected connection")
+        }
+      }))
       assert.isFalse(connected)
       assert.strictEqual(error.reason._tag, "ConnectionError")
     }))

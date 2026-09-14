@@ -225,7 +225,7 @@ describe("PgConnection startup packet", () => {
   it.effect("sends normalized named parameters alongside opaque options", () =>
     Effect.gen(function*() {
       const named = Object.freeze({ Statement_Timeout: "1250ms", SEARCH_PATH: "\"Mixed Case\", public" })
-      const parameters = yield* captureStartup({ startupParameters: named, options: "-c lock_timeout=4321" })
+      const parameters = yield* captureStartup({ startupParameters: named, startupOptions: "-c lock_timeout=4321" })
       assert.strictEqual(parameters.get("statement_timeout"), "1250ms")
       assert.strictEqual(parameters.get("search_path"), "\"Mixed Case\", public")
       assert.isFalse(parameters.has("Statement_Timeout"))
@@ -281,8 +281,12 @@ describe("PgConnection startup packet", () => {
   const opaque = "-c search_path=one\\ two,public -c statement_timeout=1234 --application_name=opaque-app"
   it.effect.each([
     { name: "URL", config: {}, expected: opaque },
-    { name: "explicit overrides URL", config: { options: "-c lock_timeout=4321" }, expected: "-c lock_timeout=4321" },
-    { name: "empty explicit overrides URL", config: { options: "" }, expected: "" }
+    {
+      name: "explicit overrides URL",
+      config: { startupOptions: "-c lock_timeout=4321" },
+      expected: "-c lock_timeout=4321"
+    },
+    { name: "empty explicit overrides URL", config: { startupOptions: "" }, expected: "" }
   ])("forwards opaque options: $name", ({ config, expected }) =>
     Effect.gen(function*() {
       const parameters = yield* captureStartup({
