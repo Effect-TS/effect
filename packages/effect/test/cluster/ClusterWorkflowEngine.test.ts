@@ -12,10 +12,23 @@ import {
   Option,
   Result,
   Schema,
+  Scope,
   Tracer
 } from "effect"
 import { TestClock } from "effect/testing"
-import { ClusterSchema, Entity, MessageStorage, Sharding, Snowflake } from "effect/unstable/cluster"
+import {
+  ClusterSchema,
+  ClusterWorkflowEngine,
+  Entity,
+  MessageStorage,
+  RunnerHealth,
+  Runners,
+  RunnerStorage,
+  Sharding,
+  ShardingConfig,
+  Snowflake
+} from "effect/unstable/cluster"
+import { CurrentActivationScope } from "effect/unstable/cluster/internal/entityActivation"
 import { Rpc } from "effect/unstable/rpc"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
 import {
@@ -23,9 +36,202 @@ import {
   WorkflowEngine,
   WorkflowInstance
 } from "effect/unstable/workflow/WorkflowEngine"
-import { makeTestWorkflowEngine } from "./TestWorkflowEngine.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  it.effect("retains a handover completion before its deferred reply is persisted", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("DeferredHandover/Gate", { success: Schema.String })
+      const workflow = Workflow.make("DeferredHandover", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      const shared = yield* Layer.build(
+        MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
+      )
+      const storage = Context.get(shared, MessageStorage.MessageStorage)
+      const layer = workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+        Layer.provideMerge(makeTestWorkflowEngine({
+          storageLayer: Layer.succeed(MessageStorage.MessageStorage, {
+            ...storage,
+            saveReply: (reply) =>
+              reply.rpc._tag === "deferred"
+                ? Effect.sleep(100).pipe(Effect.andThen(storage.saveReply(reply)))
+                : storage.saveReply(reply)
+          })
+        }))
+      )
+      // Each owner has a fresh engine over the same durable storage.
+      const withOwner = <A, E>(body: Effect.Effect<A, E, Layer.Success<typeof layer>>) =>
+        Effect.scoped(Effect.gen(function*() {
+          const context = yield* Layer.build(layer)
+          return yield* Effect.provide(body, context)
+        }))
+      const executionId = yield* withOwner(Effect.gen(function*() {
+        const id = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, id, "Suspended")
+        return id
+      }))
+      const result = yield* withOwner(Effect.gen(function*() {
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "signal"
+        })
+        // Complete before the 5-second storage retry can hide a lost wake-up.
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        yield* TestClock.adjust(1000)
+        return result
+      }))
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
+    }), 30_000)
+
+  for (const lifecycle of ["defect rebuild", "overlapping activations"] as const) {
+    it.effect(`completes before deferred persistence across ${lifecycle}`, () =>
+      Effect.gen(function*() {
+        const saving = yield* Latch.make()
+        const allowSave = yield* Latch.make()
+        const rebuilt = yield* Latch.make()
+        const allowRun = yield* Latch.make()
+        const allowDefect = yield* Latch.make()
+        const closing = yield* Latch.make()
+        const allowClose = yield* Latch.make()
+        const closed = yield* Latch.make()
+        const allowRedelivery = yield* Latch.make()
+        let persisted = false
+        let builds = 0
+        let firstBuildRuns = 0
+        let deferredDeliveries = 0
+        const activations: Array<Scope.Scope> = []
+        const gate = DurableDeferred.make("BehaviouralLifecycle/Gate", { success: Schema.String })
+        const workflow = Workflow.make("BehaviouralLifecycle", {
+          payload: {},
+          success: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const shardingLayer = Layer.effect(
+          Sharding.Sharding,
+          Effect.map(Sharding.Sharding, (sharding) => ({
+            ...sharding,
+            registerEntity: (entity, handlers, options) =>
+              sharding.registerEntity(
+                entity,
+                Effect.gen(function*() {
+                  if (entity.type !== `Workflow/${workflow._tag}`) return yield* handlers
+                  const build = ++builds
+                  const activationOption = yield* Effect.serviceOption(CurrentActivationScope)
+                  assert(Option.isSome(activationOption), "the entity manager must provide its activation")
+                  const activation = activationOption.value
+                  activations.push(activation)
+                  assert.notStrictEqual(activation, yield* Effect.scope, "handler and activation scopes must differ")
+                  // Registered before the production handlers, this marks the end of activation cleanup.
+                  if (build === 1) yield* Scope.addFinalizer(activation, closed.open)
+                  const built = yield* handlers
+                  if (build === 1 && lifecycle === "overlapping activations") {
+                    // Pause the retiring activation before its production cleanup. Its replacement
+                    // records the completion first, then the old activation finishes closing.
+                    yield* Scope.addFinalizer(activation, closing.open.pipe(Effect.andThen(allowClose.await)))
+                  }
+                  if (build === 2) yield* rebuilt.open
+                  const { deferred, run } = built as unknown as {
+                    run: (request: Entity.Request<any>) => Effect.Effect<any, any, any>
+                    deferred: (request: Entity.Request<any>) => Effect.Effect<any, any, any>
+                  }
+                  return {
+                    ...built,
+                    run: (request: Entity.Request<any>) =>
+                      Effect.suspend(() => {
+                        if (build === 1 && ++firstBuildRuns === 2 && lifecycle === "defect rebuild") {
+                          // Defect outside Workflow.intoResult to rebuild the real RPC server.
+                          return saving.await.pipe(
+                            Effect.andThen(allowDefect.await),
+                            Effect.andThen(Effect.die("injected entity defect"))
+                          )
+                        }
+                        return build === 2 ? allowRun.await.pipe(Effect.andThen(run(request))) : run(request)
+                      }),
+                    deferred: (request: Entity.Request<any>) =>
+                      Effect.suspend(() => {
+                        // A replayed completion must not repair a cache loss before the assertion.
+                        if (++deferredDeliveries > 1) {
+                          return allowRedelivery.await.pipe(Effect.andThen(deferred(request)))
+                        }
+                        return deferred(request)
+                      })
+                  }
+                }),
+                options
+              )
+          }))
+        ).pipe(Layer.provide(Sharding.layer))
+        const storageLayer = Layer.effect(
+          MessageStorage.MessageStorage,
+          Effect.map(
+            MessageStorage.MessageStorage,
+            (storage) => ({
+              ...storage,
+              saveReply: (reply) =>
+                reply.rpc._tag === "deferred"
+                  ? saving.open.pipe(
+                    Effect.andThen(allowSave.await),
+                    Effect.interruptible,
+                    Effect.andThen(storage.saveReply(reply)),
+                    Effect.tap(() =>
+                      Effect.sync(() => {
+                        persisted = true
+                      })
+                    )
+                  )
+                  : storage.saveReply(reply)
+            })
+          )
+        ).pipe(Layer.provide(MessageStorage.layerMemory))
+        const context = yield* Layer.build(
+          workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+            Layer.provideMerge(makeTestWorkflowEngine({ shardingLayer, storageLayer }))
+          )
+        )
+        yield* Effect.addFinalizer(() =>
+          Effect.all([
+            allowSave.open,
+            allowRun.open,
+            allowDefect.open,
+            allowClose.open,
+            allowRedelivery.open
+          ], { discard: true })
+        )
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          yield* pollUntil(workflow, executionId, "Suspended")
+          if (lifecycle === "overlapping activations") {
+            yield* advanceUntil(() => closing.isOpen(), "old activation must start closing", 5000, 12)
+            assert.strictEqual(builds, 1)
+          }
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "signal"
+          })
+          yield* advanceUntil(() => saving.isOpen(), "deferred persistence must start")
+          yield* allowDefect.open
+          yield* advanceUntil(() => rebuilt.isOpen(), "replacement handlers must be built")
+          assert.strictEqual(builds, 2)
+          if (lifecycle === "defect rebuild") {
+            assert.strictEqual(activations[0], activations[1], "rebuild must retain activation identity")
+            assert.isFalse(closed.isOpen(), "a handler rebuild must not close its activation")
+          } else {
+            assert.notStrictEqual(activations[0], activations[1], "replacement must have its own activation")
+            yield* allowClose.open
+            yield* advanceUntil(() => closed.isOpen(), "old activation cleanup must finish")
+          }
+          yield* allowRun.open
+          const result = yield* pollUntil(workflow, executionId, "Complete")
+          assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
+          assert.isFalse(allowSave.isOpen(), "workflow must complete while persistence remains gated")
+          assert.isFalse(persisted, "no deferred reply may be durable before workflow completion")
+          assert.isFalse(allowRedelivery.isOpen(), "redelivery must not repair a lost completion")
+        }).pipe(Effect.provide(context))
+      }), 30_000)
+  }
+
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
@@ -1182,6 +1388,61 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.strictEqual(defect.success.message, "Batch request error: Request timed out")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
+
+const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?: {
+  readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
+  readonly shardingLayer?: typeof Sharding.layer | undefined
+  readonly storageLayer?:
+    | Layer.Layer<MessageStorage.MessageStorage | Storage, never, ShardingConfig.ShardingConfig>
+    | undefined
+}) =>
+  ClusterWorkflowEngine.layer.pipe(
+    Layer.provideMerge(options?.shardingLayer ?? Sharding.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(
+      (options?.storageLayer ?? MessageStorage.layerMemory) as Layer.Layer<
+        MessageStorage.MessageStorage | Storage,
+        never,
+        ShardingConfig.ShardingConfig
+      >
+    ),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(ShardingConfig.layer({
+      shardsPerGroup: 300,
+      availableShardGroups: ["default", "workflow"],
+      assignedShardGroups: ["default", "workflow"],
+      entityMailboxCapacity: 10,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 5000,
+      sendRetryInterval: 100,
+      ...options?.config
+    }))
+  )
+
+const pollUntil = <A extends Schema.Top, E extends Schema.Top>(
+  workflow: Workflow.Workflow<any, any, A, E>,
+  executionId: string,
+  tag: "Suspended" | "Complete"
+) =>
+  Effect.gen(function*() {
+    const sharding = yield* Sharding.Sharding
+    let result = yield* workflow.poll(executionId)
+    for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === tag); i++) {
+      yield* Effect.yieldNow
+      yield* TestClock.adjust(1)
+      yield* sharding.pollStorage
+      result = yield* workflow.poll(executionId)
+    }
+    assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
+    return result.value
+  })
+
+const advanceUntil = (ready: () => boolean, message: string, step = 1, rounds = 2000) =>
+  Effect.gen(function*() {
+    for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
+    assert(ready(), message)
+  })
 
 const TestWorkflowEngine = makeTestWorkflowEngine()
 

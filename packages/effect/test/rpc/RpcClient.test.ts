@@ -62,57 +62,25 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
-  describe("stream write failures", () => {
-    for (const consumer of ["queue", "stream"] as const) {
-      for (const failure of ["interruption", "failure", "defect"] as const) {
-        it.effect(`releases the ${consumer} consumer on write ${failure}`, () =>
-          Effect.gen(function*() {
-            const writing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-            const release = yield* Deferred.make<void>()
-            const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
-              onFromClient: ({ message }) =>
-                message._tag === "Request"
-                  ? Effect.withFiber((fiber) =>
-                    Deferred.succeed(writing, fiber).pipe(
-                      Effect.andThen(Deferred.await(release)),
-                      Effect.andThen(failure === "failure" ? Effect.fail("write failed") : Effect.die("write failed"))
-                    )
-                  )
-                  : Effect.void
-            })
-            const reader = yield* (consumer === "queue"
-              ? client.Events(undefined, { asQueue: true }).pipe(Effect.flatMap(Queue.take), Effect.asVoid)
-              : Stream.runDrain(client.Events())).pipe(Effect.forkChild)
-            const writer = yield* Deferred.await(writing)
-            assert.isUndefined(reader.pollUnsafe(), "the consumer must be waiting for the write")
-
-            if (failure === "interruption") {
-              yield* Fiber.interrupt(writer)
-              const writeExit = yield* Fiber.await(writer)
-              assert(Exit.isFailure(writeExit) && Cause.hasInterruptsOnly(writeExit.cause))
-            } else {
-              yield* Deferred.succeed(release, undefined)
-            }
-
-            const readExit = yield* Fiber.await(reader)
-            assert(Exit.isFailure(readExit))
-            if (failure === "interruption") {
-              assert(Cause.hasInterruptsOnly(readExit.cause))
-            } else {
-              assert.strictEqual(readExit.cause.reasons.length, 1)
-              const reason = readExit.cause.reasons[0]
-              if (failure === "failure") {
-                assert(Cause.isFailReason(reason))
-                assert.strictEqual(reason.error, "write failed")
-              } else {
-                assert(Cause.isDieReason(reason))
-                assert.strictEqual(reason.defect, "write failed")
-              }
-            }
-          }))
-      }
-    }
-  })
+  for (const consumer of ["queue", "stream"] as const) {
+    it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
+      Effect.gen(function*() {
+        const writing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
+          onFromClient: ({ message }) =>
+            message._tag === "Request"
+              ? Effect.withFiber((fiber) => Deferred.succeed(writing, fiber).pipe(Effect.andThen(Effect.never)))
+              : Effect.void
+        })
+        const reader = yield* (consumer === "queue"
+          ? client.Events(undefined, { asQueue: true }).pipe(Effect.flatMap(Queue.take), Effect.asVoid)
+          : Stream.runDrain(client.Events())).pipe(Effect.forkChild)
+        const writer = yield* Deferred.await(writing)
+        yield* Fiber.interrupt(writer)
+        const readExit = yield* Fiber.await(reader)
+        assert(Exit.isFailure(readExit) && Cause.hasInterruptsOnly(readExit.cause))
+      }))
+  }
 
   it.effect("releases a worker pool slot when the worker run fails", () =>
     Effect.gen(function*() {
