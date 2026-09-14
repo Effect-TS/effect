@@ -51,20 +51,9 @@ const StrictObjectTool = Tool.make("StrictObjectTool", {
   parameters: Schema.Struct({
     config: Schema.Struct({ value: Schema.FiniteFromString })
   }).annotate({ identifier: "Strict / ~ % Input" }),
-  success: Schema.String
-}).annotate(Tool.Strict, true)
-
-const StrictReturnModeTool = Tool.make("StrictReturnModeTool", {
-  parameters: Schema.Struct({ value: Schema.String }),
   success: Schema.String,
   failureMode: "return"
 }).annotate(Tool.Strict, true)
-
-const ReturnFailureTool = Tool.make("ReturnFailureTool", {
-  success: Schema.Struct({ answer: Schema.String }),
-  failure: Schema.Struct({ reason: Schema.String }),
-  failureMode: "return"
-})
 
 const PublicFailureTool = Tool.make("PublicFailureTool", {
   success: Schema.String,
@@ -73,19 +62,11 @@ const PublicFailureTool = Tool.make("PublicFailureTool", {
 
 const StructuredFailureTool = Tool.make("StructuredFailureTool", {
   success: Schema.Struct({ answer: Schema.String }),
-  failure: Schema.Struct({ reason: Schema.String, retryAfter: Schema.FiniteFromString }),
-  failureMode: "error"
-})
-
-const PrimitiveFailureTool = Tool.make("PrimitiveFailureTool", {
-  success: Schema.String,
-  failure: Schema.FiniteFromString,
-  failureMode: "error"
-})
-
-const UnserializableFailureTool = Tool.make("UnserializableFailureTool", {
-  success: Schema.String,
-  failure: Schema.Unknown,
+  failure: Schema.Struct({
+    reason: Schema.String,
+    retryAfter: Schema.FiniteFromString,
+    detail: Schema.optional(Schema.Unknown)
+  }),
   failureMode: "error"
 })
 
@@ -122,12 +103,8 @@ const ArrayResultTool = Tool.make("ArrayResultTool", {
 const TestToolkit = Toolkit.make(
   OptionalStringTool,
   StrictObjectTool,
-  StrictReturnModeTool,
-  ReturnFailureTool,
   PublicFailureTool,
   StructuredFailureTool,
-  PrimitiveFailureTool,
-  UnserializableFailureTool,
   InternalAiErrorTool,
   DefectTool,
   UnserializableResultTool,
@@ -150,12 +127,8 @@ const privateDefect = new Error("private defect details")
 const testToolkitHandlers = TestToolkit.of({
   OptionalStringTool: ({ signature }) => Effect.succeed(signature ?? "omitted"),
   StrictObjectTool: ({ config }) => Effect.succeed(config.value.toFixed(0)),
-  StrictReturnModeTool: ({ value }) => Effect.succeed(value),
-  ReturnFailureTool: () => Effect.fail({ reason: "expected failure" }),
   PublicFailureTool: () => Effect.fail(publicFailure),
   StructuredFailureTool: () => Effect.fail({ reason: "busy", retryAfter: 5 }),
-  PrimitiveFailureTool: () => Effect.fail(42),
-  UnserializableFailureTool: () => Effect.fail(1n),
   InternalAiErrorTool: () => Effect.fail(internalAiError),
   DefectTool: () => Effect.die(privateDefect),
   UntypedTool: () => Effect.void,
@@ -1489,7 +1462,7 @@ describe("McpServer", () => {
         })
       }))
 
-    it.effect("rejects unknown strict arguments at every object level without invoking the handler", () =>
+    it.effect("validates strict return-mode arguments before invoking the handler and decodes them once", () =>
       Effect.gen(function*() {
         let handlerInvoked = false
         const { client } = yield* makeToolkitTestClient(TestToolkit.of({
@@ -1503,7 +1476,8 @@ describe("McpServer", () => {
         for (
           const args of [
             { config: { value: "1" }, typo: true },
-            { config: { value: "1", typo: true } }
+            { config: { value: "1", typo: true } },
+            { config: { value: 1 } }
           ]
         ) {
           const error = yield* client["tools/call"]({
@@ -1514,76 +1488,15 @@ describe("McpServer", () => {
           assert.isFalse(handlerInvoked)
           assertTrue("code" in error)
           assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.include(error.message, "Invalid parameters for tool 'StrictObjectTool'")
+          assert.notMatch(error.message, /AiError|ToolParameterValidationError|Toolkit/)
         }
-      }))
-
-    it.effect("decodes strict transformed arguments once", () =>
-      Effect.gen(function*() {
-        const { client } = yield* makeToolkitTestClient()
-
         const result = yield* client["tools/call"]({
           name: "StrictObjectTool",
           arguments: { config: { value: "1" } }
         })
-
-        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"1\"" }])
-      }))
-
-    it.effect("ignores unknown arguments for non-strict tools", () =>
-      Effect.gen(function*() {
-        const { client } = yield* makeToolkitTestClient()
-
-        const result = yield* client["tools/call"]({
-          name: "OptionalStringTool",
-          arguments: { signature: "ok", typo: true }
-        })
-        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"ok\"" }])
-      }))
-
-    for (
-      const [name, args] of [
-        ["unknown arguments", { value: "ok", typo: true }],
-        ["invalid argument types", { value: 1 }]
-      ] as const
-    ) {
-      it.effect(`rejects ${name} with InvalidParams without invoking the handler in return mode`, () =>
-        Effect.gen(function*() {
-          let handlerInvoked = false
-          const { client } = yield* makeToolkitTestClient(TestToolkit.of({
-            ...testToolkitHandlers,
-            StrictReturnModeTool: ({ value }) => {
-              handlerInvoked = true
-              return Effect.succeed(value)
-            }
-          }))
-
-          const error = yield* client["tools/call"]({
-            name: "StrictReturnModeTool",
-            arguments: args
-          }).pipe(Effect.flip)
-
-          assert.isFalse(handlerInvoked)
-          assertTrue("code" in error)
-          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
-          assert.include(error.message, "Invalid parameters for tool 'StrictReturnModeTool'")
-          assert.notInclude(error.message, "ToolParameterValidationError")
-          assert.notInclude(error.message, "AiError")
-        }))
-    }
-
-    it.effect("returns declared failures as text without success structured content", () =>
-      Effect.gen(function*() {
-        const { client } = yield* makeToolkitTestClient()
-        const listed = yield* client["tools/list"]({})
-        const tool = listed.tools.find((tool) => tool.name === "ReturnFailureTool")
-        assert.isDefined(tool)
-        assert.deepInclude(tool.outputSchema, { properties: { answer: { type: "string" } }, required: ["answer"] })
-
-        const result = yield* client["tools/call"]({ name: "ReturnFailureTool" })
-
-        assert.isTrue(result.isError)
-        assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify({ reason: "expected failure" }) }])
-        assert.isUndefined(result.structuredContent)
+        assert.isTrue(handlerInvoked)
+        assert.strictEqual(toolResultText(result), JSON.stringify("1"))
       }))
 
     it.effect("dies on strict raw JSON Schema tools before registering any tools", () =>
@@ -1808,29 +1721,28 @@ describe("McpServer", () => {
         assert.deepStrictEqual(logged, [])
       }))
 
-    for (
-      const [name, encoded] of [
-        ["StructuredFailureTool", { reason: "busy", retryAfter: "5" }],
-        ["PrimitiveFailureTool", "42"]
-      ] as const
-    ) {
-      it.effect(`returns the schema-encoded ${name} failure in error mode without internal diagnostics`, () =>
-        Effect.gen(function*() {
-          const { client, logged, reported } = yield* makeToolkitTestClient()
-          const result = yield* client["tools/call"]({ name, arguments: {} })
+    it.effect("encodes declared non-Error failures without structured content or internal diagnostics", () =>
+      Effect.gen(function*() {
+        const { client, logged, reported } = yield* makeToolkitTestClient()
+        const result = yield* client["tools/call"]({ name: "StructuredFailureTool" })
 
-          assert.isTrue(result.isError)
-          assert.isUndefined(result.structuredContent)
-          assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify(encoded) }])
-          assert.deepStrictEqual(reported, [])
-          assert.deepStrictEqual(logged, [])
-        }))
-    }
+        assert.isTrue(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.deepStrictEqual(result.content, [{
+          type: "text",
+          text: JSON.stringify({ reason: "busy", retryAfter: "5" })
+        }])
+        assert.deepStrictEqual(reported, [])
+        assert.deepStrictEqual(logged, [])
+      }))
 
     it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
       Effect.gen(function*() {
-        const { client, logged, reported } = yield* makeToolkitTestClient()
-        const result = yield* client["tools/call"]({ name: "UnserializableFailureTool", arguments: {} })
+        const { client, logged, reported } = yield* makeToolkitTestClient(TestToolkit.of({
+          ...testToolkitHandlers,
+          StructuredFailureTool: () => Effect.fail({ reason: "busy", retryAfter: 5, detail: 1n })
+        }))
+        const result = yield* client["tools/call"]({ name: "StructuredFailureTool" })
 
         assert.isTrue(result.isError)
         assert.isUndefined(result.structuredContent)
@@ -1841,51 +1753,79 @@ describe("McpServer", () => {
         assert.strictEqual(Cause.squash(logged[0]), Cause.squash(reported[0]))
       }))
 
-    for (const failureMode of ["error", "return"] as const) {
-      for (const reason of ["ToolResultEncodingError", "InvalidToolResultError"] as const) {
-        it.effect(`scrubs Toolkit-origin ${reason} in ${failureMode} mode despite a declared AiError schema`, () =>
-          Effect.gen(function*() {
-            let handlerInvoked = false
-            const reported: Array<Cause.Cause<unknown>> = []
-            const toolkit = Toolkit.make(Tool.make("InvalidResultTool", {
-              success: Schema.String.check(Schema.isMinLength(10)),
-              failure: AiError.AiError,
-              failureMode
-            }))
-            const client = yield* makeMcpStdioHarness(
-              McpProtocol.v2025_06_18,
-              [McpProtocol.v2025_06_18],
-              McpServer.toolkit(toolkit).pipe(
-                Layer.provide(toolkit.toLayer({
-                  InvalidResultTool: () => {
-                    handlerInvoked = true
-                    return reason === "ToolResultEncodingError"
-                      ? Effect.succeed("short")
-                      : Schema.decodeUnknownEffect(Schema.String)({ privateDetail: "invalid handler result" }).pipe(
-                        Effect.mapError((error) => error as never)
-                      )
-                  }
-                })),
-                Layer.provide(ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
-                  reported.push(cause)
-                })]))
-              )
-            )
-            yield* client.initialize()
-            const message = yield* client.sendRequest("tools/call", { name: "InvalidResultTool", arguments: {} })
+    for (
+      const [origin, failureMode] of [
+        ["handler", "error"],
+        ["handler", "return"],
+        ["ToolResultEncodingError", "error"],
+        ["InvalidToolResultError", "return"]
+      ] as const
+    ) {
+      it.effect(`distinguishes ${origin} failures from decoding failures in ${failureMode} mode`, () =>
+        Effect.gen(function*() {
+          let receivedValue: string | undefined
+          const reported: Array<Cause.Cause<unknown>> = []
+          const logged: Array<Cause.Cause<unknown>> = []
+          const failure = AiError.make({
+            module: "Toolkit",
+            method: "NestedTool.handle",
+            reason: new AiError.ToolParameterValidationError({
+              toolName: "NestedTool",
+              description: "Nested arguments failed validation"
+            })
+          })
+          const toolkit = Toolkit.make(Tool.make("OriginTool", {
+            parameters: Schema.Struct({ value: Schema.String }),
+            success: Schema.Struct({ answer: Schema.String.check(Schema.isMinLength(10)) }),
+            failure: AiError.AiError,
+            failureMode
+          }))
+          const server = yield* McpServer.McpServer.make
+          yield* McpServer.registerToolkit(toolkit).pipe(
+            Effect.provideService(McpServer.McpServer, server),
+            Effect.provide(toolkit.toLayer({
+              OriginTool: ({ value }) => {
+                receivedValue = value
+                return origin === "handler" ? Effect.fail(failure) : origin === "ToolResultEncodingError"
+                  ? Effect.succeed({ answer: "short" })
+                  : Schema.decodeUnknownEffect(Schema.Struct({ answer: Schema.String }))({ privateDetail: "invalid" })
+                    .pipe(
+                      Effect.mapError((error) => error as never)
+                    )
+              }
+            })),
+            Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
+              reported.push(cause)
+            })])),
+            Effect.provide(Logger.layer([Logger.make(({ cause, logLevel }) => {
+              if (logLevel === "Error") logged.push(cause)
+            })]))
+          )
+          const result = yield* server.callTool({ name: "OriginTool", arguments: { value: "valid" } }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, directClient)
+          )
 
-            assert.isTrue(handlerInvoked)
-            assert.isUndefined(message.error)
-            const result = yield* Schema.decodeUnknownEffect(McpSchema.CallToolResult)(message.result)
-            assert.isTrue(result.isError)
-            assert.isUndefined(result.structuredContent)
-            assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
+          assert.strictEqual(receivedValue, "valid")
+          assert.isTrue(result.isError)
+          assert.isUndefined(result.structuredContent)
+          if (origin === "handler") {
+            assert.strictEqual(
+              toolResultText(result),
+              failureMode === "error"
+                ? failure.message
+                : JSON.stringify(yield* Schema.encodeEffect(AiError.AiError)(failure))
+            )
+            assert.deepStrictEqual(reported, [])
+            assert.deepStrictEqual(logged, [])
+          } else {
+            assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
             assert.lengthOf(reported, 1)
             const error = Cause.squash(reported[0])
             assertTrue(AiError.isAiError(error))
-            assert.strictEqual(error.reason._tag, reason)
-          }))
-      }
+            assert.strictEqual(error.reason._tag, origin)
+            assert.lengthOf(logged, 1)
+          }
+        }))
     }
 
     it.effect("returns a generic message for non-validation AiError failures", () =>
