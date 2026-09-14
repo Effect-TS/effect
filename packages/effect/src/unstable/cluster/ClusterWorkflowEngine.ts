@@ -401,15 +401,16 @@ export const make = Effect.gen(function*() {
             let currentRun: Entity.Request<any> | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
-            const resumeCurrentRun = () =>
+            const resumeCurrentRun = Effect.suspend(() =>
               resumeGate.withPermitsIfAvailable(1)(
                 currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
-              ).pipe(
-                // Release the gate before reset can start another run, so later
-                // completions can wake that replay.
-                Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
-                ensureSuccess
               )
+            ).pipe(
+              // Release the gate before reset can start another run, so later
+              // completions can wake that replay.
+              Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+              ensureSuccess
+            )
             return {
               run: (request: Entity.Request<any>) => {
                 currentRun = request
@@ -500,27 +501,23 @@ export const make = Effect.gen(function*() {
                 )
               },
 
-              deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
+              deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
-                const reply = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-                // An asynchronous RPC reply releases the concurrency slot while
-                // keeping the completion unacknowledged until its wake is handled.
-                yield* Effect.gen(function*() {
-                  yield* deferredState.deferredDone(executionId, payload.name)
-                  yield* resumeCurrentRun()
-                  return payload.exit
-                }).pipe(
-                  (effect) => Deferred.complete(reply, effect),
-                  Effect.forkIn(activation, { startImmediately: true })
+                // Reply asynchronously so the wake never holds the concurrency
+                // slot the run needs, while the completion stays unacknowledged
+                // until the wake is handled.
+                const reply = Deferred.makeUnsafe<Exit.Exit<unknown, unknown>>()
+                return deferredState.deferredDone(executionId, payload.name).pipe(
+                  Effect.andThen(resumeCurrentRun),
+                  Effect.as(payload.exit),
+                  Deferred.into(reply),
+                  Effect.forkIn(activation, { startImmediately: true }),
+                  Effect.as(reply)
                 )
-                return reply
-              }),
+              },
 
-              resume: () =>
-                resumeCurrentRun().pipe(
-                  Rpc.wrap({ fork: true, uninterruptible: true })
-                )
+              resume: () => resumeCurrentRun.pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
           }),
           // Reserve a slot for deferred completions to wake the active run.
