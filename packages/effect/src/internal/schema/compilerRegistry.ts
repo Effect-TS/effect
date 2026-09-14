@@ -48,21 +48,15 @@ export interface Entry {
 
 class InterpretedEntry implements Entry {
   readonly ast: SchemaAST.AST
+  declare private cachedDecodeEffect: Parser | undefined
+  declare private cachedMakeEffect: Parser | undefined
 
   constructor(ast: SchemaAST.AST) {
     this.ast = ast
   }
 
-  protected save<K extends keyof Entry>(key: K, value: Entry[K]): Entry[K] {
-    Object.defineProperty(this, key, { value })
-    return value
-  }
-
   get decodeEffect(): Parser {
-    return this.save(
-      "decodeEffect",
-      Interpreter.compile(this.ast, decodeChild)
-    )
+    return this.cachedDecodeEffect ??= Interpreter.compile(this.ast, decodeChild)
   }
 
   get parser(): Parser {
@@ -70,10 +64,7 @@ class InterpretedEntry implements Entry {
   }
 
   get makeEffect(): Parser {
-    return this.save(
-      "makeEffect",
-      Interpreter.compile(this.ast, makeChild, makeField)
-    )
+    return this.cachedMakeEffect ??= Interpreter.compile(this.ast, makeChild, makeField)
   }
 }
 
@@ -85,6 +76,11 @@ class CompilerEntry extends InterpretedEntry {
     super(ast)
     this.source = source
     this.resolve = resolve
+  }
+
+  private save<K extends keyof Entry>(key: K, value: Entry[K]): Entry[K] {
+    Object.defineProperty(this, key, { value })
+    return value
   }
 
   get is(): Is | undefined {
