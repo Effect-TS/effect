@@ -51,6 +51,8 @@ const roundTrips: Array<{
   readonly value: unknown
   /** Set when PostgreSQL normalises the value, so encode is checked separately. */
   readonly encoded?: unknown
+  /** Expected decoded value, if different from the input. */
+  readonly decoded?: unknown
 }> = [
   { name: "bool", oid: PgTypes.OID.bool, value: true },
   { name: "int2", oid: PgTypes.OID.int2, value: -12345 },
@@ -82,13 +84,27 @@ const roundTrips: Array<{
   { name: "dateNegInfinity", oid: PgTypes.OID.date, value: "-infinity" },
   { name: "time", oid: PgTypes.OID.time, value: BigInt(45296000000) },
   { name: "timetz", oid: PgTypes.OID.timetz, value: "12:34:56+02:00" },
-  { name: "timestamp", oid: PgTypes.OID.timestamp, value: 1717171717123 },
-  { name: "timestampInfinity", oid: PgTypes.OID.timestamp, value: Number.POSITIVE_INFINITY },
-  { name: "timestamptz", oid: PgTypes.OID.timestamptz, value: 1717171717123 },
-  { name: "timestamptzNegInfinity", oid: PgTypes.OID.timestamptz, value: Number.NEGATIVE_INFINITY },
+  { name: "timestamp", oid: PgTypes.OID.timestamp, value: new Date(1717171717123) },
+  {
+    name: "timestampInfinity",
+    oid: PgTypes.OID.timestamp,
+    value: Number.POSITIVE_INFINITY,
+    decoded: new Date(Number.NaN)
+  },
+  { name: "timestamptz", oid: PgTypes.OID.timestamptz, value: new Date(1717171717123) },
+  {
+    name: "timestamptzNegInfinity",
+    oid: PgTypes.OID.timestamptz,
+    value: Number.NEGATIVE_INFINITY,
+    decoded: new Date(Number.NaN)
+  },
   { name: "int4ArrayWithNulls", oid: PgTypes.OID.int4Array, value: [1, null, -3] },
   { name: "textArrayEmpty", oid: PgTypes.OID.textArray, value: [] },
-  { name: "timestamptzArray", oid: PgTypes.OID.timestamptzArray, value: [0, null, 1717171717000] }
+  {
+    name: "timestamptzArray",
+    oid: PgTypes.OID.timestamptzArray,
+    value: [new Date(0), null, new Date(1717171717000)]
+  }
 ]
 
 /** One value per element OID that has an array type. */
@@ -111,8 +127,8 @@ const elementSamples: Record<number, unknown> = {
   [PgTypes.OID.varchar]: "abc",
   [PgTypes.OID.date]: "2024-02-29",
   [PgTypes.OID.time]: BigInt(45296000000),
-  [PgTypes.OID.timestamp]: 1717171717123,
-  [PgTypes.OID.timestamptz]: 0,
+  [PgTypes.OID.timestamp]: new Date(1717171717123),
+  [PgTypes.OID.timestamptz]: new Date(0),
   [PgTypes.OID.timetz]: "12:34:56+02:00",
   [PgTypes.OID.numeric]: "-98765432109876543210",
   [PgTypes.OID.uuid]: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
@@ -163,14 +179,15 @@ describe("PgTypes", () => {
   })
 
   describe("round trips against captured PostgreSQL rows", () => {
-    for (const { encoded, name, oid, value } of roundTrips) {
+    for (const { decoded, encoded, name, oid, value } of roundTrips) {
       it(name, () => {
         const golden = column(rows[name])
-        assert.deepStrictEqual(PgTypes.decode(golden, oid, 1), value)
+        const expected = decoded === undefined ? value : decoded
+        assert.deepStrictEqual(PgTypes.decode(golden, oid, 1), expected)
         if (encoded !== false) {
           assert.deepStrictEqual(PgTypes.encode(value, oid), golden)
         }
-        assert.deepStrictEqual(PgTypes.decode(PgTypes.encode(value, oid), oid, 1), value)
+        assert.deepStrictEqual(PgTypes.decode(PgTypes.encode(value, oid), oid, 1), expected)
       })
     }
   })
@@ -362,8 +379,10 @@ describe("PgTypes", () => {
       )
     })
 
-    it("rejects NaN timestamps", () => {
+    it("rejects NaN and invalid Date timestamps", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(Number.NaN, PgTypes.OID.timestamptz))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(new Date(Number.NaN), PgTypes.OID.timestamptz))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(new Date(Number.NaN), PgTypes.OID.timestamp))
     })
 
     it("rejects timestamps outside the PostgreSQL int64 range", () => {
@@ -619,6 +638,7 @@ describe("PgTypes", () => {
     it("agrees with the exact 64-bit conversion either side of the Number boundary", () => {
       const epochMs = BigInt(946684800000)
       const boundary = BigInt("9007199254740992")
+      const dateLimitMs = BigInt("8640000000000000")
       const micros = [
         BigInt(0),
         BigInt(1),
@@ -631,21 +651,45 @@ describe("PgTypes", () => {
         boundary + BigInt(7),
         -boundary,
         -boundary - BigInt(7),
+        (dateLimitMs - epochMs) * BigInt(1000),
+        (dateLimitMs - epochMs) * BigInt(1000) - BigInt(1),
+        (-dateLimitMs - epochMs) * BigInt(1000),
+        (-dateLimitMs - epochMs) * BigInt(1000) + BigInt(1)
+      ]
+      for (const oid of [PgTypes.OID.timestamp, PgTypes.OID.timestamptz]) {
+        for (const value of micros) {
+          const expectedMs = Number(value / BigInt(1000) + epochMs)
+          const decoded = PgTypes.decode(int64Bytes(value), oid, 1) as Date
+          assert.instanceOf(decoded, Date)
+          assert.isTrue(Number.isFinite(decoded.getTime()), `${value} microseconds, OID ${oid}`)
+          assert.strictEqual(decoded.getTime(), expectedMs, `${value} microseconds, OID ${oid}`)
+        }
+      }
+    })
+
+    it("decodes finite wire timestamps outside the Date range to invalid Dates", () => {
+      const epochMs = BigInt(946684800000)
+      const dateLimitMs = BigInt("8640000000000000")
+      const micros = [
+        (dateLimitMs + BigInt(1) - epochMs) * BigInt(1000),
+        (-dateLimitMs - BigInt(1) - epochMs) * BigInt(1000),
         BigInt("9223372036854775806"),
         BigInt("-9223372036854775807")
       ]
-      for (const value of micros) {
-        assert.strictEqual(
-          PgTypes.decode(int64Bytes(value), PgTypes.OID.timestamptz, 1),
-          Number(value / BigInt(1000)) + 946684800000,
-          `${value} microseconds`
-        )
+      for (const oid of [PgTypes.OID.timestamp, PgTypes.OID.timestamptz]) {
+        for (const value of micros) {
+          const decoded = PgTypes.decode(int64Bytes(value), oid, 1) as Date
+          assert.instanceOf(decoded, Date)
+          assert.isTrue(Number.isNaN(decoded.getTime()), `${value} microseconds, OID ${oid}`)
+        }
       }
     })
 
     it("round trips milliseconds through both the float and the BigInt path", () => {
       for (const ms of [0, 1, -1, 946684800000, 1717171717123, -62135596800000, 253402300799000, 9007199254740]) {
-        assert.strictEqual(PgTypes.decode(PgTypes.encode(ms, PgTypes.OID.timestamp), PgTypes.OID.timestamp, 1), ms)
+        const encoded = PgTypes.encode(ms, PgTypes.OID.timestamp)
+        assert.deepStrictEqual(PgTypes.encode(new Date(ms), PgTypes.OID.timestamp), encoded)
+        assert.deepStrictEqual(PgTypes.decode(encoded, PgTypes.OID.timestamp, 1), new Date(ms))
       }
     })
 
@@ -654,8 +698,8 @@ describe("PgTypes", () => {
       const after = new Uint8Array(8)
       new DataView(before.buffer).setBigInt64(0, BigInt(-1))
       new DataView(after.buffer).setBigInt64(0, BigInt(1))
-      assert.strictEqual(PgTypes.decode(before, PgTypes.OID.timestamp, 1), 946684800000)
-      assert.strictEqual(PgTypes.decode(after, PgTypes.OID.timestamp, 1), 946684800000)
+      assert.deepStrictEqual(PgTypes.decode(before, PgTypes.OID.timestamp, 1), new Date(946684800000))
+      assert.deepStrictEqual(PgTypes.decode(after, PgTypes.OID.timestamp, 1), new Date(946684800000))
     })
   })
 

@@ -10,9 +10,21 @@
  * There is no `typeof` inference: an OID is always supplied, either directly
  * or through a constructor such as `int4` that carries it.
  *
- * `timestamp` has no time zone on the wire and is treated as UTC in both
- * directions. Decoding drops sub-millisecond precision by truncating toward
- * zero, including for timestamps before the PostgreSQL epoch.
+ * `timestamp` and `timestamptz` values, including array elements, decode to
+ * `Date`. Encoders accept `Date` or epoch milliseconds.
+ * Decoding truncates to milliseconds toward zero relative to the PostgreSQL
+ * epoch. To restore numeric decoding, override the codecs with `register`
+ * or a client `Registry`.
+ *
+ * `infinity`, `-infinity` and values outside the JavaScript `Date` range
+ * (±8.64e15 epoch milliseconds) decode to an invalid `Date`. Numeric
+ * `±Infinity` encodes the PostgreSQL sentinels; encoding an invalid `Date` fails.
+ *
+ * The `timestamp` codec maps wall-clock fields to UTC fields of a `Date`.
+ * Date parameters bind as `timestamptz`, so inserting one into a `timestamp`
+ * column applies the session `TimeZone`. Use UTC or `timestamp(value)` to
+ * preserve its UTC fields. `timestamptz` round trips preserve the instant
+ * regardless of session timezone.
  *
  * @since 4.0.0
  */
@@ -992,20 +1004,22 @@ const readTimeMicros = (bytes: Uint8Array, offset: number): number => {
   return micros
 }
 
-/** The two halves of the int64 `timestampInt64` last produced. */
 let timestampHigh = 0
 let timestampLow = 0
 
 /**
- * Converts epoch milliseconds to the halves of the wire int64. Both encoding
- * paths read them from here rather than from a returned pair, so neither
- * allocates.
+ * Writes the wire int64 to timestampHigh/Low, avoiding a pair allocation.
  */
 const timestampInt64 = (value: unknown): void => {
-  const ms = requireNumber(value, "timestamp")
-  if (Number.isNaN(ms)) {
-    fail("timestamp cannot be NaN")
-  } else if (ms === Number.POSITIVE_INFINITY) {
+  let ms: number
+  if (value instanceof Date) {
+    ms = value.getTime()
+    if (Number.isNaN(ms)) fail("timestamp cannot be an invalid Date")
+  } else {
+    ms = typeof value === "number" ? value : fail("Expected a Date or number for timestamp")
+    if (Number.isNaN(ms)) fail("timestamp cannot be NaN")
+  }
+  if (ms === Number.POSITIVE_INFINITY) {
     timestampHigh = INT32_MAX
     timestampLow = -1
   } else if (ms === Number.NEGATIVE_INFINITY) {
@@ -1037,17 +1051,14 @@ const timestampCodec: UnsafeCodec<any> = codecOf(
     requireSize(size, 8, "timestamp")
     const high = readInt32(bytes, offset)
     if (high >= -MAX_EXACT_HIGH && high < MAX_EXACT_HIGH) {
-      // Inside these bounds the whole conversion is float arithmetic, so it
-      // allocates no BigInt. Everything outside them, the sentinels included,
-      // needs the exact 64-bit value.
+      // These bounds allow exact conversion without BigInt.
       const micros = high * 4294967296 + readUint32(bytes, offset + 4)
-      return (micros - micros % 1000) / 1000 + PG_EPOCH_MS
+      return new Date((micros - micros % 1000) / 1000 + PG_EPOCH_MS)
     }
     stage8(bytes, offset)
     const micros = scratchView8.getBigInt64(0)
-    if (micros === INT64_MAX) return Number.POSITIVE_INFINITY
-    if (micros === INT64_MIN) return Number.NEGATIVE_INFINITY
-    return Number(micros / THOUSAND) + PG_EPOCH_MS
+    if (micros === INT64_MAX || micros === INT64_MIN) return new Date(Number.NaN)
+    return new Date(Number(micros / THOUSAND) + PG_EPOCH_MS)
   },
   (value) => {
     timestampInt64(value)
@@ -1056,7 +1067,6 @@ const timestampCodec: UnsafeCodec<any> = codecOf(
     writeInt32(bytes, 4, timestampLow)
     return bytes
   },
-  // Two int32s are the int64, so the sink needs nothing of its own for it.
   (sink, value) => {
     timestampInt64(value)
     sink.int32(timestampHigh)
@@ -1970,21 +1980,21 @@ export const time: (value: bigint | null) => Parameter = parameter(OID.time)
 export const timetz: (value: string | null) => Parameter = parameter(OID.timetz)
 
 /**
- * A `timestamp` parameter, given as Unix epoch milliseconds and interpreted
- * as UTC.
+ * A `timestamp` parameter from a `Date` or epoch milliseconds. UTC fields
+ * become the stored wall-clock fields, regardless of session `TimeZone`.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const timestamp: (value: number | null) => Parameter = parameter(OID.timestamp)
+export const timestamp: (value: Date | number | null) => Parameter = parameter(OID.timestamp)
 
 /**
- * A `timestamptz` parameter, given as Unix epoch milliseconds.
+ * A `timestamptz` parameter, given as a `Date` or Unix epoch milliseconds.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const timestamptz: (value: number | null) => Parameter = parameter(OID.timestamptz)
+export const timestamptz: (value: Date | number | null) => Parameter = parameter(OID.timestamptz)
 
 /**
  * A one-dimensional array parameter whose elements have the given OID.

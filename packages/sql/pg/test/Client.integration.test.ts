@@ -1,9 +1,10 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Queue, Schedule, Stream, String } from "effect"
+import { DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import { SqlClient } from "effect/unstable/sql"
+import { Model } from "effect/unstable/schema"
+import { SqlClient, SqlModel } from "effect/unstable/sql"
 import * as Statement from "effect/unstable/sql/Statement"
 import { PgContainer } from "./utils.ts"
 
@@ -12,6 +13,33 @@ const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) => {
+  it.effect("round trips Model.DateTimeInsertFromDate through a repository", () =>
+    Effect.gen(function*() {
+      class Entry extends Model.Class<Entry>("Entry")({
+        id: Schema.Int.pipe(Model.FieldExcept(["insert"])),
+        created_at: Model.DateTimeInsertFromDate
+      }) {}
+
+      const sql = yield* PgClient.PgClient
+      const repo = yield* SqlModel.makeRepository(Entry, {
+        tableName: "model_timestamp",
+        idColumn: "id",
+        spanPrefix: "EntryRepository"
+      })
+      const instant = new Date("2024-05-06T07:08:09.123Z")
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`SET LOCAL TIME ZONE 'Europe/Berlin'`
+        yield* sql`CREATE TEMP TABLE model_timestamp (id SERIAL PRIMARY KEY, created_at TIMESTAMPTZ) ON COMMIT DROP`
+        const inserted = yield* repo.insert(
+          Entry.insert.make({ created_at: Model.Override(DateTime.makeUnsafe(instant)) })
+        )
+        assert.strictEqual(DateTime.toEpochMillis(inserted.created_at), instant.getTime())
+        const selected = yield* repo.findById(inserted.id)
+        assert.deepStrictEqual(selected, inserted)
+        assert.strictEqual(DateTime.toEpochMillis(selected.created_at), instant.getTime())
+      }))
+    }))
+
   it.effect("insert helper", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
