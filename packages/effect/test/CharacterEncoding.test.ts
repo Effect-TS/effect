@@ -1,14 +1,35 @@
 import { describe, it } from "@effect/vitest"
 import * as C from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
-import * as All from "effect/encoding/All"
+import * as Big5Hkscs from "effect/encoding/Big5Hkscs"
+import * as Cp936 from "effect/encoding/Cp936"
+import * as Gb18030 from "effect/encoding/Gb18030"
+import * as Gbk from "effect/encoding/Gbk"
+import * as ShiftJis from "effect/encoding/ShiftJis"
+import * as Utf16BE from "effect/encoding/Utf16BE"
+import * as Utf16LE from "effect/encoding/Utf16LE"
+import * as Utf32BE from "effect/encoding/Utf32BE"
+import * as Utf32LE from "effect/encoding/Utf32LE"
 import * as Utf8 from "effect/encoding/Utf8"
 import * as Windows1251 from "effect/encoding/Windows1251"
+import * as Windows1252 from "effect/encoding/Windows1252"
 import { make } from "effect/internal/characterEncoding/codec"
 import { MultiByte } from "effect/internal/characterEncoding/multiByte"
 import * as Stream from "effect/Stream"
 import * as Iconv from "iconv-lite"
 import { strict as assert } from "node:assert"
+import { readdirSync } from "node:fs"
+
+// Every generated codec module, keyed by its module name.
+const codecs: ReadonlyArray<[module: string, codec: typeof Utf8]> = await Promise.all(
+  readdirSync(new URL("../src/encoding/", import.meta.url))
+    .filter((file) => file.endsWith(".ts"))
+    .map((file) => file.slice(0, -3))
+    .sort()
+    .map(async (module) => [module, await import(`effect/encoding/${module}`)] as [string, typeof Utf8])
+)
+const multiByte = new Set(["shiftjis", "cp936", "cp949", "cp950", "gbk", "gb18030", "big5hkscs", "eucjp"])
+const unicode = [Utf8, Utf16LE, Utf16BE, Utf32LE, Utf32BE]
 
 const text = "Hello λ 日本語 漢字 한국어 Привет € 😀"
 const bytes = (chunks: ReadonlyArray<Uint8Array>) => {
@@ -22,8 +43,18 @@ const bytes = (chunks: ReadonlyArray<Uint8Array>) => {
 }
 
 describe("CharacterEncoding", () => {
+  it("generates one codec module per canonical encoding", () => {
+    assert.equal(codecs.length, 94)
+    for (const [module, codec] of codecs) {
+      assert.equal(typeof codec.encoding.name, "string", module)
+      assert.equal(Object.isFrozen(codec.encoding), true, module)
+      assert.ok(Iconv.encodingExists(codec.encoding.name), module)
+    }
+    assert.equal(new Set(codecs.map(([, codec]) => codec.encoding.name)).size, codecs.length)
+  })
+
   it("preserves raw UTF-16 units and returns plain, isolated Uint8Arrays", () => {
-    const codec = All.resolveUnsafe("utf16le")
+    const codec = Utf16LE.encoding
     const text = String.fromCharCode(...Array.from({ length: 65536 }, (_, i) => i))
     assert.deepEqual(C.encodeUnsafe(text, codec), Uint8Array.from(Iconv.encode(text, "utf16le")))
     for (const value of ["", "A", "\ud800", "\udc00", "😀", "A\ud800B", "漢字".repeat(8192)]) {
@@ -37,7 +68,7 @@ describe("CharacterEncoding", () => {
   })
 
   it("preserves UTF-16LE chunk state, strict validation and BOM handling", () => {
-    const codec = All.resolveUnsafe("utf16le")
+    const codec = Utf16LE.encoding
     for (const addBOM of [false, true]) {
       const encoder = C.makeEncoderUnsafe(codec, { fatal: true, addBOM })
       const result = bytes([encoder.write("A\ud83d"), encoder.write(""), encoder.write("\ude00B"), encoder.end()])
@@ -82,7 +113,7 @@ describe("CharacterEncoding", () => {
       const codec = new MultiByte({ table: [["8140", "\u0ffeABC"]], encodeSkipVals: [skip] })
       const decoder = codec.decoder({})
       assert.equal(decoder.write(Uint8Array.of(0x81)), "")
-      assert.equal(decoder.write(Uint8Array.of(0x40, 0xff)), "ABC�")
+      assert.equal(decoder.write(Uint8Array.of(0x40, 0xff)), "ABC\ufffd")
       assert.equal(decoder.end(), "")
       assert.deepEqual(codec.encoder({}).write("ABC"), Uint8Array.of(63, 63, 63))
     }
@@ -101,12 +132,11 @@ describe("CharacterEncoding", () => {
 
   it("constructs shared codec machinery once, lazily, with independent conversion state", () => {
     let constructions = 0
-    const codec = make("testutf8", [], () => {
+    const codec = make("testutf8", () => {
       constructions++
       return { encoder: Utf8.encoding.makeEncoder, decoder: Utf8.encoding.makeDecoder }
     })
-    const registry = C.makeRegistry([codec])
-    registry.resolveUnsafe("testutf8")
+    assert.equal(codec.name, "testutf8")
     assert.equal(constructions, 0)
     const first = C.makeEncoderUnsafe(codec)
     const second = C.makeEncoderUnsafe(codec)
@@ -120,23 +150,10 @@ describe("CharacterEncoding", () => {
     assert.equal(constructions, 1)
   })
 
-  it("converts with explicit codecs and resolves only an isolated registry's labels", () => {
-    const registry = C.makeRegistry([Utf8.encoding, Windows1251.encoding, Utf8.encoding])
-    assert.equal(registry.encodings.length, 2)
-    assert.equal(registry.resolveUnsafe("windows-1251"), Windows1251.encoding)
-    assert.equal(registry.resolveUnsafe("cp1251"), Windows1251.encoding)
-    assert.equal(registry.resolveUnsafe("UTF-8"), Utf8.encoding)
-    assert.equal(registry.encodingExists("cp932"), false)
-    assert.equal(All.encodingExists("cp932"), true)
-    assert.throws(() => registry.resolveUnsafe("cp932"), C.CharacterEncodingError)
+  it("converts with explicit codecs and wraps custom descriptors", () => {
     const encoded = C.encodeUnsafe("Привет", Windows1251.encoding)
     assert.equal(C.decodeUnsafe(encoded, Windows1251.encoding), "Привет")
     assert.deepEqual(C.encodeUnsafe("😀", Utf8.encoding), new TextEncoder().encode("😀"))
-    assert.equal(C.makeRegistry([]).encodingExists("utf8"), false)
-    assert.throws(() => registry.resolveUnsafe("__proto__"), C.CharacterEncodingError)
-  })
-
-  it("rejects conflicting registry aliases and does not construct codecs during resolution", () => {
     let created = 0
     const encoding: C.Encoding = {
       ...Utf8.encoding,
@@ -149,48 +166,48 @@ describe("CharacterEncoding", () => {
         return Utf8.encoding.makeDecoder(options)
       }
     }
-    const registry = C.makeRegistry([encoding])
-    assert.equal(registry.resolveUnsafe("utf8"), encoding)
-    assert.equal(registry.encodingExists("utf8"), true)
     assert.equal(created, 0)
     C.encodeUnsafe("test", encoding)
     assert.equal(created, 1)
-    assert.throws(
-      () => C.makeRegistry([Utf8.encoding, { ...Windows1251.encoding, aliases: ["UTF-8"] }]),
-      C.CharacterEncodingError
-    )
-    assert.throws(() => C.makeRegistry([{ ...Utf8.encoding, name: "" }]), C.CharacterEncodingError)
+    assert.equal(C.decodeUnsafe(Uint8Array.of(65), encoding), "A")
+    assert.equal(created, 2)
   })
 
-  it.effect("resolves labels with typed failures and transcodes explicit codecs", () =>
+  it.effect("converts through the codec modules' own operators", () =>
     Effect.gen(function*() {
-      const registry = C.makeRegistry([Utf8.encoding, Windows1251.encoding])
-      assert.equal(yield* registry.resolve("cp1251"), Windows1251.encoding)
-      const error = yield* Effect.flip(registry.resolve("cp932"))
-      assert.equal(error.operation, "resolve")
-      const bytes = yield* C.encode("Привет", Windows1251.encoding)
-      const result = yield* Stream.make(bytes).pipe(
-        C.transcodeStream(Windows1251.encoding, Utf8.encoding),
+      const encoded = Windows1251.encodeUnsafe("Привет")
+      assert.deepEqual(encoded, C.encodeUnsafe("Привет", Windows1251.encoding))
+      assert.equal(Windows1251.decodeUnsafe(encoded), "Привет")
+      assert.equal(yield* Windows1251.decode(yield* Windows1251.encode("Привет")), "Привет")
+      const streamed = yield* Stream.make("При", "вет").pipe(
+        Windows1251.encodeStream(),
+        Windows1251.decodeStream(),
         Stream.runCollect
       )
-      assert.equal(new TextDecoder().decode(result[0]), "Привет")
+      assert.equal(streamed.join(""), "Привет")
+      const error = yield* Effect.flip(Windows1252.encode("漢", { fatal: true }))
+      assert.equal(error._tag, "CharacterEncodingError")
+      assert.equal(error.encoding, "windows1252")
+      assert.equal(error.operation, "encode")
+      assert.throws(() => Utf8.decodeUnsafe(Uint8Array.of(0xe2), { fatal: true }), { _tag: "CharacterEncodingError" })
     }))
 
-  for (const encoding of All.encodings.map((encoding) => encoding.name)) {
-    it(`matches iconv-lite for ${encoding}, independent of chunk boundaries`, () => {
+  for (const [module, codec] of codecs) {
+    const encoding = codec.encoding.name
+    it(`matches iconv-lite for ${module} (${encoding}), independent of chunk boundaries`, () => {
       const expected = Iconv.encode(text, encoding)
-      assert.deepEqual(C.encodeUnsafe(text, All.resolveUnsafe(encoding)), Uint8Array.from(expected))
-      const decoded = C.decodeUnsafe(expected, All.resolveUnsafe(encoding))
+      assert.deepEqual(C.encodeUnsafe(text, codec.encoding), Uint8Array.from(expected))
+      const decoded = C.decodeUnsafe(expected, codec.encoding)
       assert.equal(decoded, Iconv.decode(expected, encoding))
       for (let i = 0; i <= expected.length; i++) {
-        const decoder = C.makeDecoderUnsafe(All.resolveUnsafe(encoding))
+        const decoder = C.makeDecoderUnsafe(codec.encoding)
         assert.equal(
           decoder.write(expected.subarray(0, i)) + decoder.write(expected.subarray(i)) + decoder.end(),
           decoded
         )
       }
       for (let i = 0; i <= text.length; i++) {
-        const encoder = C.makeEncoderUnsafe(All.resolveUnsafe(encoding))
+        const encoder = C.makeEncoderUnsafe(codec.encoding)
         assert.deepEqual(
           bytes([encoder.write(text.slice(0, i)), encoder.write(text.slice(i)), encoder.end()]),
           Uint8Array.from(expected)
@@ -200,8 +217,7 @@ describe("CharacterEncoding", () => {
   }
 
   it("matches installed iconv-lite GBK extension mappings", () => {
-    for (const name of ["gbk", "gb18030"]) {
-      const codec = All.resolveUnsafe(name)
+    for (const [name, codec] of [["gbk", Gbk.encoding], ["gb18030", Gb18030.encoding]] as const) {
       for (const lead of [0xa6, 0xfe]) {
         for (let trail = 0x40; trail <= 0xfe; trail++) {
           const input = Buffer.from([lead, trail])
@@ -215,48 +231,17 @@ describe("CharacterEncoding", () => {
     }
   })
 
-  it("includes installed iconv-lite ISO-8859-8 aliases", () => {
-    for (const alias of ["iso88598i", "iso88598e"]) {
-      assert.equal(All.resolveUnsafe(alias), All.resolveUnsafe("iso88598"))
-    }
-  })
-
-  it("accepts encoding aliases without prototype traversal", () => {
-    for (const name of ["windows-1252", "cp1252", "win1252", "UTF-8", "utf-16le", "Shift_JIS", "GB2312", "latin1"]) {
-      assert.equal(All.encodingExists(name), true, name)
-    }
-    for (const name of ["__proto__", "constructor", "utf\u00008", "not-an-encoding", "utf8\u00a0"]) {
-      assert.equal(All.encodingExists(name), false, name)
-      assert.throws(() => C.decodeUnsafe(new Uint8Array(), All.resolveUnsafe(name)), C.CharacterEncodingError)
-    }
-  })
-
   it("matches every byte in single-byte codecs and preserves sliced input", () => {
     const input = Uint8Array.from({ length: 256 }, (_, i) => i)
-    for (const name of All.encodings.map((encoding) => encoding.name)) {
-      if (
-        [
-          "utf8",
-          "utf16le",
-          "utf16be",
-          "utf32le",
-          "utf32be",
-          "shiftjis",
-          "cp936",
-          "cp949",
-          "cp950",
-          "gbk",
-          "gb18030",
-          "big5hkscs",
-          "eucjp"
-        ].includes(name)
-      ) continue
-      assert.equal(C.decodeUnsafe(input, All.resolveUnsafe(name)), Iconv.decode(Buffer.from(input), name), name)
+    for (const [, codec] of codecs) {
+      const name = codec.encoding.name
+      if (unicode.includes(codec) || multiByte.has(name)) continue
+      assert.equal(C.decodeUnsafe(input, codec.encoding), Iconv.decode(Buffer.from(input), name), name)
       const stored = new Uint8Array(262).fill(0xff)
       stored.set(input, 3)
       assert.equal(
-        C.decodeUnsafe(stored.subarray(3, 259), All.resolveUnsafe(name)),
-        C.decodeUnsafe(input, All.resolveUnsafe(name)),
+        C.decodeUnsafe(stored.subarray(3, 259), codec.encoding),
+        C.decodeUnsafe(input, codec.encoding),
         name
       )
       assert.deepEqual(input, Uint8Array.from({ length: 256 }, (_, i) => i))
@@ -264,17 +249,15 @@ describe("CharacterEncoding", () => {
   })
 
   it("handles split BOMs, empty writes and explicit BOM preservation", () => {
-    for (const name of ["utf8", "utf16le", "utf16be", "utf32le", "utf32be"]) {
-      const encoded = C.encodeUnsafe("A", All.resolveUnsafe(name), { addBOM: true })
-      const decoder = C.makeDecoderUnsafe(All.resolveUnsafe(name))
+    for (const { encoding } of unicode) {
+      const encoded = C.encodeUnsafe("A", encoding, { addBOM: true })
+      const decoder = C.makeDecoderUnsafe(encoding)
       let text = decoder.write(new Uint8Array())
       for (const byte of encoded) text += decoder.write(Uint8Array.of(byte))
       assert.equal(text + decoder.end(), "A")
-      assert.equal(C.decodeUnsafe(encoded, All.resolveUnsafe(name), { stripBOM: false }), "\ufeffA")
+      assert.equal(C.decodeUnsafe(encoded, encoding, { stripBOM: false }), "\ufeffA")
       assert.equal(
-        C.decodeUnsafe(C.encodeUnsafe("", All.resolveUnsafe(name), { addBOM: true }), All.resolveUnsafe(name), {
-          stripBOM: false
-        }),
+        C.decodeUnsafe(C.encodeUnsafe("", encoding, { addBOM: true }), encoding, { stripBOM: false }),
         "\ufeff"
       )
     }
@@ -282,32 +265,29 @@ describe("CharacterEncoding", () => {
 
   it("handles invalid Unicode and multibyte tails in strict and replacement modes", () => {
     for (
-      const [name, input] of [
-        ["utf8", [0xf0, 0x9f]],
-        ["utf16le", [0x00, 0xd8]],
-        ["utf16be", [0xd8, 0x00]],
-        ["utf32le", [0x00]],
-        ["cp932", [0x81]],
-        ["gb18030", [0x81, 0x30, 0x81]]
+      const [encoding, input] of [
+        [Utf8.encoding, [0xf0, 0x9f]],
+        [Utf16LE.encoding, [0x00, 0xd8]],
+        [Utf16BE.encoding, [0xd8, 0x00]],
+        [Utf32LE.encoding, [0x00]],
+        [ShiftJis.encoding, [0x81]],
+        [Gb18030.encoding, [0x81, 0x30, 0x81]]
       ] as const
     ) {
       assert.throws(
-        () => C.decodeUnsafe(Uint8Array.from(input), All.resolveUnsafe(name), { fatal: true }),
+        () => C.decodeUnsafe(Uint8Array.from(input), encoding, { fatal: true }),
         C.CharacterEncodingError
       )
-      assert.ok(C.decodeUnsafe(Uint8Array.from(input), All.resolveUnsafe(name)).includes("\ufffd"))
+      assert.ok(C.decodeUnsafe(Uint8Array.from(input), encoding).includes("\ufffd"))
     }
-    assert.throws(() => C.encodeUnsafe("漢", All.resolveUnsafe("cp1252"), { fatal: true }), C.CharacterEncodingError)
-    assert.throws(() => C.encodeUnsafe("\ud800", All.resolveUnsafe("utf8"), { fatal: true }), C.CharacterEncodingError)
-    assert.equal(
-      C.decodeUnsafe(C.encodeUnsafe("\ud800", All.resolveUnsafe("utf8")), All.resolveUnsafe("utf8")),
-      "\ufffd"
-    )
+    assert.throws(() => C.encodeUnsafe("漢", Windows1252.encoding, { fatal: true }), C.CharacterEncodingError)
+    assert.throws(() => C.encodeUnsafe("\ud800", Utf8.encoding, { fatal: true }), C.CharacterEncodingError)
+    assert.equal(C.decodeUnsafe(C.encodeUnsafe("\ud800", Utf8.encoding), Utf8.encoding), "\ufffd")
   })
 
   it("holds split surrogate pairs after repeated encoder use", () => {
     for (let i = 0; i < 100; i++) {
-      const encoder = C.makeEncoderUnsafe(All.resolveUnsafe("cp936"))
+      const encoder = C.makeEncoderUnsafe(Cp936.encoding)
       assert.deepEqual(
         bytes([encoder.write("A\ud83d"), encoder.write("\ude00B"), encoder.end()]),
         Uint8Array.of(65, 63, 66)
@@ -317,7 +297,7 @@ describe("CharacterEncoding", () => {
 
   it("flushes big5 character sequences and prevents writes after end", () => {
     for (const value of ["\u00ca\u0304", "\u00ca", "\u00ea\u030c"]) {
-      const encoder = C.makeEncoderUnsafe(All.resolveUnsafe("big5hkscs"))
+      const encoder = C.makeEncoderUnsafe(Big5Hkscs.encoding)
       assert.deepEqual(
         bytes([...value].map((part) => encoder.write(part)).concat([encoder.end()])),
         Uint8Array.from(Iconv.encode(value, "big5hkscs"))
@@ -329,30 +309,30 @@ describe("CharacterEncoding", () => {
 
   it.effect("runs conversion effects and transcodes without collecting input", () =>
     Effect.gen(function*() {
-      const encoded = yield* C.encode("Привет", All.resolveUnsafe("cp1251"))
-      assert.equal(yield* C.decode(encoded, All.resolveUnsafe("cp1251")), "Привет")
+      const encoded = yield* C.encode("Привет", Windows1251.encoding)
+      assert.equal(yield* C.decode(encoded, Windows1251.encoding), "Привет")
       const result = yield* Stream.fromIterable([...encoded].map((byte) => Uint8Array.of(byte))).pipe(
-        C.transcodeStream(All.resolveUnsafe("cp1251"), All.resolveUnsafe("utf8")),
+        C.transcodeStream(Windows1251.encoding, Utf8.encoding),
         Stream.runCollect
       )
-      assert.equal(C.decodeUnsafe(bytes(result), All.resolveUnsafe("utf8")), "Привет")
+      assert.equal(C.decodeUnsafe(bytes(result), Utf8.encoding), "Привет")
     }))
 
   it.effect("allocates fresh stream state for each run and flushes EOF", () =>
     Effect.gen(function*() {
       const stream = Stream.make("\ud83d", "\ude00").pipe(
-        C.encodeStream(All.resolveUnsafe("utf8")),
-        C.decodeStream(All.resolveUnsafe("utf8"))
+        C.encodeStream(Utf8.encoding),
+        C.decodeStream(Utf8.encoding)
       )
       for (let i = 0; i < 2; i++) assert.equal((yield* Stream.runCollect(stream)).join(""), "😀")
       const result = yield* Stream.make(Uint8Array.of(0xe2)).pipe(
-        C.decodeStream(All.resolveUnsafe("utf8")),
+        C.decodeStream(Utf8.encoding),
         Stream.runCollect
       )
       assert.equal(result.join(""), "\ufffd")
       const error = yield* Effect.flip(
         Stream.make(Uint8Array.of(0xe2)).pipe(
-          C.decodeStream(All.resolveUnsafe("utf8"), { fatal: true }),
+          C.decodeStream(Utf8.encoding, { fatal: true }),
           Stream.runDrain
         )
       )
@@ -363,7 +343,7 @@ describe("CharacterEncoding", () => {
     Effect.gen(function*() {
       const error = yield* Effect.flip(
         Stream.concat(Stream.make(Uint8Array.of(0xe2)), Stream.fail("upstream")).pipe(
-          C.decodeStream(All.resolveUnsafe("utf8"), { fatal: true }),
+          C.decodeStream(Utf8.encoding, { fatal: true }),
           Stream.runDrain
         )
       )
@@ -375,7 +355,7 @@ describe("CharacterEncoding", () => {
       const seen: Array<string> = []
       const error = yield* Effect.flip(
         Stream.make(Uint8Array.of(65), Uint8Array.of(255)).pipe(
-          C.decodeStream(All.resolveUnsafe("utf8"), { fatal: true }),
+          C.decodeStream(Utf8.encoding, { fatal: true }),
           Stream.tap((text) =>
             Effect.sync(() => {
               seen.push(text)
@@ -395,7 +375,7 @@ describe("CharacterEncoding", () => {
         Stream.ensuring(Effect.sync(() => {
           released = true
         })),
-        C.decodeStream(All.resolveUnsafe("utf8"), { fatal: true }),
+        C.decodeStream(Utf8.encoding, { fatal: true }),
         Stream.take(1),
         Stream.runCollect
       )
@@ -410,7 +390,7 @@ describe("CharacterEncoding", () => {
         pulls++
         return Uint8Array.of(65)
       }))
-      const result = yield* source.pipe(C.decodeStream(All.resolveUnsafe("utf8")), Stream.take(1), Stream.runCollect)
+      const result = yield* source.pipe(C.decodeStream(Utf8.encoding), Stream.take(1), Stream.runCollect)
       assert.deepEqual(result, ["A"])
       assert.equal(pulls, 1)
     }))

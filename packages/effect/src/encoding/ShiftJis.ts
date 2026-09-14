@@ -13,23 +13,12 @@ import { concat } from "../internal/characterEncoding/types.ts"
 import * as Stream from "../Stream.ts"
 
 /**
- * The shiftjis encoding descriptor. For registry use only.
+ * The shiftjis codec descriptor, for use with the CharacterEncoding operators.
  *
  * @category encodings
  * @since 4.0.0
  */
-export const encoding: Encoding = /* @__PURE__ */ make("shiftjis", [
-  "932",
-  "csshiftjis",
-  "mskanji",
-  "sjis",
-  "windows31j",
-  "ms31j",
-  "xsjis",
-  "windows932",
-  "ms932",
-  "cp932"
-], () => new MultiByte(data))
+export const encoding: Encoding = /* @__PURE__ */ make("shiftjis", () => new MultiByte(data))
 
 const attempt = <A>(operation: "encode" | "decode", f: () => A): A => {
   try {
@@ -98,8 +87,8 @@ export const decode = (
  * @since 4.0.0
  */
 export const encodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("encode", () => encoding.makeEncoder(options ?? {})),
@@ -126,8 +115,8 @@ export const encodeStream =
  * @since 4.0.0
  */
 export const decodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("decode", () => encoding.makeDecoder(options ?? {})),
