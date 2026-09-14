@@ -504,9 +504,10 @@ export const make = Effect.gen(function*() {
               deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
-                // Reply asynchronously so the wake never holds the concurrency
-                // slot the run needs, while the completion stays unacknowledged
-                // until the wake is handled.
+                // An asynchronous reply releases the RPC concurrency permit while
+                // the wake waits; the pending request still occupies mailbox capacity.
+                // The activation owns the wake so it survives handler rebuilds,
+                // but activation shutdown still interrupts it for durable redelivery.
                 const reply = Deferred.makeUnsafe<Exit.Exit<unknown, unknown>>()
                 return deferredState.deferredDone(executionId, payload.name).pipe(
                   Effect.andThen(resumeCurrentRun),
@@ -520,7 +521,8 @@ export const make = Effect.gen(function*() {
               resume: () => resumeCurrentRun.pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
           }),
-          // Reserve a slot for deferred completions to wake the active run.
+          // Alongside the run, let deferred handlers briefly acquire a permit to
+          // fork their wake and return an asynchronous reply.
           { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
