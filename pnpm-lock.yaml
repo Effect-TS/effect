@@ -351,6 +351,9 @@ importers:
       tinybench:
         specifier: ^6.1.6
         version: 6.1.6
+      tsx:
+        specifier: ^4.23.13
+        version: 4.23.13
       valibot:
         specifier: ^1.4.2
         version: 1.4.2(typescript@7.0.2)

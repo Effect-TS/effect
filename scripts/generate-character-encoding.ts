@@ -107,7 +107,7 @@ for (const name of all) {
   const isUnicode = Object.hasOwn(unicode, name)
   const isSingle = Object.hasOwn(definitions, name)
   const engine = isSingle ? "SingleByte" : "MultiByte"
-  const imports = isUnicode
+  const dataImport = isUnicode
     ? "import * as Unicode from \"../internal/characterEncoding/unicode.ts\"\n"
     : "import data from \"../internal/characterEncoding/" + name + "Data.ts\"\nimport { " + engine +
       " } from \"../internal/characterEncoding/" + (isSingle ? "singleByte" : "multiByte") + ".ts\"\n"
@@ -115,14 +115,102 @@ for (const name of all) {
     ? "() => ({ encoder: (options) => Unicode.encoder(\"" + name +
       "\", options), decoder: (options) => Unicode.decoder(\"" + name + "\", options) }), true"
     : "() => new " + engine + "(data)"
+
+  const capitalizedName = name[0].toUpperCase() + name.slice(1).toUpperCase()
+  const displayName = special[name] ? special[name].replace(/([A-Z])/g, "-$1").slice(1) : capitalizedName
+
   writeFileSync(
     resolve(publicDirectory, moduleName(name) + ".ts"),
-    doc("Explicit " + name + " codec. Does not import other encoding tables.") + generated +
-      "import type { Encoding } from \"../CharacterEncoding.ts\"\nimport { make } from \"../internal/characterEncoding/codec.ts\"\n" +
-      imports +
-      doc("The " + name + " encoding. Lookup tables are constructed lazily on first conversion.", "encodings") +
+    doc(displayName + " character encoding with typed failures and Effect streams.") + generated +
+      "import type { CharacterEncodingError, Encoding, Options } from \"../CharacterEncoding.ts\"\nimport * as Effect from \"../Effect.ts\"\nimport { make } from \"../internal/characterEncoding/codec.ts\"\nimport { concat } from \"../internal/characterEncoding/types.ts\"\n" +
+      dataImport +
+      "import * as Stream from \"../Stream.ts\"\n\n" +
+      doc("The " + name + " encoding descriptor. For registry use only.", "encodings") +
       "export const encoding: Encoding = /* @__PURE__ */ make(\"" + name + "\", " +
-      JSON.stringify(isUnicode ? unicode[name] : aliasesFor(name)) + ", " + factory + ")\n"
+      JSON.stringify(isUnicode ? unicode[name] : aliasesFor(name)) + ", " + factory + ")\n\n" +
+      "const attempt = <A>(operation: \"encode\" | \"decode\", f: () => A): A => {\n" +
+      "  try {\n" +
+      "    return f()\n" +
+      "  } catch (cause) {\n" +
+      "    throw {\n" +
+      "      encoding: \"" + name + "\",\n" +
+      "      operation,\n" +
+      "      message: String(cause),\n" +
+      "      cause,\n" +
+      "      _tag: \"CharacterEncodingError\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n\n" +
+      doc("Encodes a complete string to " + name + " bytes, throwing CharacterEncodingError on failure.", "encoding") +
+      "export const encodeUnsafe = (text: string, options?: Options): Uint8Array => {\n" +
+      "  const encoder = attempt(\"encode\", () => encoding.makeEncoder(options ?? {}))\n" +
+      "  return attempt(\"encode\", () => concat(encoder.write(text), encoder.end()))\n" +
+      "}\n\n" +
+      doc("Decodes complete " + name + " bytes to a string, throwing CharacterEncodingError on failure.", "decoding") +
+      "export const decodeUnsafe = (bytes: Uint8Array, options?: Options): string => {\n" +
+      "  const decoder = attempt(\"decode\", () => encoding.makeDecoder(options ?? {}))\n" +
+      "  return attempt(\"decode\", () => decoder.write(bytes) + decoder.end())\n" +
+      "}\n\n" +
+      doc("Encodes a string to " + name + " bytes with conversion errors in the Effect error channel.", "encoding") +
+      "export const encode = (\n" +
+      "  text: string,\n" +
+      "  options?: Options\n" +
+      "): Effect.Effect<Uint8Array, CharacterEncodingError> =>\n" +
+      "  Effect.try({ try: () => encodeUnsafe(text, options), catch: (error) => error as CharacterEncodingError })\n\n" +
+      doc("Decodes " + name + " bytes to a string with conversion errors in the Effect error channel.", "decoding") +
+      "export const decode = (\n" +
+      "  bytes: Uint8Array,\n" +
+      "  options?: Options\n" +
+      "): Effect.Effect<string, CharacterEncodingError> =>\n" +
+      "  Effect.try({ try: () => decodeUnsafe(bytes, options), catch: (error) => error as CharacterEncodingError })\n\n" +
+      doc(
+        "Encodes a stream of strings to " + name + " bytes incrementally, preserving codec state across chunks.",
+        "streaming"
+      ) +
+      "export const encodeStream = <E, R>(options?: Options) =>\n" +
+      "  (self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>\n" +
+      "    Stream.unwrap(Effect.map(\n" +
+      "      Effect.try({\n" +
+      "        try: () => attempt(\"encode\", () => encoding.makeEncoder(options ?? {})),\n" +
+      "        catch: (error) => error as CharacterEncodingError\n" +
+      "      }),\n" +
+      "      (encoder) =>\n" +
+      "        Stream.concat(\n" +
+      "          Stream.mapEffect(self, (text) =>\n" +
+      "            Effect.try({\n" +
+      "              try: () => encoder.write(text),\n" +
+      "              catch: (error) => error as CharacterEncodingError\n" +
+      "            })),\n" +
+      "          Stream.fromEffect(Effect.try({\n" +
+      "            try: () => encoder.end(),\n" +
+      "            catch: (error) => error as CharacterEncodingError\n" +
+      "          }))\n" +
+      "        )\n" +
+      "    ))\n\n" +
+      doc(
+        "Decodes a stream of " + name + " bytes to strings incrementally, retaining partial sequences across chunks.",
+        "streaming"
+      ) +
+      "export const decodeStream = <E, R>(options?: Options) =>\n" +
+      "  (self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>\n" +
+      "    Stream.unwrap(Effect.map(\n" +
+      "      Effect.try({\n" +
+      "        try: () => attempt(\"decode\", () => encoding.makeDecoder(options ?? {})),\n" +
+      "        catch: (error) => error as CharacterEncodingError\n" +
+      "      }),\n" +
+      "      (decoder) =>\n" +
+      "        Stream.concat(\n" +
+      "          Stream.mapEffect(self, (bytes) =>\n" +
+      "            Effect.try({\n" +
+      "              try: () => decoder.write(bytes),\n" +
+      "              catch: (error) => error as CharacterEncodingError\n" +
+      "            })),\n" +
+      "          Stream.fromEffect(Effect.try({\n" +
+      "            try: () => decoder.end(),\n" +
+      "            catch: (error) => error as CharacterEncodingError\n" +
+      "          }))\n" +
+      "        )\n" +
+      "    ))\n"
   )
 }
 let registry = doc("Opt-in registry of every encoding. Use individual codec modules for selective bundles.") +
