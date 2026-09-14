@@ -1401,16 +1401,10 @@ const lookupFor = (registry: Registry | undefined): Lookup =>
  *
  * **Details**
  *
- * Unregistered OIDs decode as UTF-8 text, which suits user-defined enums.
- * Register a codec for user-defined types whose binary representation is not
- * UTF-8 (composites, extension types, arrays of user-defined types); left
- * unregistered they decode as garbled text or fail with `CodecError`, and a
- * `CodecError` while reading a row is fatal to the connection. This function
- * takes no `arrayOid`: to cover an array type, register the element codec on
- * a registry from `makeRegistry` with `RegisterOptions.arrayOid` and pass the
- * registry to the client. Enum and other user-defined OIDs are assigned per
- * database, so look them up in `pg_type` at startup rather than hard-coding
- * them.
+ * Unregistered OIDs decode as UTF-8 text. Register binary user-defined types
+ * to avoid garbled output or codec errors, which close the connection when
+ * reading rows. For arrays, use `makeRegistry().register` with
+ * `RegisterOptions.arrayOid` and pass the registry as the client's `types` option.
  *
  * @category registry
  * @since 4.0.0
@@ -1604,11 +1598,8 @@ export interface Column {
  *
  * **Details**
  *
- * Codecs are resolved once per column. SQL `NULL` becomes `null`. Columns
- * whose OID is neither built in nor registered are decoded as UTF-8 text, so
- * user-defined enums read as their labels; invalid UTF-8 fails with
- * `CodecError`, as it does for `text`. A user-defined type with a binary
- * representation that is not UTF-8 needs a codec via `register`. Text-format
+ * Codecs are resolved once per column. SQL `NULL` becomes `null`.
+ * Unregistered OIDs decode as UTF-8 text. Invalid UTF-8 and text-format
  * columns fail with `CodecError`.
  *
  * **Example** (Updating the reader after `RowDescription`)
@@ -1669,12 +1660,9 @@ export const encode = (value: unknown, oid: number, registry?: Registry): Result
  *
  * **Details**
  *
- * `format` must be `1`; the text format is not implemented. An OID that is
- * neither built in nor registered is decoded as UTF-8 text, which is the
- * binary representation of user-defined enums; invalid UTF-8 fails with
- * `CodecError`. This also applies to unregistered array OIDs, whose wire
- * image is not text. Use `register` or a `Registry` for user-defined types
- * whose binary representation is not UTF-8.
+ * Only binary format (`1`) is supported. Unregistered OIDs decode as UTF-8
+ * text; invalid UTF-8 fails with `CodecError`. See `register` for binary
+ * user-defined types, including arrays.
  *
  * @category decoding
  * @since 4.0.0
