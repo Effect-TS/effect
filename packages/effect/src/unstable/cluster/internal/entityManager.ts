@@ -408,22 +408,18 @@ export const make = Effect.fnUntraced(function*<
       onCallerClosed(requestId) {
         return Effect.suspend(() => {
           if (!activeRequests.delete(requestId)) return Effect.void
-          defectRequestIds.delete(requestId)
           if (activeRequests.size === 0) {
             state.lastActiveCheck = clock.currentTimeMillisUnsafe()
           }
-          const interrupt = (write: RpcServer.RpcServer<any>["write"]) =>
-            Effect.ignoreCause(write(0, {
-              _tag: "Interrupt",
-              requestId: requestId as any,
-              interruptors: []
-            }))
-          if (writeRef.state.current._tag === "Acquired") {
-            return interrupt(writeRef.state.current.value)
-          }
-          // During a rebuild, forgetting the request prevents replay. A delivery
+          // During a rebuild there is no handler to interrupt. Forgetting the
+          // request above keeps it out of the replay, and a delivery still
           // waiting for the rebuild belongs to the departing caller's fiber.
-          return Effect.void
+          if (writeRef.state.current._tag !== "Acquired") return Effect.void
+          return Effect.ignoreCause(writeRef.state.current.value(0, {
+            _tag: "Interrupt",
+            requestId: requestId as any,
+            interruptors: []
+          }))
         })
       },
       lastActiveCheck: clock.currentTimeMillisUnsafe(),

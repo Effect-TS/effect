@@ -71,105 +71,101 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         : new Message.IncomingEnvelope({ envelope })
       return persisted ? sharding.notify(message) : sharding.send(message)
     },
-    Effect: ({ persisted, request }) =>
-      Effect.flatMap(Effect.scope, (callerScope) => {
-        let replyEncoded: Option.Option<Effect.Effect<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>> = Option
-          .none()
-        let resume = (reply: Effect.Effect<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>) => {
-          replyEncoded = Option.some(reply)
+    Effect: Effect.fnUntraced(function*({ persisted, request }) {
+      const callerScope = yield* Effect.scope
+      let replyEncoded: Option.Option<Effect.Effect<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>> = Option
+        .none()
+      let resume = (reply: Effect.Effect<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>) => {
+        replyEncoded = Option.some(reply)
+      }
+      const message = new Message.IncomingRequest({
+        envelope: request,
+        lastSentReply: Option.none(),
+        codecFor,
+        callerScope,
+        respond(reply) {
+          resume(Reply.serializeOrDefect(reply, codecFor))
+          return Effect.void
         }
-        const message = new Message.IncomingRequest({
-          envelope: request,
-          lastSentReply: Option.none(),
-          codecFor,
-          callerScope,
-          respond(reply) {
-            resume(Reply.serializeOrDefect(reply, codecFor))
-            return Effect.void
+      })
+      if (persisted) {
+        return yield* Effect.callback<
+          Reply.Encoded,
+          ClusterError.EntityNotAssignedToRunner
+        >((resume_) => {
+          resume = resume_
+          const parent = Fiber.getCurrent()!
+          const onExit = (
+            exit: Exit.Exit<
+              any,
+              ClusterError.EntityNotAssignedToRunner
+            >
+          ) => {
+            if (exit._tag === "Failure") {
+              resume(exit as any)
+            }
           }
+          const runFork = Effect.runForkWith(parent.context)
+          const fiber = runFork(storage.registerReplyHandler(message))
+          fiber.addObserver(onExit)
+          runFork(Effect.catchTag(
+            sharding.notify(message, constWaitUntilRead),
+            "AlreadyProcessingMessage",
+            () => Effect.void
+          )).addObserver(onExit)
+          return Fiber.interrupt(fiber)
         })
-        if (persisted) {
-          return Effect.callback<
-            Reply.Encoded,
-            ClusterError.EntityNotAssignedToRunner
-          >((resume_) => {
-            resume = resume_
-            const parent = Fiber.getCurrent()!
-            const onExit = (
-              exit: Exit.Exit<
-                any,
-                ClusterError.EntityNotAssignedToRunner
-              >
-            ) => {
-              if (exit._tag === "Failure") {
-                resume(exit as any)
-              }
-            }
-            const runFork = Effect.runForkWith(parent.context)
-            const fiber = runFork(storage.registerReplyHandler(message))
-            fiber.addObserver(onExit)
-            runFork(Effect.catchTag(
-              sharding.notify(message, constWaitUntilRead),
-              "AlreadyProcessingMessage",
-              () => Effect.void
-            )).addObserver(onExit)
-            return Fiber.interrupt(fiber)
-          })
+      }
+      yield* sharding.send(message)
+      return yield* Effect.callback<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>((resume_) => {
+        if (Option.isSome(replyEncoded)) {
+          resume_(replyEncoded.value)
+        } else {
+          resume = resume_
         }
-        return Effect.andThen(
-          sharding.send(message),
-          Effect.callback<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>((resume_) => {
-            if (Option.isSome(replyEncoded)) {
-              resume_(replyEncoded.value)
-            } else {
-              resume = resume_
-            }
-          })
-        )
-      }),
-    Stream: ({ persisted, request }) =>
-      Effect.flatMap(Effect.scope, (callerScope) =>
-        Effect.flatMap(
-          Queue.make<Reply.Encoded, ClusterError.EntityNotAssignedToRunner | Cause.Done>(),
-          (queue) => {
-            const message = new Message.IncomingRequest({
-              envelope: request,
-              lastSentReply: Option.none(),
-              codecFor,
-              callerScope,
-              respond(reply) {
-                return Reply.serialize(reply, codecFor).pipe(
-                  Effect.flatMap((reply) => {
-                    Queue.offerUnsafe(queue, reply)
-                    if (reply._tag === "WithExit") {
-                      Queue.endUnsafe(queue)
-                    }
-                    return Effect.void
-                  }),
-                  Effect.catchTag("MalformedMessage", (error) =>
-                    Effect.flatMap(serializeDefectReply(reply, error, codecFor), (reply) => {
-                      // the fallback defect reply is terminal, so end the stream
-                      Queue.offerUnsafe(queue, reply)
-                      Queue.endUnsafe(queue)
-                      return Effect.void
-                    }))
-                )
+      })
+    }),
+    Stream: Effect.fnUntraced(function*({ persisted, request }) {
+      const callerScope = yield* Effect.scope
+      const queue = yield* Queue.make<Reply.Encoded, ClusterError.EntityNotAssignedToRunner | Cause.Done>()
+      const message = new Message.IncomingRequest({
+        envelope: request,
+        lastSentReply: Option.none(),
+        codecFor,
+        callerScope,
+        respond(reply) {
+          return Reply.serialize(reply, codecFor).pipe(
+            Effect.flatMap((reply) => {
+              Queue.offerUnsafe(queue, reply)
+              if (reply._tag === "WithExit") {
+                Queue.endUnsafe(queue)
               }
-            })
-            return Effect.as(
-              persisted ?
-                Effect.andThen(
-                  storage.registerReplyHandler(message).pipe(
-                    Effect.onError((cause) => Queue.failCause(queue, cause)),
-                    Effect.forkScoped
-                  ),
-                  sharding.notify(message, constWaitUntilRead)
-                ) :
-                sharding.send(message),
-              queue
+              return Effect.void
+            }),
+            Effect.catchTag(
+              "MalformedMessage",
+              (error) =>
+                Effect.flatMap(serializeDefectReply(reply, error, codecFor), (reply) => {
+                  // the fallback defect reply is terminal, so end the stream
+                  Queue.offerUnsafe(queue, reply)
+                  Queue.endUnsafe(queue)
+                  return Effect.void
+                })
             )
-          }
-        )),
+          )
+        }
+      })
+      if (persisted) {
+        yield* storage.registerReplyHandler(message).pipe(
+          Effect.onError((cause) => Queue.failCause(queue, cause)),
+          Effect.forkScoped
+        )
+        yield* sharding.notify(message, constWaitUntilRead)
+      } else {
+        yield* sharding.send(message)
+      }
+      return queue
+    }),
     Envelope: ({ envelope }) => sharding.send(new Message.IncomingEnvelope({ envelope }))
   }
 }))

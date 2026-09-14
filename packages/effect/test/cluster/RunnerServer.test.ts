@@ -29,6 +29,8 @@ const HoleCodecEntity = Entity.make("HoleCodecEntity", [
   Rpc.make("Double", { success: Schema.Int, payload: { id: Schema.Number } })
 ]).annotateRpcs(ClusterSchema.Persisted, false)
 
+const jsonCodec = Schema.toCodecJson as RpcSerialization.CodecFor
+
 // A hole codec that is observably different from `Schema.toCodecJson`: the
 // entity payload and the replies become JSON strings on the wire.
 const codecForJsonString =
@@ -55,7 +57,7 @@ const layerProtocol = (codecFor: RpcSerialization.CodecFor) =>
 
 const makeHandlers = (
   entities: Layer.Layer<never, never, any>,
-  codecFor: RpcSerialization.CodecFor,
+  codecFor: RpcSerialization.CodecFor = jsonCodec,
   shardingLayer: typeof Sharding.layer = Sharding.layer
 ) =>
   RunnerServer.layerHandlers.pipe(
@@ -81,27 +83,65 @@ const holeCodecHandlers = makeHandlers(
   codecForJsonString
 )
 
+// A request for `entity`'s single RPC, addressed the way a sending runner would.
+const makeRequest = (
+  entity: Pick<Entity.Any, "type" | "getShardGroup">,
+  entityId: string,
+  options?: { readonly tag?: string; readonly payload?: unknown }
+) =>
+  Effect.gen(function*() {
+    const sharding = yield* Sharding.Sharding
+    const snowflake = yield* Snowflake.Generator
+    const id = EntityId.make(entityId)
+    const request: Envelope.PartialRequest = {
+      _tag: "Request",
+      requestId: snowflake.nextUnsafe(),
+      address: EntityAddress.make({
+        shardId: sharding.getShardId(id, entity.getShardGroup(id)),
+        entityType: EntityType.make(entity.type),
+        entityId: id
+      }),
+      tag: options?.tag ?? "ReproStream",
+      payload: options?.payload ?? { id: 1 },
+      headers: Headers.empty
+    }
+    return request
+  })
+
+// A runner RPC server whose replies are discarded.
+const makeServer = RpcServer.makeNoSerialization(Runners.Rpcs, { onFromServer: () => Effect.void })
+
+const writeRequest = (
+  server: RpcServer.RpcServer<any>,
+  tag: "Effect" | "Stream",
+  request: Envelope.PartialRequest,
+  options?: { readonly persisted?: boolean; readonly clientId?: number }
+) =>
+  server.write(options?.clientId ?? 0, {
+    _tag: "Request",
+    id: RpcMessage.RequestId(String(request.requestId)),
+    tag,
+    payload: { request, persisted: options?.persisted ?? false },
+    headers: Headers.empty
+  })
+
+const incomingRequest = (envelope: Envelope.PartialRequest, callerScope?: Scope.Scope) =>
+  new Message.IncomingRequest({
+    envelope,
+    lastSentReply: Option.none(),
+    respond: () => Effect.void,
+    codecFor: jsonCodec,
+    callerScope
+  })
+
 it.effect("releases the subscription when a runner stream completes naturally", () =>
   Effect.gen(function*() {
     const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
     let finalizations = 0
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
-      const sharding = yield* Sharding.Sharding
       const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("one")
-      const request = {
-        _tag: "Request",
-        requestId: snowflake.nextUnsafe(),
-        address: EntityAddress.make({
-          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-          entityType: EntityType.make("ReproRunnerServer"),
-          entityId
-        }),
-        tag: "ReproStream",
-        payload: { id: 1 },
-        headers: Headers.empty
-      } as Envelope.PartialRequest
+      const request = yield* makeRequest(ReproEntity, "one")
       const client = yield* RpcTest.makeClient(Runners.Rpcs)
       const queue = yield* client.Stream({ request, persisted: false }, { asQueue: true })
       yield* TestClock.adjust(1)
@@ -155,8 +195,7 @@ it.effect("releases the subscription when a runner stream completes naturally", 
               }))
             )
           )
-      }),
-      Schema.toCodecJson as RpcSerialization.CodecFor
+      })
     )))
   }))
 
@@ -182,31 +221,9 @@ it.effect("disconnects an admitted stream while the real send return is held", (
     ).pipe(Layer.provide(Sharding.layer))
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
-      const sharding = yield* Sharding.Sharding
-      const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("held-send")
-      const request: Envelope.PartialRequest = {
-        _tag: "Request",
-        requestId: snowflake.nextUnsafe(),
-        address: EntityAddress.make({
-          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-          entityType: EntityType.make(ReproEntity.type),
-          entityId
-        }),
-        tag: "ReproStream",
-        payload: { id: 1 },
-        headers: Headers.empty
-      }
-      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
-        onFromServer: () => Effect.void
-      })
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("stream"),
-        tag: "Stream",
-        payload: { request, persisted: false },
-        headers: Headers.empty
-      })
+      const request = yield* makeRequest(ReproEntity, "held-send")
+      const server = yield* makeServer
+      yield* writeRequest(server, "Stream", request)
       yield* TestClock.adjust(1)
       assert.isTrue(yield* Deferred.isDone(admitted))
       assert.strictEqual(pubsub.subscribers.size, 1)
@@ -226,7 +243,7 @@ it.effect("disconnects an admitted stream while the real send return is held", (
             )
           )
       }),
-      Schema.toCodecJson as RpcSerialization.CodecFor,
+      jsonCodec,
       gatedSharding
     )))
   }))
@@ -262,31 +279,9 @@ it.effect("does not replay a stream whose caller disconnects during entity rebui
     }))
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
-      const sharding = yield* Sharding.Sharding
-      const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("disconnect-during-rebuild")
-      const request: Envelope.PartialRequest = {
-        _tag: "Request",
-        requestId: snowflake.nextUnsafe(),
-        address: EntityAddress.make({
-          shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-          entityType: EntityType.make(ReproEntity.type),
-          entityId
-        }),
-        tag: "ReproStream",
-        payload: { id: 1 },
-        headers: Headers.empty
-      }
-      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
-        onFromServer: () => Effect.void
-      })
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("stream"),
-        tag: "Stream",
-        payload: { request, persisted: false },
-        headers: Headers.empty
-      })
+      const request = yield* makeRequest(ReproEntity, "disconnect-during-rebuild")
+      const server = yield* makeServer
+      yield* writeRequest(server, "Stream", request)
       yield* TestClock.adjust("5 seconds")
       assert.isTrue(yield* Deferred.isDone(rebuilding))
       assert.strictEqual(builds, 2)
@@ -303,10 +298,7 @@ it.effect("does not replay a stream whose caller disconnects during entity rebui
       assert.strictEqual(calls, 1)
       assert.strictEqual(pubsub.subscribers.size, 0)
       assert.isFalse(yield* Deferred.isDone(stopped))
-    }).pipe(Effect.provide(makeHandlers(
-      entityLayer,
-      Schema.toCodecJson as RpcSerialization.CodecFor
-    )))
+    }).pipe(Effect.provide(makeHandlers(entityLayer)))
   }))
 
 it.effect("releases a non-persisted Effect handler when the runner caller disconnects", () =>
@@ -315,31 +307,9 @@ it.effect("releases a non-persisted Effect handler when the runner caller discon
     const stopped = yield* Deferred.make<void>()
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
-      const sharding = yield* Sharding.Sharding
-      const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("effect-disconnect")
-      const request: Envelope.PartialRequest = {
-        _tag: "Request",
-        requestId: snowflake.nextUnsafe(),
-        address: EntityAddress.make({
-          shardId: sharding.getShardId(entityId, HoleCodecEntity.getShardGroup(entityId)),
-          entityType: EntityType.make(HoleCodecEntity.type),
-          entityId
-        }),
-        tag: "Double",
-        payload: { id: 1 },
-        headers: Headers.empty
-      }
-      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
-        onFromServer: () => Effect.void
-      })
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("effect"),
-        tag: "Effect",
-        payload: { request, persisted: false },
-        headers: Headers.empty
-      })
+      const request = yield* makeRequest(HoleCodecEntity, "effect-disconnect", { tag: "Double" })
+      const server = yield* makeServer
+      yield* writeRequest(server, "Effect", request)
       yield* TestClock.adjust(1)
       assert.isTrue(yield* Deferred.isDone(started))
       assert.isFalse(yield* Deferred.isDone(stopped))
@@ -355,8 +325,7 @@ it.effect("releases a non-persisted Effect handler when the runner caller discon
               Effect.ensuring(Deferred.succeed(stopped, undefined))
             )
           )
-      }),
-      Schema.toCodecJson as RpcSerialization.CodecFor
+      })
     )))
   }))
 
@@ -385,32 +354,10 @@ it.effect("releases mailbox capacity when a second caller disconnects during a h
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
       const sharding = yield* Sharding.Sharding
-      const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("mailbox-during-rebuild")
-      const address = EntityAddress.make({
-        shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-        entityType: EntityType.make(ReproEntity.type),
-        entityId
-      })
-      const request = (id: number): Envelope.PartialRequest => ({
-        _tag: "Request",
-        requestId: snowflake.nextUnsafe(),
-        address,
-        tag: "ReproStream",
-        payload: { id },
-        headers: Headers.empty
-      })
-      const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
-        onFromServer: () => Effect.void
-      })
+      const server = yield* makeServer
+      const request = (id: number) => makeRequest(ReproEntity, "mailbox-during-rebuild", { payload: { id } })
       const send = (clientId: number, id: number) =>
-        server.write(clientId, {
-          _tag: "Request",
-          id: RpcMessage.RequestId(String(id)),
-          tag: "Stream",
-          payload: { request: request(id), persisted: false },
-          headers: Headers.empty
-        })
+        Effect.flatMap(request(id), (request) => writeRequest(server, "Stream", request, { clientId }))
       yield* send(0, 1)
       yield* TestClock.adjust("5 seconds")
       assert.isTrue(yield* Deferred.isDone(rebuilding))
@@ -418,15 +365,7 @@ it.effect("releases mailbox capacity when a second caller disconnects during a h
       yield* TestClock.adjust(1)
       assert.deepStrictEqual(starts, [1])
 
-      const probe = () =>
-        sharding.send(
-          new Message.IncomingRequest({
-            envelope: request(3),
-            lastSentReply: Option.none(),
-            respond: () => Effect.void,
-            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-          })
-        )
+      const probe = () => Effect.flatMap(request(3), (request) => sharding.send(incomingRequest(request)))
       // A and B fill both slots, proving B was admitted before its disconnect.
       const full = yield* probe().pipe(Effect.flip)
       assert.strictEqual(full._tag, "MailboxFull")
@@ -443,10 +382,7 @@ it.effect("releases mailbox capacity when a second caller disconnects during a h
       assert.strictEqual(admitted, "accepted")
       yield* TestClock.adjust(1)
       assert.deepStrictEqual(starts, [1, 1, 3])
-    }).pipe(Effect.provide(makeHandlers(
-      entityLayer,
-      Schema.toCodecJson as RpcSerialization.CodecFor
-    )))
+    }).pipe(Effect.provide(makeHandlers(entityLayer)))
   }))
 
 it.effect("does not admit a request with an already-closed caller scope", () =>
@@ -455,33 +391,15 @@ it.effect("does not admit a request with an already-closed caller scope", () =>
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
       const sharding = yield* Sharding.Sharding
-      const snowflake = yield* Snowflake.Generator
-      const entityId = EntityId.make("closed-scope")
-      const address = EntityAddress.make({
-        shardId: sharding.getShardId(entityId, ReproEntity.getShardGroup(entityId)),
-        entityType: EntityType.make(ReproEntity.type),
-        entityId
-      })
       const callerScope = yield* Scope.make()
       yield* Scope.close(callerScope, Exit.void)
-      const request = () => ({
-        envelope: {
-          _tag: "Request" as const,
-          requestId: snowflake.nextUnsafe(),
-          address,
-          tag: "ReproStream",
-          payload: { id: 1 },
-          headers: Headers.empty
-        },
-        lastSentReply: Option.none(),
-        respond: () => Effect.void,
-        codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-      })
-      yield* Effect.exit(sharding.send(new Message.IncomingRequest({ ...request(), callerScope })))
+      const closed = incomingRequest(yield* makeRequest(ReproEntity, "closed-scope"), callerScope)
+      yield* Effect.exit(sharding.send(closed))
       yield* TestClock.adjust(1)
       assert.strictEqual(starts, 0)
       // A live request must still fit in the only mailbox slot.
-      const admitted = yield* Effect.exit(sharding.send(new Message.IncomingRequest(request())))
+      const live = incomingRequest(yield* makeRequest(ReproEntity, "closed-scope"))
+      const admitted = yield* Effect.exit(sharding.send(live))
       assert.strictEqual(admitted._tag, "Success")
       yield* TestClock.adjust(1)
       assert.strictEqual(starts, 1)
@@ -491,8 +409,7 @@ it.effect("does not admit a request with an already-closed caller scope", () =>
           starts++
           return Rpc.fork(Stream.never)
         }
-      }, { mailboxCapacity: 1 }),
-      Schema.toCodecJson as RpcSerialization.CodecFor
+      }, { mailboxCapacity: 1 })
     )))
   }))
 
@@ -548,21 +465,8 @@ for (
       const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
-        const sharding = yield* Sharding.Sharding
         const snowflake = yield* Snowflake.Generator
-        const entityId = EntityId.make("stream-caller")
-        const request: Envelope.PartialRequest = {
-          _tag: "Request",
-          requestId: snowflake.nextUnsafe(),
-          address: EntityAddress.make({
-            shardId: sharding.getShardId(entityId, entity.getShardGroup(entityId)),
-            entityType: EntityType.make(entity.type),
-            entityId
-          }),
-          tag: "ReproStream",
-          payload: { id: 1 },
-          headers: Headers.empty
-        }
+        const request = yield* makeRequest(entity, "stream-caller")
         if (persisted) {
           // The sending runner stores durable requests before notifying the host.
           const driver = yield* MessageStorage.MemoryDriver
@@ -572,16 +476,8 @@ for (
             deliverAt: null
           })
         }
-        const server = yield* RpcServer.makeNoSerialization(Runners.Rpcs, {
-          onFromServer: () => Effect.void
-        })
-        yield* server.write(0, {
-          _tag: "Request",
-          id: RpcMessage.RequestId("stream"),
-          tag: "Stream",
-          payload: { request, persisted },
-          headers: Headers.empty
-        })
+        const server = yield* makeServer
+        yield* writeRequest(server, "Stream", request, { persisted })
         yield* TestClock.adjust(1)
         assert.strictEqual(pubsub.subscribers.size, 1)
 
@@ -609,8 +505,7 @@ for (
         yield* TestClock.adjust(1)
         assert.strictEqual(pubsub.subscribers.size, expectedSubscribers)
       }).pipe(Effect.provide(makeHandlers(
-        entity.toLayer({ ReproStream: () => Rpc.fork(Stream.fromPubSub(pubsub)) }),
-        Schema.toCodecJson as RpcSerialization.CodecFor
+        entity.toLayer({ ReproStream: () => Rpc.fork(Stream.fromPubSub(pubsub)) })
       )))
     }))
 }
@@ -618,22 +513,8 @@ for (
 it.effect("fills the entity payload and reply holes with the serialization's codec", () =>
   Effect.gen(function*() {
     yield* TestClock.adjust(1)
-    const sharding = yield* Sharding.Sharding
-    const snowflake = yield* Snowflake.Generator
-    const entityId = EntityId.make("hole")
-    const request = {
-      _tag: "Request",
-      requestId: snowflake.nextUnsafe(),
-      address: EntityAddress.make({
-        shardId: sharding.getShardId(entityId, HoleCodecEntity.getShardGroup(entityId)),
-        entityType: EntityType.make("HoleCodecEntity"),
-        entityId
-      }),
-      tag: "Double",
-      // already encoded by the sender with the same hole codec
-      payload: JSON.stringify({ id: 21 }),
-      headers: Headers.empty
-    } as any as Envelope.PartialRequest
+    // already encoded by the sender with the same hole codec
+    const request = yield* makeRequest(HoleCodecEntity, "hole", { tag: "Double", payload: JSON.stringify({ id: 21 }) })
 
     const client = yield* RpcTest.makeClient(Runners.Rpcs)
     const reply = yield* client.Effect({ request, persisted: false }).pipe(
