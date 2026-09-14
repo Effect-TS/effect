@@ -361,15 +361,18 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         to: "compensation"
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
-      yield* TestClock.adjust(500)
-
-      const flags = yield* Flags
-      assert.isTrue(flags.get("compensation"))
+      yield* pollUntil(
+        EmailWorkflow,
+        yield* EmailWorkflow.executionId({ id: "test-email-3", to: "compensation" }),
+        "Complete"
+      )
 
       const error = yield* Fiber.join(fiber).pipe(
         Effect.flip
       )
       expect(error).toBeInstanceOf(SendEmailError)
+      const flags = yield* Flags
+      assert.isTrue(flags.get("compensation"))
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
@@ -383,7 +386,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         id: "race-1"
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
-      yield* TestClock.adjust(500)
+      // Activity timers may be registered after the caller's first clock advance.
+      yield* pollUntil(RaceWorkflow, yield* RaceWorkflow.executionId({ id: "race-1" }), "Complete")
 
       const result = yield* Fiber.join(fiber)
       expect(result).toEqual("Activity3")
@@ -399,7 +403,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         id: "failure-race"
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
-      yield* TestClock.adjust("1 second")
+      yield* pollUntil(FailureRaceWorkflow, yield* FailureRaceWorkflow.executionId({ id: "failure-race" }), "Complete")
 
       expect(yield* Fiber.join(fiber)).toEqual("slow")
     }).pipe(Effect.provide(TestWorkflowLayer)))
