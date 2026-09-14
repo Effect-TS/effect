@@ -27,4 +27,19 @@ describe("OpenAiTool", () => {
     expect<Tool.Failure<typeof webSearch>>().type.toBe<Failure>()
     expect<Tool.Success<typeof webSearch>["status"]>().type.toBe<"completed">()
   })
+
+  it("distinguishes URL sources from named API sources", () => {
+    const webSearch = OpenAiTool.WebSearch({})
+    const preview = OpenAiTool.WebSearchPreview({})
+    type Sources<Action> = Extract<Action, { type: "search" }> extends { readonly sources?: infer S } ? S : never
+    type Expected = ReadonlyArray<
+      | { readonly type: "url"; readonly url: string }
+      | { readonly type: "api"; readonly name: string }
+    >
+
+    expect<Sources<Tool.Parameters<typeof webSearch>["action"]>>().type.toBe<Expected>()
+    expect<Sources<Tool.Success<typeof webSearch>["action"]>>().type.toBe<Expected>()
+    expect<Sources<Tool.Failure<typeof webSearch>["action"]>>().type.toBe<Expected>()
+    expect<Sources<Tool.Success<typeof preview>["action"]>>().type.toBe<Expected>()
+  })
 })
