@@ -238,6 +238,30 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       expect(rows[0].json).toEqual({ testValue: 123 })
     }))
 
+  it.effect("reads scalar enums as strings without registering their OIDs", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`CREATE TYPE capability_scalar AS ENUM ('use_key', 'manage', 'gérer')`
+        const rows = yield* sql`
+          SELECT 'use_key'::capability_scalar AS capability,
+                 ${"gérer"}::capability_scalar AS bound,
+                 NULL::capability_scalar AS nullable
+        `
+        yield* sql`DROP TYPE capability_scalar`
+        assert.deepStrictEqual(rows, [{ capability: "use_key", bound: "gérer", nullable: null }])
+      }))
+    }))
+
+  it.effect("reads bytea as Uint8Array", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const payload = new Uint8Array([0, 1, 254, 255])
+      const rows = yield* sql`SELECT ${payload}::bytea AS payload`
+      assert.instanceOf(rows[0].payload, Uint8Array)
+      assert.deepStrictEqual(rows, [{ payload }])
+    }))
+
   it.effect("stream", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient

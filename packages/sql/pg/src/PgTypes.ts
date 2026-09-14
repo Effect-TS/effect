@@ -1399,6 +1399,13 @@ const lookupFor = (registry: Registry | undefined): Lookup =>
  * Registers a binary codec for an OID the built-in catalogue does not cover,
  * or overrides a built-in one. Registered codecs take precedence.
  *
+ * **Details**
+ *
+ * Unregistered OIDs decode as UTF-8 text. Register binary user-defined types
+ * to avoid garbled output or codec errors, which close the connection when
+ * reading rows. For arrays, use `makeRegistry().register` with
+ * `RegisterOptions.arrayOid` and pass the registry as the client's `types` option.
+ *
  * @category registry
  * @since 4.0.0
  */
@@ -1591,9 +1598,9 @@ export interface Column {
  *
  * **Details**
  *
- * Codecs are resolved once per column. SQL `NULL` becomes `null`, and columns
- * without a registered codec return a copy of their bytes. Text-format columns
- * fail with `CodecError`.
+ * Codecs are resolved once per column. SQL `NULL` becomes `null`.
+ * Unregistered OIDs decode as UTF-8 text. Invalid UTF-8 and text-format
+ * columns fail with `CodecError`.
  *
  * **Example** (Updating the reader after `RowDescription`)
  *
@@ -1624,7 +1631,7 @@ export const makeFieldReader = (
     return (bytes: Uint8Array, offset: number, size: number, column: number): unknown => {
       if (size < 0) return null
       const codec = codecs[column]
-      if (codec === undefined) return bytes.slice(offset, offset + size)
+      if (codec === undefined) return decodeUtf8(bytes, offset, size)
       const read = codec.read
       return read === undefined ? codec.decode(bytes.subarray(offset, offset + size)) : read(bytes, offset, size)
     }
@@ -1653,8 +1660,9 @@ export const encode = (value: unknown, oid: number, registry?: Registry): Result
  *
  * **Details**
  *
- * `format` must be `1`; the text format is not implemented. An OID that is
- * neither built in nor registered decodes to the raw bytes.
+ * Only binary format (`1`) is supported. Unregistered OIDs decode as UTF-8
+ * text; invalid UTF-8 fails with `CodecError`. See `register` for binary
+ * user-defined types, including arrays.
  *
  * @category decoding
  * @since 4.0.0
@@ -1670,7 +1678,7 @@ export const decode = (
       return fail(`Only the binary format is supported, received format ${format}`)
     }
     const codec = lookupFor(registry)(oid)
-    return codec === undefined ? bytes : codec.decode(bytes)
+    return codec === undefined ? decodeUtf8(bytes, 0, bytes.length) : codec.decode(bytes)
   })
 
 // -----------------------------------------------------------------------------
