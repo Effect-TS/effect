@@ -57,6 +57,32 @@ The startup `application_name` is selected in this order:
 
 The driver does not extract `application_name` from the opaque options string.
 
+## User-defined types
+
+Columns whose type OID has no codec are decoded as UTF-8 text, so user-defined
+enums read as plain strings:
+
+```ts
+import { PgClient } from "@effect/sql-pg"
+import { Effect } from "effect"
+
+// CREATE TYPE capability AS ENUM ('use_key', 'manage')
+const program = Effect.gen(function*() {
+  const sql = yield* PgClient.PgClient
+  const rows = yield* sql`SELECT 'use_key'::capability AS capability`
+  // rows[0].capability === "use_key"
+})
+```
+
+Strings bind to enum columns without any setup; the server infers the type.
+Invalid UTF-8 fails with `PgTypes.CodecError`, as it does for `text`.
+
+User-defined types whose binary representation is not UTF-8, such as composites,
+extension types, and enum arrays, need a codec. Register one with
+`PgTypes.register(oid, codec)`; registered codecs take precedence over the
+fallback. OIDs of user-defined types are assigned per database, so look them up
+in `pg_type` at startup rather than hard-coding them.
+
 ## Documentation
 
 - [Effect website](https://effect.website)
