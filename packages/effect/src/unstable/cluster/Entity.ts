@@ -45,6 +45,7 @@ import { EntityAddress } from "./EntityAddress.ts"
 import type { EntityId } from "./EntityId.ts"
 import { EntityType } from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
+import { CurrentActivationScope } from "./internal/entityActivation.ts"
 import { hashString } from "./internal/hash.ts"
 import { ResourceMap } from "./internal/resourceMap.ts"
 import * as Message from "./Message.ts"
@@ -655,6 +656,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
     const handlerContext = entityEntry.context.pipe(
       Context.add(CurrentRunnerAddress, runnerAddress),
       Context.add(CurrentAddress, address),
+      Context.add(CurrentActivationScope, scope),
       Context.add(Scope, scope)
     )
     const handlers = yield* entityEntry.build.pipe(
