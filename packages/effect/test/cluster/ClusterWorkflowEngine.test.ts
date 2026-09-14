@@ -38,6 +38,92 @@ import {
 } from "effect/unstable/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  for (const entityMailboxCapacity of [2, 3]) {
+    it.effect(
+      `admits a required completion after an unrelated completion with mailbox capacity ${entityMailboxCapacity}`,
+      () =>
+        Effect.gen(function*() {
+          const unrelatedRead = yield* Latch.make()
+          const required = DurableDeferred.make("MailboxProgress/Required", { success: Schema.String })
+          const unrelated = DurableDeferred.make("MailboxProgress/Unrelated", { success: Schema.String })
+          const workflow = Workflow.make("MailboxProgress", {
+            payload: {},
+            success: Schema.String,
+            idempotencyKey: () => "one"
+          })
+          let instance: WorkflowInstance["Service"] | undefined
+          let runRequestId: Snowflake.Snowflake | undefined
+          const shared = yield* Layer.build(
+            MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
+          )
+          const storage = Context.get(shared, MessageStorage.MessageStorage)
+          const driver = Context.get(shared, MessageStorage.MemoryDriver)
+          const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+            ...storage,
+            repliesForUnfiltered: (requestIds) => {
+              const ids = Array.from(requestIds)
+              return storage.repliesForUnfiltered(ids).pipe(
+                Effect.tap(() =>
+                  runRequestId !== undefined && ids.includes(runRequestId) ? unrelatedRead.open : Effect.void
+                )
+              )
+            }
+          })
+          const context = yield* Layer.build(
+            workflow.toLayer(() =>
+              Effect.gen(function*() {
+                instance = yield* WorkflowInstance
+                return yield* DurableDeferred.raceAll({
+                  name: "mailbox-progress",
+                  success: Schema.String,
+                  error: Schema.Never,
+                  // Keep the run active without allocating an activity RPC/mailbox slot.
+                  effects: [DurableDeferred.await(required), Effect.never]
+                })
+              })
+            ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer, config: { entityMailboxCapacity } })))
+          )
+          yield* Effect.gen(function*() {
+            const sharding = yield* Sharding.Sharding
+            const executionId = yield* workflow.execute({}, { discard: true })
+            yield* advanceUntil(
+              () => instance?.awaitedDeferreds.has(required.name) === true,
+              "run must await the required deferred"
+            )
+            assert.isFalse(instance!.awaitedDeferreds.has(unrelated.name))
+            const run = driver.journal.find((message) => message._tag === "Request" && message.tag === "run")!
+            runRequestId = Snowflake.Snowflake(run.requestId)
+            yield* DurableDeferred.succeed(unrelated, {
+              token: DurableDeferred.tokenFromExecutionId(unrelated, { workflow, executionId }),
+              value: "unrelated"
+            })
+            // Both implementations read the active run before replying or parking.
+            // Wait for that read before admitting the completion needed for progress.
+            yield* advanceUntil(() => unrelatedRead.isOpen(), "unrelated completion must inspect the active run")
+            yield* DurableDeferred.succeed(required, {
+              token: DurableDeferred.tokenFromExecutionId(required, { workflow, executionId }),
+              value: "signal"
+            })
+            let result = yield* workflow.poll(executionId)
+            for (let i = 0; i < 100 && !(Option.isSome(result) && result.value._tag === "Complete"); i++) {
+              yield* TestClock.adjust(100)
+              yield* sharding.pollStorage
+              result = yield* workflow.poll(executionId)
+            }
+            const pendingDeferreds = Array.from(driver.requests.values()).filter((entry) =>
+              entry.envelope._tag === "Request" && entry.envelope.tag === "deferred" && entry.replies.length === 0
+            ).map((entry) => (entry.envelope as { payload: { name: string } }).payload.name)
+            assert.deepStrictEqual(
+              result,
+              Option.some(new Workflow.Complete({ exit: Exit.succeed("signal") })),
+              `required completion must progress; pending deferreds: ${pendingDeferreds.join(", ")}`
+            )
+          }).pipe(Effect.provide(context))
+        }),
+      20_000
+    )
+  }
+
   it.effect("retains a handover completion before its deferred reply is persisted", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("DeferredHandover/Gate", { success: Schema.String })
@@ -319,18 +405,37 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       const envelope = driver.journal[0]
       const executionId = envelope.address.entityId
+      // Interrupt after the clock-backed activity completes, so the workflow is
+      // suspended on EmailTrigger rather than racing the clock's completion.
+      yield* advanceUntil(
+        () =>
+          Array.from(driver.requests.values()).some(({ envelope, replies }) =>
+            envelope._tag === "Request" && envelope.tag === "activity" &&
+            envelope.address.entityId === executionId &&
+            (envelope.payload as { name: string }).name === "Sleep" &&
+            replies.some((reply) =>
+              reply._tag === "WithExit" && reply.exit._tag === "Success" &&
+              (reply.exit.value as Workflow.ResultEncoded<any, any>)._tag === "Complete"
+            )
+          ),
+        "sleep activity must complete before interruption",
+        10
+      )
+      yield* pollUntil(EmailWorkflow, executionId, "Suspended")
       yield* EmailWorkflow.interrupt(executionId)
 
-      // - 1 initial request
-      // - 5 attempts to send email
-      // - 1 sleep activity
-      // - 1 durable clock run
-      // - 1 durable clock deferred set
-      // - 1 interrupt signal set
-      expect(driver.requests.size).toEqual(10)
-      yield* TestClock.adjust(5000)
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(5000)
+      // Wait for this execution's signal; concurrent cleanup can change the total request count.
+      yield* advanceUntil(
+        () =>
+          Array.from(driver.requests.values()).some(({ envelope }) =>
+            envelope._tag === "Request" && envelope.tag === "deferred" &&
+            envelope.address.entityId === executionId &&
+            envelope.address.entityType === `Workflow/${EmailWorkflow._tag}` &&
+            (envelope.payload as { name: string }).name === "Workflow/InterruptSignal"
+          ),
+        "interrupt signal request must be persisted"
+      )
+      yield* pollUntil(EmailWorkflow, executionId, "Complete")
       // - clock cleared
       expect(driver.requests.size).toEqual(9)
 
@@ -343,6 +448,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const value = reply.exit.value as Workflow.ResultEncoded<any, any>
       assert(value._tag === "Complete" && value.exit._tag === "Failure")
 
+      yield* advanceUntil(() => fiber.pollUnsafe() !== undefined, "execute waiter must observe interruption", 10)
       const exit = yield* Fiber.await(fiber)
       assert(Exit.hasInterrupts(exit))
 
