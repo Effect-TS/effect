@@ -676,6 +676,79 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)), 20_000)
 
   it.effect(
+    "DurableDeferred resumes a discarded execution when completion precedes the suspension commit",
+    () =>
+      Effect.gen(function*() {
+        const savingRun = yield* Latch.make()
+        const releaseRun = yield* Latch.make()
+        const readBeforeCommit = yield* Latch.make()
+        const savedDeferred = yield* Latch.make()
+        let runRequestId: Snowflake.Snowflake | undefined
+        const gate = DurableDeferred.make("DiscardedSuspension/Gate", { success: Schema.String })
+        const workflow = Workflow.make("DiscardedSuspension", {
+          payload: {},
+          success: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const storageLayer = Layer.effect(
+          MessageStorage.MessageStorage,
+          Effect.map(MessageStorage.MessageStorage, (storage) => ({
+            ...storage,
+            saveReply: (reply) => {
+              if (reply.rpc._tag === "run" && !savingRun.isOpen()) {
+                runRequestId = reply.reply.requestId
+                assert(reply.reply._tag === "WithExit" && reply.reply.exit._tag === "Success")
+                assert(Schema.is(Workflow.Suspended)(reply.reply.exit.value))
+                return savingRun.open.pipe(
+                  Effect.andThen(releaseRun.await),
+                  Effect.andThen(storage.saveReply(reply))
+                )
+              }
+              return storage.saveReply(reply).pipe(
+                Effect.tap(() => reply.rpc._tag === "deferred" ? savedDeferred.open : Effect.void)
+              )
+            },
+            repliesForUnfiltered: (requestIds) => {
+              const ids = Array.from(requestIds)
+              return storage.repliesForUnfiltered(ids).pipe(
+                Effect.tap((replies) => {
+                  if (!releaseRun.isOpen() && runRequestId !== undefined && ids.includes(runRequestId)) {
+                    assert.deepStrictEqual(replies, [])
+                    return readBeforeCommit.open
+                  }
+                  return Effect.void
+                })
+              )
+            }
+          }))
+        ).pipe(Layer.provide(MessageStorage.layerMemory))
+        const context = yield* Layer.build(
+          workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+            Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+          )
+        )
+        yield* Effect.addFinalizer(() => releaseRun.open)
+        yield* Effect.gen(function*() {
+          // No execute waiter may retry a Suspended reply and repair the lost wake-up.
+          const executionId = yield* workflow.execute({}, { discard: true })
+          yield* advanceUntil(() => savingRun.isOpen(), "run must reach suspension persistence")
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "signal"
+          })
+          // Both resume and waitForRunReply read storage. Hold the commit until
+          // that read observes no reply, allowing a fixed handler to park on it.
+          yield* advanceUntil(() => readBeforeCommit.isOpen(), "completion must read the uncommitted run")
+          yield* releaseRun.open
+          yield* advanceUntil(() => savedDeferred.isOpen(), "deferred completion must be persisted")
+          const result = yield* pollUntil(workflow, executionId, "Complete")
+          assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
+        }).pipe(Effect.provide(context))
+      }),
+    20_000
+  )
+
+  it.effect(
     "DurableDeferred.raceAll delivers a completion that lands while a suspension commits",
     () =>
       Effect.gen(function*() {
