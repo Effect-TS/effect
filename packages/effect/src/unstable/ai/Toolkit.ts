@@ -21,6 +21,7 @@ import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
+import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as AiError from "./AiError.ts"
@@ -217,7 +218,7 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     /**
      * Options used when decoding the tool parameters.
      */
-    options?: HandleOptions
+    options?: SchemaAST.ParseOptions
   ) => Effect.Effect<
     Stream.Stream<
       Tool.HandlerResult<Tools[Name]>,
@@ -226,19 +227,6 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     >,
     AiError.AiError
   >
-}
-
-/**
- * Options for executing a tool handler.
- *
- * @category models
- * @since 4.0.0
- */
-export interface HandleOptions {
-  /**
-   * How excess properties should be handled when decoding tool parameters.
-   */
-  readonly onExcessProperty?: "ignore" | "error" | undefined
 }
 
 /**
@@ -261,7 +249,7 @@ const Proto = {
         readonly handler: Tool.Handler<any>["handler"]
         readonly decodeParameters: (
           u: unknown,
-          options?: HandleOptions
+          options?: SchemaAST.ParseOptions
         ) => Effect.Effect<unknown, Schema.SchemaError>
         readonly encodeResult: (u: unknown, isFailure: boolean) => Effect.Effect<unknown, Schema.SchemaError>
       }>()
@@ -291,7 +279,7 @@ const Proto = {
         name: string,
         params: unknown,
         toolCallId?: string,
-        options?: HandleOptions
+        options?: SchemaAST.ParseOptions
       ) {
         const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
 
