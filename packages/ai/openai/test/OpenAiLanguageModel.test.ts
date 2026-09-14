@@ -1,4 +1,4 @@
-import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
+import { Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
@@ -53,15 +53,22 @@ describe("OpenAiLanguageModel", () => {
           const action = { type: "search", query: "weather in London", sources } as const
 
           const calls = parts.filter((part) => part.type === "tool-call")
-          strictEqual(calls.length, 1)
-          deepStrictEqual(calls[0].params, { action })
+          deepStrictEqual(calls.map((part) => part.params), [{ action }])
 
           const results = parts.filter((part) => part.type === "tool-result")
-          strictEqual(results.length, 1)
-          strictEqual(results[0].id, calls[0].id)
-          deepStrictEqual(results[0].result, { action, status: "completed" })
+          deepStrictEqual(results.map((part) => part.result), [{ action, status: "completed" }])
         })
     )
+
+    it.effect("preserves API sources in response history", () =>
+      Effect.gen(function*() {
+        const item = makeWebSearchCall({
+          action: { type: "search", sources: [{ type: "api", name: "oai-weather" }] }
+        })
+        const decoded = yield* Schema.decodeUnknownEffect(Generated.InputItem)(item)
+
+        deepStrictEqual(decoded, item)
+      }))
 
     it.effect.each([
       { type: "url" },

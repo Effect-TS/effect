@@ -328,6 +328,8 @@ const WebSearchFailure = Schema.Struct({
  * The tool accepts optional filters, user location, and search context size.
  * Results preserve the action and status. Only `completed` is successful;
  * all other statuses produce failure results.
+ * Search sources are URL sources (`type: "url"`, `url`) or named API sources
+ * (`type: "api"`, `name`). Narrow sources by `type` before accessing either field.
  *
  * @see {@link WebSearchPreview} for the preview web search provider tool
  *
@@ -362,6 +364,8 @@ export const WebSearch = Tool.providerDefined({
  * The preview tool accepts optional user location and search context size.
  * Results preserve the action and status. Only `completed` is successful;
  * all other statuses produce failure results.
+ * Search sources are URL sources (`type: "url"`, `url`) or named API sources
+ * (`type: "api"`, `name`). Narrow sources by `type` before accessing either field.
  *
  * @see {@link WebSearch} for the stable web search provider tool
  *
