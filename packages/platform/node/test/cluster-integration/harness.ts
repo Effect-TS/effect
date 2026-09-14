@@ -41,6 +41,25 @@ export interface ClusterRunner {
   readonly state: () => "frozen" | "killed" | "running" | "stopped"
 }
 
+/** A raw TCP caller whose transport can close without a Sharding retry. */
+export const makeRawRunnerClient = Effect.fnUntraced(function*(runner: ClusterRunner) {
+  const serialization = yield* RpcSerialization.RpcSerialization.pipe(
+    Effect.provide(RpcSerialization.layerSchemaBinary())
+  )
+  const transport = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+  const socket = yield* NodeSocket.makeNet({ host: runner.address.host, port: runner.address.port })
+  const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+    Effect.provideService(Socket.Socket, socket),
+    Effect.provideService(RpcSerialization.RpcSerialization, serialization),
+    Scope.provide(transport)
+  )
+  const client = yield* RpcClient.make(Runners.Rpcs).pipe(
+    Effect.provideService(RpcClient.Protocol, protocol),
+    Scope.provide(transport)
+  )
+  return { client, codecFor: serialization.codecFor, disconnect: Scope.close(transport, Exit.void) }
+})
+
 export interface MessageCounts {
   readonly failed: number
   readonly replied: number
