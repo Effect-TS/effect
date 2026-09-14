@@ -155,6 +155,7 @@ const makeNumericPeer = (options?: {
   const executions: Array<string> = []
   let executionError: { readonly sql: string; readonly code: string } | undefined
   let heldReplies: Buffer | undefined
+  let heldSync = true
   let executionWasHeld = false
   const cancellations: Array<Buffer> = []
   let statementDescriptions = 0
@@ -262,8 +263,10 @@ const makeNumericPeer = (options?: {
           }
         }
       }
-      if (holdReplies) heldReplies = Buffer.concat(replies)
-      else if (replies.length > 0) queueMicrotask(() => socket.push(Buffer.concat(replies)))
+      if (holdReplies) {
+        heldReplies = Buffer.concat(replies)
+        heldSync = frontendTags(chunk).includes("S")
+      } else if (replies.length > 0) queueMicrotask(() => socket.push(Buffer.concat(replies)))
       callback()
     }
   })
@@ -273,11 +276,15 @@ const makeNumericPeer = (options?: {
       write(chunk: Buffer, _encoding, callback) {
         cancellations.push(Buffer.from(chunk))
         queueMicrotask(() => {
-          if (status === "T") status = "E"
-          socket.push(Buffer.concat([
-            errorResponse([["S", "ERROR"], ["C", "57014"], ["M", "canceling statement due to user request"]]),
-            backendMessage("Z", Buffer.from(status))
-          ]))
+          // A Flush-only discovery has no ReadyForQuery to drain yet. Its
+          // cleanup must send Sync; cancellation alone cannot supply it.
+          if (heldSync) {
+            if (status === "T") status = "E"
+            socket.push(Buffer.concat([
+              errorResponse([["S", "ERROR"], ["C", "57014"], ["M", "canceling statement due to user request"]]),
+              backendMessage("Z", Buffer.from(status))
+            ]))
+          }
           cancellation.destroy()
         })
         callback()
@@ -439,11 +446,10 @@ describe("PgConnection in-process server", () => {
           yield* Fiber.join(pin)
           yield* Fiber.join(later)
           assert.deepStrictEqual(peer.executions, [sql, "SELECT 10 AS pinned", "SELECT 20 AS later"])
-          assert.deepStrictEqual(peer.parses.filter((parse) => parse.sql === sql).map((parse) => parse.oids), [
-            [23],
-            [0],
-            [1184]
-          ])
+          // Retaining the discovery statement through Bind need not emit a
+          // second Parse with explicit OIDs. The ordering assertions above
+          // must hold for either execution path.
+          assert.isTrue(peer.parses.some((parse) => parse.sql === sql && parse.oids[0] === 0))
         }).pipe(Effect.ensuring(Effect.sync(() => peer.releaseReplies())))
       }))
   }

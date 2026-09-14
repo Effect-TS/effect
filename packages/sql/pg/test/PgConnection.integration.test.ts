@@ -2,6 +2,7 @@ import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
+import { makeDescriptionGate } from "./descriptionGate.ts"
 import { PgContainer } from "./utils.ts"
 
 const makeConnection = (options?: PgConnection.Config) =>
@@ -25,6 +26,130 @@ const assertInterruptedOnClose = (
   })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
+  for (const columnType of ["timestamp", "timestamptz"]) {
+    for (const mode of ["query", "stream"] as const) {
+      for (const prepare of [false, true]) {
+        for (const warm of [false, true]) {
+          it.effect(`retains ${columnType} analysis locks through ${mode} execution, warm=${warm}, prepare=${prepare}`, () =>
+            Effect.gen(function*() {
+              const container = yield* PgContainer
+              const admin = yield* makeConnection()
+              const schema = `numeric_race_${columnType}_${mode}_${warm}_${prepare}`
+              yield* Effect.acquireRelease(
+                admin.query(`CREATE SCHEMA ${schema}`),
+                () => Effect.orDie(admin.query(`DROP SCHEMA ${schema} CASCADE`))
+              )
+              yield* admin.query(`CREATE TABLE ${schema}.events (at ${columnType})`)
+              yield* admin.query("SET lock_timeout = '100ms'")
+              const sql = `INSERT INTO ${schema}.events VALUES ($1) RETURNING at`
+              const gate = makeDescriptionGate(sql, { host: container.getHost(), port: container.getMappedPort(5432) })
+              yield* Effect.gen(function*() {
+                const connection = yield* makeConnection({ prepare, multiplex: true, stream: gate.stream })
+                yield* connection.query("SET TIME ZONE 'America/New_York'")
+                const run = () =>
+                  mode === "stream"
+                    ? Stream.runCollect(connection.stream(sql, [1714979289123]))
+                    : Effect.map(connection.query(sql, [1714979289123]), (result) => result.rows)
+                if (warm) {
+                  gate.release()
+                  // The first retry is unnamed; the next call also warms the
+                  // named statement when preparation is enabled.
+                  for (let round = 0; round < 2; round++) {
+                    assert.deepStrictEqual(yield* run(), [{ at: 1714979289123 }])
+                  }
+                  yield* admin.query(`TRUNCATE ${schema}.events`)
+                  gate.arm()
+                }
+                const query = yield* Effect.forkScoped(run())
+                const boundary = yield* Effect.raceFirst(
+                  Effect.as(Deferred.await(gate.analyzed), "analyzed"),
+                  Effect.as(Fiber.await(query), "completed")
+                )
+                assert.strictEqual(boundary, "analyzed", "timestamp cache hits must revalidate before execution")
+                const nextType = columnType === "timestamp" ? "timestamptz" : "timestamp"
+                // Server-side lock_timeout bounds this actual DDL attempt. No
+                // elapsed-time threshold is used as evidence of serialization.
+                const ddl = yield* Effect.result(admin.query(
+                  `ALTER TABLE ${schema}.events ALTER COLUMN at TYPE ${nextType} USING NULL`
+                ))
+                gate.release()
+                const rows = yield* Fiber.join(query)
+                assert.deepStrictEqual({ ddl: ddl._tag, rows }, {
+                  ddl: "Failure",
+                  rows: [{ at: 1714979289123 }]
+                })
+                if (ddl._tag === "Failure") assert.propertyVal(ddl.failure.reason.cause, "code", "55P03")
+                yield* admin.query(`ALTER TABLE ${schema}.events ALTER COLUMN at TYPE ${nextType} USING NULL`)
+              }).pipe(Effect.ensuring(Effect.sync(gate.release)))
+            }))
+        }
+      }
+
+      for (const transaction of [false, true]) {
+        it.effect(`cleans up retained ${columnType} discovery locks on ${mode} interruption, transaction=${transaction}`, () =>
+          Effect.gen(function*() {
+            const container = yield* PgContainer
+            const admin = yield* makeConnection()
+            const schema = `numeric_interrupt_${columnType}_${mode}_${transaction}`
+            yield* Effect.acquireRelease(
+              admin.query(`CREATE SCHEMA ${schema}`),
+              () => Effect.orDie(admin.query(`DROP SCHEMA ${schema} CASCADE`))
+            )
+            yield* admin.query(`CREATE TABLE ${schema}.events (at ${columnType})`)
+            yield* admin.query("SET lock_timeout = '100ms'")
+            const sql = `INSERT INTO ${schema}.events VALUES ($1) RETURNING at`
+            const gate = makeDescriptionGate(sql, { host: container.getHost(), port: container.getMappedPort(5432) })
+            yield* Effect.gen(function*() {
+              const connection = yield* makeConnection({ prepare: false, multiplex: true, stream: gate.stream })
+              if (transaction) {
+                yield* connection.query("CREATE TEMP TABLE interrupted_caller (n int4)")
+                yield* connection.query("BEGIN")
+                yield* connection.query("INSERT INTO interrupted_caller VALUES (1)")
+              }
+              const query = yield* Effect.forkScoped(
+                mode === "stream"
+                  ? Stream.runCollect(connection.stream(sql, [1714979289123]))
+                  : connection.query(sql, [1714979289123])
+              )
+              yield* Deferred.await(gate.analyzed)
+              // The initial rejected Parse cycle may already have sent an
+              // Execute that PostgreSQL skipped. Count only later messages.
+              const executionsBeforeInterruption = gate.executions
+              const locks = yield* admin.query(
+                "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid = $1 AND relation = $2::regclass AND granted) AS held",
+                [connection.processId, `${schema}.events`]
+              )
+              // Record interruption before releasing any held response; a
+              // scheduler yield would leave the ordering under test ambiguous.
+              query.interruptUnsafe()
+              gate.release()
+              const exit = yield* Fiber.await(query)
+              assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+              assert.deepStrictEqual((yield* connection.query("SELECT 1 AS n")).rows, [{ n: 1 }])
+              const contents = yield* admin.query(`SELECT count(*)::int4 AS n FROM ${schema}.events`)
+              const state = yield* admin.query("SELECT state FROM pg_stat_activity WHERE pid = $1", [
+                connection.processId
+              ])
+              assert.deepStrictEqual(state.rows, [{ state: transaction ? "idle in transaction" : "idle" }])
+              const nextType = columnType === "timestamp" ? "timestamptz" : "timestamp"
+              // Must succeed before the caller commits: discovery's locks
+              // should be released by its own interruption cleanup.
+              yield* admin.query(`ALTER TABLE ${schema}.events ALTER COLUMN at TYPE ${nextType} USING NULL`)
+              if (transaction) {
+                assert.deepStrictEqual((yield* connection.query("SELECT n FROM interrupted_caller")).rows, [{ n: 1 }])
+                yield* connection.query("COMMIT")
+              }
+              assert.deepStrictEqual(
+                { locks: locks.rows, executions: gate.executions - executionsBeforeInterruption, rows: contents.rows },
+                { locks: [{ held: true }], executions: 0, rows: [{ n: 0 }] },
+                "interruption must release a retained lock without executing the insert"
+              )
+            }).pipe(Effect.ensuring(Effect.sync(gate.release)))
+          }))
+      }
+    }
+  }
+
   for (const multiplex of [false, true]) {
     for (const code of ["42804", "42883", "42846", "26000", "0A000"]) {
       it.effect(`executes a failing function only once for ${code}, multiplex=${multiplex}`, () =>
