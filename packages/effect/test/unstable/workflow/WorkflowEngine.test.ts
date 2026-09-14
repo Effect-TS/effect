@@ -86,6 +86,65 @@ describe("deferred self-completion", () => {
 })
 
 describe("WorkflowEngine", () => {
+  it.effect("layerMemory reads a deferred completed before its first run", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("MemoryEarlyCompletion/Gate", { success: Schema.String })
+      const workflow = Workflow.make("MemoryEarlyCompletion", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: "early" })
+        assert.strictEqual(yield* workflow.execute({}), "early")
+      }).pipe(Effect.provide(
+        workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+          Layer.provideMerge(WorkflowEngine.layerMemory)
+        )
+      ))
+    }))
+
+  it.effect("layerMemory preserves completed workflows and deferred results after a late completion", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("MemoryLateCompletion/Gate", { success: Schema.String })
+      const workflow = Workflow.make("MemoryLateCompletion", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      let runs = 0
+      yield* Effect.gen(function*() {
+        const engine = yield* WorkflowEngine.WorkflowEngine
+        const executionId = yield* workflow.executionId({})
+        assert.strictEqual(yield* workflow.execute({}), "done")
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: "late" })
+        yield* DurableDeferred.succeed(gate, { token, value: "duplicate" })
+        assert.deepStrictEqual(
+          yield* workflow.poll(executionId),
+          Option.some(new Workflow.Complete({ exit: Exit.succeed("done") }))
+        )
+        assert.strictEqual(runs, 1)
+        // Memory's authoritative deferredResults must survive cleanup of the separate pending cache.
+        assert.deepStrictEqual(
+          yield* engine.deferredResult(gate).pipe(Effect.provideService(
+            WorkflowEngine.WorkflowInstance,
+            WorkflowEngine.WorkflowInstance.initial(workflow, executionId, yield* Scope.fork(yield* Effect.scope))
+          )),
+          Option.some(Exit.succeed("late"))
+        )
+      }).pipe(Effect.provide(
+        workflow.toLayer(() =>
+          Effect.sync(() => {
+            runs++
+            return "done"
+          })
+        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      ))
+    }))
+
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
     payload: { value: Schema.Number },
     success: Schema.Number,
