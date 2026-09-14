@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`1af4232fea7bc613e1dc68db9bec7b1f596d9e68`)
 
-Head: `origin/main` (`91abe38c3797b1c290aedef3b01e8c96dd4fee79`)
+Head: `origin/main` (`fd910d1cc6f817ceb677c688d964f4173b3aa0e3`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4956,6 +4956,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/McpServer`
 
+- `McpServer.McpServer` -> `McpServer.McpServer`: The service is now a Context.Service. initializedClients and notificationsMailbox are no longer exposed. Registration callbacks use McpSchema.McpRequestContext; McpServerClient is only supplied for initialized stateful requests. Prefer registerToolkit, registerResource, and registerPrompt over implementing the registry shape directly.
+
 - `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it still runs over a caller-provided RpcServer.Protocol.
 
 - `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/unstable/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
@@ -4964,7 +4966,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
 
+- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/unstable/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from prompt decoding and handler requirements instead of McpServerClient.
+
+- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/unstable/ai/McpServer. Prompt decoding and handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+
+- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/unstable/ai/McpServer. Resource and completion handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+
+- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/unstable/ai/McpServer. Handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
+
+- `McpServer.resource` -> `McpServer.resource`: Moved to effect/unstable/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from resource and completion handler requirements instead of McpServerClient.
+
 - `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it remains the Effect-level runner over RpcServer.Protocol.
+
+- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/unstable/ai/McpServer. The registration layer supplies McpSchema.McpRequestContext to handlers instead of excluding McpServerClient from requirements. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
 
 ### `@effect/ai/Model`
 
@@ -5938,8 +5952,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventLogRemote.Hello` -> `effect/unstable/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
 
-- `EventLogRemote.Ping`: TODO: needs guidance
-
 - `EventLogRemote.Pong` -> `none`: The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol.
 
 - `EventLogRemote.ProtocolRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol request union.
@@ -6586,7 +6598,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.Size` -> `ByteSize.ByteSize`: Use ByteSize.bytes or unit constructors for file sizes. Truncation lengths, buffer sizes, and read/write counts use number. File.seek takes and returns signed bigint positions; it can fail with PlatformError, including BadArgument when seeking before the start.
 
-- `FileSystem.SizeInput` -> `ByteSize.Input`: File-size and path-backed range inputs use ByteSize.Input. Truncation lengths, Web File ranges, and buffer sizes use number.
+- `FileSystem.SizeInput` -> `ByteSize.Input`: File-size and path-backed range inputs use ByteSize.Input. String inputs must be non-negative decimal integers without leading zeros, followed by a canonical unit symbol or lowercase unit name, with at most one separating space. Parse external strings or fractional quantities with ByteSize.fromString (Option) or ByteSize.fromStringUnsafe (throws), then pass the resulting ByteSize. Truncation lengths, Web File ranges, and buffer sizes use number.
 
 - `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed, bytesToRead and offset accept ByteSize inputs, and chunkSize uses number.
 
@@ -7914,7 +7926,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/sql-pg/PgClient`
 
-- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service.
+- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers.
 
 - `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig.
 
@@ -8673,8 +8685,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Workflow.AnyTaggedRequestSchema` -> `none`: The TaggedRequest adapter constraint was removed. Define the workflow explicitly with Workflow.make and the request payload, success, error, and PrimaryKey schemas.
 
 - `Workflow.CaptureDefects` -> `effect/unstable/workflow/Workflow#CaptureDefects`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same true default.
-
-- `Workflow.Complete`: TODO: needs guidance
 
 - `Workflow.Execution` -> `effect/unstable/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to \_tag.
 
@@ -15290,6 +15300,8 @@ Schema.toFormatter(schema)
 - `Secret.SecretTypeId` -> `Redacted.isRedacted`: The Secret marker was removed; use the Redacted runtime guard.
 
 - `Secret.fromIterable` -> `Redacted.make(Array.from(iterable).join(""))`: Secret was removed; join the character iterable and wrap the resulting string in Redacted.
+
+- `Secret.fromString`: TODO: needs guidance
 
 - `Secret.isSecret` -> `Redacted.isRedacted`: Secret was removed in favor of Redacted.
 
