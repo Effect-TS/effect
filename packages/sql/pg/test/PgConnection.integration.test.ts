@@ -78,7 +78,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         flag: true,
         text: "hello",
         bytes: new Uint8Array([1, 255]),
-        instant: instant.getTime(),
+        instant,
         numbers: [1, null, 3],
         nil: null,
         jsonb: { nested: true }

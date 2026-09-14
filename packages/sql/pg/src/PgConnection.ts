@@ -843,11 +843,8 @@ const inferScalar = (value: unknown): PgTypes.Parameter => {
       // or timestamp column the way it did with the text-protocol drivers.
       return inferredParameter(0, value)
   }
-  if (value instanceof Date) {
-    const time = value.getTime()
-    if (Number.isNaN(time)) throw new PgTypes.CodecError({ message: "Invalid Date parameter" })
-    return inferredParameter(PgTypes.OID.timestamptz, time)
-  }
+  // The codec rejects an invalid Date when the parameter is encoded.
+  if (value instanceof Date) return inferredParameter(PgTypes.OID.timestamptz, value)
   if (value instanceof Uint8Array) return inferredParameter(PgTypes.OID.bytea, value)
   if (value instanceof Int8Array) {
     return inferredParameter(
