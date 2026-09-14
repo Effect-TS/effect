@@ -8,6 +8,7 @@
  */
 import * as Context from "../../Context.ts"
 import * as DateTime from "../../DateTime.ts"
+import * as Deferred from "../../Deferred.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
@@ -320,9 +321,9 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
-  // A child may complete while its parent run is still unwinding. Subscribe to
-  // the run's reply before reading storage so the wake cannot fall between the
-  // parent's last read and its suspended reply.
+  // A child or deferred may complete while a run is still unwinding. Subscribe
+  // to the run's reply before reading storage so the wake cannot fall between
+  // the run's last read and its suspended reply.
   const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
     const waiter = yield* storage.registerReplyHandler(
       new Message.OutgoingRequest<any>({
@@ -400,6 +401,15 @@ export const make = Effect.gen(function*() {
             let currentRun: Entity.Request<any> | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
+            const resumeCurrentRun = () =>
+              resumeGate.withPermitsIfAvailable(1)(
+                currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
+              ).pipe(
+                // Release the gate before reset can start another run, so later
+                // completions can wake that replay.
+                Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+                ensureSuccess
+              )
             return {
               run: (request: Entity.Request<any>) => {
                 currentRun = request
@@ -493,19 +503,22 @@ export const make = Effect.gen(function*() {
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
-                yield* deferredState.deferredDone(executionId, payload.name)
-                yield* ensureSuccess(resume(workflow, executionId))
-                return payload.exit
+                const reply = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+                // An asynchronous RPC reply releases the concurrency slot while
+                // keeping the completion unacknowledged until its wake is handled.
+                yield* Effect.gen(function*() {
+                  yield* deferredState.deferredDone(executionId, payload.name)
+                  yield* resumeCurrentRun()
+                  return payload.exit
+                }).pipe(
+                  (effect) => Deferred.complete(reply, effect),
+                  Effect.forkIn(activation, { startImmediately: true })
+                )
+                return reply
               }),
 
               resume: () =>
-                resumeGate.withPermitsIfAvailable(1)(
-                  currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
-                ).pipe(
-                  // Release the gate before reset can start another parent run, so
-                  // later child completions can wake that replay.
-                  Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
-                  ensureSuccess,
+                resumeCurrentRun().pipe(
                   Rpc.wrap({ fork: true, uninterruptible: true })
                 )
             }
