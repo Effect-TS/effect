@@ -4,6 +4,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import * as AiError from "effect/unstable/ai/AiError"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -231,6 +232,52 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             }))
         }
+
+        it.effect("preserves declared handler validation failures in return mode", () =>
+          Effect.gen(function*() {
+            let receivedValue: string | undefined
+            const failure = AiError.make({
+              module: "Toolkit",
+              method: "NestedTool.handle",
+              reason: new AiError.ToolParameterValidationError({
+                toolName: "NestedTool",
+                description: "Nested arguments failed validation"
+              })
+            })
+            const toolkit = Toolkit.make(Tool.make("PublicTool", {
+              parameters: Schema.Struct({ value: Schema.String }),
+              success: Schema.String,
+              failure: AiError.AiError,
+              failureMode: "return"
+            }))
+            const client = yield* makeMcpStdioHarness(
+              protocol,
+              [protocol],
+              McpServer.toolkit(toolkit).pipe(
+                Layer.provide(toolkit.toLayer({
+                  PublicTool: ({ value }) => {
+                    receivedValue = value
+                    return Effect.fail(failure)
+                  }
+                }))
+              )
+            )
+            yield* client.initialize()
+            const message = yield* client.sendRequest("tools/call", {
+              name: "PublicTool",
+              arguments: { value: "valid" }
+            })
+
+            assert.strictEqual(receivedValue, "valid")
+            assert.isUndefined(message.error)
+            const result = yield* decodeCallTool(message.result)
+            assert.isTrue(result.isError)
+            assert.isUndefined(result.structuredContent)
+            assert.deepStrictEqual(result.content, [{
+              type: "text",
+              text: JSON.stringify(yield* Schema.encodeEffect(AiError.AiError)(failure))
+            }])
+          }))
 
         it.effect("MUST call a registered tool with valid arguments", () =>
           Effect.gen(function*() {
