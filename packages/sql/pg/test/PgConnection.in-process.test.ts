@@ -1,6 +1,6 @@
 import { PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Redacted, Stream } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
@@ -137,6 +137,150 @@ const errorResponse = (fields: ReadonlyArray<readonly [string, string]>): Buffer
     ])
   )
 
+// A protocol peer for counting writes and injecting errors without network timing.
+// It describes numeric parameters as int4 (or a timestamp insert's first
+// parameter as timestamptz) and returns no rows from executions.
+const makeNumericPeer = (options?: {
+  readonly failCommand?: string
+  readonly ambiguous?: boolean
+  readonly timestamp?: boolean
+  readonly holdDescription?: boolean
+}) => {
+  const writes: Array<ReadonlyArray<string>> = []
+  const parses: Array<{ readonly sql: string; readonly oids: ReadonlyArray<number> }> = []
+  const statements = new Map<string, { readonly sql: string; readonly oids: ReadonlyArray<number> }>()
+  const descriptionRequested = Deferred.makeUnsafe<void>()
+  const cancellations: Array<Buffer> = []
+  let statementDescriptions = 0
+  let descriptionWasHeld = false
+  let startup = true
+  let status = "I"
+  let failed = false
+  let portalSql = ""
+  const socket: Duplex = new Duplex({
+    read() {},
+    write(chunk: Buffer, _encoding, callback) {
+      const replies: Array<Buffer> = []
+      let holdReplies = false
+      if (startup) {
+        startup = false
+        replies.push(authenticationOk, backendKeyData, readyForQuery)
+      } else {
+        writes.push(frontendTags(chunk))
+        for (let offset = 0; offset < chunk.length; offset += 1 + chunk.readInt32BE(offset + 1)) {
+          const tag = String.fromCharCode(chunk[offset])
+          const payload = chunk.subarray(offset + 5, offset + 1 + chunk.readInt32BE(offset + 1))
+          const fail = (code: string, message: string) => {
+            replies.push(errorResponse([["S", "ERROR"], ["C", code], ["M", message]]))
+            failed = true
+            if (status === "T") status = "E"
+          }
+          if (tag === "S") {
+            replies.push(backendMessage("Z", Buffer.from(status)))
+            failed = false
+          } else if (!failed) {
+            switch (tag) {
+              case "P": {
+                const nameEnd = payload.indexOf(0)
+                const queryEnd = payload.indexOf(0, nameEnd + 1)
+                const sql = payload.subarray(nameEnd + 1, queryEnd).toString()
+                const count = payload.readInt16BE(queryEnd + 1)
+                const oids = Array.from({ length: count }, (_, index) => payload.readInt32BE(queryEnd + 3 + index * 4))
+                parses.push({ sql, oids })
+                if (status === "E" && !sql.startsWith("ROLLBACK")) {
+                  fail("25P02", "current transaction is aborted")
+                } else if (options?.failCommand !== undefined && sql.startsWith(options.failCommand)) {
+                  fail("42601", `injected failure: ${sql}`)
+                } else if (options?.timestamp && sql.startsWith("INSERT") && oids[0] !== 0 && oids[0] !== 1184) {
+                  fail("42804", "column at is of type timestamp with time zone but expression is of type integer")
+                } else if (options?.ambiguous && oids.includes(0)) {
+                  fail("42725", "operator is not unique: unknown + unknown")
+                } else {
+                  statements.set(payload.subarray(0, nameEnd).toString(), { sql, oids })
+                  replies.push(backendMessage("1", Buffer.alloc(0)))
+                }
+                break
+              }
+              case "B": {
+                const portalEnd = payload.indexOf(0)
+                const nameEnd = payload.indexOf(0, portalEnd + 1)
+                portalSql = statements.get(payload.subarray(portalEnd + 1, nameEnd).toString())!.sql
+                replies.push(backendMessage("2", Buffer.alloc(0)))
+                break
+              }
+              case "D": {
+                if (payload[0] === 0x53) {
+                  statementDescriptions++
+                  if (options?.holdDescription && !descriptionWasHeld) {
+                    descriptionWasHeld = true
+                    holdReplies = true
+                    Deferred.doneUnsafe(descriptionRequested, Effect.void)
+                  }
+                  const statement = statements.get(payload.subarray(1, -1).toString())!
+                  replies.push(backendMessage(
+                    "t",
+                    Buffer.concat([
+                      int16(statement.oids.length),
+                      ...statement.oids.map((oid, index) =>
+                        int32(
+                          oid === 0
+                            ? options?.timestamp && statement.sql.startsWith("INSERT") && index === 0 ? 1184 : 23
+                            : oid
+                        )
+                      )
+                    ])
+                  ))
+                }
+                replies.push(backendMessage("n", Buffer.alloc(0)))
+                break
+              }
+              case "E":
+                if (portalSql === "BEGIN" || portalSql.startsWith("ROLLBACK TO")) status = "T"
+                else if (portalSql === "COMMIT" || portalSql === "ROLLBACK") status = "I"
+                replies.push(backendMessage("C", Buffer.from("SELECT 0\0")))
+                break
+              case "C":
+                replies.push(backendMessage("3", Buffer.alloc(0)))
+                break
+            }
+          }
+        }
+      }
+      if (replies.length > 0 && !holdReplies) queueMicrotask(() => socket.push(Buffer.concat(replies)))
+      callback()
+    }
+  })
+  const cancelStream = () => {
+    const cancellation = new Duplex({
+      read() {},
+      write(chunk: Buffer, _encoding, callback) {
+        cancellations.push(Buffer.from(chunk))
+        queueMicrotask(() => {
+          if (status === "T") status = "E"
+          socket.push(Buffer.concat([
+            errorResponse([["S", "ERROR"], ["C", "57014"], ["M", "canceling statement due to user request"]]),
+            backendMessage("Z", Buffer.from(status))
+          ]))
+          cancellation.destroy()
+        })
+        callback()
+      }
+    })
+    return cancellation
+  }
+  return {
+    socket,
+    writes,
+    parses,
+    descriptionRequested,
+    cancellations,
+    cancelStream,
+    get statementDescriptions() {
+      return statementDescriptions
+    }
+  }
+}
+
 const withTcpServer = (
   onConnection: (socket: Net.Socket) => void
 ) =>
@@ -194,6 +338,108 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
+  it.effect("pipelines distinct cold numeric queries in the first write", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer()
+      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, multiplex: true })
+      yield* Effect.all([
+        connection.query("SELECT $1::int4 AS first", [1]),
+        connection.query("SELECT $1::int4 AS second", [2]),
+        connection.query("SELECT $1::int4 AS third", [3])
+      ], { concurrency: "unbounded" })
+
+      assert.strictEqual(
+        peer.writes[0].filter((tag) => tag === "P").length,
+        3,
+        `query writes: ${peer.writes.map((tags) => tags.join("")).join(", ")}`
+      )
+    }))
+
+  for (
+    const [name, config, mode] of [
+      ["prepared", {}, "query"],
+      ["prepare: false", { prepare: false }, "query"],
+      ["zero cache size", { preparedStatementCacheSize: 0 }, "query"],
+      ["unprepared execution", {}, "unprepared"],
+      ["stream", {}, "stream"]
+    ] as const
+  ) {
+    for (const transaction of [false, true]) {
+      it.effect(`reuses numeric discovery for ${name}, transaction=${transaction}`, () =>
+        Effect.gen(function*() {
+          const peer = makeNumericPeer()
+          const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, ...config })
+          if (transaction) yield* connection.query("BEGIN")
+          const costs: Array<{ descriptions: number; savepoints: number }> = []
+          for (const value of [1, 2, 3]) {
+            const sql = "SELECT $1::int4 AS n"
+            if (mode === "stream") yield* Stream.runCollect(connection.stream(sql, [value]))
+            else yield* connection.query(sql, [value], mode !== "unprepared")
+            costs.push({
+              descriptions: peer.statementDescriptions,
+              savepoints: peer.parses.filter(({ sql }) => sql.startsWith("SAVEPOINT ")).length
+            })
+          }
+          if (transaction) yield* connection.query("COMMIT")
+
+          assert.deepStrictEqual(costs[2], costs[0], "repeat executions must not repeat discovery or its savepoints")
+        }))
+    }
+  }
+
+  for (const command of ["SAVEPOINT ", "ROLLBACK TO SAVEPOINT ", "RELEASE SAVEPOINT "]) {
+    it.effect(`propagates ${command.trim()} failures instead of falling back to numeric inference`, () =>
+      Effect.gen(function*() {
+        const peer = makeNumericPeer({
+          failCommand: command,
+          ambiguous: command.startsWith("ROLLBACK"),
+          timestamp: true
+        })
+        const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+        yield* connection.query("BEGIN")
+        const error = yield* Effect.flip(connection.query("INSERT INTO numeric_events VALUES ($1, $2 + $3)", [1, 2, 3]))
+
+        const injected = peer.parses.find(({ sql }) => sql.startsWith(command))
+        assert.isDefined(injected)
+        assert.propertyVal(error.reason.cause, "code", "42601")
+        assert.propertyVal(error.reason.cause, "message", `injected failure: ${injected!.sql}`)
+      }))
+  }
+
+  it.effect("attempts to release the discovery savepoint even when rollback fails", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer({ failCommand: "ROLLBACK TO SAVEPOINT ", ambiguous: true, timestamp: true })
+      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+      yield* connection.query("BEGIN")
+      yield* Effect.exit(connection.query("INSERT INTO numeric_events VALUES ($1, $2 + $3)", [1, 2, 3]))
+
+      assert.isTrue(peer.parses.some(({ sql }) => sql.startsWith("ROLLBACK TO SAVEPOINT ")))
+      assert.isTrue(peer.parses.some(({ sql }) => sql.startsWith("RELEASE SAVEPOINT ")))
+    }))
+
+  it.effect("rolls back and releases the discovery savepoint before completing interruption", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer({ timestamp: true, holdDescription: true })
+      let connections = 0
+      const connection = yield* PgConnection.make({
+        username: "test",
+        stream: () => connections++ === 0 ? peer.socket : peer.cancelStream()
+      })
+      yield* connection.query("BEGIN")
+      const fiber = yield* Effect.forkScoped(connection.query("INSERT INTO numeric_events VALUES ($1)", [1]))
+      yield* Deferred.await(peer.descriptionRequested)
+      yield* Fiber.interrupt(fiber)
+      const exit = yield* Fiber.await(fiber)
+
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+      assert.deepStrictEqual(peer.cancellations, [cancelRequest])
+      const cleanup = peer.parses.slice(-2).map(({ sql }) => sql)
+      assert.isTrue(cleanup[0].startsWith("ROLLBACK TO SAVEPOINT "))
+      assert.isTrue(cleanup[1].startsWith("RELEASE SAVEPOINT "))
+      yield* connection.query("SELECT 1")
+      yield* connection.query("COMMIT")
+    }))
+
   it.live("forwards startup defaults and lets explicit fields override URL values", () =>
     Effect.scoped(Effect.gen(function*() {
       let parameters: ReadonlyMap<string, string> | undefined

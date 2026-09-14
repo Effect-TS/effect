@@ -25,6 +25,75 @@ const assertInterruptedOnClose = (
   })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
+  for (const columnType of ["timestamp", "timestamptz"]) {
+    it.effect(`preserves a transaction through ${columnType} discovery and ambiguous numeric fallback`, () =>
+      Effect.gen(function*() {
+        const connection = yield* makeConnection()
+        yield* connection.query(`CREATE TEMP TABLE numeric_transaction (at ${columnType})`)
+        yield* connection.query("BEGIN")
+        const inserted = yield* connection.query("INSERT INTO numeric_transaction VALUES ($1) RETURNING at", [
+          1714979289123
+        ])
+        assert.deepStrictEqual(inserted.rows, [{ at: 1714979289123 }])
+
+        // Leaving both operands untyped makes PostgreSQL reject the speculative
+        // parse. Its fallback must preserve the insert and the open transaction.
+        const sum = yield* connection.query("SELECT $1 + $2 AS total", [1, 2])
+        assert.deepStrictEqual(sum.rows, [{ total: 3 }])
+        const second = yield* connection.query("INSERT INTO numeric_transaction VALUES ($1) RETURNING at", [-1234])
+        assert.deepStrictEqual(second.rows, [{ at: -1234 }])
+        yield* connection.query("COMMIT")
+        assert.deepStrictEqual((yield* connection.query("SELECT at FROM numeric_transaction ORDER BY at")).rows, [
+          { at: -1234 },
+          { at: 1714979289123 }
+        ])
+      }))
+
+    it.effect(`rediscovers an unprepared numeric parameter after its column changes to ${columnType}`, () =>
+      Effect.gen(function*() {
+        const connection = yield* makeConnection({ prepare: false })
+        yield* connection.query("CREATE TEMP TABLE changing_numeric_type (at bigint)")
+        const insert = () =>
+          connection.query("INSERT INTO changing_numeric_type VALUES ($1) RETURNING at", [1714979289123])
+        assert.deepStrictEqual((yield* insert()).rows, [{ at: BigInt(1714979289123) }])
+        yield* connection.query("DELETE FROM changing_numeric_type")
+        yield* connection.query(`ALTER TABLE changing_numeric_type ALTER COLUMN at TYPE ${columnType} USING NULL`)
+        assert.deepStrictEqual((yield* insert()).rows, [{ at: 1714979289123 }])
+        const prepared = yield* connection.query("SELECT count(*)::int4 AS count FROM pg_prepared_statements")
+        assert.deepStrictEqual(prepared.rows, [{ count: 0 }])
+      }))
+  }
+
+  it.effect("falls back to ordinary numeric inference for ambiguous unprepared expressions", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({ prepare: false })
+      for (const [left, right] of [[1, 2], [1.5, 2.25]]) {
+        assert.deepStrictEqual((yield* connection.query("SELECT $1 + $2 AS total", [left, right])).rows, [
+          { total: left + right }
+        ])
+      }
+    }))
+
+  it.effect("requires a pre-existing savepoint to recover a timestamp type mismatch inside a transaction", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("CREATE TEMP TABLE timestamp_recovery (at timestamp)")
+      yield* connection.query("BEGIN")
+      yield* connection.query("SAVEPOINT before_mismatch")
+      // Explicit int4 bypasses automatic timestamp resolution and proves that
+      // retrying 42804 alone cannot recover an already-aborted transaction.
+      const mismatch = yield* Effect.flip(
+        connection.query("INSERT INTO timestamp_recovery VALUES ($1)", [PgTypes.int4(0)])
+      )
+      assert.propertyVal(mismatch.reason.cause, "code", "42804")
+      const aborted = yield* Effect.flip(connection.query("SELECT 1"))
+      assert.propertyVal(aborted.reason.cause, "code", "25P02")
+      yield* connection.query("ROLLBACK TO SAVEPOINT before_mismatch")
+      const inserted = yield* connection.query("INSERT INTO timestamp_recovery VALUES ($1) RETURNING at", [0])
+      assert.deepStrictEqual(inserted.rows, [{ at: 0 }])
+      yield* connection.query("COMMIT")
+    }))
+
   it.effect("interrupts notification consumers when the connection scope closes", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Scope.Scope)
