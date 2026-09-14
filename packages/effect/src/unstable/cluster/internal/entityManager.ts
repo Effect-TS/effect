@@ -9,7 +9,7 @@ import * as Equal from "../../../Equal.ts"
 import * as Exit from "../../../Exit.ts"
 import * as Fiber from "../../../Fiber.ts"
 import { identity } from "../../../Function.ts"
-import { scopeAddFinalizerUnsafe } from "../../../internal/effect.ts"
+import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../../internal/effect.ts"
 import * as Latch from "../../../Latch.ts"
 import * as Metric from "../../../Metric.ts"
 import * as Option from "../../../Option.ts"
@@ -91,11 +91,11 @@ export type EntityState = {
     sentReply: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
+    /** Set when the request should not outlive its caller. */
+    callerScope?: Scope.Scope | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
-  /** Forget a volatile request whose caller is gone and interrupt its handler. */
-  readonly onCallerClosed: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
   readonly keepAliveLatch: Latch.Latch
   keepAliveEnabled: boolean
 }
@@ -189,7 +189,6 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
-    let currentWrite: EntityState["write"] | undefined
     let defectRequestIds = new Set<Snowflake.Snowflake>()
     let isRestartingDueToDefect = false
 
@@ -263,9 +262,7 @@ export const make = Effect.fnUntraced(function*<
                           lastSentChunk: request.lastSentChunk
                         } as any) as any
                       },
-                      Context.get(request.rpc.annotations, WithTransaction)
-                        ? { onRequest: options.storage.withTransaction }
-                        : undefined
+                      requestWriteOptions(request)
                     ).pipe(
                       Effect.forkIn(scope)
                     )
@@ -335,24 +332,18 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        // Cleanup must reach handlers started by replay before the resource
-        // finishes acquiring. Clear the writer before this server shuts down.
-        yield* Effect.acquireRelease(
+        yield* Scope.addFinalizer(
+          scope,
           Effect.sync(() => {
-            currentWrite = server.write
-          }),
-          () =>
-            Effect.sync(() => {
-              currentWrite = undefined
-              isShuttingDown = true
-            })
-        ).pipe(Scope.provide(scope))
+            isShuttingDown = true
+          })
+        )
 
         if (defectRequestIds.size > 0) {
           for (const id of defectRequestIds) {
             const request = activeRequests.get(id)
             if (!request) continue
-            const { lastSentChunk, message, rpc } = request
+            const { lastSentChunk, message } = request
             yield* server.write(
               0,
               {
@@ -364,19 +355,8 @@ export const make = Effect.fnUntraced(function*<
                   lastSentChunk
                 } as any) as any
               },
-              Context.get(rpc.annotations, WithTransaction)
-                ? { onRequest: options.storage.withTransaction }
-                : undefined
+              requestWriteOptions(request)
             )
-            // The handler can close its caller before server.write has finished
-            // registering its fiber, so retry cleanup after replay admission.
-            if (!activeRequests.has(id)) {
-              yield* Effect.ignoreCause(server.write(0, {
-                _tag: "Interrupt",
-                requestId: id as any,
-                interruptors: []
-              }))
-            }
           }
           defectRequestIds.clear()
         }
@@ -421,22 +401,6 @@ export const make = Effect.fnUntraced(function*<
         return writeRef.state.current.value(clientId, message, writeOptions)
       },
       activeRequests,
-      onCallerClosed(requestId) {
-        return Effect.suspend(() => {
-          if (!activeRequests.delete(requestId)) return Effect.void
-          if (activeRequests.size === 0) {
-            state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-          }
-          // Construction may still be pending. Forget the request without
-          // waiting for a server; replay skips requests that are no longer active.
-          if (!currentWrite) return Effect.void
-          return Effect.ignoreCause(currentWrite(0, {
-            _tag: "Interrupt",
-            requestId: requestId as any,
-            interruptors: []
-          }))
-        })
-      },
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
       keepAliveLatch,
       keepAliveEnabled: false
@@ -552,6 +516,15 @@ export const make = Effect.fnUntraced(function*<
                 return Effect.fail(new MailboxFull({ address: message.envelope.address }))
               }
 
+              const callerScope = message.callerScope !== undefined &&
+                  !Context.get(message.annotations, Persisted) &&
+                  Context.get(message.annotations, ClusterSchema.Uninterruptible) === false
+                ? message.callerScope
+                : undefined
+              if (callerScope?.state._tag === "Closed") {
+                // The caller is already gone; there is nobody to deliver to.
+                return Effect.void
+              }
               entry = {
                 rpc,
                 message,
@@ -563,21 +536,19 @@ export const make = Effect.fnUntraced(function*<
                 sequence: Option.match(message.lastSentReply, {
                   onNone: () => 0,
                   onSome: (reply) => reply._tag === "Chunk" ? reply.sequence + 1 : 0
-                })
-              }
-              const callerScope = message.callerScope
-              const followsCaller = callerScope !== undefined &&
-                !Context.get(message.annotations, Persisted) &&
-                Context.get(message.annotations, ClusterSchema.Uninterruptible) === false
-              if (followsCaller && callerScope.state._tag === "Closed") {
-                // The caller is already gone; there is nobody to deliver to.
-                return Effect.void
+                }),
+                callerScope
               }
               server.activeRequests.set(message.envelope.requestId, entry)
-              if (followsCaller) {
-                // Registered synchronously with admission, so no interruption can
-                // separate the two. Fires when the caller's RPC scope closes.
-                scopeAddFinalizerUnsafe(callerScope, {}, () => server.onCallerClosed(message.envelope.requestId))
+              if (callerScope !== undefined) {
+                // Forget the request when its caller goes away, delivered or not.
+                // Registered synchronously with admission, so nothing can separate the two.
+                scopeAddFinalizerUnsafe(callerScope, {}, () =>
+                  Effect.sync(() => {
+                    if (server.activeRequests.delete(message.envelope.requestId) && server.activeRequests.size === 0) {
+                      server.lastActiveCheck = clock.currentTimeMillisUnsafe()
+                    }
+                  }))
               }
               return server.write(
                 0,
@@ -592,9 +563,7 @@ export const make = Effect.fnUntraced(function*<
                     )
                   })
                 },
-                Context.get(message.annotations, WithTransaction)
-                  ? { onRequest: options.storage.withTransaction }
-                  : undefined
+                requestWriteOptions(entry)
               )
             }
             case "IncomingEnvelope": {
@@ -625,6 +594,30 @@ export const make = Effect.fnUntraced(function*<
       CurrentLogAnnotations,
       {}
     )
+  }
+
+  // Every handler start for a request that follows its caller, including
+  // replays after a defect, is bound to the caller's scope: if the scope is
+  // already closed the handler is not run, and if it closes later the
+  // handler's fiber is interrupted. Cleanup then flows through the normal
+  // Exit path.
+  const bindToCaller = (callerScope: Scope.Scope) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    Effect.withFiber<A, E, R>((fiber) => {
+      if (callerScope.state._tag === "Closed") return Effect.interrupt
+      const key = {}
+      scopeAddFinalizerUnsafe(callerScope, key, () => Effect.sync(() => fiber.interruptUnsafe(fiber.id)))
+      return Effect.ensuring(effect, Effect.sync(() => scopeRemoveFinalizerUnsafe(callerScope, key)))
+    })
+
+  const requestWriteOptions = (
+    entry: { readonly message: Message.IncomingRequestLocal<any>; readonly callerScope?: Scope.Scope | undefined }
+  ): Parameters<EntityState["write"]>[2] => {
+    const onTransaction = Context.get(entry.message.annotations, WithTransaction)
+      ? options.storage.withTransaction
+      : undefined
+    const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
+    if (!onCaller) return onTransaction && { onRequest: onTransaction }
+    return { onRequest: onTransaction ? (effect) => onCaller(onTransaction(effect)) : onCaller }
   }
 
   const decodeMessage = makeMessageDecode(entityRpcs)
