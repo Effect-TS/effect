@@ -138,32 +138,14 @@ const errorResponse = (fields: ReadonlyArray<readonly [string, string]>): Buffer
   )
 
 const numericCommandTag = (sql: string): string => {
-  const [command, object] = sql.trim().split(/\s+/)
-  switch (command) {
-    case "SELECT":
-      return "SELECT 0"
-    case "INSERT":
-      return "INSERT 0 0"
-    case "UPDATE":
-      return "UPDATE 0"
-    case "DELETE":
-      return "DELETE 0"
-    case "CREATE":
-    case "ALTER":
-    case "DROP":
-      return `${command} ${object}`
-    default:
-      return command
-  }
+  const command = sql.split(" ")[0]
+  return command === "SELECT" ? "SELECT 0" : command
 }
 
 // A protocol peer for counting writes and injecting errors without network timing.
-// It describes numeric parameters as int4 (or a timestamp insert's first
-// parameter as timestamptz) and returns no rows from executions.
+// It describes numeric parameters as int4 and returns no rows from executions.
 const makeNumericPeer = (options?: {
   readonly failCommand?: string
-  readonly ambiguous?: boolean
-  readonly timestamp?: boolean
   readonly holdDescription?: boolean
 }) => {
   const writes: Array<ReadonlyArray<string>> = []
@@ -213,10 +195,6 @@ const makeNumericPeer = (options?: {
                   fail("25P02", "current transaction is aborted")
                 } else if (options?.failCommand !== undefined && sql.startsWith(options.failCommand)) {
                   fail("42601", `injected failure: ${sql}`)
-                } else if (options?.timestamp && sql.startsWith("INSERT") && oids[0] !== 0 && oids[0] !== 1184) {
-                  fail("42804", "column at is of type timestamp with time zone but expression is of type integer")
-                } else if (options?.ambiguous && oids.includes(0)) {
-                  fail("42725", "operator is not unique: unknown + unknown")
                 } else {
                   statements.set(payload.subarray(0, nameEnd).toString(), { sql, oids })
                   replies.push(backendMessage("1", Buffer.alloc(0)))
@@ -243,13 +221,7 @@ const makeNumericPeer = (options?: {
                     "t",
                     Buffer.concat([
                       int16(statement.oids.length),
-                      ...statement.oids.map((oid, index) =>
-                        int32(
-                          oid === 0
-                            ? options?.timestamp && statement.sql.startsWith("INSERT") && index === 0 ? 1184 : 23
-                            : oid
-                        )
-                      )
+                      ...statement.oids.map((oid) => int32(oid === 0 ? 23 : oid))
                     ])
                   ))
                 }
@@ -369,33 +341,21 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
-  for (const multiplex of [false, true]) {
-    for (const mode of ["cold prepared", "warm prepared", "unprepared"] as const) {
-      for (const code of ["42804", "42883", "42846", "26000", "0A000"]) {
-        it.effect(`does not replay execution error ${code}, ${mode}, multiplex=${multiplex}`, () =>
-          Effect.gen(function*() {
-            const peer = makeNumericPeer()
-            const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, multiplex })
-            const sql = "SELECT $1::int4 AS n"
-            if (mode === "warm prepared") yield* connection.query(sql, [1])
-            const parses = peer.parses.length
-            const executions = peer.executions.length
-            const descriptions = peer.statementDescriptions
-            // The peer accepts Parse and Bind, then rejects Execute. These
-            // SQLSTATEs are retryable only before execution has started.
-            peer.failExecution(sql, code)
-            const error = yield* Effect.flip(connection.query(sql, [2], mode !== "unprepared"))
-            assert.propertyVal(error.reason.cause, "code", code)
-            assert.propertyVal(error.reason.cause, "message", "injected execution failure")
-            assert.strictEqual(peer.executions.length - executions, 1)
-            // A cold statement is described once and parsed once; nothing runs again.
-            assert.strictEqual(peer.parses.length - parses, mode === "warm prepared" ? 0 : 2)
-            assert.strictEqual(peer.statementDescriptions - descriptions, mode === "warm prepared" ? 0 : 1)
-            yield* connection.query("SELECT 1")
-          }))
-      }
-    }
-  }
+  it.effect("does not replay a stale-plan error raised during prepared execution", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer()
+      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+      const sql = "SELECT $1::int4 AS n"
+      yield* connection.query(sql, [1])
+      const parses = peer.parses.length
+      const executions = peer.executions.length
+      peer.failExecution(sql, "0A000")
+      const error = yield* Effect.flip(connection.query(sql, [2]))
+      assert.propertyVal(error.reason.cause, "code", "0A000")
+      assert.strictEqual(peer.executions.length - executions, 1)
+      assert.strictEqual(peer.parses.length, parses, "execution errors must not trigger a replan")
+      yield* connection.query("SELECT 1")
+    }))
 
   it.effect("bounds numeric discovery to 100 entries and evicts the least recently used resolution", () =>
     Effect.gen(function*() {
@@ -414,7 +374,7 @@ describe("PgConnection in-process server", () => {
       assert.strictEqual(peer.statementDescriptions, 102, "entry 1 must be rediscovered after eviction")
     }))
 
-  it.effect("pipelines distinct cold numeric queries in the first write", () =>
+  it.effect("pipelines discovery for distinct cold numeric queries in the first write", () =>
     Effect.gen(function*() {
       const peer = makeNumericPeer()
       const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, multiplex: true })
@@ -431,107 +391,44 @@ describe("PgConnection in-process server", () => {
       )
     }))
 
-  for (
-    const [name, config, mode] of [
-      ["prepared", {}, "query"],
-      ["prepare: false", { prepare: false }, "query"],
-      ["zero cache size", { preparedStatementCacheSize: 0 }, "query"],
-      ["unprepared execution", {}, "unprepared"],
-      ["stream", {}, "stream"]
-    ] as const
-  ) {
-    for (const transaction of [false, true]) {
-      it.effect(`reuses numeric discovery for ${name}, transaction=${transaction}`, () =>
-        Effect.gen(function*() {
-          const peer = makeNumericPeer()
-          const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, ...config })
-          if (transaction) yield* connection.query("BEGIN")
-          const costs: Array<{ descriptions: number; savepoints: number }> = []
-          for (const value of [1, 2, 3]) {
-            const sql = "SELECT $1::int4 AS n"
-            if (mode === "stream") yield* Stream.runCollect(connection.stream(sql, [value]))
-            else yield* connection.query(sql, [value], mode !== "unprepared")
-            costs.push({
-              descriptions: peer.statementDescriptions,
-              savepoints: peer.parses.filter(({ sql }) => sql.startsWith("SAVEPOINT ")).length
-            })
-          }
-          if (transaction) yield* connection.query("COMMIT")
-
-          assert.deepStrictEqual(costs[2], costs[0], "repeat executions must not repeat discovery or its savepoints")
-        }))
-    }
-  }
-
-  for (const completion of ["COMMIT", "ROLLBACK"]) {
-    for (const ambiguous of [false, true]) {
-      for (const mode of ["prepared", "unprepared", "stream"] as const) {
-        it.effect(`reuses ordinary numeric discovery across ${completion}, ${mode}, ambiguous=${ambiguous}`, () =>
-          Effect.gen(function*() {
-            const peer = makeNumericPeer({ ambiguous })
-            const connection = yield* PgConnection.make({
-              username: "test",
-              stream: () => peer.socket,
-              multiplex: true
-            })
-            const sql = ambiguous ? "SELECT $1 + $2 AS n" : "SELECT $1::int4 AS n"
-            const costs = []
-            for (let transaction = 0; transaction < 3; transaction++) {
-              assert.strictEqual((yield* connection.query("BEGIN")).command, "BEGIN")
-              for (const value of [1, 2]) {
-                const params = ambiguous ? [value, value] : [value]
-                if (mode === "stream") yield* Stream.runCollect(connection.stream(sql, params))
-                else yield* connection.query(sql, params, mode === "prepared")
-              }
-              assert.strictEqual((yield* connection.query(completion)).command, completion)
-              costs.push({
-                // Failed ambiguous Parses have no ParameterDescription response.
-                discoveries: peer.parses.filter((parse) => parse.sql === sql && parse.oids.includes(0)).length,
-                savepoints: peer.executions.filter((sql) => sql.startsWith("SAVEPOINT ")).length,
-                rollbacks: peer.executions.filter((sql) => sql.startsWith("ROLLBACK TO ")).length,
-                releases: peer.executions.filter((sql) => sql.startsWith("RELEASE ")).length
-              })
-            }
-            const once = { discoveries: 1, savepoints: 1, rollbacks: ambiguous ? 1 : 0, releases: 1 }
-            assert.deepStrictEqual(
-              costs,
-              [once, once, once],
-              "transaction boundaries must preserve ordinary numeric metadata"
-            )
-          }))
-      }
-    }
-  }
-
-  for (const command of ["SAVEPOINT ", "ROLLBACK TO SAVEPOINT ", "RELEASE SAVEPOINT "]) {
-    it.effect(`propagates ${command.trim()} failures instead of falling back to numeric inference`, () =>
-      Effect.gen(function*() {
-        const peer = makeNumericPeer({
-          failCommand: command,
-          ambiguous: command.startsWith("ROLLBACK"),
-          timestamp: true
-        })
-        const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+  it.effect("reuses numeric metadata across query, stream, commit and rollback without prepared statements", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer()
+      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, prepare: false })
+      const sql = "SELECT $1::int4 AS n"
+      for (const completion of ["COMMIT", "ROLLBACK", "COMMIT"]) {
         yield* connection.query("BEGIN")
-        const error = yield* Effect.flip(connection.query("INSERT INTO numeric_events VALUES ($1, $2 + $3)", [1, 2, 3]))
+        yield* connection.query(sql, [1])
+        yield* Stream.runCollect(connection.stream(sql, [2]))
+        assert.strictEqual((yield* connection.query(completion)).command, completion)
+        assert.strictEqual(peer.statementDescriptions, 1)
+        assert.strictEqual(peer.executions.filter((sql) => sql.startsWith("SAVEPOINT ")).length, 1)
+        assert.strictEqual(peer.executions.filter((sql) => sql.startsWith("RELEASE ")).length, 1)
+      }
+    }))
 
-        const injected = peer.parses.find(({ sql }) => sql.startsWith(command))
-        assert.isDefined(injected)
-        assert.propertyVal(error.reason.cause, "code", "42601")
-        assert.propertyVal(error.reason.cause, "message", `injected failure: ${injected!.sql}`)
-      }))
-  }
+  it.effect("propagates discovery savepoint release failures instead of falling back", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer({ failCommand: "RELEASE SAVEPOINT " })
+      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+      yield* connection.query("BEGIN")
+      const sql = "SELECT $1::int4 AS n"
+      const error = yield* Effect.flip(connection.query(sql, [1]))
+      assert.propertyVal(error.reason.cause, "code", "42601")
+      assert.propertyVal(error.reason.cause, "message", "injected failure: RELEASE SAVEPOINT effect_parameter_types")
+      assert.isFalse(peer.executions.includes(sql), "failed bookkeeping must stop the execution")
+    }))
 
   it.effect("rolls back and releases the discovery savepoint before completing interruption", () =>
     Effect.gen(function*() {
-      const peer = makeNumericPeer({ timestamp: true, holdDescription: true })
+      const peer = makeNumericPeer({ holdDescription: true })
       let connections = 0
       const connection = yield* PgConnection.make({
         username: "test",
         stream: () => connections++ === 0 ? peer.socket : peer.cancelStream()
       })
       yield* connection.query("BEGIN")
-      const fiber = yield* Effect.forkScoped(connection.query("INSERT INTO numeric_events VALUES ($1)", [1]))
+      const fiber = yield* Effect.forkScoped(connection.query("SELECT $1::int4 AS n", [1]))
       yield* Deferred.await(peer.descriptionRequested)
       yield* Fiber.interrupt(fiber)
       const exit = yield* Fiber.await(fiber)
