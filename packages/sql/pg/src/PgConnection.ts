@@ -357,6 +357,8 @@ class PgConnectionImpl implements PgConnection {
   deadWith: SqlError | undefined
   closed = false
   transactionStatus: PgProtocol.TransactionStatus = "I"
+  /** Keep restoration invalidation armed through every nested savepoint rollback. */
+  private numericContextChanged = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
@@ -418,8 +420,18 @@ class PgConnectionImpl implements PgConnection {
 
   private readonly dispatch = (message: PgProtocol.BackendMessage<unknown>): void => {
     if (this.deadWith !== undefined) return
-    if (message._tag === "ReadyForQuery") this.transactionStatus = message.status
+    if (message._tag === "ReadyForQuery") {
+      this.transactionStatus = message.status
+      // ROLLBACK and ROLLBACK TO share a command tag. Only idle status proves
+      // the outer transaction ended; a savepoint must preserve this flag.
+      if (message.status === "I") this.numericContextChanged = false
+    }
     switch (message._tag) {
+      case "CommandComplete":
+        // Observe completed changes even while an interrupted consumer drains
+        // replies; a later rollback must invalidate their restored context.
+        this.onCommandComplete(parseCommandTag(message.commandTag).command)
+        break
       case "NotificationResponse": {
         const queues = this.channels.get(message.channel)
         if (queues !== undefined) {
@@ -497,12 +509,22 @@ class PgConnectionImpl implements PgConnection {
     )
   }
 
+  /** Invalidate changed contexts now, and again when their transaction restores them. */
+  private readonly onCommandComplete = (command: string): void => {
+    if (invalidatesNumericTypes(command)) {
+      this.numericTypes.clear()
+      if (this.transactionStatus === "T") this.numericContextChanged = true
+    } else if (this.numericContextChanged && (command === "COMMIT" || command === "ROLLBACK")) {
+      this.numericTypes.clear()
+    }
+  }
+
   /** Plans one execution. `cache` is `undefined` to force the unnamed path. */
   readonly encodeQuery = (
     sql: string,
     params: ReadonlyArray<unknown>,
     cache: PreparedCache | undefined,
-    resolve = this.transactionStatus === "T"
+    resolve: NumericResolution = this.transactionStatus === "T" ? "all" : "timestamps"
   ): Effect.Effect<Plan, SqlError> => encodeQuery(this, sql, params, cache, resolve)
 
   /**
@@ -720,16 +742,16 @@ class PgConnectionImpl implements PgConnection {
           if (timestamp) {
             this.pipelineActive++
             submitted = true
-            return this.enqueueExclusive(this.attempt(sql, params, wantRows, cache, true))
+            return this.enqueueExclusive(this.attempt(sql, params, wantRows, cache, "all"))
           }
-          const plan = yield* this.encodeQuery(sql, params, cache, false)
+          const plan = yield* this.encodeQuery(sql, params, cache, "inferred")
           entry = this.enqueuePlan(plan, wantRows)
           this.pipelineActive++
           submitted = true
           // @effect-diagnostics-next-line returnEffectInGen:off
           return retryQuery(this, plan, cache, this.awaitEntry(entry), () =>
             Effect.suspend(() =>
-              this.enqueueExclusive(this.attempt(sql, params, wantRows, undefined, true, false))
+              this.enqueueExclusive(this.attempt(sql, params, wantRows, undefined, "all", false))
             ))
         }))
       ).pipe(
@@ -783,7 +805,7 @@ class PgConnectionImpl implements PgConnection {
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
     cache: PreparedCache | undefined,
-    resolve = this.transactionStatus === "T",
+    resolve: NumericResolution = this.transactionStatus === "T" ? "all" : "timestamps",
     retry = true
   ): Effect.Effect<QueryOutput, SqlError> =>
     Effect.gen({ self: this }, function*() {
@@ -794,7 +816,7 @@ class PgConnectionImpl implements PgConnection {
       return yield* retryQuery(this, plan, cache, run, () =>
         Effect.andThen(
           finishNumericDiscovery(this, Exit.succeed(undefined)),
-          Effect.flatMap(this.encodeQuery(sql, params, undefined, true), (plan) => runQuery(this, plan, wantRows))
+          Effect.flatMap(this.encodeQuery(sql, params, undefined, "all"), (plan) => runQuery(this, plan, wantRows))
         ))
     }).pipe(Effect.onExit((exit) => finishNumericDiscovery(this, exit)))
 
@@ -1111,13 +1133,16 @@ const encodeUnnamed = (
   }
 }
 
+/** Inferred encoding never reads numeric metadata or initiates protocol discovery. */
+type NumericResolution = "inferred" | "timestamps" | "all"
+
 /** Resolves numeric timestamp inputs while retaining ordinary numeric inference. */
 const encodeQuery = (
   conn: PgConnectionImpl,
   sql: string,
   params: ReadonlyArray<unknown>,
   cache: PreparedCache | undefined,
-  resolve: boolean
+  resolve: NumericResolution
 ): Effect.Effect<Plan, SqlError> =>
   Effect.gen(function*() {
     const parameters = yield* Effect.try({
@@ -1128,8 +1153,11 @@ const encodeQuery = (
     let key: string | undefined
     if (params.some((value) => typeof value === "number")) {
       key = statementKey(sql, parameterTypes)
-      let resolved = conn.numericTypes.get(key)
-      if ((resolve && resolved === undefined) || hasTimestampParameter(params, resolved)) {
+      // The memo may gain a timestamp entry after pipeline routing. Never use
+      // it here in inferred mode: binding a timestamp requires exclusive fresh
+      // analysis. A numeric mismatch will take the exclusive retry path.
+      let resolved = resolve === "inferred" ? undefined : conn.numericTypes.get(key)
+      if ((resolve === "all" && resolved === undefined) || hasTimestampParameter(params, resolved)) {
         resolved = yield* resolveNumericParameters(conn, sql, params, parameterTypes)
         conn.numericTypes.set(key, resolved)
       }
@@ -1581,8 +1609,7 @@ const isDigits = (value: string): boolean => {
 
 const invalidatesNumericTypes = (command: string): boolean =>
   command === "ALTER" || command === "CREATE" || command === "DROP" || command === "DISCARD" ||
-  // Transaction completion also restores settings changed with SET LOCAL.
-  command === "SET" || command === "RESET" || command === "ROLLBACK" || command === "COMMIT"
+  command === "SET" || command === "RESET"
 
 /**
  * Tracks one query cycle while the connection routes backend messages to it.
@@ -1757,7 +1784,6 @@ class QueryMachine implements Consumer {
         this.command = parsed.command
         this.rowCount = parsed.rowCount
         this.oid = parsed.oid
-        if (invalidatesNumericTypes(parsed.command)) this.conn.numericTypes.clear()
         this.phase = "complete"
         return
       }
@@ -1971,7 +1997,7 @@ const streamRows = (
     // whole result, so naming the statement buys little and would need the
     // stale-plan retry to unwind rows already delivered.
     yield* Scope.addFinalizerExit(scope, (exit) => Effect.orDie(finishNumericDiscovery(conn, exit)))
-    const plan = yield* conn.encodeQuery(sql, params, undefined, true)
+    const plan = yield* conn.encodeQuery(sql, params, undefined, "all")
     const frame = plan.frame
 
     const socket = conn.session.socket
@@ -2087,7 +2113,6 @@ const streamRows = (
         }
         case "CommandComplete":
           if (phase !== "rows") return failDesync(`Unexpected CommandComplete during ${phase}`)
-          if (invalidatesNumericTypes(parseCommandTag(message.commandTag).command)) conn.numericTypes.clear()
           phase = "complete"
           return
         case "EmptyQueryResponse":
