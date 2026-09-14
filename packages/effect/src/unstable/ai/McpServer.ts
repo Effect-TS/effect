@@ -1811,6 +1811,15 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   }))
   const services = omitRequestServices(yield* Effect.context<never>())
   const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
+  const internalToolError = Effect.fnUntraced(function*(cause: Cause.Cause<unknown>) {
+    const failure = Cause.findFail(cause)
+    if (Result.isFailure(failure) && !Cause.hasDies(cause)) {
+      return yield* Effect.failCause(failure.failure)
+    }
+    yield* Effect.logError(cause)
+    yield* reportCause(cause)
+    return toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE)
+  })
   const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
   for (const tool of Object.values(built.tools)) {
     const strict = Tool.getStrictMode(tool) === true
@@ -1824,11 +1833,14 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
+    const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as (
+      error: unknown
+    ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
     const handleCause = Effect.fnUntraced(function*(cause: Cause.Cause<unknown>, decodingParameters = false) {
       const failure = Cause.findFail(cause)
       if (Result.isFailure(failure)) {
         return yield* Cause.hasDies(cause)
-          ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+          ? internalToolError(cause)
           : Effect.failCause(failure.failure)
       }
       const error = failure.success.error
@@ -1839,10 +1851,18 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         Context.get(Cause.reasonAnnotations(failure.success), InternalToolkit.FailureOrigin) === "handler" &&
         isDeclaredFailure(error)
       ) {
-        return toolErrorResult(error instanceof Error ? error.message : INTERNAL_TOOL_ERROR_MESSAGE)
+        return yield* (error instanceof Error
+          ? Effect.sync(() => toolErrorResult(error.message))
+          : encodeFailure(error).pipe(
+            Effect.map((encoded) =>
+              new CallToolResult({
+                isError: true,
+                content: encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
+              })
+            )
+          )).pipe(Effect.catchCause(internalToolError))
       }
-      yield* Effect.logError(cause)
-      return yield* Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+      return yield* internalToolError(cause)
     })
     const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
