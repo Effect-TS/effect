@@ -20,7 +20,7 @@ import * as Iconv from "iconv-lite"
 import { strict as assert } from "node:assert"
 import { readdirSync } from "node:fs"
 
-// Every generated codec module, keyed by its module name.
+// Every codec module, keyed by its module name.
 const codecs: ReadonlyArray<[module: string, codec: typeof Utf8]> = await Promise.all(
   readdirSync(new URL("../src/encoding/", import.meta.url))
     .filter((file) => file.endsWith(".ts"))
@@ -43,7 +43,7 @@ const bytes = (chunks: ReadonlyArray<Uint8Array>) => {
 }
 
 describe("CharacterEncoding", () => {
-  it("generates one codec module per canonical encoding", () => {
+  it("provides one codec module per canonical encoding", () => {
     assert.equal(codecs.length, 94)
     for (const [module, codec] of codecs) {
       assert.equal(typeof codec.encoding.name, "string", module)

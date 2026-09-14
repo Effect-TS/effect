@@ -104,26 +104,22 @@ explicit codec modules.
   codec lookup tables are constructed lazily and cached. Further compression and
   sharing of overlapping multibyte tables remain optimization topics.
 
-## Provenance and regeneration
+## Provenance
 
-Mapping tables are generated from the installed `packages/effect` development
-dependency, iconv-lite `0.7.3`. The workspace lockfile pins the resolved version;
-the generator records that package version in each generated table. No local
-iconv-lite checkout or Git metadata is required. Full MIT attribution is
-included in each generated data file. Conversion algorithms use iconv-lite's
-table format and single-byte/multibyte table-driven approach, with new typed
-conversion state and Effect integration. The installed package is not modified.
+Mapping tables were derived once from iconv-lite `0.7.3` and are committed as
+plain TypeScript data modules; there is no generator or build step. Each data
+file records that package version and carries the full MIT attribution.
+Conversion algorithms use iconv-lite's table format and single-byte/multibyte
+table-driven approach, with new typed conversion state and Effect integration.
 
-Switching from the original alpha checkout to installed 0.7.3 updates some
-GBK/GB18030 extension mappings to 0.7.3's private-use mappings. Generated data
-now follows that installed version, not the alpha's mapping revisions. The benchmark results below retain their
-recorded revisions and were measured before this regeneration.
+`iconv-lite` remains a development dependency of `packages/effect` only as the
+reference implementation for the test suite and benchmarks. The tests compare
+every codec against it, so upgrading it would surface any mapping difference.
 
-```sh
-node scripts/generate-character-encoding.ts
-pnpm lint-fix
-pnpm test --run packages/effect/test/CharacterEncoding.test.ts
-```
+Relative to the original alpha checkout, the committed 0.7.3 data updates some
+GBK/GB18030 extension mappings to 0.7.3's private-use mappings. The benchmark
+results below retain their recorded revisions and were measured before that
+change.
 
 ## Benchmark reproduction
 
