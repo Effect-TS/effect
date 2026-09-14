@@ -526,8 +526,30 @@ describe("PgTypes", () => {
   })
 
   describe("unknown OIDs", () => {
-    it("decodes to the raw bytes", () => {
-      assert.deepStrictEqual(PgTypes.decode(bytes("00ff"), 99999, 1), bytes("00ff"))
+    it("decodes unregistered scalar OIDs as UTF-8 text", () => {
+      for (const label of ["use_key", "gérer ☃", ""]) {
+        assert.strictEqual(PgTypes.decode(new TextEncoder().encode(label), 99999, 1), label)
+      }
+    })
+
+    it("rejects invalid UTF-8 with the same codec failure as text", () => {
+      for (const wire of ["ff", "c3", "c328"]) {
+        const expected = PgTypesResult.decode(bytes(wire), PgTypes.OID.text, 1)
+        const actual = PgTypesResult.decode(bytes(wire), 99999, 1)
+        assert.isTrue(Result.isFailure(expected))
+        assert.isTrue(Result.isFailure(actual))
+        if (Result.isFailure(expected) && Result.isFailure(actual)) {
+          assert.strictEqual(actual.failure._tag, "PgTypesCodecError")
+          assert.strictEqual(actual.failure.message, expected.failure.message)
+        }
+      }
+    })
+
+    it("keeps bytea binary even when its bytes are invalid UTF-8", () => {
+      const payload = bytes("00ff")
+      const value = PgTypes.decode(payload, PgTypes.OID.bytea, 1)
+      assert.instanceOf(value, Uint8Array)
+      assert.deepStrictEqual(value, payload)
     })
 
     it("fails to encode until a codec is registered", () => {
@@ -972,15 +994,38 @@ describe("PgTypes", () => {
       assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [null, "a"])
     })
 
-    it("copies the bytes of a column whose OID has no codec", () => {
-      const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([99999])) })
-      const payload = new Uint8Array([1, 2, 3])
+    it("reads unregistered scalar columns as UTF-8 text and preserves NULL", () => {
+      const parser = PgProtocol.makeParser({
+        readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, 99999, 99999, 99999, 99999]))
+      })
+      const messages = parser.push(dataRow([
+        PgTypes.encode(7, PgTypes.OID.int4),
+        new TextEncoder().encode("use_key"),
+        new TextEncoder().encode("gérer ☃"),
+        new Uint8Array(0),
+        null
+      ]))
+      assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [7, "use_key", "gérer ☃", "", null])
+    })
+
+    it("rejects invalid UTF-8 in an unregistered column with a codec error", () => {
+      for (const wire of ["ff", "c3", "c328"]) {
+        const parser = PgProtocol.makeParser({
+          readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, 99999]))
+        })
+        assertThrowsTagged(
+          "PgTypesCodecError",
+          () => parser.push(dataRow([PgTypes.encode(7, PgTypes.OID.int4), bytes(wire)]))
+        )
+      }
+    })
+
+    it("reads bytea as Uint8Array even when its bytes are invalid UTF-8", () => {
+      const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([PgTypes.OID.bytea])) })
+      const payload = bytes("00ff")
       const value = (parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values[0]
+      assert.instanceOf(value, Uint8Array)
       assert.deepStrictEqual(value, payload)
-      // A copy, not a view into the parser's buffer, which is far larger and
-      // holds the whole frame rather than just this field.
-      assert.strictEqual((value as Uint8Array).byteOffset, 0)
-      assert.strictEqual((value as Uint8Array).buffer.byteLength, payload.length)
     })
 
     it("hands a view to a registered codec that cannot read in place", () => {
