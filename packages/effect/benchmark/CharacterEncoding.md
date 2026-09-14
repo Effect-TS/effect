@@ -347,8 +347,8 @@ macOS ARM64 after the registry removal.
 
 | Entry point | Mapping modules | esbuild bytes (gzip) | Rolldown bytes (gzip) |
 | ----------- | --------------: | -------------------: | --------------------: |
-| utf8-only   |               0 |          3131 (1441) |           3082 (1361) |
-| cp1251-only |               1 |          2614 (1333) |           2589 (1319) |
+| utf8-only   |               0 |          3147 (1458) |           3090 (1380) |
+| cp1251-only |               1 |          2623 (1350) |           2590 (1337) |
 
 These are standalone decoder bundle sizes, not whole application sizes.
 
