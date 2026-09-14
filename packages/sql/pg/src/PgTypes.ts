@@ -1016,7 +1016,7 @@ const timestampInt64 = (value: unknown): void => {
     ms = value.getTime()
     if (Number.isNaN(ms)) fail("timestamp cannot be an invalid Date")
   } else {
-    ms = requireNumber(value, "timestamp")
+    ms = typeof value === "number" ? value : fail("Expected a Date or number for timestamp")
     if (Number.isNaN(ms)) fail("timestamp cannot be NaN")
   }
   if (ms === Number.POSITIVE_INFINITY) {
