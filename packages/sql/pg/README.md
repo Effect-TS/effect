@@ -23,7 +23,7 @@ const PostgresLive = PgClient.layer({
     statement_timeout: "5s",
     search_path: "app, public"
   },
-  options: "-c lock_timeout=1000"
+  startupOptions: "-c lock_timeout=1000"
 })
 ```
 
@@ -33,16 +33,17 @@ the startup defaults after session-level changes. Both `PgConnection.Config` and
 
 Parameter names are normalized to lowercase. Empty names and NUL bytes in names
 or values are rejected before connecting. The names `user`, `database`,
-`replication`, and `options` are reserved; use `username`, `database`, and `options`
+`replication`, and `options` are reserved; use `username`, `database`, and `startupOptions`
 on the config for identity and opaque options. Replication mode is not supported
 through `startupParameters`. The driver accepts only `UTF8` or `UTF-8`
 (case-insensitive) for `client_encoding` and sends the canonical value `UTF8`.
 PostgreSQL validates other settings and reports invalid names or values at connect
 time.
 
-The `options` field is an opaque PostgreSQL options string. It can also come from
-the URL query, for example `?options=-c%20statement_timeout%3D5000`. Explicit config
-`options` overrides URL `options`, including when the explicit value is empty.
+The `startupOptions` field is an opaque PostgreSQL options string. It can also come
+from the URL query, for example `?options=-c%20statement_timeout%3D5000`. Explicit
+config `startupOptions` overrides URL `options`, including when the explicit value
+is empty. The URL query key and startup packet field are both named `options`.
 Named parameters and opaque options can be sent together, but callers must not
 set the same GUC in both. The driver does not parse `-c` flags, detect conflicts,
 or read `PGOPTIONS`.

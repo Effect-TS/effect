@@ -109,14 +109,14 @@ export interface PgClientConfig {
    * Names are lowercased; `user`, `database`, `replication`, and `options` are
    * reserved. `client_encoding` only accepts UTF8 / UTF-8 (case-insensitive).
    * Empty names and NUL bytes fail before connecting; PostgreSQL validates
-   * other settings. Do not set the same GUC here and in `options`.
+   * other settings. Do not set the same GUC here and in `startupOptions`.
    */
   readonly startupParameters?: Readonly<Record<string, string>> | undefined
   /**
    * Opaque PostgreSQL startup options, overriding the URL's `options` parameter.
    * Forwarded without parsing `-c` flags or checking for duplicate GUCs.
    */
-  readonly options?: string | undefined
+  readonly startupOptions?: string | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined

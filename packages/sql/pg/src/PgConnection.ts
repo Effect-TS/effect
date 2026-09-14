@@ -109,14 +109,14 @@ export interface Config {
    * Names are lowercased; `user`, `database`, `replication`, and `options` are
    * reserved. `client_encoding` only accepts UTF8 / UTF-8 (case-insensitive).
    * Empty names and NUL bytes fail before connecting; PostgreSQL validates
-   * other settings. Do not set the same GUC here and in `options`.
+   * other settings. Do not set the same GUC here and in `startupOptions`.
    */
   readonly startupParameters?: Readonly<Record<string, string>> | undefined
   /**
    * Opaque PostgreSQL startup options, overriding the URL's `options` parameter.
    * Forwarded without parsing `-c` flags or checking for duplicate GUCs.
    */
-  readonly options?: string | undefined
+  readonly startupOptions?: string | undefined
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
@@ -2209,7 +2209,7 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       user: username,
       database: options.database ?? url.database,
       application_name: options.applicationName ?? named.application_name ?? url.applicationName ?? "@effect/sql-pg",
-      options: options.options ?? url.options
+      options: options.startupOptions ?? url.options
     }
     for (const [name, value] of Object.entries(startupParameters)) {
       if (value?.includes("\0")) {
