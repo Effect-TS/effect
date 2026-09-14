@@ -405,18 +405,37 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       const envelope = driver.journal[0]
       const executionId = envelope.address.entityId
+      // Interrupt after the clock-backed activity completes, so the workflow is
+      // suspended on EmailTrigger rather than racing the clock's completion.
+      yield* advanceUntil(
+        () =>
+          Array.from(driver.requests.values()).some(({ envelope, replies }) =>
+            envelope._tag === "Request" && envelope.tag === "activity" &&
+            envelope.address.entityId === executionId &&
+            (envelope.payload as { name: string }).name === "Sleep" &&
+            replies.some((reply) =>
+              reply._tag === "WithExit" && reply.exit._tag === "Success" &&
+              (reply.exit.value as Workflow.ResultEncoded<any, any>)._tag === "Complete"
+            )
+          ),
+        "sleep activity must complete before interruption",
+        10
+      )
+      yield* pollUntil(EmailWorkflow, executionId, "Suspended")
       yield* EmailWorkflow.interrupt(executionId)
 
-      // - 1 initial request
-      // - 5 attempts to send email
-      // - 1 sleep activity
-      // - 1 durable clock run
-      // - 1 durable clock deferred set
-      // - 1 interrupt signal set
-      expect(driver.requests.size).toEqual(10)
-      yield* TestClock.adjust(5000)
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(5000)
+      // Wait for this execution's signal; concurrent cleanup can change the total request count.
+      yield* advanceUntil(
+        () =>
+          Array.from(driver.requests.values()).some(({ envelope }) =>
+            envelope._tag === "Request" && envelope.tag === "deferred" &&
+            envelope.address.entityId === executionId &&
+            envelope.address.entityType === `Workflow/${EmailWorkflow._tag}` &&
+            (envelope.payload as { name: string }).name === "Workflow/InterruptSignal"
+          ),
+        "interrupt signal request must be persisted"
+      )
+      yield* pollUntil(EmailWorkflow, executionId, "Complete")
       // - clock cleared
       expect(driver.requests.size).toEqual(9)
 
@@ -429,6 +448,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const value = reply.exit.value as Workflow.ResultEncoded<any, any>
       assert(value._tag === "Complete" && value.exit._tag === "Failure")
 
+      yield* advanceUntil(() => fiber.pollUnsafe() !== undefined, "execute waiter must observe interruption", 10)
       const exit = yield* Fiber.await(fiber)
       assert(Exit.hasInterrupts(exit))
 
