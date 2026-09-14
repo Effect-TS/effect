@@ -52,8 +52,7 @@ function makeConstructorParser(descriptor: SchemaAST.ConstructorDescriptor, comp
   }
 }
 
-/** @internal */
-export function withDefault(ast: SchemaAST.AST, parser: Parser, resolve: Compiler): Parser {
+function withDefault(ast: SchemaAST.AST, parser: Parser, resolve: Compiler): Parser {
   const link = ast.context!.constructorDefault!
   let source: Parser | undefined
   return (input, options) => {
@@ -78,6 +77,12 @@ export function withDefault(ast: SchemaAST.AST, parser: Parser, resolve: Compile
       }
     )
   }
+}
+
+/** @internal */
+export function compileField(ast: SchemaAST.AST, compile: Compiler): Parser {
+  const parser = compile(ast)
+  return ast.context?.constructorDefault === undefined ? parser : withDefault(ast, parser, compile)
 }
 
 /** @internal */
