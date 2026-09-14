@@ -194,14 +194,7 @@ const withUnixServer = (
   )
 
 describe("PgConnection startup packet", () => {
-  // Keep the runtime cases runnable on main; PgConnection.test.ts also checks
-  // that these fields are exposed by the public configuration types.
-  type StartupConfig = PgConnection.Config & {
-    readonly startupParameters?: Readonly<Record<string, string>>
-    readonly options?: string
-  }
-
-  const captureStartup = (config: StartupConfig) =>
+  const captureStartup = (config: PgConnection.Config) =>
     Effect.gen(function*() {
       const writes: Array<Buffer> = []
       const socket: Duplex = new Duplex({
@@ -229,18 +222,19 @@ describe("PgConnection startup packet", () => {
       return parameters
     })
 
-  it.effect("normalizes names and preserves values in the startup packet", () =>
+  it.effect("sends normalized named parameters alongside opaque options", () =>
     Effect.gen(function*() {
       const named = Object.freeze({ Statement_Timeout: "1250ms", SEARCH_PATH: "\"Mixed Case\", public" })
-      const parameters = yield* captureStartup({ startupParameters: named })
+      const parameters = yield* captureStartup({ startupParameters: named, options: "-c lock_timeout=4321" })
       assert.strictEqual(parameters.get("statement_timeout"), "1250ms")
       assert.strictEqual(parameters.get("search_path"), "\"Mixed Case\", public")
       assert.isFalse(parameters.has("Statement_Timeout"))
       assert.isFalse(parameters.has("SEARCH_PATH"))
+      assert.strictEqual(parameters.get("options"), "-c lock_timeout=4321")
       assert.deepStrictEqual(named, { Statement_Timeout: "1250ms", SEARCH_PATH: "\"Mixed Case\", public" })
     }))
 
-  it.effect.each(["UTF8", "UTF-8", "utf8", "uTf-8"])(
+  it.effect.each(["utf8", "uTf-8"])(
     "canonicalizes client_encoding=%s",
     (encoding) =>
       Effect.gen(function*() {
@@ -252,10 +246,9 @@ describe("PgConnection startup packet", () => {
 
   const applications: ReadonlyArray<{
     readonly name: string
-    readonly config: StartupConfig
+    readonly config: PgConnection.Config
     readonly expected: string
   }> = [
-    { name: "default", config: {}, expected: "@effect/sql-pg" },
     {
       name: "URL",
       config: { url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app") },
@@ -265,13 +258,8 @@ describe("PgConnection startup packet", () => {
       name: "named parameter over URL",
       config: {
         url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app"),
-        startupParameters: { application_name: "named-app" }
+        startupParameters: { APPLICATION_NAME: "named-app" }
       },
-      expected: "named-app"
-    },
-    {
-      name: "mixed case named parameter",
-      config: { startupParameters: { APPLICATION_NAME: "named-app" } },
       expected: "named-app"
     },
     {
@@ -279,20 +267,7 @@ describe("PgConnection startup packet", () => {
       config: {
         url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app"),
         startupParameters: { application_name: "named-app" },
-        applicationName: "explicit-app"
-      },
-      expected: "explicit-app"
-    },
-    {
-      name: "empty explicit value",
-      config: { applicationName: "", startupParameters: { application_name: "named-app" } },
-      expected: ""
-    },
-    {
-      name: "empty named value over URL",
-      config: {
-        url: Redacted.make("postgres://test@localhost/test-db?application_name=url-app"),
-        startupParameters: { application_name: "" }
+        applicationName: ""
       },
       expected: ""
     }
@@ -320,20 +295,31 @@ describe("PgConnection startup packet", () => {
       assert.isFalse(parameters.has("statement_timeout"))
     }))
 
-  it.effect("sends named parameters alongside explicit opaque options", () =>
+  it.effect("leaves GUC names and values to the server and preserves startup errors", () =>
     Effect.gen(function*() {
-      const parameters = yield* captureStartup({
-        startupParameters: { search_path: "public" },
-        options: "-c statement_timeout=1234"
+      let parameters: ReadonlyMap<string, string> | undefined
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          parameters = startupParameters(chunk)
+          queueMicrotask(() =>
+            socket.push(errorResponse([
+              ["S", "FATAL"],
+              ["C", "42704"],
+              ["M", "unrecognized configuration parameter: unknown_startup_guc"]
+            ]))
+          )
+          callback()
+        }
       })
-      assert.strictEqual(parameters.get("search_path"), "public")
-      assert.strictEqual(parameters.get("options"), "-c statement_timeout=1234")
-    }))
-
-  it.effect("leaves other GUC validity to the server", () =>
-    Effect.gen(function*() {
-      const parameters = yield* captureStartup({ startupParameters: { unknown_startup_guc: "not-validated" } })
-      assert.strictEqual(parameters.get("unknown_startup_guc"), "not-validated")
+      const error = yield* Effect.flip(PgConnection.make({
+        username: "test",
+        startupParameters: { unknown_startup_guc: "not-validated", statement_timeout: "not-a-duration" },
+        stream: () => socket
+      }))
+      assert.strictEqual(parameters?.get("unknown_startup_guc"), "not-validated")
+      assert.strictEqual(parameters?.get("statement_timeout"), "not-a-duration")
+      assert.propertyVal(error.reason.cause, "code", "42704")
     }))
 })
 

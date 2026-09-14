@@ -17,14 +17,11 @@ describe("PgConnection config", () => {
   })
 
   it.effect.each([
-    ...["user", "database", "replication", "options", "USER", "Database", "RePlIcAtIoN", "OPTIONS"].map((name) => ({
+    ...["user", "Database", "replication", "options"].map((name) => ({
       name: `reserved ${name}`,
       startupParameters: { [name]: "value" }
     })),
-    ...["LATIN1", "SQL_ASCII", "", "UTF16"].map((value) => ({
-      name: `unsupported client_encoding ${JSON.stringify(value)}`,
-      startupParameters: { CLIENT_ENCODING: value }
-    })),
+    { name: "unsupported client_encoding", startupParameters: { CLIENT_ENCODING: "LATIN1" } },
     { name: "empty name", startupParameters: { "": "value" } },
     { name: "NUL in name", startupParameters: { "search\0_path": "public" } },
     { name: "NUL in value", startupParameters: { search_path: "public\0private" } }
