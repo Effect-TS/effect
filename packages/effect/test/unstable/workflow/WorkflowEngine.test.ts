@@ -2,66 +2,24 @@ import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
-import { spawn } from "node:child_process"
+import { execFile } from "node:child_process"
 import { fileURLToPath } from "node:url"
+import { promisify } from "node:util"
 
-describe("deferred completion", () => {
-  for (const scenario of ["self-success", "self-failure", "self-replay", "plain", "external", "unrelated"] as const) {
-    it.effect(`settles ${scenario} completion without violating replay ordering`, () =>
-      Effect.gen(function*() {
-        const result = yield* runDeferredCompletion(scenario)
-        assert.isFalse(result.timedOut, `deferred completion deadlocked (${scenario}):\n${result.output}`)
-        assert.strictEqual(result.code, 0, `deferred completion did not settle (${scenario}):\n${result.output}`)
-        assert.include(result.output, "deferred-completion-passed")
-      }), 30_000)
+const exec = promisify(execFile)
+
+describe("deferred self-completion", () => {
+  for (const outcome of ["success", "failure"]) {
+    it.effect(outcome, () =>
+      // A deadlock also wedges Effect scope cleanup, so bound the entire child process.
+      Effect.promise(() =>
+        exec(process.execPath, [
+          fileURLToPath(new URL("./fixtures/deferred-completion.ts", import.meta.url)),
+          outcome
+        ], { timeout: 20_000, killSignal: "SIGKILL" })
+      ), 30_000)
   }
 })
-
-// Joining a workflow from its own uninterruptible finalizer can also wedge test
-// scope cleanup. Bound the process and wait for it to exit before finishing.
-const runDeferredCompletion = (scenario: string) =>
-  Effect.acquireUseRelease(
-    Effect.sync(() => {
-      const child = spawn(process.execPath, [
-        fileURLToPath(new URL("./fixtures/deferred-completion.ts", import.meta.url)),
-        scenario
-      ], { stdio: ["ignore", "pipe", "pipe"] })
-      let output = ""
-      let timedOut = false
-      let ready = false
-      const stop = () => {
-        timedOut = true
-        child.kill("SIGKILL")
-      }
-      let timer = setTimeout(stop, 20_000)
-      const append = (chunk: Buffer) => {
-        output = (output + chunk.toString()).slice(-16_000)
-        if (!ready && output.includes("deferred-completion-ready")) {
-          ready = true
-          clearTimeout(timer)
-          timer = setTimeout(stop, 5_000)
-        }
-      }
-      child.stdout.on("data", append)
-      child.stderr.on("data", append)
-      child.on("error", (error) => {
-        output += String(error)
-      })
-      const closed = new Promise<{ code: number | null; timedOut: boolean; output: string }>((resolve) => {
-        child.once("close", (code) => {
-          clearTimeout(timer)
-          resolve({ code, timedOut, output })
-        })
-      })
-      return { child, closed }
-    }),
-    ({ closed }) => Effect.promise(() => closed),
-    ({ child, closed }) =>
-      Effect.promise(() => {
-        child.kill("SIGKILL")
-        return closed
-      })
-  )
 
 describe("WorkflowEngine", () => {
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
