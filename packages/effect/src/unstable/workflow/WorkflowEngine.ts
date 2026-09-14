@@ -300,39 +300,22 @@ export class WorkflowInstance extends Context.Service<
 }
 
 /**
- * In-process deferred state for live workflow executions.
+ * Tracks live workflow runs so deferred completions can wake them.
  *
  * @category models
  * @since 4.0.0
  */
 export interface DeferredState {
-  /** Returns a completion not yet durably readable. */
-  readonly pendingResult: (
-    executionId: string,
-    name: string
-  ) => Exit.Exit<unknown, unknown> | undefined
-
-  /**
-   * Makes `owner` the execution's current owner. Its pending completions are
-   * released when `owner` closes, unless a newer owner has claimed since.
-   */
-  readonly claim: (executionId: string, owner: Scope.Scope) => Effect.Effect<void>
-
-  /**
-   * Tracks and provides a run, retaining pending results across suspension.
-   * A run whose `owner` was superseded leaves the replacement's results alone.
-   */
+  /** Tracks and provides a run until it completes or suspends. */
   readonly trackRun: <A, E, R>(
     instance: WorkflowInstance["Service"],
-    effect: Effect.Effect<A, E, R>,
-    owner?: Scope.Scope
+    effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, Exclude<R, WorkflowInstance>>
 
-  /** Records a completion, preempting a run parked on that deferred. */
+  /** Preempts a run parked on the completed deferred. */
   readonly deferredDone: (
     executionId: string,
-    name: string,
-    exit: Exit.Exit<unknown, unknown>
+    name: string
   ) => Effect.Effect<void>
 }
 
@@ -343,34 +326,12 @@ export interface DeferredState {
  * @since 4.0.0
  */
 export const makeDeferredState = (): DeferredState => {
-  const pending = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
   const running = new Map<string, {
     readonly instance: WorkflowInstance["Service"]
     readonly fiber: Fiber.Fiber<unknown, unknown>
   }>()
-  const owners = new Map<string, Scope.Scope>()
-  const claimed = new WeakSet<Scope.Scope>()
-  const isOwner = (executionId: string, owner: Scope.Scope | undefined) =>
-    owner === undefined || owners.get(executionId) === owner
   return {
-    pendingResult: (executionId, name) => pending.get(executionId)?.get(name),
-    claim: (executionId, owner) =>
-      Effect.suspend(() => {
-        // Rebuilding handlers keeps the same owner. A retiring owner must
-        // neither reclaim ownership nor clear its replacement's results.
-        if (claimed.has(owner)) return Effect.void
-        claimed.add(owner)
-        owners.set(executionId, owner)
-        return Scope.addFinalizer(
-          owner,
-          Effect.sync(() => {
-            if (owners.get(executionId) !== owner) return
-            owners.delete(executionId)
-            pending.delete(executionId)
-          })
-        )
-      }),
-    trackRun: (instance, effect, owner) =>
+    trackRun: (instance, effect) =>
       Effect.withFiber((fiber) => {
         const run = { instance, fiber: fiber as Fiber.Fiber<unknown, unknown> }
         running.set(instance.executionId, run)
@@ -379,21 +340,11 @@ export const makeDeferredState = (): DeferredState => {
           Effect.sync(() => {
             if (running.get(instance.executionId) !== run) return
             running.delete(instance.executionId)
-            if (!instance.suspended && isOwner(instance.executionId, owner)) {
-              pending.delete(instance.executionId)
-            }
           })
         )
       }),
-    deferredDone: (executionId, name, exit) =>
+    deferredDone: (executionId, name) =>
       Effect.withFiber((current) => {
-        // A new owner can receive a completion before its first local run.
-        let entries = pending.get(executionId)
-        if (!entries) {
-          entries = new Map()
-          pending.set(executionId, entries)
-        }
-        entries.set(name, exit)
         const run = running.get(executionId)
         if (!run) return Effect.void
         if (
@@ -403,8 +354,8 @@ export const makeDeferredState = (): DeferredState => {
         ) {
           return Effect.void
         }
-        // Suspended retains the pending result; the engine re-runs the
-        // interrupted run and the replay observes the completion.
+        // The engine stores the completion before waking this run. Replay
+        // observes it after the interrupted run reports suspension.
         run.instance.suspended = true
         return Fiber.interrupt(run.fiber)
       })
@@ -893,7 +844,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           if (deferredResults.has(id)) return Effect.void
           deferredResults.set(id, options.exit)
           const wake = Effect.andThen(
-            deferredState.deferredDone(options.executionId, options.deferredName, options.exit),
+            deferredState.deferredDone(options.executionId, options.deferredName),
             resume(options.executionId)
           )
           return Effect.flatMap(Effect.serviceOption(WorkflowInstance), (instance) =>

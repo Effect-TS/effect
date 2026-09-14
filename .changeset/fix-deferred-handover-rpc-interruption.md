@@ -4,6 +4,6 @@
 
 Retain durable deferred completions received before a workflow owner's first local run so replay can complete while the deferred reply is still being persisted.
 
-Release pending completions when their cluster activation deactivates, retain them across handler rebuilds, and prevent an older activation from clearing its replacement's results.
+Keep pending completions in a cache keyed weakly by cluster activation. Handler rebuilds retain completions, and overlapping activations cannot clear each other's results. Results can be collected once their activation scope becomes unreachable; closing a scope alone does not guarantee collection.
 
 Release RPC stream and queue consumers when their request write fiber is interrupted.
