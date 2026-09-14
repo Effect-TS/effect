@@ -4,6 +4,28 @@ import { Effect, Fiber, Redacted } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("PgConnection config", () => {
+  it.effect.each([
+    { startupParameters: { REPLICATION: "database" } },
+    { startupParameters: { client_encoding: "LATIN1" } },
+    { startupParameters: { "": "value" } },
+    { startupParameters: { search_path: "public\0private" } },
+    { startupOptions: "-c lock_timeout=2345\0" },
+    { url: Redacted.make("postgres://test@localhost/db?options=%00") }
+  ])("rejects invalid startup config %j before connecting", (config) =>
+    Effect.gen(function*() {
+      let connected = false
+      const error = yield* Effect.flip(PgConnection.make({
+        ...config,
+        username: "test",
+        stream: () => {
+          connected = true
+          throw new Error("unexpected connection")
+        }
+      }))
+      assert.isFalse(connected)
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+    }))
+
   it.effect("interrupts a stalled password provider when connectTimeout expires", () =>
     Effect.gen(function*() {
       let connected = false

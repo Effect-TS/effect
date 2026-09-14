@@ -99,7 +99,24 @@ export interface Config {
    */
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
+  /**
+   * Overrides `startupParameters.application_name`, the URL's `application_name`,
+   * and the default `"@effect/sql-pg"`, in that order.
+   */
   readonly applicationName?: string | undefined
+  /**
+   * Session defaults sent in every physical connection's startup packet.
+   * Names are lowercased; `user`, `database`, `replication`, and `options` are
+   * reserved. `client_encoding` only accepts UTF8 / UTF-8 (case-insensitive).
+   * Empty names and NUL bytes fail before connecting; PostgreSQL validates
+   * other settings. Do not set the same GUC here and in `startupOptions`.
+   */
+  readonly startupParameters?: Readonly<Record<string, string>> | undefined
+  /**
+   * Opaque PostgreSQL startup options, overriding the URL's `options` parameter.
+   * Forwarded without parsing `-c` flags or checking for duplicate GUCs.
+   */
+  readonly startupOptions?: string | undefined
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
@@ -2035,11 +2052,7 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
     const startup = (): void => {
       parser = PgProtocol.makeParser<unknown>({ maxMessageSize: config.maxMessageSize })
       socket.on("data", onData)
-      socket.write(PgProtocol.encodeStartupMessage({
-        user: config.username,
-        database: config.database,
-        application_name: config.applicationName
-      }))
+      socket.write(PgProtocol.encodeStartupMessage(config.startupParameters))
     }
 
     const onSslResponse = (chunk: Uint8Array): void => {
@@ -2140,11 +2153,10 @@ interface ResolvedConfig {
   readonly path: string | undefined
   readonly ssl: boolean | ConnectionOptions
   readonly sslOptional: boolean
-  readonly database: string | undefined
   readonly username: string
   readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
-  readonly applicationName: string
+  readonly startupParameters: PgProtocol.StartupParameters
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
 }
@@ -2171,17 +2183,49 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
     }
+    const named: Record<string, string> = Object.create(null)
+    for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
+      const key = name.toLowerCase()
+      if (key === "user" || key === "database" || key === "replication" || key === "options") {
+        return Effect.fail(configError(`Reserved startup parameter: "${name}"`))
+      }
+      if (key === "client_encoding") {
+        const encoding = value.toUpperCase()
+        if (encoding !== "UTF8" && encoding !== "UTF-8") {
+          return Effect.fail(configError("Startup parameter client_encoding must be UTF8 or UTF-8"))
+        }
+        named[key] = "UTF8"
+      } else {
+        named[key] = value
+      }
+      if (name === "" || name.includes("\0") || value.includes("\0")) {
+        return Effect.fail(
+          configError("Startup parameter names must be nonempty and names/values must not contain NUL")
+        )
+      }
+    }
+    const startupParameters: PgProtocol.StartupParameters = {
+      ...named,
+      user: username,
+      database: options.database ?? url.database,
+      application_name: options.applicationName ?? named.application_name ?? url.applicationName ?? "@effect/sql-pg",
+      options: options.startupOptions ?? url.options
+    }
+    for (const [name, value] of Object.entries(startupParameters)) {
+      if (value?.includes("\0")) {
+        return Effect.fail(configError(`Startup parameter "${name}" must not contain NUL`))
+      }
+    }
     return Effect.succeed<ResolvedConfig>({
       host,
       port,
       path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
       ssl: options.ssl ?? (url.ssl === "prefer" ? true : url.ssl ?? false),
       sslOptional: options.ssl === undefined && url.ssl === "prefer",
-      database: options.database ?? url.database,
       username,
       password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
-      applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
+      startupParameters,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
     })
@@ -2194,6 +2238,7 @@ interface UrlConfig {
   username?: string | undefined
   password?: string | undefined
   applicationName?: string | undefined
+  options?: string | undefined
   connectTimeout?: Duration.Duration | undefined
   ssl?: boolean | "prefer" | undefined
 }
@@ -2275,6 +2320,9 @@ const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
         break
       case "application_name":
         config.applicationName = value
+        break
+      case "options":
+        config.options = value
         break
       case "connect_timeout": {
         const seconds = Number(value)
