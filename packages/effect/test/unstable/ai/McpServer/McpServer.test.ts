@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as ErrorReporter from "effect/ErrorReporter"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
@@ -70,6 +71,24 @@ const PublicFailureTool = Tool.make("PublicFailureTool", {
   failure: Schema.ErrorInstance()
 })
 
+const StructuredFailureTool = Tool.make("StructuredFailureTool", {
+  success: Schema.Struct({ answer: Schema.String }),
+  failure: Schema.Struct({ reason: Schema.String, retryAfter: Schema.FiniteFromString }),
+  failureMode: "error"
+})
+
+const PrimitiveFailureTool = Tool.make("PrimitiveFailureTool", {
+  success: Schema.String,
+  failure: Schema.FiniteFromString,
+  failureMode: "error"
+})
+
+const UnserializableFailureTool = Tool.make("UnserializableFailureTool", {
+  success: Schema.String,
+  failure: Schema.Unknown,
+  failureMode: "error"
+})
+
 const InternalAiErrorTool = Tool.make("InternalAiErrorTool", {
   success: Schema.String
 })
@@ -106,6 +125,9 @@ const TestToolkit = Toolkit.make(
   StrictReturnModeTool,
   ReturnFailureTool,
   PublicFailureTool,
+  StructuredFailureTool,
+  PrimitiveFailureTool,
+  UnserializableFailureTool,
   InternalAiErrorTool,
   DefectTool,
   UnserializableResultTool,
@@ -131,6 +153,9 @@ const testToolkitHandlers = TestToolkit.of({
   StrictReturnModeTool: ({ value }) => Effect.succeed(value),
   ReturnFailureTool: () => Effect.fail({ reason: "expected failure" }),
   PublicFailureTool: () => Effect.fail(publicFailure),
+  StructuredFailureTool: () => Effect.fail({ reason: "busy", retryAfter: 5 }),
+  PrimitiveFailureTool: () => Effect.fail(42),
+  UnserializableFailureTool: () => Effect.fail(1n),
   InternalAiErrorTool: () => Effect.fail(internalAiError),
   DefectTool: () => Effect.die(privateDefect),
   UntypedTool: () => Effect.void,
@@ -206,14 +231,23 @@ const makeRouterTestClient = (
   router: Layer.Layer<never, never, HttpRouter.HttpRouter>
 ) => makeTestClientWith(TestServerLayer, { routerLayer: router })
 
-const makeToolkitTestClient = Effect.fnUntraced(function*(handlers: TestToolkitHandlers = testToolkitHandlers) {
+const makeToolkitTestClient = Effect.fnUntraced(function*(
+  handlers: TestToolkitHandlers = testToolkitHandlers,
+  options?: { readonly reportErrors?: boolean }
+) {
   const reported: Array<Cause.Cause<unknown>> = []
-  const reporterLayer = ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
-    reported.push(cause)
+  const logged: Array<Cause.Cause<unknown>> = []
+  const loggerLayer = Logger.layer([Logger.make(({ cause, logLevel }) => {
+    if (logLevel === "Error") logged.push(cause)
   })])
+  const reporterLayer = ErrorReporter.layer(
+    options?.reportErrors === false ? [] : [ErrorReporter.make(({ cause }) => {
+      reported.push(cause)
+    })]
+  )
   const serverLayer = McpServer.toolkit(TestToolkit).pipe(
     Layer.provideMerge(TestToolkit.toLayer(handlers)),
-    Layer.provide(TestServerLayer),
+    Layer.provide(Layer.mergeAll(TestServerLayer, loggerLayer)),
     Layer.provide(reporterLayer)
   )
   const { client } = yield* makeTestClientWith(serverLayer)
@@ -225,7 +259,7 @@ const makeToolkitTestClient = Effect.fnUntraced(function*(handlers: TestToolkitH
       version: "1.0.0"
     }
   })
-  return { client, reported }
+  return { client, reported, logged }
 })
 
 const toolResultText = (result: McpSchema.CallToolResult): string => {
@@ -1759,7 +1793,7 @@ describe("McpServer", () => {
 
     it.effect("returns schema-validated messages for declared handler failures", () =>
       Effect.gen(function*() {
-        const { client, reported } = yield* makeToolkitTestClient()
+        const { client, logged, reported } = yield* makeToolkitTestClient()
 
         const result = yield* client["tools/call"]({
           name: "PublicFailureTool",
@@ -1769,7 +1803,42 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, "Public failure")
+        assert.isUndefined(result.structuredContent)
         assert.deepStrictEqual(reported, [])
+        assert.deepStrictEqual(logged, [])
+      }))
+
+    for (
+      const [name, encoded] of [
+        ["StructuredFailureTool", { reason: "busy", retryAfter: "5" }],
+        ["PrimitiveFailureTool", "42"]
+      ] as const
+    ) {
+      it.effect(`returns the schema-encoded ${name} failure in error mode without internal diagnostics`, () =>
+        Effect.gen(function*() {
+          const { client, logged, reported } = yield* makeToolkitTestClient()
+          const result = yield* client["tools/call"]({ name, arguments: {} })
+
+          assert.isTrue(result.isError)
+          assert.isUndefined(result.structuredContent)
+          assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify(encoded) }])
+          assert.deepStrictEqual(reported, [])
+          assert.deepStrictEqual(logged, [])
+        }))
+    }
+
+    it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
+      Effect.gen(function*() {
+        const { client, logged, reported } = yield* makeToolkitTestClient()
+        const result = yield* client["tools/call"]({ name: "UnserializableFailureTool", arguments: {} })
+
+        assert.isTrue(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
+        assert.lengthOf(reported, 1)
+        assert.instanceOf(Cause.squash(reported[0]), TypeError)
+        assert.lengthOf(logged, 1)
+        assert.strictEqual(Cause.squash(logged[0]), Cause.squash(reported[0]))
       }))
 
     for (const failureMode of ["error", "return"] as const) {
@@ -1821,7 +1890,7 @@ describe("McpServer", () => {
 
     it.effect("returns a generic message for non-validation AiError failures", () =>
       Effect.gen(function*() {
-        const { client, reported } = yield* makeToolkitTestClient()
+        const { client, logged, reported } = yield* makeToolkitTestClient()
 
         const result = yield* client["tools/call"]({
           name: "InternalAiErrorTool",
@@ -1834,24 +1903,34 @@ describe("McpServer", () => {
         assert.lengthOf(reported, 1)
         assert.isTrue(Cause.hasFails(reported[0]))
         assert.strictEqual(Cause.squash(reported[0]), internalAiError)
+        assert.lengthOf(logged, 1)
+        assert.strictEqual(Cause.squash(logged[0]), internalAiError)
       }))
 
-    it.effect("returns a generic message for handler defects", () =>
-      Effect.gen(function*() {
-        const { client, reported } = yield* makeToolkitTestClient()
+    for (const reportErrors of [true, false]) {
+      it.effect(`logs handler defects with reportErrors=${reportErrors} and scrubs the client message`, () =>
+        Effect.gen(function*() {
+          const { client, logged, reported } = yield* makeToolkitTestClient(undefined, { reportErrors })
 
-        const result = yield* client["tools/call"]({
-          name: "DefectTool",
-          arguments: {}
-        })
+          const result = yield* client["tools/call"]({
+            name: "DefectTool",
+            arguments: {}
+          })
 
-        assert.strictEqual(result.isError, true)
-        const text = toolResultText(result)
-        assert.strictEqual(text, INTERNAL_TOOL_ERROR_MESSAGE)
-        assert.lengthOf(reported, 1)
-        assert.isTrue(Cause.hasDies(reported[0]))
-        assert.strictEqual(Cause.squash(reported[0]), privateDefect)
-      }))
+          assert.strictEqual(result.isError, true)
+          const text = toolResultText(result)
+          assert.strictEqual(text, INTERNAL_TOOL_ERROR_MESSAGE)
+          assert.isUndefined(result.structuredContent)
+          assert.lengthOf(reported, reportErrors ? 1 : 0)
+          if (reportErrors) {
+            assert.isTrue(Cause.hasDies(reported[0]))
+            assert.strictEqual(Cause.squash(reported[0]), privateDefect)
+          }
+          assert.lengthOf(logged, 1)
+          assert.isTrue(Cause.hasDies(logged[0]))
+          assert.strictEqual(Cause.squash(logged[0]), privateDefect)
+        }))
+    }
 
     it.effect("reports response serialization defects before returning a generic message", () =>
       Effect.gen(function*() {
