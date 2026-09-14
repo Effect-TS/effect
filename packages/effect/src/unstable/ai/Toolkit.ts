@@ -368,7 +368,6 @@ const Proto = {
         )
 
         const normalizeError = (error: unknown) => {
-          // Schema errors indicate handler returned invalid data
           const normalizedError = Schema.isSchemaError(error)
             ? AiError.make({
               module: "Toolkit",
@@ -389,8 +388,6 @@ const Proto = {
         }
 
         return Stream.fromQueue(queue).pipe(
-          // If the tool handler failed, check the tool's failure mode to
-          // determine how the result should be returned to the end user
           Stream.catch((error) => {
             const normalizedError = normalizeError(error)
             const failureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
