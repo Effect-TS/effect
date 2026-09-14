@@ -99,94 +99,42 @@ for (const name of all) {
   writeFileSync(
     resolve(publicDirectory, moduleName(name) + ".ts"),
     doc(displayName + " character encoding with typed failures and Effect streams.") + generated +
-      "import type { CharacterEncodingError, Encoding, Options } from \"../CharacterEncoding.ts\"\nimport * as Effect from \"../Effect.ts\"\nimport { make } from \"../internal/characterEncoding/codec.ts\"\nimport { concat } from \"../internal/characterEncoding/types.ts\"\n" +
+      "import type { CharacterEncodingError, Encoding, Options } from \"../CharacterEncoding.ts\"\n" +
+      "import type * as Effect from \"../Effect.ts\"\n" +
+      "import { make } from \"../internal/characterEncoding/codec.ts\"\n" +
       dataImport +
-      "import * as Stream from \"../Stream.ts\"\n\n" +
+      "import * as Operators from \"../internal/characterEncoding/operators.ts\"\n" +
+      "import type * as Stream from \"../Stream.ts\"\n\n" +
       doc("The " + name + " codec descriptor, for use with the CharacterEncoding operators.", "encodings") +
       "export const encoding: Encoding = /* @__PURE__ */ make(\"" + name + "\", " + factory + ")\n\n" +
-      "const attempt = <A>(operation: \"encode\" | \"decode\", f: () => A): A => {\n" +
-      "  try {\n" +
-      "    return f()\n" +
-      "  } catch (cause) {\n" +
-      "    throw {\n" +
-      "      encoding: \"" + name + "\",\n" +
-      "      operation,\n" +
-      "      message: String(cause),\n" +
-      "      cause,\n" +
-      "      _tag: \"CharacterEncodingError\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n\n" +
       doc("Encodes a complete string to " + name + " bytes, throwing CharacterEncodingError on failure.", "encoding") +
-      "export const encodeUnsafe = (text: string, options?: Options): Uint8Array => {\n" +
-      "  const encoder = attempt(\"encode\", () => encoding.makeEncoder(options ?? {}))\n" +
-      "  return attempt(\"encode\", () => concat(encoder.write(text), encoder.end()))\n" +
-      "}\n\n" +
+      "export const encodeUnsafe = (text: string, options?: Options): Uint8Array =>\n" +
+      "  Operators.encodeUnsafe(encoding, text, options)\n\n" +
       doc("Decodes complete " + name + " bytes to a string, throwing CharacterEncodingError on failure.", "decoding") +
-      "export const decodeUnsafe = (bytes: Uint8Array, options?: Options): string => {\n" +
-      "  const decoder = attempt(\"decode\", () => encoding.makeDecoder(options ?? {}))\n" +
-      "  return attempt(\"decode\", () => decoder.write(bytes) + decoder.end())\n" +
-      "}\n\n" +
+      "export const decodeUnsafe = (bytes: Uint8Array, options?: Options): string =>\n" +
+      "  Operators.decodeUnsafe(encoding, bytes, options)\n\n" +
       doc("Encodes a string to " + name + " bytes with conversion errors in the Effect error channel.", "encoding") +
-      "export const encode = (\n" +
-      "  text: string,\n" +
-      "  options?: Options\n" +
-      "): Effect.Effect<Uint8Array, CharacterEncodingError> =>\n" +
-      "  Effect.try({ try: () => encodeUnsafe(text, options), catch: (error) => error as CharacterEncodingError })\n\n" +
+      "export const encode = (text: string, options?: Options): Effect.Effect<Uint8Array, CharacterEncodingError> =>\n" +
+      "  Operators.encode(encoding, text, options)\n\n" +
       doc("Decodes " + name + " bytes to a string with conversion errors in the Effect error channel.", "decoding") +
-      "export const decode = (\n" +
-      "  bytes: Uint8Array,\n" +
-      "  options?: Options\n" +
-      "): Effect.Effect<string, CharacterEncodingError> =>\n" +
-      "  Effect.try({ try: () => decodeUnsafe(bytes, options), catch: (error) => error as CharacterEncodingError })\n\n" +
+      "export const decode = (bytes: Uint8Array, options?: Options): Effect.Effect<string, CharacterEncodingError> =>\n" +
+      "  Operators.decode(encoding, bytes, options)\n\n" +
       doc(
         "Encodes a stream of strings to " + name + " bytes incrementally, preserving codec state across chunks.",
         "streaming"
       ) +
-      "export const encodeStream = (options?: Options) =>\n" +
-      "  <E, R>(self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>\n" +
-      "    Stream.unwrap(Effect.map(\n" +
-      "      Effect.try({\n" +
-      "        try: () => attempt(\"encode\", () => encoding.makeEncoder(options ?? {})),\n" +
-      "        catch: (error) => error as CharacterEncodingError\n" +
-      "      }),\n" +
-      "      (encoder) =>\n" +
-      "        Stream.concat(\n" +
-      "          Stream.mapEffect(self, (text) =>\n" +
-      "            Effect.try({\n" +
-      "              try: () => encoder.write(text),\n" +
-      "              catch: (error) => error as CharacterEncodingError\n" +
-      "            })),\n" +
-      "          Stream.fromEffect(Effect.try({\n" +
-      "            try: () => encoder.end(),\n" +
-      "            catch: (error) => error as CharacterEncodingError\n" +
-      "          }))\n" +
-      "        )\n" +
-      "    ))\n\n" +
+      "export const encodeStream = (\n" +
+      "  options?: Options\n" +
+      "): <E, R>(self: Stream.Stream<string, E, R>) => Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>\n" +
+      "  Operators.encodeStream(encoding, options)\n\n" +
       doc(
         "Decodes a stream of " + name + " bytes to strings incrementally, retaining partial sequences across chunks.",
         "streaming"
       ) +
-      "export const decodeStream = (options?: Options) =>\n" +
-      "  <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>\n" +
-      "    Stream.unwrap(Effect.map(\n" +
-      "      Effect.try({\n" +
-      "        try: () => attempt(\"decode\", () => encoding.makeDecoder(options ?? {})),\n" +
-      "        catch: (error) => error as CharacterEncodingError\n" +
-      "      }),\n" +
-      "      (decoder) =>\n" +
-      "        Stream.concat(\n" +
-      "          Stream.mapEffect(self, (bytes) =>\n" +
-      "            Effect.try({\n" +
-      "              try: () => decoder.write(bytes),\n" +
-      "              catch: (error) => error as CharacterEncodingError\n" +
-      "            })),\n" +
-      "          Stream.fromEffect(Effect.try({\n" +
-      "            try: () => decoder.end(),\n" +
-      "            catch: (error) => error as CharacterEncodingError\n" +
-      "          }))\n" +
-      "        )\n" +
-      "    ))\n"
+      "export const decodeStream = (\n" +
+      "  options?: Options\n" +
+      "): <E, R>(self: Stream.Stream<Uint8Array, E, R>) => Stream.Stream<string, E | CharacterEncodingError, R> =>\n" +
+      "  Operators.decodeStream(encoding, options)\n"
   )
 }
 console.log("Generated " + all.length + " explicit codec modules and mapping data from " + revision)

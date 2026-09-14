@@ -190,6 +190,15 @@ describe("CharacterEncoding", () => {
       assert.equal(error.encoding, "windows1252")
       assert.equal(error.operation, "encode")
       assert.throws(() => Utf8.decodeUnsafe(Uint8Array.of(0xe2), { fatal: true }), { _tag: "CharacterEncodingError" })
+      const streamError = yield* Effect.flip(
+        Stream.make(Uint8Array.of(65), Uint8Array.of(0xff)).pipe(Utf8.decodeStream({ fatal: true }), Stream.runDrain)
+      )
+      assert.equal(streamError._tag, "CharacterEncodingError")
+      assert.equal(streamError.operation, "decode")
+      const tailError = yield* Effect.flip(
+        Stream.make(Uint8Array.of(0xe2)).pipe(Utf8.decodeStream({ fatal: true }), Stream.runDrain)
+      )
+      assert.equal(tailError._tag, "CharacterEncodingError")
     }))
 
   for (const [module, codec] of codecs) {
