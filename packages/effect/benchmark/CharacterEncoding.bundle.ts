@@ -25,8 +25,7 @@ const cases = [
     tables: 1
   }
 ]
-const dataFiles = (ids: ReadonlyArray<string>) =>
-  ids.filter((id) => /internal\/characterEncoding\/[^/]+Data\.ts$/.test(id)).sort()
+const dataFiles = (ids: ReadonlyArray<string>) => ids.filter((id) => /internal\/data\/[^/]+Data\.ts$/.test(id)).sort()
 const verify = async (code: string, name: string) => {
   const module = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"))
   if (name === "utf8-only") {

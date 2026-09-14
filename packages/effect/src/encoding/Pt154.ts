@@ -7,8 +7,8 @@ import type { CharacterEncodingError, Encoding, Options } from "../CharacterEnco
 import type * as Effect from "../Effect.ts"
 import { make } from "../internal/characterEncoding/codec.ts"
 import * as Operators from "../internal/characterEncoding/operators.ts"
-import data from "../internal/characterEncoding/pt154Data.ts"
 import { SingleByte } from "../internal/characterEncoding/singleByte.ts"
+import data from "../internal/data/pt154Data.ts"
 import type * as Stream from "../Stream.ts"
 
 /**

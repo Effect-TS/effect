@@ -6,9 +6,9 @@
 import type { CharacterEncodingError, Encoding, Options } from "../CharacterEncoding.ts"
 import type * as Effect from "../Effect.ts"
 import { make } from "../internal/characterEncoding/codec.ts"
-import data from "../internal/characterEncoding/gb18030Data.ts"
 import { MultiByte } from "../internal/characterEncoding/multiByte.ts"
 import * as Operators from "../internal/characterEncoding/operators.ts"
+import data from "../internal/data/gb18030Data.ts"
 import type * as Stream from "../Stream.ts"
 
 /**
