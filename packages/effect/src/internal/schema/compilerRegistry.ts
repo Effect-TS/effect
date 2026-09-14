@@ -15,7 +15,7 @@ export type Resolve = (ast: SchemaAST.AST) => Entry
 export type Compile = (ast: SchemaAST.AST, resolve: Resolve) => CompiledDecoder | undefined
 
 const cache = new WeakMap<SchemaAST.AST, Entry>()
-let compiler: ((ast: SchemaAST.AST, resolve: Resolve) => Entry | undefined) | undefined
+let compiler: ((ast: SchemaAST.AST, resolve: Resolve) => Entry) | undefined
 
 /** @internal */
 export let compilerAdaptersEnabled = false
@@ -24,15 +24,21 @@ function activateCompilerAdapters(): void {
   compilerAdaptersEnabled = true
 }
 
-const decodeChild = (ast: SchemaAST.AST): Parser => lazyParser(resolve, ast, "parser")
-const makeChild = (ast: SchemaAST.AST): Parser => lazyParser(resolve, ast, "makeEffect")
+const decodeChild = (ast: SchemaAST.AST): Parser =>
+  compilerAdaptersEnabled
+    ? lazyParser(resolve, ast, "parser")
+    : resolve(ast).parser
+const makeChild = (ast: SchemaAST.AST): Parser =>
+  compilerAdaptersEnabled
+    ? lazyParser(resolve, ast, "makeEffect")
+    : resolve(ast).makeEffect
 const makeField = (ast: SchemaAST.AST): Parser => Interpreter.compileField(ast, makeChild)
 
 /** @internal */
 export interface Entry {
   readonly ast: SchemaAST.AST
   readonly source?: CompiledDecoder | undefined
-  readonly resolve: Resolve
+  readonly resolve?: Resolve | undefined
   readonly is?: Is | undefined
   readonly validate?: Validate | undefined
   readonly decodeEffect: Parser
@@ -42,14 +48,9 @@ export interface Entry {
 
 class InterpretedEntry implements Entry {
   readonly ast: SchemaAST.AST
-  readonly resolve: Resolve
 
-  constructor(
-    ast: SchemaAST.AST,
-    resolve: Resolve
-  ) {
+  constructor(ast: SchemaAST.AST) {
     this.ast = ast
-    this.resolve = resolve
   }
 
   protected save<K extends keyof Entry>(key: K, value: Entry[K]): Entry[K] {
@@ -60,10 +61,7 @@ class InterpretedEntry implements Entry {
   get decodeEffect(): Parser {
     return this.save(
       "decodeEffect",
-      Interpreter.compile(
-        this.ast,
-        this.resolve === resolve ? decodeChild : (ast) => lazyParser(this.resolve, ast, "parser")
-      )
+      Interpreter.compile(this.ast, decodeChild)
     )
   }
 
@@ -72,38 +70,36 @@ class InterpretedEntry implements Entry {
   }
 
   get makeEffect(): Parser {
-    const child = this.resolve === resolve
-      ? makeChild
-      : (ast: SchemaAST.AST) => lazyParser(this.resolve, ast, "makeEffect")
     return this.save(
       "makeEffect",
-      Interpreter.compile(
-        this.ast,
-        child,
-        this.resolve === resolve ? makeField : (ast) => Interpreter.compileField(ast, child)
-      )
+      Interpreter.compile(this.ast, makeChild, makeField)
     )
   }
 }
 
-class InstalledEntry extends InterpretedEntry {
-  readonly source: CompiledDecoder
+class CompilerEntry extends InterpretedEntry {
+  readonly source: CompiledDecoder | undefined
+  readonly resolve: Resolve
 
-  constructor(ast: SchemaAST.AST, source: CompiledDecoder, resolve: Resolve) {
-    super(ast, resolve)
+  constructor(ast: SchemaAST.AST, source: CompiledDecoder | undefined, resolve: Resolve) {
+    super(ast)
     this.source = source
+    this.resolve = resolve
   }
 
   get is(): Is | undefined {
-    return this.save("is", this.source.is)
+    return this.save("is", this.source?.is)
   }
 
   get validate(): Validate | undefined {
-    return this.save("validate", this.source.validate)
+    return this.save("validate", this.source?.validate)
   }
 
   override get decodeEffect(): Parser {
-    return this.save("decodeEffect", this.source.decodeEffect)
+    return this.save(
+      "decodeEffect",
+      this.source?.decodeEffect ?? Interpreter.compile(this.ast, (ast) => lazyParser(this.resolve, ast, "parser"))
+    )
   }
 
   override get parser(): Parser {
@@ -114,10 +110,17 @@ class InstalledEntry extends InterpretedEntry {
   }
 
   override get makeEffect(): Parser {
-    const makeEffect = this.source.makeEffect
-    return makeEffect === undefined
-      ? super.makeEffect
-      : this.save("makeEffect", makeEffect)
+    const makeEffect = this.source?.makeEffect
+    if (makeEffect !== undefined) return this.save("makeEffect", makeEffect)
+    const child = (ast: SchemaAST.AST): Parser => lazyParser(this.resolve, ast, "makeEffect")
+    return this.save(
+      "makeEffect",
+      Interpreter.compile(
+        this.ast,
+        child,
+        (ast) => Interpreter.compileField(ast, child)
+      )
+    )
   }
 }
 
@@ -153,7 +156,7 @@ export function lazyParser(
 export function resolve(ast: SchemaAST.AST): Entry {
   const cached = cache.get(ast)
   if (cached !== undefined) return cached
-  const entry = compiler?.(ast, resolve) ?? new InterpretedEntry(ast, resolve)
+  const entry = compiler === undefined ? new InterpretedEntry(ast) : compiler(ast, resolve)
   cache.set(ast, entry)
   return entry
 }
@@ -161,9 +164,7 @@ export function resolve(ast: SchemaAST.AST): Entry {
 /** @internal */
 export function set(ast: SchemaAST.AST, decoder: CompiledDecoder | undefined, resolveChild: Resolve = resolve): Entry {
   if (decoder !== undefined) activateCompilerAdapters()
-  const entry = decoder === undefined
-    ? new InterpretedEntry(ast, resolveChild)
-    : new InstalledEntry(ast, decoder, resolveChild)
+  const entry = new CompilerEntry(ast, decoder, resolveChild)
   cache.set(ast, entry)
   return entry
 }
@@ -171,10 +172,7 @@ export function set(ast: SchemaAST.AST, decoder: CompiledDecoder | undefined, re
 /** @internal */
 export function install(compile: Compile): void {
   activateCompilerAdapters()
-  compiler = (ast, resolve) => {
-    const decoder = compile(ast, resolve)
-    return decoder === undefined ? undefined : new InstalledEntry(ast, decoder, resolve)
-  }
+  compiler = (ast, resolve) => new CompilerEntry(ast, compile(ast, resolve), resolve)
 }
 
 /** @internal */
