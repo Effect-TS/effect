@@ -1,7 +1,89 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
+
+describe("deferred self-completion", () => {
+  for (const failure of [false, true]) {
+    it.live(failure ? "failure" : "success", () =>
+      Effect.gen(function*() {
+        const signal = DurableDeferred.make("signal", { success: Schema.String, error: Schema.String })
+        const read = yield* Latch.make()
+        const cleanup = yield* Latch.make()
+        const release = yield* Latch.make()
+        const events: Array<string> = []
+        let runs = 0
+        const workflow = Workflow.make("SelfCompletion", {
+          payload: {},
+          success: Schema.String,
+          error: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const layer = workflow.toLayer(() =>
+          Effect.gen(function*() {
+            const run = ++runs
+            events.push(`start-${run}`)
+            const engine = yield* WorkflowEngine.WorkflowEngine
+            return yield* DurableDeferred.raceAll({
+              name: "race",
+              success: Schema.String,
+              error: Schema.String,
+              effects: [
+                DurableDeferred.await(signal),
+                read.await.pipe(
+                  Effect.andThen(Effect.yieldNow),
+                  Effect.andThen(failure ? Effect.fail("boom") : Effect.succeed("ok")),
+                  DurableDeferred.into(signal),
+                  // Successful completion must preempt this producer and replay the run.
+                  Effect.andThen(Effect.never),
+                  Effect.onInterrupt(() =>
+                    run === 1
+                      ? Effect.gen(function*() {
+                        events.push("cleanup-start")
+                        yield* cleanup.open
+                        yield* release.await
+                        events.push("cleanup-end")
+                      })
+                      : Effect.void
+                  )
+                )
+              ]
+            }).pipe(
+              Effect.provideService(WorkflowEngine.WorkflowEngine, {
+                ...engine,
+                deferredResult: (deferred) =>
+                  engine.deferredResult(deferred).pipe(
+                    Effect.tap(() => deferred.name === signal.name ? read.open : Effect.void)
+                  )
+              }),
+              Effect.ensuring(Effect.sync(() => events.push(`end-${run}`)))
+            )
+          })
+        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+        yield* Effect.gen(function*() {
+          const execution = yield* workflow.execute({}).pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+          if (!failure) {
+            yield* cleanup.await
+            for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+            assert.deepStrictEqual(events, ["start-1", "cleanup-start"], "replay must wait for cleanup")
+            yield* release.open
+          }
+          const result = yield* Fiber.join(execution)
+          if (failure) {
+            assert.ok(Exit.isFailure(result))
+            assert.strictEqual(result.cause.reasons.length, 1)
+            const reason = result.cause.reasons[0]
+            assert.ok(Cause.isFailReason(reason))
+            assert.strictEqual(reason.error, "boom")
+          } else {
+            assert.deepStrictEqual(result, Exit.succeed("ok"))
+            assert.deepStrictEqual(events, ["start-1", "cleanup-start", "cleanup-end", "end-1", "start-2", "end-2"])
+          }
+        }).pipe(Effect.provide(layer))
+      }), 5_000)
+  }
+})
 
 describe("WorkflowEngine", () => {
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {

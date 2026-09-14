@@ -862,10 +862,16 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           const id = `${options.executionId}/${options.deferredName}`
           if (deferredResults.has(id)) return Effect.void
           deferredResults.set(id, options.exit)
-          return Effect.andThen(
+          const wake = Effect.andThen(
             deferredState.deferredDone(options.executionId, options.deferredName, options.exit),
             resume(options.executionId)
           )
+          return Effect.flatMap(Effect.serviceOption(WorkflowInstance), (instance) =>
+            // A workflow finalizer cannot wait for its own run's cleanup.
+            // The engine scope owns the wake so cleanup still precedes replay.
+            Option.isSome(instance) && instance.value.executionId === options.executionId
+              ? wake.pipe(Effect.forkIn(scope), Effect.asVoid)
+              : wake)
         }),
       scheduleClock: (workflow, options) =>
         engine.deferredDone(options.clock.deferred, {
