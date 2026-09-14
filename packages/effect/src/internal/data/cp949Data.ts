@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-import type { Mapping } from "./types.ts"
+import type { Mapping } from "../characterEncoding/types.ts"
 const data: Mapping = {
   "table": [
     ["0", "\u0000", 127],

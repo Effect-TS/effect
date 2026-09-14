@@ -8,7 +8,7 @@ import type * as Effect from "../Effect.ts"
 import { make } from "../internal/characterEncoding/codec.ts"
 import { MultiByte } from "../internal/characterEncoding/multiByte.ts"
 import * as Operators from "../internal/characterEncoding/operators.ts"
-import data from "../internal/characterEncoding/shiftjisData.ts"
+import data from "../internal/data/shiftjisData.ts"
 import type * as Stream from "../Stream.ts"
 
 /**
