@@ -25,6 +25,7 @@ type RunHandler = (request: Entity.Request<any>) => Effect.Effect<any, any, any>
 const makeEngine = (workflowLayer: Layer.Layer<never, never, WorkflowEngine.WorkflowEngine>, hooks?: {
   readonly onBuild?: (address: EntityAddress.EntityAddress, build: number) => Effect.Effect<void, never, Scope.Scope>
   readonly wrapRun?: (effect: ReturnType<RunHandler>, build: number) => ReturnType<RunHandler>
+  readonly wrapDeferred?: (effect: ReturnType<RunHandler>) => ReturnType<RunHandler>
   readonly storage?: (storage: MessageStorage.MessageStorage["Service"]) => MessageStorage.MessageStorage["Service"]
 }) =>
   Effect.gen(function*() {
@@ -67,9 +68,17 @@ const makeEngine = (workflowLayer: Layer.Layer<never, never, WorkflowEngine.Work
               builds.set(key, build)
               const built = yield* handlers
               if (hooks?.onBuild) yield* hooks.onBuild(address, build)
-              if (!hooks?.wrapRun || !address.entityType.startsWith("Workflow/")) return built
-              const run = (built as unknown as { run: RunHandler }).run
-              return { ...built, run: (request: Entity.Request<any>) => hooks.wrapRun!(run(request), build) }
+              if (!address.entityType.startsWith("Workflow/")) return built
+              const { deferred, run } = built as unknown as { run: RunHandler; deferred: RunHandler }
+              return {
+                ...built,
+                ...(hooks?.wrapRun && {
+                  run: (request: Entity.Request<any>) => hooks.wrapRun!(run(request), build)
+                }),
+                ...(hooks?.wrapDeferred && {
+                  deferred: (request: Entity.Request<any>) => hooks.wrapDeferred!(deferred(request))
+                })
+              }
             }),
             options
           )
@@ -115,13 +124,133 @@ const waitForDeactivation = (deactivated: Set<string>, workflow: Workflow.Any, e
     assert(deactivated.has(key), "the workflow entity activation must finish closing")
   })
 
-const advanceUntil = (ready: () => boolean, step = 1, rounds = 2000) =>
+const advanceUntil = (
+  ready: () => boolean,
+  step = 1,
+  rounds = 2000,
+  message = "the controlled lifecycle event must occur"
+) =>
   Effect.gen(function*() {
     for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
-    assert(ready(), "the controlled lifecycle event must occur")
+    assert(ready(), message)
   })
 
 describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => {
+  it.effect(
+    "interrupts a gated deferred during activation cleanup without retaining its result",
+    () =>
+      Effect.gen(function*() {
+        const entered = yield* Latch.make()
+        const allowRecord = yield* Latch.make()
+        const settled = yield* Latch.make()
+        const closing = yield* Latch.make()
+        const allowClose = yield* Latch.make()
+        let handlerExit: Exit.Exit<unknown, unknown> | undefined
+        let builds = 0
+        const workflow = Workflow.make("RecordAfterCleanup", {
+          payload: {},
+          success: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const gate = DurableDeferred.make("RecordAfterCleanup/Gate", { success: Schema.String })
+        let deactivate: Effect.Effect<void> | undefined
+        const get = ResourceMap.prototype.get
+        // Use the real entity removal path while its deferred handler is in flight.
+        yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            vi.spyOn(ResourceMap.prototype, "get").mockImplementation(
+              function(this: ResourceMap<unknown, unknown, unknown>, key) {
+                if (key instanceof EntityAddress.EntityAddress && key.entityType === `Workflow/${workflow._tag}`) {
+                  deactivate = this.remove(key)
+                }
+                return get.call(this, key)
+              }
+            )
+          ),
+          (spy) => Effect.sync(() => spy.mockRestore())
+        )
+        const { context, deactivated, state } = yield* makeEngine(workflow.toLayer(() => Effect.succeed("done")), {
+          onBuild: (address) =>
+            Effect.gen(function*() {
+              if (address.entityType !== `Workflow/${workflow._tag}`) return
+              builds++
+              yield* Effect.addFinalizer(() => closing.open.pipe(Effect.andThen(allowClose.await)))
+            }),
+          wrapDeferred: (effect) =>
+            entered.open.pipe(
+              Effect.andThen(allowRecord.await),
+              Effect.andThen(effect),
+              Effect.onExit((exit) => {
+                handlerExit = exit
+                return settled.open
+              })
+            )
+        })
+        yield* Effect.addFinalizer(() => allowRecord.open.pipe(Effect.andThen(allowClose.open)))
+        let cleared = false
+        let recordings = 0
+        const deferredDone = state.deferredDone
+        yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            vi.spyOn(state, "deferredDone").mockImplementation((...args) =>
+              Effect.suspend(() => {
+                recordings++
+                return deferredDone(...args)
+              })
+            )
+          ),
+          (spy) => Effect.sync(() => spy.mockRestore())
+        )
+        const clear = state.clear
+        yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            vi.spyOn(state, "clear").mockImplementation((id) =>
+              clear(id).pipe(Effect.tap(() =>
+                Effect.sync(() => {
+                  cleared = true
+                })
+              ))
+            )
+          ),
+          (spy) => Effect.sync(() => spy.mockRestore())
+        )
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.executionId({})
+          const execution = yield* workflow.execute({}).pipe(Effect.forkChild)
+          yield* advanceUntil(() => execution.pollUnsafe() !== undefined)
+          assert.strictEqual(yield* Fiber.join(execution), "done")
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "late"
+          })
+          yield* advanceUntil(() => entered.isOpen(), 1, 2000, "deferred handler must enter")
+          assert(deactivate !== undefined)
+          const removal = yield* deactivate.pipe(Effect.forkChild)
+          yield* advanceUntil(() => closing.isOpen(), 1, 2000, "handler scope must start closing")
+          assert.isTrue(cleared, "activation ownership must end before releasing the handler gate")
+          assert.isUndefined(state.pendingResult(executionId, gate.name))
+          yield* allowRecord.open
+          yield* advanceUntil(() => settled.isOpen(), 1, 2000, "deferred handler must settle")
+          yield* allowClose.open
+          yield* advanceUntil(() => removal.pollUnsafe() !== undefined, 1, 2000, "entity removal must finish")
+          yield* Fiber.join(removal)
+          assert(deactivated.has(entityKey(`Workflow/${workflow._tag}`, executionId)))
+          assert(handlerExit !== undefined && Exit.hasInterrupts(handlerExit))
+          assert.strictEqual(recordings, 0, "shutdown interrupts the handler before deferredDone executes")
+          assert.strictEqual(builds, 1, "a replacement activation must not hide stale retention")
+          assert.deepStrictEqual(
+            yield* workflow.poll(executionId),
+            Option.some(new Workflow.Complete({ exit: Exit.succeed("done") }))
+          )
+          assert.isUndefined(
+            state.pendingResult(executionId, gate.name),
+            "an in-flight deferred must not repopulate the cache after its owner's cleanup"
+          )
+        }).pipe(Effect.provide(context))
+      }),
+    30_000
+  )
+
   it.effect("releases a late completion when the completed workflow entity deactivates", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("LateCompletion/Gate", { success: Schema.String })
@@ -267,7 +396,8 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
               Effect.gen(function*() {
                 if (address.entityType !== `Workflow/${workflow._tag}`) return
                 if (build === 1 && lifecycle === "overlapping activations") {
-                  // Pause old-handler teardown before its production clear finalizer runs.
+                  // Hold old-handler teardown open so a replacement can overlap it.
+                  // Activation cleanup now runs before this handler-scope finalizer.
                   yield* Effect.addFinalizer(() => closing.open.pipe(Effect.andThen(allowClose.await)))
                 }
                 if (build === 2) {

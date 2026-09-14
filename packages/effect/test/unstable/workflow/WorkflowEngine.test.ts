@@ -3,6 +3,70 @@ import { Cause, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema
 import { TestClock } from "effect/testing"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
+describe("deferred state stale runs", () => {
+  const workflow = Workflow.make("StaleRun", {
+    payload: {},
+    success: Schema.Void,
+    idempotencyKey: () => "one"
+  })
+
+  it.effect("a superseded run in the same activation cannot clear the current run's completion", () =>
+    Effect.gen(function*() {
+      const state = WorkflowEngine.makeDeferredState()
+      const old = WorkflowEngine.WorkflowInstance.initial(workflow, "one")
+      const current = WorkflowEngine.WorkflowInstance.initial(workflow, "one")
+      const oldStarted = yield* Latch.make()
+      const currentStarted = yield* Latch.make()
+      const finishOld = yield* Latch.make()
+      const finishCurrent = yield* Latch.make()
+      const options = { isCurrentOwner: () => true }
+      const oldFiber = yield* state.trackRun(old, oldStarted.open.pipe(Effect.andThen(finishOld.await)), options).pipe(
+        Effect.forkChild
+      )
+      yield* oldStarted.await
+      const currentFiber = yield* state.trackRun(
+        current,
+        currentStarted.open.pipe(Effect.andThen(finishCurrent.await)),
+        options
+      ).pipe(Effect.forkChild)
+      yield* currentStarted.await
+      yield* state.deferredDone("one", "gate", Exit.succeed("current"))
+      yield* finishOld.open
+      yield* Fiber.join(oldFiber)
+      assert.isFalse(old.suspended, "the retiring run must take the terminal cleanup path")
+      assert.deepStrictEqual(state.pendingResult("one", "gate"), Exit.succeed("current"))
+
+      // The latest run still owns cleanup; preserving every run's cache would be wrong too.
+      yield* finishCurrent.open
+      yield* Fiber.join(currentFiber)
+      assert.isUndefined(state.pendingResult("one", "gate"))
+    }))
+
+  it.effect("a run from a retired activation cannot clear a new owner's completion before its first run", () =>
+    Effect.gen(function*() {
+      const state = WorkflowEngine.makeDeferredState()
+      const old = WorkflowEngine.WorkflowInstance.initial(workflow, "one")
+      const started = yield* Latch.make()
+      const finish = yield* Latch.make()
+      let isCurrentOwner = true
+      const fiber = yield* state.trackRun(old, started.open.pipe(Effect.andThen(finish.await)), {
+        isCurrentOwner: () => isCurrentOwner
+      }).pipe(Effect.forkChild)
+      yield* started.await
+      isCurrentOwner = false
+      // No replacement run is tracked, so only the ownership guard can protect this result.
+      yield* state.deferredDone("one", "gate", Exit.succeed("new owner"))
+      yield* finish.open
+      yield* Fiber.join(fiber)
+      assert.isFalse(old.suspended)
+      assert.deepStrictEqual(state.pendingResult("one", "gate"), Exit.succeed("new owner"))
+
+      const current = WorkflowEngine.WorkflowInstance.initial(workflow, "one")
+      yield* state.trackRun(current, Effect.void, { isCurrentOwner: () => true })
+      assert.isUndefined(state.pendingResult("one", "gate"))
+    }))
+})
+
 describe("deferred self-completion", () => {
   for (const failure of [false, true]) {
     it.live(failure ? "failure" : "success", () =>
