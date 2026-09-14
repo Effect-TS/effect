@@ -1824,6 +1824,25 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
+    const handleCause = Effect.fnUntraced(function*(cause: Cause.Cause<unknown>, decodingParameters = false) {
+      yield* Effect.logError(cause)
+      const failure = Cause.findError(cause)
+      if (Result.isFailure(failure)) {
+        return yield* Cause.hasDies(cause)
+          ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+          : Effect.failCause(failure.failure)
+      }
+      const error = failure.success
+      if (AiError.isAiError(error)) {
+        return yield* decodingParameters && isParameterValidationError(error)
+          ? Effect.fail(new InvalidParams({ message: error.reason.message }))
+          : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+      }
+      const message = isDeclaredFailure(error) && error instanceof Error
+        ? error.message
+        : INTERNAL_TOOL_ERROR_MESSAGE
+      return yield* Effect.as(reportCause(cause), toolErrorResult(message))
+    })
     const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
@@ -1857,45 +1876,33 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           undefined,
           decodeOptions
         ).pipe(
-          Stream.unwrap,
-          Stream.run(Sink.last()),
-          Effect.flatMap(Effect.fromOption),
-          Effect.flatMap((result) =>
-            result.isFailure && isParameterValidationError(result.result)
-              ? Effect.fail(result.result)
-              : Effect.succeed(
-                new CallToolResult({
-                  isError: result.isFailure,
-                  structuredContent: result.isFailure ? undefined : result.encodedResult,
-                  content: result.encodedResult === undefined ? [] : [{
-                    type: "text",
-                    text: JSON.stringify(result.encodedResult)
-                  }]
+          Effect.matchCauseEffect({
+            onFailure: (cause) => handleCause(cause, true),
+            onSuccess: (stream) =>
+              stream.pipe(
+                Stream.run(Sink.last()),
+                Effect.flatMap(Effect.fromOption),
+                Effect.matchCauseEffect({
+                  onFailure: (cause) => handleCause(cause),
+                  onSuccess: (result) =>
+                    result.isParameterValidationFailure && isParameterValidationError(result.result)
+                      ? Effect.fail(new InvalidParams({ message: result.result.reason.message }))
+                      : Effect.sync(() =>
+                        new CallToolResult({
+                          isError: result.isFailure,
+                          structuredContent: result.isFailure ? undefined : result.encodedResult,
+                          content: result.encodedResult === undefined ? [] : [{
+                            type: "text",
+                            text: JSON.stringify(result.encodedResult)
+                          }]
+                        })
+                      ).pipe(Effect.catchCause((cause) => handleCause(cause)))
                 })
               )
-          ),
+          }),
           Effect.provideContext(
             services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
-          ),
-          Effect.tapCause(Effect.logError),
-          Effect.catchCause((cause) => {
-            const failure = Cause.findError(cause)
-            if (Result.isFailure(failure)) {
-              return Cause.hasDies(cause)
-                ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
-                : Effect.failCause(failure.failure)
-            }
-            const error: unknown = failure.success
-            if (AiError.isAiError(error)) {
-              return isParameterValidationError(error)
-                ? Effect.fail(new InvalidParams({ message: error.reason.message }))
-                : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
-            }
-            const message = isDeclaredFailure(error) && error instanceof Error
-              ? error.message
-              : INTERNAL_TOOL_ERROR_MESSAGE
-            return Effect.as(reportCause(cause), toolErrorResult(message))
-          })
+          )
         )
       }
     })

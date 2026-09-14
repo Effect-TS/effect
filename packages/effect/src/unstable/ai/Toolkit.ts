@@ -333,6 +333,7 @@ const Proto = {
             Effect.map(encodeResult(error, true), (encodedResult) => ({
               result: error,
               isFailure: true,
+              isParameterValidationFailure: true,
               preliminary: false,
               encodedResult
             }))

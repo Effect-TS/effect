@@ -963,6 +963,10 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly isFailure: boolean
   /**
+   * Whether this failure originated while decoding the tool's parameters.
+   */
+  readonly isParameterValidationFailure?: boolean
+  /**
    * Whether this is a preliminary (intermediate) result or the final result.
    * Preliminary results represent progress updates; only the final result
    * should be used as the authoritative output.
