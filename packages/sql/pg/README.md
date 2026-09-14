@@ -75,13 +75,54 @@ const program = Effect.gen(function*() {
 ```
 
 Strings bind to enum columns without any setup; the server infers the type.
-Invalid UTF-8 fails with `PgTypes.CodecError`, as it does for `text`.
 
-User-defined types whose binary representation is not UTF-8, such as composites,
-extension types, and enum arrays, need a codec. Register one with
+The fallback applies to every OID without a codec, not only enums, and it has
+two failure modes:
+
+- Invalid UTF-8 fails with `PgTypes.CodecError`, as it does for `text`. A codec
+  failure while reading a row is fatal to the connection, not just to the
+  query: the socket is destroyed, every other query pipelined on that
+  connection fails, an open transaction is lost, `LISTEN` channels on it are
+  torn down, and the pool replaces the connection. Columns of a binary
+  user-defined type such as a composite, a PostGIS geometry, or a pgvector
+  `vector` hold bytes that are usually not valid UTF-8, so register a codec
+  before querying them.
+- Bytes that happen to be valid UTF-8 decode as garbled text without any
+  error. Arrays of user-defined types, including enum arrays, land here: the
+  array header is all low bytes, so a `capability[]` column reads as a string
+  of control characters followed by the labels.
+
+Register a codec for a scalar user-defined type with
 `PgTypes.register(oid, codec)`; registered codecs take precedence over the
-fallback. OIDs of user-defined types are assigned per database, so look them up
-in `pg_type` at startup rather than hard-coding them.
+fallback. `PgTypes.register` cannot attach an array type. For arrays, create a
+registry, register the element codec with its `arrayOid`, and pass the registry
+to the client as `types`. The registry builds the array codec from the element
+codec:
+
+```ts
+import { PgClient, PgTypes } from "@effect/sql-pg"
+import { Redacted, Result } from "effect"
+
+// SELECT oid, typarray FROM pg_type WHERE typname = 'capability'
+declare const capabilityOid: number
+declare const capabilityArrayOid: number
+
+const utf8: PgTypes.Codec<string> = {
+  encode: (value) => Result.succeed(new TextEncoder().encode(value)),
+  decode: (bytes) => Result.succeed(new TextDecoder("utf-8", { fatal: true }).decode(bytes))
+}
+
+const types = PgTypes.makeRegistry()
+types.register(capabilityOid, utf8, { arrayOid: capabilityArrayOid })
+
+const PostgresLive = PgClient.layer({
+  url: Redacted.make("postgres://user:password@localhost/app"),
+  types
+})
+```
+
+OIDs of user-defined types are assigned per database, so look them up in
+`pg_type` at startup rather than hard-coding them.
 
 ## Documentation
 
