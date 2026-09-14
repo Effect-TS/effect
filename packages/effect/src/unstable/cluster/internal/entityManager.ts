@@ -189,6 +189,7 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
+    let currentWrite: EntityState["write"] | undefined
     let defectRequestIds = new Set<Snowflake.Snowflake>()
     let isRestartingDueToDefect = false
 
@@ -334,12 +335,18 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        yield* Scope.addFinalizer(
-          scope,
+        // Cleanup must reach handlers started by replay before the resource
+        // finishes acquiring. Clear the writer before this server shuts down.
+        yield* Effect.acquireRelease(
           Effect.sync(() => {
-            isShuttingDown = true
-          })
-        )
+            currentWrite = server.write
+          }),
+          () =>
+            Effect.sync(() => {
+              currentWrite = undefined
+              isShuttingDown = true
+            })
+        ).pipe(Scope.provide(scope))
 
         if (defectRequestIds.size > 0) {
           for (const id of defectRequestIds) {
@@ -361,6 +368,15 @@ export const make = Effect.fnUntraced(function*<
                 ? { onRequest: options.storage.withTransaction }
                 : undefined
             )
+            // The handler can close its caller before server.write has finished
+            // registering its fiber, so retry cleanup after replay admission.
+            if (!activeRequests.has(id)) {
+              yield* Effect.ignoreCause(server.write(0, {
+                _tag: "Interrupt",
+                requestId: id as any,
+                interruptors: []
+              }))
+            }
           }
           defectRequestIds.clear()
         }
@@ -411,11 +427,10 @@ export const make = Effect.fnUntraced(function*<
           if (activeRequests.size === 0) {
             state.lastActiveCheck = clock.currentTimeMillisUnsafe()
           }
-          // During a rebuild there is no handler to interrupt. Forgetting the
-          // request above keeps it out of the replay, and a delivery still
-          // waiting for the rebuild belongs to the departing caller's fiber.
-          if (writeRef.state.current._tag !== "Acquired") return Effect.void
-          return Effect.ignoreCause(writeRef.state.current.value(0, {
+          // Construction may still be pending. Forget the request without
+          // waiting for a server; replay skips requests that are no longer active.
+          if (!currentWrite) return Effect.void
+          return Effect.ignoreCause(currentWrite(0, {
             _tag: "Interrupt",
             requestId: requestId as any,
             interruptors: []
