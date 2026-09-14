@@ -137,7 +137,6 @@ const errorResponse = (fields: ReadonlyArray<readonly [string, string]>): Buffer
     ])
   )
 
-// CommandComplete tags matter: transaction/settings tags drive metadata invalidation.
 const numericCommandTag = (sql: string): string => {
   const [command, object] = sql.trim().split(/\s+/)
   switch (command) {
@@ -166,18 +165,13 @@ const makeNumericPeer = (options?: {
   readonly ambiguous?: boolean
   readonly timestamp?: boolean
   readonly holdDescription?: boolean
-  readonly holdExecution?: string
 }) => {
   const writes: Array<ReadonlyArray<string>> = []
   const parses: Array<{ readonly sql: string; readonly oids: ReadonlyArray<number> }> = []
   const statements = new Map<string, { readonly sql: string; readonly oids: ReadonlyArray<number> }>()
   const descriptionRequested = Deferred.makeUnsafe<void>()
-  const executionRequested = Deferred.makeUnsafe<void>()
   const executions: Array<string> = []
   let executionError: { readonly sql: string; readonly code: string } | undefined
-  let heldReplies: Buffer | undefined
-  let heldSync = true
-  let executionWasHeld = false
   const cancellations: Array<Buffer> = []
   let statementDescriptions = 0
   let descriptionWasHeld = false
@@ -268,11 +262,6 @@ const makeNumericPeer = (options?: {
                   fail(executionError.code, "injected execution failure")
                   break
                 }
-                if (options?.holdExecution === portalSql && !executionWasHeld) {
-                  executionWasHeld = true
-                  holdReplies = true
-                  Deferred.doneUnsafe(executionRequested, Effect.void)
-                }
                 if (portalSql === "BEGIN" || portalSql.startsWith("ROLLBACK TO")) status = "T"
                 else if (portalSql === "COMMIT" || portalSql === "ROLLBACK") status = "I"
                 replies.push(backendMessage("C", Buffer.from(`${numericCommandTag(portalSql)}\0`)))
@@ -284,10 +273,7 @@ const makeNumericPeer = (options?: {
           }
         }
       }
-      if (holdReplies) {
-        heldReplies = Buffer.concat(replies)
-        heldSync = frontendTags(chunk).includes("S")
-      } else if (replies.length > 0) queueMicrotask(() => socket.push(Buffer.concat(replies)))
+      if (!holdReplies && replies.length > 0) queueMicrotask(() => socket.push(Buffer.concat(replies)))
       callback()
     }
   })
@@ -297,15 +283,11 @@ const makeNumericPeer = (options?: {
       write(chunk: Buffer, _encoding, callback) {
         cancellations.push(Buffer.from(chunk))
         queueMicrotask(() => {
-          // A Flush-only discovery has no ReadyForQuery to drain yet. Its
-          // cleanup must send Sync; cancellation alone cannot supply it.
-          if (heldSync) {
-            if (status === "T") status = "E"
-            socket.push(Buffer.concat([
-              errorResponse([["S", "ERROR"], ["C", "57014"], ["M", "canceling statement due to user request"]]),
-              backendMessage("Z", Buffer.from(status))
-            ]))
-          }
+          if (status === "T") status = "E"
+          socket.push(Buffer.concat([
+            errorResponse([["S", "ERROR"], ["C", "57014"], ["M", "canceling statement due to user request"]]),
+            backendMessage("Z", Buffer.from(status))
+          ]))
           cancellation.destroy()
         })
         callback()
@@ -318,16 +300,9 @@ const makeNumericPeer = (options?: {
     writes,
     parses,
     descriptionRequested,
-    executionRequested,
     executions,
     failExecution(sql: string, code: string) {
       executionError = { sql, code }
-    },
-    releaseReplies() {
-      if (heldReplies === undefined) return
-      const replies = heldReplies
-      heldReplies = undefined
-      socket.push(replies)
     },
     cancellations,
     cancelStream,
@@ -413,66 +388,13 @@ describe("PgConnection in-process server", () => {
             assert.propertyVal(error.reason.cause, "code", code)
             assert.propertyVal(error.reason.cause, "message", "injected execution failure")
             assert.strictEqual(peer.executions.length - executions, 1)
-            assert.strictEqual(peer.parses.length - parses, mode === "warm prepared" ? 0 : 1)
-            assert.strictEqual(peer.statementDescriptions, descriptions)
+            // A cold statement is described once and parsed once; nothing runs again.
+            assert.strictEqual(peer.parses.length - parses, mode === "warm prepared" ? 0 : 2)
+            assert.strictEqual(peer.statementDescriptions - descriptions, mode === "warm prepared" ? 0 : 1)
             yield* connection.query("SELECT 1")
           }))
       }
     }
-  }
-
-  for (const prepare of [false, true]) {
-    it.effect(`holds a pin through timestamp discovery and retry, prepare=${prepare}`, () =>
-      Effect.gen(function*() {
-        const sql = "INSERT INTO numeric_events VALUES ($1)"
-        const peer = makeNumericPeer({ timestamp: true, holdDescription: true, holdExecution: sql })
-        yield* Effect.gen(function*() {
-          const connection = yield* PgConnection.make({
-            username: "test",
-            stream: () => peer.socket,
-            multiplex: true,
-            prepare
-          })
-          const first = yield* Effect.forkScoped(connection.query(sql, [1]))
-          yield* Deferred.await(peer.descriptionRequested)
-          const acquired = yield* Deferred.make<void>()
-          const release = yield* Deferred.make<void>()
-          const pin = yield* Effect.forkScoped(Effect.scoped(Effect.gen(function*() {
-            const exclusive = yield* connection.pin
-            yield* exclusive.query("SELECT 10 AS pinned")
-            yield* Deferred.succeed(acquired, undefined)
-            yield* Deferred.await(release)
-          })))
-          yield* Effect.yieldNow
-          const later = yield* Effect.forkScoped(connection.query("SELECT 20 AS later"))
-          yield* Effect.yieldNow
-          assert.isUndefined(pin.pollUnsafe())
-          assert.isUndefined(later.pollUnsafe())
-          assert.deepStrictEqual(peer.executions, [])
-
-          peer.releaseReplies()
-          yield* Deferred.await(peer.executionRequested)
-          yield* Effect.yieldNow
-          assert.isUndefined(first.pollUnsafe())
-          assert.isUndefined(pin.pollUnsafe())
-          assert.isUndefined(later.pollUnsafe())
-          assert.deepStrictEqual(peer.executions, [sql])
-
-          peer.releaseReplies()
-          yield* Fiber.join(first)
-          yield* Deferred.await(acquired)
-          assert.isUndefined(later.pollUnsafe())
-          assert.deepStrictEqual(peer.executions, [sql, "SELECT 10 AS pinned"])
-          yield* Deferred.succeed(release, undefined)
-          yield* Fiber.join(pin)
-          yield* Fiber.join(later)
-          assert.deepStrictEqual(peer.executions, [sql, "SELECT 10 AS pinned", "SELECT 20 AS later"])
-          // Retaining the discovery statement through Bind need not emit a
-          // second Parse with explicit OIDs. The ordering assertions above
-          // must hold for either execution path.
-          assert.isTrue(peer.parses.some((parse) => parse.sql === sql && parse.oids[0] === 0))
-        }).pipe(Effect.ensuring(Effect.sync(() => peer.releaseReplies())))
-      }))
   }
 
   it.effect("bounds numeric discovery to 100 entries and evicts the least recently used resolution", () =>
@@ -579,77 +501,6 @@ describe("PgConnection in-process server", () => {
           }))
       }
     }
-
-    for (const setting of ["SET LOCAL search_path TO inner_schema", "RESET search_path"]) {
-      if (setting.startsWith("RESET") && completion === "COMMIT") continue
-      it.effect(`invalidates ordinary numeric metadata after ${setting} and ${completion} restoration`, () =>
-        Effect.gen(function*() {
-          const peer = makeNumericPeer()
-          const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
-          const run = () => Stream.runCollect(connection.stream("SELECT $1::int4 AS n", [1]))
-          yield* run()
-          assert.strictEqual(peer.statementDescriptions, 1)
-          yield* connection.query("BEGIN")
-          assert.strictEqual((yield* connection.query(setting)).command, setting.split(" ")[0])
-          yield* run()
-          assert.strictEqual(peer.statementDescriptions, 2, "settings changes must invalidate the old context")
-          yield* run()
-          assert.strictEqual(peer.statementDescriptions, 2, "the new context must still reuse ordinary metadata")
-          yield* connection.query(completion)
-          yield* run()
-          assert.strictEqual(peer.statementDescriptions, 3, "transaction completion must invalidate restored settings")
-        }))
-    }
-  }
-
-  for (const completion of ["COMMIT", "ROLLBACK"]) {
-    it.effect(`retains settings restoration invalidation through a savepoint rollback before ${completion}`, () =>
-      Effect.gen(function*() {
-        const peer = makeNumericPeer()
-        const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
-        const run = () => Stream.runCollect(connection.stream("SELECT $1::int4 AS n", [1]))
-        yield* run()
-        yield* connection.query("BEGIN")
-        yield* connection.query("SET LOCAL search_path TO first_schema")
-        yield* run()
-        yield* connection.query("SAVEPOINT caller")
-        yield* connection.query("SET LOCAL search_path TO second_schema")
-        yield* run()
-        assert.strictEqual(peer.statementDescriptions, 3)
-        yield* connection.query("ROLLBACK TO SAVEPOINT caller")
-        yield* run()
-        assert.strictEqual(peer.statementDescriptions, 4, "savepoint rollback restores the earlier local setting")
-        yield* connection.query(completion)
-        yield* run()
-        assert.strictEqual(peer.statementDescriptions, 5, "the outer transaction still has settings to restore")
-      }))
-  }
-
-  for (
-    const ddl of [
-      "ALTER TABLE numbers ALTER COLUMN n TYPE bigint",
-      "CREATE TABLE numbers (n int4)",
-      "DROP TABLE numbers"
-    ]
-  ) {
-    for (const completion of ["ROLLBACK", "ROLLBACK TO SAVEPOINT caller"]) {
-      it.effect(`invalidates ordinary numeric metadata when ${completion} restores ${ddl}`, () =>
-        Effect.gen(function*() {
-          const peer = makeNumericPeer()
-          const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
-          const run = () => Stream.runCollect(connection.stream("SELECT $1::int4 AS n", [1]))
-          yield* run()
-          yield* connection.query("BEGIN")
-          yield* connection.query("SAVEPOINT caller")
-          assert.strictEqual((yield* connection.query(ddl)).command, ddl.split(" ")[0])
-          yield* run()
-          assert.strictEqual(peer.statementDescriptions, 2, "DDL must invalidate metadata immediately")
-          yield* connection.query(completion)
-          yield* run()
-          assert.strictEqual(peer.statementDescriptions, 3, "rollback must discard metadata from the reverted schema")
-          if (completion.startsWith("ROLLBACK TO")) yield* connection.query("ROLLBACK")
-        }))
-    }
   }
 
   for (const command of ["SAVEPOINT ", "ROLLBACK TO SAVEPOINT ", "RELEASE SAVEPOINT "]) {
@@ -670,17 +521,6 @@ describe("PgConnection in-process server", () => {
         assert.propertyVal(error.reason.cause, "message", `injected failure: ${injected!.sql}`)
       }))
   }
-
-  it.effect("attempts to release the discovery savepoint even when rollback fails", () =>
-    Effect.gen(function*() {
-      const peer = makeNumericPeer({ failCommand: "ROLLBACK TO SAVEPOINT ", ambiguous: true, timestamp: true })
-      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
-      yield* connection.query("BEGIN")
-      yield* Effect.exit(connection.query("INSERT INTO numeric_events VALUES ($1, $2 + $3)", [1, 2, 3]))
-
-      assert.isTrue(peer.parses.some(({ sql }) => sql.startsWith("ROLLBACK TO SAVEPOINT ")))
-      assert.isTrue(peer.parses.some(({ sql }) => sql.startsWith("RELEASE SAVEPOINT ")))
-    }))
 
   it.effect("rolls back and releases the discovery savepoint before completing interruption", () =>
     Effect.gen(function*() {
