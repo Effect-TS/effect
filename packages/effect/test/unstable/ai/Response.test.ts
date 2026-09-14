@@ -37,6 +37,7 @@ describe("Response", () => {
           result: failure,
           encodedResult: failure,
           isFailure: true,
+          failureOrigin: "handler",
           preliminary: false
         }], "Toolkit preserves user failure fields")
 
@@ -83,6 +84,7 @@ describe("Response", () => {
         result: failure,
         encodedResult: encodedFailure,
         isFailure: true,
+        failureOrigin: "handler",
         preliminary: false
       }], "Toolkit failure result")
 

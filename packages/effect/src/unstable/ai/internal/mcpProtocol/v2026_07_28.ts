@@ -470,7 +470,8 @@ export const makeHandlers = (
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         supportedVersions: Array.from(discovery.supportedVersions),
-        capabilities: discovery.capabilities
+        capabilities: discovery.capabilities,
+        instructions: context.serverInfo.instructions
       }, context.serverInfo)
       return yield* decodeDiscoverResult(result)
     }, Effect.mapError(projectError)),

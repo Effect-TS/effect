@@ -516,6 +516,7 @@ export const makeFeaturesServerLayer = (
     makeNumericResourceTemplate(observations),
     McpServer.prompt({
       name: "TestPrompt",
+      title: "Test prompt",
       description: "A test prompt",
       parameters: {
         required: Schema.String,
@@ -546,6 +547,7 @@ export const makeFeaturesServerLayer = (
   ).pipe(
     Layer.provide(makeServerLayer({
       name: "McpConformance",
+      instructions: "Follow the test server instructions.",
       protocols: [protocol],
       extensions: { "example/lifecycle": { enabled: true } }
     }))
