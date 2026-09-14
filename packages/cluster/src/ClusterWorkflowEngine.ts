@@ -335,12 +335,25 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
-            let currentRun: Entity.Request<any> | undefined
+            // Keep awaited names through suspension reply persistence.
+            let currentRun: {
+              readonly request: Entity.Request<any>
+              readonly awaitedDeferreds: ReadonlySet<string>
+            } | undefined
             const resumeGate = yield* Effect.makeSemaphore(1)
+            const resumeCurrentRun = Effect.suspend(() =>
+              resumeGate.withPermitsIfAvailable(1)(
+                currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
+              )
+            ).pipe(
+              // Release the gate before replay so later completions can wake it.
+              Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+              ensureSuccess
+            )
             return {
               run: (request: Entity.Request<any>) => {
-                currentRun = request
                 const instance = WorkflowInstance.initial(workflow, executionId)
+                currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
                 const payload = request.payload
                 let parent: { workflowName: string; executionId: string } | undefined
                 if (payload[payloadParentKey]) {
@@ -428,24 +441,20 @@ export const make = Effect.gen(function*() {
                 )
               },
 
-              deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
-                yield* deferredState.deferredDone(executionId, request.payload.name, request.payload.exit)
-                yield* ensureSuccess(resume(workflow, executionId))
-                return request.payload.exit
-              }),
-
-              resume: () =>
-                resumeGate.withPermitsIfAvailable(1)(
-                  currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
-                ).pipe(
-                  // Release the gate before replay so later completions can wake it.
-                  Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
-                  ensureSuccess,
+              deferred: (request: Entity.Request<any>) =>
+                deferredState.deferredDone(executionId, request.payload.name, request.payload.exit).pipe(
+                  Effect.andThen(Effect.suspend(() =>
+                    currentRun && !currentRun.awaitedDeferreds.has(request.payload.name)
+                      ? ensureSuccess(resume(workflow, executionId))
+                      : resumeCurrentRun
+                  )),
+                  Effect.as(request.payload.exit),
                   Rpc.wrap({ fork: true, uninterruptible: true })
-                )
+                ),
+
+              resume: () => resumeCurrentRun.pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
           }),
-          // Reserve a slot for deferred completions to wake the active run.
           { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
