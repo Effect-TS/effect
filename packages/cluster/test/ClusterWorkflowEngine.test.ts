@@ -7,7 +7,8 @@ import {
   MessageStorage,
   Runners,
   Sharding,
-  ShardingConfig
+  ShardingConfig,
+  Snowflake
 } from "@effect/cluster"
 import { Rpc } from "@effect/rpc"
 import { assert, describe, expect, it } from "@effect/vitest"
@@ -1335,4 +1336,262 @@ WorkflowEngineContractTest.suite({
     Effect.serviceOption(Sharding.Sharding),
     (sharding) => Option.isSome(sharding) ? sharding.value.pollStorage : Effect.yieldNow()
   )
+})
+
+describe("deferred completion persistence", () => {
+  const config = {
+    shardsPerGroup: 300,
+    availableShardGroups: ["default", "workflow"],
+    assignedShardGroups: ["default", "workflow"],
+    entityMailboxCapacity: 10,
+    entityTerminationTimeout: 0,
+    entityMessagePollInterval: 5000,
+    sendRetryInterval: 100
+  } as const
+
+  type Driver = MessageStorage.MemoryDriver
+  type Encoded = MessageStorage.Encoded
+  const requestTag = (driver: Driver, requestId: string) => driver.requests.get(requestId)?.envelope.tag
+  const isSuspended = (reply: Parameters<Encoded["saveReply"]>[0]) =>
+    reply._tag === "WithExit" && reply.exit._tag === "Success" && reply.exit.value?._tag === "Suspended"
+
+  const sharedDriver = Effect.map(
+    Layer.build(MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))),
+    (ctx) => Context.get(ctx, MessageStorage.MemoryDriver)
+  )
+  const gated = (driver: Driver, hooks: Partial<Encoded>) =>
+    MessageStorage.makeEncoded({ ...driver.encoded, ...hooks }).pipe(Effect.provide(Snowflake.layerGenerator))
+
+  const advanceUntil = (sharding: Sharding.Sharding["Type"], predicate: () => boolean, label: string, limit = 2000) =>
+    Effect.gen(function*() {
+      for (let i = 0; i < limit && !predicate(); i++) {
+        yield* Effect.yieldNow()
+        yield* TestClock.adjust(1)
+        yield* sharding.pollStorage
+      }
+      assert.isTrue(predicate(), label)
+    })
+
+  const pollUntil = (
+    sharding: Sharding.Sharding["Type"],
+    workflow: {
+      readonly poll: (id: string) => Effect.Effect<Workflow.Result<unknown, unknown> | undefined, never, WorkflowEngine>
+    },
+    executionId: string,
+    tag: string,
+    limit = 2000
+  ) =>
+    Effect.gen(function*() {
+      let result = yield* workflow.poll(executionId)
+      for (let i = 0; i < limit && result?._tag !== tag; i++) {
+        yield* Effect.yieldNow()
+        yield* TestClock.adjust(1)
+        yield* sharding.pollStorage
+        result = yield* workflow.poll(executionId)
+      }
+      return result
+    })
+
+  it.effect(
+    "resumes a discarded execution when completion precedes the suspension commit",
+    () =>
+      Effect.gen(function*() {
+        const releaseRun = yield* Effect.makeLatch()
+        let savingRun = false
+        let readBeforeCommit = false
+        let savedDeferred = false
+        let released = false
+        let runRequestId: string | undefined
+        const gate = DurableDeferred.make("DiscardedSuspension/Gate", { success: Schema.String })
+        const workflow = Workflow.make({
+          name: "DiscardedSuspension",
+          payload: {},
+          success: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const driver = yield* sharedDriver
+        const storage = yield* gated(driver, {
+          saveReply: (reply) => {
+            if (isSuspended(reply) && !savingRun) {
+              runRequestId = reply.requestId
+              savingRun = true
+              return releaseRun.await.pipe(Effect.andThen(driver.encoded.saveReply(reply)))
+            }
+            return driver.encoded.saveReply(reply).pipe(
+              Effect.tap(() =>
+                Effect.sync(() => {
+                  if (requestTag(driver, reply.requestId) === "deferred") savedDeferred = true
+                })
+              )
+            )
+          },
+          repliesForUnfiltered: (requestIds) =>
+            driver.encoded.repliesForUnfiltered(requestIds).pipe(
+              Effect.tap((replies) =>
+                Effect.sync(() => {
+                  if (!released && runRequestId !== undefined && requestIds.includes(runRequestId)) {
+                    assert.deepStrictEqual(replies, [])
+                    readBeforeCommit = true
+                  }
+                })
+              )
+            )
+        })
+        const context = yield* Layer.build(
+          workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+            Layer.provideMerge(makeEngine(config)),
+            Layer.provide(Layer.succeed(MessageStorage.MessageStorage, storage))
+          )
+        )
+        const sharding = Context.get(context, Sharding.Sharding)
+        yield* Effect.addFinalizer(() => releaseRun.open)
+        yield* Effect.gen(function*() {
+          // No execute waiter may retry a Suspended reply and repair the lost wake-up.
+          const executionId = yield* workflow.execute(undefined, { discard: true })
+          yield* advanceUntil(sharding, () => savingRun, "run must reach suspension persistence")
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "signal"
+          })
+          // Hold the commit until the completion's resume read observes no reply.
+          yield* advanceUntil(sharding, () => readBeforeCommit, "completion must read the uncommitted run")
+          released = true
+          yield* releaseRun.open
+          yield* advanceUntil(sharding, () => savedDeferred, "deferred completion must be persisted")
+          const result = yield* pollUntil(sharding, workflow, executionId, "Complete")
+          assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
+        }).pipe(Effect.provide(context))
+      }).pipe(Effect.scoped),
+    20_000
+  )
+
+  for (const entityMailboxCapacity of [2, 3]) {
+    it.effect(
+      `admits a required completion after an unrelated completion with mailbox capacity ${entityMailboxCapacity}`,
+      () =>
+        Effect.gen(function*() {
+          const required = DurableDeferred.make("MailboxProgress/Required", { success: Schema.String })
+          const unrelated = DurableDeferred.make("MailboxProgress/Unrelated", { success: Schema.String })
+          const workflow = Workflow.make({
+            name: "MailboxProgress",
+            payload: {},
+            success: Schema.String,
+            idempotencyKey: () => "one"
+          })
+          let instance: WorkflowInstance["Type"] | undefined
+          let runRequestId: string | undefined
+          let unrelatedRead = false
+          const driver = yield* sharedDriver
+          const storage = yield* gated(driver, {
+            repliesForUnfiltered: (requestIds) =>
+              driver.encoded.repliesForUnfiltered(requestIds).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() => {
+                    if (runRequestId !== undefined && requestIds.includes(runRequestId)) unrelatedRead = true
+                  })
+                )
+              )
+          })
+          const context = yield* Layer.build(
+            workflow.toLayer(() =>
+              Effect.gen(function*() {
+                instance = yield* WorkflowInstance
+                return yield* DurableDeferred.raceAll({
+                  name: "mailbox-progress",
+                  success: Schema.String,
+                  error: Schema.Never,
+                  effects: [DurableDeferred.await(required), Effect.never]
+                })
+              })
+            ).pipe(
+              Layer.provideMerge(makeEngine({ ...config, entityMailboxCapacity })),
+              Layer.provide(Layer.succeed(MessageStorage.MessageStorage, storage))
+            )
+          )
+          const sharding = Context.get(context, Sharding.Sharding)
+          yield* Effect.gen(function*() {
+            const executionId = yield* workflow.execute(undefined, { discard: true })
+            yield* advanceUntil(sharding, () =>
+              instance?.awaitedDeferreds.has(required.name) === true, "run must await the required deferred")
+            assert.isFalse(instance!.awaitedDeferreds.has(unrelated.name))
+            const run = driver.journal.find((message) =>
+              message._tag === "Request" && message.tag === "run"
+            )!
+            runRequestId = run.requestId
+            yield* DurableDeferred.succeed(unrelated, {
+              token: DurableDeferred.tokenFromExecutionId(unrelated, { workflow, executionId }),
+              value: "unrelated"
+            })
+            yield* advanceUntil(sharding, () => unrelatedRead, "unrelated completion must inspect the active run", 500)
+            yield* DurableDeferred.succeed(required, {
+              token: DurableDeferred.tokenFromExecutionId(required, { workflow, executionId }),
+              value: "signal"
+            })
+            const result = yield* pollUntil(sharding, workflow, executionId, "Complete", 300)
+            const pendingDeferreds = Array.from(driver.requests.values()).filter((entry) =>
+              entry.envelope._tag === "Request" && entry.envelope.tag === "deferred" && entry.replies.length === 0
+            ).map((entry) => (entry.envelope as any).payload.name)
+            assert.deepStrictEqual(
+              result,
+              new Workflow.Complete({ exit: Exit.succeed("signal") }),
+              `required completion must progress; pending deferreds: ${pendingDeferreds.join(", ")}`
+            )
+          }).pipe(Effect.provide(context))
+        }).pipe(Effect.scoped),
+      20_000
+    )
+  }
+
+  it.effect("retains a handover completion before its deferred reply is persisted", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("DeferredHandover/Gate", { success: Schema.String })
+      const workflow = Workflow.make({
+        name: "DeferredHandover",
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      const driver = yield* sharedDriver
+      let delayed = 0
+      const storage = yield* gated(driver, {
+        saveReply: (reply) =>
+          requestTag(driver, reply.requestId) === "deferred"
+            ? Effect.sync(() => delayed++).pipe(
+              Effect.andThen(Effect.sleep(100)),
+              Effect.andThen(driver.encoded.saveReply(reply))
+            )
+            : driver.encoded.saveReply(reply)
+      })
+      const layer = workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+        Layer.provideMerge(makeEngine(config)),
+        Layer.provide(Layer.succeed(MessageStorage.MessageStorage, storage))
+      )
+      // Each owner has a fresh engine over the same durable storage.
+      const withOwner = <A, E>(body: (sharding: Sharding.Sharding["Type"]) => Effect.Effect<A, E, WorkflowEngine>) =>
+        Effect.scoped(Effect.gen(function*() {
+          const context = yield* Layer.build(layer)
+          const sharding = Context.get(context, Sharding.Sharding)
+          const result = yield* Effect.provide(body(sharding), context)
+          yield* TestClock.adjust(1000)
+          return result
+        }))
+      const executionId = yield* withOwner((sharding) =>
+        Effect.gen(function*() {
+          const id = yield* workflow.execute(undefined, { discard: true })
+          assert.deepStrictEqual(yield* pollUntil(sharding, workflow, id, "Suspended"), new Workflow.Suspended())
+          return id
+        })
+      )
+      const result = yield* withOwner((sharding) =>
+        Effect.gen(function*() {
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "signal"
+          })
+          return yield* pollUntil(sharding, workflow, executionId, "Complete", 500)
+        })
+      )
+      assert.isAbove(delayed, 0, "the deferred reply delay must have been exercised")
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
+    }).pipe(Effect.scoped), 30_000)
 })

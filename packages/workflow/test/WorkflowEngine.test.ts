@@ -1,6 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
-import { Fiber, Scope } from "effect"
+import { Equal, Fiber, Scope } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -8,8 +8,6 @@ import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as TestClock from "effect/TestClock"
-import { spawn } from "node:child_process"
-import { fileURLToPath } from "node:url"
 import * as WorkflowEngineContractTest from "./WorkflowEngineContractTest.js"
 import { makeAwaitResult } from "./WorkflowEngineContractTest.js"
 
@@ -287,74 +285,85 @@ describe("shutdown", () => {
     }))
 })
 
-describe("deferred completion", () => {
-  for (const scenario of ["self-success", "self-failure", "external", "unrelated"] as const) {
-    it.effect(`settles ${scenario} completion without violating replay ordering`, () =>
+describe("deferred self-completion", () => {
+  for (const failure of [false, true]) {
+    it.live(failure ? "failure" : "success", () =>
       Effect.gen(function*() {
-        const result = yield* runDeferredCompletion(scenario)
-        assert.isFalse(result.timedOut, `deferred completion deadlocked (${scenario}):\n${result.output}`)
-        assert.strictEqual(result.code, 0, `deferred completion did not settle (${scenario}):\n${result.output}`)
-        assert.include(result.output, "deferred-completion-passed")
-      }), 30_000)
-  }
+        const signal = DurableDeferred.make("signal", { success: Schema.String, error: Schema.String })
+        const read = yield* Effect.makeLatch()
+        const cleanup = yield* Effect.makeLatch()
+        const release = yield* Effect.makeLatch()
+        const events: Array<string> = []
+        let runs = 0
+        const workflow = Workflow.make({
+          name: "SelfCompletion",
+          payload: {},
+          success: Schema.String,
+          error: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const layer = workflow.toLayer(() =>
+          Effect.gen(function*() {
+            const run = ++runs
+            events.push(`start-${run}`)
+            const engine = yield* WorkflowEngine.WorkflowEngine
+            return yield* DurableDeferred.raceAll({
+              name: "race",
+              success: Schema.String,
+              error: Schema.String,
+              effects: [
+                DurableDeferred.await(signal),
+                read.await.pipe(
+                  Effect.andThen(Effect.yieldNow()),
+                  Effect.andThen(failure ? Effect.fail("boom") : Effect.succeed("ok")),
+                  DurableDeferred.into(signal),
+                  // Successful completion must preempt this producer and replay the run.
+                  Effect.andThen(Effect.never),
+                  Effect.onInterrupt(() =>
+                    run === 1
+                      ? Effect.gen(function*() {
+                        events.push("cleanup-start")
+                        yield* cleanup.open
+                        yield* release.await
+                        events.push("cleanup-end")
+                      })
+                      : Effect.void
+                  )
+                )
+              ]
+            }).pipe(
+              Effect.provideService(WorkflowEngine.WorkflowEngine, {
+                ...engine,
+                deferredResult: (deferred) =>
+                  engine.deferredResult(deferred).pipe(
+                    Effect.tap(() => deferred.name === signal.name ? read.open : Effect.void)
+                  )
+              }),
+              Effect.ensuring(Effect.sync(() => events.push(`end-${run}`)))
+            )
+          })
+        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
 
-  for (const scenario of ["teardown-finalizer", "teardown-interruptible"] as const) {
-    it.effect(`cancels the self-completion wake during ${scenario}`, () =>
-      Effect.gen(function*() {
-        const result = yield* runDeferredCompletion(scenario)
-        assert.isFalse(result.timedOut, `engine teardown deadlocked (${scenario}):\n${result.output}`)
-        assert.strictEqual(result.code, 0, `engine teardown did not settle (${scenario}):\n${result.output}`)
-        assert.include(result.output, "deferred-completion-passed")
-      }), 30_000)
+        yield* Effect.gen(function*() {
+          const execution = yield* workflow.execute(undefined).pipe(Effect.exit, Effect.fork)
+          if (!failure) {
+            yield* cleanup.await
+            for (let i = 0; i < 20; i++) yield* Effect.yieldNow()
+            assert.deepStrictEqual(events, ["start-1", "cleanup-start"], "replay must wait for cleanup")
+            yield* release.open
+          }
+          const result = yield* Fiber.join(execution)
+          if (failure) {
+            assert.ok(Exit.isFailure(result))
+            assert.isTrue(Equal.equals(result, Exit.fail("boom")))
+          } else {
+            assert.deepStrictEqual(result, Exit.succeed("ok"))
+            assert.deepStrictEqual(events, ["start-1", "cleanup-start", "cleanup-end", "end-1", "start-2", "end-2"])
+          }
+        }).pipe(Effect.provide(layer))
+      }), 5_000)
   }
 })
-
-// A child process bounds deadlocks that also block test cleanup.
-const runDeferredCompletion = (scenario: string) =>
-  Effect.acquireUseRelease(
-    Effect.sync(() => {
-      const child = spawn(process.execPath, [
-        "--import",
-        "tsx",
-        fileURLToPath(new URL("./fixtures/deferred-completion.ts", import.meta.url)),
-        scenario
-      ], { stdio: ["ignore", "pipe", "pipe"] })
-      let output = ""
-      let timedOut = false
-      let ready = false
-      const stop = () => {
-        timedOut = true
-        child.kill("SIGKILL")
-      }
-      let timer = setTimeout(stop, 20_000)
-      const append = (chunk: Buffer) => {
-        output = (output + chunk.toString()).slice(-16_000)
-        if (!ready && output.includes("deferred-completion-ready")) {
-          ready = true
-          clearTimeout(timer)
-          timer = setTimeout(stop, 5_000)
-        }
-      }
-      child.stdout.on("data", append)
-      child.stderr.on("data", append)
-      child.on("error", (error) => {
-        output += String(error)
-      })
-      const closed = new Promise<{ code: number | null; timedOut: boolean; output: string }>((resolve) => {
-        child.once("close", (code) => {
-          clearTimeout(timer)
-          resolve({ code, timedOut, output })
-        })
-      })
-      return { child, closed }
-    }),
-    ({ closed }) => Effect.promise(() => closed),
-    ({ child, closed }) =>
-      Effect.promise(() => {
-        child.kill("SIGKILL")
-        return closed
-      })
-  )
 
 WorkflowEngineContractTest.suite({
   name: "memory",
