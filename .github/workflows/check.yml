@@ -38,11 +38,7 @@ jobs:
           fi
 
   types:
-    name: Types (${{ matrix.cold_run }})
-    strategy:
-      fail-fast: false
-      matrix:
-        cold_run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    name: Types
     runs-on: namespace-profile-linux-small
     permissions:
       contents: read
@@ -53,51 +49,10 @@ jobs:
         uses: ./.github/actions/setup
         with:
           deno-version: v2.9.4
-      - name: Verify cold checkout
-        run: |
-          files=$(find . -path './node_modules' -prune -o -name '*.tsbuildinfo' -print)
-          if [[ -n "$files" ]]; then
-            echo "Unexpected build cache: $files"
-            exit 1
-          fi
-      - name: Memory before check
-        run: |
-          free -m
-          nproc
-          cat /proc/self/cgroup
-          current="/sys/fs/cgroup$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)"
-          while [[ "$current" == /sys/fs/cgroup* ]]; do
-            for metric in memory.max memory.current memory.peak memory.events memory.events.local memory.swap.max; do
-              if [[ -r "$current/$metric" ]]; then
-                echo "$current/$metric"
-                cat "$current/$metric"
-              fi
-            done
-            [[ "$current" == /sys/fs/cgroup ]] && break
-            current="$(dirname "$current")"
-          done
       - run: pnpm check
-        shell: /usr/bin/time -v bash --noprofile --norc -e -o pipefail {0}
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
           GOMEMLIMIT: 4GiB
-      - name: Memory after check
-        if: always()
-        run: |
-          free -m
-          nproc
-          cat /proc/self/cgroup
-          current="/sys/fs/cgroup$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)"
-          while [[ "$current" == /sys/fs/cgroup* ]]; do
-            for metric in memory.max memory.current memory.peak memory.events memory.events.local memory.swap.max; do
-              if [[ -r "$current/$metric" ]]; then
-                echo "$current/$metric"
-                cat "$current/$metric"
-              fi
-            done
-            [[ "$current" == /sys/fs/cgroup ]] && break
-            current="$(dirname "$current")"
-          done
       - run: deno check .
       - run: pnpm test-types --target '>=5.9'
 
