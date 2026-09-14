@@ -358,14 +358,15 @@ export const makeDeferredState = (): DeferredState => {
       }),
     deferredDone: (executionId, name, exit) =>
       Effect.withFiber((current) => {
-        const run = running.get(executionId)
-        if (!run) return Effect.void
+        // A new owner can receive a completion before its first local run.
         let entries = pending.get(executionId)
         if (!entries) {
           entries = new Map()
           pending.set(executionId, entries)
         }
         entries.set(name, exit)
+        const run = running.get(executionId)
+        if (!run) return Effect.void
         if (
           run.fiber === current ||
           run.fiber.pollUnsafe() ||
