@@ -145,11 +145,17 @@ const makeNumericPeer = (options?: {
   readonly ambiguous?: boolean
   readonly timestamp?: boolean
   readonly holdDescription?: boolean
+  readonly holdExecution?: string
 }) => {
   const writes: Array<ReadonlyArray<string>> = []
   const parses: Array<{ readonly sql: string; readonly oids: ReadonlyArray<number> }> = []
   const statements = new Map<string, { readonly sql: string; readonly oids: ReadonlyArray<number> }>()
   const descriptionRequested = Deferred.makeUnsafe<void>()
+  const executionRequested = Deferred.makeUnsafe<void>()
+  const executions: Array<string> = []
+  let executionError: { readonly sql: string; readonly code: string } | undefined
+  let heldReplies: Buffer | undefined
+  let executionWasHeld = false
   const cancellations: Array<Buffer> = []
   let statementDescriptions = 0
   let descriptionWasHeld = false
@@ -235,6 +241,16 @@ const makeNumericPeer = (options?: {
                 break
               }
               case "E":
+                executions.push(portalSql)
+                if (executionError?.sql === portalSql) {
+                  fail(executionError.code, "injected execution failure")
+                  break
+                }
+                if (options?.holdExecution === portalSql && !executionWasHeld) {
+                  executionWasHeld = true
+                  holdReplies = true
+                  Deferred.doneUnsafe(executionRequested, Effect.void)
+                }
                 if (portalSql === "BEGIN" || portalSql.startsWith("ROLLBACK TO")) status = "T"
                 else if (portalSql === "COMMIT" || portalSql === "ROLLBACK") status = "I"
                 replies.push(backendMessage("C", Buffer.from("SELECT 0\0")))
@@ -246,7 +262,8 @@ const makeNumericPeer = (options?: {
           }
         }
       }
-      if (replies.length > 0 && !holdReplies) queueMicrotask(() => socket.push(Buffer.concat(replies)))
+      if (holdReplies) heldReplies = Buffer.concat(replies)
+      else if (replies.length > 0) queueMicrotask(() => socket.push(Buffer.concat(replies)))
       callback()
     }
   })
@@ -273,6 +290,17 @@ const makeNumericPeer = (options?: {
     writes,
     parses,
     descriptionRequested,
+    executionRequested,
+    executions,
+    failExecution(sql: string, code: string) {
+      executionError = { sql, code }
+    },
+    releaseReplies() {
+      if (heldReplies === undefined) return
+      const replies = heldReplies
+      heldReplies = undefined
+      socket.push(replies)
+    },
     cancellations,
     cancelStream,
     get statementDescriptions() {
@@ -338,6 +366,105 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
+  for (const multiplex of [false, true]) {
+    for (const mode of ["cold prepared", "warm prepared", "unprepared"] as const) {
+      for (const code of ["42804", "42883", "42846", "26000", "0A000"]) {
+        it.effect(`does not replay execution error ${code}, ${mode}, multiplex=${multiplex}`, () =>
+          Effect.gen(function*() {
+            const peer = makeNumericPeer()
+            const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, multiplex })
+            const sql = "SELECT $1::int4 AS n"
+            if (mode === "warm prepared") yield* connection.query(sql, [1])
+            const parses = peer.parses.length
+            const executions = peer.executions.length
+            const descriptions = peer.statementDescriptions
+            // The peer accepts Parse and Bind, then rejects Execute. These
+            // SQLSTATEs are retryable only before execution has started.
+            peer.failExecution(sql, code)
+            const error = yield* Effect.flip(connection.query(sql, [2], mode !== "unprepared"))
+            assert.propertyVal(error.reason.cause, "code", code)
+            assert.propertyVal(error.reason.cause, "message", "injected execution failure")
+            assert.strictEqual(peer.executions.length - executions, 1)
+            assert.strictEqual(peer.parses.length - parses, mode === "warm prepared" ? 0 : 1)
+            assert.strictEqual(peer.statementDescriptions, descriptions)
+            yield* connection.query("SELECT 1")
+          }))
+      }
+    }
+  }
+
+  for (const prepare of [false, true]) {
+    it.effect(`holds a pin through timestamp discovery and retry, prepare=${prepare}`, () =>
+      Effect.gen(function*() {
+        const sql = "INSERT INTO numeric_events VALUES ($1)"
+        const peer = makeNumericPeer({ timestamp: true, holdDescription: true, holdExecution: sql })
+        yield* Effect.gen(function*() {
+          const connection = yield* PgConnection.make({
+            username: "test",
+            stream: () => peer.socket,
+            multiplex: true,
+            prepare
+          })
+          const first = yield* Effect.forkScoped(connection.query(sql, [1]))
+          yield* Deferred.await(peer.descriptionRequested)
+          const acquired = yield* Deferred.make<void>()
+          const release = yield* Deferred.make<void>()
+          const pin = yield* Effect.forkScoped(Effect.scoped(Effect.gen(function*() {
+            const exclusive = yield* connection.pin
+            yield* exclusive.query("SELECT 10 AS pinned")
+            yield* Deferred.succeed(acquired, undefined)
+            yield* Deferred.await(release)
+          })))
+          yield* Effect.yieldNow
+          const later = yield* Effect.forkScoped(connection.query("SELECT 20 AS later"))
+          yield* Effect.yieldNow
+          assert.isUndefined(pin.pollUnsafe())
+          assert.isUndefined(later.pollUnsafe())
+          assert.deepStrictEqual(peer.executions, [])
+
+          peer.releaseReplies()
+          yield* Deferred.await(peer.executionRequested)
+          yield* Effect.yieldNow
+          assert.isUndefined(first.pollUnsafe())
+          assert.isUndefined(pin.pollUnsafe())
+          assert.isUndefined(later.pollUnsafe())
+          assert.deepStrictEqual(peer.executions, [sql])
+
+          peer.releaseReplies()
+          yield* Fiber.join(first)
+          yield* Deferred.await(acquired)
+          assert.isUndefined(later.pollUnsafe())
+          assert.deepStrictEqual(peer.executions, [sql, "SELECT 10 AS pinned"])
+          yield* Deferred.succeed(release, undefined)
+          yield* Fiber.join(pin)
+          yield* Fiber.join(later)
+          assert.deepStrictEqual(peer.executions, [sql, "SELECT 10 AS pinned", "SELECT 20 AS later"])
+          assert.deepStrictEqual(peer.parses.filter((parse) => parse.sql === sql).map((parse) => parse.oids), [
+            [23],
+            [0],
+            [1184]
+          ])
+        }).pipe(Effect.ensuring(Effect.sync(() => peer.releaseReplies())))
+      }))
+  }
+
+  it.effect("bounds numeric discovery to 100 entries and evicts the least recently used resolution", () =>
+    Effect.gen(function*() {
+      const peer = makeNumericPeer()
+      const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket, prepare: false })
+      const run = (index: number) => Stream.runCollect(connection.stream(`SELECT $1::int4 AS n /* ${index} */`, [1]))
+      for (let index = 0; index < 100; index++) yield* run(index)
+      assert.strictEqual(peer.statementDescriptions, 100)
+      yield* run(0)
+      assert.strictEqual(peer.statementDescriptions, 100)
+      yield* run(100)
+      assert.strictEqual(peer.statementDescriptions, 101)
+      yield* run(0)
+      assert.strictEqual(peer.statementDescriptions, 101, "accessing entry 0 must protect it from eviction")
+      yield* run(1)
+      assert.strictEqual(peer.statementDescriptions, 102, "entry 1 must be rediscovered after eviction")
+    }))
+
   it.effect("pipelines distinct cold numeric queries in the first write", () =>
     Effect.gen(function*() {
       const peer = makeNumericPeer()

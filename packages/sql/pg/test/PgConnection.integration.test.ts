@@ -25,7 +25,217 @@ const assertInterruptedOnClose = (
   })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
+  for (const multiplex of [false, true]) {
+    for (const code of ["42804", "42883", "42846", "26000", "0A000"]) {
+      it.effect(`executes a failing function only once for ${code}, multiplex=${multiplex}`, () =>
+        Effect.gen(function*() {
+          const connection = yield* makeConnection({ multiplex })
+          yield* connection.query("CREATE TEMP SEQUENCE execution_attempts")
+          yield* connection.query(`
+            CREATE FUNCTION pg_temp.fail_after_effect(value int4) RETURNS int4 LANGUAGE plpgsql VOLATILE AS $$
+            BEGIN
+              IF value = 0 THEN RETURN 0; END IF;
+              PERFORM nextval('pg_temp.execution_attempts');
+              RAISE EXCEPTION 'execution failed after nextval' USING ERRCODE = '${code}';
+            END $$
+          `)
+          const sql = "SELECT pg_temp.fail_after_effect($1) AS n"
+          assert.deepStrictEqual((yield* connection.query(sql, [0])).rows, [{ n: 0 }])
+          const error = yield* Effect.flip(connection.query(sql, [1]))
+          assert.propertyVal(error.reason.cause, "code", code)
+          assert.propertyVal(error.reason.cause, "message", "execution failed after nextval")
+          // Sequence increments survive a failed statement, unlike table writes.
+          // A retry would leave last_value = 2 even if the same error is returned.
+          assert.deepStrictEqual(
+            (yield* connection.query(
+              "SELECT last_value::int4 AS attempts, is_called FROM pg_temp.execution_attempts"
+            )).rows,
+            [{ attempts: 1, is_called: true }]
+          )
+        }))
+    }
+  }
+
+  for (const prepare of [false, true]) {
+    for (const columnType of ["timestamp", "timestamptz"]) {
+      it.effect(`binds numeric ${columnType} predicates and casts, prepare=${prepare}`, () =>
+        Effect.gen(function*() {
+          const connection = yield* makeConnection({ prepare })
+          yield* connection.query(`CREATE TEMP TABLE numeric_predicates (at ${columnType})`)
+          const insert = "INSERT INTO numeric_predicates VALUES ($1) RETURNING at"
+          for (const millis of [0, -1234, 1714979289123]) {
+            assert.deepStrictEqual((yield* connection.query(insert, [millis])).rows, [{ at: millis }])
+            assert.deepStrictEqual(
+              (yield* connection.query(
+                "SELECT at FROM numeric_predicates WHERE at = $1",
+                [millis]
+              )).rows,
+              [{ at: millis }]
+            )
+            assert.deepStrictEqual((yield* connection.query(`SELECT $1::${columnType} AS at`, [millis])).rows, [
+              { at: millis }
+            ])
+          }
+          // int4 and int8 inputs resolve to the same Parse signature.
+          const statements = yield* connection.query(
+            "SELECT parameter_types::text AS types FROM pg_prepared_statements WHERE statement = $1",
+            [insert],
+            false
+          )
+          assert.deepStrictEqual(
+            statements.rows,
+            prepare
+              ? [{
+                types: columnType === "timestamp"
+                  ? "{\"timestamp without time zone\"}"
+                  : "{\"timestamp with time zone\"}"
+              }]
+              : []
+          )
+        }))
+    }
+
+    it.effect(`distinguishes numeric UTC fields from Date session-timezone casts, prepare=${prepare}`, () =>
+      Effect.gen(function*() {
+        const connection = yield* makeConnection({ prepare })
+        yield* connection.query("SET TIME ZONE 'America/New_York'")
+        yield* connection.query("CREATE TEMP TABLE numeric_timezone (at timestamp, tz timestamptz)")
+        for (const [millis, offsetHours] of [[1704524889123, -5], [1714979289123, -4]]) {
+          const sql = "INSERT INTO numeric_timezone VALUES ($1, $2) RETURNING *"
+          const number = yield* connection.query(sql, [millis, millis])
+          const date = yield* connection.query(sql, [new Date(millis), new Date(millis)])
+          assert.deepStrictEqual(number.rows, [{ at: millis, tz: millis }])
+          assert.deepStrictEqual(date.rows, [{ at: millis + offsetHours * 3600_000, tz: millis }])
+        }
+      }))
+  }
+
+  for (const completion of ["COMMIT", "ROLLBACK"]) {
+    it.effect(`invalidates numeric metadata when ${completion} restores SET LOCAL search_path`, () =>
+      Effect.gen(function*() {
+        const admin = yield* makeConnection()
+        const outer = `numeric_outer_${completion.toLowerCase()}`
+        const inner = `numeric_inner_${completion.toLowerCase()}`
+        for (const schema of [outer, inner]) {
+          yield* Effect.acquireRelease(
+            admin.query(`CREATE SCHEMA ${schema}`),
+            () => Effect.orDie(admin.query(`DROP SCHEMA ${schema} CASCADE`))
+          )
+        }
+        const connection = yield* makeConnection({ prepare: false })
+        yield* connection.query(`CREATE TABLE ${outer}.events (at timestamp)`)
+        yield* connection.query(`CREATE TABLE ${inner}.events (at timestamptz)`)
+        yield* connection.query("SET TIME ZONE 'America/New_York'")
+        yield* connection.query(`SET search_path TO ${outer}`)
+        const insert = () =>
+          Stream.runCollect(connection.stream("INSERT INTO events VALUES ($1) RETURNING at", [1714979289123]))
+        assert.deepStrictEqual(yield* insert(), [{ at: 1714979289123 }])
+        yield* connection.query("BEGIN")
+        yield* connection.query(`SET LOCAL search_path TO ${inner}`)
+        assert.deepStrictEqual(yield* insert(), [{ at: 1714979289123 }])
+        yield* connection.query(completion)
+        // Both assignments are legal. A stale timestamptz OID silently shifts
+        // the timestamp by four hours, so error-driven invalidation cannot help.
+        assert.deepStrictEqual(yield* insert(), [{ at: 1714979289123 }])
+        assert.deepStrictEqual((yield* connection.query(`SELECT at FROM ${outer}.events`)).rows, [
+          { at: 1714979289123 },
+          { at: 1714979289123 }
+        ])
+      }))
+  }
+
   for (const columnType of ["timestamp", "timestamptz"]) {
+    it.effect(`preserves numeric UTC semantics after an assignment-compatible external change to ${columnType}`, () =>
+      Effect.gen(function*() {
+        const admin = yield* makeConnection()
+        const schema = `numeric_compatible_${columnType}`
+        yield* Effect.acquireRelease(
+          admin.query(`CREATE SCHEMA ${schema}`),
+          () => Effect.orDie(admin.query(`DROP SCHEMA ${schema} CASCADE`))
+        )
+        const connection = yield* makeConnection({ prepare: false })
+        const previousType = columnType === "timestamp" ? "timestamptz" : "timestamp"
+        yield* admin.query(`CREATE TABLE ${schema}.events (at ${previousType})`)
+        yield* connection.query("SET TIME ZONE 'America/New_York'")
+        const insert = () =>
+          Stream.runCollect(connection.stream(`INSERT INTO ${schema}.events VALUES ($1) RETURNING at`, [1714979289123]))
+        assert.deepStrictEqual(yield* insert(), [{ at: 1714979289123 }])
+        yield* admin.query(`TRUNCATE ${schema}.events`)
+        yield* admin.query(`ALTER TABLE ${schema}.events ALTER COLUMN at TYPE ${columnType} USING NULL`)
+        // PostgreSQL accepts both OIDs. Without fresh destination metadata,
+        // the assignment cast shifts the number by the session's UTC offset.
+        assert.deepStrictEqual(yield* insert(), [{ at: 1714979289123 }])
+      }))
+
+    for (const prepare of [false, true]) {
+      for (const mode of ["query", "stream"] as const) {
+        it.effect(`invalidates an external ${columnType} change for ${mode}, prepare=${prepare}`, () =>
+          Effect.gen(function*() {
+            const admin = yield* makeConnection()
+            const schema = `numeric_external_${columnType}_${prepare}_${mode}`
+            yield* Effect.acquireRelease(
+              admin.query(`CREATE SCHEMA ${schema}`),
+              () => Effect.orDie(admin.query(`DROP SCHEMA ${schema} CASCADE`))
+            )
+            const connection = yield* makeConnection({ prepare })
+            yield* admin.query(`CREATE TABLE ${schema}.events (at bigint)`)
+            const sql = `INSERT INTO ${schema}.events VALUES ($1) RETURNING at`
+            const params = [1714979289123]
+            // Streams force discovery, giving both modes a populated memo.
+            assert.deepStrictEqual(yield* Stream.runCollect(connection.stream(sql, params)), [
+              { at: BigInt(1714979289123) }
+            ])
+            const run = () =>
+              mode === "stream"
+                ? Stream.runCollect(connection.stream(sql, params))
+                : Effect.map(connection.query(sql, params), (result) => result.rows)
+            assert.deepStrictEqual(yield* run(), [{ at: BigInt(1714979289123) }])
+            yield* admin.query(`TRUNCATE ${schema}.events`)
+            yield* admin.query(`ALTER TABLE ${schema}.events ALTER COLUMN at TYPE ${columnType} USING NULL`)
+
+            if (mode === "stream") {
+              // Streams surface the first stale-type error; the next call
+              // must rediscover. Queries outside a transaction retry once.
+              const error = yield* Effect.flip(run())
+              assert.propertyVal(error.reason.cause, "code", "42804")
+              assert.deepStrictEqual((yield* admin.query(`SELECT count(*)::int4 AS n FROM ${schema}.events`)).rows, [
+                { n: 0 }
+              ])
+            }
+            assert.deepStrictEqual(yield* run(), [{ at: 1714979289123 }])
+            assert.deepStrictEqual((yield* admin.query(`SELECT count(*)::int4 AS n FROM ${schema}.events`)).rows, [
+              { n: 1 }
+            ])
+          }))
+      }
+    }
+
+    it.effect(`rediscovers an external ${columnType} change after caller transaction recovery`, () =>
+      Effect.gen(function*() {
+        const admin = yield* makeConnection()
+        const schema = `numeric_external_transaction_${columnType}`
+        yield* Effect.acquireRelease(
+          admin.query(`CREATE SCHEMA ${schema}`),
+          () => Effect.orDie(admin.query(`DROP SCHEMA ${schema} CASCADE`))
+        )
+        const connection = yield* makeConnection({ prepare: false })
+        yield* admin.query(`CREATE TABLE ${schema}.events (at bigint)`)
+        const sql = `INSERT INTO ${schema}.events VALUES ($1) RETURNING at`
+        yield* Stream.runCollect(connection.stream(sql, [1714979289123]))
+        yield* admin.query(`TRUNCATE ${schema}.events`)
+        yield* admin.query(`ALTER TABLE ${schema}.events ALTER COLUMN at TYPE ${columnType} USING NULL`)
+        yield* connection.query("BEGIN")
+        yield* connection.query("SAVEPOINT before_external_change")
+        const mismatch = yield* Effect.flip(connection.query(sql, [1714979289123]))
+        assert.propertyVal(mismatch.reason.cause, "code", "42804")
+        const aborted = yield* Effect.flip(connection.query("SELECT 1"))
+        assert.propertyVal(aborted.reason.cause, "code", "25P02")
+        yield* connection.query("ROLLBACK TO SAVEPOINT before_external_change")
+        assert.deepStrictEqual((yield* connection.query(sql, [1714979289123])).rows, [{ at: 1714979289123 }])
+        yield* connection.query("COMMIT")
+        assert.deepStrictEqual((yield* admin.query(`SELECT at FROM ${schema}.events`)).rows, [{ at: 1714979289123 }])
+      }))
+
     it.effect(`preserves a transaction through ${columnType} discovery and ambiguous numeric fallback`, () =>
       Effect.gen(function*() {
         const connection = yield* makeConnection()
