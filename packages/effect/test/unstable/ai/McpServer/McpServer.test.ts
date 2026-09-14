@@ -1769,10 +1769,55 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, "Public failure")
-        assert.lengthOf(reported, 1)
-        assert.isTrue(Cause.hasFails(reported[0]))
-        assert.strictEqual(Cause.squash(reported[0]), publicFailure)
+        assert.deepStrictEqual(reported, [])
       }))
+
+    for (const failureMode of ["error", "return"] as const) {
+      for (const reason of ["ToolResultEncodingError", "InvalidToolResultError"] as const) {
+        it.effect(`scrubs Toolkit-origin ${reason} in ${failureMode} mode despite a declared AiError schema`, () =>
+          Effect.gen(function*() {
+            let handlerInvoked = false
+            const reported: Array<Cause.Cause<unknown>> = []
+            const toolkit = Toolkit.make(Tool.make("InvalidResultTool", {
+              success: Schema.String.check(Schema.isMinLength(10)),
+              failure: AiError.AiError,
+              failureMode
+            }))
+            const client = yield* makeMcpStdioHarness(
+              McpProtocol.v2025_06_18,
+              [McpProtocol.v2025_06_18],
+              McpServer.toolkit(toolkit).pipe(
+                Layer.provide(toolkit.toLayer({
+                  InvalidResultTool: () => {
+                    handlerInvoked = true
+                    return reason === "ToolResultEncodingError"
+                      ? Effect.succeed("short")
+                      : Schema.decodeUnknownEffect(Schema.String)({ privateDetail: "invalid handler result" }).pipe(
+                        Effect.mapError((error) => error as never)
+                      )
+                  }
+                })),
+                Layer.provide(ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
+                  reported.push(cause)
+                })]))
+              )
+            )
+            yield* client.initialize()
+            const message = yield* client.sendRequest("tools/call", { name: "InvalidResultTool", arguments: {} })
+
+            assert.isTrue(handlerInvoked)
+            assert.isUndefined(message.error)
+            const result = yield* Schema.decodeUnknownEffect(McpSchema.CallToolResult)(message.result)
+            assert.isTrue(result.isError)
+            assert.isUndefined(result.structuredContent)
+            assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
+            assert.lengthOf(reported, 1)
+            const error = Cause.squash(reported[0])
+            assertTrue(AiError.isAiError(error))
+            assert.strictEqual(error.reason._tag, reason)
+          }))
+      }
+    }
 
     it.effect("returns a generic message for non-validation AiError failures", () =>
       Effect.gen(function*() {
