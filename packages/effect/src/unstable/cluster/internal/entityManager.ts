@@ -522,7 +522,6 @@ export const make = Effect.fnUntraced(function*<
                 ? message.callerScope
                 : undefined
               if (callerScope?.state._tag === "Closed") {
-                // The caller is already gone; there is nobody to deliver to.
                 return Effect.void
               }
               entry = {
@@ -541,8 +540,7 @@ export const make = Effect.fnUntraced(function*<
               }
               server.activeRequests.set(message.envelope.requestId, entry)
               if (callerScope !== undefined) {
-                // Forget the request when its caller goes away, delivered or not.
-                // Registered synchronously with admission, so nothing can separate the two.
+                // Register cleanup atomically with admission, including requests awaiting delivery.
                 scopeAddFinalizerUnsafe(callerScope, {}, () =>
                   Effect.sync(() => {
                     if (server.activeRequests.delete(message.envelope.requestId) && server.activeRequests.size === 0) {
@@ -596,11 +594,7 @@ export const make = Effect.fnUntraced(function*<
     )
   }
 
-  // Every handler start for a request that follows its caller, including
-  // replays after a defect, is bound to the caller's scope: if the scope is
-  // already closed the handler is not run, and if it closes later the
-  // handler's fiber is interrupted. Cleanup then flows through the normal
-  // Exit path.
+  // Bind each handler fiber, including replays, before its body runs.
   const bindToCaller = (callerScope: Scope.Scope) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     Effect.withFiber<A, E, R>((fiber) => {
       if (callerScope.state._tag === "Closed") return Effect.interrupt

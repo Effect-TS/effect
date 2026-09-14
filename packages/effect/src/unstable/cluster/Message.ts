@@ -100,9 +100,7 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
    */
   readonly codecFor: RpcSerialization.CodecFor
   /**
-   * Lifetime of the caller for an interruptible, non-persisted request.
-   * A closed scope prevents admission; closing it releases the request and
-   * interrupts its active handler.
+   * Scope that cancels interruptible, non-persisted requests when closed.
    *
    * @since 4.0.0
    */
@@ -126,9 +124,7 @@ export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("I
   readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
   readonly annotations: Context.Context<never>
   /**
-   * Lifetime of the caller for an interruptible, non-persisted request.
-   * A closed scope prevents admission; closing it releases the request and
-   * interrupts its active handler.
+   * Scope that cancels interruptible, non-persisted requests when closed.
    *
    * @since 4.0.0
    */
