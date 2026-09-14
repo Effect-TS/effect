@@ -1826,7 +1826,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      strict ? getStrictToolJsonSchema(tool.parametersSchema) : Tool.getJsonSchema(tool)
+      getToolInputJsonSchema(tool, strict)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({
       name: tool.name,
@@ -1858,16 +1858,24 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Stream.unwrap,
           Stream.run(Sink.last()),
           Effect.flatMap(Effect.fromOption),
-          Effect.map((result) =>
-            new CallToolResult({
-              isError: result.isFailure,
-              structuredContent: result.encodedResult,
-              content: result.encodedResult === undefined ? [] : [{
-                type: "text",
-                text: JSON.stringify(result.encodedResult)
-              }]
-            })
-          ),
+          Effect.flatMap((result) => {
+            if (
+              result.isFailure && AiError.isAiError(result.result) &&
+              result.result.reason._tag === "ToolParameterValidationError"
+            ) {
+              return Effect.fail(result.result)
+            }
+            return Effect.succeed(
+              new CallToolResult({
+                isError: result.isFailure,
+                structuredContent: result.isFailure ? undefined : result.encodedResult,
+                content: result.encodedResult === undefined ? [] : [{
+                  type: "text",
+                  text: JSON.stringify(result.encodedResult)
+                }]
+              })
+            )
+          }),
           Effect.provideContext(
             services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
           ),
@@ -1900,8 +1908,13 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   }
 })
 
-const getStrictToolJsonSchema = (schema: Schema.Constraint): JsonSchema.JsonSchema => {
-  const document = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+const getToolInputJsonSchema = (tool: Tool.Any, strict: boolean): JsonSchema.JsonSchema => {
+  if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+    return tool.jsonSchema
+  }
+  const document = Schema.toJsonSchemaDocument(tool.parametersSchema, {
+    onExcessProperty: strict ? "error" : "ignore"
+  })
   const key = typeof document.schema.$ref === "string" ? JsonSchema.getReferenceKey(document.schema.$ref) : undefined
   // MCP requires an object root even when the schema generator extracts it into $defs.
   const root = key === undefined ? document.schema : document.definitions[key] ?? document.schema
