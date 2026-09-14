@@ -94,13 +94,7 @@ describe("RpcClient", () => {
               yield* Deferred.succeed(release, undefined)
             }
 
-            // Bound the wait so a missing queue failure reports an assertion instead of hanging.
-            let readExit = reader.pollUnsafe()
-            for (let i = 0; i < 200 && readExit === undefined; i++) {
-              yield* Effect.yieldNow
-              readExit = reader.pollUnsafe()
-            }
-            assert(readExit !== undefined, "the consumer must settle after the write fails")
+            const readExit = yield* Fiber.await(reader)
             assert(Exit.isFailure(readExit))
             if (failure === "interruption") {
               assert(Cause.hasInterruptsOnly(readExit.cause))

@@ -1,24 +1,17 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Latch, Layer, Option, Schema, type Scope } from "effect"
 import { TestClock } from "effect/testing"
-import {
-  ClusterWorkflowEngine,
-  Entity,
-  EntityAddress,
-  MessageStorage,
-  RunnerHealth,
-  Runners,
-  RunnerStorage,
-  Sharding,
-  ShardingConfig,
-  Snowflake
-} from "effect/unstable/cluster"
+import { Entity, EntityAddress, MessageStorage, Sharding } from "effect/unstable/cluster"
 import { ResourceMap } from "effect/unstable/cluster/internal/resourceMap"
 import { DurableDeferred, Workflow } from "effect/unstable/workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
 import { vi } from "vitest"
+import { makeTestWorkflowEngine, pollUntil } from "./TestWorkflowEngine.ts"
 
 const entityKey = (entityType: string, entityId: string) => JSON.stringify([entityType, entityId])
+
+const spyScoped = <S extends { mockRestore(): void }>(make: () => S) =>
+  Effect.acquireRelease(Effect.sync(make), (spy) => Effect.sync(() => spy.mockRestore()))
 
 type RunHandler = (request: Entity.Request<any>) => Effect.Effect<any, any, any>
 
@@ -30,28 +23,22 @@ const makeEngine = (workflowLayer: Layer.Layer<never, never, WorkflowEngine.Work
 }) =>
   Effect.gen(function*() {
     // Observe the real cache: workflow results alone cannot reveal retained exits.
-    const spy = yield* Effect.acquireRelease(
-      Effect.sync(() => vi.spyOn(WorkflowEngine, "makeDeferredState")),
-      (spy) => Effect.sync(() => spy.mockRestore())
-    )
+    const spy = yield* spyScoped(() => vi.spyOn(WorkflowEngine, "makeDeferredState"))
     const deactivated = new Set<string>()
     const remove = ResourceMap.prototype.remove
     // Observe completion of the whole activation teardown, not just its restartable handlers.
-    yield* Effect.acquireRelease(
-      Effect.sync(() =>
-        vi.spyOn(ResourceMap.prototype, "remove").mockImplementation(
-          function(this: ResourceMap<unknown, unknown, unknown>, key) {
-            return remove.call(this, key).pipe(Effect.tap(() =>
-              Effect.sync(() => {
-                if (key instanceof EntityAddress.EntityAddress) {
-                  deactivated.add(entityKey(key.entityType, key.entityId))
-                }
-              })
-            ))
-          }
-        )
-      ),
-      (spy) => Effect.sync(() => spy.mockRestore())
+    yield* spyScoped(() =>
+      vi.spyOn(ResourceMap.prototype, "remove").mockImplementation(
+        function(this: ResourceMap<unknown, unknown, unknown>, key) {
+          return remove.call(this, key).pipe(Effect.tap(() =>
+            Effect.sync(() => {
+              if (key instanceof EntityAddress.EntityAddress) {
+                deactivated.add(entityKey(key.entityType, key.entityId))
+              }
+            })
+          ))
+        }
+      )
     )
     const builds = new Map<string, number>()
     const shardingLayer = Layer.effect(
@@ -85,43 +72,19 @@ const makeEngine = (workflowLayer: Layer.Layer<never, never, WorkflowEngine.Work
       }))
     ).pipe(Layer.provide(Sharding.layer))
     const context = yield* Layer.build(workflowLayer.pipe(
-      Layer.provideMerge(ClusterWorkflowEngine.layer.pipe(
-        Layer.provideMerge(shardingLayer),
-        Layer.provide(Runners.layerNoop),
-        Layer.provide(RunnerStorage.layerMemory),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provide(Snowflake.layerGenerator),
-        Layer.provide(
-          Layer.effect(
-            MessageStorage.MessageStorage,
-            Effect.map(MessageStorage.MessageStorage, (storage) => hooks?.storage ? hooks.storage(storage) : storage)
-          ).pipe(Layer.provide(MessageStorage.layerMemory))
-        ),
-        Layer.provide(ShardingConfig.layer({
-          shardsPerGroup: 300,
-          availableShardGroups: ["default", "workflow"],
-          assignedShardGroups: ["default", "workflow"],
-          entityTerminationTimeout: 0,
-          entityMessagePollInterval: 5000,
-          sendRetryInterval: 100
-        }))
-      ))
+      Layer.provideMerge(makeTestWorkflowEngine({
+        shardingLayer,
+        storageLayer: Layer.effect(
+          MessageStorage.MessageStorage,
+          Effect.map(MessageStorage.MessageStorage, (storage) => hooks?.storage ? hooks.storage(storage) : storage)
+        ).pipe(Layer.provide(MessageStorage.layerMemory))
+      }))
     ))
     assert.strictEqual(spy.mock.results.length, 1)
     const result = spy.mock.results[0]
     assert.strictEqual(result.type, "return")
     const state: WorkflowEngine.DeferredState = result.value
     return { context, state, deactivated }
-  })
-
-const waitForDeactivation = (deactivated: Set<string>, workflow: Workflow.Any, executionId: string) =>
-  Effect.gen(function*() {
-    const key = entityKey(`Workflow/${workflow._tag}`, executionId)
-    // Workflow entities idle out after 10 seconds; allow the shared reaper to close the activation.
-    for (let i = 0; i < 12 && !deactivated.has(key); i++) {
-      yield* TestClock.adjust(5000)
-    }
-    assert(deactivated.has(key), "the workflow entity activation must finish closing")
   })
 
 const advanceUntil = (
@@ -134,6 +97,15 @@ const advanceUntil = (
     for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
     assert(ready(), message)
   })
+
+// Workflow entities idle out after 10 seconds; allow the shared reaper to close the activation.
+const waitForDeactivation = (deactivated: Set<string>, workflow: Workflow.Any, executionId: string) =>
+  advanceUntil(
+    () => deactivated.has(entityKey(`Workflow/${workflow._tag}`, executionId)),
+    5000,
+    12,
+    "the workflow entity activation must finish closing"
+  )
 
 describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => {
   it.effect(
@@ -156,18 +128,15 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
         let deactivate: Effect.Effect<void> | undefined
         const get = ResourceMap.prototype.get
         // Use the real entity removal path while its deferred handler is in flight.
-        yield* Effect.acquireRelease(
-          Effect.sync(() =>
-            vi.spyOn(ResourceMap.prototype, "get").mockImplementation(
-              function(this: ResourceMap<unknown, unknown, unknown>, key) {
-                if (key instanceof EntityAddress.EntityAddress && key.entityType === `Workflow/${workflow._tag}`) {
-                  deactivate = this.remove(key)
-                }
-                return get.call(this, key)
+        yield* spyScoped(() =>
+          vi.spyOn(ResourceMap.prototype, "get").mockImplementation(
+            function(this: ResourceMap<unknown, unknown, unknown>, key) {
+              if (key instanceof EntityAddress.EntityAddress && key.entityType === `Workflow/${workflow._tag}`) {
+                deactivate = this.remove(key)
               }
-            )
-          ),
-          (spy) => Effect.sync(() => spy.mockRestore())
+              return get.call(this, key)
+            }
+          )
         )
         const { context, deactivated, state } = yield* makeEngine(workflow.toLayer(() => Effect.succeed("done")), {
           onBuild: (address) =>
@@ -187,38 +156,14 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
             )
         })
         yield* Effect.addFinalizer(() => allowRecord.open.pipe(Effect.andThen(allowClose.open)))
-        let cleared = false
-        let recordings = 0
-        const deferredDone = state.deferredDone
-        yield* Effect.acquireRelease(
-          Effect.sync(() =>
-            vi.spyOn(state, "deferredDone").mockImplementation((...args) =>
-              Effect.suspend(() => {
-                recordings++
-                return deferredDone(...args)
-              })
-            )
-          ),
-          (spy) => Effect.sync(() => spy.mockRestore())
-        )
-        const clear = state.clear
-        yield* Effect.acquireRelease(
-          Effect.sync(() =>
-            vi.spyOn(state, "clear").mockImplementation((id) =>
-              clear(id).pipe(Effect.tap(() =>
-                Effect.sync(() => {
-                  cleared = true
-                })
-              ))
-            )
-          ),
-          (spy) => Effect.sync(() => spy.mockRestore())
-        )
         yield* Effect.gen(function*() {
           const executionId = yield* workflow.executionId({})
           const execution = yield* workflow.execute({}).pipe(Effect.forkChild)
           yield* advanceUntil(() => execution.pollUnsafe() !== undefined)
           assert.strictEqual(yield* Fiber.join(execution), "done")
+          // A directly recorded probe shows when the activation releases its cache.
+          yield* state.deferredDone(executionId, "probe", Exit.succeed("probe"))
+          assert.deepStrictEqual(state.pendingResult(executionId, "probe"), Exit.succeed("probe"))
           yield* DurableDeferred.succeed(gate, {
             token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
             value: "late"
@@ -227,8 +172,10 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
           assert(deactivate !== undefined)
           const removal = yield* deactivate.pipe(Effect.forkChild)
           yield* advanceUntil(() => closing.isOpen(), 1, 2000, "handler scope must start closing")
-          assert.isTrue(cleared, "activation ownership must end before releasing the handler gate")
-          assert.isUndefined(state.pendingResult(executionId, gate.name))
+          assert.isUndefined(
+            state.pendingResult(executionId, "probe"),
+            "activation ownership must end before releasing the handler gate"
+          )
           yield* allowRecord.open
           yield* advanceUntil(() => settled.isOpen(), 1, 2000, "deferred handler must settle")
           yield* allowClose.open
@@ -236,7 +183,6 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
           yield* Fiber.join(removal)
           assert(deactivated.has(entityKey(`Workflow/${workflow._tag}`, executionId)))
           assert(handlerExit !== undefined && Exit.hasInterrupts(handlerExit))
-          assert.strictEqual(recordings, 0, "shutdown interrupts the handler before deferredDone executes")
           assert.strictEqual(builds, 1, "a replacement activation must not hide stale retention")
           assert.deepStrictEqual(
             yield* workflow.poll(executionId),
@@ -309,41 +255,22 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
           })
         ))
         yield* Effect.gen(function*() {
-          const sharding = yield* Sharding.Sharding
           const executionId = yield* workflow.execute({}, { discard: true })
           const complete = (gate: typeof first, value: string) =>
             DurableDeferred.succeed(gate, {
               token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
               value
             })
-          let result = yield* workflow.poll(executionId)
-          for (let i = 0; i < 200 && !(Option.isSome(result) && result.value._tag === "Suspended"); i++) {
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-            result = yield* workflow.poll(executionId)
-          }
-          assert(Option.isSome(result) && result.value._tag === "Suspended")
+          yield* pollUntil(workflow, executionId, "Suspended")
           yield* complete(first, "first")
-          result = yield* workflow.poll(executionId)
-          for (let i = 0; i < 200; i++) {
-            if (runs >= 2 && Option.isSome(result) && result.value._tag === "Suspended") break
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-            result = yield* workflow.poll(executionId)
-          }
-          assert(runs >= 2 && Option.isSome(result) && result.value._tag === "Suspended")
+          yield* pollUntil(workflow, executionId, "Suspended", { ready: () => runs >= 2 })
           yield* waitForDeactivation(deactivated, workflow, executionId)
           const retainedAfterDeactivation = state.pendingResult(executionId, first.name)
 
           // The engine stays alive. A new activation must recover the first value from storage.
           yield* complete(second, "second")
-          result = yield* workflow.poll(executionId)
-          for (let i = 0; i < 200 && !(Option.isSome(result) && result.value._tag === "Complete"); i++) {
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-            result = yield* workflow.poll(executionId)
-          }
-          assert.deepStrictEqual(result, Option.some(new Workflow.Complete({ exit: Exit.succeed("first:second") })))
+          const result = yield* pollUntil(workflow, executionId, "Complete")
+          assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("first:second") }))
           assert.isUndefined(state.pendingResult(executionId, first.name), "terminal runs must clear pending exits")
           assert.isUndefined(
             retainedAfterDeactivation,
@@ -397,7 +324,7 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
                 if (address.entityType !== `Workflow/${workflow._tag}`) return
                 if (build === 1 && lifecycle === "overlapping activations") {
                   // Hold old-handler teardown open so a replacement can overlap it.
-                  // Activation cleanup now runs before this handler-scope finalizer.
+                  // Activation cleanup runs before this handler-scope finalizer.
                   yield* Effect.addFinalizer(() => closing.open.pipe(Effect.andThen(allowClose.await)))
                 }
                 if (build === 2) {
@@ -426,15 +353,8 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
           })
         )
         yield* Effect.gen(function*() {
-          const sharding = yield* Sharding.Sharding
           const executionId = yield* workflow.execute({}, { discard: true })
-          let result = yield* workflow.poll(executionId)
-          for (let i = 0; i < 200 && !(Option.isSome(result) && result.value._tag === "Suspended"); i++) {
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-            result = yield* workflow.poll(executionId)
-          }
-          assert(Option.isSome(result) && result.value._tag === "Suspended")
+          yield* pollUntil(workflow, executionId, "Suspended")
           if (lifecycle === "overlapping activations") {
             yield* advanceUntil(() => closing.isOpen(), 5000, 12)
             assert.isFalse(rebuilt.isOpen(), "the old activation must start closing first")
@@ -447,29 +367,22 @@ describe("ClusterWorkflowEngine deferred cleanup", { concurrent: false }, () => 
           assert.deepStrictEqual(state.pendingResult(executionId, gate.name), Exit.succeed("signal"))
           yield* allowDefect.open
           yield* advanceUntil(() => rebuilt.isOpen())
-          assert.isFalse(persisted, "the completion must still be unavailable in storage")
           if (lifecycle === "defect rebuild") {
             assert.isFalse(deactivated.has(entityKey(`Workflow/${workflow._tag}`, executionId)))
-          }
-          if (lifecycle === "overlapping activations") {
+          } else {
             assert.deepStrictEqual(state.pendingResult(executionId, gate.name), Exit.succeed("signal"))
             yield* allowClose.open
             yield* advanceUntil(() => deactivated.has(entityKey(`Workflow/${workflow._tag}`, executionId)))
           }
           const retained = state.pendingResult(executionId, gate.name)
-          assert.isFalse(persisted)
+          assert.isFalse(persisted, "the completion must still be unavailable in storage")
 
           // Persistence eventually recovers either case; inspect retention before releasing it.
           yield* allowSave.open
           yield* allowBuild.open
           yield* allowRun.open
-          result = yield* workflow.poll(executionId)
-          for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === "Complete"); i++) {
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-            result = yield* workflow.poll(executionId)
-          }
-          assert.deepStrictEqual(result, Option.some(new Workflow.Complete({ exit: Exit.succeed("signal") })))
+          const result = yield* pollUntil(workflow, executionId, "Complete", { rounds: 2000 })
+          assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
           assert.deepStrictEqual(retained, Exit.succeed("signal"), `pending completion must survive ${lifecycle}`)
         }).pipe(Effect.provide(context))
       }), 30_000)

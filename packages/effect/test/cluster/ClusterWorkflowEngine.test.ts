@@ -15,18 +15,7 @@ import {
   Tracer
 } from "effect"
 import { TestClock } from "effect/testing"
-import {
-  ClusterSchema,
-  ClusterWorkflowEngine,
-  Entity,
-  MessageStorage,
-  RunnerHealth,
-  Runners,
-  RunnerStorage,
-  Sharding,
-  ShardingConfig,
-  Snowflake
-} from "effect/unstable/cluster"
+import { ClusterSchema, Entity, MessageStorage, Sharding, Snowflake } from "effect/unstable/cluster"
 import { Rpc } from "effect/unstable/rpc"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
 import {
@@ -34,6 +23,7 @@ import {
   WorkflowEngine,
   WorkflowInstance
 } from "effect/unstable/workflow/WorkflowEngine"
+import { makeTestWorkflowEngine } from "./TestWorkflowEngine.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
@@ -840,7 +830,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         assert.strictEqual(peak, 1)
       }).pipe(Effect.provide(
         Layer.mergeAll(ParentLayer, ChildLayer).pipe(
-          Layer.provideMerge(makeTestWorkflowEngine({ entityMailboxCapacity: 1000 }, storageLayer))
+          Layer.provideMerge(makeTestWorkflowEngine({ config: { entityMailboxCapacity: 1000 }, storageLayer }))
         )
       ))
     }))
@@ -921,7 +911,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           assert.deepStrictEqual(legacyResume.pollUnsafe(), Exit.void)
         }).pipe(Effect.provide(
           Layer.mergeAll(ParentLayer, ChildLayer).pipe(
-            Layer.provideMerge(makeTestWorkflowEngine({ entityMessagePollInterval: "1 hour" }))
+            Layer.provideMerge(makeTestWorkflowEngine({ config: { entityMessagePollInterval: "1 hour" } }))
           )
         ))
       }))
@@ -1192,28 +1182,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.strictEqual(defect.success.message, "Batch request error: Request timed out")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
-
-const makeTestWorkflowEngine = (
-  config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
-  storageLayer = MessageStorage.layerMemory
-) =>
-  ClusterWorkflowEngine.layer.pipe(
-    Layer.provideMerge(Sharding.layer),
-    Layer.provide(Runners.layerNoop),
-    Layer.provideMerge(storageLayer),
-    Layer.provide(RunnerStorage.layerMemory),
-    Layer.provide(RunnerHealth.layerNoop),
-    Layer.provide(ShardingConfig.layer({
-      shardsPerGroup: 300,
-      availableShardGroups: ["default", "workflow"],
-      assignedShardGroups: ["default", "workflow"],
-      entityMailboxCapacity: 10,
-      entityTerminationTimeout: 0,
-      entityMessagePollInterval: 5000,
-      sendRetryInterval: 100,
-      ...config
-    }))
-  )
 
 const TestWorkflowEngine = makeTestWorkflowEngine()
 

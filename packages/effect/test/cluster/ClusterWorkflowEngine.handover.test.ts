@@ -1,17 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
+import { Context, Effect, Exit, Layer, Schema } from "effect"
 import { TestClock } from "effect/testing"
-import {
-  ClusterWorkflowEngine,
-  MessageStorage,
-  RunnerHealth,
-  Runners,
-  RunnerStorage,
-  Sharding,
-  ShardingConfig,
-  Snowflake
-} from "effect/unstable/cluster"
+import { MessageStorage, ShardingConfig } from "effect/unstable/cluster"
 import { DurableDeferred, Workflow } from "effect/unstable/workflow"
+import { makeTestWorkflowEngine, pollUntil } from "./TestWorkflowEngine.ts"
 
 const Gate = DurableDeferred.make("DeferredHandover/Gate", { success: Schema.String })
 const HandoverWorkflow = Workflow.make("DeferredHandover", {
@@ -33,32 +25,9 @@ const engine = (storage: MessageStorage.MessageStorage["Service"], delayDeferred
     }
     : storage
   return HandoverWorkflowLayer.pipe(Layer.provideMerge(
-    ClusterWorkflowEngine.layer.pipe(
-      Layer.provideMerge(Sharding.layer),
-      Layer.provide(Runners.layerNoop),
-      Layer.provide(RunnerStorage.layerMemory),
-      Layer.provide(RunnerHealth.layerNoop),
-      Layer.provide(Snowflake.layerGenerator),
-      Layer.provide(Layer.succeed(MessageStorage.MessageStorage, wrapped)),
-      Layer.provide(ShardingConfig.layer({
-        shardsPerGroup: 300,
-        availableShardGroups: ["default", "workflow"],
-        assignedShardGroups: ["default", "workflow"],
-        entityMailboxCapacity: 10,
-        entityTerminationTimeout: 0,
-        entityMessagePollInterval: 5000,
-        sendRetryInterval: 100
-      }))
-    )
+    makeTestWorkflowEngine({ storageLayer: Layer.succeed(MessageStorage.MessageStorage, wrapped) })
   ))
 }
-
-const settle = (sharding: Sharding.Sharding["Service"]) =>
-  Effect.gen(function*() {
-    yield* Effect.yieldNow
-    yield* TestClock.adjust(1)
-    yield* sharding.pollStorage
-  })
 
 describe("ClusterWorkflowEngine owner handover", () => {
   for (const delayed of [false, true]) {
@@ -72,45 +41,32 @@ describe("ClusterWorkflowEngine owner handover", () => {
             MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
           )
           const storage = Context.get(shared, MessageStorage.MessageStorage)
+          // Each owner is a fresh engine over the shared storage, torn down when its block ends.
+          const withOwner = <A, E>(body: Effect.Effect<A, E, Layer.Success<ReturnType<typeof engine>>>) =>
+            Effect.scoped(Effect.gen(function*() {
+              const context = yield* Layer.build(engine(storage, delayed))
+              return yield* Effect.provide(body, context)
+            }))
 
           // Owner A: run once, suspend on the deferred, then stop.
-          const scopeA = yield* Scope.fork(yield* Scope.Scope)
-          const ctxA = yield* Layer.build(engine(storage, delayed)).pipe(Effect.provideService(Scope.Scope, scopeA))
-          const shardingA = Context.get(ctxA, Sharding.Sharding)
-          const executionId = yield* HandoverWorkflow.executionId({ id: "one" }).pipe(Effect.provide(ctxA))
-          yield* HandoverWorkflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(ctxA))
-          let result = yield* HandoverWorkflow.poll(executionId).pipe(Effect.provide(ctxA))
-          for (let i = 0; i < 200 && !(Option.isSome(result) && result.value._tag === "Suspended"); i++) {
-            yield* settle(shardingA)
-            result = yield* HandoverWorkflow.poll(executionId).pipe(Effect.provide(ctxA))
-          }
-          assert(
-            Option.isSome(result) && result.value._tag === "Suspended",
-            "owner A must leave the workflow suspended"
-          )
-          yield* Scope.close(scopeA, Exit.void)
+          const executionId = yield* withOwner(Effect.gen(function*() {
+            const executionId = yield* HandoverWorkflow.executionId({ id: "one" })
+            yield* HandoverWorkflow.execute({ id: "one" }, { discard: true })
+            yield* pollUntil(HandoverWorkflow, executionId, "Suspended")
+            return executionId
+          }))
 
-          // Owner B: fresh engine, same storage; the completion arrives before any local run.
-          const scopeB = yield* Scope.fork(yield* Scope.Scope)
-          const ctxB = yield* Layer.build(engine(storage, delayed)).pipe(Effect.provideService(Scope.Scope, scopeB))
-          const shardingB = Context.get(ctxB, Sharding.Sharding)
-          const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: HandoverWorkflow, executionId })
-          yield* DurableDeferred.succeed(Gate, { token, value: "signal" }).pipe(Effect.provide(ctxB))
-          result = yield* HandoverWorkflow.poll(executionId).pipe(Effect.provide(ctxB))
-          // Stay below the 5-second storage poll interval: a later retry must not hide a lost wake-up.
-          for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === "Complete"); i++) {
-            yield* settle(shardingB)
-            result = yield* HandoverWorkflow.poll(executionId).pipe(Effect.provide(ctxB))
-          }
-          // Let any delayed reply save elapse before teardown.
-          for (let k = 0; k < 5; k++) yield* settle(shardingB)
-          yield* TestClock.adjust(1000)
-          yield* Scope.close(scopeB, Exit.void)
-          assert(
-            Option.isSome(result) && result.value._tag === "Complete" && Exit.isSuccess(result.value.exit) &&
-              result.value.exit.value === "signal",
-            `workflow must complete after the completion reaches the new owner: ${JSON.stringify(result)}`
-          )
+          // Owner B: the completion arrives before any local run.
+          const result = yield* withOwner(Effect.gen(function*() {
+            const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: HandoverWorkflow, executionId })
+            yield* DurableDeferred.succeed(Gate, { token, value: "signal" })
+            // Stay below the 5-second storage poll interval: a later retry must not hide a lost wake-up.
+            const result = yield* pollUntil(HandoverWorkflow, executionId, "Complete", { rounds: 2000 })
+            // Let any delayed reply save elapse before teardown.
+            yield* TestClock.adjust(1000)
+            return result
+          }))
+          assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("signal") }))
         }).pipe(Effect.scoped),
       30_000
     )
