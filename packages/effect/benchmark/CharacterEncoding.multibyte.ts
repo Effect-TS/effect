@@ -3,7 +3,12 @@
 // ENCODING_BASELINE=/path/to/baseline node packages/effect/benchmark/CharacterEncoding.multibyte.ts
 import * as C from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
-import * as All from "effect/encoding/All"
+import * as Big5Hkscs from "effect/encoding/Big5Hkscs"
+import * as Gb18030 from "effect/encoding/Gb18030"
+import * as ShiftJis from "effect/encoding/ShiftJis"
+import * as Utf16LE from "effect/encoding/Utf16LE"
+import * as Utf8 from "effect/encoding/Utf8"
+import * as Windows1251 from "effect/encoding/Windows1251"
 import * as Stream from "effect/Stream"
 import { strict as assert } from "node:assert"
 import { resolve } from "node:path"
@@ -14,7 +19,16 @@ if (!directory) throw new Error("Set ENCODING_BASELINE to the extracted baseline
 const base = (name: string) => pathToFileURL(resolve(directory, "packages/effect/src", name + ".ts")).href
 const B: typeof C = await import(base("CharacterEncoding"))
 const BE: typeof Effect = await import(base("Effect"))
-const BA: typeof All = await import(base("encoding/All"))
+// The baseline snapshot still exposes a label registry; the current source uses explicit codec modules.
+const BA: { resolveUnsafe: (label: string) => C.Encoding } = await import(base("encoding/All"))
+const codecs: Record<string, C.Encoding> = {
+  utf8: Utf8.encoding,
+  utf16le: Utf16LE.encoding,
+  cp932: ShiftJis.encoding,
+  cp1251: Windows1251.encoding,
+  gb18030: Gb18030.encoding,
+  big5hkscs: Big5Hkscs.encoding
+}
 const BS: typeof Stream = await import(base("Stream"))
 const rounds = Number(process.env.BENCH_ROUNDS ?? 5)
 const duration = Number(process.env.BENCH_DURATION_MS ?? 150)
@@ -94,7 +108,7 @@ for (
 ) {
   const encoding = name === "cp932-ascii" ? "cp932" : name
   const text = phrase.repeat(Math.ceil(size / new TextEncoder().encode(phrase).length))
-  const current = All.resolveUnsafe(encoding), baseline = BA.resolveUnsafe(encoding)
+  const current = codecs[encoding], baseline = BA.resolveUnsafe(encoding)
   const input = B.encodeUnsafe(text, baseline)
   assert.deepEqual(C.encodeUnsafe(text, current), input)
   assert.equal(C.decodeUnsafe(input, current), B.decodeUnsafe(input, baseline))
@@ -138,7 +152,7 @@ for (
 ) {
   const text = phrase.repeat(Math.ceil(size / new TextEncoder().encode(phrase).length))
   const bf = BA.resolveUnsafe(from), bt = BA.resolveUnsafe(to)
-  const cf = All.resolveUnsafe(from), ct = All.resolveUnsafe(to)
+  const cf = codecs[from], ct = codecs[to]
   const input = B.encodeUnsafe(text, bf)
   const chunks: Array<Uint8Array> = []
   for (let i = 0; i < input.length; i += chunkSize) chunks.push(input.subarray(i, i + chunkSize))

@@ -4,12 +4,15 @@
  * dependencies. Mapping data is derived from iconv-lite; see the internal data
  * files for attribution. This module does not provide Base64 or hex encoding.
  *
+ * Codecs are explicit imports from `effect/encoding/*`. This module imports no
+ * codec and performs no lookup by label; mapping labels to codecs is left to the
+ * application.
+ *
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
 import * as Data from "./Data.ts"
 import * as Effect from "./Effect.ts"
-import { normalize } from "./internal/characterEncoding/label.ts"
 import { concat } from "./internal/characterEncoding/types.ts"
 import * as Stream from "./Stream.ts"
 
@@ -29,15 +32,15 @@ export interface Options {
 }
 
 /**
- * A conversion failure, including unsupported encoding labels, malformed byte
- * sequences and characters unavailable in a target character set.
+ * A conversion failure: malformed byte sequences or characters unavailable in
+ * a target character set.
  *
  * @category errors
  * @since 4.0.0
  */
 export class CharacterEncodingError extends Data.TaggedError("CharacterEncodingError")<{
   readonly encoding: string
-  readonly operation: "encode" | "decode" | "resolve"
+  readonly operation: "encode" | "decode"
   readonly message: string
   readonly cause: unknown
 }> {}
@@ -68,7 +71,7 @@ export interface Decoder {
   readonly end: () => string
 }
 
-const attempt = <A>(encoding: string, operation: "encode" | "decode" | "resolve", f: () => A): A => {
+const attempt = <A>(encoding: string, operation: "encode" | "decode", f: () => A): A => {
   try {
     return f()
   } catch (cause) {
@@ -88,68 +91,8 @@ const attempt = <A>(encoding: string, operation: "encode" | "decode" | "resolve"
  */
 export interface Encoding {
   readonly name: string
-  readonly aliases: ReadonlyArray<string>
   readonly makeEncoder: (options: Options) => Encoder
   readonly makeDecoder: (options: Options) => Decoder
-}
-
-/**
- * A registry containing only explicitly supplied encodings and their aliases.
- * Resolving a name does not construct codec lookup tables.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Registry {
-  readonly encodings: ReadonlyArray<Encoding>
-  readonly encodingExists: (label: string) => boolean
-  readonly resolveUnsafe: (label: string) => Encoding
-  readonly resolve: (label: string) => Effect.Effect<Encoding, CharacterEncodingError>
-}
-
-/**
- * Builds an isolated registry without importing any codecs. Conflicting
- * normalized names or aliases throw CharacterEncodingError; repeated references
- * to the same encoding are allowed. Unknown names are never loaded implicitly.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const makeRegistry = (encodings: Iterable<Encoding>): Registry => {
-  const entries = Object.freeze([...new Set(encodings)])
-  const labels = new Map<string, Encoding>()
-  for (const encoding of entries) {
-    for (const label of [encoding.name, ...encoding.aliases]) {
-      attempt(label, "resolve", () => {
-        const key = normalize(label)
-        if (key.length === 0) throw new RangeError("Empty encoding label")
-        const previous = labels.get(key)
-        if (previous !== undefined && previous !== encoding) {
-          throw new RangeError(`Conflicting encoding alias: ${label}`)
-        }
-        labels.set(key, encoding)
-      })
-    }
-  }
-  const resolveUnsafe = (label: string): Encoding =>
-    attempt(label, "resolve", () => {
-      const encoding = labels.get(normalize(label))
-      if (encoding === undefined) throw new RangeError(`Unknown encoding: ${label}`)
-      return encoding
-    })
-  return Object.freeze({
-    encodings: entries,
-    encodingExists: (label: string) => {
-      try {
-        return labels.has(normalize(label))
-      } catch {
-        return false
-      }
-    },
-    resolveUnsafe,
-    resolve: (label: string) =>
-      Effect.try({ try: () => resolveUnsafe(label), catch: (error) => error as CharacterEncodingError })
-  })
 }
 
 /**

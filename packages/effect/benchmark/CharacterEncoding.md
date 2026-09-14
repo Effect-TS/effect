@@ -42,7 +42,7 @@ upstream failure or cancellation. Source errors and requirements are preserved.
 Memory is proportional to an upstream batch and codec tables, not the whole input.
 Streams may emit empty chunks while awaiting a complete character.
 
-## Explicit codecs and optional registries
+## Explicit codecs
 
 `CharacterEncoding` imports no codecs or mapping tables. Every conversion takes
 an `Encoding` descriptor from an explicit import, not a globally resolved string.
@@ -54,52 +54,34 @@ and decoding tries are constructed lazily on first conversion and cached by the
 descriptor; every encoder/decoder still receives fresh incremental state.
 There are no dynamic imports or asynchronous loading requirements.
 
-For runtime labels, build a registry from exactly the codecs the application needs:
+Each codec module also exports `encode`, `decode`, `encodeUnsafe`, `decodeUnsafe`,
+`encodeStream` and `decodeStream` bound to that codec, so a single-encoding entry
+point does not need the core operators at all:
 
 ```ts
-const registry = CharacterEncoding.makeRegistry([
-  Utf8.encoding,
-  Windows1251.encoding
-])
+import * as Windows1251 from "effect/encoding/Windows1251"
 
-const program = Effect.gen(function*() {
-  const encoding = yield* registry.resolve("windows-1251")
-  return yield* CharacterEncoding.encode("Привет", encoding)
-})
-
-registry.resolveUnsafe("cp1251") // Same descriptor as Windows1251.encoding
-registry.encodingExists("cp932") // false: not included in this registry
+const bytes = Windows1251.encodeUnsafe("Привет")
+const text = Windows1251.decodeUnsafe(bytes)
 ```
 
-Registries are isolated and include normalized aliases only for their supplied
-codecs. Unknown labels fail with `CharacterEncodingError` and operation `resolve`;
-conflicting aliases throw when constructing a registry. Resolution never loads
-additional codecs or constructs lookup tables.
-
-Applications deliberately supporting all encodings can opt in:
-
-```ts
-import * as All from "effect/encoding/All"
-
-const encoding = All.resolveUnsafe("Shift_JIS")
-const decoded = CharacterEncoding.decode(bytes, encoding)
-```
-
-`All` imports every codec and exposes `registry`, `encodings`, `resolve`,
-`resolveUnsafe`, and `encodingExists`. Do not import it in a selective entry point.
-The core operators never import `All` back. Neither the ordinary codec modules
-nor `All` are re-exported from the core operators.
+Mapping runtime labels (`"windows-1251"`, `"cp1251"`, ...) to codecs is not part
+of this module. An application that accepts labels chooses which codecs it
+supports and builds its own lookup from exactly those imports; nothing in the
+library resolves a string to a codec or imports every encoding on its behalf.
 
 This provides selective bundling by keeping unused mappings outside the import
 graph, rather than expecting a bundler to infer encodings from string arguments.
-The first draft's string-taking conversion API and core `encodings` /
-`encodingExists` exports have been replaced by these explicit codec and registry APIs.
+The first draft's string-taking conversion API, core `encodings` /
+`encodingExists` exports, and label registry have been replaced by these
+explicit codec modules.
 
 ## Scope and compatibility
 
 - 94 canonical encodings: UTF-8, explicit UTF-16LE/BE and UTF-32LE/BE, 81
   single-byte encodings, and eight multibyte codecs (Shift-JIS, CP936, CP949,
-  CP950, GBK, GB18030, EUC-JP and Big5-HKSCS), plus mapping-table aliases.
+  CP950, GBK, GB18030, EUC-JP and Big5-HKSCS). Encoding labels and aliases are
+  not resolved by the library.
 - All conversion code is local TypeScript with Uint8Array inputs/outputs. No
   runtime dependency on iconv-lite, native bindings, or Node streams is added.
   Optional global Buffer fast paths encode UTF-16LE and convert already-decoded
@@ -119,9 +101,8 @@ The first draft's string-taking conversion API and core `encodings` /
   implemented. Unknown encodings fail explicitly. This is not a drop-in
   compatibility-complete replacement for either benchmark baseline.
 - Mapping data is statically imported only through selected codec modules;
-  codec lookup tables are constructed lazily and cached. Importing `All` opts
-  into all mapping data. Further compression and sharing of overlapping multibyte
-  tables remain optimization topics.
+  codec lookup tables are constructed lazily and cached. Further compression and
+  sharing of overlapping multibyte tables remain optimization topics.
 
 ## Provenance and regeneration
 
@@ -134,9 +115,8 @@ table format and single-byte/multibyte table-driven approach, with new typed
 conversion state and Effect integration. The installed package is not modified.
 
 Switching from the original alpha checkout to installed 0.7.3 updates some
-GBK/GB18030 extension mappings to 0.7.3's private-use mappings and adds the
-`iso88598i` / `iso88598e` aliases. Generated data now follows that installed version,
-not the alpha's mapping revisions. The benchmark results below retain their
+GBK/GB18030 extension mappings to 0.7.3's private-use mappings. Generated data
+now follows that installed version, not the alpha's mapping revisions. The benchmark results below retain their
 recorded revisions and were measured before this regeneration.
 
 ```sh
@@ -353,33 +333,23 @@ Previous, pre-optimization samples are preserved:
 
 ## Selective bundle verification
 
-These bundle measurements predate the runtime optimizations above; bundle sizes
-have not been remeasured for `c061be462`.
-
 Run `node packages/effect/benchmark/CharacterEncoding.bundle.ts` from the repository
-root. This bundles five virtual entry points using esbuild 0.28.2 and Rolldown
+root. This bundles two virtual entry points using esbuild 0.28.2 and Rolldown
 1.2.7, checks their imported mapping-module counts, and executes the resulting
-ESM bundles to verify conversion. UTF-8 needs zero legacy tables; CP1251 and a
-restricted UTF-8/CP1251 registry import exactly windows1251Data.ts; All imports
-all 89 mapping modules (81 single-byte plus eight multibyte).
+ESM bundles to verify conversion. UTF-8 needs zero legacy tables; CP1251 imports
+exactly windows1251Data.ts.
 
 Browser-targeted, minified ESM, UTF-8 output, no source maps; sizes include the
-operators and retained Effect infrastructure, not just mapping data. Gzip uses
-Node's default gzip settings. Measurements use Node 24.20.0 on macOS ARM64.
+codec module's synchronous operators, not just mapping data. The Effect and
+Stream imports of a codec module are tree-shaken when only `decodeUnsafe` is
+used. Gzip uses Node's default gzip settings. Measurements use Node 22.23.2 on
+macOS ARM64 after the registry removal.
 
-| Entry point         | Mapping modules | esbuild bytes (gzip) | Rolldown bytes (gzip) |
-| ------------------- | --------------: | -------------------: | --------------------: |
-| operators-only      |               0 |         14199 (5202) |          13290 (4796) |
-| utf8-only           |               0 |         16987 (6326) |          16028 (5831) |
-| cp1251-only         |               1 |         16646 (6333) |          15711 (5904) |
-| restricted-registry |               1 |        97801 (33229) |         94242 (30731) |
-| all-encodings       |              89 |      484458 (292691) |       481040 (289117) |
+| Entry point | Mapping modules | esbuild bytes (gzip) | Rolldown bytes (gzip) |
+| ----------- | --------------: | -------------------: | --------------------: |
+| utf8-only   |               0 |          3131 (1441) |           3082 (1361) |
+| cp1251-only |               1 |          2614 (1333) |           2589 (1319) |
 
-The restricted registry retains Effect infrastructure for its typed `resolve`
-method even when this entry point calls `resolveUnsafe`, explaining the step up
-from the direct codec entry points. These are standalone decoder bundle sizes,
-not whole application sizes; an application already using Effect may share that
-infrastructure. The five cases expose different API capabilities, so they are
-not interchangeable workloads. Importing All is an intentional size trade-off.
+These are standalone decoder bundle sizes, not whole application sizes.
 
 [Raw bundle results](./CharacterEncoding.bundle-results.jsonl).

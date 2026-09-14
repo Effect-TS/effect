@@ -13,18 +13,12 @@ import { concat } from "../internal/characterEncoding/types.ts"
 import * as Stream from "../Stream.ts"
 
 /**
- * The iso88595 encoding descriptor. For registry use only.
+ * The iso88595 codec descriptor, for use with the CharacterEncoding operators.
  *
  * @category encodings
  * @since 4.0.0
  */
-export const encoding: Encoding = /* @__PURE__ */ make("iso88595", [
-  "28595",
-  "csisolatincyrillic",
-  "isoir144",
-  "cyrillic",
-  "cp28595"
-], () => new SingleByte(data))
+export const encoding: Encoding = /* @__PURE__ */ make("iso88595", () => new SingleByte(data))
 
 const attempt = <A>(operation: "encode" | "decode", f: () => A): A => {
   try {
@@ -93,8 +87,8 @@ export const decode = (
  * @since 4.0.0
  */
 export const encodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("encode", () => encoding.makeEncoder(options ?? {})),
@@ -121,8 +115,8 @@ export const encodeStream =
  * @since 4.0.0
  */
 export const decodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("decode", () => encoding.makeDecoder(options ?? {})),

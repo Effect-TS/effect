@@ -13,24 +13,12 @@ import { concat } from "../internal/characterEncoding/types.ts"
 import * as Stream from "../Stream.ts"
 
 /**
- * The cp949 encoding descriptor. For registry use only.
+ * The cp949 codec descriptor, for use with the CharacterEncoding operators.
  *
  * @category encodings
  * @since 4.0.0
  */
-export const encoding: Encoding = /* @__PURE__ */ make("cp949", [
-  "949",
-  "windows949",
-  "ms949",
-  "cseuckr",
-  "csksc56011987",
-  "euckr",
-  "isoir149",
-  "korean",
-  "ksc56011987",
-  "ksc56011989",
-  "ksc5601"
-], () => new MultiByte(data))
+export const encoding: Encoding = /* @__PURE__ */ make("cp949", () => new MultiByte(data))
 
 const attempt = <A>(operation: "encode" | "decode", f: () => A): A => {
   try {
@@ -99,8 +87,8 @@ export const decode = (
  * @since 4.0.0
  */
 export const encodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("encode", () => encoding.makeEncoder(options ?? {})),
@@ -127,8 +115,8 @@ export const encodeStream =
  * @since 4.0.0
  */
 export const decodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("decode", () => encoding.makeDecoder(options ?? {})),

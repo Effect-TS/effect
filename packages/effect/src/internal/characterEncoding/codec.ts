@@ -5,7 +5,6 @@ import type { Decoder, Encoder, Options } from "./types.ts"
 /** Creates a descriptor now, but constructs shared lookup tables only on use. */
 export const make = (
   name: string,
-  aliases: ReadonlyArray<string>,
   create: () => { readonly encoder: (options: Options) => Encoder; readonly decoder: (options: Options) => Decoder },
   unicode = false
 ): Encoding => {
@@ -13,7 +12,6 @@ export const make = (
   const codec = () => cached ??= create()
   return Object.freeze({
     name,
-    aliases: Object.freeze([...aliases]),
     makeEncoder(options: Options) {
       const underlying = codec().encoder(options)
       let bom = unicode && options.addBOM ? underlying.write("\ufeff") : undefined

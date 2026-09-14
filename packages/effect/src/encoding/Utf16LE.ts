@@ -12,14 +12,13 @@ import * as Unicode from "../internal/characterEncoding/unicode.ts"
 import * as Stream from "../Stream.ts"
 
 /**
- * The utf16le encoding descriptor. For registry use only.
+ * The utf16le codec descriptor, for use with the CharacterEncoding operators.
  *
  * @category encodings
  * @since 4.0.0
  */
 export const encoding: Encoding = /* @__PURE__ */ make(
   "utf16le",
-  ["ucs2", "ucs2le"],
   () => ({
     encoder: (options) => Unicode.encoder("utf16le", options),
     decoder: (options) => Unicode.decoder("utf16le", options)
@@ -94,8 +93,8 @@ export const decode = (
  * @since 4.0.0
  */
 export const encodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<string, E, R>): Stream.Stream<Uint8Array, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("encode", () => encoding.makeEncoder(options ?? {})),
@@ -122,8 +121,8 @@ export const encodeStream =
  * @since 4.0.0
  */
 export const decodeStream =
-  <E, R>(options?: Options) =>
-  (self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
+  (options?: Options) =>
+  <E, R>(self: Stream.Stream<Uint8Array, E, R>): Stream.Stream<string, E | CharacterEncodingError, R> =>
     Stream.unwrap(Effect.map(
       Effect.try({
         try: () => attempt("decode", () => encoding.makeDecoder(options ?? {})),
