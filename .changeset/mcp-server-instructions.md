@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Allow MCP servers to provide model instructions during initialization and discovery.
+Add an `instructions` option to MCP servers for initialization and discovery responses.

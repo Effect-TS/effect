@@ -216,7 +216,7 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
      */
     toolCallId?: string,
     /**
-     * Options used when decoding the tool parameters.
+     * Schema parse options for tool parameters.
      */
     options?: SchemaAST.ParseOptions
   ) => Effect.Effect<
@@ -288,7 +288,6 @@ const Proto = {
           parameters: params
         })
 
-        // If the tool is not found, return an error
         if (Predicate.isUndefined(tool)) {
           return yield* AiError.make({
             module: "Toolkit",
@@ -300,7 +299,6 @@ const Proto = {
           })
         }
 
-        // Fetch cached schemas / handlers for the tool
         const schemas = getSchemas(tool)
 
         const encodeResult = (result: any, isFailure: boolean) =>
@@ -342,7 +340,6 @@ const Proto = {
         }
         const decodedParams = decodedParamsResult.success
 
-        // Setup the handler context
         const queue = yield* Queue.make<{
           readonly result: any
           readonly isFailure: boolean

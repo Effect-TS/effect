@@ -1916,7 +1916,7 @@ const getToolInputJsonSchema = (tool: Tool.Any, strict: boolean): JsonSchema.Jso
     onExcessProperty: strict ? "error" : "ignore"
   })
   const key = typeof document.schema.$ref === "string" ? JsonSchema.getReferenceKey(document.schema.$ref) : undefined
-  // MCP requires an object root even when the schema generator extracts it into $defs.
+  // Inline the root definition to expose the object type required by MCP.
   const root = key === undefined ? document.schema : document.definitions[key] ?? document.schema
   return Object.keys(document.definitions).length === 0 ? root : { ...root, $defs: document.definitions }
 }

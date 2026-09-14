@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Allow MCP prompts to provide human-readable titles in supported protocol versions.
+Support prompt titles in `McpServer.prompt` and `McpServer.registerPrompt`.
