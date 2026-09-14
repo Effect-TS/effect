@@ -8,6 +8,9 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+// These integration checks start a fresh TypeScript compiler under CI load.
+const compilationTimeout = 60_000
+
 function assertRuntime(spec: OpenAPISpec, expected: string) {
   return Effect.gen(function*() {
     const generator = yield* OpenApiGenerator.OpenApiGenerator
@@ -637,7 +640,8 @@ function multipartSpec(schema: JsonSchema.JsonSchema, schemas: JsonSchema.Defini
   }
 }
 
-describe("OpenApiGenerator", () => {
+// spawnSync blocks this worker, so compilation must not consume another test's deadline.
+describe("OpenApiGenerator", { concurrent: false }, () => {
   describe("schema", () => {
     it.effect("get operation", () =>
       assertRuntime(
@@ -1385,8 +1389,11 @@ export const TestClientError = <Tag extends string, E>(
         `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
 
-    it.effect("emits compilable clients for schema-backed and type-only formats", () =>
-      assertGeneratedClientsCompile(responseMatchingSpec))
+    it.effect(
+      "emits compilable clients for schema-backed and type-only formats",
+      () => assertGeneratedClientsCompile(responseMatchingSpec),
+      compilationTimeout
+    )
   })
 
   describe("httpapi", () => {
@@ -2929,7 +2936,7 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         },
         security: [],
         tags: [{ name: "Triggers" }]
-      } as unknown as OpenAPISpec))
+      } as unknown as OpenAPISpec), compilationTimeout)
 
     it.effect("runtime warnings do not report additional-tags-dropped outside httpapi", () =>
       assertRuntimeStableWithWarnings(
@@ -3043,7 +3050,7 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           exactOptionalPropertyTypes: false,
           formats: ["httpclient"]
         }
-      ))
+      ), compilationTimeout)
 
     it.effect("types multipart binary fields as File | Blob for generated clients", () =>
       assertGeneratedClientsCompile(
@@ -3060,30 +3067,34 @@ export const withBlob: UploadRequestFormData = { file: new Blob([]) }
 export const withString: UploadRequestFormData = { file: "upload.txt" }
 `
         }
-      ))
+      ), compilationTimeout)
 
-    it.effect("types recursive multipart binary references as File | Blob for generated clients", () =>
-      assertGeneratedClientsCompile(
-        multipartSpec({ $ref: "#/components/schemas/Node" }, {
-          Node: {
-            type: "object",
-            properties: {
-              file: { type: "string", format: "binary" },
-              child: { $ref: "#/components/schemas/Node" }
-            },
-            required: ["file"],
-            additionalProperties: false
-          }
-        }),
-        {
-          usage: `const file = new File([], "upload.txt")
+    it.effect(
+      "types recursive multipart binary references as File | Blob for generated clients",
+      () =>
+        assertGeneratedClientsCompile(
+          multipartSpec({ $ref: "#/components/schemas/Node" }, {
+            Node: {
+              type: "object",
+              properties: {
+                file: { type: "string", format: "binary" },
+                child: { $ref: "#/components/schemas/Node" }
+              },
+              required: ["file"],
+              additionalProperties: false
+            }
+          }),
+          {
+            usage: `const file = new File([], "upload.txt")
 const blob = new Blob([])
 export const payload: UploadRequestFormData = { file, child: { file: blob, child: { file } } }
 // @ts-expect-error Recursive binary fields do not accept strings.
 export const withString: UploadRequestFormData = { file, child: { file: "upload.txt" } }
 `
-        }
-      ))
+          }
+        ),
+      compilationTimeout
+    )
 
     for (
       const [format, assertIncludes] of [
@@ -3118,20 +3129,24 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
         ))
     }
 
-    it.effect("types multipart binary arrays as File | Blob arrays for generated clients", () =>
-      assertGeneratedClientsCompile(
-        multipartSpec({
-          type: "object",
-          properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
-          required: ["files"],
-          additionalProperties: false
-        }),
-        {
-          usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
+    it.effect(
+      "types multipart binary arrays as File | Blob arrays for generated clients",
+      () =>
+        assertGeneratedClientsCompile(
+          multipartSpec({
+            type: "object",
+            properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
+            required: ["files"],
+            additionalProperties: false
+          }),
+          {
+            usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
 // @ts-expect-error Binary multipart arrays do not accept strings.
 export const withString: UploadRequestFormData = { files: ["upload.txt"] }
 `
-        }
-      ))
+          }
+        ),
+      compilationTimeout
+    )
   })
 })
