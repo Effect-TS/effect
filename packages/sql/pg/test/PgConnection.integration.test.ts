@@ -97,6 +97,31 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       ])
     }))
 
+  it.effect("applies the session TimeZone only to Dates bound into timestamp columns", () =>
+    Effect.gen(function*() {
+      // This connection and its temporary table belong only to this test.
+      const connection = yield* makeConnection()
+      const instant = new Date("2024-05-06T07:08:09.123Z")
+      yield* connection.query(
+        "CREATE TEMP TABLE timestamp_timezone (bare timestamp, explicit timestamp, zoned timestamptz)"
+      )
+      for (
+        const [zone, expectedBare] of [
+          ["UTC", instant],
+          ["Europe/Berlin", new Date("2024-05-06T09:08:09.123Z")]
+        ] as const
+      ) {
+        yield* connection.query(`SET TIME ZONE '${zone}'`)
+        yield* connection.query("TRUNCATE timestamp_timezone")
+        yield* connection.query(
+          "INSERT INTO timestamp_timezone VALUES ($1, $2, $3)",
+          [instant, PgTypes.timestamp(instant), instant]
+        )
+        const result = yield* connection.query("SELECT * FROM timestamp_timezone")
+        assert.deepStrictEqual(result.rows, [{ bare: expectedBare, explicit: instant, zoned: instant }])
+      }
+    }))
+
   it.effect("returns queryValues in RowDescription order", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()

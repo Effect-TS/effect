@@ -638,6 +638,7 @@ describe("PgTypes", () => {
     it("agrees with the exact 64-bit conversion either side of the Number boundary", () => {
       const epochMs = BigInt(946684800000)
       const boundary = BigInt("9007199254740992")
+      const dateLimitMs = BigInt("8640000000000000")
       const micros = [
         BigInt(0),
         BigInt(1),
@@ -650,15 +651,37 @@ describe("PgTypes", () => {
         boundary + BigInt(7),
         -boundary,
         -boundary - BigInt(7),
+        (dateLimitMs - epochMs) * BigInt(1000),
+        (dateLimitMs - epochMs) * BigInt(1000) - BigInt(1),
+        (-dateLimitMs - epochMs) * BigInt(1000),
+        (-dateLimitMs - epochMs) * BigInt(1000) + BigInt(1)
+      ]
+      for (const oid of [PgTypes.OID.timestamp, PgTypes.OID.timestamptz]) {
+        for (const value of micros) {
+          const expectedMs = Number(value / BigInt(1000) + epochMs)
+          const decoded = PgTypes.decode(int64Bytes(value), oid, 1) as Date
+          assert.instanceOf(decoded, Date)
+          assert.isTrue(Number.isFinite(decoded.getTime()), `${value} microseconds, OID ${oid}`)
+          assert.strictEqual(decoded.getTime(), expectedMs, `${value} microseconds, OID ${oid}`)
+        }
+      }
+    })
+
+    it("decodes finite wire timestamps outside the Date range to invalid Dates", () => {
+      const epochMs = BigInt(946684800000)
+      const dateLimitMs = BigInt("8640000000000000")
+      const micros = [
+        (dateLimitMs + BigInt(1) - epochMs) * BigInt(1000),
+        (-dateLimitMs - BigInt(1) - epochMs) * BigInt(1000),
         BigInt("9223372036854775806"),
         BigInt("-9223372036854775807")
       ]
-      for (const value of micros) {
-        assert.deepStrictEqual(
-          PgTypes.decode(int64Bytes(value), PgTypes.OID.timestamptz, 1),
-          new Date(Number(value / BigInt(1000)) + 946684800000),
-          `${value} microseconds`
-        )
+      for (const oid of [PgTypes.OID.timestamp, PgTypes.OID.timestamptz]) {
+        for (const value of micros) {
+          const decoded = PgTypes.decode(int64Bytes(value), oid, 1) as Date
+          assert.instanceOf(decoded, Date)
+          assert.isTrue(Number.isNaN(decoded.getTime()), `${value} microseconds, OID ${oid}`)
+        }
       }
     })
 
