@@ -25,7 +25,6 @@ import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as AiError from "./AiError.ts"
-import * as InternalToolkit from "./internal/toolkit.ts"
 import * as Tool from "./Tool.ts"
 
 const TypeId = "~effect/ai/Toolkit" as const
@@ -239,6 +238,48 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
  */
 export type WithHandlerTools<T> = T extends WithHandler<infer Tools> ? Tools : never
 
+/**
+ * Cause annotation recording which phase of `Toolkit.handle` produced a
+ * failure.
+ *
+ * **Details**
+ *
+ * Every failure raised by a `Toolkit` handler carries this annotation:
+ *
+ * - `"parameters"`: the tool call arguments failed to decode
+ * - `"handler"`: the tool handler itself failed
+ * - `"result"`: the handler's output failed to validate or encode
+ *
+ * Failures that reach a consumer without the annotation read as `"result"`,
+ * so anything the `Toolkit` did not raise is treated as internal.
+ *
+ * Tools with `failureMode: "return"` surface failures as stream values instead,
+ * where the same value is available as `Tool.HandlerResult.failureOrigin`.
+ *
+ * **Example** (Exposing only declared handler failures)
+ *
+ * ```ts
+ * import { Cause, Context, Effect } from "effect"
+ * import { Toolkit } from "effect/unstable/ai"
+ *
+ * const isHandlerFailure = (cause: Cause.Cause<unknown>) =>
+ *   Context.get(Cause.annotations(cause), Toolkit.FailureOrigin) === "handler"
+ *
+ * const program = Effect.catchCause(Effect.void, (cause) =>
+ *   isHandlerFailure(cause) ? Effect.void : Effect.failCause(cause)
+ * )
+ * ```
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export const FailureOrigin = Context.Reference<Tool.FailureOrigin>("effect/ai/Toolkit/FailureOrigin", {
+  defaultValue: () => "result"
+})
+
+const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =>
+  Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
+
 const Proto = {
   ...Effectable.Prototype({
     label: "Toolkit",
@@ -328,7 +369,7 @@ const Proto = {
             })
           })
           if (tool.failureMode === "error") {
-            return yield* error
+            return yield* Effect.failCause(failureCause(error, "parameters"))
           }
           return Stream.fromEffect(
             Effect.map(encodeResult(error, true), (encodedResult) => ({
@@ -390,18 +431,10 @@ const Proto = {
         return Stream.fromQueue(queue).pipe(
           Stream.catch((error) => {
             const normalizedError = normalizeError(error)
-            const failureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
+            const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
             return tool.failureMode === "error"
-              ? Stream.failCause(Cause.annotate(
-                Cause.fail(normalizedError),
-                Context.make(InternalToolkit.FailureOrigin, failureOrigin)
-              ))
-              : Stream.succeed({
-                result: normalizedError,
-                isFailure: true,
-                preliminary: false,
-                ...(failureOrigin === "result" ? { failureOrigin: "result" as const } : {})
-              })
+              ? Stream.failCause(failureCause(normalizedError, failureOrigin))
+              : Stream.succeed({ result: normalizedError, isFailure: true, failureOrigin, preliminary: false })
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)

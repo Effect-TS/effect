@@ -942,6 +942,20 @@ export interface Handler<Name extends string> {
 }
 
 /**
+ * The phase of handling a tool call that produced a failure.
+ *
+ * **Details**
+ *
+ * - `"parameters"`: the tool call arguments failed to decode
+ * - `"handler"`: the tool handler itself failed
+ * - `"result"`: the handler's output failed to validate or encode
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type FailureOrigin = "parameters" | "handler" | "result"
+
+/**
  * Represents the result of calling the handler for a particular `Tool`.
  *
  * @category models
@@ -963,9 +977,10 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly isFailure: boolean
   /**
-   * The Toolkit validation phase that failed. Omitted for handler failures.
+   * Which phase of handling the tool call failed. Present when `isFailure` is
+   * `true`.
    */
-  readonly failureOrigin?: "parameters" | "result"
+  readonly failureOrigin?: FailureOrigin
   /**
    * Whether this is a preliminary (intermediate) result or the final result.
    * Preliminary results represent progress updates; only the final result

@@ -10,4 +10,4 @@ Distinguish validation failures from declared handler failures. Declared failure
 
 Log and report internal failures, including defects and encoding errors, while keeping client messages generic.
 
-Allow `Toolkit.handle` to accept `SchemaAST.ParseOptions` for parameter decoding, and expose validation origins through `Tool.HandlerResult.failureOrigin`.
+Allow `Toolkit.handle` to accept `SchemaAST.ParseOptions` for parameter decoding. Annotate raised failures with `Toolkit.FailureOrigin` and set `Tool.HandlerResult.failureOrigin` on returned failures.
