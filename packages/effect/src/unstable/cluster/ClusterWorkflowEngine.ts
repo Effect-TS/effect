@@ -381,6 +381,7 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
+            yield* Effect.addFinalizer(() => deferredState.clear(executionId))
             // Latest run request for this entity; replays reuse its request id.
             let currentRun: Entity.Request<any> | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.

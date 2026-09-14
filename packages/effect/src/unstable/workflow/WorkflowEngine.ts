@@ -312,6 +312,9 @@ export interface DeferredState {
     name: string
   ) => Exit.Exit<unknown, unknown> | undefined
 
+  /** Releases pending completions when an execution's owner deactivates. */
+  readonly clear: (executionId: string) => Effect.Effect<void>
+
   /** Tracks and provides a run, retaining pending results across suspension. */
   readonly trackRun: <A, E, R>(
     instance: WorkflowInstance["Service"],
@@ -328,18 +331,27 @@ export interface DeferredState {
 
 /**
  * Creates deferred state shared by workflow engines.
+ * Disable `retainResults` when the engine already stores completions synchronously.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const makeDeferredState = (): DeferredState => {
-  const pending = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
+export const makeDeferredState = (options?: {
+  readonly retainResults?: boolean | undefined
+}): DeferredState => {
+  const pending = options?.retainResults === false
+    ? undefined
+    : new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
   const running = new Map<string, {
     readonly instance: WorkflowInstance["Service"]
     readonly fiber: Fiber.Fiber<unknown, unknown>
   }>()
   return {
-    pendingResult: (executionId, name) => pending.get(executionId)?.get(name),
+    pendingResult: (executionId, name) => pending?.get(executionId)?.get(name),
+    clear: (executionId) =>
+      Effect.sync(() => {
+        pending?.delete(executionId)
+      }),
     trackRun: (instance, effect) =>
       Effect.withFiber((fiber) => {
         const run = { instance, fiber: fiber as Fiber.Fiber<unknown, unknown> }
@@ -348,7 +360,7 @@ export const makeDeferredState = (): DeferredState => {
           Effect.provideService(effect, WorkflowInstance, instance),
           Effect.sync(() => {
             if (!instance.suspended) {
-              pending.delete(instance.executionId)
+              pending?.delete(instance.executionId)
             }
             if (running.get(instance.executionId) === run) {
               running.delete(instance.executionId)
@@ -359,12 +371,14 @@ export const makeDeferredState = (): DeferredState => {
     deferredDone: (executionId, name, exit) =>
       Effect.withFiber((current) => {
         // A new owner can receive a completion before its first local run.
-        let entries = pending.get(executionId)
-        if (!entries) {
-          entries = new Map()
-          pending.set(executionId, entries)
+        if (pending) {
+          let entries = pending.get(executionId)
+          if (!entries) {
+            entries = new Map()
+            pending.set(executionId, entries)
+          }
+          entries.set(name, exit)
         }
-        entries.set(name, exit)
         const run = running.get(executionId)
         if (!run) return Effect.void
         if (
@@ -701,7 +715,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
     }
     const activities = new Map<string, ActivityState>()
 
-    const deferredState = makeDeferredState()
+    // deferredResults stores completions before waking a run, so no pending cache is needed.
+    const deferredState = makeDeferredState({ retainResults: false })
 
     const resume = Effect.fnUntraced(function*(executionId: string): Effect.fn.Return<void> {
       const state = executions.get(executionId)
