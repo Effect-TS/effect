@@ -397,13 +397,17 @@ export const make = Effect.gen(function*() {
               pending = { workflowName: workflow._tag, executionId, results: new Map() }
               pendingByActivation.set(activation, pending)
             }
-            // Latest run request for this entity; replays reuse its request id.
-            let currentRun: Entity.Request<any> | undefined
+            // Retain awaited names through reply persistence, including suspension.
+            // Replays reuse the request id but track a fresh set of awaits.
+            let currentRun: {
+              readonly request: Entity.Request<any>
+              readonly awaitedDeferreds: ReadonlySet<string>
+            } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
             const resumeCurrentRun = Effect.suspend(() =>
               resumeGate.withPermitsIfAvailable(1)(
-                currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
+                currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
               )
             ).pipe(
               // Release the gate before reset can start another run, so later
@@ -413,8 +417,8 @@ export const make = Effect.gen(function*() {
             )
             return {
               run: (request: Entity.Request<any>) => {
-                currentRun = request
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+                currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -504,13 +508,21 @@ export const make = Effect.gen(function*() {
               deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
+                // Await registers before reading the cache. If this run has not
+                // registered yet, a later await will see the result just stored.
+                // Check when the wake runs and skip preemption too: interrupting
+                // a later await would require waiting for its reply before reset.
+                const wake = Effect.suspend(() =>
+                  currentRun && !currentRun.awaitedDeferreds.has(payload.name)
+                    ? ensureSuccess(resume(workflow, executionId))
+                    : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
+                )
                 // An asynchronous reply releases the RPC concurrency permit while
                 // the wake waits; the pending request still occupies mailbox capacity.
                 // The activation owns the wake so it survives handler rebuilds,
                 // but activation shutdown still interrupts it for durable redelivery.
                 const reply = Deferred.makeUnsafe<Exit.Exit<unknown, unknown>>()
-                return deferredState.deferredDone(executionId, payload.name).pipe(
-                  Effect.andThen(resumeCurrentRun),
+                return wake.pipe(
                   Effect.as(payload.exit),
                   Deferred.into(reply),
                   Effect.forkIn(activation, { startImmediately: true }),
