@@ -7,6 +7,8 @@ Fix child workflow fan-out inside activities so children dispatch before suspens
 
 Wake active workflow races when a durable deferred completes, preserving success-biased race behavior and branch transformations. Interrupted deferred attempts no longer persist an interruption as their result. The v3 engines share awaited deferred names with activity instances and retain pending completions for suspended executions until replay can read them, including the interval before the completion reply becomes durable.
 
+Avoid deadlocking memory workflows that complete their own awaited deferred. Self-completion schedules the wake in the engine scope so body cleanup can finish before replay; external completion still waits for cleanup.
+
 Preserve workflow scopes across memory-engine suspension so all terminal finalizers run on completion. Deposit memory workflow interrupts after body finalizers and before workflow finalizers, retaining the interrupt across replay. V3 has no `interruptUnsafe` entry point; its existing deposited interrupt API keeps the durable interruption state until completion.
 
 Honor numeric and bigint zero thresholds in `DurableClock.sleep`. Generated RPC and HTTP discard endpoints now declare and return the deterministic execution ID as a string.
