@@ -60,8 +60,8 @@ const StrictReturnModeTool = Tool.make("StrictReturnModeTool", {
 }).annotate(Tool.Strict, true)
 
 const ReturnFailureTool = Tool.make("ReturnFailureTool", {
-  success: Schema.String,
-  failure: Schema.String,
+  success: Schema.Struct({ answer: Schema.String }),
+  failure: Schema.Struct({ reason: Schema.String }),
   failureMode: "return"
 })
 
@@ -129,7 +129,7 @@ const testToolkitHandlers = TestToolkit.of({
   OptionalStringTool: ({ signature }) => Effect.succeed(signature ?? "omitted"),
   StrictObjectTool: ({ config }) => Effect.succeed(config.value.toFixed(0)),
   StrictReturnModeTool: ({ value }) => Effect.succeed(value),
-  ReturnFailureTool: () => Effect.fail("expected failure"),
+  ReturnFailureTool: () => Effect.fail({ reason: "expected failure" }),
   PublicFailureTool: () => Effect.fail(publicFailure),
   InternalAiErrorTool: () => Effect.fail(internalAiError),
   DefectTool: () => Effect.die(privateDefect),
@@ -1410,6 +1410,32 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
+    it.effect("registers non-strict tools with identified input schemas", () =>
+      Effect.gen(function*() {
+        const IdentifiedTool = Tool.make("IdentifiedTool", {
+          parameters: Schema.Struct({ value: Schema.String }).annotate({ identifier: "Input / ~ %" }),
+          success: Schema.String
+        })
+        const toolkit = Toolkit.make(IdentifiedTool)
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({ IdentifiedTool: ({ value }) => Effect.succeed(value) }))
+        )
+
+        const { inputSchema } = server.tools[0].tool
+        assert.strictEqual(inputSchema.type, "object")
+        assert.deepStrictEqual(inputSchema.properties, { value: { type: "string" } })
+        assert.strictEqual(inputSchema.additionalProperties, true)
+
+        const result = yield* server.callTool({
+          name: "IdentifiedTool",
+          arguments: { value: "ok", typo: true }
+        }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
+
+        assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
+      }))
+
     it.effect("advertises closed strict input schemas with escaped identifiers", () =>
       Effect.gen(function*() {
         const { client } = yield* makeToolkitTestClient()
@@ -1480,35 +1506,50 @@ describe("McpServer", () => {
         assert.deepStrictEqual(result.content, [{ type: "text", text: "\"ok\"" }])
       }))
 
-    it.effect("returns strict validation errors without invoking the handler in return mode", () =>
-      Effect.gen(function*() {
-        let handlerInvoked = false
-        const { client } = yield* makeToolkitTestClient(TestToolkit.of({
-          ...testToolkitHandlers,
-          StrictReturnModeTool: ({ value }) => {
-            handlerInvoked = true
-            return Effect.succeed(value)
-          }
+    for (
+      const [name, args] of [
+        ["unknown arguments", { value: "ok", typo: true }],
+        ["invalid argument types", { value: 1 }]
+      ] as const
+    ) {
+      it.effect(`rejects ${name} with InvalidParams without invoking the handler in return mode`, () =>
+        Effect.gen(function*() {
+          let handlerInvoked = false
+          const { client } = yield* makeToolkitTestClient(TestToolkit.of({
+            ...testToolkitHandlers,
+            StrictReturnModeTool: ({ value }) => {
+              handlerInvoked = true
+              return Effect.succeed(value)
+            }
+          }))
+
+          const error = yield* client["tools/call"]({
+            name: "StrictReturnModeTool",
+            arguments: args
+          }).pipe(Effect.flip)
+
+          assert.isFalse(handlerInvoked)
+          assertTrue("code" in error)
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.include(error.message, "Invalid parameters for tool 'StrictReturnModeTool'")
+          assert.notInclude(error.message, "ToolParameterValidationError")
+          assert.notInclude(error.message, "AiError")
         }))
+    }
 
-        const result = yield* client["tools/call"]({
-          name: "StrictReturnModeTool",
-          arguments: { value: "ok", typo: true }
-        })
-
-        assert.isFalse(handlerInvoked)
-        assert.isTrue(result.isError)
-        assert.include(toolResultText(result), "ToolParameterValidationError")
-      }))
-
-    it.effect("marks returned handler failures as MCP tool errors", () =>
+    it.effect("returns declared failures as text without success structured content", () =>
       Effect.gen(function*() {
         const { client } = yield* makeToolkitTestClient()
+        const listed = yield* client["tools/list"]({})
+        const tool = listed.tools.find((tool) => tool.name === "ReturnFailureTool")
+        assert.isDefined(tool)
+        assert.deepInclude(tool.outputSchema, { properties: { answer: { type: "string" } }, required: ["answer"] })
 
         const result = yield* client["tools/call"]({ name: "ReturnFailureTool" })
 
         assert.isTrue(result.isError)
-        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"expected failure\"" }])
+        assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify({ reason: "expected failure" }) }])
+        assert.isUndefined(result.structuredContent)
       }))
 
     it.effect("dies on strict raw JSON Schema tools before registering any tools", () =>
