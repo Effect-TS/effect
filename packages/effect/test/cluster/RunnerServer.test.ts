@@ -246,6 +246,61 @@ it.effect("forgets departed callers during rebuild without replaying or retainin
     }).pipe(Effect.provide(makeHandlers(entityLayer)))
   }))
 
+it.effect("releases a replayed handler when its caller disconnects during acquisition", () =>
+  Effect.gen(function*() {
+    const callerScope = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+    const crash = yield* Deferred.make<void>()
+    const replaying = yield* Deferred.make<void>()
+    const disconnected = yield* Deferred.make<void>()
+    let starts = 0
+    let stops = 0
+    let crashes = 0
+    const entityLayer = ReproEntity.toLayer({
+      ReproStream: ({ payload }) => {
+        if (payload.id === 1) {
+          const invocation = ++starts
+          return Rpc.fork(
+            Stream.fromEffect(Effect.gen(function*() {
+              if (invocation === 2) yield* Deferred.succeed(replaying, undefined)
+              return yield* Effect.never
+            })).pipe(Stream.ensuring(Effect.sync(() => {
+              stops++
+            })))
+          )
+        }
+        return Rpc.fork(
+          ++crashes === 1
+            ? Stream.fromEffect(Deferred.await(crash).pipe(Effect.andThen(Effect.die("trigger entity rebuild"))))
+            : Stream.never
+        )
+      }
+    })
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const request = (id: number) => makeRequest(ReproEntity, "disconnect-during-replay", { payload: { id } })
+      yield* sharding.send(incomingRequest(yield* request(1), callerScope))
+      yield* sharding.send(incomingRequest(yield* request(2)))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(starts, 1)
+      assert.strictEqual(stops, 0)
+
+      // Close from another fiber as soon as the replacement handler starts,
+      // while the entity is still acquiring and replaying its requests.
+      yield* Deferred.await(replaying).pipe(
+        Effect.andThen(Scope.close(callerScope, Exit.void)),
+        Effect.andThen(Deferred.succeed(disconnected, undefined)),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Deferred.succeed(crash, undefined)
+      yield* TestClock.adjust("5 seconds")
+      assert.strictEqual(starts, 2)
+      assert.isTrue(yield* Deferred.isDone(disconnected))
+      // Both the original handler and its replacement must release resources.
+      assert.strictEqual(stops, 2)
+    }).pipe(Effect.provide(makeHandlers(entityLayer)))
+  }))
+
 it.effect("does not admit a request with an already-closed caller scope", () =>
   Effect.gen(function*() {
     let starts = 0
