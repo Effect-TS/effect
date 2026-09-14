@@ -239,35 +239,43 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
 export type WithHandlerTools<T> = T extends WithHandler<infer Tools> ? Tools : never
 
 /**
- * Cause annotation recording which phase of `Toolkit.handle` produced a
- * failure.
+ * Cause annotation identifying the phase of a typed `Toolkit.handle` failure.
  *
  * **Details**
  *
- * Every failure raised by a `Toolkit` handler carries this annotation:
+ * Typed failures raised by `Toolkit.handle` carry one of these origins:
  *
  * - `"parameters"`: the tool call arguments failed to decode
  * - `"handler"`: the tool handler itself failed
  * - `"result"`: the handler's output failed to validate or encode
  *
- * Failures that reach a consumer without the annotation read as `"result"`,
- * so anything the `Toolkit` did not raise is treated as internal.
+ * Unannotated causes default to `"result"`, allowing consumers to treat them
+ * as internal failures.
  *
- * Tools with `failureMode: "return"` surface failures as stream values instead,
- * where the same value is available as `Tool.HandlerResult.failureOrigin`.
+ * Returned failures expose the same origin in `Tool.HandlerResult.failureOrigin`.
  *
- * **Example** (Exposing only declared handler failures)
+ * **Example** (Reading a handler failure's origin)
  *
- * ```ts
- * import { Cause, Context, Effect } from "effect"
- * import { Toolkit } from "effect/unstable/ai"
+ * ```ts import.meta.vitest
+ * import { Cause, Context, Effect, Schema, Stream } from "effect"
+ * import { Tool, Toolkit } from "effect/unstable/ai"
  *
- * const isHandlerFailure = (cause: Cause.Cause<unknown>) =>
- *   Context.get(Cause.annotations(cause), Toolkit.FailureOrigin) === "handler"
+ * const toolkit = Toolkit.make(Tool.make("Lookup", {
+ *   failure: Schema.String,
+ *   failureMode: "error"
+ * }))
  *
- * const program = Effect.catchCause(Effect.void, (cause) =>
- *   isHandlerFailure(cause) ? Effect.void : Effect.failCause(cause)
+ * const program = Effect.gen(function*() {
+ *   const handlers = yield* toolkit
+ *   yield* handlers.handle("Lookup", {}).pipe(Effect.flatMap(Stream.runDrain))
+ * }).pipe(
+ *   Effect.catchCause((cause) =>
+ *     Effect.succeed(Context.get(Cause.annotations(cause), Toolkit.FailureOrigin))
+ *   ),
+ *   Effect.provide(toolkit.toLayer({ Lookup: () => Effect.fail("Not found") }))
  * )
+ *
+ * await Effect.runPromise(program) // => "handler"
  * ```
  *
  * @category services
