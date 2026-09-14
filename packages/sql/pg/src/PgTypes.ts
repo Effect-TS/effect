@@ -10,21 +10,21 @@
  * There is no `typeof` inference: an OID is always supplied, either directly
  * or through a constructor such as `int4` that carries it.
  *
- * `timestamp` and `timestamptz` decode to a `Date`, and their encoders accept
- * a `Date` or Unix epoch milliseconds, so a decoded value binds straight back.
- * `timestamp` has no time zone on the wire and is treated as UTC in both
- * directions: the UTC fields of the decoded `Date` are the stored wall clock.
- * Decoding drops sub-millisecond precision by truncating toward zero,
- * including for timestamps before the PostgreSQL epoch. `infinity` and
- * `-infinity` decode to an invalid `Date`; encoding numeric `Infinity` or
- * `-Infinity` produces the sentinels, while an invalid `Date` is an error
- * because it cannot say which one it means. To read epoch milliseconds
- * instead, override the two OIDs with `register` or a client `Registry`.
+ * `timestamp` and `timestamptz` values, including array elements, decode to
+ * `Date`. Encoders accept `Date` or epoch milliseconds.
+ * Decoding truncates to milliseconds toward zero relative to the PostgreSQL
+ * epoch. To restore numeric decoding, override the codecs with `register`
+ * or a client `Registry`.
  *
- * A `Date` parameter binds as `timestamptz`, so assigning one to a
- * `timestamp` column converts it through the session `TimeZone`. Round trips
- * are exact for `timestamptz`, and for `timestamp` when the session runs in
- * UTC; `timestamp(value)` binds a `timestamp` exactly regardless of the session.
+ * `infinity`, `-infinity` and values outside the JavaScript `Date` range
+ * (±8.64e15 epoch milliseconds) decode to an invalid `Date`. Numeric
+ * `±Infinity` encodes the PostgreSQL sentinels; encoding an invalid `Date` fails.
+ *
+ * The `timestamp` codec maps wall-clock fields to UTC fields of a `Date`.
+ * Date parameters bind as `timestamptz`, so inserting one into a `timestamp`
+ * column applies the session `TimeZone`. Use UTC or `timestamp(value)` to
+ * preserve its UTC fields. `timestamptz` round trips preserve the instant
+ * regardless of session timezone.
  *
  * @since 4.0.0
  */
@@ -1004,14 +1004,11 @@ const readTimeMicros = (bytes: Uint8Array, offset: number): number => {
   return micros
 }
 
-/** The two halves of the int64 `timestampInt64` last produced. */
 let timestampHigh = 0
 let timestampLow = 0
 
 /**
- * Converts a `Date` or epoch milliseconds to the halves of the wire int64.
- * Both encoding paths read them from here rather than from a returned pair,
- * so neither allocates.
+ * Writes the wire int64 to timestampHigh/Low, avoiding a pair allocation.
  */
 const timestampInt64 = (value: unknown): void => {
   let ms: number
@@ -1054,15 +1051,12 @@ const timestampCodec: UnsafeCodec<any> = codecOf(
     requireSize(size, 8, "timestamp")
     const high = readInt32(bytes, offset)
     if (high >= -MAX_EXACT_HIGH && high < MAX_EXACT_HIGH) {
-      // Inside these bounds the whole conversion is float arithmetic, so it
-      // allocates no BigInt. Everything outside them, the sentinels included,
-      // needs the exact 64-bit value.
+      // These bounds allow exact conversion without BigInt.
       const micros = high * 4294967296 + readUint32(bytes, offset + 4)
       return new Date((micros - micros % 1000) / 1000 + PG_EPOCH_MS)
     }
     stage8(bytes, offset)
     const micros = scratchView8.getBigInt64(0)
-    // The infinity sentinels have no Date, so they become an invalid one.
     if (micros === INT64_MAX || micros === INT64_MIN) return new Date(Number.NaN)
     return new Date(Number(micros / THOUSAND) + PG_EPOCH_MS)
   },
@@ -1073,7 +1067,6 @@ const timestampCodec: UnsafeCodec<any> = codecOf(
     writeInt32(bytes, 4, timestampLow)
     return bytes
   },
-  // Two int32s are the int64, so the sink needs nothing of its own for it.
   (sink, value) => {
     timestampInt64(value)
     sink.int32(timestampHigh)
@@ -1987,10 +1980,8 @@ export const time: (value: bigint | null) => Parameter = parameter(OID.time)
 export const timetz: (value: string | null) => Parameter = parameter(OID.timetz)
 
 /**
- * A `timestamp` parameter, given as a `Date` or Unix epoch milliseconds and
- * interpreted as UTC: the UTC fields of a `Date` become the stored wall
- * clock, whatever the session `TimeZone`. Numeric `Infinity` and `-Infinity`
- * bind the PostgreSQL sentinels; an invalid `Date` is an error.
+ * A `timestamp` parameter from a `Date` or epoch milliseconds. UTC fields
+ * become the stored wall-clock fields, regardless of session `TimeZone`.
  *
  * @category constructors
  * @since 4.0.0
@@ -1999,8 +1990,6 @@ export const timestamp: (value: Date | number | null) => Parameter = parameter(O
 
 /**
  * A `timestamptz` parameter, given as a `Date` or Unix epoch milliseconds.
- * Numeric `Infinity` and `-Infinity` bind the PostgreSQL sentinels; an
- * invalid `Date` is an error.
  *
  * @category constructors
  * @since 4.0.0

@@ -51,7 +51,7 @@ const roundTrips: Array<{
   readonly value: unknown
   /** Set when PostgreSQL normalises the value, so encode is checked separately. */
   readonly encoded?: unknown
-  /** Set when the value decodes to something other than itself. */
+  /** Expected decoded value, if different from the input. */
   readonly decoded?: unknown
 }> = [
   { name: "bool", oid: PgTypes.OID.bool, value: true },
@@ -688,7 +688,6 @@ describe("PgTypes", () => {
     it("round trips milliseconds through both the float and the BigInt path", () => {
       for (const ms of [0, 1, -1, 946684800000, 1717171717123, -62135596800000, 253402300799000, 9007199254740]) {
         const encoded = PgTypes.encode(ms, PgTypes.OID.timestamp)
-        // A Date encodes to the same bytes as its milliseconds.
         assert.deepStrictEqual(PgTypes.encode(new Date(ms), PgTypes.OID.timestamp), encoded)
         assert.deepStrictEqual(PgTypes.decode(encoded, PgTypes.OID.timestamp, 1), new Date(ms))
       }

@@ -99,7 +99,6 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("applies the session TimeZone only to Dates bound into timestamp columns", () =>
     Effect.gen(function*() {
-      // This connection and its temporary table belong only to this test.
       const connection = yield* makeConnection()
       const instant = new Date("2024-05-06T07:08:09.123Z")
       yield* connection.query(
