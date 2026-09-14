@@ -963,9 +963,9 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly isFailure: boolean
   /**
-   * Whether this failure originated while decoding the tool's parameters.
+   * The Toolkit validation phase that failed. Omitted for handler failures.
    */
-  readonly isParameterValidationFailure?: boolean
+  readonly failureOrigin?: "parameters" | "result"
   /**
    * Whether this is a preliminary (intermediate) result or the final result.
    * Preliminary results represent progress updates; only the final result

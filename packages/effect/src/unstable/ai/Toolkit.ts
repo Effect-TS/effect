@@ -9,7 +9,7 @@
  *
  * @since 4.0.0
  */
-import type * as Cause from "../../Cause.ts"
+import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Effectable from "../../Effectable.ts"
@@ -25,6 +25,7 @@ import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as AiError from "./AiError.ts"
+import * as InternalToolkit from "./internal/toolkit.ts"
 import * as Tool from "./Tool.ts"
 
 const TypeId = "~effect/ai/Toolkit" as const
@@ -333,7 +334,7 @@ const Proto = {
             Effect.map(encodeResult(error, true), (encodedResult) => ({
               result: error,
               isFailure: true,
-              isParameterValidationFailure: true,
+              failureOrigin: "parameters" as const,
               preliminary: false,
               encodedResult
             }))
@@ -392,9 +393,18 @@ const Proto = {
           // determine how the result should be returned to the end user
           Stream.catch((error) => {
             const normalizedError = normalizeError(error)
+            const failureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
             return tool.failureMode === "error"
-              ? Stream.fail(normalizedError)
-              : Stream.succeed({ result: normalizedError, isFailure: true, preliminary: false })
+              ? Stream.failCause(Cause.annotate(
+                Cause.fail(normalizedError),
+                Context.make(InternalToolkit.FailureOrigin, failureOrigin)
+              ))
+              : Stream.succeed({
+                result: normalizedError,
+                isFailure: true,
+                preliminary: false,
+                ...(failureOrigin === "result" ? { failureOrigin: "result" as const } : {})
+              })
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)

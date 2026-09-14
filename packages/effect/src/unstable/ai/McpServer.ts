@@ -31,7 +31,6 @@ import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as Scope from "../../Scope.ts"
-import * as Sink from "../../Sink.ts"
 import type { Stdio } from "../../Stdio.ts"
 import * as Stream from "../../Stream.ts"
 import * as FindMyWay from "../http/FindMyWay.ts"
@@ -51,6 +50,7 @@ import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
+import * as InternalToolkit from "./internal/toolkit.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
@@ -1825,23 +1825,24 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
     const handleCause = Effect.fnUntraced(function*(cause: Cause.Cause<unknown>, decodingParameters = false) {
-      yield* Effect.logError(cause)
-      const failure = Cause.findError(cause)
+      const failure = Cause.findFail(cause)
       if (Result.isFailure(failure)) {
         return yield* Cause.hasDies(cause)
           ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
           : Effect.failCause(failure.failure)
       }
-      const error = failure.success
-      if (AiError.isAiError(error)) {
-        return yield* decodingParameters && isParameterValidationError(error)
-          ? Effect.fail(new InvalidParams({ message: error.reason.message }))
-          : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+      const error = failure.success.error
+      if (decodingParameters && isParameterValidationError(error)) {
+        return yield* Effect.fail(new InvalidParams({ message: error.reason.message }))
       }
-      const message = isDeclaredFailure(error) && error instanceof Error
-        ? error.message
-        : INTERNAL_TOOL_ERROR_MESSAGE
-      return yield* Effect.as(reportCause(cause), toolErrorResult(message))
+      if (
+        Context.get(Cause.reasonAnnotations(failure.success), InternalToolkit.FailureOrigin) === "handler" &&
+        isDeclaredFailure(error)
+      ) {
+        return toolErrorResult(error instanceof Error ? error.message : INTERNAL_TOOL_ERROR_MESSAGE)
+      }
+      yield* Effect.logError(cause)
+      return yield* Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
     })
     const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
@@ -1880,13 +1881,15 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             onFailure: (cause) => handleCause(cause, true),
             onSuccess: (stream) =>
               stream.pipe(
-                Stream.run(Sink.last()),
+                Stream.runLast,
                 Effect.flatMap(Effect.fromOption),
                 Effect.matchCauseEffect({
                   onFailure: (cause) => handleCause(cause),
                   onSuccess: (result) =>
-                    result.isParameterValidationFailure && isParameterValidationError(result.result)
+                    result.failureOrigin === "parameters" && isParameterValidationError(result.result)
                       ? Effect.fail(new InvalidParams({ message: result.result.reason.message }))
+                      : result.isFailure && result.failureOrigin === "result"
+                      ? handleCause(Cause.fail(result.result))
                       : Effect.sync(() =>
                         new CallToolResult({
                           isError: result.isFailure,
