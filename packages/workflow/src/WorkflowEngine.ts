@@ -724,7 +724,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.scoped(
             // A workflow finalizer cannot wait for its own run's cleanup.
             // External callers still wait until cleanup and replay are scheduled.
             Option.isSome(instance) && instance.value.executionId === options.executionId
-              ? wake.pipe(Effect.forkIn(scope), Effect.asVoid)
+              ? wake.pipe(Effect.interruptible, Effect.forkIn(scope), Effect.asVoid)
               : wake)
         }),
       scheduleClock: (workflow, options) =>
