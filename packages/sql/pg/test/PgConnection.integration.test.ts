@@ -26,6 +26,32 @@ const assertInterruptedOnClose = (
   })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
+  for (const completion of ["ROLLBACK", "ROLLBACK TO SAVEPOINT caller"]) {
+    for (const mode of ["query", "stream"] as const) {
+      it.effect(`rediscovers a timestamp restored by transactional DDL ${completion}, ${mode}`, () =>
+        Effect.gen(function*() {
+          const connection = yield* makeConnection({ prepare: false })
+          yield* connection.query("CREATE TEMP TABLE restored_numeric_events (at timestamp)")
+          yield* connection.query("SET TIME ZONE 'America/New_York'")
+          const sql = "INSERT INTO restored_numeric_events VALUES ($1) RETURNING at"
+          const run = () =>
+            mode === "stream"
+              ? Stream.runCollect(connection.stream(sql, [1714979289123]))
+              : Effect.map(connection.query(sql, [1714979289123]), (result) => result.rows)
+          yield* connection.query("BEGIN")
+          yield* connection.query("SAVEPOINT caller")
+          yield* connection.query("ALTER TABLE restored_numeric_events ALTER COLUMN at TYPE bigint USING NULL")
+          assert.deepStrictEqual(yield* run(), [{ at: 1714979289123n }])
+          yield* connection.query(completion)
+          // The temporary bigint resolution must not survive restoration to
+          // timestamp. Inside a transaction, a stale numeric OID cannot retry.
+          if (completion === "ROLLBACK") yield* connection.query("BEGIN")
+          assert.deepStrictEqual(yield* run(), [{ at: 1714979289123 }])
+          yield* connection.query("ROLLBACK")
+        }))
+    }
+  }
+
   for (const columnType of ["timestamp", "timestamptz"]) {
     for (const mode of ["query", "stream"] as const) {
       for (const prepare of [false, true]) {

@@ -137,6 +137,27 @@ const errorResponse = (fields: ReadonlyArray<readonly [string, string]>): Buffer
     ])
   )
 
+// CommandComplete tags matter: transaction/settings tags drive metadata invalidation.
+const numericCommandTag = (sql: string): string => {
+  const [command, object] = sql.trim().split(/\s+/)
+  switch (command) {
+    case "SELECT":
+      return "SELECT 0"
+    case "INSERT":
+      return "INSERT 0 0"
+    case "UPDATE":
+      return "UPDATE 0"
+    case "DELETE":
+      return "DELETE 0"
+    case "CREATE":
+    case "ALTER":
+    case "DROP":
+      return `${command} ${object}`
+    default:
+      return command
+  }
+}
+
 // A protocol peer for counting writes and injecting errors without network timing.
 // It describes numeric parameters as int4 (or a timestamp insert's first
 // parameter as timestamptz) and returns no rows from executions.
@@ -254,7 +275,7 @@ const makeNumericPeer = (options?: {
                 }
                 if (portalSql === "BEGIN" || portalSql.startsWith("ROLLBACK TO")) status = "T"
                 else if (portalSql === "COMMIT" || portalSql === "ROLLBACK") status = "I"
-                replies.push(backendMessage("C", Buffer.from("SELECT 0\0")))
+                replies.push(backendMessage("C", Buffer.from(`${numericCommandTag(portalSql)}\0`)))
                 break
               case "C":
                 replies.push(backendMessage("3", Buffer.alloc(0)))
@@ -516,6 +537,117 @@ describe("PgConnection in-process server", () => {
           if (transaction) yield* connection.query("COMMIT")
 
           assert.deepStrictEqual(costs[2], costs[0], "repeat executions must not repeat discovery or its savepoints")
+        }))
+    }
+  }
+
+  for (const completion of ["COMMIT", "ROLLBACK"]) {
+    for (const ambiguous of [false, true]) {
+      for (const mode of ["prepared", "unprepared", "stream"] as const) {
+        it.effect(`reuses ordinary numeric discovery across ${completion}, ${mode}, ambiguous=${ambiguous}`, () =>
+          Effect.gen(function*() {
+            const peer = makeNumericPeer({ ambiguous })
+            const connection = yield* PgConnection.make({
+              username: "test",
+              stream: () => peer.socket,
+              multiplex: true
+            })
+            const sql = ambiguous ? "SELECT $1 + $2 AS n" : "SELECT $1::int4 AS n"
+            const costs = []
+            for (let transaction = 0; transaction < 3; transaction++) {
+              assert.strictEqual((yield* connection.query("BEGIN")).command, "BEGIN")
+              for (const value of [1, 2]) {
+                const params = ambiguous ? [value, value] : [value]
+                if (mode === "stream") yield* Stream.runCollect(connection.stream(sql, params))
+                else yield* connection.query(sql, params, mode === "prepared")
+              }
+              assert.strictEqual((yield* connection.query(completion)).command, completion)
+              costs.push({
+                // Failed ambiguous Parses have no ParameterDescription response.
+                discoveries: peer.parses.filter((parse) => parse.sql === sql && parse.oids.includes(0)).length,
+                savepoints: peer.executions.filter((sql) => sql.startsWith("SAVEPOINT ")).length,
+                rollbacks: peer.executions.filter((sql) => sql.startsWith("ROLLBACK TO ")).length,
+                releases: peer.executions.filter((sql) => sql.startsWith("RELEASE ")).length
+              })
+            }
+            const once = { discoveries: 1, savepoints: 1, rollbacks: ambiguous ? 1 : 0, releases: 1 }
+            assert.deepStrictEqual(
+              costs,
+              [once, once, once],
+              "transaction boundaries must preserve ordinary numeric metadata"
+            )
+          }))
+      }
+    }
+
+    for (const setting of ["SET LOCAL search_path TO inner_schema", "RESET search_path"]) {
+      if (setting.startsWith("RESET") && completion === "COMMIT") continue
+      it.effect(`invalidates ordinary numeric metadata after ${setting} and ${completion} restoration`, () =>
+        Effect.gen(function*() {
+          const peer = makeNumericPeer()
+          const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+          const run = () => Stream.runCollect(connection.stream("SELECT $1::int4 AS n", [1]))
+          yield* run()
+          assert.strictEqual(peer.statementDescriptions, 1)
+          yield* connection.query("BEGIN")
+          assert.strictEqual((yield* connection.query(setting)).command, setting.split(" ")[0])
+          yield* run()
+          assert.strictEqual(peer.statementDescriptions, 2, "settings changes must invalidate the old context")
+          yield* run()
+          assert.strictEqual(peer.statementDescriptions, 2, "the new context must still reuse ordinary metadata")
+          yield* connection.query(completion)
+          yield* run()
+          assert.strictEqual(peer.statementDescriptions, 3, "transaction completion must invalidate restored settings")
+        }))
+    }
+  }
+
+  for (const completion of ["COMMIT", "ROLLBACK"]) {
+    it.effect(`retains settings restoration invalidation through a savepoint rollback before ${completion}`, () =>
+      Effect.gen(function*() {
+        const peer = makeNumericPeer()
+        const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+        const run = () => Stream.runCollect(connection.stream("SELECT $1::int4 AS n", [1]))
+        yield* run()
+        yield* connection.query("BEGIN")
+        yield* connection.query("SET LOCAL search_path TO first_schema")
+        yield* run()
+        yield* connection.query("SAVEPOINT caller")
+        yield* connection.query("SET LOCAL search_path TO second_schema")
+        yield* run()
+        assert.strictEqual(peer.statementDescriptions, 3)
+        yield* connection.query("ROLLBACK TO SAVEPOINT caller")
+        yield* run()
+        assert.strictEqual(peer.statementDescriptions, 4, "savepoint rollback restores the earlier local setting")
+        yield* connection.query(completion)
+        yield* run()
+        assert.strictEqual(peer.statementDescriptions, 5, "the outer transaction still has settings to restore")
+      }))
+  }
+
+  for (
+    const ddl of [
+      "ALTER TABLE numbers ALTER COLUMN n TYPE bigint",
+      "CREATE TABLE numbers (n int4)",
+      "DROP TABLE numbers"
+    ]
+  ) {
+    for (const completion of ["ROLLBACK", "ROLLBACK TO SAVEPOINT caller"]) {
+      it.effect(`invalidates ordinary numeric metadata when ${completion} restores ${ddl}`, () =>
+        Effect.gen(function*() {
+          const peer = makeNumericPeer()
+          const connection = yield* PgConnection.make({ username: "test", stream: () => peer.socket })
+          const run = () => Stream.runCollect(connection.stream("SELECT $1::int4 AS n", [1]))
+          yield* run()
+          yield* connection.query("BEGIN")
+          yield* connection.query("SAVEPOINT caller")
+          assert.strictEqual((yield* connection.query(ddl)).command, ddl.split(" ")[0])
+          yield* run()
+          assert.strictEqual(peer.statementDescriptions, 2, "DDL must invalidate metadata immediately")
+          yield* connection.query(completion)
+          yield* run()
+          assert.strictEqual(peer.statementDescriptions, 3, "rollback must discard metadata from the reverted schema")
+          if (completion.startsWith("ROLLBACK TO")) yield* connection.query("ROLLBACK")
         }))
     }
   }
