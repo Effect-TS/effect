@@ -77,9 +77,15 @@ const audit = <A, E, R>(kind: string, key: string, effect: Effect.Effect<A, E, R
 const registrations = Layer.mergeAll(
   Work.toLayer({
     Run: ({ payload }) => audit("request", payload.id, waitGate.pipe(Effect.as(payload.value * 2))),
-    Stream: ({ payload }) =>
+    Stream: (request) =>
       Stream.unwrapScoped(
         Effect.gen(function*() {
+          const { payload } = request
+          const next = request.lastSentChunkValue.pipe(
+            Option.map((value) => value + 1),
+            Option.getOrElse(() => 0)
+          )
+          const remaining = (start: number, end: number) => start <= end ? Stream.range(start, end) : Stream.empty
           const sql = yield* SqlClient.SqlClient
           const rows = yield* sql<{ id: number }>`INSERT INTO integration_attempts (worker, kind, key)
         VALUES (${worker}, 'stream', ${payload.id}) RETURNING id`
@@ -89,10 +95,10 @@ const registrations = Layer.mergeAll(
           )
           return payload.partial ?
             Stream.concat(
-              Stream.make(0, 1),
-              Stream.fromEffect(waitGate).pipe(Stream.flatMap(() => Stream.range(2, counts.elements - 1)))
+              remaining(next, 1),
+              Stream.fromEffect(waitGate).pipe(Stream.flatMap(() => remaining(Math.max(next, 2), counts.elements - 1)))
             ) :
-            Stream.fromEffect(waitGate).pipe(Stream.flatMap(() => Stream.range(0, counts.elements - 1)))
+            Stream.fromEffect(waitGate).pipe(Stream.flatMap(() => remaining(next, counts.elements - 1)))
         }).pipe(Effect.orDie)
       )
   }),

@@ -22,6 +22,11 @@ Three streams emit two elements before a gate; three remain pending until the
 gate opens. Every successful stream must return exactly `0..7`. Children await
 durable signals. Race signals arrive while the competing activity remains gated.
 
+Restarted stream handlers continue after `request.lastSentChunkValue`, following
+the existing `TestEntity.ts` fixture. The runtime resumes reply sequencing; the
+handler uses the saved value to resume its application sequence. Both stream
+groups retain their gate when resumed.
+
 The default matrix repeats four scenarios three times:
 
 - Steady operation.
