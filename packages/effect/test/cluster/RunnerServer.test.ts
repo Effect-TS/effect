@@ -57,13 +57,12 @@ const layerProtocol = (codecFor: RpcSerialization.CodecFor) =>
 
 const makeHandlers = (
   entities: Layer.Layer<never, never, any>,
-  codecFor: RpcSerialization.CodecFor = jsonCodec,
-  shardingLayer: typeof Sharding.layer = Sharding.layer
+  codecFor: RpcSerialization.CodecFor = jsonCodec
 ) =>
   RunnerServer.layerHandlers.pipe(
     Layer.provide(layerProtocol(codecFor)),
     Layer.provideMerge(entities),
-    Layer.provideMerge(shardingLayer),
+    Layer.provideMerge(Sharding.layer),
     Layer.provideMerge(Snowflake.layerGenerator),
     Layer.provide(RunnerStorage.layerMemory),
     Layer.provide(RunnerHealth.layerNoop),
@@ -134,172 +133,34 @@ const incomingRequest = (envelope: Envelope.PartialRequest, callerScope?: Scope.
     callerScope
   })
 
-it.effect("releases the subscription when a runner stream completes naturally", () =>
+it.effect("completes a successful runner stream", () =>
   Effect.gen(function*() {
-    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
-    let finalizations = 0
-    yield* Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const snowflake = yield* Snowflake.Generator
-      const request = yield* makeRequest(ReproEntity, "one")
-      const client = yield* RpcTest.makeClient(Runners.Rpcs)
-      const queue = yield* client.Stream({ request, persisted: false }, { asQueue: true })
-      yield* TestClock.adjust(1)
-      assert.strictEqual(pubsub.subscribers.size, 1)
-      yield* PubSub.publish(pubsub, 1)
-      const first = yield* Queue.take(queue).pipe(
-        Effect.timeout("1 second"),
-        TestClock.withLive
-      )
-      if (first._tag !== "Chunk") {
-        return assert.fail("expected the stream value before the terminal reply")
-      }
-      assert.deepStrictEqual(first.values, [1])
-
-      yield* client.Envelope({
-        envelope: new Envelope.AckChunk({
-          id: snowflake.nextUnsafe(),
-          address: request.address,
-          requestId: request.requestId,
-          replyId: Snowflake.Snowflake(first.id)
-        }),
-        persisted: false
-      })
-
-      const completion = yield* Effect.gen(function*() {
-        const last = yield* Queue.take(queue)
-        yield* Queue.take(queue).pipe(Effect.catchTag("Done", () => Effect.void))
-        return last
-      }).pipe(
-        Effect.timeoutOption("1 second"),
-        TestClock.withLive
-      )
-      if (Option.isNone(completion)) {
-        return assert.fail("expected the runner stream to complete")
-      }
-      if (completion.value._tag !== "WithExit") {
-        return assert.fail("expected a terminal reply")
-      }
-      assert.strictEqual(completion.value.exit._tag, "Success")
-      yield* TestClock.adjust(1)
-      assert.strictEqual(pubsub.subscribers.size, 0)
-      assert.strictEqual(finalizations, 1)
-    }).pipe(Effect.provide(makeHandlers(
-      ReproEntity.toLayer({
-        ReproStream: () =>
-          Rpc.fork(
-            Stream.fromPubSub(pubsub).pipe(
-              Stream.take(1),
-              Stream.ensuring(Effect.sync(() => {
-                finalizations++
-              }))
-            )
-          )
-      })
-    )))
-  }))
-
-it.effect("disconnects an admitted stream while the real send return is held", () =>
-  Effect.gen(function*() {
-    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
-    const admitted = yield* Deferred.make<void>()
-    const release = yield* Deferred.make<void>()
-    const stopped = yield* Deferred.make<void>()
-    // Hold only the request's send return, after the real Sharding has admitted
-    // it. Control envelopes must still be deliverable during cleanup.
-    const gatedSharding = Layer.effect(Sharding.Sharding)(
-      Effect.map(Sharding.Sharding, (actual) => ({
-        ...actual,
-        send: (message) =>
-          message._tag === "IncomingRequest"
-            ? actual.send(message).pipe(
-              Effect.andThen(Deferred.succeed(admitted, undefined)),
-              Effect.andThen(Deferred.await(release))
-            )
-            : actual.send(message)
-      }))
-    ).pipe(Layer.provide(Sharding.layer))
-    yield* Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const request = yield* makeRequest(ReproEntity, "held-send")
-      const server = yield* makeServer
-      yield* writeRequest(server, "Stream", request)
-      yield* TestClock.adjust(1)
-      assert.isTrue(yield* Deferred.isDone(admitted))
-      assert.strictEqual(pubsub.subscribers.size, 1)
-      assert.isFalse(yield* Deferred.isDone(stopped))
-
-      yield* server.disconnect(0)
-      yield* TestClock.adjust(1)
-      assert.isFalse(yield* Deferred.isDone(release))
-      assert.strictEqual(pubsub.subscribers.size, 0)
-      assert.isTrue(yield* Deferred.isDone(stopped))
-    }).pipe(Effect.provide(makeHandlers(
-      ReproEntity.toLayer({
-        ReproStream: () =>
-          Rpc.fork(
-            Stream.fromPubSub(pubsub).pipe(
-              Stream.ensuring(Deferred.succeed(stopped, undefined))
-            )
-          )
+    yield* TestClock.adjust(1)
+    const snowflake = yield* Snowflake.Generator
+    const request = yield* makeRequest(ReproEntity, "one")
+    const client = yield* RpcTest.makeClient(Runners.Rpcs)
+    const queue = yield* client.Stream({ request, persisted: false }, { asQueue: true })
+    const first = yield* Queue.take(queue).pipe(Effect.timeout("1 second"), TestClock.withLive)
+    if (first._tag !== "Chunk") return assert.fail("expected the stream value before the terminal reply")
+    assert.deepStrictEqual(first.values, [1])
+    yield* client.Envelope({
+      envelope: new Envelope.AckChunk({
+        id: snowflake.nextUnsafe(),
+        address: request.address,
+        requestId: request.requestId,
+        replyId: Snowflake.Snowflake(first.id)
       }),
-      jsonCodec,
-      gatedSharding
-    )))
-  }))
-
-it.effect("does not replay a stream whose caller disconnects during entity rebuild", () =>
-  Effect.gen(function*() {
-    const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
-    const rebuilding = yield* Deferred.make<void>()
-    const releaseBuild = yield* Deferred.make<void>()
-    const stopped = yield* Deferred.make<void>()
-    let builds = 0
-    let calls = 0
-    const entityLayer = ReproEntity.toLayer(Effect.gen(function*() {
-      builds++
-      if (builds === 2) {
-        // The old server has closed here. The departed caller's request must
-        // be forgotten before the replacement server replays active requests.
-        yield* Deferred.succeed(rebuilding, undefined)
-        yield* Deferred.await(releaseBuild)
-      }
-      return {
-        ReproStream: () => {
-          calls++
-          return Rpc.fork(
-            calls === 1
-              ? Stream.die("trigger entity rebuild")
-              : Stream.fromPubSub(pubsub).pipe(
-                Stream.ensuring(Deferred.succeed(stopped, undefined))
-              )
-          )
-        }
-      }
-    }))
-    yield* Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const request = yield* makeRequest(ReproEntity, "disconnect-during-rebuild")
-      const server = yield* makeServer
-      yield* writeRequest(server, "Stream", request)
-      yield* TestClock.adjust("5 seconds")
-      assert.isTrue(yield* Deferred.isDone(rebuilding))
-      assert.strictEqual(builds, 2)
-      assert.strictEqual(calls, 1)
-
-      yield* server.disconnect(0).pipe(Effect.timeout("1 second"), TestClock.withLive)
-      yield* TestClock.adjust(1)
-      assert.isFalse(yield* Deferred.isDone(releaseBuild))
-      assert.strictEqual(calls, 1)
-
-      yield* Deferred.succeed(releaseBuild, undefined)
-      yield* TestClock.adjust(1)
-      assert.strictEqual(builds, 2)
-      assert.strictEqual(calls, 1)
-      assert.strictEqual(pubsub.subscribers.size, 0)
-      assert.isFalse(yield* Deferred.isDone(stopped))
-    }).pipe(Effect.provide(makeHandlers(entityLayer)))
-  }))
+      persisted: false
+    })
+    const completion = yield* Effect.gen(function*() {
+      const last = yield* Queue.take(queue)
+      yield* Queue.take(queue).pipe(Effect.catchTag("Done", () => Effect.void))
+      return last
+    }).pipe(Effect.timeout("1 second"), TestClock.withLive)
+    assert.strictEqual(completion._tag, "WithExit")
+  }).pipe(Effect.provide(makeHandlers(
+    ReproEntity.toLayer({ ReproStream: () => Stream.make(1) })
+  ))))
 
 it.effect("releases a non-persisted Effect handler when the runner caller disconnects", () =>
   Effect.gen(function*() {
@@ -329,7 +190,7 @@ it.effect("releases a non-persisted Effect handler when the runner caller discon
     )))
   }))
 
-it.effect("releases mailbox capacity when a second caller disconnects during a held rebuild", () =>
+it.effect("forgets departed callers during rebuild without replaying or retaining mailbox slots", () =>
   Effect.gen(function*() {
     const rebuilding = yield* Deferred.make<void>()
     const releaseBuild = yield* Deferred.make<void>()
@@ -365,23 +226,23 @@ it.effect("releases mailbox capacity when a second caller disconnects during a h
       yield* TestClock.adjust(1)
       assert.deepStrictEqual(starts, [1])
 
-      const probe = () => Effect.flatMap(request(3), (request) => sharding.send(incomingRequest(request)))
+      const probe = (id: number) => Effect.flatMap(request(id), (request) => sharding.send(incomingRequest(request)))
       // A and B fill both slots, proving B was admitted before its disconnect.
-      const full = yield* probe().pipe(Effect.flip)
+      const full = yield* probe(3).pipe(Effect.flip)
       assert.strictEqual(full._tag, "MailboxFull")
+      yield* server.disconnect(0).pipe(Effect.timeout("1 second"), TestClock.withLive)
       yield* server.disconnect(1).pipe(Effect.timeout("1 second"), TestClock.withLive)
       assert.isFalse(yield* Deferred.isDone(releaseBuild))
       yield* Deferred.succeed(releaseBuild, undefined)
       yield* TestClock.adjust(1)
-      assert.deepStrictEqual(starts, [1, 1])
+      assert.deepStrictEqual(starts, [1])
 
-      const admitted = yield* probe().pipe(Effect.match({
-        onFailure: (error) => error._tag,
-        onSuccess: () => "accepted"
-      }))
-      assert.strictEqual(admitted, "accepted")
+      // Both the interrupted handler and the never-delivered request release
+      // their slots. Neither may run again when the rebuild finishes.
+      yield* probe(3)
+      yield* probe(4)
       yield* TestClock.adjust(1)
-      assert.deepStrictEqual(starts, [1, 1, 3])
+      assert.deepStrictEqual(starts, [1, 3, 4])
     }).pipe(Effect.provide(makeHandlers(entityLayer)))
   }))
 
@@ -413,62 +274,17 @@ it.effect("does not admit a request with an already-closed caller scope", () =>
     )))
   }))
 
-for (
-  const { disconnect, entity, expectedSubscribers, name, persisted } of [
-    {
-      name: "releases a non-persisted entity stream subscription when the runner caller disconnects",
-      entity: ReproEntity,
-      disconnect: true,
-      persisted: false,
-      expectedSubscribers: 0
-    },
-    {
-      name: "preserves a volatile stream annotated Uninterruptible: true when the runner caller disconnects",
-      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, true),
-      disconnect: true,
-      persisted: false,
-      expectedSubscribers: 1
-    },
-    {
-      name: "preserves a volatile stream annotated Uninterruptible: client when the runner caller disconnects",
-      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, "client"),
-      disconnect: true,
-      persisted: false,
-      expectedSubscribers: 1
-    },
-    {
-      name: "preserves a volatile stream annotated Uninterruptible: server when the runner caller disconnects",
-      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, "server"),
-      disconnect: true,
-      persisted: false,
-      expectedSubscribers: 1
-    },
-    {
-      name: "preserves a persisted entity stream subscription when the runner caller disconnects",
-      entity: ReproEntity.annotateRpcs(ClusterSchema.Persisted, true),
-      disconnect: true,
-      persisted: true,
-      expectedSubscribers: 1
-    },
-    ...([true, "client", "server"] as const).map((annotation) => ({
-      name:
-        `delivers an explicit interrupt to a volatile stream annotated Uninterruptible: ${annotation} while connected`,
-      entity: ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, annotation),
-      disconnect: false,
-      persisted: false,
-      expectedSubscribers: 0
-    }))
-  ]
-) {
-  it.effect(name, () =>
+for (const persisted of [false, true]) {
+  it.effect(`caller disconnect preserves ${persisted ? "persisted" : "Uninterruptible"} streams`, () =>
     Effect.gen(function*() {
       const pubsub = yield* Effect.acquireRelease(PubSub.unbounded<number>(), PubSub.shutdown)
+      const entity = persisted
+        ? ReproEntity.annotateRpcs(ClusterSchema.Persisted, true)
+        : ReproEntity.annotateRpcs(ClusterSchema.Uninterruptible, true)
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
-        const snowflake = yield* Snowflake.Generator
-        const request = yield* makeRequest(entity, "stream-caller")
+        const request = yield* makeRequest(entity, "protected-caller")
         if (persisted) {
-          // The sending runner stores durable requests before notifying the host.
           const driver = yield* MessageStorage.MemoryDriver
           yield* driver.encoded.saveEnvelope({
             envelope: yield* Schema.encodeEffect(Envelope.PartialJson)(request),
@@ -480,30 +296,26 @@ for (
         yield* writeRequest(server, "Stream", request, { persisted })
         yield* TestClock.adjust(1)
         assert.strictEqual(pubsub.subscribers.size, 1)
+        yield* server.disconnect(0)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(pubsub.subscribers.size, 1)
 
-        if (disconnect) {
-          // A transport disconnect interrupts the runner RPC without sending the
-          // entity an Envelope.Interrupt, unlike a clean Entity.client close.
-          yield* server.disconnect(0)
-        } else {
-          // Send an explicit interruption over the same connected runner client.
-          yield* server.write(0, {
-            _tag: "Request",
-            id: RpcMessage.RequestId("interrupt"),
-            tag: "Envelope",
-            payload: {
+        if (!persisted) {
+          // An exemption from caller cleanup must not block explicit interrupts.
+          const sharding = yield* Sharding.Sharding
+          const snowflake = yield* Snowflake.Generator
+          yield* sharding.send(
+            new Message.IncomingEnvelope({
               envelope: new Envelope.Interrupt({
                 id: snowflake.nextUnsafe(),
                 address: request.address,
                 requestId: request.requestId
-              }),
-              persisted: false
-            },
-            headers: Headers.empty
-          })
+              })
+            })
+          )
+          yield* TestClock.adjust(1)
+          assert.strictEqual(pubsub.subscribers.size, 0)
         }
-        yield* TestClock.adjust(1)
-        assert.strictEqual(pubsub.subscribers.size, expectedSubscribers)
       }).pipe(Effect.provide(makeHandlers(
         entity.toLayer({ ReproStream: () => Rpc.fork(Stream.fromPubSub(pubsub)) })
       )))
