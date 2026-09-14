@@ -38,6 +38,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
+import { CurrentActivationScope } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -130,6 +131,14 @@ export const make = Effect.gen(function*() {
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
   const deferredState = WorkflowEngine.makeDeferredState()
+  // Rebuilds share an activation; overlapping activations have separate results.
+  // Weak keys do not retain scopes, but contexts captured by clients, activities,
+  // or finalizers can keep a closed scope (and its results) reachable until later.
+  const pendingByActivation = new WeakMap<Scope.Scope, {
+    readonly workflowName: string
+    readonly executionId: string
+    readonly results: Map<string, Exit.Exit<unknown, unknown>>
+  }>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -381,6 +390,12 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
+            const activation = yield* CurrentActivationScope
+            let pending = pendingByActivation.get(activation)
+            if (!pending) {
+              pending = { workflowName: workflow._tag, executionId, results: new Map() }
+              pendingByActivation.set(activation, pending)
+            }
             // Latest run request for this entity; replays reuse its request id.
             let currentRun: Entity.Request<any> | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
@@ -425,7 +440,9 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  (effect) => deferredState.trackRun(instance, effect)
+                  (effect) => deferredState.trackRun(instance, effect),
+                  // Request middleware and local callers may carry another entity's context.
+                  Effect.provideService(CurrentActivationScope, activation)
                 ) as any
               },
 
@@ -444,6 +461,7 @@ export const make = Effect.gen(function*() {
                   }
                   const context = entry.context.pipe(
                     Context.add(WorkflowEngine.WorkflowInstance, instance),
+                    Context.add(CurrentActivationScope, activation),
                     Context.add(Activity.CurrentAttempt, payload.attempt)
                   )
                   return yield* entry.activity.executeEncoded.pipe(
@@ -474,7 +492,8 @@ export const make = Effect.gen(function*() {
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
-                yield* deferredState.deferredDone(executionId, payload.name, payload.exit)
+                pending.results.set(payload.name, payload.exit)
+                yield* deferredState.deferredDone(executionId, payload.name)
                 yield* ensureSuccess(resume(workflow, executionId))
                 return payload.exit
               }),
@@ -601,12 +620,18 @@ export const make = Effect.gen(function*() {
 
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
-        Effect.flatMap((instance) => {
-          const exit = deferredState.pendingResult(instance.executionId, deferred.name)
+        Effect.flatMap(Effect.fnUntraced(function*(instance) {
+          const activation = yield* Effect.serviceOption(CurrentActivationScope)
+          const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
+          // Captured contexts can cross workflow boundaries. Never use another
+          // execution's completion, even if its deferred has the same name.
+          const exit = pending?.workflowName === instance.workflow._tag && pending.executionId === instance.executionId
+            ? pending.results.get(deferred.name)
+            : undefined
           if (exit) {
-            return Effect.succeedSome(exit)
+            return Option.some(exit)
           }
-          return requestReply({
+          return yield* requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
@@ -625,7 +650,7 @@ export const make = Effect.gen(function*() {
               )
             })
           )
-        }),
+        })),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
           times: 3,
