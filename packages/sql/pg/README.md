@@ -107,9 +107,17 @@ import { Redacted, Result } from "effect"
 declare const capabilityOid: number
 declare const capabilityArrayOid: number
 
+const decoder = new TextDecoder("utf-8", { fatal: true })
+
 const utf8: PgTypes.Codec<string> = {
   encode: (value) => Result.succeed(new TextEncoder().encode(value)),
-  decode: (bytes) => Result.succeed(new TextDecoder("utf-8", { fatal: true }).decode(bytes))
+  decode: (bytes) => {
+    try {
+      return Result.succeed(decoder.decode(bytes))
+    } catch {
+      return Result.fail(new PgTypes.CodecError({ message: "Invalid UTF-8 in capability" }))
+    }
+  }
 }
 
 const types = PgTypes.makeRegistry()
