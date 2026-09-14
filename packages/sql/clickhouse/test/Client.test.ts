@@ -12,7 +12,7 @@ const commandCalls: Array<Record<string, unknown>> = []
 
 vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
-    exec: () => connectImmediately ? Promise.resolve({}) : new Promise(() => {}),
+    ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
     query: () => new Promise(() => {}),
     insert: () => new Promise(() => {}),
     command: (options: Record<string, unknown>) => {
