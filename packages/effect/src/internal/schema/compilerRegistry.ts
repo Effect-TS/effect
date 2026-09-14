@@ -26,7 +26,7 @@ function activateCompilerAdapters(): void {
 
 const decodeChild = (ast: SchemaAST.AST): Parser => lazyParser(resolve, ast, "parser")
 const makeChild = (ast: SchemaAST.AST): Parser => lazyParser(resolve, ast, "makeEffect")
-const makeDefaultedChild = (ast: SchemaAST.AST): Parser => lazyParser(resolve, ast, "makeDefaulted")
+const makeField = (ast: SchemaAST.AST): Parser => Interpreter.compileField(ast, makeChild)
 
 /** @internal */
 export interface Entry {
@@ -38,7 +38,6 @@ export interface Entry {
   readonly decodeEffect: Parser
   readonly parser: Parser
   readonly makeEffect: Parser
-  readonly makeDefaulted: Parser
 }
 
 class InterpretedEntry implements Entry {
@@ -73,24 +72,15 @@ class InterpretedEntry implements Entry {
   }
 
   get makeEffect(): Parser {
+    const child = this.resolve === resolve
+      ? makeChild
+      : (ast: SchemaAST.AST) => lazyParser(this.resolve, ast, "makeEffect")
     return this.save(
       "makeEffect",
       Interpreter.compile(
         this.ast,
-        this.resolve === resolve ? makeChild : (ast) => lazyParser(this.resolve, ast, "makeEffect"),
-        this.resolve === resolve ? makeDefaultedChild : (ast) => lazyParser(this.resolve, ast, "makeDefaulted")
-      )
-    )
-  }
-
-  get makeDefaulted(): Parser {
-    const link = this.ast.context?.constructorDefault
-    return link === undefined ? this.makeEffect : this.save(
-      "makeDefaulted",
-      Interpreter.withDefault(
-        this.ast,
-        (input, options) => this.makeEffect(input, options),
-        this.resolve === resolve ? makeChild : (ast) => lazyParser(this.resolve, ast, "makeEffect")
+        child,
+        this.resolve === resolve ? makeField : (ast) => Interpreter.compileField(ast, child)
       )
     )
   }
@@ -151,7 +141,7 @@ export function withValidation(validate: Validate, decode: () => Parser): Parser
 export function lazyParser(
   resolve: Resolve,
   ast: SchemaAST.AST,
-  operation: "parser" | "decodeEffect" | "makeEffect" | "makeDefaulted"
+  operation: "parser" | "decodeEffect" | "makeEffect"
 ): Parser {
   const entry = resolve(ast)
   if (entry.source === undefined || Object.hasOwn(entry, operation)) return entry[operation]

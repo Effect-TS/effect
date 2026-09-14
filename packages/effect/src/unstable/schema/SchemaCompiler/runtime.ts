@@ -167,7 +167,7 @@ const make = (
   generateArray?: GenerateArray
 ): SchemaIssueParser => {
   const child = (ast: SchemaAST.AST) => lazyParser(resolve, ast, "makeEffect")
-  const field = (ast: SchemaAST.AST) => lazyParser(resolve, ast, "makeDefaulted")
+  const field = (ast: SchemaAST.AST) => Interpreter.compileField(ast, child)
   const base = generate !== undefined && ast._tag === "Objects" ?
     makeObjectBase(ast, child, field, generate)
     : generateArray !== undefined && ast._tag === "Arrays"
