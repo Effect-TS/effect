@@ -86,6 +86,41 @@ describe("deferred self-completion", () => {
 })
 
 describe("WorkflowEngine", () => {
+  it.effect("a retiring run leaves its replacement tracked for deferred wake-up", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("RunReplacement", {
+        payload: {},
+        success: Schema.Void,
+        idempotencyKey: () => "one"
+      })
+      const state = WorkflowEngine.makeDeferredState()
+      const retiring = WorkflowEngine.WorkflowInstance.initial(workflow, "one")
+      const replacement = WorkflowEngine.WorkflowInstance.initial(workflow, "one")
+      const retiringStarted = yield* Latch.make()
+      const replacementStarted = yield* Latch.make()
+      const retire = yield* Latch.make()
+      const retiringFiber = yield* state.trackRun(
+        retiring,
+        retiringStarted.open.pipe(Effect.andThen(retire.await))
+      ).pipe(Effect.forkChild)
+      yield* retiringStarted.await
+      replacement.awaitedDeferreds.add("gate")
+      const replacementFiber = yield* state.trackRun(
+        replacement,
+        replacementStarted.open.pipe(Effect.andThen(Effect.never))
+      ).pipe(Effect.forkChild)
+      yield* replacementStarted.await
+      yield* retire.open
+      yield* Fiber.join(retiringFiber)
+
+      yield* state.deferredDone("one", "unrelated")
+      assert.strictEqual(replacement.suspended, false)
+      assert.strictEqual(replacementFiber.pollUnsafe(), undefined)
+      yield* state.deferredDone("one", "gate")
+      assert.strictEqual(replacement.suspended, true, "the replacement must still receive the deferred wake-up")
+      assert(Exit.hasInterrupts(yield* Fiber.await(replacementFiber)))
+    }))
+
   it.effect("layerMemory reads a deferred completed before its first run", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("MemoryEarlyCompletion/Gate", { success: Schema.String })
