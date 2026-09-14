@@ -8,6 +8,8 @@ import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as TestClock from "effect/TestClock"
+import { spawn } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import * as WorkflowEngineContractTest from "./WorkflowEngineContractTest.js"
 import { makeAwaitResult } from "./WorkflowEngineContractTest.js"
 
@@ -284,6 +286,66 @@ describe("shutdown", () => {
       assert.deepStrictEqual(compensated, ["a"])
     }))
 })
+
+describe("deferred completion", () => {
+  for (const scenario of ["self-success", "self-failure", "external", "unrelated"] as const) {
+    it.effect(`settles ${scenario} completion without violating replay ordering`, () =>
+      Effect.gen(function*() {
+        const result = yield* runDeferredCompletion(scenario)
+        assert.isFalse(result.timedOut, `deferred completion deadlocked (${scenario}):\n${result.output}`)
+        assert.strictEqual(result.code, 0, `deferred completion did not settle (${scenario}):\n${result.output}`)
+        assert.include(result.output, "deferred-completion-passed")
+      }), 30_000)
+  }
+})
+
+// Joining a workflow from its own uninterruptible finalizer can also wedge test
+// scope cleanup. Bound the process and wait for it to exit before finishing.
+const runDeferredCompletion = (scenario: string) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const child = spawn(process.execPath, [
+        "--import",
+        "tsx",
+        fileURLToPath(new URL("./fixtures/deferred-completion.ts", import.meta.url)),
+        scenario
+      ], { stdio: ["ignore", "pipe", "pipe"] })
+      let output = ""
+      let timedOut = false
+      let ready = false
+      const stop = () => {
+        timedOut = true
+        child.kill("SIGKILL")
+      }
+      let timer = setTimeout(stop, 20_000)
+      const append = (chunk: Buffer) => {
+        output = (output + chunk.toString()).slice(-16_000)
+        if (!ready && output.includes("deferred-completion-ready")) {
+          ready = true
+          clearTimeout(timer)
+          timer = setTimeout(stop, 5_000)
+        }
+      }
+      child.stdout.on("data", append)
+      child.stderr.on("data", append)
+      child.on("error", (error) => {
+        output += String(error)
+      })
+      const closed = new Promise<{ code: number | null; timedOut: boolean; output: string }>((resolve) => {
+        child.once("close", (code) => {
+          clearTimeout(timer)
+          resolve({ code, timedOut, output })
+        })
+      })
+      return { child, closed }
+    }),
+    ({ closed }) => Effect.promise(() => closed),
+    ({ child, closed }) =>
+      Effect.promise(() => {
+        child.kill("SIGKILL")
+        return closed
+      })
+  )
 
 WorkflowEngineContractTest.suite({
   name: "memory",
