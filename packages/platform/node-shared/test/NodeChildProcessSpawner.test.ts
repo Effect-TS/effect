@@ -72,6 +72,7 @@ describe("buildSpawnOptions", () => {
   })
 })
 
+// https://github.com/Effect-TS/effect/commit/e2ec1311bed9bb8709c26396e71b15b4241a9185
 it.live("kills every process in a pipeline", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
@@ -80,12 +81,34 @@ it.live("kills every process in a pipeline", () =>
     const childHeartbeat = `${directory}/child-heartbeat`
     const handle = yield* ChildProcess.make(
       "sh",
-      ["-c", "while :; do printf x >> \"$1\"; sleep 0.01; done", "pipeline-root", rootHeartbeat]
+      [
+        "-c",
+        "printf x >> \"$1\"; printf 'ROOT_READY\\n'; while :; do printf x >> \"$1\"; sleep 0.01; done",
+        "pipeline-root",
+        rootHeartbeat
+      ]
     ).pipe(ChildProcess.pipeTo(ChildProcess.make(
       "sh",
-      ["-c", "while :; do printf x >> \"$1\"; sleep 0.01; done", "pipeline-child", childHeartbeat]
+      [
+        "-c",
+        "printf x >> \"$1\"; printf 'CHILD_READY\\n'; read -r ready; printf '%s\\n' \"$ready\"; while :; do printf x >> \"$1\"; sleep 0.01; done",
+        "pipeline-child",
+        childHeartbeat
+      ]
     )))
-    yield* Effect.sleep("100 millis")
+    const ready = yield* Deferred.make<void>()
+    const readyLines: Array<string> = []
+    yield* handle.stdout.pipe(
+      Stream.decodeText,
+      Stream.splitLines,
+      Stream.runForEach((line) => {
+        readyLines.push(line)
+        return readyLines.length === 2 ? Deferred.succeed(ready, undefined) : Effect.void
+      }),
+      Effect.forkScoped
+    )
+    yield* Deferred.await(ready)
+    assert.deepStrictEqual(readyLines, ["CHILD_READY", "ROOT_READY"])
     yield* handle.kill({ killSignal: "SIGKILL" })
     const rootSizeAfterKill = (yield* fs.stat(rootHeartbeat)).size
     const childSizeAfterKill = (yield* fs.stat(childHeartbeat)).size
@@ -114,7 +137,7 @@ const startProcessGroup = (mode: "exit-on-signal" | "ignore-signal", options?: C
     const fs = yield* FileSystem.FileSystem
     const directory = yield* fs.makeTempDirectoryScoped()
     const marker = `${directory}/marker`
-    const scope = yield* Scope.make()
+    const scope = yield* Scope.fork(yield* Effect.scope)
     const handle = yield* Scope.provide(scope)(ChildProcess.make(
       process.execPath,
       [processGroupFixture, "leader", mode, marker],
@@ -157,6 +180,24 @@ const timed = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   })
 
 describe.skipIf(process.platform === "win32")("process group cleanup", () => {
+  // https://github.com/Effect-TS/effect/commit/8c7ed00e5c07a8466d1d46d7d380edd4aa448d13
+  it.live("scope release cleans descendants after the leader exits successfully", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const { descendantPid, handle, marker, scope } = yield* startProcessGroup("exit-on-signal", { stdin: "pipe" })
+
+      yield* Effect.gen(function*() {
+        yield* Stream.run(Stream.make(new TextEncoder().encode("exit\n")), handle.stdin)
+        assert.strictEqual(yield* handle.exitCode, 0)
+        yield* Effect.sync(() => process.kill(descendantPid, 0))
+        assert.isFalse(yield* fs.exists(marker))
+
+        yield* Scope.close(scope, Exit.void)
+
+        assert.strictEqual(yield* fs.readFileString(marker), "exited")
+      }).pipe(Effect.ensuring(killDescendant(descendantPid).pipe(Effect.andThen(Scope.close(scope, Exit.void)))))
+    }).pipe(Effect.provide(NodeServices)))
+
   it.live("scope release waits for descendants that outlive the leader", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

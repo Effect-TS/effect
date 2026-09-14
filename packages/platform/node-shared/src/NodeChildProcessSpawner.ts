@@ -545,6 +545,8 @@ const make = Effect.gen(function*() {
               const [code] = yield* Deferred.await(exitSignal)
               if (code !== 0 && Predicate.isNotNull(code)) {
                 yield* Effect.ignore(killProcessGroup(cmd, childProcess, cmd.options.killSignal ?? "SIGTERM"))
+              } else if (code === 0 && isReferenced && process.platform !== "win32" && cmd.options.detached !== false) {
+                yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
               }
               return
             }

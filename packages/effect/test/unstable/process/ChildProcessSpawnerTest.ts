@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -465,6 +466,7 @@ export const suite = (
               assert.isTrue(exit._tag === "Failure")
             }))
 
+          // https://github.com/Effect-TS/effect/commit/b3302645fc1c23f7d03a3693dabdcb88763d5cbd
           it.effect("should force kill a process after the initial signal times out", () =>
             Effect.gen(function*() {
               const fs = yield* FileSystem.FileSystem
@@ -473,11 +475,12 @@ export const suite = (
               const ready = path.join(directory, "ready")
               const handle = yield* ChildProcess.make("sh", [
                 "-c",
-                "trap '' TERM; : > \"$1\"; while :; do sleep 1; done",
+                "trap '' TERM; : > \"$1\"; exec cat",
                 "force-kill",
                 ready
               ], {
                 killSignal: "SIGKILL",
+                stdin: "pipe",
                 stdout: "ignore",
                 stderr: "ignore"
               })
@@ -491,19 +494,13 @@ export const suite = (
                 TestClock.withLive
               )
 
-              const completed = yield* handle.kill({
+              yield* handle.kill({
                 killSignal: "SIGTERM",
                 forceKillAfter: "50 millis"
-              }).pipe(
-                Effect.as(true),
-                Effect.timeoutOrElse({
-                  duration: "1 second",
-                  orElse: () => Effect.succeed(false)
-                }),
-                TestClock.withLive
-              )
+              }).pipe(TestClock.withLive)
 
-              assert.isTrue(completed)
+              assert.isFalse(yield* handle.isRunning)
+              assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
             }))
 
           it.effect("should force kill a process when its scope closes", () =>
@@ -929,8 +926,19 @@ export const suite = (
             // Start the process that spawns children and grandchildren
             const handle = yield* ChildProcess.make("./spawn-children.sh", { cwd })
 
-            // Give it time to spawn all processes
-            yield* TestClock.withLive(Effect.sleep("100 millis"))
+            // https://github.com/Effect-TS/effect/commit/4d5c70a7dcd5ee7aa6ad3aa28d7e87ef1fc31e00
+            const ready = yield* Deferred.make<void>()
+            yield* handle.stdout.pipe(
+              Stream.decodeText,
+              Stream.splitLines,
+              Stream.filter((line) =>
+                line.includes(" started with PID ")
+              ),
+              Stream.zipWithIndex,
+              Stream.runForEach(([, index]) => index === 6 ? Deferred.succeed(ready, undefined) : Effect.void),
+              Effect.forkScoped
+            )
+            yield* Deferred.await(ready)
 
             // Verify the main process is running
             const isRunningBeforeKill = yield* handle.isRunning
@@ -942,9 +950,7 @@ export const suite = (
               "ps aux | grep spawn-children.sh | grep -v grep | wc -l"
             ])
             const beforeKill = yield* decodeByteStream(beforeKillHandle.stdout).pipe(
-              Effect.map((s) =>
-                Number.parseInt(s.trim())
-              ),
+              Effect.map((s) => Number.parseInt(s.trim())),
               Effect.orElseSucceed(() => 0)
             )
             assert.isAtLeast(beforeKill, 7)
