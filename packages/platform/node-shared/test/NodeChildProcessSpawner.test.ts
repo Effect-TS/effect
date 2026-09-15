@@ -72,7 +72,6 @@ describe("buildSpawnOptions", () => {
   })
 })
 
-// https://github.com/Effect-TS/effect/commit/e2ec1311bed9bb8709c26396e71b15b4241a9185
 it.live("kills every process in a pipeline", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
@@ -174,7 +173,6 @@ const timed = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   })
 
 describe.skipIf(process.platform === "win32")("process group cleanup", () => {
-  // https://github.com/Effect-TS/effect/commit/8c7ed00e5c07a8466d1d46d7d380edd4aa448d13
   it.live("scope release cleans descendants after the leader exits successfully", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

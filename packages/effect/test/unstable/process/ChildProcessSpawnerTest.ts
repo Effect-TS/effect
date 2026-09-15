@@ -465,7 +465,6 @@ export const suite = (
               assert.isTrue(exit._tag === "Failure")
             }))
 
-          // https://github.com/Effect-TS/effect/commit/b3302645fc1c23f7d03a3693dabdcb88763d5cbd
           it.effect("should force kill a process after the initial signal times out", () =>
             Effect.gen(function*() {
               const fs = yield* FileSystem.FileSystem
@@ -925,7 +924,6 @@ export const suite = (
             // Start the process that spawns children and grandchildren
             const handle = yield* ChildProcess.make("./spawn-children.sh", { cwd })
 
-            // https://github.com/Effect-TS/effect/commit/4d5c70a7dcd5ee7aa6ad3aa28d7e87ef1fc31e00
             const readyCount = yield* handle.stdout.pipe(
               Stream.decodeText,
               Stream.splitLines,

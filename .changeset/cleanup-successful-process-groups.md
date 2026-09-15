@@ -2,4 +2,4 @@
 "@effect/platform-node-shared": patch
 ---
 
-Clean up referenced POSIX process groups when their scope closes after the leader exits successfully.
+Clean up referenced POSIX process groups on scope closure after their leader exits successfully or is terminated by a signal.
