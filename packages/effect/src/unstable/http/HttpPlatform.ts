@@ -142,8 +142,6 @@ export const make: (impl: {
   })
 })
 
-// Normalizes the caller's headers and applies the `contentType` option, so
-// every platform receives the requested type as a `content-type` header.
 const optionHeaders = (options: Response.Options.WithContentType | undefined): Headers.Headers => {
   const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
   return options?.contentType ? Headers.set(headers, "content-type", options.contentType) : headers
@@ -178,8 +176,8 @@ const fileResponseNumber = (value: bigint, field: string): Effect.Effect<number,
  * **Details**
  *
  * The layer uses the `FileSystem` and weak ETag services to add file metadata
- * headers such as `etag` and `last-modified`. Without an explicit content type,
- * the `content-type` header is derived from the file extension.
+ * headers such as `etag` and `last-modified`. Missing content types are inferred
+ * from the file extension.
  *
  * @category layers
  * @since 4.0.0

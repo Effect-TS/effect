@@ -211,9 +211,6 @@ export const scopeTransferToStream = (
   const fiber = Fiber.getCurrent()!
   const scope = Context.getUnsafe(fiber.context, Scope.Scope) as Scope.Closeable
   scopeDisableClose(scope)
-  // The stream is re-wrapped with the same content metadata, so the header map
-  // is kept as-is rather than re-derived from the body: explicit content-type
-  // or content-length headers set on the response must not be replaced.
   return Response.setBodyKeepHeaders(
     response,
     HttpBody.stream(

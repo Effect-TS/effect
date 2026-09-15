@@ -477,9 +477,7 @@ const HttpPlatformKey = Context.Service<
  * **Details**
  *
  * The effect requires `HttpPlatform`, can fail with a platform error, and supports
- * options for status, headers, content type, offset, and byte range. Without a
- * `contentType` or `content-type` header, the platform derives the type from the
- * file extension.
+ * options for status, headers, content type, offset, and byte range.
  *
  * @category constructors
  * @since 4.0.0
@@ -502,8 +500,7 @@ export const file = (
  * **Details**
  *
  * The effect requires `HttpPlatform` and supports options for status, headers,
- * content type, offset, and byte range. Without a `contentType` or
- * `content-type` header, the platform derives the type from the file name.
+ * content type, offset, and byte range.
  *
  * @category constructors
  * @since 4.0.0
@@ -935,8 +932,7 @@ export const setBody: {
 )
 
 /**
- * Replaces the body while keeping the existing header map untouched, for
- * callers that re-wrap a body with the same content metadata.
+ * Replaces the body without updating headers. Use when content metadata is unchanged.
  *
  * @internal
  */
