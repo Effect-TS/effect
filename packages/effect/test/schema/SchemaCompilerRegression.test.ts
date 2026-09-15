@@ -34,7 +34,7 @@ describe("compiler regression contracts", () => {
         const schema = Schema.Struct({
           value: Schema.Unknown.pipe(
             Schema.decode({
-              decode: new SchemaGetter.Getter<unknown, unknown>((input) => {
+              decode: SchemaGetter.transformOptionalEffect<unknown, unknown>((input) => {
                 seen.push(input)
                 const output = Option.isNone(input) || input.value === "omit" ? Option.none() : Option.some(undefined)
                 return suspended ? Effect.sync(() => output) : Effect.succeed(output)
@@ -161,7 +161,9 @@ describe("compiler regression contracts", () => {
   it.effect("preserves unchanged fields before and after asynchronous transformations", () =>
     Effect.gen(function*() {
       const number = Schema.String.pipe(Schema.decodeTo(Schema.Number, {
-        decode: new SchemaGetter.Getter((input) => Effect.yieldNow.pipe(Effect.as(Option.map(input, Number)))),
+        decode: SchemaGetter.transformOptionalEffect((input) =>
+          Effect.yieldNow.pipe(Effect.as(Option.map(input, Number)))
+        ),
         encode: SchemaGetter.transform(String)
       }))
       const tuple = Schema.Tuple([Schema.String, number, Schema.Undefined]).check(

@@ -1804,10 +1804,10 @@ describe("Schema", () => {
   it("asStandardSchemaV1 should not be callable with a schema with DecodingServices", () => {
     class MagicNumber extends Context.Service<MagicNumber, number>()("MagicNumber") {}
     const DepString = Schema.Number.pipe(Schema.decode({
-      decode: SchemaGetter.onSome((n) =>
+      decode: SchemaGetter.transformEffect((n) =>
         Effect.gen(function*() {
           const magicNumber = yield* MagicNumber
-          return Option.some(n * magicNumber)
+          return n * magicNumber
         })
       ),
       encode: SchemaGetter.passthrough()

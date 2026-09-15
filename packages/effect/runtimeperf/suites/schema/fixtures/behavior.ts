@@ -158,7 +158,7 @@ export const optionalPresentValid = decodeCase(
 export const optionalPresentInvalid = decodeCase(optionalStruct, { required: "value", optionalKey: 1 }, false)
 
 const suspendedString = Schema.String.pipe(Schema.decode({
-  decode: new SchemaGetter.Getter((input) => Effect.suspend(() => Effect.succeed(input))),
+  decode: SchemaGetter.transformOptionalEffect((input) => Effect.suspend(() => Effect.succeed(input))),
   encode: SchemaGetter.passthrough()
 }))
 const suspendedObjectFields = Object.fromEntries(

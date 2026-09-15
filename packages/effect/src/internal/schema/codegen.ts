@@ -656,7 +656,55 @@ const emitArray = (): string =>
     }
   }}`
 
+const inlineIdentityPredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined => {
+  if (ast.checks !== undefined || getEncodingChecks(ast) !== undefined) return undefined
+  switch (ast._tag) {
+    case "Null":
+      return `${input}===null`
+    case "Undefined":
+      return `${input}===void 0`
+    case "Never":
+      return "false"
+    case "Any":
+    case "Unknown":
+      return "true"
+    case "ObjectKeyword":
+      return `((${input}!==null&&typeof ${input}==="object")||typeof ${input}==="function")`
+    case "UniqueSymbol":
+      return `${input}===${path}.symbol`
+    case "Literal":
+      return `${input}===${path}.literal`
+    case "String":
+      return `typeof ${input}==="string"`
+    case "Number":
+      return `typeof ${input}==="number"`
+    case "Boolean":
+      return `typeof ${input}==="boolean"`
+    case "Symbol":
+      return `typeof ${input}==="symbol"`
+    case "BigInt":
+      return `typeof ${input}==="bigint"`
+    case "TemplateLiteral":
+      return `R.matchesTemplateLiteral(${path},${input},o)`
+    default:
+      return undefined
+  }
+}
+
+const canInlineEncoding = (ast: SchemaAST.AST): ast is SchemaAST.AST & { readonly encoding: SchemaAST.Encoding } =>
+  ast.encoding !== undefined &&
+  ast.checks === undefined &&
+  getEncodingChecks(ast) === undefined &&
+  inlineIdentityPredicate(ast, "v", "ast") !== undefined &&
+  ast.encoding.every((link) =>
+    link.to.encoding === undefined &&
+    inlineIdentityPredicate(link.to, "v", "ast") !== undefined &&
+    link.transformation._tag === "Transformation" &&
+    (link.transformation.decode._tag === "Passthrough" || link.transformation.decode._tag === "Transform")
+  )
+
 const emitObject = (ast: SchemaAST.Objects): string => {
+  const initializers: Array<string> = []
   const statements = [
     "if(i===R.missing)return R.missingExit",
     "if(o.errors===\"all\"||o.onExcessProperty!==void 0||(o.concurrency!==void 0&&o.concurrency!==1))return fallback(i,o)",
@@ -668,17 +716,57 @@ const emitObject = (ast: SchemaAST.Objects): string => {
   ast.propertySignatures.forEach((property, index) => {
     const key = typeof property.name === "symbol" ? `properties[${index}].name` : JSON.stringify(String(property.name))
     const present = property.name === "__proto__" ? `Object.hasOwn(i,${key})` : `${key} in i`
-    statements.push(
-      `const p${index}=properties[${index}],h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
-      `r=p${index}.parser(v${index},o)`,
-      `if(r===R.sameExit){if(h${index}){${assignProperty("out", key, `v${index}`, property.name)}}}else{` +
-        `if(!R.effectIsExit(r))return resume(state,${index},r);` +
-        `if(r._tag==="Success"&&(value=r[R.args])!==R.missing){${assignProperty("out", key, "value", property.name)}}` +
-        `else{t=step(state,p${index},r);if(t)return t}}`
-    )
+    const handle = `if(r===R.sameExit){if(h${index}){${assignProperty("out", key, `v${index}`, property.name)}}}else{` +
+      `if(!R.effectIsExit(r))return resume(state,${index},r);` +
+      `if(r._tag==="Success"&&(value=r[R.args])!==R.missing){${assignProperty("out", key, "value", property.name)}}` +
+      `else{t=step(state,p${index},r);if(t)return t}}`
+    const propertyPath = `ast.propertySignatures[${index}].type`
+    if (canInlineEncoding(property.type)) {
+      const links = property.type.encoding
+      const sourcePath = `${propertyPath}.encoding[${links.length - 1}].to`
+      const source = inlineIdentityPredicate(links[links.length - 1].to, `v${index}`, sourcePath)!
+      const fast: Array<string> = [`let x${index}=v${index};r=void 0;l${index}:{`]
+      for (let linkIndex = links.length - 1; linkIndex >= 0; linkIndex--) {
+        const transformation = links[linkIndex].transformation
+        if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
+          const transform = `t${index}_${linkIndex}`
+          initializers.push(
+            `const ${transform}=${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
+          )
+          fast.push(`x${index}=${transform}(x${index})`)
+        }
+        const targetPath = linkIndex === 0
+          ? propertyPath
+          : `${propertyPath}.encoding[${linkIndex - 1}].to`
+        const target = linkIndex === 0 ? property.type : links[linkIndex - 1].to
+        const predicate = inlineIdentityPredicate(target, `x${index}`, targetPath)!
+        const failure = linkIndex === 0
+          ? `R.invalidType(${propertyPath},x${index},o)`
+          : `R.wrapEncoding(${propertyPath},v${index},o,R.invalidType(${targetPath},x${index},o))`
+        fast.push(
+          `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=${failure};break l${index}}`
+        )
+      }
+      fast.push(
+        `};if(r!==void 0){${handle}}else{${assignProperty("out", key, `x${index}`, property.name)}}`
+      )
+      const run = `if(v${index}!==R.missing&&(${source})){${
+        fast.join(";")
+      }}else{r=p${index}.parser(v${index},o);${handle}}`
+      statements.push(
+        `const p${index}=properties[${index}],h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
+        run
+      )
+    } else {
+      statements.push(
+        `const p${index}=properties[${index}],h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
+        `r=p${index}.parser(v${index},o)`,
+        handle
+      )
+    }
   })
   statements.push("return R.succeed(out)")
-  return `function({ast,getProperties,fallback,resume,step}){return function(i,o){try{${
+  return `function({ast,getProperties,fallback,resume,step}){${initializers.join(";")};return function(i,o){try{${
     statements.join(";")
   }}catch(e){return R.die(e)}}}`
 }

@@ -3184,57 +3184,65 @@ Transformation<T, E, RD, RE>
 - `RD`: the context used while decoding
 - `RE`: the context used while encoding
 
-A `Transformation` consists of two `Getter` functions:
+A `Transformation` consists of two `Getter` values:
 
 - `decode: Getter<T, E, RD>` — transforms a value during decoding
 - `encode: Getter<E, T, RE>` — transforms a value during encoding
 
-Each `Getter` receives an input and an optional context and returns either a value or an error. Getters can be composed to build more complex logic.
+Each `Getter` is a tagged description of one operation:
+
+- `Transform` transforms a present value synchronously.
+- `TransformOptional` transforms an `Option` synchronously and can handle a missing value.
+- `TransformEffect` and `TransformOptionalEffect` are the corresponding effectful forms.
+- `Passthrough` returns its input unchanged.
+
+Getter values expose `pipe`. Use the dual standalone functions `SchemaGetter.map` and `SchemaGetter.compose` to build
+larger transformations. `SchemaGetter.run` executes a getter directly and always returns an `Effect`; schemas execute
+their getters through `SchemaParser` instead.
 
 **Example** (Implementation of `Transformation.trim`)
 
 ```ts
+import { SchemaGetter, SchemaTransformation } from "effect"
+
 /**
  * @category String transformations
  * @since 4.0.0
  */
-export function trim(): Transformation<string, string> {
-  return new Transformation(Getter.trim(), Getter.passthrough())
+export function trim(): SchemaTransformation.Transformation<string, string> {
+  return new SchemaTransformation.Transformation(SchemaGetter.trim(), SchemaGetter.passthrough())
 }
 ```
 
 In this case:
 
-- The `decode` process uses `Getter.trim()` to remove leading and trailing whitespace.
-- The `encode` process uses `Getter.passthrough()`, which returns the input as is.
+- The `decode` process uses `SchemaGetter.trim()` to remove leading and trailing whitespace.
+- The `encode` process uses `SchemaGetter.passthrough()`, which returns the input as is.
 
 ## Composing Transformations
 
-You can combine transformations using the `.compose` method. The resulting transformation applies the `decode` and `encode` logic of both transformations in sequence.
+You can combine transformations using `SchemaTransformation.compose`. The resulting transformation applies the `decode` and `encode` logic of both transformations in sequence.
 
 **Example** (Trim and lowercase a string)
 
 ```ts
-import { Option, SchemaTransformation } from "effect"
+import { Schema, SchemaTransformation } from "effect"
 
 // Compose two transformations: trim followed by toLowerCase
-const trimToLowerCase = SchemaTransformation.trim().compose(SchemaTransformation.toLowerCase())
+const trimToLowerCase = SchemaTransformation.compose(
+  SchemaTransformation.trim(),
+  SchemaTransformation.toLowerCase()
+)
+const schema = Schema.String.pipe(Schema.decode(trimToLowerCase))
 
-// Run the decode logic manually to inspect the result
-console.log(trimToLowerCase.decode.run(Option.some("  Abc"), {}))
-/*
-{
-  _id: 'Exit',
-  _tag: 'Success',
-  value: { _id: 'Option', _tag: 'Some', value: 'abc' }
-}
-*/
+Schema.decodeUnknownSync(schema)("  Abc")
+// "abc"
 ```
 
 In this example:
 
-- The `decode` logic applies `Getter.trim()` followed by `Getter.toLowerCase()`, producing a string that is trimmed and lowercased.
-- The `encode` logic is `Getter.passthrough()`, which simply returns the input as-is.
+- The `decode` logic applies `SchemaGetter.trim()` followed by `SchemaGetter.toLowerCase()`, producing a string that is trimmed and lowercased.
+- The `encode` logic is `SchemaGetter.passthrough()`, which returns the input unchanged.
 
 ## Transforming One Schema into Another
 

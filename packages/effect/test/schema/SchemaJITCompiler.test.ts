@@ -294,6 +294,30 @@ describe("SchemaJITCompiler", () => {
     }
   })
 
+  it("does not replay inlined Struct transformations", () => {
+    let transformations = 0
+    const transformed = Schema.String.pipe(
+      Schema.decodeTo(
+        Schema.Number,
+        SchemaTransformation.transform({
+          decode: (value) => {
+            transformations++
+            return value === "invalid" ? "invalid" as any : Number(value)
+          },
+          encode: String
+        })
+      )
+    )
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ value: transformed }))
+
+    deepStrictEqual(decode({ value: "1" }), { value: 1 })
+    strictEqual(transformations, 1)
+    throws(() => decode({ value: false }))
+    strictEqual(transformations, 1)
+    throws(() => decode({ value: "invalid" }))
+    strictEqual(transformations, 2)
+  })
+
   it("applies Struct output and encoding checks after compiled fields without replay", () => {
     let transformations = 0
     let checks = 0
@@ -736,7 +760,7 @@ Expected no excess property
       Cause.die(new Error("defect"))
     )
     const schema = Schema.String.pipe(Schema.decode({
-      decode: new SchemaGetter.Getter(() => Effect.failCause(cause)),
+      decode: SchemaGetter.transformOptionalEffect(() => Effect.failCause(cause)),
       encode: SchemaGetter.passthrough()
     }))
 

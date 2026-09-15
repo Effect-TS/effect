@@ -19,6 +19,19 @@ const transformed = Schema.String.pipe(
   )
 )
 
+const pureTransformed = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.Number,
+    SchemaTransformation.transform({
+      decode: (input) => {
+        events.push("pure transform")
+        return input === "invalid" ? "invalid" as any : Number(input)
+      },
+      encode: String
+    })
+  )
+)
+
 const middleware = transformed.pipe(
   Schema.middlewareDecoding((effect) => {
     events.push("middleware")
@@ -31,7 +44,7 @@ const middleware = transformed.pipe(
 
 const asynchronous = Schema.String.pipe(
   Schema.decodeTo(Schema.Number.check(Schema.isGreaterThan(0)), {
-    decode: new SchemaGetter.Getter((input) => {
+    decode: SchemaGetter.transformOptionalEffect((input) => {
       events.push("async")
       return Effect.yieldNow.pipe(Effect.as(Option.map(input, Number)))
     }),
@@ -159,6 +172,10 @@ export const synchronous = {
       { before: "a", value: "-1", after: true },
       { before: "a", value: "2", after: "invalid" }
     ]
+  },
+  pureTransformedStruct: {
+    schema: Schema.Struct({ value: pureTransformed }),
+    inputs: [{ value: "2" }, { value: false }, { value: "invalid" }]
   },
   middleware: {
     schema: middleware,

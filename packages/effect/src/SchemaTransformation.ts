@@ -18,6 +18,7 @@ import * as DateTime from "./DateTime.ts"
 import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import { format, formatDate, formatJson } from "./Formatter.ts"
+import { dual } from "./Function.ts"
 import * as Option from "./Option.ts"
 import * as Predicate from "./Predicate.ts"
 import type { ErrorOptions, Json } from "./Schema.ts"
@@ -145,17 +146,18 @@ const TypeId = "~effect/SchemaTransformation/Transformation"
  * `Schema.decode`, `Schema.encode`, and `Schema.link`. Each direction is a
  * `SchemaGetter.Getter` that handles optionality, failure, and Effect services.
  *
- * - Immutable — `flip()` and `compose()` return new instances.
+ * - Immutable — `flip()` and {@link compose} return new instances.
  * - `flip()` swaps the decode and encode getters.
- * - `compose(other)` chains: `this.decode` then `other.decode` for decoding,
- *   `other.encode` then `this.encode` for encoding.
+ * - `compose(self, other)` chains: `self.decode` then `other.decode` for decoding,
+ *   `other.encode` then `self.encode` for encoding.
  *
  * **Example** (Composing two transformations)
  *
  * ```ts import.meta.vitest
  * import { SchemaTransformation } from "effect"
  *
- * const trimAndLower = SchemaTransformation.trim().compose(
+ * const trimAndLower = SchemaTransformation.compose(
+ *   SchemaTransformation.trim(),
  *   SchemaTransformation.toLowerCase()
  * )
  * trimAndLower._tag // => "Transformation"
@@ -175,7 +177,6 @@ export interface Transformation<in out T, in out E, RD = never, RE = never> {
   readonly decode: SchemaGetter.Getter<T, E, RD>
   readonly encode: SchemaGetter.Getter<E, T, RE>
   flip(): Transformation<E, T, RE, RD>
-  compose<T2, RD2, RE2>(other: Transformation<T2, T, RD2, RE2>): Transformation<T2, E, RD | RD2, RE | RE2>
 }
 
 /**
@@ -203,13 +204,55 @@ export const Transformation: new<T, E, RD = never, RE = never>(
   flip(): Transformation<E, T, RE, RD> {
     return new Transformation(this.encode, this.decode)
   }
-  compose<T2, RD2, RE2>(other: Transformation<T2, T, RD2, RE2>): Transformation<T2, E, RD | RD2, RE | RE2> {
-    return new Transformation(
-      this.decode.compose(other.decode),
-      other.encode.compose(this.encode)
-    )
-  }
 }
+
+/**
+ * Composes two schema transformations into a single bidirectional conversion.
+ *
+ * **When to use**
+ *
+ * Use when decoding and encoding require the same sequence of conversion
+ * steps in opposite directions.
+ *
+ * **Details**
+ *
+ * Decoding applies `self.decode` followed by `other.decode`. Encoding applies
+ * `other.encode` followed by `self.encode`. The function supports both
+ * `compose(self, other)` and `compose(other)(self)`.
+ *
+ * **Example** (Trimming and lowercasing a string)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema, SchemaTransformation } from "effect"
+ *
+ * const transformation = SchemaTransformation.compose(
+ *   SchemaTransformation.trim(),
+ *   SchemaTransformation.toLowerCase()
+ * )
+ * const schema = Schema.String.pipe(Schema.decode(transformation))
+ *
+ * Schema.decodeUnknownSync(schema)("  HELLO  ") // => "hello"
+ * ```
+ *
+ * @category combining
+ * @since 4.0.0
+ */
+export const compose: {
+  <T, T2, RD2, RE2>(
+    other: Transformation<T2, T, RD2, RE2>
+  ): <E, RD, RE>(self: Transformation<T, E, RD, RE>) => Transformation<T2, E, RD | RD2, RE | RE2>
+  <T, E, RD, RE, T2, RD2, RE2>(
+    self: Transformation<T, E, RD, RE>,
+    other: Transformation<T2, T, RD2, RE2>
+  ): Transformation<T2, E, RD | RD2, RE | RE2>
+} = dual(2, <T, E, RD, RE, T2, RD2, RE2>(
+  self: Transformation<T, E, RD, RE>,
+  other: Transformation<T2, T, RD2, RE2>
+): Transformation<T2, E, RD | RD2, RE | RE2> =>
+  new Transformation(
+    SchemaGetter.compose(self.decode, other.decode),
+    SchemaGetter.compose(other.encode, self.encode)
+  ))
 
 /**
  * Returns `true` if `u` is a `Transformation` instance.

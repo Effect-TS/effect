@@ -41,7 +41,6 @@ type GenerateArray = (context: {
     end: number
   ) => Effect.Effect<void, SchemaIssue.Issue, any>
 }) => typeof SchemaAST.parseArray
-
 const makeObjectBase = (
   ast: SchemaAST.Objects,
   compile: Compiler,
@@ -217,6 +216,7 @@ export const runtime = {
   die: Effect.die,
   invalidType: (ast: SchemaAST.AST, input: unknown, options: SchemaAST.ParseOptions) =>
     Effect.fail(new SchemaIssue.InvalidType(ast, input, options)),
+  wrapEncoding: Interpreter.wrapEncoding,
   failsChecks,
   getExpectedKeys: (ast: SchemaAST.Objects) =>
     ast.propertySignatures.map((p) => typeof p.name === "number" ? String(p.name) : p.name),

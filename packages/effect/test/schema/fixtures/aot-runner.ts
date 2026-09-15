@@ -108,6 +108,7 @@ for (
     "record",
     "transformed",
     "transformedStruct",
+    "pureTransformedStruct",
     "checkedTransformedStruct",
     "encodingCheckedTransformedStruct",
     "asynchronous",

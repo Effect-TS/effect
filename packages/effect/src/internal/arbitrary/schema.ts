@@ -1664,7 +1664,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     const decodeDeclaration = SchemaParser.run<unknown, never>(ast)
     const decode = (value: unknown): Model.Computation<Option.Option<unknown>> => {
       const transformed = link.transformation._tag === "Transformation"
-        ? link.transformation.decode.run(Option.some(value), SchemaAST.defaultParseOptions)
+        ? SchemaGetter.run(link.transformation.decode, Option.some(value), SchemaAST.defaultParseOptions)
         : link.transformation.decode(Effect.succeed(Option.some(value)), SchemaAST.defaultParseOptions)
       return Model.flatMapComputation(optionComputation(transformed), (outer) => {
         if (Option.isNone(outer) || Option.isNone(outer.value)) return Option.none()
