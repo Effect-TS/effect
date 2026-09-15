@@ -1,4 +1,15 @@
-import { type Cause, Data, type Effect, type ExecutionPlan, pipe, type Queue, Result, type Scope, Stream } from "effect"
+import {
+  type Cause,
+  Data,
+  type Effect,
+  type ExecutionPlan,
+  type Exit,
+  pipe,
+  type Queue,
+  Result,
+  type Scope,
+  Stream
+} from "effect"
 import { describe, expect, it } from "tstyche"
 
 class ErrorA extends Data.TaggedError("ErrorA")<{
@@ -17,6 +28,26 @@ class Quota extends Data.TaggedError("Quota")<{ readonly limit: number }> {}
 class AiError extends Data.TaggedError("AiError")<{ readonly reason: RateLimit | Quota }> {}
 
 declare const aiStream: Stream.Stream<string, AiError | ErrorB, "dep-1">
+
+declare const finalizer: Effect.Effect<void, "finalizer error", "finalizer">
+
+describe("Stream.onExit", () => {
+  it("adds finalizer errors and services in data-first usage", () => {
+    const result = Stream.onExit(stream, (exit) => {
+      expect(exit).type.toBe<Exit.Exit<void, ErrorA | ErrorB>>()
+      return finalizer
+    })
+    expect(result).type.toBe<Stream.Stream<string, ErrorA | ErrorB | "finalizer error", "dep-1" | "finalizer">>()
+  })
+
+  it("adds finalizer errors and services in data-last usage", () => {
+    const result = stream.pipe(Stream.onExit((exit) => {
+      expect(exit).type.toBe<Exit.Exit<void, ErrorA | ErrorB>>()
+      return finalizer
+    }))
+    expect(result).type.toBe<Stream.Stream<string, ErrorA | ErrorB | "finalizer error", "dep-1" | "finalizer">>()
+  })
+})
 
 describe("Stream.catchDefect", () => {
   it("supports data-last usage", () => {

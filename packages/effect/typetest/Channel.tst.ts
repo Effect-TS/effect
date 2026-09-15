@@ -1,4 +1,4 @@
-import { Channel, Data, type Effect, pipe, Result } from "effect"
+import { Channel, Data, type Effect, type Exit, pipe, Result } from "effect"
 import { describe, expect, it } from "tstyche"
 
 class ErrorA extends Data.TaggedError("ErrorA")<{ readonly message: string }> {}
@@ -11,6 +11,31 @@ class Quota extends Data.TaggedError("Quota")<{ readonly limit: number }> {}
 class AiError extends Data.TaggedError("AiError")<{ readonly reason: RateLimit | Quota }> {}
 
 declare const aiChannel: Channel.Channel<number, AiError | ErrorB>
+
+declare const source: Channel.Channel<number, ErrorA, boolean, string, ErrorB, Date, "source">
+declare const finalizer: Effect.Effect<void, "finalizer error", "finalizer">
+
+describe("Channel.onExit", () => {
+  it("adds finalizer errors and services in data-first usage", () => {
+    const result = Channel.onExit(source, (exit) => {
+      expect(exit).type.toBe<Exit.Exit<boolean, ErrorA>>()
+      return finalizer
+    })
+    expect(result).type.toBe<
+      Channel.Channel<number, ErrorA | "finalizer error", boolean, string, ErrorB, Date, "source" | "finalizer">
+    >()
+  })
+
+  it("adds finalizer errors and services in data-last usage", () => {
+    const result = source.pipe(Channel.onExit((exit) => {
+      expect(exit).type.toBe<Exit.Exit<boolean, ErrorA>>()
+      return finalizer
+    }))
+    expect(result).type.toBe<
+      Channel.Channel<number, ErrorA | "finalizer error", boolean, string, ErrorB, Date, "source" | "finalizer">
+    >()
+  })
+})
 
 describe("Channel.catchDefect", () => {
   it("supports data-last usage", () => {
