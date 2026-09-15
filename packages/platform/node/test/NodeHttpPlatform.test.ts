@@ -21,6 +21,46 @@ const readStream = (stream: Readable) =>
   })
 
 describe("NodeHttpPlatform", { concurrent: false }, () => {
+  for (
+    const [name, filename, type, options, expected] of [
+      ["File.type over extension", "script.js", "application/file", {}, "application/file"],
+      ["extension with empty File.type", "script.js", "", {}, "text/javascript"],
+      ["extensionless name", "file", "", {}, "application/octet-stream"],
+      ["unknown extension", "file.unknown-extension", "", {}, "application/octet-stream"],
+      [
+        "contentType over File.type",
+        "script.js",
+        "application/file",
+        { contentType: "application/custom" },
+        "application/custom"
+      ],
+      [
+        "header over File.type",
+        "script.js",
+        "application/file",
+        { headers: { "Content-Type": "application/header" } },
+        "application/header"
+      ],
+      [
+        "option over header and File.type",
+        "script.js",
+        "application/file",
+        { contentType: "application/custom", headers: { "content-type": "application/header" } },
+        "application/custom"
+      ]
+    ] as const
+  ) {
+    it.effect(`fileWebResponse content type: ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileWebResponse(new File(["export {}"], filename, { type }), options)
+        const body = yield* readStream((response.body as HttpBody.Raw).body as Readable)
+
+        assert.strictEqual(response.headers["content-type"], expected)
+        assert.strictEqual(body, "export {}")
+      }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+  }
+
   it.effect("fileResponse reads exact bytesToRead", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform

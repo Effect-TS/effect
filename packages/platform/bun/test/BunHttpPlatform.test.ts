@@ -36,6 +36,58 @@ const readResponse = (response: HttpServerResponse.HttpServerResponse) =>
 
 describe("BunHttpPlatform", { concurrent: false }, () => {
   for (
+    const [name, options, expected] of [
+      ["extension", {}, "text/plain;charset=utf-8"],
+      ["contentType option", { contentType: "application/custom" }, "application/custom"],
+      ["header", { headers: { "Content-Type": "application/header" } }, "application/header"],
+      [
+        "option over header",
+        { contentType: "application/custom", headers: { "content-type": "application/header" } },
+        "application/custom"
+      ]
+    ] as const
+  ) {
+    it.effect(`fileResponse content type: ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileResponse(
+          `${import.meta.dirname}/../../node/test/fixtures/text.txt`,
+          options
+        )
+        const webResponse = HttpServerResponse.toWeb(response)
+        const body = yield* Effect.promise(() => webResponse.text())
+
+        assert.strictEqual(webResponse.headers.get("content-type"), expected)
+        assert.strictEqual(body, "lorem ipsum dolar sit amet\n")
+      }).pipe(Effect.provide(BunHttpPlatform.layer)))
+  }
+
+  for (
+    const [name, options, expected] of [
+      ["File.type", {}, "application/file"],
+      ["contentType option", { contentType: "application/custom" }, "application/custom"],
+      ["header", { headers: { "Content-Type": "application/header" } }, "application/header"],
+      [
+        "option over header",
+        { contentType: "application/custom", headers: { "content-type": "application/header" } },
+        "application/custom"
+      ]
+    ] as const
+  ) {
+    it.effect(`fileWebResponse content type: ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const file = new File(["export {}"], "script.js", { type: "application/file" })
+        const response = yield* platform.fileWebResponse(file, options)
+        const webResponse = HttpServerResponse.toWeb(response)
+        const body = yield* Effect.promise(() => webResponse.text())
+
+        assert.strictEqual(webResponse.headers.get("content-type"), expected)
+        assert.strictEqual(body, "export {}")
+      }).pipe(Effect.provide(BunHttpPlatform.layer)))
+  }
+
+  for (
     const { name, offset, bytesToRead, expected } of [
       { name: "clamps bytesToRead beyond EOF", offset: 1, bytesToRead: 10, expected: "bcd" },
       { name: "returns an empty body at EOF", offset: 4, bytesToRead: undefined, expected: "" },

@@ -20,6 +20,69 @@ const readBody = (body: HttpBody.HttpBody) => {
 
 describe("DenoHttpPlatform", () => {
   for (
+    const [name, options, expected] of [
+      ["extension", {}, "text/plain; charset=UTF-8"],
+      ["contentType option", { contentType: "application/custom" }, "application/custom"],
+      ["header", { headers: { "Content-Type": "application/header" } }, "application/header"],
+      [
+        "option over header",
+        { contentType: "application/custom", headers: { "content-type": "application/header" } },
+        "application/custom"
+      ]
+    ] as const
+  ) {
+    it.effect(`fileResponse content type: ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileResponse(fixture, options)
+        const body = yield* readBody(response.body)
+
+        assert.strictEqual(response.headers["content-type"], expected)
+        assert.strictEqual(body, "lorem ipsum dolar sit amet\n")
+      }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+  }
+
+  for (
+    const [name, filename, type, options, expected] of [
+      ["File.type over extension", "script.js", "application/file", {}, "application/file"],
+      ["extension with empty File.type", "image.png", "", {}, "image/png"],
+      ["extensionless name", "file", "", {}, "application/octet-stream"],
+      ["unknown extension", "file.unknown-extension", "", {}, "application/octet-stream"],
+      [
+        "contentType over File.type",
+        "script.js",
+        "application/file",
+        { contentType: "application/custom" },
+        "application/custom"
+      ],
+      [
+        "header over File.type",
+        "script.js",
+        "application/file",
+        { headers: { "Content-Type": "application/header" } },
+        "application/header"
+      ],
+      [
+        "option over header and File.type",
+        "script.js",
+        "application/file",
+        { contentType: "application/custom", headers: { "content-type": "application/header" } },
+        "application/custom"
+      ]
+    ] as const
+  ) {
+    it.effect(`fileWebResponse content type: ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileWebResponse(new File(["export {}"], filename, { type }), options)
+        const body = yield* readBody(response.body)
+
+        assert.strictEqual(response.headers["content-type"], expected)
+        assert.strictEqual(body, "export {}")
+      }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+  }
+
+  for (
     const { name, offset, bytesToRead, expected } of [
       { name: "clamps bytesToRead beyond EOF", offset: 1, bytesToRead: 10, expected: "bcd" },
       { name: "returns an empty body at EOF", offset: 4, bytesToRead: undefined, expected: "" },
