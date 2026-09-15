@@ -6,15 +6,12 @@ export const ulidString = (timestampMillis: number, bytes: Uint8Array): string =
   if (bytes.length !== 10) {
     throw new Error(`ULID randomness must be exactly 10 bytes, received ${bytes.length}`)
   }
-  if (!Number.isInteger(timestampMillis) || timestampMillis < 0 || timestampMillis > maxTimestamp) {
-    throw new RangeError(`ULID timestamp must be an integer between 0 and ${maxTimestamp}, received ${timestampMillis}`)
-  }
 
-  let timestamp = timestampMillis
+  const timestamp = Math.min(Math.max(0, Math.trunc(timestampMillis)), maxTimestamp)
   let out = ""
-  for (let i = 0; i < 10; i++) {
-    out = base32Chars[timestamp % 32] + out
-    timestamp = Math.floor(timestamp / 32)
+  for (let shift = 45; shift >= 0; shift -= 5) {
+    // Masking maps NaN to zero, matching UUIDv7's byte encoding.
+    out += base32Chars[Math.floor(timestamp / 2 ** shift) & 0x1f]
   }
 
   let accumulator = 0

@@ -159,12 +159,13 @@ export interface Crypto {
    *
    * **Details**
    *
-   * A ULID is a 26 character Crockford base32 string: the leading 10 characters
-   * encode the `Clock` timestamp in milliseconds and the remaining 16 random
-   * characters, so ULIDs sort by creation time. The alphabet omits `I`, `L`,
-   * `O` and `U`, making ULIDs case-insensitive and free of visually ambiguous
-   * characters. ULIDs generated within the same millisecond are only ordered by
-   * their random characters.
+   * ULIDs contain 26 uppercase Crockford base32 characters. The first 10 encode
+   * the `Clock` timestamp in milliseconds; the remaining 16 encode 80 random
+   * bits. ULIDs sort by timestamp, with no ordering guarantee within the same
+   * millisecond.
+   *
+   * Timestamp normalization matches UUIDv7: fractions are truncated, values are
+   * clamped to the 48-bit range, and `NaN` encodes as zero.
    */
   readonly randomULID: Effect.Effect<string, PlatformError.PlatformError>
 }
