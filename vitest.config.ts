@@ -178,6 +178,21 @@ export default defineConfig({
       // MySQL starts a fresh container per integration test suite, so avoid competing
       // with the other container-backed projects on integration-test runners.
       ...project(
+        "@effect/sql-mysql",
+        "packages/sql/mysql",
+        true,
+        integrationTestsEnabled
+          ? {
+            test: {
+              fileParallelism: false,
+              sequence: {
+                groupOrder: 1
+              }
+            }
+          }
+          : {}
+      ),
+      ...project(
         "@effect/sql-mysql2",
         "packages/sql/mysql2",
         true,

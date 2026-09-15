@@ -562,6 +562,27 @@ importers:
         specifier: workspace:^
         version: link:../../effect
 
+  packages/sql/mysql:
+    devDependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform/node
+      '@effect/sql-mysql2':
+        specifier: workspace:^
+        version: link:../mysql2
+      '@testcontainers/mysql':
+        specifier: ^12.1.0
+        version: 12.1.0(supports-color@10.2.2)
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.4.1
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+      tinybench:
+        specifier: ^6.1.6
+        version: 6.1.6
+
   packages/sql/mysql2:
     dependencies:
       mysql2:

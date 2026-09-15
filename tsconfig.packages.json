@@ -21,6 +21,7 @@
     { "path": "packages/sql/clickhouse" },
     { "path": "packages/sql/d1" },
     { "path": "packages/sql/libsql" },
+    { "path": "packages/sql/mysql" },
     { "path": "packages/sql/mysql2" },
     { "path": "packages/sql/mssql" },
     { "path": "packages/sql/pg" },

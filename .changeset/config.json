@@ -35,6 +35,7 @@
       "@effect/sql-d1",
       "@effect/sql-libsql",
       "@effect/sql-mssql",
+      "@effect/sql-mysql",
       "@effect/sql-mysql2",
       "@effect/sql-pg",
       "@effect/sql-pglite",
