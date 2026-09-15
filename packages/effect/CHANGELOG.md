@@ -1,5 +1,77 @@
 # effect
 
+## 4.0.0-rc.116
+
+### Patch Changes
+
+- [#8221](https://github.com/Effect-TS/effect/pull/8221) [`8f420bb`](https://github.com/Effect-TS/effect/commit/8f420bb3dc3c9be8c4a48d57dccee201dcb0260d) Thanks @gcanti! - Add `Arbitrary.array(item, { minLength, maxLength })` for variable-length arrays of custom Arbitraries. Shrinking removes blocks of commands while preserving the remaining values and their order, and also simplifies individual elements.
+  
+  Schema-derived arrays now also try removing prefixes and interior blocks. Shrinking composed values and Schema objects preserves child candidates that were previously lost when exploring another branch.
+  
+  Shrunk results and replay paths may change from earlier native releases. Re-run affected properties to obtain new replay tokens, and preserve important failing inputs as regression tests.
+
+- [#8233](https://github.com/Effect-TS/effect/pull/8233) [`1393080`](https://github.com/Effect-TS/effect/commit/1393080f1cc8f47d459119fcb759e2cc00fd7356) Thanks @gold-beyond! - Add `Crypto.randomULID` to generate ULIDs from the current `Clock` timestamp and cryptographically secure random bytes.
+
+- [#8256](https://github.com/Effect-TS/effect/pull/8256) [`ccae354`](https://github.com/Effect-TS/effect/commit/ccae35423188f58d7c3dec5db3e36ed4bf42bcdf) Thanks @tim-smart! - Align the `Effect` and `Stream` APIs and fix several Stream type signatures.
+  
+  - `Effect.orElseSucceed` now passes the error to the fallback function, matching `Stream.orElseSucceed`.
+  - `Effect.isEffect` narrows to `Effect<unknown, unknown, unknown>` instead of `any`.
+  - `Stream.bind`, `Stream.bindEffect` and `Stream.let` allow re-binding an existing field and produce the same record type as their `Effect` counterparts.
+  - `Stream.Success`, `Stream.Error` and `Stream.Services` are unconstrained and distributive like the `Effect` versions.
+  - `Stream.partition` returns `[passes, fails]` and takes a `capacity` option, matching `Stream.partitionQueue` and `Stream.partitionEffect`. Its default capacity remains 16.
+  - `Stream.mapBoth` takes `onElement` / `onError`, matching `Stream.tapBoth`.
+  - `Stream.scan` and `Stream.scanEffect` take a lazy initial state.
+  - `Stream.catchTags` rejects unknown tag keys like `Effect.catchTags`.
+  - Fixed the data-first overloads of `Stream.runIntoPubSub` (error type was dropped), `Stream.cross` (swapped type parameter names) and `Stream.mapAccumArray` (`onHalt` return type).
+  - Added `Stream.as`, `Stream.tapDefect`, `Stream.tapErrorTag` and `Stream.unwrapReason`.
+  - Stream concurrency options use the `Types.Concurrency` alias, and JSDoc categories were consolidated across both modules.
+
+- [#8235](https://github.com/Effect-TS/effect/pull/8235) [`553c403`](https://github.com/Effect-TS/effect/commit/553c403f1d9199df738f73446dacd090da2e698b) Thanks @tim-smart! - Retain durable deferred completions received before a workflow owner's first local run so replay can complete while the deferred reply is still being persisted.
+  
+  Keep pending completions in a cache keyed weakly by cluster activation. Handler rebuilds retain completions, and overlapping activations cannot clear each other's results. Results can be collected once their activation scope becomes unreachable; closing a scope alone does not guarantee collection.
+  
+  Release RPC stream and queue consumers when their request write fiber is interrupted.
+
+- [#8243](https://github.com/Effect-TS/effect/pull/8243) [`45b5103`](https://github.com/Effect-TS/effect/commit/45b510352d42ac55718f9f5f43573975b323143f) Thanks @tim-smart! - Fix lost durable deferred wake-ups when a ClusterWorkflowEngine execution suspends before its run reply is persisted. Deferred completions now wait for the current run reply before resuming, so discarded executions can replay without relying on caller retries.
+
+- [#8254](https://github.com/Effect-TS/effect/pull/8254) [`77a5612`](https://github.com/Effect-TS/effect/commit/77a56120354d1d3f7341b117266f211143a3734a) Thanks @tim-smart! - Fix file response content types: honor the `contentType` option and preserve explicit headers, including MIME types set by `HttpStaticServer`. The default `HttpPlatform.layer` now infers missing content types from file extensions.
+  
+  Web file responses on the default, Node, and Deno platforms prefer explicit content types, then nonempty `File.type`, then the file extension.
+  
+  Removed the unused `contentLength` option from `HttpServerResponse.file`; lengths are calculated from the file and requested range.
+
+- [#8229](https://github.com/Effect-TS/effect/pull/8229) [`1076170`](https://github.com/Effect-TS/effect/commit/10761707b5cae0a66ef605abd1737ae59a18f5ac) Thanks @tim-smart! - Fix a deadlock in the memory workflow engine when a durable deferred is completed from a finalizer in the workflow awaiting it, including `DurableDeferred.into` inside `DurableDeferred.raceAll`.
+
+- [#8206](https://github.com/Effect-TS/effect/pull/8206) [`f110af1`](https://github.com/Effect-TS/effect/commit/f110af1ac5a54a7d62c2b96e35d4521a09f3fa06) Thanks @tim-smart! - Fix multipart file streams hanging on body read errors and preserve error causes when persisting files.
+
+- [#8202](https://github.com/Effect-TS/effect/pull/8202) [`51d4a2f`](https://github.com/Effect-TS/effect/commit/51d4a2f08a5c7691dc876415bc9fc0ecf467e153) Thanks @xia-chao! - Fix `RcRef.make` to treat `idleTimeToLive: 0` like `Duration.zero` and `"0 millis"` instead of an omitted option.
+
+- [#8227](https://github.com/Effect-TS/effect/pull/8227) [`ccfe152`](https://github.com/Effect-TS/effect/commit/ccfe152d11bed497f2d26aba8ef1a3613d0d6746) Thanks @tim-smart! - Release non-persisted, interruptible `RunnerServer` handlers and mailbox slots when callers disconnect.
+  
+  Preserve dynamic `WithTransaction` annotations during replay and re-delivery.
+
+- [#8255](https://github.com/Effect-TS/effect/pull/8255) [`84fe64a`](https://github.com/Effect-TS/effect/commit/84fe64a5fbfdecd23b66c207d0daa848d59dd825) Thanks @tim-smart! - Preserve literal suffixes such as `:wait` in `/operations/:id:wait` across `HttpApiClient`, `HttpApiBuilder`, and OpenAPI paths.
+  
+  Server routes without a params schema keep their existing matching for `RouteContext` consumers. Schemas whose keys cannot be enumerated keep the existing fallback.
+
+- [#8228](https://github.com/Effect-TS/effect/pull/8228) [`49e4b37`](https://github.com/Effect-TS/effect/commit/49e4b37b831a573567e0b67d3ec4593403dc2e72) Thanks @lloydrichards! - Support prompt titles in `McpServer.prompt` and `McpServer.registerPrompt`.
+
+- [#8228](https://github.com/Effect-TS/effect/pull/8228) [`49e4b37`](https://github.com/Effect-TS/effect/commit/49e4b37b831a573567e0b67d3ec4593403dc2e72) Thanks @lloydrichards! - Add an `instructions` option to MCP servers for initialization and discovery responses.
+
+- [#7265](https://github.com/Effect-TS/effect/pull/7265) [`a2c4154`](https://github.com/Effect-TS/effect/commit/a2c4154cf8bcbe455bd43bf7f3f12d9cbf38247c) Thanks @lloydrichards! - Add server support for MCP protocol version 2026-07-28 through 2026_07_28
+
+- [#8212](https://github.com/Effect-TS/effect/pull/8212) [`755e863`](https://github.com/Effect-TS/effect/commit/755e863a793e5621183e7992cb3f85d29030ad7b) Thanks @IMax153! - Restrict `ByteSize.Input` strings to canonical non-negative integers with recognized units, rejecting malformed literals at compile time. Parse external strings and fractional quantities with `ByteSize.fromString` or `ByteSize.fromStringUnsafe` before passing them to APIs accepting `ByteSize.Input`.
+
+- [#8228](https://github.com/Effect-TS/effect/pull/8228) [`49e4b37`](https://github.com/Effect-TS/effect/commit/49e4b37b831a573567e0b67d3ec4593403dc2e72) Thanks @lloydrichards! - Honor `Tool.Strict` in MCP input schemas and argument validation. Strict dynamic tools require Effect schemas; raw JSON Schema is rejected at registration.
+  
+  Support identified input schemas for non-strict tools. Invalid arguments use `InvalidParams` on protocols before 2025-11-25 and `isError: true` results on newer protocols.
+  
+  Distinguish validation failures from declared handler failures. Declared failures return `isError: true` without `structuredContent`: error mode uses `Error.message` or schema-encoded text, and return mode uses the encoded payload. Declared failures do not produce internal-error diagnostics.
+  
+  Log and report internal failures, including defects and encoding errors, while keeping client messages generic.
+  
+  Allow `Toolkit.handle` to accept `SchemaAST.ParseOptions` for parameter decoding. Expose the `Toolkit.FailureOrigin` cause annotation and shared `Tool.FailureOrigin` type, with the same origin available in `Tool.HandlerResult.failureOrigin` on returned failures.
+
 ## 4.0.0-rc.115
 
 ### Patch Changes
