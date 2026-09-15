@@ -85,9 +85,11 @@ describe("Schema", () => {
       a: Schema.String
     })) {}
     class B extends Schema.Opaque<B>()(Schema.Struct({ a: Schema.String })) {}
-    class C extends Schema.Class<C>("C")(Schema.Struct({
-      a: Schema.String
-    }).pipe(Schema.encodeKeys({"a": "A"}))) {}
+    class C extends Schema.Class<C>("C")(
+      Schema.Struct({
+        a: Schema.String
+      }).pipe(Schema.encodeKeys({ "a": "A" }))
+    ) {}
     assertTrue(Schema.isSchema(Schema.String))
     assertTrue(Schema.isSchema(A))
     assertTrue(Schema.isSchema(B))
@@ -6866,9 +6868,11 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("mapFields on a Class built from a Struct with encodeKeys", () => {
-      class A extends Schema.Class<A>("A")(Schema.Struct({
-        a: Schema.String
-      }).pipe(Schema.encodeKeys({ "a": "c" }))) {}
+      class A extends Schema.Class<A>("A")(
+        Schema.Struct({
+          a: Schema.String
+        }).pipe(Schema.encodeKeys({ "a": "c" }))
+      ) {}
       const schema = A.mapFields((fields) => ({ ...fields, b: Schema.Number }))
       deepStrictEqual(schema.fields, { a: Schema.String, b: Schema.Number })
     })
@@ -7251,7 +7255,7 @@ Expected a value between -2147483648 and 2147483647`
         class A extends Schema.Class<A>("A")(
           Schema.Struct({
             a: Schema.Number
-          }).pipe(Schema.encodeKeys({ "a": "c"}))
+          }).pipe(Schema.encodeKeys({ "a": "c" }))
         ) {}
         throws(
           () =>
@@ -9024,9 +9028,11 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("Class from Struct with encodeKeys", async () => {
-      class A extends Schema.Class<A>("A")(Schema.Struct({
-        a: Schema.String
-      }).pipe(Schema.encodeKeys({"a": "c"}))) {
+      class A extends Schema.Class<A>("A")(
+        Schema.Struct({
+          a: Schema.String
+        }).pipe(Schema.encodeKeys({ "a": "c" }))
+      ) {
         readonly _a = 1
       }
       const asserts = new TestSchema.Asserts(A)

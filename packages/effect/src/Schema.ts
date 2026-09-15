@@ -3532,7 +3532,7 @@ export function encodeKeys<
       [EncodeKeysTypeId]: EncodeKeysTypeId,
       to: schema.to,
       from: schema.from,
-      fields: self.fields,
+      fields: self.fields
     }) as any
   }
 }
@@ -13693,20 +13693,23 @@ export function Result<A extends Constraint, E extends Constraint>(
  * @category models
  * @since 3.10.0
  */
-export interface Class<Self, S extends 
-  | Constraint & { readonly fields: Struct.Fields }
-  | encodeKeys<Struct<Struct.Fields>, any>, Inherited>
-  extends
-    BottomLazyWithoutNew<
-      SchemaAST.Declaration,
-      decodeTo<declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>,
-      readonly [S],
-      S["~type.mutability"],
-      S["~type.optionality"],
-      S["~type.constructor.default"],
-      S["~encoded.mutability"],
-      S["~encoded.optionality"]
-    >
+export interface Class<
+  Self,
+  S extends
+    | Constraint & { readonly fields: Struct.Fields }
+    | encodeKeys<Struct<Struct.Fields>, any>,
+  Inherited
+> extends
+  BottomLazyWithoutNew<
+    SchemaAST.Declaration,
+    decodeTo<declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>,
+    readonly [S],
+    S["~type.mutability"],
+    S["~type.optionality"],
+    S["~type.constructor.default"],
+    S["~encoded.mutability"],
+    S["~encoded.optionality"]
+  >
 {
   /**
    * `make`, `makeOption`, and `makeEffect` preserve an existing instance of
