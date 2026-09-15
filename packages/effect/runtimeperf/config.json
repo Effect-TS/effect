@@ -1705,6 +1705,438 @@
       ]
     },
     {
+      "name": "moltar-parse-safe",
+      "fixtures": [
+        {
+          "file": "suites/moltar/fixtures/interpreted.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-parse-safe",
+            "implementation": "effect",
+            "operation": "decode-unknown-sync",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "effect-valid",
+              "export": "parseValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "effect-extra-valid",
+              "export": "parseExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "effect-invalid",
+              "export": "parseInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/jit.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-parse-safe",
+            "implementation": "effect-jit",
+            "operation": "decode-unknown-sync",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "effect-jit-valid",
+              "export": "parseValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "effect-jit-extra-valid",
+              "export": "parseExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "effect-jit-invalid",
+              "export": "parseInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/aot.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-parse-safe",
+            "implementation": "effect-aot",
+            "operation": "decode-unknown-sync",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "effect-aot-valid",
+              "export": "parseValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "effect-aot-extra-valid",
+              "export": "parseExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "effect-aot-invalid",
+              "export": "parseInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/valibot.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-parse-safe",
+            "implementation": "valibot",
+            "operation": "parse",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "valibot-valid",
+              "export": "parseValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "valibot-extra-valid",
+              "export": "parseExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "valibot-invalid",
+              "export": "parseInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/zod.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-parse-safe",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "zod-valid",
+              "export": "parseValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "valid"
+            },
+            {
+              "name": "zod-extra-valid",
+              "export": "parseExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-invalid",
+              "export": "parseInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-jitless-valid",
+              "export": "parseJitlessValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "valid"
+            },
+            {
+              "name": "zod-jitless-extra-valid",
+              "export": "parseJitlessExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-jitless-invalid",
+              "export": "parseJitlessInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-compiled-valid",
+              "export": "parseCompiledValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "valid"
+            },
+            {
+              "name": "zod-compiled-extra-valid",
+              "export": "parseCompiledExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-compiled-invalid",
+              "export": "parseCompiledInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "invalid"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "moltar-assert-loose",
+      "fixtures": [
+        {
+          "file": "suites/moltar/fixtures/interpreted.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-assert-loose",
+            "implementation": "effect",
+            "operation": "is",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "effect-valid",
+              "export": "isValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "effect-extra-valid",
+              "export": "isExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "effect-invalid",
+              "export": "isInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/jit.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-assert-loose",
+            "implementation": "effect-jit",
+            "operation": "is",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "effect-jit-valid",
+              "export": "isValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "effect-jit-extra-valid",
+              "export": "isExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "effect-jit-invalid",
+              "export": "isInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/aot.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-assert-loose",
+            "implementation": "effect-aot",
+            "operation": "is",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "effect-aot-valid",
+              "export": "isValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "effect-aot-extra-valid",
+              "export": "isExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "effect-aot-invalid",
+              "export": "isInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/valibot.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-assert-loose",
+            "implementation": "valibot",
+            "operation": "is",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "valibot-valid",
+              "export": "isValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "valibot-extra-valid",
+              "export": "isExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "valibot-invalid",
+              "export": "isInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar/fixtures/zod.ts",
+          "defaults": {
+            "tier": 2,
+            "family": "moltar-assert-loose",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "zod-parse-valid",
+              "export": "assertParseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4",
+              "operation": "parse-and-assert",
+              "path": "valid"
+            },
+            {
+              "name": "zod-parse-extra-valid",
+              "export": "assertParseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4",
+              "operation": "parse-and-assert",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-jitless-parse-valid",
+              "export": "assertParseJitlessValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-and-assert-jitless",
+              "path": "valid"
+            },
+            {
+              "name": "zod-jitless-parse-extra-valid",
+              "export": "assertParseJitlessExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-and-assert-jitless",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-validate-valid",
+              "export": "isValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "valid"
+            },
+            {
+              "name": "zod-validate-extra-valid",
+              "export": "isExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-validate-invalid",
+              "export": "isInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-compiled-valid",
+              "export": "isCompiledValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "valid"
+            },
+            {
+              "name": "zod-compiled-extra-valid",
+              "export": "isCompiledExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "extra-valid"
+            },
+            {
+              "name": "zod-compiled-invalid",
+              "export": "isCompiledInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "invalid"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "compiler-rebuild",
       "fixtures": [
         {
@@ -1944,7 +2376,7 @@
           "defaults": {
             "tier": 1,
             "family": "jit",
-            "implementation": "effect",
+            "implementation": "effect-jit",
             "astTags": [
               "Objects",
               "String",
@@ -2176,7 +2608,7 @@
           "defaults": {
             "tier": 1,
             "family": "aot",
-            "implementation": "effect",
+            "implementation": "effect-aot",
             "astTags": [
               "Objects",
               "String",

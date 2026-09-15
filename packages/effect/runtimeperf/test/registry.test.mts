@@ -2,14 +2,33 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { describe, it } from "node:test"
 import { pathToFileURL } from "node:url"
-import { loadRegistry } from "../utils.mts"
+import { loadRegistry, scenarioBatchSize } from "../utils.mts"
 
 describe("runtimeperf registry", () => {
+  it("uses the Effect calibration for every implementation in a scenario", () => {
+    const zod = { implementation: "zod4-compiled" }
+    const effect = { implementation: "effect" }
+    assert.equal(scenarioBatchSize([zod, effect], new Map([
+      [zod, { batchSize: 4_096 }],
+      [effect, { batchSize: 256 }]
+    ])), 256)
+  })
+
   it("uses unique fixture targets and valid implementations", () => {
     const { fixtures } = loadRegistry()
     assert.equal(new Set(fixtures.map((fixture) => fixture.target)).size, fixtures.length)
     for (const fixture of fixtures) {
-      assert.ok(["effect", "fast-check-v4", "valibot", "zod4", "zod4-compiled"].includes(fixture.implementation))
+      assert.ok([
+        "effect",
+        "effect-aot",
+        "effect-jit",
+        "fast-check-v4",
+        "valibot",
+        "zod4",
+        "zod4-compiled",
+        "zod4-jitless",
+        "zod4-validate"
+      ].includes(fixture.implementation))
     }
   })
 
@@ -103,7 +122,7 @@ describe("runtimeperf registry", () => {
     const { fixtures } = loadRegistry()
     const zodFiles = new Set(
       fixtures
-        .filter((fixture) => fixture.implementation === "zod4")
+        .filter((fixture) => fixture.suite === "schema-benchmarks" && fixture.implementation === "zod4")
         .map((fixture) => fixture.fixturePath)
     )
     assert.ok(zodFiles.size > 0)
@@ -117,9 +136,10 @@ describe("runtimeperf registry", () => {
 
   it("uses strict Zod compilation for the compiler comparison fixtures", async () => {
     const { fixtures } = loadRegistry()
-    const compiled = fixtures.filter((fixture) => fixture.implementation === "zod4-compiled")
+    const compiled = fixtures.filter((fixture) =>
+      fixture.suite === "compiler-rebuild" && fixture.implementation === "zod4-compiled"
+    )
     assert.equal(compiled.length, 18)
-    assert.equal(compiled.every((fixture) => fixture.suite === "compiler-rebuild"), true)
     const paths = new Set(compiled.map((fixture) => fixture.fixturePath))
     assert.equal(paths.size, 1)
     const source = await readFile([...paths][0], "utf8")

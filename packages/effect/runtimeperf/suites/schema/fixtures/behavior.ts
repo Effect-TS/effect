@@ -7,25 +7,37 @@ import assert from "node:assert/strict"
 
 const decodeCase = (schema, input, success, options) => () => {
   const run = Schema.decodeUnknownExit(schema, options)
+  const isOutput = success ? Schema.is(schema) : undefined
   return {
     run: () => run(input),
-    validate: (result) => assert.equal(result._tag, success ? "Success" : "Failure")
+    validate: (result) => {
+      assert.equal(result._tag, success ? "Success" : "Failure")
+      if (result._tag === "Success") assert.equal(isOutput?.(result.value), true)
+    }
   }
 }
 
 const decodeParserCase = (schema, input, success, options) => () => {
   const run = SchemaParser.decodeUnknownExit(schema, options)
+  const isOutput = success ? Schema.is(schema) : undefined
   return {
     run: () => run(input),
-    validate: (result) => assert.equal(result._tag, success ? "Success" : "Failure")
+    validate: (result) => {
+      assert.equal(result._tag, success ? "Success" : "Failure")
+      if (result._tag === "Success") assert.equal(isOutput?.(result.value), true)
+    }
   }
 }
 
 const encodeParserCase = (schema, input, success, options) => () => {
   const run = SchemaParser.encodeUnknownExit(schema, options)
+  const isOutput = success ? Schema.is(Schema.flip(schema)) : undefined
   return {
     run: () => run(input),
-    validate: (result) => assert.equal(result._tag, success ? "Success" : "Failure")
+    validate: (result) => {
+      assert.equal(result._tag, success ? "Success" : "Failure")
+      if (result._tag === "Success") assert.equal(isOutput?.(result.value), true)
+    }
   }
 }
 
