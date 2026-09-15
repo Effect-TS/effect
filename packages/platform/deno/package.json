@@ -65,7 +65,7 @@
   },
   "dependencies": {
     "@db/redis": "jsr:^0.42.0",
-    "@effect/platform-node-shared": "workspace:^",
+    "@effect/platform-node-shared": "workspace:*",
     "@std/fs": "jsr:^1.0.24",
     "@std/media-types": "jsr:^1.1.0",
     "@std/path": "jsr:^1.1.6",
