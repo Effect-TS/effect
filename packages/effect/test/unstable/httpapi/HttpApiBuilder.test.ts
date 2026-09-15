@@ -52,6 +52,22 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
       assert.strictEqual(yield* client.operations.wait({ params: { id: "op_1" } }), "op_1")
     }))
 
+  it.effect("does not bind a non-word schema key in a literal client path", () =>
+    Effect.gen(function*() {
+      const Params = Schema.Struct({ "a$b": Schema.optional(Schema.String) })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/x/:a$b", { params: Params, success: Params })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("get", ({ params }) =>
+          Effect.succeed(params)))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.get({ params: { "a$b": "value" } }), {})
+    }))
+
   it.effect("returns the callback unchanged and supports registration in a group", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
