@@ -4416,7 +4416,8 @@ export const partitionEffect: {
  * The returned streams are backed by queues in the current scope and should be
  * consumed while that scope remains open. The faster stream may advance up to
  * `capacity` elements ahead of the slower one. The first stream emits the
- * filter successes and the second emits the filter failures.
+ * filter successes and the second emits the filter failures. The default
+ * capacity is 16.
  *
  * **Example** (Partitioning a stream)
  *
@@ -4477,7 +4478,7 @@ export const partition: {
     R | Scope.Scope
   > =>
     Effect.map(
-      partitionQueue(self, filter, options),
+      partitionQueue(self, filter, { capacity: options?.capacity ?? 16 }),
       ([passes, fails]) => [fromQueue(passes), fromQueue(fails)] as const
     )
 )

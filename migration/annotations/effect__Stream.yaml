@@ -1,4 +1,5 @@
 effect/Stream#let:
+  include: true
   replacement: "Stream.let"
   note: "Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify<Omit<A, N> & Record<N, B>>."
 effect/Stream#Stream:
@@ -118,7 +119,7 @@ effect/Stream#either:
   note: "Either is replaced by Result in v4: Stream.result yields Stream<Result.Result<A, E>, never, R> (element -> Result.succeed, first error -> Result.fail and the stream ends, as before)."
 effect/Stream#ensuringWith:
   replacement: "Stream.onExit"
-  note: "Renamed; Stream.onExit runs the finalizer with the Exit<void, E> of the stream. The finalizer may now fail, in which case its error is added to the stream error channel."
+  note: "Renamed; Stream.onExit runs the finalizer uninterruptibly with the Exit<void, E> of the stream. On normal completion or failure, finalizer errors enter the stream error channel and combine with any source failure. During interruption or early termination, cleanup runs through the scope and finalizer errors become defects."
 effect/Stream#execute:
   replacement: "Stream.fromEffectDrain"
   note: "Renamed; runs the effect for its side effects and emits nothing (Stream<never, E, R>)."
@@ -395,6 +396,7 @@ effect/Stream#toReadableStreamRuntime:
   replacement: "Stream.toReadableStreamWith"
   note: "Renamed; takes a `Context.Context<XR>` instead of a Runtime (v4 removed Runtime); options `{ strategy?: QueuingStrategy }` unchanged."
 effect/Stream#transduce:
+  include: true
   replacement: "Stream.transduce"
   note: "Unchanged name and Sink-based shape; chunks are plain arrays in v4."
 effect/Stream#unfoldChunk:

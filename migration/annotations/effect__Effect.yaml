@@ -20,6 +20,7 @@ effect/Effect#allWith:
   replacement: "Effect.all"
   note: "Wrap `Effect.all(values, options)` in a lambda when a data-last combinator is needed. Adapt arguments and imports to the v4 API."
 effect/Effect#annotateLogs:
+  include: true
   replacement: "Effect.annotateLogs"
   note: "Still exported in v4; update call sites for the revised signature, options, and channel inference."
 effect/Effect#ap:
@@ -605,6 +606,7 @@ effect/Effect#withFiberRuntime:
   replacement: "none"
   note: "Direct FiberRuntime access was removed; use public Effect, Fiber, and Context operations. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
 effect/Effect#withLogSpan:
+  include: true
   replacement: "Effect.withLogSpan"
   note: "Still exported in v4; update call sites for the revised signature, options, and channel inference."
 effect/Effect#withMaxOpsBeforeYield:
