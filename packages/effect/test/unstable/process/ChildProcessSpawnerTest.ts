@@ -473,11 +473,12 @@ export const suite = (
               const ready = path.join(directory, "ready")
               const handle = yield* ChildProcess.make("sh", [
                 "-c",
-                "trap '' TERM; : > \"$1\"; while :; do sleep 1; done",
+                "trap '' TERM; : > \"$1\"; exec cat",
                 "force-kill",
                 ready
               ], {
                 killSignal: "SIGKILL",
+                stdin: "pipe",
                 stdout: "ignore",
                 stderr: "ignore"
               })
@@ -491,19 +492,13 @@ export const suite = (
                 TestClock.withLive
               )
 
-              const completed = yield* handle.kill({
+              yield* handle.kill({
                 killSignal: "SIGTERM",
                 forceKillAfter: "50 millis"
-              }).pipe(
-                Effect.as(true),
-                Effect.timeoutOrElse({
-                  duration: "1 second",
-                  orElse: () => Effect.succeed(false)
-                }),
-                TestClock.withLive
-              )
+              }).pipe(TestClock.withLive)
 
-              assert.isTrue(completed)
+              assert.isFalse(yield* handle.isRunning)
+              assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
             }))
 
           it.effect("should force kill a process when its scope closes", () =>
@@ -929,8 +924,18 @@ export const suite = (
             // Start the process that spawns children and grandchildren
             const handle = yield* ChildProcess.make("./spawn-children.sh", { cwd })
 
-            // Give it time to spawn all processes
-            yield* TestClock.withLive(Effect.sleep("100 millis"))
+            const readyCount = yield* handle.stdout.pipe(
+              Stream.decodeText,
+              Stream.splitLines,
+              Stream.filter((line) =>
+                line.includes(" started with PID ")
+              ),
+              Stream.take(7),
+              Stream.runCount,
+              Effect.timeout("2 seconds"),
+              TestClock.withLive
+            )
+            assert.strictEqual(readyCount, 7, "all seven processes must report readiness before stdout closes")
 
             // Verify the main process is running
             const isRunningBeforeKill = yield* handle.isRunning
@@ -942,9 +947,7 @@ export const suite = (
               "ps aux | grep spawn-children.sh | grep -v grep | wc -l"
             ])
             const beforeKill = yield* decodeByteStream(beforeKillHandle.stdout).pipe(
-              Effect.map((s) =>
-                Number.parseInt(s.trim())
-              ),
+              Effect.map((s) => Number.parseInt(s.trim())),
               Effect.orElseSucceed(() => 0)
             )
             assert.isAtLeast(beforeKill, 7)
