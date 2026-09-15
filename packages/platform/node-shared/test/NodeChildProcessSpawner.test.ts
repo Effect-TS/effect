@@ -183,11 +183,28 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
 
       yield* Stream.run(Stream.make(new TextEncoder().encode("exit\n")), handle.stdin)
       assert.strictEqual(yield* handle.exitCode, 0)
-      yield* Effect.sync(() => process.kill(descendantPid, 0))
+      assert.doesNotThrow(() => process.kill(descendantPid, 0), "descendant must still be alive after the leader exits")
       assert.isFalse(yield* fs.exists(marker))
 
       yield* Scope.close(scope, Exit.void)
 
+      assert.strictEqual(yield* fs.readFileString(marker), "exited")
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+
+  it.live("scope release cleans descendants after the leader is killed externally", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const { descendantPid, handle, marker, scope } = yield* startProcessGroup("exit-on-signal")
+      yield* Effect.addFinalizer(() => killDescendant(descendantPid))
+
+      process.kill(handle.pid, "SIGKILL")
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
+      assert.doesNotThrow(() => process.kill(descendantPid, 0), "descendant must survive the leader's SIGKILL")
+      assert.isFalse(yield* fs.exists(marker))
+
+      yield* Scope.close(scope, Exit.void)
+
+      assert.isTrue(yield* fs.exists(marker), "scope release must wait for the descendant's exit marker")
       assert.strictEqual(yield* fs.readFileString(marker), "exited")
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 

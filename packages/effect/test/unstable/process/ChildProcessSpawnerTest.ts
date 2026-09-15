@@ -933,9 +933,11 @@ export const suite = (
                 line.includes(" started with PID ")
               ),
               Stream.take(7),
-              Stream.runCount
+              Stream.runCount,
+              Effect.timeout("2 seconds"),
+              TestClock.withLive
             )
-            assert.strictEqual(readyCount, 7)
+            assert.strictEqual(readyCount, 7, "all seven processes must report readiness before stdout closes")
 
             // Verify the main process is running
             const isRunningBeforeKill = yield* handle.isRunning
