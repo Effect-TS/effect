@@ -10,4 +10,6 @@ Deferred completions wait for suspension replies before resuming discarded workf
 
 Persisted requests abandoned during teardown interrupt callers for replay; volatile requests and acknowledgements can fail with `EntityNotAssignedToRunner`. Persisted `Sharding.sendOutgoing(request, false)` calls stop at abandonment even in uninterruptible regions. Abandonment also interrupts active workflow/activity owners, including from detached children. Workflow proxy discard calls return execution IDs. Suspended activities run again on replay, so side effects before suspension must be idempotent.
 
+Entity clients using `asMailbox: true` forward replies through a request-scoped pump into an unbounded consumer mailbox. Abandonment interrupts the workflow/activity owner before reaching the mailbox. A consumer that is not that owner receives a recoverable cause instead of being re-interrupted itself; this also applies when no owner is tracked. Unary and stream consumers retain their interruption behavior.
+
 **Deployment:** Stop all runners before upgrading. PostgreSQL advisory locks now include storage prefixes; mixing protocols can give multiple runners the same shard. Runner notifications also change, so upgrade all peers together.
