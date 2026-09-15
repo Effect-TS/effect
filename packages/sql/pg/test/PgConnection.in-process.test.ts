@@ -194,6 +194,40 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
+  it.live("forwards startup defaults and lets explicit fields override URL values", () =>
+    Effect.scoped(Effect.gen(function*() {
+      let parameters: ReadonlyMap<string, string> | undefined
+      const { port } = yield* withTcpServer((socket) => {
+        consumeFrontend(socket, (tag, message) => {
+          if (tag === undefined) {
+            parameters = startupParameters(message)
+            socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+          }
+        })
+      })
+      const config = {
+        host: "127.0.0.1",
+        port,
+        url: Redacted.make(
+          "postgres://test@localhost/db?application_name=url-app&options=-c%20statement_timeout%3D1234"
+        ),
+        startupParameters: { SEARCH_PATH: "public", CLIENT_ENCODING: "uTf-8", application_name: "named-app" }
+      }
+      yield* PgConnection.make(config)
+      assert.deepStrictEqual(Object.fromEntries(parameters!), {
+        user: "test",
+        database: "db",
+        application_name: "named-app",
+        search_path: "public",
+        client_encoding: "UTF8",
+        options: "-c statement_timeout=1234"
+      })
+
+      yield* PgConnection.make({ ...config, applicationName: "explicit-app", startupOptions: "-c lock_timeout=2345" })
+      assert.strictEqual(parameters!.get("application_name"), "explicit-app")
+      assert.strictEqual(parameters!.get("options"), "-c lock_timeout=2345")
+    })))
+
   it.effect("accepts backend messages over the default limit when configured", () =>
     Effect.gen(function*() {
       const fieldSize = 16 * 1024 * 1024
@@ -761,6 +795,34 @@ describe("PgConnection in-process server", () => {
       assert.strictEqual(connection.processId, 1234)
       assert.strictEqual(password, "secret")
     })))
+
+  it.live("resolves a password Effect for each connection", () =>
+    Effect.gen(function*() {
+      const passwords: Array<string> = []
+      const { port } = yield* withTcpServer((socket) => {
+        consumeFrontend(socket, (tag, message) => {
+          if (tag === undefined) {
+            socket.write(authentication(3))
+          } else if (tag === "p") {
+            passwords.push(message.subarray(5, -1).toString())
+            socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+          }
+        })
+      })
+      let calls = 0
+      const acquire = PgConnection.make({
+        host: "127.0.0.1",
+        port,
+        username: "test",
+        password: Effect.sync(() => Redacted.make(`secret-${++calls}`))
+      })
+
+      yield* Effect.scoped(acquire)
+      yield* acquire
+
+      assert.strictEqual(calls, 2)
+      assert.deepStrictEqual(passwords, ["secret-1", "secret-2"])
+    }))
 
   it.live("authenticates with an MD5 password request", () =>
     Effect.scoped(Effect.gen(function*() {

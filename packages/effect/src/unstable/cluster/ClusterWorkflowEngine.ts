@@ -8,6 +8,7 @@
  */
 import * as Context from "../../Context.ts"
 import * as DateTime from "../../DateTime.ts"
+import * as Deferred from "../../Deferred.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
@@ -38,6 +39,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
+import { CurrentActivationScope } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -130,6 +132,14 @@ export const make = Effect.gen(function*() {
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
   const deferredState = WorkflowEngine.makeDeferredState()
+  // Rebuilds share an activation; overlapping activations have separate results.
+  // Weak keys do not retain scopes, but contexts captured by clients, activities,
+  // or finalizers can keep a closed scope (and its results) reachable until later.
+  const pendingByActivation = new WeakMap<Scope.Scope, {
+    readonly workflowName: string
+    readonly executionId: string
+    readonly results: Map<string, Exit.Exit<unknown, unknown>>
+  }>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -311,9 +321,9 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
-  // A child may complete while its parent run is still unwinding. Subscribe to
-  // the run's reply before reading storage so the wake cannot fall between the
-  // parent's last read and its suspended reply.
+  // A child or deferred may complete while a run is still unwinding. Subscribe
+  // to the run's reply before reading storage so the wake cannot fall between
+  // the run's last read and its suspended reply.
   const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
     const waiter = yield* storage.registerReplyHandler(
       new Message.OutgoingRequest<any>({
@@ -381,14 +391,34 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
-            // Latest run request for this entity; replays reuse its request id.
-            let currentRun: Entity.Request<any> | undefined
+            const activation = yield* CurrentActivationScope
+            let pending = pendingByActivation.get(activation)
+            if (!pending) {
+              pending = { workflowName: workflow._tag, executionId, results: new Map() }
+              pendingByActivation.set(activation, pending)
+            }
+            // Retain awaited names through reply persistence, including suspension.
+            // Replays reuse the request id but track a fresh set of awaits.
+            let currentRun: {
+              readonly request: Entity.Request<any>
+              readonly awaitedDeferreds: ReadonlySet<string>
+            } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
+            const resumeCurrentRun = Effect.suspend(() =>
+              resumeGate.withPermitsIfAvailable(1)(
+                currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
+              )
+            ).pipe(
+              // Release the gate before reset can start another run, so later
+              // completions can wake that replay.
+              Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
+              ensureSuccess
+            )
             return {
               run: (request: Entity.Request<any>) => {
-                currentRun = request
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+                currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -425,7 +455,9 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  (effect) => deferredState.trackRun(instance, effect)
+                  (effect) => deferredState.trackRun(instance, effect),
+                  // Request middleware and local callers may carry another entity's context.
+                  Effect.provideService(CurrentActivationScope, activation)
                 ) as any
               },
 
@@ -444,6 +476,7 @@ export const make = Effect.gen(function*() {
                   }
                   const context = entry.context.pipe(
                     Context.add(WorkflowEngine.WorkflowInstance, instance),
+                    Context.add(CurrentActivationScope, activation),
                     Context.add(Activity.CurrentAttempt, payload.attempt)
                   )
                   return yield* entry.activity.executeEncoded.pipe(
@@ -472,26 +505,36 @@ export const make = Effect.gen(function*() {
                 )
               },
 
-              deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
+              deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
-                yield* deferredState.deferredDone(executionId, payload.name, payload.exit)
-                yield* ensureSuccess(resume(workflow, executionId))
-                return payload.exit
-              }),
-
-              resume: () =>
-                resumeGate.withPermitsIfAvailable(1)(
-                  currentRun ? waitForRunReply(workflow, currentRun) : Effect.void
-                ).pipe(
-                  // Release the gate before reset can start another parent run, so
-                  // later child completions can wake that replay.
-                  Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
-                  ensureSuccess,
-                  Rpc.wrap({ fork: true, uninterruptible: true })
+                pending.results.set(payload.name, payload.exit)
+                // Await registers before reading the cache. If this run has not
+                // registered yet, a later await will see the result just stored.
+                // Check when the wake runs and skip preemption too: interrupting
+                // a later await would require waiting for its reply before reset.
+                const wake = Effect.suspend(() =>
+                  currentRun && !currentRun.awaitedDeferreds.has(payload.name)
+                    ? ensureSuccess(resume(workflow, executionId))
+                    : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
                 )
+                // An asynchronous reply releases the RPC concurrency permit while
+                // the wake waits; the pending request still occupies mailbox capacity.
+                // The activation owns the wake so it survives handler rebuilds,
+                // but activation shutdown still interrupts it for durable redelivery.
+                const reply = Deferred.makeUnsafe<Exit.Exit<unknown, unknown>>()
+                return wake.pipe(
+                  Effect.as(payload.exit),
+                  Deferred.into(reply),
+                  Effect.forkIn(activation, { startImmediately: true }),
+                  Effect.as(reply)
+                )
+              },
+
+              resume: () => resumeCurrentRun.pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
           }),
-          // Reserve a slot for deferred completions to wake the active run.
+          // Alongside the run, let deferred handlers briefly acquire a permit to
+          // fork their wake and return an asynchronous reply.
           { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
@@ -601,12 +644,18 @@ export const make = Effect.gen(function*() {
 
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
-        Effect.flatMap((instance) => {
-          const exit = deferredState.pendingResult(instance.executionId, deferred.name)
+        Effect.flatMap(Effect.fnUntraced(function*(instance) {
+          const activation = yield* Effect.serviceOption(CurrentActivationScope)
+          const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
+          // Captured contexts can cross workflow boundaries. Never use another
+          // execution's completion, even if its deferred has the same name.
+          const exit = pending?.workflowName === instance.workflow._tag && pending.executionId === instance.executionId
+            ? pending.results.get(deferred.name)
+            : undefined
           if (exit) {
-            return Effect.succeedSome(exit)
+            return Option.some(exit)
           }
-          return requestReply({
+          return yield* requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
@@ -625,7 +674,7 @@ export const make = Effect.gen(function*() {
               )
             })
           )
-        }),
+        })),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
           times: 3,

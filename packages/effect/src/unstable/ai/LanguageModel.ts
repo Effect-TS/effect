@@ -1603,7 +1603,10 @@ export const make: (params: {
             id: part.id,
             name: part.name,
             providerExecuted: false,
-            ...result
+            result: result.result,
+            encodedResult: result.encodedResult,
+            isFailure: result.isFailure,
+            preliminary: result.preliminary
           }) as Response.StreamPart<Tools>
           return Effect.sync(() => {
             Queue.offerUnsafe(queue, toolResultPart)
@@ -2188,7 +2191,10 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
     return Response.makePart("tool-result", {
       id: approval.toolCallId,
       name: toolCall.name,
-      ...terminalResult,
+      result: terminalResult.result,
+      encodedResult: terminalResult.encodedResult,
+      isFailure: terminalResult.isFailure,
+      preliminary: terminalResult.preliminary,
       providerExecuted: false
     })
   })
@@ -2334,7 +2340,10 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
                 id: toolCall.id,
                 name: toolCall.name,
                 providerExecuted: false,
-                ...result
+                result: result.result,
+                encodedResult: result.encodedResult,
+                isFailure: result.isFailure,
+                preliminary: result.preliminary
               }) as ToolResolutionResult<Tools>
           )
         )
@@ -2360,7 +2369,10 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
               id: toolCall.id,
               name: toolCall.name,
               providerExecuted: false,
-              ...result
+              result: result.result,
+              encodedResult: result.encodedResult,
+              isFailure: result.isFailure,
+              preliminary: result.preliminary
             }) as ToolResolutionResult<Tools>
         )
       )

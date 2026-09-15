@@ -40,7 +40,10 @@ const BatchResponse = Schema.Array(Schema.Struct({
 const StatelessDiscoverResponse = Schema.Struct({
   jsonrpc: Schema.Literal("2.0"),
   id: Schema.Number,
-  result: Schema.Struct({ capabilities: McpSchema.ServerCapabilities })
+  result: Schema.Struct({
+    capabilities: McpSchema.ServerCapabilities,
+    instructions: Schema.optional(Schema.String)
+  })
 })
 
 const decodeInitializeResponse = Schema.decodeUnknownEffect(InitializeResponse)
@@ -276,6 +279,7 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
               result: {
                 protocolVersion: protocol.protocolVersion,
                 capabilities: decoded.result.capabilities,
+                instructions: decoded.result.instructions,
                 serverInfo: { name: SERVER_NAME, version: SERVER_VERSION }
               }
             },

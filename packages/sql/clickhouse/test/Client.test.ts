@@ -12,7 +12,7 @@ const commandCalls: Array<Record<string, unknown>> = []
 
 vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
-    exec: () => connectImmediately ? Promise.resolve({}) : new Promise(() => {}),
+    ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
     query: () => new Promise(() => {}),
     insert: () => new Promise(() => {}),
     command: (options: Record<string, unknown>) => {
@@ -32,6 +32,21 @@ describe("ClickhouseClient", { concurrent: false }, () => {
     const [query] = sql`SELECT ${1.5}`.compile()
 
     assert.strictEqual(query, "SELECT {p1: Float64}")
+  })
+
+  it("uses the ClickHouse dialect for dialect-specific fragments", () => {
+    const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
+
+    assert.strictEqual(
+      sql.onDialect({
+        sqlite: () => "sqlite",
+        pg: () => "pg",
+        mysql: () => "mysql",
+        mssql: () => "mssql",
+        clickhouse: () => "clickhouse"
+      }),
+      "clickhouse"
+    )
   })
 
   it.effect("closes the client when the connection check times out", () =>

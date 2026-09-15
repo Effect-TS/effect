@@ -34,6 +34,7 @@ import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 import type { ConnectionOptions } from "node:tls"
 import { type ConnectionInternals, internalsKey } from "./internal/connection.ts"
+import * as PasswordInternal from "./internal/password.ts"
 import { classifySqlState, validateChannelName } from "./internal/sqlError.ts"
 import * as PgAuth from "./PgAuth.ts"
 import * as PgProtocol from "./PgProtocol.ts"
@@ -91,9 +92,31 @@ export interface Config {
   readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Redacted.Redacted | undefined
+  /**
+   * A static password or an Effect evaluated for each connection attempt.
+   * Providers must handle typed errors and require no services.
+   * {@link Effect.orDie} converts typed errors to defects, not retryable SQL errors.
+   */
+  readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
+  /**
+   * Overrides `startupParameters.application_name`, the URL's `application_name`,
+   * and the default `"@effect/sql-pg"`, in that order.
+   */
   readonly applicationName?: string | undefined
+  /**
+   * Session defaults sent in every physical connection's startup packet.
+   * Names are lowercased; `user`, `database`, `replication`, and `options` are
+   * reserved. `client_encoding` only accepts UTF8 / UTF-8 (case-insensitive).
+   * Empty names and NUL bytes fail before connecting; PostgreSQL validates
+   * other settings. Do not set the same GUC here and in `startupOptions`.
+   */
+  readonly startupParameters?: Readonly<Record<string, string>> | undefined
+  /**
+   * Opaque PostgreSQL startup options, overriding the URL's `options` parameter.
+   * Forwarded without parsing `-c` flags or checking for duplicate GUCs.
+   */
+  readonly startupOptions?: string | undefined
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
@@ -203,10 +226,12 @@ export interface PgConnection {
    * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
    * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
    * registration errors fail the acquiring effect.
+   * Connection failures after registration fail the queue with the original
+   * `SqlError`. Intentional scope closure interrupts consumers.
    */
   readonly listen: (
     channel: string
-  ) => Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope>
+  ) => Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope>
   /**
    * Attempts to cancel the active query through a side connection. This is a
    * no-op for an unpinned multiplexed connection because the active
@@ -228,10 +253,10 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  *
  * **Details**
  *
- * The transport, optional `SSLRequest`, startup, and authentication steps run
- * under `connectTimeout` (5 seconds by default). The effect resolves once the
- * backend sends `ReadyForQuery`. When the scope closes, the
- * session sends `Terminate` and ends the socket.
+ * Password resolution, transport, optional `SSLRequest`, startup, and
+ * authentication run under `connectTimeout` (5 seconds by default). The effect
+ * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
+ * `Terminate` and ends the socket.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -242,10 +267,11 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
 export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Scope.Scope> =>
   Effect.flatMap(resolveConfig(options), (config) =>
     Effect.acquireRelease(
-      Effect.map(
-        connect(config),
-        (session) => new PgConnectionImpl(options, config, session, options.types)
-      ),
+      Effect.gen(function*() {
+        const password = yield* PasswordInternal.resolve(config.password)
+        const session = yield* connect(config, password)
+        return new PgConnectionImpl(options, config, session, options.types)
+      }),
       (connection) => Effect.sync(() => connection.closeUnsafe()),
       { interruptible: true }
     ).pipe(
@@ -316,7 +342,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  readonly channels = new Map<string, Set<Queue.Queue<Notification>>>()
+  readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
   readonly pipelinePending: Array<PipelineEntry> = []
@@ -417,8 +443,9 @@ class PgConnectionImpl implements PgConnection {
     consumer?.onFatal(error)
     const sets = Array.from(this.channels.values())
     this.channels.clear()
+    const cause = this.closed ? Cause.interrupt() : Cause.fail(error)
     for (const set of sets) {
-      for (const queue of set) Queue.failCauseUnsafe(queue, Cause.interrupt())
+      for (const queue of set) Queue.failCauseUnsafe(queue, cause)
     }
     if (!this.closed) {
       for (const hook of this.fatalHooks) hook()
@@ -724,7 +751,8 @@ class PgConnectionImpl implements PgConnection {
 
   readonly listen = (
     channel: string
-  ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> => listenChannel(this, this.pin, channel)
+  ): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
+    listenChannel(this, this.pin, channel)
 
   readonly interrupt: Effect.Effect<void> = Effect.suspend(() =>
     this.multiplex && !this.pinned ? Effect.void : this.cancel
@@ -773,7 +801,8 @@ class PinnedPgConnection implements PgConnection {
 
   readonly listen = (
     channel: string
-  ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> => listenChannel(this.base, this.pin, channel)
+  ): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
+    listenChannel(this.base, this.pin, channel)
 }
 
 interface QueryOutput {
@@ -814,11 +843,7 @@ const inferScalar = (value: unknown): PgTypes.Parameter => {
       // or timestamp column the way it did with the text-protocol drivers.
       return inferredParameter(0, value)
   }
-  if (value instanceof Date) {
-    const time = value.getTime()
-    if (Number.isNaN(time)) throw new PgTypes.CodecError({ message: "Invalid Date parameter" })
-    return inferredParameter(PgTypes.OID.timestamptz, time)
-  }
+  if (value instanceof Date) return inferredParameter(PgTypes.OID.timestamptz, value)
   if (value instanceof Uint8Array) return inferredParameter(PgTypes.OID.bytea, value)
   if (value instanceof Int8Array) {
     return inferredParameter(
@@ -1773,7 +1798,7 @@ const listenChannel = (
   conn: PgConnectionImpl,
   pin: Effect.Effect<PgConnection, never, Scope.Scope>,
   channel: string
-): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> =>
+): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
       const channelError = validateChannelName(channel, "listen")
@@ -1783,7 +1808,7 @@ const listenChannel = (
       return yield* restore(Effect.gen(function*() {
         const pinned = yield* Scope.provide(pin, scope)
         if (conn.deadWith !== undefined) return yield* conn.deadWith
-        const queue = yield* Queue.unbounded<Notification>()
+        const queue = yield* Queue.unbounded<Notification, SqlError>()
         const identifier = escapeIdentifier(channel)
         let queues = conn.channels.get(channel)
         if (queues === undefined) {
@@ -1871,7 +1896,7 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
     return Effect.sync(finish)
   })
 
-const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
+const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): Effect.Effect<Session, SqlError> =>
   Effect.callback<Session, SqlError>((resume) => {
     let done = false
     let socket: Duplex
@@ -1898,14 +1923,14 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
       failConnect(new Error("Connection closed unexpectedly"), "PgConnection: Connection closed during startup")
 
     const password = (): string | undefined => {
-      if (config.password === undefined) {
+      if (resolvedPassword === undefined) {
         failAuth(
           new Error("The server requested password authentication"),
           "PgConnection: No password configured"
         )
         return undefined
       }
-      return config.password
+      return resolvedPassword
     }
 
     const handleMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
@@ -2023,11 +2048,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     const startup = (): void => {
       parser = PgProtocol.makeParser<unknown>({ maxMessageSize: config.maxMessageSize })
       socket.on("data", onData)
-      socket.write(PgProtocol.encodeStartupMessage({
-        user: config.username,
-        database: config.database,
-        application_name: config.applicationName
-      }))
+      socket.write(PgProtocol.encodeStartupMessage(config.startupParameters))
     }
 
     const onSslResponse = (chunk: Uint8Array): void => {
@@ -2128,11 +2149,10 @@ interface ResolvedConfig {
   readonly path: string | undefined
   readonly ssl: boolean | ConnectionOptions
   readonly sslOptional: boolean
-  readonly database: string | undefined
   readonly username: string
-  readonly password: string | undefined
+  readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
-  readonly applicationName: string
+  readonly startupParameters: PgProtocol.StartupParameters
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
 }
@@ -2159,17 +2179,49 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
     }
+    const named: Record<string, string> = Object.create(null)
+    for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
+      const key = name.toLowerCase()
+      if (key === "user" || key === "database" || key === "replication" || key === "options") {
+        return Effect.fail(configError(`Reserved startup parameter: "${name}"`))
+      }
+      if (key === "client_encoding") {
+        const encoding = value.toUpperCase()
+        if (encoding !== "UTF8" && encoding !== "UTF-8") {
+          return Effect.fail(configError("Startup parameter client_encoding must be UTF8 or UTF-8"))
+        }
+        named[key] = "UTF8"
+      } else {
+        named[key] = value
+      }
+      if (name === "" || name.includes("\0") || value.includes("\0")) {
+        return Effect.fail(
+          configError("Startup parameter names must be nonempty and names/values must not contain NUL")
+        )
+      }
+    }
+    const startupParameters: PgProtocol.StartupParameters = {
+      ...named,
+      user: username,
+      database: options.database ?? url.database,
+      application_name: options.applicationName ?? named.application_name ?? url.applicationName ?? "@effect/sql-pg",
+      options: options.startupOptions ?? url.options
+    }
+    for (const [name, value] of Object.entries(startupParameters)) {
+      if (value?.includes("\0")) {
+        return Effect.fail(configError(`Startup parameter "${name}" must not contain NUL`))
+      }
+    }
     return Effect.succeed<ResolvedConfig>({
       host,
       port,
       path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
       ssl: options.ssl ?? (url.ssl === "prefer" ? true : url.ssl ?? false),
       sslOptional: options.ssl === undefined && url.ssl === "prefer",
-      database: options.database ?? url.database,
       username,
-      password: options.password !== undefined ? Redacted.value(options.password) : url.password,
+      password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
-      applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
+      startupParameters,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
     })
@@ -2182,6 +2234,7 @@ interface UrlConfig {
   username?: string | undefined
   password?: string | undefined
   applicationName?: string | undefined
+  options?: string | undefined
   connectTimeout?: Duration.Duration | undefined
   ssl?: boolean | "prefer" | undefined
 }
@@ -2263,6 +2316,9 @@ const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
         break
       case "application_name":
         config.applicationName = value
+        break
+      case "options":
+        config.options = value
         break
       case "connect_timeout": {
         const seconds = Number(value)

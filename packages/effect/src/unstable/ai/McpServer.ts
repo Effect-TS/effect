@@ -19,6 +19,7 @@ import * as Effect from "../../Effect.ts"
 import * as ErrorReporter from "../../ErrorReporter.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
+import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -30,7 +31,6 @@ import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as Scope from "../../Scope.ts"
-import * as Sink from "../../Sink.ts"
 import type { Stdio } from "../../Stdio.ts"
 import * as Stream from "../../Stream.ts"
 import * as FindMyWay from "../http/FindMyWay.ts"
@@ -49,6 +49,7 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
@@ -86,7 +87,7 @@ import type {
   ServerCapabilities
 } from "./McpSchema.ts"
 import * as Tool from "./Tool.ts"
-import type * as Toolkit from "./Toolkit.ts"
+import * as Toolkit from "./Toolkit.ts"
 
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
@@ -673,6 +674,7 @@ class McpClientKey extends Data.Class<{
 export const run: (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -685,6 +687,7 @@ export const run: (options: {
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -702,6 +705,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   options: {
     readonly name: string
     readonly version: string
+    readonly instructions?: string | undefined
     readonly description?: string | undefined
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1369,6 +1373,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
 export const layer = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1382,6 +1387,7 @@ export const layer = (options: {
 const layerWithRuntime = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1424,6 +1430,7 @@ const layerWithRuntime = (options: {
 export const layerStdio = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1535,6 +1542,7 @@ const mcpStdioSerialization = (
 export const layerHttp = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
@@ -1769,6 +1777,9 @@ const toolErrorResult = (message: string): CallToolResult =>
     content: [{ type: "text", text: message }]
   })
 
+const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
+  encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
+
 /**
  * Registers a `Toolkit` with the `McpServer`.
  *
@@ -1802,15 +1813,56 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   }))
   const services = omitRequestServices(yield* Effect.context<never>())
   const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
+  // Interruption propagates; anything else is logged, reported and scrubbed.
+  const internalToolError = (cause: Cause.Cause<unknown>) => {
+    const failure = Cause.findFail(cause)
+    return Result.isFailure(failure) && !Cause.hasDies(cause)
+      ? Effect.failCause(failure.failure)
+      : Effect.logError(cause).pipe(
+        Effect.andThen(reportCause(cause)),
+        Effect.as(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+      )
+  }
+  const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
   for (const tool of Object.values(built.tools)) {
+    const strict = Tool.getStrictMode(tool) === true
+    const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
+    if (strict && rawJsonSchema !== undefined) {
+      return yield* Effect.die(
+        `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
+      )
+    }
+    const decodeOptions: SchemaAST.ParseOptions | undefined = strict ? { onExcessProperty: "error" } : undefined
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
+    const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as (
+      error: unknown
+    ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
+    const declaredFailureResult = (error: unknown) =>
+      error instanceof Error
+        ? Effect.succeed(toolErrorResult(error.message))
+        : Effect.map(encodeFailure(error), (encoded) =>
+          new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
+    const handleCause = (cause: Cause.Cause<unknown>) => {
+      const failure = Cause.findFail(cause)
+      if (Result.isSuccess(failure)) {
+        const error = failure.success.error
+        const origin = Context.get(Cause.reasonAnnotations(failure.success), Toolkit.FailureOrigin)
+        if (origin === "parameters" && isParameterValidationError(error)) {
+          return Effect.fail(new InvalidParams({ message: error.reason.message }))
+        }
+        if (origin === "handler" && isDeclaredFailure(error)) {
+          return Effect.catchCause(declaredFailureResult(error), internalToolError)
+        }
+      }
+      return internalToolError(cause)
+    }
     const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      Tool.getJsonSchema(tool)
+      rawJsonSchema ?? toolInputJsonSchema(tool.parametersSchema, strict)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({
       name: tool.name,
@@ -1829,52 +1881,54 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       },
       _meta: toolMeta
     })
-    yield* registry.addTool({
+    registrations.push({
       tool: mcpTool,
       annotations,
       handle(payload) {
-        return built.handle(tool.name as keyof Tools, payload ?? {}).pipe(
+        return built.handle(tool.name as keyof Tools, payload ?? {}, undefined, decodeOptions).pipe(
           Stream.unwrap,
-          Stream.run(Sink.last()),
+          Stream.runLast,
           Effect.flatMap(Effect.fromOption),
-          Effect.map((result) =>
-            new CallToolResult({
-              isError: false,
-              structuredContent: result.encodedResult,
-              content: result.encodedResult === undefined ? [] : [{
-                type: "text",
-                text: JSON.stringify(result.encodedResult)
-              }]
-            })
+          Effect.flatMap((result) =>
+            // Declared failures return their encoded payload; anything else is classified by origin.
+            result.isFailure && result.failureOrigin !== "handler"
+              ? Effect.failCause(Cause.annotate(
+                Cause.fail(result.result),
+                Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
+              ))
+              : Effect.succeed(
+                new CallToolResult({
+                  isError: result.isFailure,
+                  structuredContent: result.isFailure ? undefined : result.encodedResult,
+                  content: toolResultContent(result.encodedResult)
+                })
+              )
           ),
-          Effect.provideContext(
-            services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
-          ),
-          Effect.tapCause(Effect.logError),
-          Effect.catchCause((cause) => {
-            const failure = Cause.findError(cause)
-            if (Result.isFailure(failure)) {
-              return Cause.hasDies(cause)
-                ? Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
-                : Effect.failCause(failure.failure)
-            }
-            const error: unknown = failure.success
-            if (AiError.isAiError(error)) {
-              const reason = error.reason
-              return reason._tag === "ToolParameterValidationError"
-                ? Effect.fail(new InvalidParams({ message: reason.message }))
-                : Effect.as(reportCause(cause), toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
-            }
-            const message = isDeclaredFailure(error) && error instanceof Error
-              ? error.message
-              : INTERNAL_TOOL_ERROR_MESSAGE
-            return Effect.as(reportCause(cause), toolErrorResult(message))
-          })
+          Effect.catchCause(handleCause),
+          Effect.provideContext(services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>)
         )
       }
     })
   }
+  for (const registration of registrations) {
+    yield* registry.addTool(registration)
+  }
 })
+
+const isParameterValidationError = (
+  error: unknown
+): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
+  AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
+
+// MCP requires an object root, so a top-level `$ref` is inlined.
+const toolInputJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
+  const document = InternalStructuredOutput.resolveTopLevelReference(
+    Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
+  )
+  return Object.keys(document.definitions).length === 0
+    ? document.schema
+    : { ...document.schema, $defs: document.definitions }
+}
 
 /**
  * Registers an `AiToolkit` with the `McpServer`.
@@ -2211,6 +2265,7 @@ export const registerPrompt = <
 >(
   options: {
     readonly name: string
+    readonly title?: string | undefined
     readonly description?: string | undefined
     readonly parameters?: Params | undefined
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
@@ -2235,6 +2290,7 @@ export const registerPrompt = <
   }
   const prompt = new Prompt({
     name: options.name,
+    title: options.title,
     description: options.description,
     arguments: args
   })
@@ -2346,6 +2402,7 @@ export const prompt = <
 >(
   options: {
     readonly name: string
+    readonly title?: string | undefined
     readonly description?: string | undefined
     readonly parameters?: Params | undefined
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined

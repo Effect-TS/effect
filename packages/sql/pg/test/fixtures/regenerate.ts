@@ -194,9 +194,9 @@ const rowCases: ReadonlyArray<
   { name: "dateNegInfinity", type: "date", oid: PgTypes.OID.date, value: "-infinity" },
   { name: "time", type: "time", oid: PgTypes.OID.time, value: BigInt(45296000000) },
   { name: "timetz", type: "timetz", oid: PgTypes.OID.timetz, value: "12:34:56+02:00" },
-  { name: "timestamp", type: "timestamp", oid: PgTypes.OID.timestamp, value: 1717171717123 },
+  { name: "timestamp", type: "timestamp", oid: PgTypes.OID.timestamp, value: new Date(1717171717123) },
   { name: "timestampInfinity", type: "timestamp", oid: PgTypes.OID.timestamp, value: Number.POSITIVE_INFINITY },
-  { name: "timestamptz", type: "timestamptz", oid: PgTypes.OID.timestamptz, value: 1717171717123 },
+  { name: "timestamptz", type: "timestamptz", oid: PgTypes.OID.timestamptz, value: new Date(1717171717123) },
   {
     name: "timestamptzNegInfinity",
     type: "timestamptz",
@@ -209,7 +209,7 @@ const rowCases: ReadonlyArray<
     name: "timestamptzArray",
     type: "timestamptz[]",
     oid: PgTypes.OID.timestamptzArray,
-    value: [0, null, 1717171717000]
+    value: [new Date(0), null, new Date(1717171717000)]
   }
 ]
 

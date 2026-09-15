@@ -16,7 +16,10 @@ const state: {
 
 vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
-    exec: () => state.connectCause ? Promise.reject(state.connectCause) : Promise.resolve({}),
+    ping: () =>
+      state.connectCause
+        ? Promise.resolve({ success: false, error: state.connectCause })
+        : Promise.resolve({ success: true }),
     close: () => Promise.resolve(),
     query: () =>
       state.queryCause

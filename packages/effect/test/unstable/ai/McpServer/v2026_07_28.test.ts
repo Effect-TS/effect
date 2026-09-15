@@ -85,6 +85,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.strictEqual(discovered.response.status, 200)
         assert.isNull(discovered.sessionId)
         assert.strictEqual(discovered.message.result.protocolVersion, protocol.protocolVersion)
+        assert.strictEqual(discovered.message.result.instructions, "Follow the test server instructions.")
       }))
 
     // Modern extension settings are JSON objects; legacy-only scalar settings must not break discovery.

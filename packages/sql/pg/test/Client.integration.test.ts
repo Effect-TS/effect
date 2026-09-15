@@ -1,9 +1,10 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Queue, Stream, String } from "effect"
+import { DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import { SqlClient } from "effect/unstable/sql"
+import { Model } from "effect/unstable/schema"
+import { SqlClient, SqlModel } from "effect/unstable/sql"
 import * as Statement from "effect/unstable/sql/Statement"
 import { PgContainer } from "./utils.ts"
 
@@ -12,6 +13,33 @@ const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) => {
+  it.effect("round trips Model.DateTimeInsertFromDate through a repository", () =>
+    Effect.gen(function*() {
+      class Entry extends Model.Class<Entry>("Entry")({
+        id: Schema.Int.pipe(Model.FieldExcept(["insert"])),
+        created_at: Model.DateTimeInsertFromDate
+      }) {}
+
+      const sql = yield* PgClient.PgClient
+      const repo = yield* SqlModel.makeRepository(Entry, {
+        tableName: "model_timestamp",
+        idColumn: "id",
+        spanPrefix: "EntryRepository"
+      })
+      const instant = new Date("2024-05-06T07:08:09.123Z")
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`SET LOCAL TIME ZONE 'Europe/Berlin'`
+        yield* sql`CREATE TEMP TABLE model_timestamp (id SERIAL PRIMARY KEY, created_at TIMESTAMPTZ) ON COMMIT DROP`
+        const inserted = yield* repo.insert(
+          Entry.insert.make({ created_at: Model.Override(DateTime.makeUnsafe(instant)) })
+        )
+        assert.strictEqual(DateTime.toEpochMillis(inserted.created_at), instant.getTime())
+        const selected = yield* repo.findById(inserted.id)
+        assert.deepStrictEqual(selected, inserted)
+        assert.strictEqual(DateTime.toEpochMillis(selected.created_at), instant.getTime())
+      }))
+    }))
+
   it.effect("insert helper", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
@@ -236,6 +264,30 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       const sql = yield* PgClient.PgClient
       const rows = yield* sql<{ json: unknown }>`select ${sql.json({ testValue: 123 })}::jsonb as json`
       expect(rows[0].json).toEqual({ testValue: 123 })
+    }))
+
+  it.effect("reads scalar enums as strings without registering their OIDs", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`CREATE TYPE capability_scalar AS ENUM ('use_key', 'manage', 'gérer')`
+        const rows = yield* sql`
+          SELECT 'use_key'::capability_scalar AS capability,
+                 ${"gérer"}::capability_scalar AS bound,
+                 NULL::capability_scalar AS nullable
+        `
+        yield* sql`DROP TYPE capability_scalar`
+        assert.deepStrictEqual(rows, [{ capability: "use_key", bound: "gérer", nullable: null }])
+      }))
+    }))
+
+  it.effect("reads bytea as Uint8Array", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const payload = new Uint8Array([0, 1, 254, 255])
+      const rows = yield* sql`SELECT ${payload}::bytea AS payload`
+      assert.instanceOf(rows[0].payload, Uint8Array)
+      assert.deepStrictEqual(rows, [{ payload }])
     }))
 
   it.effect("stream", () =>
@@ -529,6 +581,41 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
       )
       expect(payload.payload).toEqual("payload")
     }).pipe(TestClock.withLive), { timeout: 20_000 })
+
+  it.effect("retries a failed listener and receives notifications on a new connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const channel = "retry_listener"
+      const registered = yield* Queue.unbounded<void>()
+      const consumer = yield* Stream.unwrap(Effect.gen(function*() {
+        const notifications = yield* sql.listen(channel)
+        yield* Queue.offer(registered, undefined)
+        return Stream.fromQueue(notifications)
+      })).pipe(
+        Stream.retry(Schedule.recurs(1)),
+        Stream.runHead,
+        Effect.forkScoped
+      )
+
+      yield* Queue.take(registered)
+      const [listener] = yield* sql<{ pid: number }>`
+        SELECT pid FROM pg_stat_activity WHERE query = ${`LISTEN "${channel}"`}
+      `
+      assert.isDefined(listener)
+      yield* sql`SELECT pg_terminate_backend(${listener.pid})`
+
+      // Wait for registration; PostgreSQL does not replay missed notifications.
+      yield* Queue.take(registered)
+      const [replacement] = yield* sql<{ pid: number }>`
+        SELECT pid FROM pg_stat_activity
+        WHERE query = ${`LISTEN "${channel}"`} AND pid <> ${listener.pid}
+      `
+      assert.isDefined(replacement)
+      yield* sql.notify(channel, "after reconnect")
+      const notification = Option.getOrThrow(yield* Fiber.join(consumer))
+      assert.strictEqual(notification.channel, channel)
+      assert.strictEqual(notification.payload, "after reconnect")
+    }), { timeout: 20_000 })
 
   it.effect("listen rejects channel names longer than 63 UTF-8 bytes", () =>
     Effect.gen(function*() {

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Fiber, Layer, Schedule, Schema, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
@@ -62,6 +62,26 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  for (const consumer of ["queue", "stream"] as const) {
+    it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
+      Effect.gen(function*() {
+        const writing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
+          onFromClient: ({ message }) =>
+            message._tag === "Request"
+              ? Effect.withFiber((fiber) => Deferred.succeed(writing, fiber).pipe(Effect.andThen(Effect.never)))
+              : Effect.void
+        })
+        const reader = yield* (consumer === "queue"
+          ? client.Events(undefined, { asQueue: true }).pipe(Effect.flatMap(Queue.take), Effect.asVoid)
+          : Stream.runDrain(client.Events())).pipe(Effect.forkChild)
+        const writer = yield* Deferred.await(writing)
+        yield* Fiber.interrupt(writer)
+        const readExit = yield* Fiber.await(reader)
+        assert(Exit.isFailure(readExit) && Cause.hasInterruptsOnly(readExit.cause))
+      }))
+  }
+
   it.effect("releases a worker pool slot when the worker run fails", () =>
     Effect.gen(function*() {
       const runFailure = yield* Deferred.make<never, WorkerError>()

@@ -40,6 +40,51 @@ describe("OpenAiLanguageModel", () => {
       }).pipe(Effect.provide(makeTestLayer({ body: { model: "ft:gpt-4o-mini:custom" as any } }))))
   })
 
+  describe("web search sources", () => {
+    it.effect.each(["generateText", "streamText"] as const)(
+      "preserves URL and API sources with %s",
+      (method) =>
+        Effect.gen(function*() {
+          const sources = [
+            { type: "url", url: "https://example.com/weather" },
+            { type: "api", name: "oai-weather" }
+          ] as const
+          const action = { type: "search", query: "weather in London", sources } as const
+          const item = makeWebSearchCall({ action })
+          const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
+          const body = method === "generateText"
+            ? JSON.stringify(makeDefaultResponse({ output: [item] }))
+            : `data: ${JSON.stringify(event)}\n\n`
+          const client = HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response(body, {
+                headers: { "content-type": method === "generateText" ? "application/json" : "text/event-stream" }
+              })
+            ))
+          )
+          const options = { prompt: "Weather in London", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
+          const parts = yield* Effect.gen(function*() {
+            if (method === "generateText") {
+              const response = yield* LanguageModel.generateText(options)
+              return response.content
+            }
+            return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.6")),
+            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(HttpClient.HttpClient, client)
+          )
+
+          const calls = parts.filter((part) => part.type === "tool-call")
+          deepStrictEqual(calls.map((part) => part.params), [{ action }])
+
+          const results = parts.filter((part) => part.type === "tool-result")
+          deepStrictEqual(results.map((part) => part.result), [{ action, status: "completed" }])
+        })
+    )
+  })
+
   describe("generateText", () => {
     describe("message preparation", () => {
       it.effect("forwards prompt cache configuration and text breakpoints", () =>

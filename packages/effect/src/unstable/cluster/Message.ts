@@ -14,6 +14,7 @@ import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
+import type * as Scope from "../../Scope.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import type { PersistenceError } from "./ClusterError.ts"
@@ -98,6 +99,12 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
    * server sets it to the codec of its transport.
    */
   readonly codecFor: RpcSerialization.CodecFor
+  /**
+   * Scope that cancels interruptible, non-persisted requests when closed.
+   *
+   * @since 4.0.0
+   */
+  readonly callerScope?: Scope.Scope | undefined
 }> {}
 
 /**
@@ -116,6 +123,12 @@ export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("I
   readonly lastSentReply: Option.Option<Reply.Reply<R>>
   readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
   readonly annotations: Context.Context<never>
+  /**
+   * Scope that cancels interruptible, non-persisted requests when closed.
+   *
+   * @since 4.0.0
+   */
+  readonly callerScope?: Scope.Scope | undefined
 }> {}
 
 /**

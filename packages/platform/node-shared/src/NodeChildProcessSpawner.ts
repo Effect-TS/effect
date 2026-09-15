@@ -21,6 +21,9 @@
  * wait after `SIGKILL`. Zombie descendants can consume either full bound. On
  * Windows, `taskkill` terminates the tree and only the leader's exit is awaited.
  *
+ * POSIX cleanup targets a numeric process-group ID. If the group disappears
+ * and its ID is reused before cleanup, an unrelated group may be signalled.
+ *
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
@@ -545,6 +548,8 @@ const make = Effect.gen(function*() {
               const [code] = yield* Deferred.await(exitSignal)
               if (code !== 0 && Predicate.isNotNull(code)) {
                 yield* Effect.ignore(killProcessGroup(cmd, childProcess, cmd.options.killSignal ?? "SIGTERM"))
+              } else if (isReferenced && process.platform !== "win32" && cmd.options.detached !== false) {
+                yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
               }
               return
             }
