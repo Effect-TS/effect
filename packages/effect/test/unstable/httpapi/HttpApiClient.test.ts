@@ -6,6 +6,153 @@ import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } fr
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
 describe("HttpApiClient", () => {
+  describe("literal action suffixes", () => {
+    for (
+      const [path, expectedPath] of [
+        ["/operations/:id:wait", "/operations/op_1:wait"],
+        ["/clusters/:id/capabilities:refresh", "/clusters/op_1/capabilities:refresh"]
+      ] as const
+    ) {
+      describe(path, () => {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("operations").add(
+            HttpApiEndpoint.post("action", path, {
+              params: Schema.Struct({ id: Schema.String }),
+              success: Schema.Struct({ done: Schema.Boolean })
+            })
+          )
+        )
+        const expectedUrl = `https://api.example.com${expectedPath}`
+
+        it("urlBuilder preserves the undeclared action suffix", () => {
+          const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
+
+          strictEqual(urls.operations.action({ params: { id: "op_1" } }), expectedUrl)
+        })
+
+        it.effect("make sends the request with the literal action suffix", () =>
+          Effect.gen(function*() {
+            const requests: Array<{ method: string; url: string }> = []
+            const httpClient = HttpClient.make((request, url) =>
+              Effect.sync(() => {
+                requests.push({ method: request.method, url: url.toString() })
+                return HttpClientResponse.fromWeb(request, Response.json({ done: true }))
+              })
+            )
+            const client = yield* HttpApiClient.make(Api, { baseUrl: "https://api.example.com" }).pipe(
+              Effect.provideService(HttpClient.HttpClient, httpClient)
+            )
+
+            const result = yield* client.operations.action({ params: { id: "op_1" } })
+
+            assert.deepStrictEqual(requests, [{ method: "POST", url: expectedUrl }])
+            assert.deepStrictEqual(result, { done: true })
+          }))
+      })
+    }
+
+    describe("multiple declared parameters in one segment", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("files").add(
+          HttpApiEndpoint.get("download", "/files/:name.:extension", {
+            params: { name: Schema.String, extension: Schema.String }
+          })
+        )
+      )
+      const params = { name: "a/b", extension: "tar.gz" }
+      const expectedUrl = "https://api.example.com/files/a%2Fb.tar.gz"
+
+      it("urlBuilder substitutes and encodes both parameters", () => {
+        const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
+
+        strictEqual(urls.files.download({ params }), expectedUrl)
+      })
+
+      it.effect("make substitutes and encodes both parameters", () =>
+        Effect.gen(function*() {
+          const requests: Array<string> = []
+          const httpClient = HttpClient.make((request, url) =>
+            Effect.sync(() => {
+              requests.push(url.toString())
+              return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+            })
+          )
+          const client = yield* HttpApiClient.make(Api, { baseUrl: "https://api.example.com" }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient)
+          )
+
+          yield* client.files.download({ params })
+
+          assert.deepStrictEqual(requests, [expectedUrl])
+        }))
+    })
+
+    describe("no parameter schema", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("offers").add(HttpApiEndpoint.post("resolve", "/offers:resolve"))
+      )
+      const expectedUrl = "https://api.example.com/offers:resolve"
+
+      it("urlBuilder preserves the collection action suffix", () => {
+        const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
+
+        strictEqual(urls.offers.resolve(), expectedUrl)
+      })
+
+      it.effect("make preserves the collection action suffix", () =>
+        Effect.gen(function*() {
+          const requests: Array<string> = []
+          const httpClient = HttpClient.make((request, url) =>
+            Effect.sync(() => {
+              requests.push(url.toString())
+              return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+            })
+          )
+          const client = yield* HttpApiClient.make(Api, { baseUrl: "https://api.example.com" }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient)
+          )
+
+          yield* client.offers.resolve()
+
+          assert.deepStrictEqual(requests, [expectedUrl])
+        }))
+    })
+
+    describe("empty parameter schema", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("offers").add(
+          HttpApiEndpoint.post("resolve", "/offers:resolve", { params: Schema.Struct({}) })
+        )
+      )
+      const request = { params: {} }
+      const expectedUrl = "https://api.example.com/offers:resolve"
+
+      it("urlBuilder preserves the collection action suffix", () => {
+        const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
+
+        strictEqual(urls.offers.resolve(request), expectedUrl)
+      })
+
+      it.effect("make preserves the collection action suffix", () =>
+        Effect.gen(function*() {
+          const requests: Array<string> = []
+          const httpClient = HttpClient.make((request, url) =>
+            Effect.sync(() => {
+              requests.push(url.toString())
+              return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+            })
+          )
+          const client = yield* HttpApiClient.make(Api, { baseUrl: "https://api.example.com" }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient)
+          )
+
+          yield* client.offers.resolve(request)
+
+          assert.deepStrictEqual(requests, [expectedUrl])
+        }))
+    })
+  })
+
   describe("streaming responses", () => {
     it.effect("decodes StreamSse events incrementally", () =>
       Effect.gen(function*() {
