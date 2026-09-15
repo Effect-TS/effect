@@ -9933,6 +9933,12 @@ export const haltWhen: {
  * the finalizer fails, its failure is propagated; if both the stream and the
  * finalizer fail, their causes are combined, matching `Effect.onExit`.
  *
+ * When the consumer terminates the stream early (for example, via `take` or
+ * `runHead`), the finalizer runs as its scope closes, after downstream has
+ * observed completion. Its failure remains typed but surfaces in the effect
+ * closing the scope; `Stream.catch` and `Stream.catchCause` cannot recover it.
+ * Handle it with `Effect.catch` around the effect running the stream.
+ *
  * **Example** (Running a finalizer on exit)
  *
  * ```ts import.meta.vitest

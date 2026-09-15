@@ -7225,6 +7225,11 @@ export const onError: {
  * the finalizer fails, its failure is propagated; if both the channel and the
  * finalizer fail, their causes are combined, matching `Effect.onExit`.
  *
+ * When the consumer terminates the channel early, the finalizer runs as its
+ * scope closes, after downstream has observed completion. Its failure remains
+ * typed but surfaces in the effect closing the scope; downstream channel error
+ * handlers cannot recover it. Handle it around the effect running the channel.
+ *
  * **Example** (Running exit finalizers)
  *
  * ```ts import.meta.vitest
@@ -7278,6 +7283,9 @@ export const onExit: {
         // with the channel's own cause.
         Scope.addFinalizerExit(
           forkedScope,
+          // Scope requires an infallible finalizer, but Scope.close propagates
+          // typed finalizer failures at runtime despite its infallible signature.
+          // This cast relies on that behavior to preserve the finalizer's error.
           (exit) => Effect.provideContext(runFinalizer(exit), context) as Effect.Effect<void>
         ),
         Effect.map(toTransform(self)(upstream, scope), (pull) =>
