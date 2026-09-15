@@ -3414,19 +3414,19 @@ export const orDie = <A, E, R>(
 
 /** @internal */
 export const orElseSucceed: {
-  <B>(
-    f: LazyArg<B>
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | B, never, R>
+  <E, B>(
+    f: (error: NoInfer<E>) => B
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | B, never, R>
   <A, E, R, B>(
     self: Effect.Effect<A, E, R>,
-    f: LazyArg<B>
+    f: (error: E) => B
   ): Effect.Effect<A | B, never, R>
 } = dual(
   2,
   <A, E, R, B>(
     self: Effect.Effect<A, E, R>,
-    f: LazyArg<B>
-  ): Effect.Effect<A | B, never, R> => catch_(self, (_) => sync(f))
+    f: (error: E) => B
+  ): Effect.Effect<A | B, never, R> => catch_(self, (error) => sync(() => f(error)))
 )
 
 /** @internal */

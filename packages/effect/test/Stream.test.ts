@@ -1366,7 +1366,7 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const stream = Stream.make(1, 2, 3, 4, 5)
         const { result1, result2 } = yield* Effect.all({
-          result1: stream.pipe(Stream.scan(0, (acc, curr) => acc + curr), Stream.runCollect),
+          result1: stream.pipe(Stream.scan(() => 0, (acc, curr) => acc + curr), Stream.runCollect),
           result2: Stream.runCollect(stream).pipe(
             Effect.map((chunk) => Array.scan(chunk, 0, (acc, curr) => acc + curr))
           )
@@ -1377,7 +1377,7 @@ describe("Stream", () => {
     it.effect("scanEffect", () =>
       Effect.gen(function*() {
         const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
-          Stream.scanEffect(0, (acc, curr) => Effect.succeed(acc + curr)),
+          Stream.scanEffect(() => 0, (acc, curr) => Effect.succeed(acc + curr)),
           Stream.runCollect
         )
 
@@ -4307,7 +4307,7 @@ describe("Stream", () => {
         const { result1, result2 } = yield* pipe(
           Stream.range(0, 5),
           Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([odds, evens]) =>
+          Effect.flatMap(([evens, odds]) =>
             Effect.all({
               result1: Stream.runCollect(evens),
               result2: Stream.runCollect(odds)
@@ -4325,7 +4325,7 @@ describe("Stream", () => {
           Stream.make(0),
           Stream.concat(Stream.fail("boom")),
           Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([odds, evens]) =>
+          Effect.flatMap(([evens, odds]) =>
             Effect.all({
               result1: Effect.flip(Stream.runCollect(evens)),
               result2: Effect.flip(Stream.runCollect(odds))
@@ -4341,8 +4341,8 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const { result1, result2, result3 } = yield* pipe(
           Stream.range(0, 5),
-          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n), { bufferSize: 1 }),
-          Effect.flatMap(([odds, evens]) =>
+          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n), { capacity: 1 }),
+          Effect.flatMap(([evens, odds]) =>
             Effect.gen(function*() {
               const ref = yield* Ref.make(Array.empty<number>())
               const latch = yield* Deferred.make<void>()
@@ -4434,7 +4434,7 @@ describe("Stream", () => {
         const { result1, result2 } = yield* pipe(
           Stream.range(0, 5),
           Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([odds, evens]) =>
+          Effect.flatMap(([evens, odds]) =>
             Effect.all({
               result1: Stream.runCollect(evens),
               result2: Stream.runCollect(odds)
@@ -4452,7 +4452,7 @@ describe("Stream", () => {
           Stream.make(0),
           Stream.concat(Stream.fail("boom")),
           Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([odds, evens]) =>
+          Effect.flatMap(([evens, odds]) =>
             Effect.all({
               result1: Effect.flip(Stream.runCollect(evens)),
               result2: Effect.flip(Stream.runCollect(odds))
@@ -4468,8 +4468,8 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const { result1, result2, result3 } = yield* pipe(
           Stream.range(0, 5),
-          Stream.partition((n) => (n % 2 === 0 ? Result.succeed(n) : Result.fail(n)), { bufferSize: 1 }),
-          Effect.flatMap(([odds, evens]) =>
+          Stream.partition((n) => (n % 2 === 0 ? Result.succeed(n) : Result.fail(n)), { capacity: 1 }),
+          Effect.flatMap(([evens, odds]) =>
             Effect.gen(function*() {
               const ref = yield* Ref.make(Array.empty<number>())
               const latch = yield* (Deferred.make<void>())
@@ -4509,7 +4509,7 @@ describe("Stream", () => {
         const { evens, odds } = yield* pipe(
           Stream.range(0, 5),
           Stream.partition((n: number) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([fail, pass]) =>
+          Effect.flatMap(([pass, fail]) =>
             Effect.all({
               evens: Stream.runCollect(pass),
               odds: Stream.runCollect(fail)

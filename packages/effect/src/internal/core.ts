@@ -113,7 +113,7 @@ export const EffectProto = {
 }
 
 /** @internal */
-export const isEffect = (u: unknown): u is Effect.Effect<any, any, any> => hasProperty(u, EffectTypeId)
+export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> => hasProperty(u, EffectTypeId)
 
 /** @internal */
 export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => hasProperty(u, ExitTypeId)
