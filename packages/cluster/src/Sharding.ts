@@ -1290,11 +1290,13 @@ const make = Effect.gen(function*() {
         (payload: any, options?: {
           readonly context?: Context.Context<never>
           readonly asMailbox?: boolean
+          readonly streamBufferSize?: number | undefined
         }) => {
           const context = options?.context ? Context.merge(options.context, address) : address
           const response = client.client(tag, payload, {
             ...options,
             asMailbox: isStream,
+            streamBufferSize: isStream && options?.asMailbox ? 1 : options?.streamBufferSize,
             context
           }) as Effect.Effect<any, any>
           // Re-signal abandonment in the caller or stream consumer, preserving its mask.
@@ -1304,8 +1306,9 @@ const make = Effect.gen(function*() {
             // Interrupt the owner before exposing abandonment to the mailbox consumer.
             return Effect.flatMap(acquired, (source: Mailbox.ReadonlyMailbox<any, any>) =>
               Effect.gen(function*() {
-                const sink = yield* Mailbox.make<any, any>()
-                const pump: Effect.Effect<void, any> = Effect.flatMap(source.takeAll, ([chunk, done]) =>
+                const sink = yield* Mailbox.make<any, any>(options.streamBufferSize ?? 16)
+                // Bound the values held while forwarding to a full consumer buffer.
+                const pump: Effect.Effect<void, any> = Effect.flatMap(source.takeN(1), ([chunk, done]) =>
                   Effect.andThen(sink.offerAll(chunk), done ? Effect.asVoid(sink.end) : pump))
                 yield* Effect.forkScoped(pump.pipe(
                   Effect.onError((cause) =>
