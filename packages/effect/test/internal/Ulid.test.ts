@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Ulid from "effect/internal/ulid"
+import * as Uuid from "effect/internal/uuid"
 
 const randomness = () => Uint8Array.from({ length: 10 }, (_, i) => i)
 
@@ -13,8 +14,20 @@ describe("Ulid", () => {
     assert.strictEqual(Ulid.ulidString(2 ** 48 - 1, new Uint8Array(10).fill(0xff)), "7ZZZZZZZZZZZZZZZZZZZZZZZZZ")
   })
 
-  it.each([-1, 0.5, NaN, -Infinity, Infinity, 2 ** 48])("rejects invalid timestamp %s", (timestamp) => {
-    assert.throws(() => Ulid.ulidString(timestamp, randomness()), RangeError)
+  it.each([
+    [-1, 0],
+    [1.9, 1],
+    [NaN, 0],
+    [-Infinity, 0],
+    [Infinity, 2 ** 48 - 1],
+    [2 ** 48, 2 ** 48 - 1]
+  ])("normalizes timestamp %s like UUIDv7", (timestamp, expectedTimestamp) => {
+    const uuidTimestamp = Uuid.v7Bytes(timestamp, new Uint8Array(16))
+      .subarray(0, 6)
+      .reduce((value, byte) => value * 256 + byte, 0)
+
+    assert.strictEqual(uuidTimestamp, expectedTimestamp)
+    assert.strictEqual(Ulid.ulidString(timestamp, randomness()), Ulid.ulidString(uuidTimestamp, randomness()))
   })
 
   it("orders timestamps before randomness", () => {

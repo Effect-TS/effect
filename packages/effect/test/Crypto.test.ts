@@ -1,8 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Result from "effect/Result"
 import * as TestClock from "effect/testing/TestClock"
 
 const testCrypto = Crypto.make({
@@ -119,13 +117,13 @@ describe("Crypto", () => {
       assert.strictEqual(ulid, "014D2PF2DB000G40R40M30E209")
     }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
 
-  it.effect("randomULID dies when the Clock timestamp overflows", () =>
+  it.effect("randomULID clamps an overflowing Clock timestamp", () =>
     Effect.gen(function*() {
       yield* TestClock.setTime(2 ** 48)
       const crypto = yield* Crypto.Crypto
-      const exit = yield* Effect.exit(crypto.randomULID)
+      const ulid = yield* crypto.randomULID
 
-      assert.instanceOf(Result.getOrThrow(Exit.findDefect(exit)), RangeError)
+      assert.strictEqual(ulid, "7ZZZZZZZZZ000G40R40M30E209")
     }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
 
   it.effect("digest delegates to the service", () =>
