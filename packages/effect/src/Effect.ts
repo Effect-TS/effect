@@ -14675,7 +14675,7 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {
   for (const [ref, { value }] of state.journal) {
-    if (value !== ref.value) {
+    if (!Object.is(value, ref.value)) {
       ref.version = ref.version + 1
       ref.value = value
     }
