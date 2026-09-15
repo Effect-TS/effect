@@ -7,7 +7,6 @@ const emptyParamNames: ReadonlySet<string> = new Set()
 export function getParamNames(schema: Schema.Constraint | undefined): ReadonlySet<string> | undefined {
   if (schema === undefined) return emptyParamNames
   const ast = SchemaAST.getLastEncoding(schema.ast)
-  // Fall back to the existing path syntax when the encoded keys cannot be enumerated.
   return SchemaAST.isObjects(ast) && ast.indexSignatures.length === 0
     ? new Set(ast.propertySignatures.map((ps) => String(ps.name)))
     : undefined
@@ -15,7 +14,7 @@ export function getParamNames(schema: Schema.Constraint | undefined): ReadonlySe
 
 /** @internal */
 export function toRouterPath(path: string, schema: Schema.Constraint | undefined): string {
-  // Raw handlers and middleware can read undeclared parameters through RouteContext.
+  // Preserve undeclared params for raw RouteContext consumers.
   if (schema === undefined || !path.includes(":")) return path
   const paramNames = getParamNames(schema)
   if (paramNames === undefined) return path
@@ -25,7 +24,6 @@ export function toRouterPath(path: string, schema: Schema.Constraint | undefined
   let regexStart = -1
   for (let i = 0; i < path.length; i++) {
     const char = path[i]
-    // Leave explicit regex constraints intact, including their escapes and nested groups.
     if (depth > 0 || i === regexStart) {
       out += char
       if (char === "\\") out += path[++i] ?? ""
@@ -43,14 +41,13 @@ export function toRouterPath(path: string, schema: Schema.Constraint | undefined
       continue
     }
 
-    // Recognize the same placeholder names as the client and OpenAPI generator.
     const param = /^:(\w+)/.exec(path.slice(i))
     if (param !== null && paramNames.has(param[1])) {
       out += param[0]
       i += param[0].length - 1
       const next = path[i + 1]
       if (next === "(") regexStart = i + 1
-      // Delimit suffixes that FindMyWay would otherwise include in the parameter name.
+      // FindMyWay needs a regex to end the parameter name here.
       else if (next !== undefined && !"/.-?".includes(next)) out += "(.*?)"
     } else {
       out += "::"
