@@ -70,6 +70,22 @@ const makeSecurityApi = (
   )
 
 describe("OpenApi", () => {
+  it("preserves literal action suffixes in path templates", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("operations").add(
+        HttpApiEndpoint.post("wait", "/operations/:id:wait", {
+          params: { id: Schema.String }
+        })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(Object.keys(spec.paths), ["/operations/{id}:wait"])
+    assert.deepStrictEqual(spec.paths["/operations/{id}:wait"]?.post?.parameters, [
+      { name: "id", in: "path", required: true, schema: { type: "string" } }
+    ])
+  })
+
   it("preserves parameter schemas when an endpoint transform reorders parameters", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
