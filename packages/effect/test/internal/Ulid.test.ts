@@ -10,6 +10,13 @@ describe("Ulid", () => {
     assert.strictEqual(Ulid.ulidString(2 ** 48 - 1, new Uint8Array(10).fill(0xff)), "7ZZZZZZZZZZZZZZZZZZZZZZZZZ")
   })
 
+  it("orders timestamps before randomness", () => {
+    const earlier = Ulid.ulidString(1000, new Uint8Array(10).fill(0xff))
+    const later = Ulid.ulidString(1001, new Uint8Array(10))
+
+    assert.isTrue(earlier < later)
+  })
+
   it("rejects randomness that is not 10 bytes", () => {
     for (const size of [0, 9, 11, 16]) {
       assert.throws(() => Ulid.ulidString(0, new Uint8Array(size)), /exactly 10 bytes/)
