@@ -941,6 +941,81 @@ const TestSharding = TestShardingWithoutStorage.pipe(
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
 
 describe("entity client mailbox", () => {
+  for (const capacity of [undefined, 2]) {
+    const size = capacity ?? 16
+    for (const chunkSize of [1, 8]) {
+      it.effect(`bounds producer lead with absent and slow consumers (capacity=${capacity}, chunk=${chunkSize})`, () =>
+        Effect.gen(function*() {
+          let produced = 0
+          const entity = Entity.make("MailboxBackpressure", [
+            Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false)
+          ])
+          const sharding = yield* Sharding.Sharding
+          yield* sharding.registerEntity(
+            entity,
+            Effect.succeed({
+              Values: () =>
+                Stream.range(0, 127).pipe(
+                  Stream.rechunk(chunkSize),
+                  Stream.mapChunks((chunk) => {
+                    produced += chunk.length
+                    return chunk
+                  })
+                )
+            })
+          )
+          yield* TestClock.adjust(1)
+          const scope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
+          const mailbox = yield* (yield* entity.client)("one").Values(undefined, {
+            asMailbox: true,
+            ...(capacity === undefined ? {} : { streamBufferSize: capacity })
+          }).pipe(Scope.extend(scope))
+          const leads: Array<number> = []
+          yield* Effect.gen(function*() {
+            for (let consumed = 0; consumed <= 8; consumed++) {
+              for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
+              leads.push(produced - consumed)
+              if (consumed < 8) {
+                const value = yield* mailbox.take.pipe(Effect.timeout("1 second"), TestServices.provideLive)
+                assert.strictEqual(value, consumed)
+              }
+            }
+          }).pipe(Effect.ensuring(
+            Scope.close(scope, Exit.void).pipe(Effect.timeout("1 second"), Effect.orDie, TestServices.provideLive)
+          ))
+          // Consumer buffer, one source element, one forwarding element, and an in-flight producer chunk.
+          const bound = size + 2 + chunkSize
+          assert.isAtLeast(leads[0], size, "the producer must reach the consumer buffer")
+          assert(leads.every((lead) => lead <= bound), `producer lead exceeds ${bound}: ${JSON.stringify(leads)}`)
+        }).pipe(Effect.scoped, Effect.provide(TestSharding)))
+    }
+
+    it.effect(`caps takeN at the requested consumer capacity (capacity=${capacity})`, () =>
+      Effect.gen(function*() {
+        const entity = Entity.make("MailboxCapacity", [
+          Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false)
+        ])
+        const sharding = yield* Sharding.Sharding
+        yield* sharding.registerEntity(entity, Effect.succeed({ Values: () => Stream.range(0, 63) }))
+        yield* TestClock.adjust(1)
+        const mailbox = yield* (yield* entity.client)("one").Values(undefined, {
+          asMailbox: true,
+          ...(capacity === undefined ? {} : { streamBufferSize: capacity })
+        })
+        const [values, done] = yield* mailbox.takeN(size + 1).pipe(
+          Effect.timeout("1 second"),
+          TestServices.provideLive
+        )
+        assert.deepStrictEqual(Chunk.toReadonlyArray(values), Array.range(0, size - 1))
+        assert.isFalse(done)
+        const rest = yield* Stream.runCollect(Mailbox.toStream(mailbox)).pipe(
+          Effect.timeout("1 second"),
+          TestServices.provideLive
+        )
+        assert.deepStrictEqual(Chunk.toReadonlyArray(rest), Array.range(size, 63))
+      }).pipe(Effect.scoped, Effect.provide(TestSharding)))
+  }
+
   for (const persisted of [false, true]) {
     for (const terminal of ["empty", "success", "failure"] as const) {
       it.effect(`forwards chunks and terminal completion (persisted=${persisted}, terminal=${terminal})`, () =>
@@ -989,52 +1064,64 @@ describe("entity client mailbox", () => {
         }).pipe(Effect.scoped, Effect.provide(TestSharding)))
     }
 
-    it.effect(`closing a mailbox request scope cancels its reader and handler (persisted=${persisted})`, () =>
-      Effect.gen(function*() {
-        const source = yield* Mailbox.make<number>()
-        const finalized = yield* Effect.makeLatch()
-        let finalizers = 0
-        const entity = Entity.make("MailboxScope", [
-          Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, persisted)
-        ])
-        const sharding = yield* Sharding.Sharding
-        yield* sharding.registerEntity(
-          entity,
-          Effect.succeed({
-            Values: () =>
-              Mailbox.toStream(source).pipe(Stream.ensuring(Effect.gen(function*() {
-                finalizers++
-                yield* finalized.open
-              })))
-          })
-        )
-        yield* TestClock.adjust(1)
-        const requestScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
-        const supervisor = yield* Supervisor.track
-        const client = (yield* entity.client)("one")
-        const mailbox = yield* client.Values(undefined, { asMailbox: true }).pipe(
-          Scope.extend(requestScope),
-          Effect.supervised(supervisor)
-        )
-        yield* source.offer(1)
-        assert.strictEqual(yield* mailbox.take.pipe(Effect.timeout("1 second"), TestServices.provideLive), 1)
-        const reader = yield* mailbox.take.pipe(Effect.forkIn(requestScope))
-        yield* TestClock.adjust(1)
-        assert(Option.isNone(yield* Fiber.poll(reader)))
-        const requestFibers = yield* supervisor.value
-        yield* Scope.close(requestScope, Exit.void).pipe(Effect.timeout("1 second"), TestServices.provideLive)
-        const exit = yield* Fiber.await(reader).pipe(Effect.timeout("1 second"), TestServices.provideLive)
-        assert(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause))
-        yield* finalized.await.pipe(Effect.timeout("1 second"), TestServices.provideLive)
-        for (const fiber of requestFibers) {
-          yield* Fiber.await(fiber).pipe(Effect.timeout("1 second"), TestServices.provideLive)
-        }
-        assert.strictEqual((yield* supervisor.value).length, 0, "request fibers must stop with their scope")
-        assert.strictEqual(finalizers, 1)
-        assert.isFalse(yield* sharding.isShutdown)
-        yield* Scope.close(requestScope, Exit.void)
-        assert.strictEqual(finalizers, 1)
-      }).pipe(Effect.scoped, Effect.provide(TestSharding)))
+    for (const full of [false, true]) {
+      it.effect(`closing a mailbox request scope cancels its reader and handler (persisted=${persisted}, full=${full})`, () =>
+        Effect.gen(function*() {
+          const source = yield* Mailbox.make<number>()
+          const finalized = yield* Effect.makeLatch()
+          let finalizers = 0
+          const entity = Entity.make("MailboxScope", [
+            Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, persisted)
+          ])
+          const sharding = yield* Sharding.Sharding
+          yield* sharding.registerEntity(
+            entity,
+            Effect.succeed({
+              Values: () =>
+                Mailbox.toStream(source).pipe(Stream.ensuring(Effect.gen(function*() {
+                  finalizers++
+                  yield* finalized.open
+                })))
+            })
+          )
+          yield* TestClock.adjust(1)
+          const requestScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
+          const supervisor = yield* Supervisor.track
+          const client = (yield* entity.client)("one")
+          const mailbox = yield* client.Values(undefined, { asMailbox: true, streamBufferSize: 2 }).pipe(
+            Scope.extend(requestScope),
+            Effect.supervised(supervisor)
+          )
+          yield* source.offer(1)
+          assert.strictEqual(yield* mailbox.take.pipe(Effect.timeout("1 second"), TestServices.provideLive), 1)
+          const resume = yield* Effect.makeLatch(!full)
+          const reader = yield* resume.await.pipe(Effect.andThen(mailbox.take), Effect.forkIn(requestScope))
+          if (full) {
+            yield* source.offerAll(Array.range(2, 9))
+            for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
+            assert.isAtLeast(
+              Option.getOrThrow(yield* mailbox.size),
+              2,
+              "close with forwarding blocked on a full buffer"
+            )
+          }
+          yield* TestClock.adjust(1)
+          assert(Option.isNone(yield* Fiber.poll(reader)))
+          const requestFibers = yield* supervisor.value
+          yield* Scope.close(requestScope, Exit.void).pipe(Effect.timeout("1 second"), TestServices.provideLive)
+          const exit = yield* Fiber.await(reader).pipe(Effect.timeout("1 second"), TestServices.provideLive)
+          assert(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause))
+          yield* finalized.await.pipe(Effect.timeout("1 second"), TestServices.provideLive)
+          for (const fiber of requestFibers) {
+            yield* Fiber.await(fiber).pipe(Effect.timeout("1 second"), TestServices.provideLive)
+          }
+          assert.strictEqual((yield* supervisor.value).length, 0, "request fibers must stop with their scope")
+          assert.strictEqual(finalizers, 1)
+          assert.isFalse(yield* sharding.isShutdown)
+          yield* Scope.close(requestScope, Exit.void)
+          assert.strictEqual(finalizers, 1)
+        }).pipe(Effect.scoped, Effect.provide(TestSharding)))
+    }
   }
 })
 
