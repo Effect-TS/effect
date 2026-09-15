@@ -85,9 +85,15 @@ describe("Schema", () => {
       a: Schema.String
     })) {}
     class B extends Schema.Opaque<B>()(Schema.Struct({ a: Schema.String })) {}
+    class C extends Schema.Class<C>("C")(
+      Schema.Struct({
+        a: Schema.String
+      }).pipe(Schema.encodeKeys({ "a": "A" }))
+    ) {}
     assertTrue(Schema.isSchema(Schema.String))
     assertTrue(Schema.isSchema(A))
     assertTrue(Schema.isSchema(B))
+    assertTrue(Schema.isSchema(C))
     assertFalse(Schema.isSchema({}))
   })
 
@@ -6861,6 +6867,16 @@ Expected a value between -2147483648 and 2147483647`
       deepStrictEqual(schema.fields, { a: Schema.String, b: Schema.Number })
     })
 
+    it("mapFields on a Class built from a Struct with encodeKeys", () => {
+      class A extends Schema.Class<A>("A")(
+        Schema.Struct({
+          a: Schema.String
+        }).pipe(Schema.encodeKeys({ "a": "c" }))
+      ) {}
+      const schema = A.mapFields((fields) => ({ ...fields, b: Schema.Number }))
+      deepStrictEqual(schema.fields, { a: Schema.String, b: Schema.Number })
+    })
+
     it("Struct with nested Class", async () => {
       class A extends Schema.Class<A, { readonly brand: unique symbol }>("A")(Schema.Struct({
         a: Schema.String
@@ -7233,6 +7249,23 @@ Expected a value between -2147483648 and 2147483647`
         await make.succeed({ a: 1, b: 1 }, new B({ a: 1, b: 1 }))
         await make.fail({ a: 0, b: 1 }, `Expected positive a`)
         await make.fail({ a: 1, b: 0 }, `Expected positive b`)
+      })
+
+      it("Class built from an encodeKeys schema is not supported", async () => {
+        class A extends Schema.Class<A>("A")(
+          Schema.Struct({
+            a: Schema.Number
+          }).pipe(Schema.encodeKeys({ "a": "c" }))
+        ) {}
+        throws(
+          () =>
+            class B extends A.extend<B>("B")(
+              Schema.Struct({
+                b: Schema.Number
+              })
+            ) {},
+          new Error(`extend is not supported on a Class built from an encodeKeys schema (identifier: "B")`)
+        )
       })
 
       it("static members", async () => {
@@ -8992,6 +9025,64 @@ Expected a value between -2147483648 and 2147483647`
 
       const encoding = asserts.encoding()
       await encoding.succeed(new A({ a: 1, b: "b" }), { c: "1", b: "b" })
+    })
+
+    it("Class from Struct with encodeKeys", async () => {
+      class A extends Schema.Class<A>("A")(
+        Schema.Struct({
+          a: Schema.String
+        }).pipe(Schema.encodeKeys({ "a": "c" }))
+      ) {
+        readonly _a = 1
+      }
+      const asserts = new TestSchema.Asserts(A)
+
+      // should be a schema
+      assertTrue(Schema.isSchema(A))
+      // should expose the fields
+      deepStrictEqual(A.fields, { a: Schema.String })
+      // should expose the identifier
+      strictEqual(A.identifier, "A")
+
+      strictEqual(A.name, "A")
+
+      assertTrue(new A({ a: "a" }) instanceof A)
+      assertTrue(A.make({ a: "a" }) instanceof A)
+
+      // test additional fields
+      strictEqual(new A({ a: "a" })._a, 1)
+      strictEqual(A.make({ a: "a" })._a, 1)
+
+      // test Equal.equals
+      assertTrue(Equal.equals(new A({ a: "a" }), new A({ a: "a" })))
+      assertFalse(Equal.equals(new A({ a: "a" }), new A({ a: "b" })))
+
+      const make = asserts.make()
+      await make.succeed(new A({ a: "a" }))
+      await make.succeed({ a: "a" }, new A({ a: "a" }))
+
+      if (verifyGeneration) {
+        asserts.arbitrary().verifyGeneration()
+      }
+
+      const decoding = asserts.decoding()
+      await decoding.succeed({ c: "a" }, new A({ a: "a" }))
+      await decoding.fail(
+        { c: 1 },
+        `Expected string
+  at ["c"]`
+      )
+
+      const encoding = asserts.encoding()
+      await encoding.succeed(new A({ a: "a" }), { c: "a" })
+      await encoding.fail(
+        null,
+        "Expected A"
+      )
+      await encoding.fail(
+        { a: "a" },
+        `Expected A`
+      )
     })
 
     it("supports symbol source keys", () => {

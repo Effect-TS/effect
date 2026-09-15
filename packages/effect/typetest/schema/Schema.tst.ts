@@ -1686,32 +1686,26 @@ describe("Schema", () => {
       }).pipe(Schema.encodeKeys({ a: "c" }))
 
       expect(schema).type.toBe<
-        Schema.decodeTo<
+        Schema.encodeKeys<
           Schema.Struct<{
             readonly a: Schema.FiniteFromString
             readonly b: Schema.String
           }>,
-          Schema.Struct<{
-            readonly c: Schema.toEncoded<Schema.FiniteFromString>
-            readonly b: Schema.toEncoded<Schema.String>
-          }>
+          { readonly a: "c" }
         >
       >()
     })
-
     it("should ignore encoded key mappings for missing decoded fields", () => {
       const schema = Schema.Struct({
         a: Schema.String
       }).pipe(Schema.encodeKeys({ a: "c", b: "d" }))
 
       expect(schema).type.toBe<
-        Schema.decodeTo<
+        Schema.encodeKeys<
           Schema.Struct<{
             readonly a: Schema.String
           }>,
-          Schema.Struct<{
-            readonly c: Schema.toEncoded<Schema.String>
-          }>
+          { readonly a: "c"; readonly b: "d" }
         >
       >()
     })
@@ -1725,13 +1719,11 @@ describe("Schema", () => {
       }).pipe(Schema.encodeKeys({ [decoded]: "decoded" }))
 
       expect(source).type.toBe<
-        Schema.decodeTo<
+        Schema.encodeKeys<
           Schema.Struct<{
             readonly [decoded]: Schema.String
           }>,
-          Schema.Struct<{
-            readonly decoded: Schema.toEncoded<Schema.String>
-          }>
+          { readonly [decoded]: "decoded" }
         >
       >()
 
@@ -1740,13 +1732,11 @@ describe("Schema", () => {
       }).pipe(Schema.encodeKeys({ decoded: encoded }))
 
       expect(destination).type.toBe<
-        Schema.decodeTo<
+        Schema.encodeKeys<
           Schema.Struct<{
             readonly decoded: Schema.String
           }>,
-          Schema.Struct<{
-            readonly [encoded]: Schema.toEncoded<Schema.String>
-          }>
+          { readonly decoded: typeof encoded }
         >
       >()
     })
