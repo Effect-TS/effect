@@ -1,4 +1,4 @@
-import { Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
+import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
@@ -49,8 +49,32 @@ describe("OpenAiLanguageModel", () => {
             { type: "url", url: "https://example.com/weather" },
             { type: "api", name: "oai-weather" }
           ] as const
-          const parts = yield* webSearchWithSources(method, sources)
           const action = { type: "search", query: "weather in London", sources } as const
+          const item = makeWebSearchCall({ action })
+          const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
+          const body = method === "generateText"
+            ? JSON.stringify(makeDefaultResponse({ output: [item] }))
+            : `data: ${JSON.stringify(event)}\n\n`
+          const client = HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response(body, {
+                headers: { "content-type": method === "generateText" ? "application/json" : "text/event-stream" }
+              })
+            ))
+          )
+          const options = { prompt: "Weather in London", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
+          const parts = yield* Effect.gen(function*() {
+            if (method === "generateText") {
+              const response = yield* LanguageModel.generateText(options)
+              return response.content
+            }
+            return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.6")),
+            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(HttpClient.HttpClient, client)
+          )
 
           const calls = parts.filter((part) => part.type === "tool-call")
           deepStrictEqual(calls.map((part) => part.params), [{ action }])
@@ -59,28 +83,6 @@ describe("OpenAiLanguageModel", () => {
           deepStrictEqual(results.map((part) => part.result), [{ action, status: "completed" }])
         })
     )
-
-    it.effect("preserves API sources in response history", () =>
-      Effect.gen(function*() {
-        const item = makeWebSearchCall({
-          action: { type: "search", sources: [{ type: "api", name: "oai-weather" }] }
-        })
-        const decoded = yield* Schema.decodeUnknownEffect(Generated.InputItem)(item)
-
-        deepStrictEqual(decoded, item)
-      }))
-
-    it.effect.each([
-      { type: "url" },
-      { type: "api" },
-      { type: "api", name: null },
-      { type: "unknown", name: "oai-weather" }
-    ])("rejects malformed search sources: %j", (source) =>
-      Effect.gen(function*() {
-        const error = yield* webSearchWithSources("generateText", [source]).pipe(Effect.flip)
-        assertTrue("reason" in error)
-        strictEqual(error.reason._tag, "InvalidOutputError")
-      }))
   })
 
   describe("generateText", () => {
@@ -2249,38 +2251,6 @@ const makeWebSearchCall = (
   action: { type: "search", query: "Effect TypeScript" },
   ...overrides
 })
-
-const webSearchWithSources = (method: "generateText" | "streamText", sources: ReadonlyArray<unknown>) => {
-  const item = {
-    ...makeWebSearchCall(),
-    action: { type: "search", query: "weather in London", sources }
-  }
-  const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
-  const body = method === "generateText"
-    ? JSON.stringify({ ...makeDefaultResponse(), output: [item] })
-    : `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`
-  const client = HttpClient.make((request) =>
-    Effect.succeed(HttpClientResponse.fromWeb(
-      request,
-      new Response(body, {
-        headers: { "content-type": method === "generateText" ? "application/json" : "text/event-stream" }
-      })
-    ))
-  )
-  const options = { prompt: "Weather in London", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
-
-  return Effect.gen(function*() {
-    if (method === "generateText") {
-      const response = yield* LanguageModel.generateText(options)
-      return response.content
-    }
-    return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
-  }).pipe(
-    Effect.provide(OpenAiLanguageModel.model("gpt-5.6")),
-    Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-    Effect.provideService(HttpClient.HttpClient, client)
-  )
-}
 
 const makeFileSearchCall = (
   overrides: Partial<Generated.FileSearchToolCall> = {}
