@@ -951,7 +951,9 @@ const make = Effect.gen(function*() {
       return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
         Effect.andThen(
           shouldFail
-            ? message._tag === "OutgoingRequest" ? ClusterAbandon.interrupt : Effect.fail(error)
+            ? message._tag === "OutgoingRequest"
+              ? Effect.andThen(ClusterAbandon.interrupt, Effect.interruptible(Effect.never))
+              : Effect.fail(error)
             : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
         )
       )
