@@ -1316,6 +1316,50 @@ export function optionFromNullOr<T>(): Transformation<Option.Option<T>, T | null
 }
 
 /**
+ * Decodes `T | null` into `T | undefined` and encodes `undefined` back to
+ * `null`.
+ *
+ * **When to use**
+ *
+ * Use when your program models absence as `undefined` (the `Array.find` /
+ * `Map.get` idiom) but the wire can only carry `null` — JSON has no
+ * `undefined`, and `JSON.stringify` drops a key whose value is `undefined`,
+ * so a stable payload shape needs `null` on the encoded side.
+ *
+ * **Details**
+ *
+ * Decoding maps `null` to `undefined` and passes every other value through.
+ * Encoding maps `undefined` to `null` and passes every other value through.
+ * The transformation is pure and synchronous.
+ *
+ * **Example** (Emitting `null` for an absent value)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema, SchemaTransformation } from "effect"
+ *
+ * const schema = Schema.NullOr(Schema.String).pipe(
+ *   Schema.decodeTo(
+ *     Schema.UndefinedOr(Schema.String),
+ *     SchemaTransformation.undefinedOrFromNullOr()
+ *   )
+ * )
+ * Schema.decodeSync(schema)(null) // => undefined
+ * Schema.encodeSync(schema)(undefined) // => null
+ * ```
+ *
+ * @see {@link optionFromNullOr}
+ *
+ * @category transforming
+ * @since 4.0.0
+ */
+export function undefinedOrFromNullOr<T>(): Transformation<T | undefined, T | null> {
+  return transform({
+    decode: (e: T | null): T | undefined => (e === null ? undefined : e),
+    encode: (t: T | undefined): T | null => (t === undefined ? null : t)
+  })
+}
+
+/**
  * Decodes `T | undefined` into `Option<T>` and encodes `Option.none()` back to
  * `undefined`.
  *

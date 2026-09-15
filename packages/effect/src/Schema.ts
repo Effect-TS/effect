@@ -12963,6 +12963,55 @@ export function OptionFromNullishOr<S extends Constraint>(
 }
 
 /**
+ * Type-level representation returned by {@link UndefinedOrFromNullOr}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface UndefinedOrFromNullOr<S extends Constraint> extends decodeTo<UndefinedOr<toType<S>>, NullOr<S>> {
+  readonly "Rebuild": UndefinedOrFromNullOr<S>
+}
+/**
+ * Decodes a nullable, required value `T` to a required `T | undefined` value.
+ *
+ * **When to use**
+ *
+ * Use when the program models absence as `undefined` but the wire can only
+ * carry `null` (JSON has no `undefined`; `JSON.stringify` drops a key whose
+ * value is `undefined`). The codec then lives in the payload schema instead
+ * of at every call site.
+ *
+ * **Details**
+ *
+ * Decoding maps `null` to `undefined` and all other values to themselves.
+ * Encoding maps `undefined` to `null` and all other values to themselves.
+ *
+ * **Example** (A probe payload that always carries the key)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const Payload = Schema.Struct({
+ *   lastError: Schema.UndefinedOrFromNullOr(Schema.String)
+ * })
+ *
+ * Schema.encodeSync(Payload)({ lastError: undefined }) // => { lastError: null }
+ * Schema.decodeSync(Payload)({ lastError: null }) // => { lastError: undefined }
+ * ```
+ *
+ * @see {@link OptionFromNullOr} when absence is modelled as `Option`.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export function UndefinedOrFromNullOr<S extends Constraint>(schema: S): UndefinedOrFromNullOr<S> {
+  return NullOr(schema).pipe(decodeTo(
+    UndefinedOr(toType(schema)),
+    SchemaTransformation.undefinedOrFromNullOr()
+  ))
+}
+
+/**
  * Type-level representation of {@link Cookie}.
  *
  * @unstable
