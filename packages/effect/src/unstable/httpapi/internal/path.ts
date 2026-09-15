@@ -1,9 +1,11 @@
 import type * as Schema from "../../../Schema.ts"
 import * as SchemaAST from "../../../SchemaAST.ts"
 
+const emptyParamNames: ReadonlySet<string> = new Set()
+
 /** @internal */
 export function getParamNames(schema: Schema.Constraint | undefined): ReadonlySet<string> | undefined {
-  if (schema === undefined) return undefined
+  if (schema === undefined) return emptyParamNames
   const ast = SchemaAST.getLastEncoding(schema.ast)
   // Fall back to the existing path syntax when the encoded keys cannot be enumerated.
   return SchemaAST.isObjects(ast) && ast.indexSignatures.length === 0
@@ -13,7 +15,8 @@ export function getParamNames(schema: Schema.Constraint | undefined): ReadonlySe
 
 /** @internal */
 export function toRouterPath(path: string, schema: Schema.Constraint | undefined): string {
-  if (!path.includes(":")) return path
+  // Raw handlers and middleware can read undeclared parameters through RouteContext.
+  if (schema === undefined || !path.includes(":")) return path
   const paramNames = getParamNames(schema)
   if (paramNames === undefined) return path
 
@@ -40,20 +43,15 @@ export function toRouterPath(path: string, schema: Schema.Constraint | undefined
       continue
     }
 
-    // Preserve router parameter names that contain characters outside the client's word syntax.
-    const name = /^:([^/().?-]+)/.exec(path.slice(i))
-    if (name !== null && paramNames.has(name[1])) {
-      out += name[0]
-      i += name[0].length - 1
-      if (path[i + 1] === "(") regexStart = i + 1
-      continue
-    }
+    // Recognize the same placeholder names as the client and OpenAPI generator.
     const param = /^:(\w+)/.exec(path.slice(i))
     if (param !== null && paramNames.has(param[1])) {
       out += param[0]
       i += param[0].length - 1
-      // Delimit the capture before an adjacent colon; FindMyWay otherwise includes it in the name.
-      if (path[i + 1] === ":") out += "(.*?)"
+      const next = path[i + 1]
+      if (next === "(") regexStart = i + 1
+      // Delimit suffixes that FindMyWay would otherwise include in the parameter name.
+      else if (next !== undefined && !"/.-?".includes(next)) out += "(.*?)"
     } else {
       out += "::"
     }
