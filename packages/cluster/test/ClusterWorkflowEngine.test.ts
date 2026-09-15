@@ -1043,8 +1043,11 @@ describe("abandonment", () => {
 })
 
 describe("workflow send-time abandonment", () => {
-  for (const trigger of ["shutdown", "closing manager", "closed manager", "parked waiter"] as const) {
+  for (
+    const trigger of ["shutdown", "closing manager", "closed manager", "parked waiter", "buffered waiter"] as const
+  ) {
     for (const [path, masked] of [["unary", false], ["unary", true], ["stream", false], ["mailbox", false]] as const) {
+      if (trigger === "buffered waiter" && path !== "mailbox") continue
       for (const recovery of ["catchAllCause", "exit"] as const) {
         it.effect(`${recovery} cannot complete a workflow after ${path} abandonment during ${trigger} (masked=${masked})`, () =>
           Effect.gen(function*() {
@@ -1055,6 +1058,8 @@ describe("workflow send-time abandonment", () => {
             let waiter: Fiber.RuntimeFiber<unknown, unknown> | undefined
             const bodyReady = yield* Effect.makeLatch()
             const sendNow = yield* Effect.makeLatch()
+            const readNow = yield* Effect.makeLatch()
+            let buffered: Mailbox.ReadonlyMailbox<string, unknown> | undefined
             const finalizerEntered = yield* Effect.makeLatch()
             const finishFinalizer = yield* Effect.makeLatch()
             let closing = false
@@ -1156,13 +1161,20 @@ describe("workflow send-time abandonment", () => {
                     }
                   }),
                 Values: ({ address }) =>
-                  Stream.fromEffect(Effect.gen(function*() {
+                  Stream.unwrap(Effect.gen(function*() {
                     targetCalls++
                     if (address.entityId === "late") {
                       yield* handlerEntered.open
-                      return yield* Effect.never
+                      if (trigger === "buffered waiter") {
+                        return Stream.range(0, 7).pipe(
+                          Stream.rechunk(1),
+                          Stream.map(String),
+                          Stream.concat(Stream.never)
+                        )
+                      }
+                      return Stream.never
                     }
-                    return "warm"
+                    return Stream.succeed("warm")
                   }))
               }
             }))).pipe(Scope.extend(targetScope), Effect.provide(context))
@@ -1202,8 +1214,15 @@ describe("workflow send-time abandonment", () => {
                   ? remote.Ping()
                   : path === "stream"
                   ? Stream.runDrain(remote.Values())
-                  : remote.Values(undefined, { asMailbox: true }).pipe(
-                    Effect.flatMap((mailbox) => mailbox.take),
+                  : remote.Values(undefined, {
+                    asMailbox: true,
+                    ...(trigger === "buffered waiter" ? { streamBufferSize: 2 } : {})
+                  }).pipe(
+                    Effect.flatMap((mailbox) => {
+                      if (trigger !== "buffered waiter") return mailbox.take
+                      buffered = mailbox
+                      return readNow.await.pipe(Effect.andThen(Stream.runDrain(Mailbox.toStream(mailbox))))
+                    }),
                     Effect.asVoid,
                     Workflow.provideScope
                   )
@@ -1229,7 +1248,9 @@ describe("workflow send-time abandonment", () => {
                   }
                 })
                 yield* masked ? Effect.uninterruptible(recover) : recover
-                if (trigger !== "parked waiter" || path !== "mailbox") yield* Effect.yieldNow()
+                if ((trigger !== "parked waiter" && trigger !== "buffered waiter") || path !== "mailbox") {
+                  yield* Effect.yieldNow()
+                }
                 yield* Effect.withFiberRuntime((fiber) =>
                   Effect.sync(() => {
                     observed.continued = true
@@ -1250,7 +1271,7 @@ describe("workflow send-time abandonment", () => {
             assert.isFalse(yield* sharding.isShutdown)
 
             yield* Effect.gen(function*() {
-              if (trigger === "parked waiter") {
+              if (trigger === "parked waiter" || trigger === "buffered waiter") {
                 yield* sendNow.open
                 yield* handlerEntered.await
                 yield* TestClock.adjust(1)
@@ -1260,9 +1281,19 @@ describe("workflow send-time abandonment", () => {
                   "the RPC write fiber must be parked before abandonment"
                 )
                 assert.isUndefined(requesterExit)
+                if (trigger === "buffered waiter") {
+                  for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
+                  assert(buffered)
+                  assert.isAtLeast(
+                    Option.getOrThrow(yield* buffered.size),
+                    2,
+                    "fill the consumer buffer before abandonment"
+                  )
+                }
                 yield* storage.unregisterShardReplyHandlers(sharding.getShardId(EntityId.make("late"), "default"), {
                   interrupt: true
                 })
+                yield* readNow.open
               } else {
                 const close = yield* Scope.close(targetScope, Exit.void).pipe(Effect.fork)
                 yield* finalizerEntered.await
@@ -1292,10 +1323,19 @@ describe("workflow send-time abandonment", () => {
                 e._tag === "Request" && e.address.entityType === target.type && e.address.entityId === "late"
               )
               assert(request?._tag === "Request", "send-time abandonment must persist the target request for replay")
-              assert.deepStrictEqual(driver.requests.get(request.requestId)!.replies, [])
+              const replies = driver.requests.get(request.requestId)!.replies
+              if (trigger === "buffered waiter") {
+                assert.isAbove(replies.length, 0, "the stream must have persisted chunks before abandonment")
+                assert(
+                  replies.every((reply) => reply._tag === "Chunk"),
+                  "abandonment must not persist a terminal reply"
+                )
+              } else {
+                assert.deepStrictEqual(replies, [])
+              }
               assert.strictEqual(
                 targetCalls,
-                trigger === "parked waiter" ? 2 : 1,
+                trigger === "parked waiter" || trigger === "buffered waiter" ? 2 : 1,
                 "only requests sent before teardown may reach the handler"
               )
               assert.strictEqual(routeFailures, trigger === "closing manager" ? 1 : 0)
