@@ -88,7 +88,8 @@ export const make = Platform.make({
     return Response.raw(body, {
       headers: {
         ...headers,
-        "content-type": file.type,
+        "content-type": headers["content-type"] ??
+          (file.type === "" ? contentType(extname(file.name)) ?? "application/octet-stream" : file.type),
         "content-length": contentLength.toString()
       },
       status,
