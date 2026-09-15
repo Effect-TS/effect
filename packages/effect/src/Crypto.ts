@@ -12,6 +12,7 @@
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as random from "./internal/random.ts"
+import * as Ulid from "./internal/ulid.ts"
 import * as Uuid from "./internal/uuid.ts"
 import * as PlatformError from "./PlatformError.ts"
 
@@ -291,7 +292,7 @@ export const make = (
       Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16)))
     ),
     randomULID: Effect.clockWith((clock) =>
-      Effect.succeed(Uuid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
+      Effect.succeed(Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
     )
   })
 }
