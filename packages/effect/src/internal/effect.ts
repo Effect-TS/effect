@@ -4175,10 +4175,10 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
 
 /** @internal */
 export const onExit: {
-  <A, E, XE, XR>(
+  <A, E, XE = never, XR = never>(
     f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR>
   ): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(
+  <A, E, R, XE = never, XR = never>(
     self: Effect.Effect<A, E, R>,
     f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR>
   ): Effect.Effect<A, E | XE, R | XR>

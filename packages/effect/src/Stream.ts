@@ -9926,19 +9926,6 @@ export const haltWhen: {
 /**
  * Runs the provided finalizer when the stream exits, passing the exit value.
  *
- * **Details**
- *
- * The finalizer runs uninterruptibly and exactly once, whether the stream
- * completes, fails, is interrupted, or is terminated early by its consumer. If
- * the finalizer fails, its failure is propagated; if both the stream and the
- * finalizer fail, their causes are combined, matching `Effect.onExit`.
- *
- * When the consumer terminates the stream early (for example, via `take` or
- * `runHead`), the finalizer runs as its scope closes, after downstream has
- * observed completion. Its failure remains typed but surfaces in the effect
- * closing the scope; `Stream.catch` and `Stream.catchCause` cannot recover it.
- * Handle it with `Effect.catch` around the effect running the stream.
- *
  * **Example** (Running a finalizer on exit)
  *
  * ```ts import.meta.vitest
@@ -9963,17 +9950,17 @@ export const haltWhen: {
  * @since 4.0.0
  */
 export const onExit: {
-  <E, XE, XR>(
-    finalizer: (exit: Exit.Exit<void, E>) => Effect.Effect<void, XE, XR>
-  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(
+  <E, R2>(
+    finalizer: (exit: Exit.Exit<unknown, E>) => Effect.Effect<unknown, never, R2>
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E, R | R2>
+  <A, E, R, R2>(
     self: Stream<A, E, R>,
-    finalizer: (exit: Exit.Exit<void, E>) => Effect.Effect<void, XE, XR>
-  ): Stream<A, E | XE, R | XR>
-} = dual(2, <A, E, R, XE, XR>(
+    finalizer: (exit: Exit.Exit<unknown, E>) => Effect.Effect<unknown, never, R2>
+  ): Stream<A, E, R | R2>
+} = dual(2, <A, E, R, R2>(
   self: Stream<A, E, R>,
-  finalizer: (exit: Exit.Exit<void, E>) => Effect.Effect<void, XE, XR>
-): Stream<A, E | XE, R | XR> => fromChannel(Channel.onExit(self.channel, finalizer)))
+  finalizer: (exit: Exit.Exit<unknown, E>) => Effect.Effect<unknown, never, R2>
+): Stream<A, E, R | R2> => fromChannel(Channel.onExit(self.channel, finalizer)))
 
 /**
  * Runs the provided effect when the stream fails, passing the failure cause.
@@ -10153,11 +10140,11 @@ export const onEnd: {
  * @since 2.0.0
  */
 export const ensuring: {
-  <X, R1>(finalizer: Effect.Effect<X, never, R1>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R1 | R>
-  <A, E, R, X, R1>(self: Stream<A, E, R>, finalizer: Effect.Effect<X, never, R1>): Stream<A, E, R1 | R>
+  <R2>(finalizer: Effect.Effect<unknown, never, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R | R2>
+  <A, E, R, R2>(self: Stream<A, E, R>, finalizer: Effect.Effect<unknown, never, R2>): Stream<A, E, R | R2>
 } = dual(
   2,
-  <A, E, R, X, R1>(self: Stream<A, E, R>, finalizer: Effect.Effect<X, never, R1>): Stream<A, E, R1 | R> =>
+  <A, E, R, R2>(self: Stream<A, E, R>, finalizer: Effect.Effect<unknown, never, R2>): Stream<A, E, R | R2> =>
     fromChannel(Channel.ensuring(self.channel, finalizer))
 )
 

@@ -7218,18 +7218,6 @@ export const onError: {
  * Returns a channel with an exit-aware finalizer that is guaranteed to run once
  * the channel begins execution, whether it succeeds or fails.
  *
- * **Details**
- *
- * The finalizer runs uninterruptibly and exactly once, whether the channel
- * completes, fails, is interrupted, or is terminated early by its consumer. If
- * the finalizer fails, its failure is propagated; if both the channel and the
- * finalizer fail, their causes are combined, matching `Effect.onExit`.
- *
- * When the consumer terminates the channel early, the finalizer runs as its
- * scope closes, after downstream has observed completion. Its failure remains
- * typed but surfaces in the effect closing the scope; downstream channel error
- * handlers cannot recover it. Handle it around the effect running the channel.
- *
  * **Example** (Running exit finalizers)
  *
  * ```ts import.meta.vitest
@@ -7255,54 +7243,23 @@ export const onError: {
  * @since 4.0.0
  */
 export const onExit: {
-  <OutDone, OutErr, XE, XR>(
-    finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, XE, XR>
+  <OutDone, OutErr, Env2>(
+    finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, never, Env2>
   ): <OutElem, InElem, InErr, InDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
-  ) => Channel<OutElem, OutErr | XE, OutDone, InElem, InErr, InDone, Env | XR>
-  <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, XE, XR>(
+  ) => Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env2 | Env>
+  <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, Env2>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-    finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, XE, XR>
-  ): Channel<OutElem, OutErr | XE, OutDone, InElem, InErr, InDone, Env | XR>
-} = dual(2, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, XE, XR>(
+    finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, never, Env2>
+  ): Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env2 | Env>
+} = dual(2, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, Env2>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-  finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, XE, XR>
-): Channel<OutElem, OutErr | XE, OutDone, InElem, InErr, InDone, Env | XR> =>
+  finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, never, Env2>
+): Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env2 | Env> =>
   fromTransformBracket((upstream, scope, forkedScope) =>
-    Effect.flatMap(Effect.context<XR>(), (context) => {
-      let finalized = false
-      const runFinalizer = (exit: Exit.Exit<OutDone, OutErr>): Effect.Effect<void, XE, XR> =>
-        Effect.suspend(() => {
-          if (finalized) return Effect.void
-          finalized = true
-          return Effect.asVoid(finalizer(exit))
-        })
-      return Effect.andThen(
-        // Setup failures, interruption and early termination close the forked
-        // scope inside `Effect.onExit`, so a failing finalizer is combined
-        // with the channel's own cause.
-        Scope.addFinalizerExit(
-          forkedScope,
-          // Scope requires an infallible finalizer, but Scope.close propagates
-          // typed finalizer failures at runtime despite its infallible signature.
-          // This cast relies on that behavior to preserve the finalizer's error.
-          (exit) => Effect.provideContext(runFinalizer(exit), context) as Effect.Effect<void>
-        ),
-        Effect.map(toTransform(self)(upstream, scope), (pull) =>
-          // When a pull ends the channel, run the finalizer before the cause
-          // reaches downstream: a failing finalizer replaces `Done` and is
-          // combined with a failure, matching `Effect.onExit`.
-          Effect.catchCauseIf(
-            pull,
-            (cause) => !Cause.hasInterrupts(cause),
-            (cause) =>
-              Effect.flatMap(
-                Effect.onExit(Pull.doneExitFromCause(cause) as Exit.Exit<OutDone, OutErr>, runFinalizer),
-                Cause.done
-              )
-          ))
-      )
-    })
+    Scope.addFinalizerExit(forkedScope, finalizer as any).pipe(
+      Effect.andThen(toTransform(self)(upstream, scope))
+    )
   ))
 
 /**

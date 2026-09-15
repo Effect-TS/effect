@@ -6985,10 +6985,10 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
  * @since 2.0.0
  */
 export const onExit: {
-  <A, E, XE, XR>(
+  <A, E, XE = never, XR = never>(
     f: (exit: Exit.Exit<A, E>) => Effect<void, XE, XR>
   ): <R>(self: Effect<A, E, R>) => Effect<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(
+  <A, E, R, XE = never, XR = never>(
     self: Effect<A, E, R>,
     f: (exit: Exit.Exit<A, E>) => Effect<void, XE, XR>
   ): Effect<A, E | XE, R | XR>

@@ -3,7 +3,6 @@ import {
   Data,
   type Effect,
   type ExecutionPlan,
-  type Exit,
   pipe,
   type PubSub,
   type Queue,
@@ -30,7 +29,6 @@ class AiError extends Data.TaggedError("AiError")<{ readonly reason: RateLimit |
 
 declare const aiStream: Stream.Stream<string, AiError | ErrorB, "dep-1">
 
-declare const finalizer: Effect.Effect<void, "finalizer error", "finalizer">
 declare const pubsub: PubSub.PubSub<string>
 declare const recordStream: Stream.Stream<{ readonly key: string; readonly keep: boolean }, ErrorA, "dep-1">
 declare const numberStream: Stream.Stream<number, ErrorB, "dep-2">
@@ -63,16 +61,6 @@ describe("Stream.bind", () => {
     expect(result).type.toBe<
       Stream.Stream<{ readonly keep: boolean; key: number }, ErrorA | ErrorB, "dep-1" | "dep-2">
     >()
-  })
-})
-
-describe("Stream.onExit", () => {
-  it("adds finalizer errors and services in data-first usage", () => {
-    const result = Stream.onExit(stream, (exit) => {
-      expect(exit).type.toBe<Exit.Exit<void, ErrorA | ErrorB>>()
-      return finalizer
-    })
-    expect(result).type.toBe<Stream.Stream<string, ErrorA | ErrorB | "finalizer error", "dep-1" | "finalizer">>()
   })
 })
 
