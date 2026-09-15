@@ -1229,7 +1229,7 @@ describe("workflow send-time abandonment", () => {
                   }
                 })
                 yield* masked ? Effect.uninterruptible(recover) : recover
-                yield* Effect.yieldNow()
+                if (trigger !== "parked waiter" || path !== "mailbox") yield* Effect.yieldNow()
                 yield* Effect.withFiberRuntime((fiber) =>
                   Effect.sync(() => {
                     observed.continued = true
@@ -1279,6 +1279,15 @@ describe("workflow send-time abandonment", () => {
                 yield* sendNow.open
               }
               yield* TestClock.adjust(1)
+              const run = driver.journal.find((e) =>
+                e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
+              )
+              assert(run?._tag === "Request")
+              assert.deepStrictEqual(
+                driver.requests.get(run.requestId)!.replies,
+                [],
+                `send-time abandonment must not persist Complete; requester=${JSON.stringify(observed)}`
+              )
               const request = driver.journal.find((e) =>
                 e._tag === "Request" && e.address.entityType === target.type && e.address.entityId === "late"
               )
@@ -1290,15 +1299,6 @@ describe("workflow send-time abandonment", () => {
                 "only requests sent before teardown may reach the handler"
               )
               assert.strictEqual(routeFailures, trigger === "closing manager" ? 1 : 0)
-              const run = driver.journal.find((e) =>
-                e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
-              )
-              assert(run?._tag === "Request")
-              assert.deepStrictEqual(
-                driver.requests.get(run.requestId)!.replies,
-                [],
-                `send-time abandonment must not persist Complete; requester=${JSON.stringify(observed)}`
-              )
               assert.strictEqual(observed.insideMask, masked, "recovery must respect the caller's interruption mask")
               assert.strictEqual(observed.pendingInMask, masked, "masked recovery must retain pending abandonment")
               assert.isFalse(observed.continued)
