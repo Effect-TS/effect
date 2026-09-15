@@ -3441,6 +3441,7 @@ interface fieldsAssign<NewFields extends Struct.Fields> extends Lambda {
 export function fieldsAssign<const NewFields extends Struct.Fields>(fields: NewFields) {
   return Struct_.lambda<fieldsAssign<NewFields>>((struct) => struct.mapFields(Struct_.assign(fields)))
 }
+const EncodeKeysTypeId = "~effect/Schema/encodeKeys"
 /**
  * Type-level representation returned by {@link encodeKeys}.
  *
@@ -3461,8 +3462,13 @@ export interface encodeKeys<
       }
     >
   >
-{}
-
+{
+  readonly [EncodeKeysTypeId]: typeof EncodeKeysTypeId
+  readonly fields: S["fields"]
+}
+function isEncodeKeys$(schema: unknown): schema is encodeKeys<Struct<Struct.Fields>, any> {
+  return Predicate.hasProperty(schema, EncodeKeysTypeId) && schema[EncodeKeysTypeId] === EncodeKeysTypeId
+}
 const canonicalPropertyKey = (key: PropertyKey): string | symbol =>
   typeof key === "symbol" ? key : globalThis.String(key)
 /**
@@ -3515,13 +3521,19 @@ export function encodeKeys<
         reverseMapping[encodedKey] = k
       }
     }
-    return Struct(fields).pipe(decodeTo(
+    const schema = Struct(fields).pipe(decodeTo(
       self,
       SchemaTransformation.transform<any, any>({
         decode: Struct_.renameKeys(reverseMapping),
         encode: Struct_.renameKeys(appliedMapping)
       })
-    )) as any
+    ))
+    return make(schema.ast, {
+      [EncodeKeysTypeId]: EncodeKeysTypeId,
+      to: schema.to,
+      from: schema.from,
+      fields: self.fields,
+    }) as any
   }
 }
 /**
@@ -13681,7 +13693,9 @@ export function Result<A extends Constraint, E extends Constraint>(
  * @category models
  * @since 3.10.0
  */
-export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fields }, Inherited>
+export interface Class<Self, S extends 
+  | Constraint & { readonly fields: Struct.Fields }
+  | encodeKeys<Struct<Struct.Fields>, any>, Inherited>
   extends
     BottomLazyWithoutNew<
       SchemaAST.Declaration,
@@ -13789,7 +13803,7 @@ const payloadToken = {}
 
 function makeClass<
   Self,
-  S extends Struct<Struct.Fields>,
+  S extends Struct<Struct.Fields> | encodeKeys<Struct<Struct.Fields>, any>,
   Inherited extends new(...args: ReadonlyArray<any>) => any
 >(
   Inherited: Inherited,
@@ -13856,6 +13870,11 @@ function makeClass<
         schema: Struct.Fields | Struct<Struct.Fields>,
         annotations?: Annotations.Declaration<any, readonly [any]>
       ) => {
+        if (isEncodeKeys$(struct)) {
+          throw new globalThis.Error(
+            `extend is not supported on a Class built from an encodeKeys schema (identifier: "${identifier}")`
+          )
+        }
         const extension = isStruct(schema) ? schema : Struct(schema)
         const fields = { ...struct.fields, ...extension.fields }
         const ast = SchemaAST.struct(fields, struct.ast.checks, { identifier })
@@ -13874,7 +13893,7 @@ function makeClass<
         readonly unsafePreserveChecks?: boolean | undefined
       } | undefined
     ): Struct<Simplify<Readonly<To>>> {
-      return struct.mapFields(f, options)
+      return isEncodeKeys$(struct) ? struct.to.mapFields(f, options) : struct.mapFields(f, options)
     }
   }
 
@@ -13948,9 +13967,12 @@ function getClassSchemaFactory<S extends Constraint>(
   }
 }
 
-function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Struct<Struct.Fields> {
+function isStruct(
+  schema: Struct.Fields | Struct<Struct.Fields> | encodeKeys<Struct<Struct.Fields>, any>
+): schema is Struct<Struct.Fields> | encodeKeys<Struct<Struct.Fields>, any> {
   return isSchema(schema)
 }
+
 /**
  * Creates a schema-backed class whose constructor validates input against a
  * {@link Struct} schema. Construction throws an `Error` with a
@@ -14030,10 +14052,14 @@ export const Class: {
       schema: S,
       annotations?: Annotations.Declaration<Self, readonly [S]>
     ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Class"> : Class<Self, S, Brand>
+    <S extends encodeKeys<Struct<Struct.Fields>, any>>(
+      schema: S,
+      annotations?: Annotations.Declaration<Self, readonly [S]>
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Class"> : Class<Self, S, Brand>
   }
 } = <Self, Brand = {}>(identifier: string) =>
 (
-  schema: Struct.Fields | Struct<Struct.Fields>,
+  schema: Struct.Fields | Struct<Struct.Fields> | encodeKeys<Struct<Struct.Fields>, any>,
   annotations?: Annotations.Declaration<Self, readonly [Struct<Struct.Fields>]>
 ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Class"> : Class<Self, Struct<Struct.Fields>, Brand> => {
   const struct = isStruct(schema) ? schema : Struct(schema)
