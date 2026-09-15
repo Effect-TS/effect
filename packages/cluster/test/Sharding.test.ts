@@ -1098,6 +1098,51 @@ describe("entity registration and outgoing requests", () => {
     }
   }
 
+  for (const masked of [false, true]) {
+    it.effect(`cannot continue after an abandoned persisted send (masked=${masked})`, () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const rpc = Rpc.make("AbandonedPing").annotate(ClusterSchema.Persisted, true)
+        const request = yield* makeRequest({ rpc, payload: undefined })
+        const scope = yield* Scope.make()
+        const context = yield* Layer.build(Sharding.layer.pipe(
+          Layer.provide(RunnerStorage.layerMemory),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(Runners.layerNoop),
+          Layer.provide(ShardingConfig.layer({
+            runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+            shardsPerGroup: 1,
+            entityTerminationTimeout: 0,
+            sendRetryInterval: 10
+          }))
+        )).pipe(Scope.extend(scope))
+        const sharding = Context.get(context, Sharding.Sharding)
+        yield* TestClock.adjust(1)
+        yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("1 second"), TestServices.provideLive)
+        assert.isTrue(yield* sharding.isShutdown)
+
+        let continued = false
+        const send = Effect.gen(function*() {
+          yield* sharding.sendOutgoing(request, false)
+          continued = true
+        })
+        const result = yield* send.pipe(
+          masked ? Effect.uninterruptible : Effect.interruptible,
+          Effect.fork,
+          Effect.flatMap(Fiber.await),
+          Effect.timeoutOption("1 second"),
+          TestServices.provideLive
+        )
+        assert(Option.isSome(result), "abandoned send did not settle")
+        assert(Exit.isFailure(result.value))
+        assert(Cause.isInterruptedOnly(result.value.cause))
+        const pending = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+        assert.strictEqual(pending.length, 1)
+        assert.strictEqual(pending[0].envelope.requestId, request.envelope.requestId)
+        assert.isFalse(continued, "caller continued past an abandoned persisted send")
+      }).pipe(Effect.provide(MemoryLive)))
+  }
+
   it.scoped("forwards user interrupts from a fiber that previously rebuilt a resource", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
