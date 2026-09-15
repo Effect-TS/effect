@@ -1,3 +1,7 @@
+effect/Stream#let:
+  include: true
+  replacement: "Stream.let"
+  note: "Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify<Omit<A, N> & Record<N, B>>."
 effect/Stream#Stream:
   replacement: "Stream"
   note: "The Stream<A, E, R> interface is unchanged in shape and keeps the effect/Stream import path; the type-id key is now the string literal \"~effect/Stream\" instead of a unique symbol."
@@ -29,8 +33,8 @@ effect/Stream#aggregateWithinEither:
   replacement: "Stream.aggregateWithin"
   note: "Either-emitting variant removed; v4 aggregateWithin(sink, schedule) emits only the sink outputs B (schedule outputs are no longer surfaced as Either.right)."
 effect/Stream#as:
-  replacement: "Stream.map(() => value)"
-  note: "Stream.as was removed; replace each element with a constant via Stream.map."
+  replacement: "Stream.as"
+  note: "Retained in v4 with the same signature; replaces every element with the provided constant value."
 effect/Stream#async:
   replacement: "Stream.callback"
   note: "Stream.callback((queue) => Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail."
@@ -392,6 +396,7 @@ effect/Stream#toReadableStreamRuntime:
   replacement: "Stream.toReadableStreamWith"
   note: "Renamed; takes a `Context.Context<XR>` instead of a Runtime (v4 removed Runtime); options `{ strategy?: QueuingStrategy }` unchanged."
 effect/Stream#transduce:
+  include: true
   replacement: "Stream.transduce"
   note: "Unchanged name and Sink-based shape; chunks are plain arrays in v4."
 effect/Stream#unfoldChunk:

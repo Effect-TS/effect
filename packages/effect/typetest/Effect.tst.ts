@@ -77,6 +77,25 @@ declare const numberRecord: Record<string, Effect.Effect<number, "err-4", "dep-4
 declare const unionRecord: { a: typeof string } | { b: typeof number }
 declare const optionalEffect: Option.Option<Effect.Effect<string, "err-1", "dep-1">>
 declare const iterableString: Effect.Effect<Iterable<string>, "err-1", "dep-1">
+declare const unknownValue: unknown
+
+describe("Effect.isEffect", () => {
+  it("narrows unknown values to unknown success, error, and service types", () => {
+    if (Effect.isEffect(unknownValue)) {
+      expect(unknownValue).type.toBe<Effect.Effect<unknown, unknown, unknown>>()
+    }
+  })
+})
+
+describe("Effect.orElseSucceed", () => {
+  it("passes the previous error in data-first usage", () => {
+    const result = Effect.orElseSucceed(string, (error) => {
+      expect(error).type.toBe<"err-1">()
+      return error.length
+    })
+    expect(result).type.toBe<Effect.Effect<string | number, never, "dep-1">>()
+  })
+})
 
 class AcquireReleaseDependency extends Context.Service<AcquireReleaseDependency, string>()(
   "AcquireReleaseDependency"

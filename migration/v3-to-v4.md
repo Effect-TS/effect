@@ -15571,7 +15571,7 @@ Schema.toFormatter(schema)
 
 - `Stream.aggregateWithinEither` -> `Stream.aggregateWithin`: Either-emitting variant removed; v4 aggregateWithin(sink, schedule) emits only the sink outputs B (schedule outputs are no longer surfaced as Either.right).
 
-- `Stream.as` -> `Stream.map(() => value)`: Stream.as was removed; replace each element with a constant via Stream.map.
+- `Stream.as` -> `Stream.as`: Retained in v4 with the same signature; replaces every element with the provided constant value.
 
 - `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
@@ -15682,6 +15682,8 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 - `Stream.interruptAfter` -> `Stream.interruptWhen(Effect.sleep(duration))`: Duration-specialized interrupt removed; interruptWhen forks the sleep and also interrupts an in-progress pull, matching v3 semantics.
 
 - `Stream.interruptWhenDeferred` -> `Stream.interruptWhen(Deferred.await(deferred))`: Deferred-specialized variant removed; pass Deferred.await to Stream.interruptWhen (a Deferred failure surfaces as the stream's failure, as before).
+
+- `Stream.let` -> `Stream.let`: Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify\<Omit\<A, N\> & Record\<N, B\>\>.
 
 - `Stream.mapChunks` -> `Stream.mapArray`: Chunk-\>Array rename; transforms each emitted chunk as a NonEmptyReadonlyArray.
 

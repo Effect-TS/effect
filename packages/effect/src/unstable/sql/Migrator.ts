@@ -195,7 +195,7 @@ export const make = <RD = never>({
               )
           ),
           Effect.filterOrFail(
-            Effect.isEffect,
+            (_): _ is Effect.Effect<any, any, Client.SqlClient> => Effect.isEffect(_),
             () =>
               new MigrationError({
                 kind: "ImportError",
