@@ -15637,7 +15637,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before).
 
-- `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer uninterruptibly with the Exit\<void, E\> of the stream. On normal completion or failure, finalizer errors enter the stream error channel and combine with any source failure. During interruption or early termination, cleanup runs through the scope and finalizer errors become defects.
+- `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer uninterruptibly and exactly once with the Exit\<void, E\> of the stream, including on interruption and early termination. Finalizer errors enter the stream error channel and combine with any source failure, matching Effect.onExit.
 
 - `Stream.execute` -> `Stream.fromEffectDrain`: Renamed; runs the effect for its side effects and emits nothing (Stream\<never, E, R\>).
 

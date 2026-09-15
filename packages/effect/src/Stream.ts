@@ -9928,10 +9928,10 @@ export const haltWhen: {
  *
  * **Details**
  *
- * The finalizer runs uninterruptibly. If it fails after the stream completes,
- * its failure is propagated. If both the stream and the finalizer fail, their
- * causes are combined. During interruption or early termination, finalizer
- * errors are converted to defects because no pull remains to report them.
+ * The finalizer runs uninterruptibly and exactly once, whether the stream
+ * completes, fails, is interrupted, or is terminated early by its consumer. If
+ * the finalizer fails, its failure is propagated; if both the stream and the
+ * finalizer fail, their causes are combined, matching `Effect.onExit`.
  *
  * **Example** (Running a finalizer on exit)
  *

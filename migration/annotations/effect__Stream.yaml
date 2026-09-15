@@ -119,7 +119,7 @@ effect/Stream#either:
   note: "Either is replaced by Result in v4: Stream.result yields Stream<Result.Result<A, E>, never, R> (element -> Result.succeed, first error -> Result.fail and the stream ends, as before)."
 effect/Stream#ensuringWith:
   replacement: "Stream.onExit"
-  note: "Renamed; Stream.onExit runs the finalizer uninterruptibly with the Exit<void, E> of the stream. On normal completion or failure, finalizer errors enter the stream error channel and combine with any source failure. During interruption or early termination, cleanup runs through the scope and finalizer errors become defects."
+  note: "Renamed; Stream.onExit runs the finalizer uninterruptibly and exactly once with the Exit<void, E> of the stream, including on interruption and early termination. Finalizer errors enter the stream error channel and combine with any source failure, matching Effect.onExit."
 effect/Stream#execute:
   replacement: "Stream.fromEffectDrain"
   note: "Renamed; runs the effect for its side effects and emits nothing (Stream<never, E, R>)."

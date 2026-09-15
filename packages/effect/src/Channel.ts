@@ -7220,10 +7220,10 @@ export const onError: {
  *
  * **Details**
  *
- * The finalizer runs uninterruptibly. If it fails after the channel completes,
- * its failure is propagated. If both the channel and the finalizer fail, their
- * causes are combined. During interruption or early termination, finalizer
- * errors are converted to defects because no pull remains to report them.
+ * The finalizer runs uninterruptibly and exactly once, whether the channel
+ * completes, fails, is interrupted, or is terminated early by its consumer. If
+ * the finalizer fails, its failure is propagated; if both the channel and the
+ * finalizer fail, their causes are combined, matching `Effect.onExit`.
  *
  * **Example** (Running exit finalizers)
  *
@@ -7263,38 +7263,39 @@ export const onExit: {
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
   finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, XE, XR>
 ): Channel<OutElem, OutErr | XE, OutDone, InElem, InErr, InDone, Env | XR> =>
-  fromTransformBracket(Effect.fnUntraced(function*(upstream, scope, forkedScope) {
-    const context = yield* Effect.context<XR>()
-    let finalized = false
-    const runFinalizer = (exit: Exit.Exit<OutDone, OutErr>): Effect.Effect<void, XE, XR> =>
-      Effect.suspend(() => {
-        if (finalized) return Effect.void
-        finalized = true
-        return Effect.asVoid(finalizer(exit))
-      })
-    // Scope cleanup handles interruption and early termination, where no pull
-    // remains to report a typed finalizer error.
-    yield* Scope.addFinalizerExit(
-      forkedScope,
-      (exit) => Effect.provideContext(Effect.orDie(runFinalizer(exit)), context)
-    )
-    const pull = yield* Effect.onExit(
-      toTransform(self)(upstream, scope),
-      (exit) =>
-        Exit.isFailure(exit) && !Cause.hasInterrupts(exit.cause)
-          ? runFinalizer(Exit.failCause(exit.cause))
-          : Effect.void
-    )
-    return Effect.catchCauseIf(
-      pull,
-      (cause) => !Cause.hasInterrupts(cause),
-      (cause) =>
-        Effect.flatMap(
-          Effect.onExit(Pull.doneExitFromCause(cause) as Exit.Exit<OutDone, OutErr>, runFinalizer),
-          Cause.done
-        )
-    )
-  })))
+  fromTransformBracket((upstream, scope, forkedScope) =>
+    Effect.flatMap(Effect.context<XR>(), (context) => {
+      let finalized = false
+      const runFinalizer = (exit: Exit.Exit<OutDone, OutErr>): Effect.Effect<void, XE, XR> =>
+        Effect.suspend(() => {
+          if (finalized) return Effect.void
+          finalized = true
+          return Effect.asVoid(finalizer(exit))
+        })
+      return Effect.andThen(
+        // Setup failures, interruption and early termination close the forked
+        // scope inside `Effect.onExit`, so a failing finalizer is combined
+        // with the channel's own cause.
+        Scope.addFinalizerExit(
+          forkedScope,
+          (exit) => Effect.provideContext(runFinalizer(exit), context) as Effect.Effect<void>
+        ),
+        Effect.map(toTransform(self)(upstream, scope), (pull) =>
+          // When a pull ends the channel, run the finalizer before the cause
+          // reaches downstream: a failing finalizer replaces `Done` and is
+          // combined with a failure, matching `Effect.onExit`.
+          Effect.catchCauseIf(
+            pull,
+            (cause) => !Cause.hasInterrupts(cause),
+            (cause) =>
+              Effect.flatMap(
+                Effect.onExit(Pull.doneExitFromCause(cause) as Exit.Exit<OutDone, OutErr>, runFinalizer),
+                Cause.done
+              )
+          ))
+      )
+    })
+  ))
 
 /**
  * Runs an effect before the channel starts.
