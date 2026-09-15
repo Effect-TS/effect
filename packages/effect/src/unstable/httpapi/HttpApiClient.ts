@@ -38,6 +38,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import * as HttpApiPath from "./internal/path.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -330,7 +331,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
       },
       onEndpoint(onEndpointOptions) {
         const { group, endpoint, errors, successes } = onEndpointOptions
-        const makeUrl = compilePath(endpoint.path)
+        const makeUrl = compilePath(endpoint.path, endpoint.params)
         const decodeMap: Record<number | "orElse", ResponseDecoder> = { orElse: statusOrElse }
         const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of errors.entries()) {
@@ -667,7 +668,7 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
       InternalRecord.assignProperty(builder, group.identifier, {})
     },
     onEndpoint({ group, endpoint }) {
-      const makeUrl = compilePath(endpoint.path)
+      const makeUrl = compilePath(endpoint.path, endpoint.params)
       const encodeParams = endpoint.params === undefined
         ? undefined
         : Schema.encodeSync(endpoint.params as unknown as Schema.ConstraintEncoder<unknown>)
@@ -716,14 +717,16 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 const paramsRegExp = /(\/?):(\w+)(\?)?/g
 
-const compilePath = (path: string) => {
-  if (!paramsRegExp.test(path)) {
+const compilePath = (path: string, schema: Schema.Top | undefined) => {
+  if (schema === undefined || !path.includes(":")) {
     return (_: any) => path
   }
-  paramsRegExp.lastIndex = 0
+  const paramNames = HttpApiPath.getParamNames(schema)
   return (params: Record<string, string | undefined>) => {
-    paramsRegExp.lastIndex = 0
-    return path.replace(paramsRegExp, (_, slash: string, key: string, optional: string | undefined) => {
+    return path.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
+      if (paramNames !== undefined && !paramNames.has(key)) {
+        return match
+      }
       const value = params[key]
       if (value === undefined) {
         if (optional !== undefined) {

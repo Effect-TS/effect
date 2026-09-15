@@ -34,6 +34,40 @@ const TestServices = Layer.mergeAll(
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
+  it.effect("round trips a path parameter followed by a literal action suffix", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("operations").add(
+          HttpApiEndpoint.post("wait", "/operations/:id:wait", {
+            params: { id: Schema.String },
+            success: Schema.String
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "operations", (handlers) =>
+        handlers.handle("wait", ({ params }) =>
+          Effect.succeed(params.id)))
+      const client = yield* HttpApiTest.groups(Api, ["operations"]).pipe(Effect.provide(GroupLayer))
+
+      assert.strictEqual(yield* client.operations.wait({ params: { id: "op_1" } }), "op_1")
+    }))
+
+  it.effect("does not bind a non-word schema key in a literal client path", () =>
+    Effect.gen(function*() {
+      const Params = Schema.Struct({ "a$b": Schema.optional(Schema.String) })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/x/:a$b", { params: Params, success: Params })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("get", ({ params }) =>
+          Effect.succeed(params)))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.get({ params: { "a$b": "value" } }), {})
+    }))
+
   it.effect("returns the callback unchanged and supports registration in a group", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(

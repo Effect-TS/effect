@@ -70,6 +70,32 @@ const makeSecurityApi = (
   )
 
 describe("OpenApi", () => {
+  it("preserves literal action suffixes in path templates", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("operations").add(
+        HttpApiEndpoint.post("wait", "/operations/:id:wait", {
+          params: { id: Schema.String }
+        })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(Object.keys(spec.paths), ["/operations/{id}:wait"])
+    assert.deepStrictEqual(spec.paths["/operations/{id}:wait"]?.post?.parameters, [
+      { name: "id", in: "path", required: true, schema: { type: "string" } }
+    ])
+  })
+
+  it("keeps action paths literal when no parameter schema is declared", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("offers").add(HttpApiEndpoint.post("resolve", "/offers:resolve"))
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(Object.keys(spec.paths), ["/offers:resolve"])
+    assert.deepStrictEqual(spec.paths["/offers:resolve"]?.post?.parameters, [])
+  })
+
   it("preserves parameter schemas when an endpoint transform reorders parameters", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
@@ -531,8 +557,8 @@ describe("OpenApi", () => {
   it("rejects equivalent templated method and path pairs", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
-        HttpApiEndpoint.get("first", "/users/:id"),
-        HttpApiEndpoint.get("second", "/users/:userId")
+        HttpApiEndpoint.get("first", "/users/:id", { params: { id: Schema.String } }),
+        HttpApiEndpoint.get("second", "/users/:userId", { params: { userId: Schema.String } })
       )
     )
 

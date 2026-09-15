@@ -52,6 +52,7 @@ import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import * as HttpApiPath from "./internal/path.ts"
 import * as OpenApi from "./OpenApi.ts"
 
 /**
@@ -892,7 +893,7 @@ export function handlerToRoute(
   const endpoint = handler.endpoint
   return HttpRouter.route(
     endpoint.method,
-    endpoint.path as HttpRouter.PathInput,
+    HttpApiPath.toRouterPath(endpoint.path, endpoint.params) as HttpRouter.PathInput,
     handlerToHttpEffect(group, endpoint, context, handler.handler, handler.isRaw),
     { uninterruptible: handler.uninterruptible }
   )

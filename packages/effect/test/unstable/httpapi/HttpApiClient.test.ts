@@ -6,6 +6,41 @@ import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } fr
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
 describe("HttpApiClient", () => {
+  describe("literal action suffixes", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("operations").add(
+        HttpApiEndpoint.post("wait", "/operations/:id:wait", {
+          params: Schema.Struct({ id: Schema.String })
+        })
+      )
+    )
+    const expectedUrl = "https://api.example.com/operations/op_1:wait"
+
+    it("urlBuilder preserves the undeclared action suffix", () => {
+      const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
+
+      strictEqual(urls.operations.wait({ params: { id: "op_1" } }), expectedUrl)
+    })
+
+    it.effect("make sends the request with the literal action suffix", () =>
+      Effect.gen(function*() {
+        let requestUrl: string | undefined
+        const httpClient = HttpClient.make((request, url) =>
+          Effect.sync(() => {
+            requestUrl = url.toString()
+            return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+          })
+        )
+        const client = yield* HttpApiClient.make(Api, { baseUrl: "https://api.example.com" }).pipe(
+          Effect.provideService(HttpClient.HttpClient, httpClient)
+        )
+
+        yield* client.operations.wait({ params: { id: "op_1" } })
+
+        strictEqual(requestUrl, expectedUrl)
+      }))
+  })
+
   describe("streaming responses", () => {
     it.effect("decodes StreamSse events incrementally", () =>
       Effect.gen(function*() {
