@@ -24,9 +24,10 @@ describe("HttpApiClient", () => {
 
     it.effect("make sends the request with the literal action suffix", () =>
       Effect.gen(function*() {
+        let requestUrl: string | undefined
         const httpClient = HttpClient.make((request, url) =>
           Effect.sync(() => {
-            strictEqual(url.toString(), expectedUrl)
+            requestUrl = url.toString()
             return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
           })
         )
@@ -35,6 +36,8 @@ describe("HttpApiClient", () => {
         )
 
         yield* client.operations.wait({ params: { id: "op_1" } })
+
+        strictEqual(requestUrl, expectedUrl)
       }))
   })
 
