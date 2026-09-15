@@ -1297,10 +1297,28 @@ const make = Effect.gen(function*() {
             asMailbox: isStream,
             context
           }) as Effect.Effect<any, any>
-          // Re-signal abandonment in the caller or mailbox reader, preserving its mask.
-          if (!isStream) return ClusterAbandon.onError(response)
-          const mailbox = Effect.map(ClusterAbandon.onError(response), ClusterAbandon.mailbox)
-          return options?.asMailbox ? mailbox : Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))
+          // Re-signal abandonment in the caller or stream consumer, preserving its mask.
+          const acquired = ClusterAbandon.onError(response)
+          if (!isStream) return acquired
+          if (options?.asMailbox) {
+            // Interrupt the owner before exposing abandonment to the mailbox consumer.
+            return Effect.flatMap(acquired, (source: Mailbox.ReadonlyMailbox<any, any>) =>
+              Effect.gen(function*() {
+                const sink = yield* Mailbox.make<any, any>()
+                const pump: Effect.Effect<void, any> = Effect.flatMap(source.takeAll, ([chunk, done]) =>
+                  Effect.andThen(sink.offerAll(chunk), done ? Effect.asVoid(sink.end) : pump))
+                yield* Effect.forkScoped(pump.pipe(
+                  Effect.onError((cause) =>
+                    Effect.andThen(ClusterAbandon.interruptOwner(cause), sink.failCause(cause))
+                  ),
+                  Effect.interruptible
+                ))
+                return sink as Mailbox.ReadonlyMailbox<any, any>
+              }))
+          }
+          return Stream.unwrapScoped(Effect.map(acquired, Mailbox.toStream)).pipe(
+            Stream.onError(ClusterAbandon.reSignal)
+          )
         }
         const proxyClient: any = {}
         return new Proxy(proxyClient, {
