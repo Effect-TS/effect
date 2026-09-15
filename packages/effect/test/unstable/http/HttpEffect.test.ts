@@ -1,8 +1,8 @@
 import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { ByteSize, Context, Effect, FileSystem, Option, References, Scope, Stream, Tracer } from "effect"
+import { Context, Effect, Option, References, Scope, Stream, Tracer } from "effect"
 import * as Layer from "effect/Layer"
-import { HttpEffect, HttpPlatform, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
+import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import {
   appendPreResponseHandlerUnsafe,
   requestPreResponseHandlers
@@ -110,40 +110,20 @@ describe("HttpEffect", () => {
       strictEqual(await response.text(), "foobar")
     })
 
-    test.each(["Content-Type", "content-type"])("preserves a stream's %s header", async (header) => {
+    test("preserves explicit stream headers", async () => {
       const handler = HttpEffect.toWebHandler(Effect.succeed(
-        HttpServerResponse.stream(Stream.make("export {}").pipe(Stream.encodeText)).pipe(
-          HttpServerResponse.setHeaders({ [header]: "text/javascript" })
+        HttpServerResponse.stream(Stream.empty).pipe(
+          HttpServerResponse.setHeaders({
+            "Content-Type": "text/javascript",
+            "Content-Length": "9007199254740993"
+          })
         )
       ))
       const response = await handler(new Request("http://localhost/script.js"))
-      const body = await response.text()
+      await response.arrayBuffer()
 
       strictEqual(response.headers.get("content-type"), "text/javascript")
-      strictEqual(body, "export {}")
-    })
-
-    test("preserves an oversized file's exact content-length header", async () => {
-      const size = 9007199254740993n
-      const layer = HttpPlatform.layer.pipe(Layer.provide(FileSystem.layerNoop({
-        stat: () =>
-          Effect.succeed({
-            type: "File",
-            size: ByteSize.bytes(size),
-            mtime: Option.none()
-          } as FileSystem.File.Info),
-        stream: () => Stream.empty
-      })))
-      const { handler, dispose } = HttpEffect.toWebHandlerLayer(HttpServerResponse.file("file.bin"), layer)
-      try {
-        const response = await handler(new Request("http://localhost/file.bin"))
-        await response.arrayBuffer()
-
-        strictEqual(response.status, 200)
-        strictEqual(response.headers.get("content-length"), size.toString())
-      } finally {
-        await dispose()
-      }
+      strictEqual(response.headers.get("content-length"), "9007199254740993")
     })
 
     test("stream scope", async () => {

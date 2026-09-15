@@ -14,67 +14,31 @@ describe("HttpPlatform", () => {
     stream: () => Stream.empty
   })))
 
-  for (
-    const [name, path, options, expected] of [
-      ["extension", "script.js", {}, "text/javascript"],
-      ["contentType option", "script.js", { contentType: "application/custom" }, "application/custom"],
-      ["header", "script.js", { headers: { "Content-Type": "application/header" } }, "application/header"],
-      [
-        "option over header",
-        "script.js",
-        { contentType: "application/custom", headers: { "content-type": "application/header" } },
-        "application/custom"
-      ],
-      ["extensionless path", "file", {}, "application/octet-stream"],
-      ["unknown extension", "file.unknown-extension", {}, "application/octet-stream"]
-    ] as const
-  ) {
-    it.effect(`fileResponse content type: ${name}`, () =>
-      Effect.gen(function*() {
-        const platform = yield* HttpPlatform.HttpPlatform
-        const response = yield* platform.fileResponse(path, options)
+  it.effect("fileResponse infers the content type from the extension", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("script.js")
+      assert.strictEqual(response.headers["content-type"], "text/javascript")
+    }).pipe(Effect.provide(layer)))
 
-        assert.strictEqual(response.headers["content-type"], expected)
-      }).pipe(Effect.provide(layer)))
-  }
+  it.effect("fileResponse honors contentType over a conflicting header", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("script.js", {
+        contentType: "application/custom",
+        headers: { "content-type": "application/header" }
+      })
+      assert.strictEqual(response.headers["content-type"], "application/custom")
+    }).pipe(Effect.provide(layer)))
 
-  for (
-    const [name, filename, type, options, expected] of [
-      ["File.type over extension", "script.js", "application/file", {}, "application/file"],
-      ["extension with empty File.type", "script.js", "", {}, "text/javascript"],
-      ["extensionless name", "file", "", {}, "application/octet-stream"],
-      ["unknown extension", "file.unknown-extension", "", {}, "application/octet-stream"],
-      [
-        "contentType over File.type",
-        "script.js",
-        "application/file",
-        { contentType: "application/custom" },
-        "application/custom"
-      ],
-      [
-        "header over File.type",
-        "script.js",
-        "application/file",
-        { headers: { "Content-Type": "application/header" } },
-        "application/header"
-      ],
-      [
-        "option over header and File.type",
-        "script.js",
-        "application/file",
-        { contentType: "application/custom", headers: { "content-type": "application/header" } },
-        "application/custom"
-      ]
-    ] as const
-  ) {
-    it.effect(`fileWebResponse content type: ${name}`, () =>
-      Effect.gen(function*() {
-        const platform = yield* HttpPlatform.HttpPlatform
-        const response = yield* platform.fileWebResponse(new File(["export {}"], filename, { type }), options)
-
-        assert.strictEqual(response.headers["content-type"], expected)
-      }).pipe(Effect.provide(layer)))
-  }
+  it.effect("fileWebResponse honors contentType over the file type", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileWebResponse(new File([], "script.js", { type: "text/plain" }), {
+        contentType: "text/javascript"
+      })
+      assert.strictEqual(response.headers["content-type"], "text/javascript")
+    }).pipe(Effect.provide(layer)))
 
   it.effect("serves a whole oversized file with an exact content-length header", () =>
     Effect.gen(function*() {

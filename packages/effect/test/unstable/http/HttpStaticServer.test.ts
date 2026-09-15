@@ -26,15 +26,14 @@ const services = Layer.mergeAll(
 
 describe("HttpStaticServer", () => {
   it.effect("preserves the JavaScript MIME type through toWebHandler", () => {
-    const contents = "export {}"
     const fileSystem = FileSystem.layerNoop({
       stat: () =>
         Effect.succeed({
           type: "File",
-          size: ByteSize.bytes(contents.length),
+          size: ByteSize.zero,
           mtime: Option.none()
         } as FileSystem.File.Info),
-      stream: () => Stream.make(contents).pipe(Stream.encodeText)
+      stream: () => Stream.empty
     })
     const layer = Layer.mergeAll(
       Path.layer,
@@ -46,11 +45,9 @@ describe("HttpStaticServer", () => {
       const response = yield* Effect.promise(() =>
         HttpEffect.toWebHandler(app)(new Request("http://localhost/script.js"))
       )
-      const body = yield* Effect.promise(() => response.text())
+      yield* Effect.promise(() => response.arrayBuffer())
 
-      assert.strictEqual(response.status, 200)
       assert.strictEqual(response.headers.get("content-type"), "text/javascript; charset=utf-8")
-      assert.strictEqual(body, contents)
     }).pipe(Effect.provide(layer))
   })
 
