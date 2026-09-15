@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`1af4232fea7bc613e1dc68db9bec7b1f596d9e68`)
+Base: `origin/v3` (`6dc0ebe7f7a60a40e618a0dc005ff1444ea58dc8`)
 
-Head: `origin/main` (`fd910d1cc6f817ceb677c688d964f4173b3aa0e3`)
+Head: `HEAD` (`281cc66bf8f0ba00ad2468ed8f7d81e92521b301`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -9800,8 +9800,6 @@ Arbitrary.schema(schema)
 
 - `Effect.allowInterrupt` -> `Effect.yieldNow`: Yield to the scheduler to create an interruptible checkpoint. Adapt arguments and imports to the v4 API.
 
-- `Effect.annotateLogs` -> `Effect.annotateLogs`: Still exported in v4; update call sites for the revised signature, options, and channel inference.
-
 - `Effect.ap` -> `Effect.zipWith`: Zip the function effect and value effect, then apply the function in the combiner. Adapt arguments and imports to the v4 API.
 
 - `Effect.asSomeError` -> `Effect.mapError`: Map errors with `Option.some`. Adapt arguments and imports to the v4 API.
@@ -10119,8 +10117,6 @@ Arbitrary.schema(schema)
 - `Effect.withEarlyRelease` -> `Scope.make + Scope.close`: Create a Scope explicitly, provide it to acquisition, and retain a close action. Adapt arguments and imports to the v4 API.
 
 - `Effect.withFiberRuntime` -> `none`: Direct FiberRuntime access was removed; use public Effect, Fiber, and Context operations. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
-
-- `Effect.withLogSpan` -> `Effect.withLogSpan`: Still exported in v4; update call sites for the revised signature, options, and channel inference.
 
 - `Effect.withMaxOpsBeforeYield` -> `none`: The scheduler operation budget is no longer configurable through Effect. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -15571,8 +15567,6 @@ Schema.toFormatter(schema)
 
 - `Stream.aggregateWithinEither` -> `Stream.aggregateWithin`: Either-emitting variant removed; v4 aggregateWithin(sink, schedule) emits only the sink outputs B (schedule outputs are no longer surfaced as Either.right).
 
-- `Stream.as` -> `Stream.map(() => value)`: Stream.as was removed; replace each element with a constant via Stream.map.
-
 - `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
 - `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect (run before the stream starts pulling), covering asyncEffect; signal end/failure through the provided Queue.
@@ -15637,7 +15631,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before).
 
-- `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer with the Exit\<unknown, E\> of the stream, identical shape.
+- `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer with the Exit\<void, E\> of the stream. The finalizer may now fail, in which case its error is added to the stream error channel.
 
 - `Stream.execute` -> `Stream.fromEffectDrain`: Renamed; runs the effect for its side effects and emits nothing (Stream\<never, E, R\>).
 
@@ -15682,6 +15676,8 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 - `Stream.interruptAfter` -> `Stream.interruptWhen(Effect.sleep(duration))`: Duration-specialized interrupt removed; interruptWhen forks the sleep and also interrupts an in-progress pull, matching v3 semantics.
 
 - `Stream.interruptWhenDeferred` -> `Stream.interruptWhen(Deferred.await(deferred))`: Deferred-specialized variant removed; pass Deferred.await to Stream.interruptWhen (a Deferred failure surfaces as the stream's failure, as before).
+
+- `Stream.let` -> `Stream.let`: Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify\<Omit\<A, N\> & Record\<N, B\>\>.
 
 - `Stream.mapChunks` -> `Stream.mapArray`: Chunk-\>Array rename; transforms each emitted chunk as a NonEmptyReadonlyArray.
 
@@ -15842,8 +15838,6 @@ Effect.suspend(() => {
 - `Stream.toQueueOfElements` -> `Stream.toQueue`: The Exit\<A, Option\<E\>\>-per-element queue is gone; v4 toQueue(options: { capacity, strategy? }) returns Effect\<Queue.Dequeue\<A, E | Cause.Done\>, never, R | Scope\> — elements are plain values and failure/end arrive through the queue's error/done channel.
 
 - `Stream.toReadableStreamRuntime` -> `Stream.toReadableStreamWith`: Renamed; takes a `Context.Context<XR>` instead of a Runtime (v4 removed Runtime); options `{ strategy?: QueuingStrategy }` unchanged.
-
-- `Stream.transduce` -> `Stream.transduce`: Unchanged name and Sink-based shape; chunks are plain arrays in v4.
 
 - `Stream.unfoldChunk` -> `Stream.paginate`: Removed; v4 Stream.paginate(s, (s) =\> Effect\<[ReadonlyArray\<A\>, Option\<S\>]\>) is the array-emitting unfold — wrap the pure step in Effect.succeed; to end without emitting return `[[], Option.none()]`.
 

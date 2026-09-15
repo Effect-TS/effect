@@ -1,3 +1,6 @@
+effect/Stream#let:
+  replacement: "Stream.let"
+  note: "Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify<Omit<A, N> & Record<N, B>>."
 effect/Stream#Stream:
   replacement: "Stream"
   note: "The Stream<A, E, R> interface is unchanged in shape and keeps the effect/Stream import path; the type-id key is now the string literal \"~effect/Stream\" instead of a unique symbol."
