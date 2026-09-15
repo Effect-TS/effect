@@ -9925,6 +9925,13 @@ export const haltWhen: {
 /**
  * Runs the provided finalizer when the stream exits, passing the exit value.
  *
+ * **Details**
+ *
+ * The finalizer runs uninterruptibly. If it fails after the stream completes,
+ * its failure is propagated. If both the stream and the finalizer fail, their
+ * causes are combined. During interruption or early termination, finalizer
+ * errors are converted to defects because no pull remains to report them.
+ *
  * **Example** (Running a finalizer on exit)
  *
  * ```ts import.meta.vitest
@@ -9949,45 +9956,17 @@ export const haltWhen: {
  * @since 4.0.0
  */
 export const onExit: {
-  <E, XE = never, XR = never>(
+  <E, XE, XR>(
     finalizer: (exit: Exit.Exit<void, E>) => Effect.Effect<void, XE, XR>
   ): <A, R>(self: Stream<A, E, R>) => Stream<A, E | XE, R | XR>
-  <A, E, R, XE = never, XR = never>(
+  <A, E, R, XE, XR>(
     self: Stream<A, E, R>,
     finalizer: (exit: Exit.Exit<void, E>) => Effect.Effect<void, XE, XR>
   ): Stream<A, E | XE, R | XR>
-} = dual(2, <A, E, R, XE = never, XR = never>(
+} = dual(2, <A, E, R, XE, XR>(
   self: Stream<A, E, R>,
   finalizer: (exit: Exit.Exit<void, E>) => Effect.Effect<void, XE, XR>
-): Stream<A, E | XE, R | XR> =>
-  transformPullBracket(self, (pull, _scope, forkedScope) =>
-    Effect.flatMap(Effect.context<XR>(), (context) => {
-      let finalized = false
-      const runFinalizer = (exit: Exit.Exit<void, E>): Effect.Effect<void, XE, XR> => {
-        if (finalized) return Effect.void
-        finalized = true
-        return finalizer(exit)
-      }
-      // Interruption and early termination close the forked scope, which runs
-      // the finalizer with the scope's exit. Stream end and failures are
-      // handled on the pull itself so a failing finalizer fails the stream.
-      return Effect.map(
-        Scope.addFinalizerExit(
-          forkedScope,
-          (exit) => Effect.provideContext(Effect.orDie(runFinalizer(exit)), context)
-        ),
-        () =>
-          Effect.catchCauseIf(
-            pull,
-            (cause) => !Cause.hasInterrupts(cause),
-            (cause) =>
-              Effect.flatMap(
-                runFinalizer(Pull.doneExitFromCause(cause) as Exit.Exit<void, E>),
-                () => Effect.failCause(cause)
-              )
-          )
-      )
-    })))
+): Stream<A, E | XE, R | XR> => fromChannel(Channel.onExit(self.channel, finalizer)))
 
 /**
  * Runs the provided effect when the stream fails, passing the failure cause.
