@@ -10,7 +10,7 @@ export const ulidString = (timestampMillis: number, bytes: Uint8Array): string =
   const timestamp = Math.min(Math.max(0, Math.trunc(timestampMillis)), maxTimestamp)
   let out = ""
   for (let shift = 45; shift >= 0; shift -= 5) {
-    // Masking maps NaN to zero, matching UUIDv7's byte encoding.
+    // Take the low 5 bits and map NaN to zero, matching UUIDv7's byte encoding.
     out += base32Chars[Math.floor(timestamp / 2 ** shift) & 0x1f]
   }
 
