@@ -110,6 +110,22 @@ describe("HttpEffect", () => {
       strictEqual(await response.text(), "foobar")
     })
 
+    test("preserves explicit stream headers", async () => {
+      const handler = HttpEffect.toWebHandler(Effect.succeed(
+        HttpServerResponse.stream(Stream.empty).pipe(
+          HttpServerResponse.setHeaders({
+            "Content-Type": "text/javascript",
+            "Content-Length": "9007199254740993"
+          })
+        )
+      ))
+      const response = await handler(new Request("http://localhost/script.js"))
+      await response.arrayBuffer()
+
+      strictEqual(response.headers.get("content-type"), "text/javascript")
+      strictEqual(response.headers.get("content-length"), "9007199254740993")
+    })
+
     test("stream scope", async () => {
       let order = 0
       let streamFinalized = 0

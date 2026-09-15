@@ -14,6 +14,32 @@ describe("HttpPlatform", () => {
     stream: () => Stream.empty
   })))
 
+  it.effect("fileResponse infers the content type from the extension", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("script.js")
+      assert.strictEqual(response.headers["content-type"], "text/javascript")
+    }).pipe(Effect.provide(layer)))
+
+  it.effect("fileResponse honors contentType over a conflicting header", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("script.js", {
+        contentType: "application/custom",
+        headers: { "content-type": "application/header" }
+      })
+      assert.strictEqual(response.headers["content-type"], "application/custom")
+    }).pipe(Effect.provide(layer)))
+
+  it.effect("fileWebResponse honors contentType over the file type", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileWebResponse(new File([], "script.js", { type: "text/plain" }), {
+        contentType: "text/javascript"
+      })
+      assert.strictEqual(response.headers["content-type"], "text/javascript")
+    }).pipe(Effect.provide(layer)))
+
   it.effect("serves a whole oversized file with an exact content-length header", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform

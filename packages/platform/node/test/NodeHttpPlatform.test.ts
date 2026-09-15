@@ -21,6 +21,13 @@ const readStream = (stream: Readable) =>
   })
 
 describe("NodeHttpPlatform", { concurrent: false }, () => {
+  it.effect("fileWebResponse prefers File.type over the extension", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileWebResponse(new File([], "script.js", { type: "application/custom" }))
+      assert.strictEqual(response.headers["content-type"], "application/custom")
+    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+
   it.effect("fileResponse reads exact bytesToRead", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform

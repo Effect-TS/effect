@@ -23,6 +23,7 @@ import * as Headers from "./Headers.ts"
 import type * as Body from "./HttpBody.ts"
 import * as Response from "./HttpServerResponse.ts"
 import * as internal from "./internal/compression.ts"
+import * as Mime from "./Mime.ts"
 
 /**
  * Service for platform-specific HTTP response helpers, including file-backed server responses.
@@ -35,7 +36,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
   readonly compression: Compression
   readonly fileResponse: (
     path: string,
-    options?: Response.Options.WithContent & {
+    options?: Response.Options.WithContentType & {
       readonly bytesToRead?: ByteSize.Input | undefined
       readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
@@ -43,7 +44,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
   ) => Effect.Effect<Response.HttpServerResponse, PlatformError>
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
-    options?: Response.Options.WithContent & {
+    options?: Response.Options.WithContentType & {
       readonly bytesToRead?: number | undefined
       readonly chunkSize?: number | undefined
       readonly offset?: number | undefined
@@ -106,11 +107,7 @@ export const make: (impl: {
       const limit = bytesToRead === undefined ? undefined : offset + contentLength
       const start = yield* fileResponseNumber(offset, "offset")
       const end = limit === undefined ? undefined : yield* fileResponseNumber(limit, "end")
-      const headers = Headers.set(
-        options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
-        "etag",
-        Etag.toString(etag)
-      )
+      const headers = Headers.set(optionHeaders(options), "etag", Etag.toString(etag))
       if (Option.isSome(info.mtime)) {
         ;(headers as any)["last-modified"] = info.mtime.value.toUTCString()
       }
@@ -127,7 +124,7 @@ export const make: (impl: {
     fileWebResponse(file, options) {
       return Effect.map(etagGen.fromFileWeb(file), (etag) => {
         const headers = Headers.merge(
-          options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+          optionHeaders(options),
           Headers.fromRecordUnsafe({
             etag: Etag.toString(etag),
             "last-modified": new Date(file.lastModified).toUTCString()
@@ -144,6 +141,11 @@ export const make: (impl: {
     }
   })
 })
+
+const optionHeaders = (options: Response.Options.WithContentType | undefined): Headers.Headers => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return options?.contentType ? Headers.set(headers, "content-type", options.contentType) : headers
+}
 
 const fileResponseSize = (input: ByteSize.Input, field: string): Effect.Effect<ByteSize.ByteSize, PlatformError> => {
   const size = ByteSize.fromInput(input)
@@ -174,7 +176,8 @@ const fileResponseNumber = (value: bigint, field: string): Effect.Effect<number,
  * **Details**
  *
  * The layer uses the `FileSystem` and weak ETag services to add file metadata
- * headers such as `etag` and `last-modified`.
+ * headers such as `etag` and `last-modified`. Missing content types are inferred
+ * from the file extension.
  *
  * @category layers
  * @since 4.0.0
@@ -192,6 +195,7 @@ export const layer = Layer.effect(HttpPlatform)(
             bytesToRead: end !== undefined ? end - start : undefined
           }),
           {
+            contentType: headers["content-type"] ?? mimeType(path),
             // Omit unsafe numeric metadata so it cannot overwrite the exact header.
             contentLength: Number.isSafeInteger(length) ? length : undefined,
             headers: Headers.set(headers, "content-length", contentLength.toString()),
@@ -234,6 +238,7 @@ export const layer = Layer.effect(HttpPlatform)(
             Stream.map((chunk) => chunk.bytes)
           )
         return Response.stream(stream, {
+          contentType: headers["content-type"] ?? (file.type === "" ? mimeType(file.name) : file.type),
           contentLength,
           headers,
           status,
@@ -242,6 +247,8 @@ export const layer = Layer.effect(HttpPlatform)(
       }
     }))
 ).pipe(Layer.provide(Etag.layerWeak))
+
+const mimeType = (path: string): string => Option.getOrElse(Mime.getType(path), () => "application/octet-stream")
 
 /**
  * Content codings that HTTP response compression can apply.

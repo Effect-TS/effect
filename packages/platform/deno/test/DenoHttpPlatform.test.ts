@@ -19,6 +19,24 @@ const readBody = (body: HttpBody.HttpBody) => {
 }
 
 describe("DenoHttpPlatform", () => {
+  it.effect("fileWebResponse preserves the requested content type", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileWebResponse(new File([], "script.js", { type: "text/plain" }), {
+        contentType: "text/javascript"
+      })
+      assert.strictEqual(response.headers["content-type"], "text/javascript")
+    }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+
+  for (const [name, expected] of [["image.png", "image/png"], ["file", "application/octet-stream"]]) {
+    it.effect(`fileWebResponse resolves an empty File.type for ${name}`, () =>
+      Effect.gen(function*() {
+        const platform = yield* HttpPlatform.HttpPlatform
+        const response = yield* platform.fileWebResponse(new File([], name))
+        assert.strictEqual(response.headers["content-type"], expected)
+      }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+  }
+
   for (
     const { name, offset, bytesToRead, expected } of [
       { name: "clamps bytesToRead beyond EOF", offset: 1, bytesToRead: 10, expected: "bcd" },

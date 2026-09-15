@@ -477,7 +477,7 @@ const HttpPlatformKey = Context.Service<
  * **Details**
  *
  * The effect requires `HttpPlatform`, can fail with a platform error, and supports
- * options for status, headers, offset, and byte range.
+ * options for status, headers, content type, offset, and byte range.
  *
  * @category constructors
  * @since 4.0.0
@@ -485,7 +485,7 @@ const HttpPlatformKey = Context.Service<
 export const file = (
   path: string,
   options?:
-    | (Options & {
+    | (Options.WithContentType & {
       readonly bytesToRead?: ByteSize.Input | undefined
       readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
@@ -500,7 +500,7 @@ export const file = (
  * **Details**
  *
  * The effect requires `HttpPlatform` and supports options for status, headers,
- * offset, and byte range.
+ * content type, offset, and byte range.
  *
  * @category constructors
  * @since 4.0.0
@@ -508,7 +508,7 @@ export const file = (
 export const fileWeb = (
   file: Body.HttpBody.FileLike,
   options?:
-    | (Options.WithContent & {
+    | (Options.WithContentType & {
       readonly bytesToRead?: number | undefined
       readonly chunkSize?: number | undefined
       readonly offset?: number | undefined
@@ -930,6 +930,21 @@ export const setBody: {
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse =>
     makeResponse({ ...self, body }, bodyInternal.updateHeaders(self.headers, body))
 )
+
+/**
+ * Replaces the body without updating headers. Use when content metadata is unchanged.
+ *
+ * @internal
+ */
+export const setBodyKeepHeaders = (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse => {
+  const response = Object.create(Proto) as Mutable<HttpServerResponse>
+  response.status = self.status
+  response.statusText = self.statusText
+  response.headers = self.headers
+  response.cookies = self.cookies
+  response.body = body
+  return response
+}
 
 /**
  * Sets the HTTP status code of an `HttpServerResponse`.

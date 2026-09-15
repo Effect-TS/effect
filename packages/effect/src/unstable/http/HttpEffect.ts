@@ -211,7 +211,7 @@ export const scopeTransferToStream = (
   const fiber = Fiber.getCurrent()!
   const scope = Context.getUnsafe(fiber.context, Scope.Scope) as Scope.Closeable
   scopeDisableClose(scope)
-  return Response.setBody(
+  return Response.setBodyKeepHeaders(
     response,
     HttpBody.stream(
       Stream.onExit(response.body.stream, (exit) => Scope.close(scope, exit)),

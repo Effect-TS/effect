@@ -103,7 +103,9 @@ export const make = Platform.make({
         headers,
         Headers.fromRecordUnsafe({
           "content-type": headers["content-type"] ??
-            Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream"),
+            (file.type === ""
+              ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
+              : file.type),
           "content-length": file.size.toString()
         })
       ),
