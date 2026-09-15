@@ -6,8 +6,15 @@ const randomness = () => Uint8Array.from({ length: 10 }, (_, i) => i)
 describe("Ulid", () => {
   it("encodes ULID strings", () => {
     assert.strictEqual(Ulid.ulidString(0x0123456789ab, randomness()), "014D2PF2DB000G40R40M30E209")
+  })
+
+  it("accepts the minimum and maximum timestamps", () => {
     assert.strictEqual(Ulid.ulidString(0, new Uint8Array(10)), "00000000000000000000000000")
     assert.strictEqual(Ulid.ulidString(2 ** 48 - 1, new Uint8Array(10).fill(0xff)), "7ZZZZZZZZZZZZZZZZZZZZZZZZZ")
+  })
+
+  it.each([-1, 0.5, NaN, -Infinity, Infinity, 2 ** 48])("rejects invalid timestamp %s", (timestamp) => {
+    assert.throws(() => Ulid.ulidString(timestamp, randomness()), RangeError)
   })
 
   it("orders timestamps before randomness", () => {
