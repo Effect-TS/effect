@@ -726,7 +726,6 @@ const compilePath = (path: string, schema: Schema.Top | undefined) => {
     ? new Set(ast.propertySignatures.map((ps) => String(ps.name)))
     : undefined
   return (params: Record<string, string | undefined>) => {
-    paramsRegExp.lastIndex = 0
     return path.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
       if (paramNames !== undefined && !paramNames.has(key)) {
         return match
