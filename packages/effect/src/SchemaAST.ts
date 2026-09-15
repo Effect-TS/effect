@@ -2222,7 +2222,10 @@ export interface Arrays extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault?: SchemaParser.Compiler
+  ): SchemaParser.Parser
   /** @internal */
 
   recur(recur: (ast: AST) => AST): Arrays
@@ -2403,9 +2406,10 @@ export const Arrays: new(
     return "array"
   }
 }
+
 type ArrayParserState = {
   readonly ast: AST
-  readonly input: unknown
+  readonly input: ReadonlyArray<unknown>
   readonly len: number
   readonly getParser: (
     tailThreshold: number,
@@ -2414,7 +2418,37 @@ type ArrayParserState = {
   readonly tailThreshold: number
   readonly options: ParseOptions
   readonly output: Array<unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
+}
+
+/** @internal */
+export function stepArray(
+  s: ArrayParserState,
+  item: unknown,
+  exit: Exit.Exit<unknown, SchemaIssue.Issue>,
+  i: number
+) {
+  if (exit._tag === "Failure") {
+    return wrapPropertyKeyIssue(s, s.ast, i, exit)
+  }
+  const value = exit === InternalParser.sameExit
+    ? item
+    : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+  if (value !== InternalParser.missing) {
+    s.output[i] = value
+  } else {
+    const p = s.getParser(s.tailThreshold, i)
+    if (isOptional(p.ast)) return
+    const issue = new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(p.ast.context?.annotations))
+    if (s.options.errors === "all") {
+      if (s.issues) s.issues.push(issue)
+      else s.issues = [issue]
+    } else {
+      return Exit.fail(
+        new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
+      )
+    }
+  }
 }
 
 const parseArrayOptions = {
@@ -2422,32 +2456,11 @@ const parseArrayOptions = {
     const value = i < s.len ? item : InternalParser.missing
     return s.getParser(s.tailThreshold, i).parser(value, s.options)
   },
-  step(s: ArrayParserState, item: unknown, exit: Exit.Exit<unknown, SchemaIssue.Issue>, i: number) {
-    if (exit._tag === "Failure") {
-      return wrapPropertyKeyIssue(s, s.ast, i, exit)
-    }
-    const value = exit === InternalParser.sameExit
-      ? item
-      : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    if (value !== InternalParser.missing) {
-      s.output[i] = value
-    } else {
-      const p = s.getParser(s.tailThreshold, i)
-      if (isOptional(p.ast)) return
-      const issue = new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(p.ast.context?.annotations))
-      if (s.options.errors === "all") {
-        if (s.issues) s.issues.push(issue)
-        else s.issues = [issue]
-      } else {
-        return Exit.fail(
-          new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
-        )
-      }
-    }
-  }
+  step: stepArray
 }
 
-const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
+/** @internal */
+export const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
 const parseArrayConcurrent = iterateConcurrent<ArrayParserState, unknown>()(parseArrayOptions)
 
 const wrapPropertyKeyIssue = (
@@ -2707,7 +2720,10 @@ export interface Objects extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault?: SchemaParser.Compiler
+  ): SchemaParser.Parser
   /** @internal */
 
   flip(recur: (ast: AST) => AST): AST
@@ -3104,7 +3120,7 @@ type ObjectParserState = {
   readonly input: Record<PropertyKey, unknown>
   readonly options: ParseOptions
   readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
 }
 
 type ParsedProperty = {
@@ -3113,7 +3129,8 @@ type ParsedProperty = {
   readonly type: AST
 }
 
-function stepProperty(
+/** @internal */
+export function stepProperty(
   s: ObjectParserState,
   p: ParsedProperty,
   exit: Exit.Exit<unknown, SchemaIssue.Issue>
@@ -3154,7 +3171,8 @@ const parsePropertiesOptions = {
   step: stepProperty
 }
 
-const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
+/** @internal */
+export const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 const parsePropertiesConcurrent = iterateConcurrent<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {
@@ -4738,7 +4756,8 @@ function segmentTemplateLiteralParts(
   return go(0, 0) ? out : undefined
 }
 
-const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+/** @internal */
+export const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast
