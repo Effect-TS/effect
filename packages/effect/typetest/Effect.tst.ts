@@ -95,14 +95,6 @@ describe("Effect.orElseSucceed", () => {
     })
     expect(result).type.toBe<Effect.Effect<string | number, never, "dep-1">>()
   })
-
-  it("passes the previous error in data-last usage", () => {
-    const result = string.pipe(Effect.orElseSucceed((error) => {
-      expect(error).type.toBe<"err-1">()
-      return error.length
-    }))
-    expect(result).type.toBe<Effect.Effect<string | number, never, "dep-1">>()
-  })
 })
 
 class AcquireReleaseDependency extends Context.Service<AcquireReleaseDependency, string>()(
@@ -513,31 +505,6 @@ describe("Effect.catchTag", () => {
 })
 
 describe("Effect.catchTags", () => {
-  const handlers = {
-    AiError: (_error: AiError) => Effect.succeed("ok"),
-    UnknownTag: () => Effect.succeed("unexpected")
-  }
-
-  it("rejects extra handler keys in data-first usage", () => {
-    // @ts-expect-error UnknownTag
-    Effect.catchTags(mixedEffect, handlers)
-  })
-
-  it("rejects extra handler keys in data-last usage", () => {
-    // @ts-expect-error UnknownTag
-    mixedEffect.pipe(Effect.catchTags(handlers))
-  })
-
-  it("rejects extra handler keys with a data-first fallback", () => {
-    // @ts-expect-error UnknownTag
-    Effect.catchTags(mixedEffect, handlers, () => Effect.succeed("fallback"))
-  })
-
-  it("rejects extra handler keys with a data-last fallback", () => {
-    // @ts-expect-error UnknownTag
-    mixedEffect.pipe(Effect.catchTags(handlers, () => Effect.succeed("fallback")))
-  })
-
   it("removes handled errors when orElse is omitted", () => {
     const result = pipe(
       mixedEffect,

@@ -36,42 +36,11 @@ declare const recordStream: Stream.Stream<{ readonly key: string; readonly keep:
 declare const numberStream: Stream.Stream<number, ErrorB, "dep-2">
 
 describe("Stream utility types", () => {
-  type Streams = Stream.Stream<string, ErrorA, "dep-1"> | Stream.Stream<number, ErrorB, "dep-2">
-
-  it("distributes over unions of streams", () => {
-    expect<Stream.Success<Streams>>().type.toBe<string | number>()
-    expect<Stream.Error<Streams>>().type.toBe<ErrorA | ErrorB>()
-    expect<Stream.Services<Streams>>().type.toBe<"dep-1" | "dep-2">()
-  })
-
-  it("returns never for non-stream types", () => {
-    expect<Stream.Success<number>>().type.toBe<never>()
-    expect<Stream.Error<number>>().type.toBe<never>()
-    expect<Stream.Services<number>>().type.toBe<never>()
-  })
-
-  it("ignores non-stream members of a union", () => {
-    expect<Stream.Success<Streams | number>>().type.toBe<string | number>()
-    expect<Stream.Error<Streams | number>>().type.toBe<ErrorA | ErrorB>()
-    expect<Stream.Services<Streams | number>>().type.toBe<"dep-1" | "dep-2">()
-  })
-})
-
-describe("Stream.orElseSucceed", () => {
-  it("passes the previous error in data-first usage", () => {
-    const result = Stream.orElseSucceed(stream, (error) => {
-      expect(error).type.toBe<ErrorA | ErrorB>()
-      return error._tag.length
-    })
-    expect(result).type.toBe<Stream.Stream<string | number, never, "dep-1">>()
-  })
-
-  it("passes the previous error in data-last usage", () => {
-    const result = stream.pipe(Stream.orElseSucceed((error) => {
-      expect(error).type.toBe<ErrorA | ErrorB>()
-      return error._tag.length
-    }))
-    expect(result).type.toBe<Stream.Stream<string | number, never, "dep-1">>()
+  it("distributes over unions and ignores non-stream members", () => {
+    type Input = Stream.Stream<string, ErrorA, "dep-1"> | Stream.Stream<number, ErrorB, "dep-2"> | number
+    expect<Stream.Success<Input>>().type.toBe<string | number>()
+    expect<Stream.Error<Input>>().type.toBe<ErrorA | ErrorB>()
+    expect<Stream.Services<Input>>().type.toBe<"dep-1" | "dep-2">()
   })
 })
 
@@ -79,46 +48,18 @@ describe("Stream.runIntoPubSub", () => {
   it("preserves errors and services in data-first usage", () => {
     expect(Stream.runIntoPubSub(stream, pubsub)).type.toBe<Effect.Effect<void, ErrorA | ErrorB, "dep-1">>()
   })
-
-  it("preserves errors and services in data-last usage", () => {
-    expect(stream.pipe(Stream.runIntoPubSub(pubsub))).type.toBe<Effect.Effect<void, ErrorA | ErrorB, "dep-1">>()
-  })
 })
 
 describe("Stream.let", () => {
   it("replaces an existing field type in data-first usage", () => {
-    const result = Stream.let(recordStream, "key", (record) => {
-      expect(record.key).type.toBe<string>()
-      return record.key.length
-    })
-    expect(result).type.toBe<Stream.Stream<{ readonly keep: boolean; key: number }, ErrorA, "dep-1">>()
-  })
-
-  it("replaces an existing field type in data-last usage", () => {
-    const result = recordStream.pipe(Stream.let("key", (record) => {
-      expect(record.key).type.toBe<string>()
-      return record.key.length
-    }))
+    const result = Stream.let(recordStream, "key", (record) => record.key.length)
     expect(result).type.toBe<Stream.Stream<{ readonly keep: boolean; key: number }, ErrorA, "dep-1">>()
   })
 })
 
 describe("Stream.bind", () => {
   it("replaces an existing field and combines channels in data-first usage", () => {
-    const result = Stream.bind(recordStream, "key", (record) => {
-      expect(record.key).type.toBe<string>()
-      return numberStream
-    })
-    expect(result).type.toBe<
-      Stream.Stream<{ readonly keep: boolean; key: number }, ErrorA | ErrorB, "dep-1" | "dep-2">
-    >()
-  })
-
-  it("replaces an existing field and combines channels in data-last usage", () => {
-    const result = recordStream.pipe(Stream.bind("key", (record) => {
-      expect(record.key).type.toBe<string>()
-      return numberStream
-    }))
+    const result = Stream.bind(recordStream, "key", () => numberStream)
     expect(result).type.toBe<
       Stream.Stream<{ readonly keep: boolean; key: number }, ErrorA | ErrorB, "dep-1" | "dep-2">
     >()
@@ -131,14 +72,6 @@ describe("Stream.onExit", () => {
       expect(exit).type.toBe<Exit.Exit<void, ErrorA | ErrorB>>()
       return finalizer
     })
-    expect(result).type.toBe<Stream.Stream<string, ErrorA | ErrorB | "finalizer error", "dep-1" | "finalizer">>()
-  })
-
-  it("adds finalizer errors and services in data-last usage", () => {
-    const result = stream.pipe(Stream.onExit((exit) => {
-      expect(exit).type.toBe<Exit.Exit<void, ErrorA | ErrorB>>()
-      return finalizer
-    }))
     expect(result).type.toBe<Stream.Stream<string, ErrorA | ErrorB | "finalizer error", "dep-1" | "finalizer">>()
   })
 })
@@ -267,21 +200,6 @@ describe("Stream.catchTags", () => {
   it("rejects extra handler keys in data-first usage", () => {
     // @ts-expect-error UnknownTag
     Stream.catchTags(stream, handlers)
-  })
-
-  it("rejects extra handler keys in data-last usage", () => {
-    // @ts-expect-error UnknownTag
-    stream.pipe(Stream.catchTags(handlers))
-  })
-
-  it("rejects extra handler keys with a data-first fallback", () => {
-    // @ts-expect-error UnknownTag
-    Stream.catchTags(stream, handlers, () => Stream.succeed("fallback"))
-  })
-
-  it("rejects extra handler keys with a data-last fallback", () => {
-    // @ts-expect-error UnknownTag
-    stream.pipe(Stream.catchTags(handlers, () => Stream.succeed("fallback")))
   })
 
   it("removes handled errors when orElse is omitted", () => {

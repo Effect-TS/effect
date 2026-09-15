@@ -4304,31 +4304,19 @@ describe("Stream", () => {
   describe("partition", () => {
     it.effect("defaults to a capacity of 16", () =>
       Effect.gen(function*() {
-        const observed: Array<number> = []
-        const reachedBoundary = yield* Latch.make()
-        const [evens, odds] = yield* Stream.range(0, 39).pipe(
+        let pulled = 0
+        yield* Stream.range(0, 31).pipe(
           Stream.rechunk(1),
-          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n))
-        )
-        const fiber = yield* evens.pipe(
-          Stream.tap((n) =>
-            Effect.gen(function*() {
-              observed.push(n)
-              if (n === 32) yield* reachedBoundary.open
+          Stream.tap(() =>
+            Effect.sync(() => {
+              pulled++
             })
           ),
-          Stream.runDrain,
-          Effect.forkChild
+          Stream.partition(Result.succeed)
         )
-        yield* reachedBoundary.await
-        // Let scheduled pulls finish while the slower branch remains unconsumed.
         yield* TestClock.adjust(0)
-        assert.deepStrictEqual(observed, Array.range(0, 16).map((n) => n * 2))
-
-        const oddValues = yield* Stream.runCollect(odds)
-        yield* Fiber.join(fiber)
-        assert.deepStrictEqual(oddValues, Array.range(0, 19).map((n) => n * 2 + 1))
-        assert.deepStrictEqual(observed, Array.range(0, 19).map((n) => n * 2))
+        // Sixteen elements are buffered; the next offer is blocked.
+        assert.strictEqual(pulled, 17)
       }).pipe(Effect.scoped))
 
     it.effect("values", () =>

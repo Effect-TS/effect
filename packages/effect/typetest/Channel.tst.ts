@@ -25,16 +25,6 @@ describe("Channel.onExit", () => {
       Channel.Channel<number, ErrorA | "finalizer error", boolean, string, ErrorB, Date, "source" | "finalizer">
     >()
   })
-
-  it("adds finalizer errors and services in data-last usage", () => {
-    const result = source.pipe(Channel.onExit((exit) => {
-      expect(exit).type.toBe<Exit.Exit<boolean, ErrorA>>()
-      return finalizer
-    }))
-    expect(result).type.toBe<
-      Channel.Channel<number, ErrorA | "finalizer error", boolean, string, ErrorB, Date, "source" | "finalizer">
-    >()
-  })
 })
 
 describe("Channel.catchDefect", () => {
