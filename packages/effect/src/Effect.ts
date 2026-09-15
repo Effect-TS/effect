@@ -19,7 +19,7 @@ import type * as ExecutionPlan from "./ExecutionPlan.ts"
 import * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import type * as Filter from "./Filter.ts"
-import { constant, dual, type LazyArg } from "./Function.ts"
+import { dual, type LazyArg } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
@@ -14512,47 +14512,106 @@ export const trackDuration: {
 // -----------------------------------------------------------------------------
 
 /**
+ * Why the current transaction attempt started after a previous attempt did not commit.
+ *
+ * **Details**
+ *
+ * `"retry"` means the previous attempt called {@link txRetry}. `"conflict"`
+ * means an accessed `TxRef` changed before commit. The first attempt has no
+ * retry reason.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type TransactionRetryReason = "retry" | "conflict"
+
+/**
+ * Journal and attempt metadata for an Effect transaction.
+ *
+ * **When to use**
+ *
+ * Use to type the value provided by {@link Transaction}.
+ *
+ * **Details**
+ *
+ * `attempt` starts at `1` and counts each run of the outermost transaction body.
+ * `retryReason` is `"retry"` after {@link txRetry} and `"conflict"` after an
+ * accessed `TxRef` changes before commit; it is unset on the first attempt.
+ * `start`, `now`, `elapsed`, and `elapsedSincePrevious` are millisecond
+ * timestamps and durations for the current attempt, matching {@link Schedule}
+ * metadata.
+ *
+ * @see {@link Transaction} for the context service that provides this metadata
+ * @see {@link TransactionRetryReason} for the retry-reason tags recorded on later attempts
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TransactionMeta {
+  readonly journal: ReadonlyMap<
+    TxRef<any>,
+    {
+      readonly version: number
+      readonly value: any
+    }
+  >
+  readonly attempt: number
+  readonly retryReason: TransactionRetryReason | undefined
+  readonly start: number
+  readonly now: number
+  readonly elapsed: number
+  readonly elapsedSincePrevious: number
+}
+
+/** @internal */
+export interface TransactionMetaInner {
+  retry: boolean
+  journal: Map<
+    TxRef<any>,
+    {
+      readonly version: number
+      value: any
+    }
+  >
+  attempt: number
+  retryReason: TransactionRetryReason | undefined
+  start: number
+  now: number
+  elapsed: number
+  elapsedSincePrevious: number
+}
+
+/**
  * Service that holds the current transaction state.
  *
  * **Details**
  *
- * It includes a journal that stores non-committed changes to `TxRef` values and
- * a retry flag that records whether the transaction should be retried.
+ * Nested {@link tx} calls reuse this same service instance. Yield it inside a
+ * transaction body to read {@link TransactionMeta} fields such as `attempt`
+ * and `retryReason`.
  *
- * **Example** (Building transactions)
+ * **Example** (Reading transaction metadata)
  *
  * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * // Transaction class for software transactional memory operations
- * const txEffect = Effect.gen(function*() {
+ * const program = Effect.tx(Effect.gen(function*() {
  *   const tx = yield* Effect.Transaction
- *   // Use transaction for coordinated state changes
- *   return "Transaction complete"
- * })
+ *   return [tx.attempt, tx.retryReason, tx.elapsed, tx.elapsedSincePrevious]
+ * }))
  *
- * const runnable = Effect.provideService(txEffect, Effect.Transaction, {
- *   retry: false,
- *   journal: new Map()
- * })
- * Effect.runSync(runnable) // => "Transaction complete"
+ * Effect.runSync(program) // => [1, undefined, 0, 0]
  * ```
+ *
+ * @see {@link tx} for the outermost transaction boundary that creates this service
+ * @see {@link TransactionMeta} for the journal and attempt metadata
  *
  * @category services
  * @since 4.0.0
  */
 export class Transaction extends Context.Service<
   Transaction,
-  {
-    retry: boolean
-    readonly journal: Map<
-      TxRef<any>,
-      {
-        readonly version: number
-        value: any
-      }
-    >
-  }
+  TransactionMeta
 >()("effect/Effect/Transaction") {}
 
 /**
@@ -14605,45 +14664,66 @@ export const tx = <A, E, R>(
   effect: Effect<A, E, R>
 ): Effect<A, E, Exclude<R, Transaction>> =>
   withFiber((fiber) => {
-    let state = Context.getOrUndefined(fiber.context, Transaction)
+    const state = Context.getOrUndefined(fiber.context, Transaction)
     if (state) {
       return effect as Effect<A, E, Exclude<R, Transaction>>
     }
+    const clock = fiber.getRef(internal.ClockRef)
+    const now = clock.currentTimeMillisUnsafe()
     // Create transaction state only at the outermost boundary
-    state = { journal: new Map(), retry: false }
+    const mutable: TransactionMetaInner = {
+      journal: new Map(),
+      retry: false,
+      attempt: 1,
+      retryReason: undefined,
+      start: now,
+      now,
+      elapsed: 0,
+      elapsedSincePrevious: 0
+    }
     let result: Exit.Exit<A, E> | undefined
-    return uninterruptibleMask((restore) =>
-      flatMap(
+    return uninterruptibleMask((restore) => {
+      const run = restore(effect).pipe(
+        provideService(Transaction, mutable),
+        tapCause(() => {
+          if (!mutable.retry) return void_
+          return restore(awaitPendingTransaction(mutable))
+        }),
+        exit
+      )
+      return flatMap(
         whileLoop({
           while: () => !result,
-          body: constant(
-            restore(effect).pipe(
-              provideService(Transaction, state),
-              tapCause(() => {
-                if (!state.retry) return void_
-                return restore(awaitPendingTransaction(state))
-              }),
-              exit
-            )
-          ),
+          body: () => {
+            stampTransaction(mutable, clock.currentTimeMillisUnsafe())
+            return run
+          },
           step(exit: Exit.Exit<A, E>) {
-            if (state.retry || !isTransactionConsistent(state)) {
-              return clearTransaction(state)
+            if (mutable.retry || !isTransactionConsistent(mutable)) {
+              mutable.attempt++
+              mutable.retryReason = mutable.retry ? "retry" : "conflict"
+              return clearTransaction(mutable)
             }
             if (Exit.isSuccess(exit)) {
-              commitTransaction(fiber, state)
+              commitTransaction(fiber, mutable)
             } else {
-              clearTransaction(state)
+              clearTransaction(mutable)
             }
             result = exit
           }
         }),
         () => result!
       )
-    )
+    })
   })
 
-const isTransactionConsistent = (state: Transaction["Service"]) => {
+const stampTransaction = (state: TransactionMetaInner, now: number) => {
+  state.elapsedSincePrevious = now - state.now
+  state.now = now
+  state.elapsed = now - state.start
+}
+
+const isTransactionConsistent = (state: TransactionMeta) => {
   for (const [ref, { version }] of state.journal) {
     if (ref.version !== version) {
       return false
@@ -14652,7 +14732,7 @@ const isTransactionConsistent = (state: Transaction["Service"]) => {
   return true
 }
 
-const awaitPendingTransaction = (state: Transaction["Service"]) =>
+const awaitPendingTransaction = (state: TransactionMeta) =>
   suspend(() => {
     const key = {}
     const refs = Array.from(state.journal.keys())
@@ -14673,7 +14753,7 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
     })
   })
 
-function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {
+function commitTransaction(fiber: Fiber<unknown, unknown>, state: TransactionMeta) {
   for (const [ref, { value }] of state.journal) {
     if (value !== ref.value) {
       ref.version = ref.version + 1
@@ -14686,7 +14766,7 @@ function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["S
   }
 }
 
-function clearTransaction(state: Transaction["Service"]) {
+function clearTransaction(state: TransactionMetaInner) {
   state.retry = false
   state.journal.clear()
 }
@@ -14730,7 +14810,8 @@ function clearTransaction(state: Transaction["Service"]) {
 export const txRetry: Effect<never, never, Transaction> = flatMap(
   Transaction,
   (state) => {
-    state.retry = true
+    const mutable = state as TransactionMetaInner
+    mutable.retry = true
     return interrupt
   }
 )
