@@ -38,6 +38,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import * as HttpApiPath from "./internal/path.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -720,11 +721,7 @@ const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {
     return (_: any) => path
   }
-  const ast = SchemaAST.getLastEncoding(schema.ast)
-  // Preserve regex-based substitution when the schema does not declare a finite set of keys.
-  const paramNames = SchemaAST.isObjects(ast) && ast.indexSignatures.length === 0
-    ? new Set(ast.propertySignatures.map((ps) => String(ps.name)))
-    : undefined
+  const paramNames = HttpApiPath.getParamNames(schema)
   return (params: Record<string, string | undefined>) => {
     return path.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
       if (paramNames !== undefined && !paramNames.has(key)) {

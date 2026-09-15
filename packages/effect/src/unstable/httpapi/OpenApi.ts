@@ -31,6 +31,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type { HttpApiSecurity } from "./HttpApiSecurity.ts"
+import * as HttpApiPath from "./internal/path.ts"
 
 /**
  * OpenAPI annotation for overriding generated identifiers, including operation ids.
@@ -392,7 +393,11 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         responses: {}
       }
 
-      const path = endpoint.path.replace(/:(\w+)\??/g, "{$1}")
+      const paramNames = HttpApiPath.getParamNames(endpoint.params)
+      const path = endpoint.path.replace(
+        /:(\w+)\??/g,
+        (match, key: string) => paramNames === undefined || paramNames.has(key) ? `{${key}}` : match
+      )
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
 
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
