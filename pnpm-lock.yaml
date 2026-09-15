@@ -551,9 +551,9 @@ importers:
 
   packages/sql/mssql:
     dependencies:
-      tedious:
-        specifier: ^20.0.0
-        version: 20.0.0(supports-color@10.2.2)
+      iconv-lite:
+        specifier: ^0.7.0
+        version: 0.7.3
     devDependencies:
       '@testcontainers/mssqlserver':
         specifier: ^12.1.0
@@ -561,6 +561,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      tedious:
+        specifier: ^20.0.0
+        version: 20.0.0(supports-color@10.2.2)
 
   packages/sql/mysql2:
     dependencies:

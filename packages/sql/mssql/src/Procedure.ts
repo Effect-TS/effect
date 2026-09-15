@@ -3,7 +3,7 @@
  *
  * This module defines the `Procedure` values consumed by `MssqlClient.call`.
  * `make` starts a procedure definition, `param` and `outputParam` add typed
- * Tedious parameter metadata, `withRows` sets the expected row type, and
+ * SQL Server parameter metadata, `withRows` sets the expected row type, and
  * `compile` binds input values before execution. The module also defines the
  * typed result shape for output parameters and returned rows.
  *
@@ -14,8 +14,7 @@ import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import type { Covariant } from "effect/Types"
 import type { Row } from "effect/unstable/sql/SqlConnection"
-import type { DataType } from "tedious/lib/data-type.ts"
-import type { ParameterOptions } from "tedious/lib/request.ts"
+import type { DataType, ParameterOptions } from "./MssqlTypes.ts"
 import * as Parameter from "./Parameter.ts"
 
 /**
