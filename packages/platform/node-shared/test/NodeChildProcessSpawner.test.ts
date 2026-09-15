@@ -96,18 +96,12 @@ it.live("kills every process in a pipeline", () =>
         childHeartbeat
       ]
     )))
-    const ready = yield* Deferred.make<void>()
-    const readyLines: Array<string> = []
-    yield* handle.stdout.pipe(
+    const readyLines = yield* handle.stdout.pipe(
       Stream.decodeText,
       Stream.splitLines,
-      Stream.runForEach((line) => {
-        readyLines.push(line)
-        return readyLines.length === 2 ? Deferred.succeed(ready, undefined) : Effect.void
-      }),
-      Effect.forkScoped
+      Stream.take(2),
+      Stream.runCollect
     )
-    yield* Deferred.await(ready)
     assert.deepStrictEqual(readyLines, ["CHILD_READY", "ROOT_READY"])
     yield* handle.kill({ killSignal: "SIGKILL" })
     const rootSizeAfterKill = (yield* fs.stat(rootHeartbeat)).size
@@ -185,18 +179,17 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const { descendantPid, handle, marker, scope } = yield* startProcessGroup("exit-on-signal", { stdin: "pipe" })
+      yield* Effect.addFinalizer(() => killDescendant(descendantPid))
 
-      yield* Effect.gen(function*() {
-        yield* Stream.run(Stream.make(new TextEncoder().encode("exit\n")), handle.stdin)
-        assert.strictEqual(yield* handle.exitCode, 0)
-        yield* Effect.sync(() => process.kill(descendantPid, 0))
-        assert.isFalse(yield* fs.exists(marker))
+      yield* Stream.run(Stream.make(new TextEncoder().encode("exit\n")), handle.stdin)
+      assert.strictEqual(yield* handle.exitCode, 0)
+      yield* Effect.sync(() => process.kill(descendantPid, 0))
+      assert.isFalse(yield* fs.exists(marker))
 
-        yield* Scope.close(scope, Exit.void)
+      yield* Scope.close(scope, Exit.void)
 
-        assert.strictEqual(yield* fs.readFileString(marker), "exited")
-      }).pipe(Effect.ensuring(killDescendant(descendantPid).pipe(Effect.andThen(Scope.close(scope, Exit.void)))))
-    }).pipe(Effect.provide(NodeServices)))
+      assert.strictEqual(yield* fs.readFileString(marker), "exited")
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 
   it.live("scope release waits for descendants that outlive the leader", () =>
     Effect.gen(function*() {

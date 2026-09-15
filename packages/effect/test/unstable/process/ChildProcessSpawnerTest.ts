@@ -1,5 +1,4 @@
 import { assert, describe, it } from "@effect/vitest"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -927,18 +926,16 @@ export const suite = (
             const handle = yield* ChildProcess.make("./spawn-children.sh", { cwd })
 
             // https://github.com/Effect-TS/effect/commit/4d5c70a7dcd5ee7aa6ad3aa28d7e87ef1fc31e00
-            const ready = yield* Deferred.make<void>()
-            yield* handle.stdout.pipe(
+            const readyCount = yield* handle.stdout.pipe(
               Stream.decodeText,
               Stream.splitLines,
               Stream.filter((line) =>
                 line.includes(" started with PID ")
               ),
-              Stream.zipWithIndex,
-              Stream.runForEach(([, index]) => index === 6 ? Deferred.succeed(ready, undefined) : Effect.void),
-              Effect.forkScoped
+              Stream.take(7),
+              Stream.runCount
             )
-            yield* Deferred.await(ready)
+            assert.strictEqual(readyCount, 7)
 
             // Verify the main process is running
             const isRunningBeforeKill = yield* handle.isRunning
