@@ -6,6 +6,22 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 const [command, root, mode, operation, shape = "struct", countString = "500"] = process.argv.slice(2)
 const count = Number(countString)
+const includes = (values: ReadonlyArray<string>, value: string | undefined) =>
+  value !== undefined && values.includes(value)
+if (command !== "heap" && command !== "cold" && command !== "generate") {
+  throw new Error("command must be heap, cold or generate")
+}
+if (root === undefined) throw new Error("root is required")
+if (!includes(["interpreted", "jit", "aot"], mode)) {
+  throw new Error("mode must be interpreted, jit or aot")
+}
+if (!includes(["decode", "invalid", "is", "make"], operation)) {
+  throw new Error("operation must be decode, invalid, is or make")
+}
+if (!includes(["struct", "array", "transform", "default"], shape)) {
+  throw new Error("shape must be struct, array, transform or default")
+}
+if (!Number.isSafeInteger(count) || count <= 0) throw new Error("count must be a positive integer")
 const load = (path: string) => import(pathToFileURL(join(root, "packages/effect/src", path + ".ts")).href)
 const Schema = await load("Schema")
 const Parser = await load("SchemaParser")
@@ -20,9 +36,14 @@ const create = () => {
 }
 const valid = shape === "array" ? Array.from({ length: 32 }, () => ({ name: "Ada", age: 37, active: true }))
   : shape === "transform" ? { value: "1" }
-  : shape === "default" ? {}
+  : shape === "default" ? { value: 1 }
   : { name: "Ada", age: 37, active: true }
-const input = operation === "invalid" ? { name: "Ada", age: "bad", active: true } : valid
+const typeValid = shape === "transform" ? { value: 1 } : valid
+const input = operation === "invalid" ? { name: "Ada", age: "bad", active: true }
+  : operation === "make" && shape === "default" ? {}
+  : operation === "make" || operation === "is" ? typeValid
+  : valid
+const expected = shape === "transform" || shape === "default" ? { value: 1 } : valid
 
 if (command === "generate") {
   const AOT = await load("unstable/schema/SchemaAOTCompiler")
@@ -54,22 +75,33 @@ if (command === "generate") {
   }
   const run = (parse: (input: unknown) => unknown) => {
     try {
-      const value = parse(input)
-      assert.notEqual(operation, "invalid")
-      return value
+      return parse(input)
     } catch (error) {
       if (operation !== "invalid") throw error
-      assert.equal((error as Error).message, "Schema validation failed")
+      return error
     }
   }
+  const validate = (value: unknown) => {
+    if (operation === "invalid") {
+      assert.ok(value instanceof Error)
+      assert.equal(value.message, "Schema validation failed")
+      assert.equal("cause" in value, true)
+    }
+    else if (operation === "is") assert.equal(value, true)
+    else assert.deepEqual(value, expected)
+  }
   try {
-    for (let i = 0; i < 20; i++) run(prepare(create()))
+    for (let i = 0; i < 20; i++) validate(run(prepare(create())))
     if (command === "heap") {
       assert.equal(typeof globalThis.gc, "function")
       const schemas = Array.from({ length: count }, create)
       for (let i = 0; i < 5; i++) globalThis.gc!()
       const before = process.memoryUsage().heapUsed
-      const parsers = schemas.map((schema) => { const parse = prepare(schema); run(parse); return parse })
+      const parsers = schemas.map((schema) => {
+        const parse = prepare(schema)
+        validate(run(parse))
+        return parse
+      })
       for (let i = 0; i < 5; i++) globalThis.gc!()
       const after = process.memoryUsage().heapUsed
       // Keep schemas and adapters alive across the measurement.
@@ -79,9 +111,11 @@ if (command === "generate") {
     } else if (command === "cold") {
       const samples = []
       for (let round = 0; round < 7; round++) {
+        let value: unknown
         const start = process.hrtime.bigint()
-        for (let i = 0; i < count; i++) run(prepare(create()))
+        for (let i = 0; i < count; i++) value = run(prepare(create()))
         samples.push(Number(process.hrtime.bigint() - start) / count)
+        validate(value)
       }
       process.stdout.write(JSON.stringify({ mode, operation, shape, count, nsPerSchema: samples }))
     }

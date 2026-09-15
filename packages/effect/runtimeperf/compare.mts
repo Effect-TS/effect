@@ -8,6 +8,7 @@ import { analyzePairs } from "./stats.mts"
 import {
   aggregateMeasurements,
   calibrateFixture,
+  comparePath,
   configPath,
   coverageSummary,
   effectDir,
@@ -16,6 +17,7 @@ import {
   libraryVersions,
   loadRegistry,
   makeRunId,
+  materializePath,
   measureFixture,
   parseArgs,
   printTable,
@@ -25,6 +27,8 @@ import {
   resolveDefaults,
   selectFixtures,
   sha256,
+  statsPath,
+  utilsPath,
   workerPath,
   writeJson
 } from "./utils.mts"
@@ -240,7 +244,11 @@ const main = () => {
     artifactMode: "repository",
     coverage: coverageSummary(selected),
     hashes: {
+      compare: hashFile(comparePath),
       config: hashFile(configPath),
+      materialize: hashFile(materializePath),
+      stats: hashFile(statsPath),
+      utils: hashFile(utilsPath),
       worker: hashFile(workerPath),
       fixtures: Object.fromEntries(
         [...new Set(selected.map((fixture) => fixture.fixturePath))]

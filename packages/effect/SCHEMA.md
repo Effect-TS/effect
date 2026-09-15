@@ -51,24 +51,19 @@ Values are microseconds per operation and lower is better. Results vary between
 machines, so they are most useful for understanding relative costs. A dash
 means that the library does not provide that benchmark.
 
-| Scenario                              | Effect Schema |    Valibot |      Zod 4 |
-| ------------------------------------- | ------------: | ---------: | ---------: |
-| Create a schema                       |        118.23 |  **40.24** |     318.56 |
-| Create a schema and parser            |    **130.50** |          — |          — |
-| Validate valid data                   |     **5.415** |       5.63 |          — |
-| Validate invalid data                 |         1.348 | **0.2431** |          — |
-| Parse valid data and collect errors   |         5.366 |   **5.22** |       7.16 |
-| Parse invalid data and collect errors |     **9.100** |      15.70 |      41.58 |
-| Parse valid data and stop early       |     **5.294** |       5.37 |          — |
-| Parse invalid data and stop early     |         1.352 | **0.2572** |          — |
-| Standard Schema, valid data           |         5.935 |       5.35 |   **3.83** |
-| Standard Schema, invalid data         |    **15.203** |      16.51 |      32.85 |
-| Standard Schema, valid, stop early    |     **5.843** |          — |          — |
-| Standard Schema, invalid, stop early  |     **2.244** |          — |          — |
-| Encode with a typed codec             |        0.3420 |          — | **0.0405** |
-| Decode with a typed codec             |        0.3762 |          — | **0.0463** |
-| Encode unknown input                  |    **0.3472** |          — |          — |
-| Decode unknown input                  |    **0.3637** |          — |          — |
+| Scenario                              | Effect Schema | Valibot 1.5.0 | Zod 4.6.2 |
+| ------------------------------------- | ------------: | ------------: | --------: |
+| Create a schema                       |       60.1297 |        1.0926 |   83.7496 |
+| Validate valid data                   |        4.1473 |        3.5389 |         — |
+| Validate invalid data                 |        0.2571 |        0.1823 |         — |
+| Parse valid data and collect errors   |        5.0261 |        3.5393 |    7.0073 |
+| Parse invalid data and collect errors |        7.4838 |        5.7206 |   19.3064 |
+| Parse valid data and stop early       |        4.1559 |        3.5941 |         — |
+| Parse invalid data and stop early     |        0.2525 |        0.1917 |         — |
+| Standard Schema, valid data           |    **5.3408** |        3.5565 |    3.5755 |
+| Standard Schema, invalid data         |       11.7723 |        5.4422 |   15.9974 |
+| Encode with a typed codec             |        0.0827 |             — |    0.0441 |
+| Decode with a typed codec             |        0.1063 |             — |    0.0427 |
 
 ## Experimental schema compilers
 

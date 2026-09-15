@@ -87,6 +87,13 @@ adapters, recursion and cold paths. The `schema-benchmarks` suite contains the
 complete timing matrices exposed by the upstream Effect, Valibot and Zod
 adapters.
 
+The `moltar-parse-safe` and `moltar-assert-loose` suites preserve Moltar's
+object shape. Their valid cases reproduce the upstream timed operation; the
+extra-property and invalid cases are Effect extensions. They compare
+interpreted Effect, Effect JIT and AOT, Valibot, ordinary and jitless Zod where
+applicable, and Zod `compile`, using the dependency versions recorded in each
+report.
+
 The `arbitrary` suite compares the native public API with direct fast-check v4 arbitraries in separate processes. It
 measures derivation through the first recursive sample, steady-state recursive
 sampling, optional-Struct sampling, fixed-length string generation to exercise constraint pushdown,
@@ -130,10 +137,12 @@ against equivalent Valibot schemas using `parse` and `is`.
 
 ## Measurement model
 
-Each worker validates the fixture before and after measuring. Calibration finds
-a batch large enough for the configured target duration. Each implementation
-uses its own calibrated batch and executes in a separate process, with rotating
-order within the scenario.
+Each worker validates the fixture before and after measuring. The Effect
+fixture calibrates one batch size that every implementation in the same
+scenario uses. This keeps the enclosing loop identical across implementations;
+V8 can otherwise optimize sub-10 ns callbacks differently at different batch
+sizes. Each implementation executes in a separate process, with rotating order
+within the scenario.
 
 Tinybench measures one synchronous batched task. The primary process result is:
 
