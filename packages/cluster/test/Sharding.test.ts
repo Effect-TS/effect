@@ -968,7 +968,7 @@ describe("entity client mailbox", () => {
           const scope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
           const mailbox = yield* (yield* entity.client)("one").Values(undefined, {
             asMailbox: true,
-            ...(capacity === undefined ? {} : { streamBufferSize: capacity })
+            streamBufferSize: capacity
           }).pipe(Scope.extend(scope))
           const leads: Array<number> = []
           yield* Effect.gen(function*() {
@@ -1000,7 +1000,7 @@ describe("entity client mailbox", () => {
         yield* TestClock.adjust(1)
         const mailbox = yield* (yield* entity.client)("one").Values(undefined, {
           asMailbox: true,
-          ...(capacity === undefined ? {} : { streamBufferSize: capacity })
+          streamBufferSize: capacity
         })
         const [values, done] = yield* mailbox.takeN(size + 1).pipe(
           Effect.timeout("1 second"),
@@ -1233,6 +1233,27 @@ describe("entity registration and outgoing requests", () => {
       assert.isUndefined(result.value)
       assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(1))
     }).pipe(Effect.provide(TestSharding)))
+  // A Sharding instance that has completed shutdown, for sends issued afterwards.
+  const shutdownSharding = Effect.gen(function*() {
+    const scope = yield* Scope.make()
+    const context = yield* Layer.build(Sharding.layer.pipe(
+      Layer.provide(RunnerStorage.layerMemory),
+      Layer.provide(RunnerHealth.layerNoop),
+      Layer.provide(Runners.layerNoop),
+      Layer.provide(ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        entityTerminationTimeout: 0,
+        sendRetryInterval: 10
+      }))
+    )).pipe(Scope.extend(scope))
+    const sharding = Context.get(context, Sharding.Sharding)
+    yield* TestClock.adjust(1)
+    yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("1 second"), TestServices.provideLive)
+    assert.isTrue(yield* sharding.isShutdown)
+    return sharding
+  })
+
   for (const persisted of [false, true]) {
     for (const discard of [false, true]) {
       it.effect(`settles outgoing sends after shutdown (persisted=${persisted}, discard=${discard})`, () =>
@@ -1240,22 +1261,7 @@ describe("entity registration and outgoing requests", () => {
           const storage = yield* MessageStorage.MessageStorage
           const rpc = Rpc.make("ShutdownPing").annotate(ClusterSchema.Persisted, persisted)
           const request = yield* makeRequest({ rpc, payload: undefined })
-          const scope = yield* Scope.make()
-          const context = yield* Layer.build(Sharding.layer.pipe(
-            Layer.provide(RunnerStorage.layerMemory),
-            Layer.provide(RunnerHealth.layerNoop),
-            Layer.provide(Runners.layerNoop),
-            Layer.provide(ShardingConfig.layer({
-              runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-              shardsPerGroup: 1,
-              entityTerminationTimeout: 0,
-              sendRetryInterval: 10
-            }))
-          )).pipe(Scope.extend(scope))
-          const sharding = Context.get(context, Sharding.Sharding)
-          yield* TestClock.adjust(1)
-          yield* Scope.close(scope, Exit.void)
-          assert.isTrue(yield* sharding.isShutdown)
+          const sharding = yield* shutdownSharding
           const result = yield* sharding.sendOutgoing(request, discard).pipe(
             Effect.fork,
             Effect.flatMap(Fiber.await),
@@ -1290,22 +1296,7 @@ describe("entity registration and outgoing requests", () => {
         const storage = yield* MessageStorage.MessageStorage
         const rpc = Rpc.make("AbandonedPing").annotate(ClusterSchema.Persisted, true)
         const request = yield* makeRequest({ rpc, payload: undefined })
-        const scope = yield* Scope.make()
-        const context = yield* Layer.build(Sharding.layer.pipe(
-          Layer.provide(RunnerStorage.layerMemory),
-          Layer.provide(RunnerHealth.layerNoop),
-          Layer.provide(Runners.layerNoop),
-          Layer.provide(ShardingConfig.layer({
-            runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-            shardsPerGroup: 1,
-            entityTerminationTimeout: 0,
-            sendRetryInterval: 10
-          }))
-        )).pipe(Scope.extend(scope))
-        const sharding = Context.get(context, Sharding.Sharding)
-        yield* TestClock.adjust(1)
-        yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("1 second"), TestServices.provideLive)
-        assert.isTrue(yield* sharding.isShutdown)
+        const sharding = yield* shutdownSharding
 
         let continued = false
         const send = Effect.gen(function*() {

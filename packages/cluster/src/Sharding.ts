@@ -1300,24 +1300,15 @@ const make = Effect.gen(function*() {
             context
           }) as Effect.Effect<any, any>
           // Re-signal abandonment in the caller or stream consumer, preserving its mask.
-          const acquired = ClusterAbandon.onError(response)
+          const acquired = Effect.onError(response, ClusterAbandon.reSignal)
           if (!isStream) return acquired
           if (options?.asMailbox) {
-            // Interrupt the owner before exposing abandonment to the mailbox consumer.
+            // Forward through a consumer-sized buffer; the owner is interrupted before the failure is forwarded.
             return Effect.flatMap(acquired, (source: Mailbox.ReadonlyMailbox<any, any>) =>
-              Effect.gen(function*() {
-                const sink = yield* Mailbox.make<any, any>(options.streamBufferSize ?? 16)
-                // Bound the values held while forwarding to a full consumer buffer.
-                const pump: Effect.Effect<void, any> = Effect.flatMap(source.takeN(1), ([chunk, done]) =>
-                  Effect.andThen(sink.offerAll(chunk), done ? Effect.asVoid(sink.end) : pump))
-                yield* Effect.forkScoped(pump.pipe(
-                  Effect.onError((cause) =>
-                    Effect.andThen(ClusterAbandon.interruptOwner(cause), sink.failCause(cause))
-                  ),
-                  Effect.interruptible
-                ))
-                return sink as Mailbox.ReadonlyMailbox<any, any>
-              }))
+              Mailbox.fromStream(
+                Mailbox.toStream(source).pipe(Stream.onError(ClusterAbandon.interruptOwner)),
+                { capacity: options.streamBufferSize ?? 16 }
+              ))
           }
           return Stream.unwrapScoped(Effect.map(acquired, Mailbox.toStream)).pipe(
             Stream.onError(ClusterAbandon.reSignal)

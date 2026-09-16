@@ -7,8 +7,7 @@ import {
   MessageStorage,
   Runners,
   Sharding,
-  ShardingConfig,
-  Snowflake
+  ShardingConfig
 } from "@effect/cluster"
 import { Rpc } from "@effect/rpc"
 import { assert, describe, expect, it } from "@effect/vitest"
@@ -461,7 +460,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
-const TestWorkflowEngine = makeMemoryEngine({
+const testEngineConfig = {
   shardsPerGroup: 300,
   availableShardGroups: ["default", "workflow"],
   assignedShardGroups: ["default", "workflow"],
@@ -469,7 +468,9 @@ const TestWorkflowEngine = makeMemoryEngine({
   entityTerminationTimeout: 0,
   entityMessagePollInterval: 5000,
   sendRetryInterval: 100
-})
+} as const
+
+const TestWorkflowEngine = makeMemoryEngine(testEngineConfig)
 
 class SendEmailError extends Schema.TaggedError<SendEmailError>("SendEmailError")("SendEmailError", {
   message: Schema.String
@@ -1046,6 +1047,7 @@ describe("workflow send-time abandonment", () => {
   for (
     const trigger of ["shutdown", "closing manager", "closed manager", "parked waiter", "buffered waiter"] as const
   ) {
+    const parked = trigger === "parked waiter" || trigger === "buffered waiter"
     for (const [path, masked] of [["unary", false], ["unary", true], ["stream", false], ["mailbox", false]] as const) {
       if (trigger === "buffered waiter" && path !== "mailbox") continue
       for (const recovery of ["catchAllCause", "exit"] as const) {
@@ -1216,7 +1218,7 @@ describe("workflow send-time abandonment", () => {
                   ? Stream.runDrain(remote.Values())
                   : remote.Values(undefined, {
                     asMailbox: true,
-                    ...(trigger === "buffered waiter" ? { streamBufferSize: 2 } : {})
+                    streamBufferSize: trigger === "buffered waiter" ? 2 : undefined
                   }).pipe(
                     Effect.flatMap((mailbox) => {
                       if (trigger !== "buffered waiter") return mailbox.take
@@ -1248,7 +1250,7 @@ describe("workflow send-time abandonment", () => {
                   }
                 })
                 yield* masked ? Effect.uninterruptible(recover) : recover
-                if ((trigger !== "parked waiter" && trigger !== "buffered waiter") || path !== "mailbox") {
+                if (!parked || path !== "mailbox") {
                   yield* Effect.yieldNow()
                 }
                 yield* Effect.withFiberRuntime((fiber) =>
@@ -1271,7 +1273,7 @@ describe("workflow send-time abandonment", () => {
             assert.isFalse(yield* sharding.isShutdown)
 
             yield* Effect.gen(function*() {
-              if (trigger === "parked waiter" || trigger === "buffered waiter") {
+              if (parked) {
                 yield* sendNow.open
                 yield* handlerEntered.await
                 yield* TestClock.adjust(1)
@@ -1335,7 +1337,7 @@ describe("workflow send-time abandonment", () => {
               }
               assert.strictEqual(
                 targetCalls,
-                trigger === "parked waiter" || trigger === "buffered waiter" ? 2 : 1,
+                parked ? 2 : 1,
                 "only requests sent before teardown may reach the handler"
               )
               assert.strictEqual(routeFailures, trigger === "closing manager" ? 1 : 0)
@@ -1379,15 +1381,7 @@ WorkflowEngineContractTest.suite({
 })
 
 describe("deferred completion persistence", () => {
-  const config = {
-    shardsPerGroup: 300,
-    availableShardGroups: ["default", "workflow"],
-    assignedShardGroups: ["default", "workflow"],
-    entityMailboxCapacity: 10,
-    entityTerminationTimeout: 0,
-    entityMessagePollInterval: 5000,
-    sendRetryInterval: 100
-  } as const
+  const config = testEngineConfig
 
   type Driver = MessageStorage.MemoryDriver
   type Encoded = MessageStorage.Encoded
@@ -1395,20 +1389,24 @@ describe("deferred completion persistence", () => {
   const isSuspended = (reply: Parameters<Encoded["saveReply"]>[0]) =>
     reply._tag === "WithExit" && reply.exit._tag === "Success" && reply.exit.value?._tag === "Suspended"
 
-  const sharedDriver = Effect.map(
-    Layer.build(MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))),
-    (ctx) => Context.get(ctx, MessageStorage.MemoryDriver)
-  )
-  const gated = (driver: Driver, hooks: Partial<Encoded>) =>
-    MessageStorage.makeEncoded({ ...driver.encoded, ...hooks }).pipe(Effect.provide(Snowflake.layerGenerator))
+  const sharedStorage = Effect.map(Layer.build(MemoryLive), (context) => ({
+    driver: Context.get(context, MessageStorage.MemoryDriver),
+    gated: (hooks: Partial<Encoded>) =>
+      MessageStorage.makeEncoded({ ...Context.get(context, MessageStorage.MemoryDriver).encoded, ...hooks }).pipe(
+        Effect.provide(context)
+      )
+  }))
+
+  const tick = (sharding: Sharding.Sharding["Type"]) =>
+    Effect.gen(function*() {
+      yield* Effect.yieldNow()
+      yield* TestClock.adjust(1)
+      yield* sharding.pollStorage
+    })
 
   const advanceUntil = (sharding: Sharding.Sharding["Type"], predicate: () => boolean, label: string, limit = 2000) =>
     Effect.gen(function*() {
-      for (let i = 0; i < limit && !predicate(); i++) {
-        yield* Effect.yieldNow()
-        yield* TestClock.adjust(1)
-        yield* sharding.pollStorage
-      }
+      for (let i = 0; i < limit && !predicate(); i++) yield* tick(sharding)
       assert.isTrue(predicate(), label)
     })
 
@@ -1418,19 +1416,9 @@ describe("deferred completion persistence", () => {
       readonly poll: (id: string) => Effect.Effect<Workflow.Result<unknown, unknown> | undefined, never, WorkflowEngine>
     },
     executionId: string,
-    tag: string,
+    tag: "Suspended" | "Complete",
     limit = 2000
-  ) =>
-    Effect.gen(function*() {
-      let result = yield* workflow.poll(executionId)
-      for (let i = 0; i < limit && result?._tag !== tag; i++) {
-        yield* Effect.yieldNow()
-        yield* TestClock.adjust(1)
-        yield* sharding.pollStorage
-        result = yield* workflow.poll(executionId)
-      }
-      return result
-    })
+  ) => WorkflowEngineContractTest.makeAwaitResult(tick(sharding), limit)(workflow, executionId, tag)
 
   it.effect(
     "resumes a discarded execution when completion precedes the suspension commit",
@@ -1449,8 +1437,8 @@ describe("deferred completion persistence", () => {
           success: Schema.String,
           idempotencyKey: () => "one"
         })
-        const driver = yield* sharedDriver
-        const storage = yield* gated(driver, {
+        const { driver, gated } = yield* sharedStorage
+        const storage = yield* gated({
           saveReply: (reply) => {
             if (isSuspended(reply) && !savingRun) {
               runRequestId = reply.requestId
@@ -1521,8 +1509,8 @@ describe("deferred completion persistence", () => {
           let instance: WorkflowInstance["Type"] | undefined
           let runRequestId: string | undefined
           let unrelatedRead = false
-          const driver = yield* sharedDriver
-          const storage = yield* gated(driver, {
+          const { driver, gated } = yield* sharedStorage
+          const storage = yield* gated({
             repliesForUnfiltered: (requestIds) =>
               driver.encoded.repliesForUnfiltered(requestIds).pipe(
                 Effect.tap(() =>
@@ -1591,9 +1579,9 @@ describe("deferred completion persistence", () => {
         success: Schema.String,
         idempotencyKey: () => "one"
       })
-      const driver = yield* sharedDriver
+      const { driver, gated } = yield* sharedStorage
       let delayed = 0
-      const storage = yield* gated(driver, {
+      const storage = yield* gated({
         saveReply: (reply) =>
           requestTag(driver, reply.requestId) === "deferred"
             ? Effect.sync(() => delayed++).pipe(
