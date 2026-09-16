@@ -341,8 +341,6 @@ describe("Client", () => {
       const ready = yield* Deferred.make<void>()
       const release = yield* Deferred.make<void>()
       yield* Effect.addFinalizer(() => Effect.asVoid(Deferred.succeed(release, void 0)))
-      let innerFailure: Exit.Exit<unknown, unknown> | undefined
-      let innerSuccess: Exit.Exit<unknown, unknown> | undefined
 
       yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
       const transaction = yield* sql.withTransaction(
@@ -360,7 +358,7 @@ describe("Client", () => {
             Effect.forkChild({ startImmediately: true })
           )
           let second: Fiber.Fiber<Exit.Exit<string, unknown>> | undefined
-          yield* Effect.gen(function*() {
+          const innerExits = yield* Effect.gen(function*() {
             yield* Deferred.await(entered)
             second = yield* sql`INSERT INTO test (name) VALUES ('inner')`.pipe(
               Effect.as("inner success"),
@@ -374,8 +372,7 @@ describe("Client", () => {
               yield* Fiber.join(second)
             }
             yield* Deferred.succeed(releaseInner, void 0)
-            innerFailure = yield* Fiber.join(first)
-            innerSuccess = yield* Fiber.join(second)
+            return [yield* Fiber.join(first), yield* Fiber.join(second)] as const
           }).pipe(Effect.ensuring(Effect.gen(function*() {
             yield* Deferred.succeed(releaseInner, void 0)
             if (second) yield* Fiber.interrupt(second)
@@ -383,7 +380,7 @@ describe("Client", () => {
           })))
           yield* Deferred.succeed(ready, void 0)
           yield* Deferred.await(release)
-          return "outer success"
+          return innerExits
         })
       ).pipe(
         Effect.ensuring(Deferred.succeed(ready, void 0)),
@@ -396,9 +393,7 @@ describe("Client", () => {
       const outerExit = yield* Fiber.await(transaction)
       const rows = yield* Fiber.join(query)
 
-      assert.deepStrictEqual(innerFailure, Exit.fail("inner failure"))
-      assert.deepStrictEqual(innerSuccess, Exit.succeed("inner success"))
-      assert.deepStrictEqual(outerExit, Exit.succeed("outer success"))
+      assert.deepStrictEqual(outerExit, Exit.succeed([Exit.fail("inner failure"), Exit.succeed("inner success")]))
       assert.isUndefined(queryBeforeCompletion)
       assert.deepStrictEqual(rows, [{ id: 1, name: "outer" }, { id: 2, name: "inner" }])
       assert.strictEqual(storage.transactionCalls, 3)
