@@ -11,11 +11,11 @@ import {
 } from "@effect/vitest/utils"
 import { Brand, Result, Schema } from "effect"
 
-function assertSuccess<T extends Brand.Brand<any>>(ctor: Brand.Constructor<T>, value: Brand.Brand.Unbranded<T>) {
+function assertSuccess<T extends Brand.Brand<any, any>>(ctor: Brand.Constructor<T>, value: Brand.Brand.Unbranded<T>) {
   vassertSuccess(ctor.result(value), value as T)
 }
 
-function assertFailure<T extends Brand.Brand<any>>(
+function assertFailure<T extends Brand.Brand<any, any>>(
   ctor: Brand.Constructor<T>,
   value: Brand.Brand.Unbranded<T>,
   message: string
@@ -156,5 +156,21 @@ Expected a value greater than 0`
       `Expected an integer
 Expected a value greater than 0`
     )
+  })
+
+  it("literal is same as the constructor function in runtime", () => {
+    type Int = number & Brand.Brand<"Int", IntParser>
+    interface IntParser {
+      value: unknown
+      result: this["value"] extends number ? `${this["value"]}` extends `${bigint}` ? this["value"]
+        : { IntParserError: "Expected an integer" }
+        : number
+    }
+
+    const Int = Brand.make<Int>((n) => Number.isInteger(n))
+
+    // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'number & { IntParserError: "Expected an Integer"; }'
+    throws(() => Int.literal(3.14))
+    strictEqual(Int.literal(42), 42)
   })
 })

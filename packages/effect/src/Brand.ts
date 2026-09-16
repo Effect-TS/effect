@@ -32,10 +32,18 @@ const TypeId = "~effect/Brand"
  * @category models
  * @since 2.0.0
  */
-export interface Brand<in out Keys extends string> {
+export interface Brand<
+  in out Keys extends string,
+  LiteralParser extends { value: unknown; result: unknown } = IdentityLiteralParser
+> {
   readonly [TypeId]: {
-    readonly [K in Keys]: Keys
+    readonly [K in Keys]: [K, LiteralParser]
   }
+}
+
+export interface IdentityLiteralParser {
+  value: unknown
+  result: this["value"]
 }
 
 /**
@@ -56,12 +64,16 @@ export interface Brand<in out Keys extends string> {
  * @category models
  * @since 2.0.0
  */
-export interface Constructor<in out B extends Brand<any>> {
+export interface Constructor<in out B extends Brand<any, any>> {
   /**
    * Constructs a branded type from a value of type `Unbranded<B>`, throwing an
    * error if the provided value is not valid.
    */
   (unbranded: Brand.Unbranded<B>): B
+  /**
+   * Constructs a branded type from a literal
+   */
+  literal<T extends Brand.Unbranded<B> & Brand.Parse<B, T>>(value: T): B
   /**
    * Constructs a branded type from a value of type `Unbranded<B>`, returning
    * `Some<B>` if the provided value is valid, `None` otherwise.
@@ -164,7 +176,7 @@ export declare namespace Brand {
    * @category utility types
    * @since 2.0.0
    */
-  export type Unbranded<B extends Brand<any>> = B extends infer U & Brands<B> ? U : B
+  export type Unbranded<B extends Brand<any, any>> = B extends infer U & Brands<B> ? U : B
 
   /**
    * A utility type to extract the keys of a branded type.
@@ -172,7 +184,7 @@ export declare namespace Brand {
    * @category utility types
    * @since 4.0.0
    */
-  export type Keys<B extends Brand<any>> = keyof B[typeof TypeId]
+  export type Keys<B extends Brand<any, any>> = keyof B[typeof TypeId]
 
   /**
    * A utility type to extract the brands from a branded type.
@@ -180,8 +192,8 @@ export declare namespace Brand {
    * @category utility types
    * @since 2.0.0
    */
-  export type Brands<B extends Brand<any>> = Types.UnionToIntersection<
-    { [K in Keys<B>]: K extends string ? Brand<K> : never }[Keys<B>]
+  export type Brands<B extends Brand<any, any>> = Types.UnionToIntersection<
+    { [K in Keys<B>]: K extends string ? Brand<K, B extends Brand<K, infer P> ? P : never> : never }[Keys<B>]
   >
 
   /**
@@ -200,6 +212,14 @@ export declare namespace Brand {
       : Brands[B]
       : "ERROR: All brands should have the same base type"
   }
+
+  export type Parse<B extends Brand<any, any>, V> = Types.UnionToIntersection<
+    {
+      [K in Keys<B>]: K extends string ? B extends Brand<K, infer P> ? (P & { value: V })["result"]
+        : never
+        : never
+    }[Keys<B>]
+  >
 }
 
 /**
@@ -208,7 +228,11 @@ export declare namespace Brand {
  * @category utility types
  * @since 2.0.0
  */
-export type Branded<A, Key extends string> = A & Brand<Key>
+export type Branded<
+  A,
+  Key extends string,
+  LiteralParser extends { value: unknown; result: unknown } = IdentityLiteralParser
+> = A & Brand<Key, LiteralParser>
 
 /**
  * Returns a `Constructor` that **does not apply any runtime checks** and just
@@ -225,8 +249,9 @@ export type Branded<A, Key extends string> = A & Brand<Key>
  * @category constructors
  * @since 2.0.0
  */
-export function nominal<A extends Brand<any>>(): Constructor<A> {
+export function nominal<A extends Brand<any, any>>(): Constructor<A> {
   return Object.assign((input: Brand.Unbranded<A>) => input as A, {
+    literal: (input: Brand.Unbranded<A>) => input as A,
     option: (input: Brand.Unbranded<A>) => Option.some(input as A),
     result: (input: Brand.Unbranded<A>) => Result.succeed(input as A),
     is: (_: Brand.Unbranded<A>): _ is Brand.Unbranded<A> & A => true
@@ -246,7 +271,7 @@ export function nominal<A extends Brand<any>>(): Constructor<A> {
  * @category constructors
  * @since 4.0.0
  */
-export function make<A extends Brand<any>>(
+export function make<A extends Brand<any, any>>(
   filter: (unbranded: Brand.Unbranded<A>) => Schema.FilterOutput
 ): Constructor<A> {
   return check(SchemaAST.makeFilter(filter))
@@ -271,7 +296,7 @@ export function make<A extends Brand<any>>(
  * @category constructors
  * @since 4.0.0
  */
-export function check<A extends Brand<any>>(
+export function check<A extends Brand<any, any>>(
   ...checks: readonly [
     SchemaAST.Check<Brand.Unbranded<A>>,
     ...Array<SchemaAST.Check<Brand.Unbranded<A>>>
@@ -281,6 +306,7 @@ export function check<A extends Brand<any>>(
     return Result.mapError(SchemaAST.runChecks(checks, input), (issue) => new BrandError(issue)) as any
   }
   return Object.assign((input: Brand.Unbranded<A>) => Result.getOrThrow(result(input)), {
+    literal: (input: Brand.Unbranded<A>) => Result.getOrThrow(result(input)),
     option: (input: Brand.Unbranded<A>) => Option.getSuccess(result(input)),
     result,
     is: (input: Brand.Unbranded<A>): input is Brand.Unbranded<A> & A => Result.isSuccess(result(input)),
@@ -309,7 +335,7 @@ export function all<Brands extends readonly [Constructor<any>, ...Array<Construc
   ...brands: Brand.EnsureCommonBase<Brands>
 ): Constructor<
   Types.UnionToIntersection<{ [B in keyof Brands]: Brand.FromConstructor<Brands[B]> }[number]> extends
-    infer X extends Brand<any> ? X : Brand<any>
+    infer X extends Brand<any, any> ? X : Brand<any, any>
 > {
   const checks = brands.flatMap((brand) => brand.checks ?? [])
   return Arr.isArrayNonEmpty(checks) ?
