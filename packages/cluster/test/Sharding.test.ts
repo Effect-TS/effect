@@ -1064,6 +1064,69 @@ describe("entity client mailbox", () => {
         }).pipe(Effect.scoped, Effect.provide(TestSharding)))
     }
 
+    for (const masked of [false, true]) {
+      it.effect(`request cancellation interrupts an external mailbox reader and closes its scope (persisted=${persisted}, masked=${masked})`, () =>
+        Effect.gen(function*() {
+          const source = yield* Mailbox.make<number>()
+          const finalized = yield* Effect.makeLatch()
+          let finalizers = 0
+          const entity = Entity.make("MailboxCancellation", [
+            Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, persisted)
+          ])
+          const sharding = yield* Sharding.Sharding
+          yield* sharding.registerEntity(
+            entity,
+            Effect.succeed({
+              Values: () =>
+                Mailbox.toStream(source).pipe(Stream.ensuring(Effect.gen(function*() {
+                  finalizers++
+                  yield* finalized.open
+                })))
+            })
+          )
+          yield* TestClock.adjust(1)
+          const requestScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
+          yield* Effect.addFinalizer(() => Effect.asVoid(source.end))
+          const supervisor = yield* Supervisor.track
+          const acquire = (yield* entity.client)("one").Values(undefined, { asMailbox: true }).pipe(
+            Scope.extend(requestScope),
+            Effect.supervised(supervisor)
+          )
+          const mailbox = yield* masked ? Effect.uninterruptible(acquire) : acquire
+          yield* source.offer(1)
+          assert.strictEqual(yield* mailbox.take.pipe(Effect.timeout("1 second"), TestServices.provideLive), 1)
+          // This reader is outside requestScope, so cancellation must reach it through the mailbox.
+          const reader = yield* mailbox.takeAll.pipe(Effect.fork)
+          yield* TestClock.adjust(1)
+          assert(Option.isNone(yield* Fiber.poll(reader)))
+          const close = yield* Scope.close(requestScope, Exit.void).pipe(Effect.fork)
+          const settled = yield* Fiber.await(close).pipe(
+            Effect.timeoutOption("1 second"),
+            TestServices.provideLive,
+            // Release a masked writer before joining the close, including on the failing implementation.
+            Effect.ensuring(Effect.gen(function*() {
+              yield* source.end
+              yield* Fiber.join(close).pipe(Effect.timeout("1 second"), Effect.orDie, TestServices.provideLive)
+            }))
+          )
+          const exit = yield* Fiber.await(reader).pipe(
+            Effect.timeout("1 second"),
+            TestServices.provideLive,
+            Effect.ensuring(Fiber.interrupt(reader))
+          )
+          yield* finalized.await.pipe(Effect.timeout("1 second"), TestServices.provideLive)
+          assert.strictEqual((yield* supervisor.value).length, 0, "request fibers must stop after cleanup")
+          assert.strictEqual(finalizers, 1)
+          assert.isFalse(yield* sharding.isShutdown)
+          assert(Option.isSome(settled), "request scope must close without waiting for the remote stream to end")
+          assert(Exit.isSuccess(settled.value))
+          assert(
+            Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause),
+            `request cancellation must not look like a clean stream end: ${JSON.stringify(exit)}`
+          )
+        }).pipe(Effect.scoped, Effect.provide(TestSharding)))
+    }
+
     for (const full of [false, true]) {
       it.effect(`closing a mailbox request scope cancels its reader and handler (persisted=${persisted}, full=${full})`, () =>
         Effect.gen(function*() {
