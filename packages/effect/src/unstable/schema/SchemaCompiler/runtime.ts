@@ -44,19 +44,19 @@ type GenerateArray = (context: {
 const makeObjectBase = (
   ast: SchemaAST.Objects,
   compile: Compiler,
-  compileConstructorDefault: Compiler,
+  compileField: Compiler,
   generate: GenerateObject
 ): SchemaIssueParser => {
   let properties: Array<ParsedProperty> | undefined
   const getProperties = (): Array<ParsedProperty> =>
     properties ??= ast.propertySignatures.map((property) => ({
-      parser: compileConstructorDefault(property.type),
+      parser: compileField(property.type),
       name: property.name,
       type: property.type
     }))
   let fallback: SchemaIssueParser | undefined
   const runFallback: SchemaIssueParser = (input, options) =>
-    (fallback ??= ast.getParser(compile, compileConstructorDefault))(input, options)
+    (fallback ??= ast.getParser(compile, compileField))(input, options)
   const resume = (
     state: ObjectParserState,
     index: number,
@@ -77,17 +77,17 @@ const makeObjectBase = (
 const makeArrayBase = (
   ast: SchemaAST.Arrays,
   compile: Compiler,
-  compileConstructorDefault: Compiler,
+  compileField: Compiler,
   generate: GenerateArray
 ): SchemaIssueParser => {
   let element: { readonly ast: SchemaAST.AST; readonly parser: SchemaIssueParser } | undefined
   const getElement = () => (element ??= {
     ast: ast.rest[0],
-    parser: compileConstructorDefault(ast.rest[0])
+    parser: compileField(ast.rest[0])
   })
   let fallback: SchemaIssueParser | undefined
   const runFallback: SchemaIssueParser = (input, options) =>
-    (fallback ??= ast.getParser(compile, compileConstructorDefault))(input, options)
+    (fallback ??= ast.getParser(compile, compileField))(input, options)
   const run = generate({
     getElement: () => getElement().parser,
     step: SchemaAST.stepArray,

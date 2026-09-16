@@ -2224,7 +2224,7 @@ export interface Arrays extends ASTNode {
 
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault?: SchemaParser.Compiler
+    compileField?: SchemaParser.Compiler
   ): SchemaParser.Parser
   /** @internal */
 
@@ -2297,7 +2297,7 @@ export const Arrays: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile
+    compileField: SchemaParser.Compiler = compile
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -2329,8 +2329,8 @@ export const Arrays: new(
         return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       if (!elements) {
-        elements = ast.elements.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
-        rest = ast.rest.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
+        elements = ast.elements.map((ast) => ({ ast, parser: compileField(ast) }))
+        rest = ast.rest.map((ast) => ({ ast, parser: compileField(ast) }))
       }
 
       const len = input.length
@@ -2722,7 +2722,7 @@ export interface Objects extends ASTNode {
 
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault?: SchemaParser.Compiler
+    compileField?: SchemaParser.Compiler
   ): SchemaParser.Parser
   /** @internal */
 
@@ -2787,7 +2787,7 @@ export const Objects: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile
+    compileField: SchemaParser.Compiler = compile
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -2882,7 +2882,7 @@ export const Objects: new(
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
-          parser: compileConstructorDefault(ps.type),
+          parser: compileField(ps.type),
           name: ps.name,
           type: ps.type
         }))
@@ -2890,7 +2890,7 @@ export const Objects: new(
           ? ast.indexSignatures.map((is) => ({
             is,
             parserKey: compile(parameterFromPropertyKey(is.parameter)),
-            parserValue: compileConstructorDefault(is.type)
+            parserValue: compileField(is.type)
           }))
           : undefined
       }
@@ -3602,7 +3602,7 @@ export interface Union<A extends AST = AST> extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(compile: SchemaParser.Compiler, compileField?: SchemaParser.Compiler): SchemaParser.Parser
   /** @internal */
 
   recur(recur: (ast: AST) => AST): Union<AST>
@@ -3665,7 +3665,7 @@ export const Union: new<A extends AST = AST>(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault?: SchemaParser.Compiler
+    compileField?: SchemaParser.Compiler
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -3674,7 +3674,7 @@ export const Union: new<A extends AST = AST>(
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
-      const candidates = getCandidates(input, ast.types, compileConstructorDefault !== undefined)
+      const candidates = getCandidates(input, ast.types, compileField !== undefined)
 
       if (candidates.length === 0) {
         return Effect.fail(new SchemaIssue.AnyOf(ast, [], input, options))

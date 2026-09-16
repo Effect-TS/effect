@@ -125,7 +125,7 @@ export function compileField(ast: SchemaAST.AST, compile: Compiler): Parser {
 export function compile(
   ast: SchemaAST.AST,
   compile: Compiler,
-  compileConstructorDefault?: Compiler,
+  compileField?: Compiler,
   base?: Parser,
   specialize?: (local: Parser) => Parser
 ): Parser {
@@ -134,10 +134,12 @@ export function compile(
     // Register those ASTs with the same resolver before invoking the callback.
     for (const parameter of ast.typeParameters) compile(parameter)
   }
-  const descriptor = compileConstructorDefault ? SchemaAST.getConstructorDescriptor(ast) : undefined
+  // Construction supplies compileField for parent-owned defaults. Its presence
+  // also selects the constructor semantics of declarations and Unions.
+  const descriptor = compileField ? SchemaAST.getConstructorDescriptor(ast) : undefined
   const parser = descriptor
     ? makeConstructorParser(descriptor, compile)
-    : base ?? ast.getParser(compile, compileConstructorDefault)
+    : base ?? ast.getParser(compile, compileField)
   const checks = ast.checks
   const links = ast.encoding
   const transformations = links?.map((link) => compileTransformation(link.transformation))
