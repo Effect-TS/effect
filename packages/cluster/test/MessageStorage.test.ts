@@ -12,7 +12,7 @@ import {
 } from "@effect/cluster"
 import { Rpc } from "@effect/rpc"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Option, Schema } from "effect"
+import { Cause, Effect, Exit, Fiber, Option, Schema, TestServices } from "effect"
 import * as TestClock from "effect/TestClock"
 import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
 import {
@@ -39,36 +39,144 @@ describe("MessageStorage", () => {
         assert.instanceOf(Cause.squash(exit.cause), ClusterError.EntityNotAssignedToRunner)
       }).pipe(Effect.provide(MemoryLive)))
 
-    it.effect("stores a defect fallback when a persisted reply cannot be encoded and releases waiters", () =>
-      Effect.gen(function*() {
-        const storage = yield* MessageStorage.MessageStorage
-        const rpc = Rpc.make("InvalidReply", { success: Schema.Int })
-        const request = yield* makeRequest({ rpc, payload: undefined })
-        yield* storage.saveRequest(request)
-        const waiter = yield* storage.registerReplyHandler(request).pipe(Effect.fork)
-        yield* TestClock.adjust(1)
-        const id = (yield* Snowflake.Generator).unsafeNext()
-        const saved = yield* storage.saveReply(
-          new Reply.ReplyWithContext<typeof rpc>({
-            rpc,
-            context: request.context,
-            reply: new Reply.WithExit<typeof rpc>({
-              id,
-              requestId: request.envelope.requestId,
-              exit: Exit.succeed(1.5)
-            })
+    for (const invalidFailure of [false, true]) {
+      it.effect(`persists and delivers a defect for a malformed terminal reply (error=${invalidFailure})`, () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const rpc = Rpc.make("InvalidReply", { success: Schema.Int, error: Schema.Int })
+          const responses: Array<Reply.Reply<typeof rpc>> = []
+          const request = new Message.OutgoingRequest({
+            ...yield* makeRequest({ rpc }),
+            respond: (reply: Reply.Reply<typeof rpc>) =>
+              Effect.sync(() => {
+                responses.push(reply)
+              })
           })
-        ).pipe(Effect.exit)
-        assert(Exit.isSuccess(saved), "reply serialization must persist its defect fallback")
-        assert(Exit.isSuccess(yield* Fiber.await(waiter)))
-        const replies = yield* storage.repliesFor([request])
-        assert.strictEqual(replies.length, 1)
-        assert(replies[0]._tag === "WithExit")
-        assert(Exit.isFailure(replies[0].exit))
-        assert(Cause.isDie(replies[0].exit.cause))
-        assert.include(Cause.pretty(replies[0].exit.cause), "MalformedMessage")
-        assert.strictEqual((yield* storage.unprocessedMessages([request.envelope.address.shardId])).length, 0)
-      }).pipe(Effect.provide(MemoryLive)))
+          yield* storage.saveRequest(request)
+          const waiter = yield* storage.registerReplyHandler(request).pipe(Effect.forkScoped)
+          yield* TestClock.adjust(1)
+          assert(Option.isNone(yield* Fiber.poll(waiter)), "reply waiter must be parked before saving")
+          const id = (yield* Snowflake.Generator).unsafeNext()
+          yield* storage.saveReply(
+            new Reply.ReplyWithContext<typeof rpc>({
+              rpc,
+              context: request.context,
+              reply: new Reply.WithExit<typeof rpc>({
+                id,
+                requestId: request.envelope.requestId,
+                exit: invalidFailure ? Exit.fail(1.5) : Exit.succeed(1.5)
+              })
+            })
+          )
+          const released = yield* Fiber.await(waiter).pipe(
+            Effect.timeoutOption("1 second"),
+            TestServices.provideLive,
+            Effect.ensuring(Fiber.interrupt(waiter))
+          )
+          const replies = yield* storage.repliesFor([request])
+          assert.strictEqual(replies.length, 1)
+          const stored = replies[0]
+          assert(stored._tag === "WithExit")
+          assert(Exit.isFailure(stored.exit))
+          assert(Cause.isDie(stored.exit.cause))
+          assert.include(Cause.pretty(stored.exit.cause), "MalformedMessage")
+          assert.strictEqual(stored.id, id)
+          assert.strictEqual(stored.requestId, request.envelope.requestId)
+          assert.strictEqual((yield* storage.unprocessedMessages([request.envelope.address.shardId])).length, 0)
+          assert(Option.isSome(released) && Exit.isSuccess(released.value), "terminal defect must release the waiter")
+          assert.strictEqual(responses.length, 1)
+          const delivered = responses[0]
+          assert(delivered._tag === "WithExit")
+          assert(
+            Exit.isFailure(delivered.exit) && Cause.isDie(delivered.exit.cause),
+            "caller must receive the stored defect, not the malformed terminal reply"
+          )
+          assert.include(Cause.pretty(delivered.exit.cause), "MalformedMessage")
+          assert.strictEqual(delivered.id, stored.id)
+          assert.strictEqual(delivered.requestId, stored.requestId)
+        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
+    }
+
+    for (const malformed of [false, true]) {
+      it.effect(`persisted stream chunks preserve waiter and caller semantics (malformed=${malformed})`, () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const rpc = Rpc.make("Values", { success: Schema.Int, stream: true })
+          const responses: Array<Reply.Reply<typeof rpc>> = []
+          const request = new Message.OutgoingRequest({
+            ...yield* makeRequest({ rpc }),
+            respond: (reply: Reply.Reply<typeof rpc>) =>
+              Effect.sync(() => {
+                responses.push(reply)
+              })
+          })
+          yield* storage.saveRequest(request)
+          const waiter = yield* storage.registerReplyHandler(request).pipe(Effect.forkScoped)
+          yield* TestClock.adjust(1)
+          assert(Option.isNone(yield* Fiber.poll(waiter)), "reply waiter must be parked before saving")
+          const id = (yield* Snowflake.Generator).unsafeNext()
+          const chunk = new Reply.Chunk<typeof rpc>({
+            id,
+            requestId: request.envelope.requestId,
+            sequence: 0,
+            values: malformed ? [1.5] : [1, 2]
+          })
+          yield* storage.saveReply(new Reply.ReplyWithContext({ rpc, context: request.context, reply: chunk }))
+          const replies = yield* storage.repliesFor([request])
+          assert.strictEqual(replies.length, 1)
+          const stored = replies[0]
+          if (!malformed) {
+            assert.deepStrictEqual(stored, chunk)
+            assert.deepStrictEqual(responses, [chunk])
+            assert(Option.isNone(yield* Fiber.poll(waiter)), "a valid chunk must retain its reply waiter")
+            const terminal = new Reply.WithExit<typeof rpc>({
+              id: (yield* Snowflake.Generator).unsafeNext(),
+              requestId: request.envelope.requestId,
+              exit: Exit.void
+            })
+            yield* storage.saveReply(new Reply.ReplyWithContext({ rpc, context: request.context, reply: terminal }))
+            const released = yield* Fiber.await(waiter).pipe(
+              Effect.timeoutOption("1 second"),
+              TestServices.provideLive,
+              Effect.ensuring(Fiber.interrupt(waiter))
+            )
+            assert(
+              Option.isSome(released) && Exit.isSuccess(released.value),
+              "normal completion must release the waiter"
+            )
+            assert.deepStrictEqual(responses, [chunk, terminal])
+            assert.deepStrictEqual(yield* storage.repliesFor([request]), [chunk, terminal])
+          } else {
+            assert(stored._tag === "WithExit")
+            assert(Exit.isFailure(stored.exit))
+            assert(Cause.isDie(stored.exit.cause))
+            assert.include(Cause.pretty(stored.exit.cause), "MalformedMessage")
+            assert.strictEqual(stored.id, id)
+            assert.strictEqual(stored.requestId, request.envelope.requestId)
+            const released = yield* Fiber.await(waiter).pipe(
+              Effect.timeoutOption("1 second"),
+              TestServices.provideLive,
+              Effect.ensuring(Fiber.interrupt(waiter))
+            )
+            assert.deepStrictEqual(
+              {
+                waiterReleased: Option.isSome(released) && Exit.isSuccess(released.value),
+                deliveredTags: responses.map((reply) => reply._tag)
+              },
+              { waiterReleased: true, deliveredTags: ["WithExit"] },
+              "the stored terminal defect must release the waiter and replace the malformed chunk for the caller"
+            )
+            const delivered = responses[0]
+            assert(delivered._tag === "WithExit")
+            assert(Exit.isFailure(delivered.exit))
+            assert(Cause.isDie(delivered.exit.cause))
+            assert.include(Cause.pretty(delivered.exit.cause), "MalformedMessage")
+            assert.strictEqual(delivered.id, stored.id)
+            assert.strictEqual(delivered.requestId, stored.requestId)
+          }
+          assert.strictEqual((yield* storage.unprocessedMessages([request.envelope.address.shardId])).length, 0)
+        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
+    }
 
     it.effect("removes a queued Interrupt when clearing an address", () =>
       Effect.gen(function*() {
