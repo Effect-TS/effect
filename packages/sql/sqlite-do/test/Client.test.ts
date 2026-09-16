@@ -1,7 +1,7 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
@@ -333,23 +333,75 @@ describe("Client", () => {
       assert.strictEqual(storage.rollbackCalls, 1)
     }))
 
-  it.effect("nested transactions fail clearly without savepoint SQL", () =>
+  // https://github.com/Effect-TS/effect/commit/fe1b2d53b7374db7a690ba96cc46392789d8ffe0
+  it.effect("nested transactions roll back independently while retaining the outer connection", () =>
     Effect.gen(function*() {
       const storage = new FakeDurableObjectStorage()
       const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+      const ready = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      yield* Effect.addFinalizer(() => Effect.asVoid(Deferred.succeed(release, void 0)))
+      let innerFailure: Exit.Exit<unknown, unknown> | undefined
+      let innerSuccess: Exit.Exit<unknown, unknown> | undefined
 
       yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-      const error = yield* sql.withTransaction(
+      const transaction = yield* sql.withTransaction(
         Effect.gen(function*() {
           yield* sql`INSERT INTO test (name) VALUES ('outer')`
-          yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('inner')`)
+          const entered = yield* Deferred.make<void>()
+          const releaseInner = yield* Deferred.make<void>()
+          const first = yield* sql`INSERT INTO test (name) VALUES ('discarded')`.pipe(
+            Effect.andThen(Deferred.succeed(entered, void 0)),
+            Effect.andThen(Deferred.await(releaseInner)),
+            Effect.andThen(Effect.fail("inner failure")),
+            sql.withTransaction,
+            Effect.exit,
+            Effect.ensuring(Deferred.succeed(entered, void 0)),
+            Effect.forkChild({ startImmediately: true })
+          )
+          let second: Fiber.Fiber<Exit.Exit<string, unknown>> | undefined
+          yield* Effect.gen(function*() {
+            yield* Deferred.await(entered)
+            second = yield* sql`INSERT INTO test (name) VALUES ('inner')`.pipe(
+              Effect.as("inner success"),
+              sql.withTransaction,
+              Effect.exit,
+              Effect.forkChild({ startImmediately: true })
+            )
+            // If the sibling entered storage, finish it before rolling back the first child.
+            // A serialized sibling must be allowed to wait until that rollback completes.
+            if (storage.transactionCalls === 3) {
+              yield* Fiber.join(second)
+            }
+            yield* Deferred.succeed(releaseInner, void 0)
+            innerFailure = yield* Fiber.join(first)
+            innerSuccess = yield* Fiber.join(second)
+          }).pipe(Effect.ensuring(Effect.gen(function*() {
+            yield* Deferred.succeed(releaseInner, void 0)
+            if (second) yield* Fiber.interrupt(second)
+            yield* Fiber.interrupt(first)
+          })))
+          yield* Deferred.succeed(ready, void 0)
+          yield* Deferred.await(release)
+          return "outer success"
         })
-      ).pipe(Effect.flip)
-      const rows = yield* sql`SELECT * FROM test`
+      ).pipe(
+        Effect.ensuring(Deferred.succeed(ready, void 0)),
+        Effect.forkChild
+      )
+      yield* Deferred.await(ready)
+      const query = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
+      const queryBeforeCompletion = query.pollUnsafe()
+      yield* Deferred.succeed(release, void 0)
+      const outerExit = yield* Fiber.await(transaction)
+      const rows = yield* Fiber.join(query)
 
-      assert.strictEqual(error.reason._tag, "UnknownError")
-      assert.match(error.message, /Nested transactions are not supported/)
-      assert.deepStrictEqual(rows, [])
+      assert.deepStrictEqual(innerFailure, Exit.fail("inner failure"))
+      assert.deepStrictEqual(innerSuccess, Exit.succeed("inner success"))
+      assert.deepStrictEqual(outerExit, Exit.succeed("outer success"))
+      assert.isUndefined(queryBeforeCompletion)
+      assert.deepStrictEqual(rows, [{ id: 1, name: "outer" }, { id: 2, name: "inner" }])
+      assert.strictEqual(storage.transactionCalls, 3)
       assert.strictEqual(storage.rollbackCalls, 1)
       assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
     }))

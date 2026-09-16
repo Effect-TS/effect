@@ -124,55 +124,70 @@ const makeStorageBackedWithTransaction = (
   storage: DurableObjectStorage,
   connection: Connection,
   semaphore: Semaphore.Semaphore
-): Client.SqlClient["withTransaction"] =>
-<R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
-  Effect.withFiber((fiber) => {
-    const services = fiber.context
-    const connOption = Context.getOption(services, SqliteTransaction)
-    if (connOption._tag === "Some") {
-      return Effect.fail(
-        unsupportedTransaction(
-          "Nested transactions are not supported by Cloudflare Durable Object SQLite storage",
-          "transaction"
+): Client.SqlClient["withTransaction"] => {
+  // Siblings share their parent tuple; nested children receive a new tuple.
+  const transactionSemaphores = new WeakMap<Client.TransactionConnection.Service, Semaphore.Semaphore>()
+  return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
+    Effect.withFiber((fiber) => {
+      const services = fiber.context
+      const connOption = Context.getOption(services, SqliteTransaction)
+      if (connOption._tag === "Some" && connOption.value[0] !== connection) {
+        return Effect.fail(
+          unsupportedTransaction(
+            "Transactions cannot use a connection from a different SQLite client",
+            "transaction"
+          )
         )
+      }
+
+      let transactionSemaphore = semaphore
+      if (connOption._tag === "Some") {
+        let parentSemaphore = transactionSemaphores.get(connOption.value)
+        if (parentSemaphore === undefined) {
+          parentSemaphore = Semaphore.makeUnsafe(1)
+          transactionSemaphores.set(connOption.value, parentSemaphore)
+        }
+        transactionSemaphore = parentSemaphore
+      }
+
+      const effectWithTxn = Effect.provideContext(
+        effect,
+        Context.add(services, SqliteTransaction, [connection, connOption._tag === "Some" ? connOption.value[1] + 1 : 0])
       )
-    }
 
-    const effectWithTxn = Effect.provideContext(
-      effect,
-      Context.add(services, SqliteTransaction, [connection, 0] as const)
-    )
-
-    return semaphore.withPermits(1)(
-      Effect.callback((resume) => {
-        let interrupted = false
-        const promise = storage.transaction((txn) =>
-          new Promise<void>((resolve) => {
-            if (interrupted) return resolve()
-            resume(Effect.onExit(effectWithTxn, (exit) => {
-              if (Exit.isFailure(exit)) {
-                txn.rollback()
-              }
-              resolve()
-              return Effect.flatten(Effect.promise(() => promise))
-            }))
+      return transactionSemaphore.withPermit(
+        Effect.callback((resume) => {
+          let interrupted = false
+          const promise = storage.transaction((txn) =>
+            new Promise<void>((resolve) => {
+              if (interrupted) return resolve()
+              resume(Effect.onExit(effectWithTxn, (exit) => {
+                if (Exit.isFailure(exit)) {
+                  txn.rollback()
+                }
+                resolve()
+                return Effect.flatten(Effect.promise(() => promise))
+              }))
+            })
+          ).then(
+            () => Exit.void,
+            (cause) => {
+              const exit = Exit.fail(
+                new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") })
+              )
+              // Report rejection before the transaction callback starts; later resumes are ignored.
+              resume(exit)
+              return exit
+            }
+          )
+          return Effect.suspend(() => {
+            interrupted = true
+            return Effect.asVoid(Effect.promise(() => promise))
           })
-        ).then(
-          () => Exit.void,
-          (cause) => {
-            const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
-            // Report rejection before the transaction callback starts; later resumes are ignored.
-            resume(exit)
-            return exit
-          }
-        )
-        return Effect.suspend(() => {
-          interrupted = true
-          return Effect.asVoid(Effect.promise(() => promise))
         })
-      })
-    )
-  })
+      )
+    })
+}
 
 /**
  * Creates a scoped Cloudflare Durable Object SQLite client around Durable Object SQLite storage, serializing access and converting returned `ArrayBuffer` values to `Uint8Array`.
