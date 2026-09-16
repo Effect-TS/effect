@@ -44,6 +44,21 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.notInclude(make, "get decode(){")
   })
 
+  it("omits fast decode operations from diagnostic-only dependencies", () => {
+    const child = Schema.Struct({ value: Schema.String })
+    const schema = Schema.Array(child)
+    const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
+    assert.strictEqual(source.match(/get decode\(\)\{/g)?.length, 1)
+    assert.strictEqual(source.match(/get decodeEffect\(\)\{/g)?.length, 2)
+
+    const targeted = SchemaAOTCompiler.compile([
+      { ast: schema.ast, operations: ["decode"] },
+      { ast: child.ast, operations: ["decode"] }
+    ])
+    assert.strictEqual(targeted.match(/get decode\(\)\{/g)?.length, 2)
+    assert.strictEqual(targeted.match(/get decodeEffect\(\)\{/g)?.length, 2)
+  })
+
   it("uses registry fallbacks for operations that were not requested", async () => {
     const schema = Schema.Struct({ value: Schema.String })
     const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-operations-test-", import.meta.url)))
@@ -77,12 +92,12 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       SchemaAOTCompiler.compile([
         { ast: first.ast, operations: ["decode"] },
         { ast: second.ast, operations: ["decode"] },
-        { ast: child.ast, operations: ["decode"] },
         { ast: first.ast, operations: ["decode"] },
         { ast: second.ast, operations: ["decode"] }
       ]),
       source
     )
+    assert.strictEqual(source.match(/R\.set\(/g)?.length, 3)
   })
 
   it("reuses identical decoder factories", () => {

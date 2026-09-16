@@ -35,6 +35,8 @@ const decoder = (sources: ReadonlyMap<Codegen.DecoderOperation, string>): string
  */
 export type Operation = "decode" | "is" | "make"
 
+type PlannedOperation = Operation | "decodeEffect"
+
 /**
  * An exact AST and the parser operations to prepare for it.
  *
@@ -107,7 +109,7 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
     readonly index: number
     readonly name: string
     readonly reference: string
-    readonly requested: Set<Operation>
+    readonly requested: Set<PlannedOperation>
     readonly sources: Map<Codegen.DecoderOperation, string>
     readonly attempted: Set<Codegen.DecoderOperation>
     readonly compilable: boolean
@@ -129,7 +131,7 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
     return true
   }
 
-  const visitDependencies = (node: SchemaAST.AST, name: string, operation: Operation): void => {
+  const visitDependencies = (node: SchemaAST.AST, name: string, operation: PlannedOperation): void => {
     switch (node._tag) {
       case "Declaration":
         node.typeParameters.forEach((child, index) => visit(child, `${name}.typeParameters[${index}]`, operation))
@@ -167,7 +169,7 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
     }
   }
 
-  function visit(node: SchemaAST.AST, reference: string, operation: Operation): void {
+  function visit(node: SchemaAST.AST, reference: string, operation: PlannedOperation): void {
     let plan = seen.get(node)
     if (plan === undefined) {
       const index = seen.size
@@ -188,6 +190,9 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
     switch (operation) {
       case "decode":
         addSource(node, plan, "decode")
+        visit(node, reference, "decodeEffect")
+        break
+      case "decodeEffect":
         addSource(node, plan, "decodeEffect")
         visitDependencies(node, plan.name, operation)
         break
