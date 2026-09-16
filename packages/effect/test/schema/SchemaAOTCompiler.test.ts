@@ -85,6 +85,14 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     )
   })
 
+  it("reuses identical decoder factories", () => {
+    const schema = Schema.Union(
+      Array.from({ length: 8 }, (_, tag) => Schema.Struct({ tag: Schema.Literal(tag), value: Schema.Number }))
+    )
+    const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
+    assert.strictEqual(source.match(/function d\d+\(ast,R,resolve\)/g)?.length, 2)
+  })
+
   it("runs generated decoders without dynamic code generation", () => {
     const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-test-", import.meta.url)))
     try {

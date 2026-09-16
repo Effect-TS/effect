@@ -116,6 +116,7 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
   const seen = new Map<SchemaAST.AST, PlannedNode>()
   const bindings: Array<string> = []
   const factories: Array<string> = []
+  const factoryNames = new Map<string, string>()
   const installations: Array<string> = []
 
   const addSource = (node: SchemaAST.AST, plan: PlannedNode, operation: Codegen.DecoderOperation): boolean => {
@@ -210,8 +211,13 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
     bindings.push(`const ${plan.name}=${plan.reference};`)
     const source = decoder(plan.sources)
     if (source !== undefined) {
-      factories.push(`function d${plan.index}(ast,R,resolve){return ${source}}`)
-      installations.push(`${helper("set")}(${plan.name},d${plan.index}(${plan.name},R,R.resolve));`)
+      let factory = factoryNames.get(source)
+      if (factory === undefined) {
+        factory = `d${factoryNames.size}`
+        factoryNames.set(source, factory)
+        factories.push(`function ${factory}(ast,R,resolve){return ${source}}`)
+      }
+      installations.push(`${helper("set")}(${plan.name},${factory}(${plan.name},R,R.resolve));`)
     }
   }
   return [
