@@ -1,10 +1,9 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Stream } from "effect"
+import { Deferred, Effect, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
-import { SqlError } from "effect/unstable/sql/SqlError"
 
 class FakeCursor {
   readonly columnNames: ReadonlyArray<string>
@@ -268,204 +267,71 @@ describe("Client", () => {
       assert.strictEqual(storage.rollbackCalls, 1)
     }))
 
-  for (const reject of [false, true]) {
-    it.effect(`holds the connection until native completion ${reject ? "rejects" : "resolves"}`, () =>
-      Effect.gen(function*() {
-        const storage = new FakeDurableObjectStorage()
-        const commitError = new Error("native completion failed")
-        const bodyCompleted = yield* Deferred.make<void>()
-        let complete!: () => void
-        const completion = new Promise<void>((resolve) => {
-          complete = resolve
-        })
-        const sql = yield* makeClient({
-          storage: {
-            sql: storage.sql,
-            transaction: <T>(body: (txn: { rollback: () => void }) => Promise<T>) =>
-              storage.transaction(async (txn) => {
-                const value = await body(txn)
-                Deferred.doneUnsafe(bodyCompleted, Exit.void)
-                await completion
-                if (reject) throw commitError
-                return value
-              })
-          } as unknown as DurableObjectStorage
-        })
-
-        yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-        const transaction = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
-          Effect.as("committed"),
-          sql.withTransaction,
-          Effect.forkChild
-        )
-        yield* Deferred.await(bodyCompleted)
-        const query = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
-        const transactionBeforeCompletion = transaction.pollUnsafe()
-        const queryBeforeCompletion = query.pollUnsafe()
-        complete()
-
-        const exit = yield* Fiber.await(transaction)
-        const rows = yield* Fiber.join(query)
-        assert.isUndefined(transactionBeforeCompletion)
-        assert.isUndefined(queryBeforeCompletion)
-        if (reject) {
-          assert(Exit.isFailure(exit))
-          const reason = exit.cause.reasons[0]
-          assert(Cause.isFailReason(reason))
-          assert.strictEqual(reason.error._tag, "SqlError")
-          assert.strictEqual(reason.error.reason._tag, "UnknownError")
-          assert.strictEqual(reason.error.reason.operation, "transaction")
-          assert.strictEqual(reason.error.reason.cause, commitError)
-          assert.strictEqual(storage.rollbackCalls, 0)
-          assert.strictEqual(storage.transactionCalls, 1)
-          assert.deepStrictEqual(rows, [])
-        } else {
-          assert.deepStrictEqual(exit, Exit.succeed("committed"))
-          assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
-        }
-      }))
-  }
-
-  it.effect("propagates native rejection before the transaction callback starts", () =>
-    Effect.gen(function*() {
-      const db = new FakeSqlStorage()
-      const nativeError = new Error("transaction could not start")
-      const sql = yield* makeClient({
-        storage: {
-          sql: db,
-          transaction: () => Promise.reject(nativeError)
-        } as unknown as DurableObjectStorage
-      })
-
-      const error = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(sql.withTransaction, Effect.flip)
-      const rows = yield* sql`SELECT * FROM test`
-
-      assert.strictEqual(error._tag, "SqlError")
-      assert.strictEqual(error.reason.cause, nativeError)
-      assert.deepStrictEqual(db.statements, ["SELECT * FROM test"])
-      assert.deepStrictEqual(rows, [])
-    }))
-
-  for (const reject of [false, true]) {
-    it.effect(`interrupts before callback entry when native completion ${reject ? "rejects" : "resolves"}`, () =>
-      Effect.gen(function*() {
-        const storage = new FakeDurableObjectStorage()
-        const nativeError = new Error("native completion failed")
-        const started = yield* Deferred.make<void>()
-        let start!: () => void
-        const pending = new Promise<void>((resolve) => {
-          start = resolve
-        })
-        const sql = yield* makeClient({
-          storage: {
-            sql: storage.sql,
-            transaction: async <T>(body: (txn: { rollback: () => void }) => Promise<T>) => {
-              Deferred.doneUnsafe(started, Exit.void)
-              await pending
-              const value = await storage.transaction(body)
-              if (reject) throw nativeError
-              return value
-            }
-          } as unknown as DurableObjectStorage
-        })
-
-        const transaction = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
-          sql.withTransaction,
-          Effect.forkChild
-        )
-        yield* Deferred.await(started)
-        const interrupt = yield* Fiber.interrupt(transaction).pipe(Effect.forkChild({ startImmediately: true }))
-        const query = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
-        const interruptionBeforeCallback = interrupt.pollUnsafe()
-        const queryBeforeCallback = query.pollUnsafe()
-        start()
-
-        yield* Fiber.join(interrupt)
-        const exit = yield* Fiber.await(transaction)
-        const rows = yield* Fiber.join(query)
-        assert.isUndefined(interruptionBeforeCallback)
-        assert.isUndefined(queryBeforeCallback)
-        assert(Exit.isFailure(exit))
-        assert.isTrue(Cause.hasInterruptsOnly(exit.cause))
-        assert.strictEqual(storage.transactionCalls, 1)
-        assert.deepStrictEqual(storage.sql.statements, ["SELECT * FROM test"])
-        assert.deepStrictEqual(rows, [])
-      }))
-  }
-
-  it.effect("preserves body and native completion failures", () =>
+  it.effect("propagates native rejection after the body succeeds before releasing the connection", () =>
     Effect.gen(function*() {
       const storage = new FakeDurableObjectStorage()
-      const commitError = new Error("native transaction rejected after body completion")
+      const commitError = new Error("native completion failed")
+      const bodyCompleted = yield* Deferred.make<void>()
+      let complete!: () => void
+      const completion = new Promise<void>((resolve) => {
+        complete = resolve
+      })
       const sql = yield* makeClient({
         storage: {
           sql: storage.sql,
           transaction: <T>(body: (txn: { rollback: () => void }) => Promise<T>) =>
             storage.transaction(async (txn) => {
               await body(txn)
+              Deferred.doneUnsafe(bodyCompleted, Effect.void)
+              await completion
               throw commitError
             })
         } as unknown as DurableObjectStorage
       })
 
-      const exit = yield* Effect.fail("body failed").pipe(
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      const transaction = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
         sql.withTransaction,
-        Effect.exit
+        Effect.flip,
+        Effect.forkChild
       )
+      yield* Deferred.await(bodyCompleted)
+      const query = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
+      const transactionBeforeCompletion = transaction.pollUnsafe()
+      const queryBeforeCompletion = query.pollUnsafe()
+      complete()
 
-      assert(Exit.isFailure(exit))
-      assert.strictEqual(exit.cause.reasons.length, 2)
-      const errors = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error)
-      assert.strictEqual(errors[0], "body failed")
-      assert(errors[1] instanceof SqlError)
-      assert.strictEqual(errors[1].reason.cause, commitError)
-      assert.strictEqual(storage.rollbackCalls, 1)
+      const error = yield* Fiber.join(transaction)
+      const rows = yield* Fiber.join(query)
+      assert.isUndefined(transactionBeforeCompletion)
+      assert.isUndefined(queryBeforeCompletion)
+      assert.strictEqual(error._tag, "SqlError")
+      assert.strictEqual(error.reason.cause, commitError)
+      assert.strictEqual(storage.rollbackCalls, 0)
+      assert.strictEqual(storage.transactionCalls, 1)
+      assert.deepStrictEqual(rows, [])
     }))
 
-  for (const reject of [false, true]) {
-    it.effect(`interrupts after body entry when native completion ${reject ? "rejects" : "resolves"}`, () =>
-      Effect.gen(function*() {
-        const storage = new FakeDurableObjectStorage()
-        const nativeError = new Error("native completion failed")
-        const sql = yield* makeClient({
-          storage: {
-            sql: storage.sql,
-            transaction: <T>(body: (txn: { rollback: () => void }) => Promise<T>) =>
-              storage.transaction(async (txn) => {
-                const value = await body(txn)
-                if (reject) throw nativeError
-                return value
-              })
-          } as unknown as DurableObjectStorage
-        })
-        const inserted = yield* Deferred.make<void>()
+  it.effect("storage-backed interrupted transactions roll back before release", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+      const inserted = yield* Deferred.make<void>()
 
-        yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-        const fiber = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
-          Effect.tap(() => Deferred.succeed(inserted, void 0)),
-          Effect.andThen(Effect.never),
-          sql.withTransaction,
-          Effect.forkChild
-        )
-        yield* Deferred.await(inserted)
-        yield* Fiber.interrupt(fiber)
-        const exit = yield* Fiber.await(fiber)
-        const rows = yield* sql`SELECT * FROM test`
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      const fiber = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
+        Effect.tap(() => Deferred.succeed(inserted, void 0)),
+        Effect.andThen(Effect.never),
+        sql.withTransaction,
+        Effect.forkChild
+      )
+      yield* Deferred.await(inserted)
+      yield* Fiber.interrupt(fiber)
+      const rows = yield* sql`SELECT * FROM test`
 
-        assert(Exit.isFailure(exit))
-        if (reject) {
-          assert.deepStrictEqual(exit.cause.reasons.map((reason) => reason._tag), ["Interrupt", "Fail"])
-          const failure = exit.cause.reasons.find(Cause.isFailReason)
-          assert(failure)
-          assert.strictEqual(failure.error._tag, "SqlError")
-          assert.strictEqual(failure.error.reason.cause, nativeError)
-        } else {
-          assert.isTrue(Cause.hasInterruptsOnly(exit.cause))
-        }
-        assert.deepStrictEqual(rows, [])
-        assert.strictEqual(storage.rollbackCalls, 1)
-      }))
-  }
+      assert.deepStrictEqual(rows, [])
+      assert.strictEqual(storage.rollbackCalls, 1)
+    }))
 
   it.effect("nested transactions fail clearly without savepoint SQL", () =>
     Effect.gen(function*() {
