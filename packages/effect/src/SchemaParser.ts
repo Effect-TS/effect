@@ -1047,16 +1047,24 @@ function makeSync<T>(
   ast: SchemaAST.AST,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => T {
-  let entry: CompilerRegistry.Entry | undefined
+  let run: ((input: unknown, options?: SchemaAST.ParseOptions) => T) | undefined
+  return (input, overrideOptions) =>
+    (run ??= makeSyncEntry<T>(CompilerRegistry.resolve(ast), options))(input, overrideOptions)
+}
+
+function makeSyncEntry<T>(
+  entry: CompilerRegistry.Entry,
+  options?: SchemaAST.ParseOptions
+): (input: unknown, options?: SchemaAST.ParseOptions) => T {
+  const validate = entry.validate
   let detailed: ((input: unknown, options?: SchemaAST.ParseOptions) => T) | undefined
-  let parser: Parser | undefined
-  return (input, overrideOptions) => {
-    entry ??= CompilerRegistry.resolve(ast)
-    const parseOptions = options === undefined
-      ? overrideOptions ?? SchemaAST.defaultParseOptions
-      : mergeParseOptions(options, overrideOptions)
-    const validate = entry.validate
-    if (validate !== undefined && input !== InternalParser.missing) {
+  const run = validate === undefined
+    ? (input: unknown, parseOptions = SchemaAST.defaultParseOptions): T =>
+      (detailed ??= makeDetailedSync<T>(entry))(input, parseOptions)
+    : (input: unknown, parseOptions = SchemaAST.defaultParseOptions): T => {
+      if (input === InternalParser.missing) {
+        return (detailed ??= makeDetailedSync<T>(entry))(input, parseOptions)
+      }
       let output: unknown
       try {
         output = validate(input, parseOptions)
@@ -1065,13 +1073,17 @@ function makeSync<T>(
         throw error
       }
       if (output !== CompilerRegistry.invalid) return output as T
+      return (detailed ??= makeDetailedSync<T>(entry))(input, parseOptions)
     }
-    if (entry.source === undefined) {
-      const result = (parser ??= entry.decodeEffect)(input, parseOptions)
-      return runSync(parserResult<T, never>(result, input), "Sync adapter can only throw schema issues")
-    }
-    return (detailed ??= asSync(runWithCompiler<T, never>(() => entry!.decodeEffect, ast)))(input, parseOptions)
-  }
+  return options === undefined
+    ? run
+    : (input, overrideOptions) => run(input, mergeParseOptions(options, overrideOptions))
+}
+
+function makeDetailedSync<T>(
+  entry: CompilerRegistry.Entry
+): (input: unknown, options?: SchemaAST.ParseOptions) => T {
+  return asSync(runWithCompiler<T, never>(() => entry.decodeEffect, entry.ast))
 }
 
 function asSync<T, E>(
