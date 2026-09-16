@@ -7,6 +7,11 @@
 /**
  * @since 4.0.0
  */
+export * as DatagramSocket from "./DatagramSocket.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Socket from "./Socket.ts"
 
 /**
