@@ -267,6 +267,51 @@ describe("Client", () => {
       assert.strictEqual(storage.rollbackCalls, 1)
     }))
 
+  it.effect("propagates native rejection after the body succeeds before releasing the connection", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const commitError = new Error("native completion failed")
+      const bodyCompleted = yield* Deferred.make<void>()
+      let complete!: () => void
+      const completion = new Promise<void>((resolve) => {
+        complete = resolve
+      })
+      const sql = yield* makeClient({
+        storage: {
+          sql: storage.sql,
+          transaction: <T>(body: (txn: { rollback: () => void }) => Promise<T>) =>
+            storage.transaction(async (txn) => {
+              await body(txn)
+              Deferred.doneUnsafe(bodyCompleted, Effect.void)
+              await completion
+              throw commitError
+            })
+        } as unknown as DurableObjectStorage
+      })
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      const transaction = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
+        sql.withTransaction,
+        Effect.flip,
+        Effect.forkChild
+      )
+      yield* Deferred.await(bodyCompleted)
+      const query = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
+      const transactionBeforeCompletion = transaction.pollUnsafe()
+      const queryBeforeCompletion = query.pollUnsafe()
+      complete()
+
+      const error = yield* Fiber.join(transaction)
+      const rows = yield* Fiber.join(query)
+      assert.isUndefined(transactionBeforeCompletion)
+      assert.isUndefined(queryBeforeCompletion)
+      assert.strictEqual(error._tag, "SqlError")
+      assert.strictEqual(error.reason.cause, commitError)
+      assert.strictEqual(storage.rollbackCalls, 0)
+      assert.strictEqual(storage.transactionCalls, 1)
+      assert.deepStrictEqual(rows, [])
+    }))
+
   it.effect("storage-backed interrupted transactions roll back before release", () =>
     Effect.gen(function*() {
       const storage = new FakeDurableObjectStorage()
