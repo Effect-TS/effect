@@ -14,61 +14,6 @@ import { PgContainer } from "./fixtures/utils-pg.js"
 const StorageLive = SqlRunnerStorage.layer
 
 describe("SqlRunnerStorage", () => {
-  it.effect("empty liveness probe bypasses a wedged reserved connection", () => {
-    const partition = makePartitionState()
-    const layer = StorageLive.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partition)),
-      Layer.provide(ShardingConfig.layer({ shardLockExpiration: 1000, shardLockRefreshInterval: 100 }))
-    )
-    return Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      const shards = [ShardId.make("default", 1)]
-      yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
-      yield* storage.acquire(runnerAddress1, shards)
-      partition.current = true
-      const exit = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      assert(Exit.isFailure(exit))
-      assert.deepStrictEqual(
-        yield* storage.refresh(runnerAddress1, []).pipe(Effect.retry({ times: 10, schedule: Schedule.spaced(20) })),
-        []
-      )
-    }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        partition.current = false
-      })),
-      Effect.provide(layer),
-      TestServices.provideLive
-    )
-  }, 60_000)
-
-  it.effect("isolates advisory shard locks by prefix", () =>
-    Effect.gen(function*() {
-      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-      const storageB = yield* SqlRunnerStorage.make({ prefix: "other" })
-      const shard = ShardId.make("default", 1)
-
-      assert.deepStrictEqual(yield* storageA.acquire(runnerAddress1, [shard]), [shard])
-      assert.deepStrictEqual(yield* storageB.acquire(runnerAddress2, [shard]), [shard])
-    }).pipe(
-      Effect.scoped,
-      Effect.provide(PgContainer.ClientLive),
-      Effect.provide(ShardingConfig.layer())
-    ), 60_000)
-
-  it.effect("excludes other storages using the same prefix", () =>
-    Effect.gen(function*() {
-      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-      const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-      const shard = ShardId.make("default", 1)
-
-      assert.deepStrictEqual(yield* storageA.acquire(runnerAddress1, [shard]), [shard])
-      assert.deepStrictEqual(yield* storageB.acquire(runnerAddress2, [shard]), [])
-    }).pipe(
-      Effect.scoped,
-      Effect.provide(PgContainer.ClientLive),
-      Effect.provide(ShardingConfig.layer())
-    ), 60_000)
-
   it.effect("bounds lock operations and rebuilds an unresponsive reserved connection", () => {
     const partition = makePartitionState()
     const layer = StorageLive.pipe(
@@ -100,6 +45,14 @@ describe("SqlRunnerStorage", () => {
       assert(Exit.isFailure(exit))
       assert.isAtLeast(Duration.toMillis(elapsed), 90)
       assert.isBelow(Duration.toMillis(elapsed), 1000)
+      // The empty liveness probe bypasses the wedged reserved connection.
+      assert.deepStrictEqual(
+        yield* storage.refresh(runnerAddress1, []).pipe(
+          Effect.retry({ times: 10, schedule: Schedule.spaced(20) }),
+          TestServices.provideLive
+        ),
+        []
+      )
 
       partition.current = false
       expect(
@@ -300,6 +253,18 @@ describe("PostgreSQL shard locks", () => {
   const PgLive = PgContainer.ClientLive.pipe(Layer.provideMerge(ShardingConfig.layer()))
 
   it.layer(PgLive, { timeout: 60_000 })("reserved connection", (it) => {
+    it.effect("isolates advisory shard locks by prefix", () =>
+      Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "other" })
+        const storageC = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const shard = ShardId.make("default", 1)
+
+        assert.deepStrictEqual(yield* storageA.acquire(runnerAddress1, [shard]), [shard])
+        assert.deepStrictEqual(yield* storageB.acquire(runnerAddress2, [shard]), [shard])
+        assert.deepStrictEqual(yield* storageC.acquire(runnerAddress2, [shard]), [])
+      }).pipe(Effect.scoped))
+
     it.effect("recovers when the old reserved query can never resume", () => {
       let partitioned = false
       return Effect.gen(function*() {

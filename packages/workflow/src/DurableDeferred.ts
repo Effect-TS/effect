@@ -167,11 +167,10 @@ export const into: {
         if (Cause.isInterruptedOnly(exit.cause)) {
           if (instance.suspended) parentInstance.suspended = true
           return Effect.void
-        } else {
-          exit = Exit.failCause(
-            Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
-          )
         }
+        exit = Exit.failCause(
+          Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
+        )
       }
       return engine.deferredDone(self, {
         workflowName: parentInstance.workflow.name,

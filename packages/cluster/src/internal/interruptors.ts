@@ -29,6 +29,8 @@ export const make = () => {
   return {
     acquireEntity: (address: EntityAddress): void => acquire(entityKey(address)),
     releaseEntity: (address: EntityAddress): void => release(entityKey(address)),
+    aroundEntity: <A, E, R>(address: EntityAddress, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+      around(entityKey(address), effect),
     acquireEntityType: (entityType: string): void => acquire(entityTypeKey(entityType)),
     releaseEntityType: (entityType: string): void => release(entityTypeKey(entityType)),
     aroundShard: <A, E, R>(shardId: ShardId, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>

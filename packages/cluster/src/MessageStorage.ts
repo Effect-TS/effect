@@ -863,17 +863,16 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
         Effect.sync(() => {
+          const sameAddress = (envelope: Envelope.Envelope.Encoded) =>
+            address.entityType === envelope.address.entityType && address.entityId === envelope.address.entityId
           for (const [primaryKey, entry] of requestsByPrimaryKey) {
-            const envelope = entry.envelope
-            if (address.entityType === envelope.address.entityType && address.entityId === envelope.address.entityId) {
+            if (sameAddress(entry.envelope)) {
               requestsByPrimaryKey.delete(primaryKey)
             }
           }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
-            const sameAddress = address.entityType === envelope.address.entityType &&
-              address.entityId === envelope.address.entityId
-            if (!sameAddress) {
+            if (!sameAddress(envelope)) {
               continue
             }
             unprocessed.delete(envelope)

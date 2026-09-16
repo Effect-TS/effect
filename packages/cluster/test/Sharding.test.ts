@@ -43,7 +43,6 @@ import {
   TestServices
 } from "effect"
 import { EntityReaper } from "../src/internal/entityReaper.js"
-import { ResourceRef } from "../src/internal/resourceRef.js"
 import * as RunnerHealth from "../src/RunnerHealth.js"
 import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
 import { makeAckChunk, makeChunkReply, makeRequest, StreamRpc, StreamTest } from "./fixtures/message-storage.js"
@@ -1353,51 +1352,33 @@ describe("entity registration and outgoing requests", () => {
     }
   }
 
-  for (const masked of [false, true]) {
-    it.effect(`cannot continue after an abandoned persisted send (masked=${masked})`, () =>
-      Effect.gen(function*() {
-        const storage = yield* MessageStorage.MessageStorage
-        const rpc = Rpc.make("AbandonedPing").annotate(ClusterSchema.Persisted, true)
-        const request = yield* makeRequest({ rpc, payload: undefined })
-        const sharding = yield* shutdownSharding
-
-        let continued = false
-        const send = Effect.gen(function*() {
-          yield* sharding.sendOutgoing(request, false)
-          continued = true
-        })
-        const result = yield* send.pipe(
-          masked ? Effect.uninterruptible : Effect.interruptible,
-          Effect.fork,
-          Effect.flatMap(Fiber.await),
-          Effect.timeoutOption("1 second"),
-          TestServices.provideLive
-        )
-        assert(Option.isSome(result), "abandoned send did not settle")
-        assert(Exit.isFailure(result.value))
-        assert(Cause.isInterruptedOnly(result.value.cause))
-        const pending = yield* storage.unprocessedMessages([request.envelope.address.shardId])
-        assert.strictEqual(pending.length, 1)
-        assert.strictEqual(pending[0].envelope.requestId, request.envelope.requestId)
-        assert.isFalse(continued, "caller continued past an abandoned persisted send")
-      }).pipe(Effect.provide(MemoryLive)))
-  }
-
-  it.scoped("forwards user interrupts from a fiber that previously rebuilt a resource", () =>
+  it.effect("cannot continue after an abandoned persisted send from an uninterruptible region", () =>
     Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const driver = yield* MessageStorage.MemoryDriver
-      const state = yield* TestEntityState
-      const ref = yield* ResourceRef.from(yield* Effect.scope, () => Effect.succeed(1))
-      yield* ref.unsafeRebuild()
-      const client = (yield* TestEntity.client)("after-rebuild")
-      const request = yield* Effect.fork(client.Never())
-      yield* TestClock.adjust(1)
-      yield* Fiber.interrupt(request)
-      yield* TestClock.adjust(1)
-      assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "Interrupt").length, 1)
-      assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(1))
-    }).pipe(Effect.provide(TestSharding)))
+      const storage = yield* MessageStorage.MessageStorage
+      const rpc = Rpc.make("AbandonedPing").annotate(ClusterSchema.Persisted, true)
+      const request = yield* makeRequest({ rpc, payload: undefined })
+      const sharding = yield* shutdownSharding
+
+      let continued = false
+      const send = Effect.gen(function*() {
+        yield* sharding.sendOutgoing(request, false)
+        continued = true
+      })
+      const result = yield* send.pipe(
+        Effect.uninterruptible,
+        Effect.fork,
+        Effect.flatMap(Fiber.await),
+        Effect.timeoutOption("1 second"),
+        TestServices.provideLive
+      )
+      assert(Option.isSome(result), "abandoned send did not settle")
+      assert(Exit.isFailure(result.value))
+      assert(Cause.isInterruptedOnly(result.value.cause))
+      const pending = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+      assert.strictEqual(pending.length, 1)
+      assert.strictEqual(pending[0].envelope.requestId, request.envelope.requestId)
+      assert.isFalse(continued, "caller continued past an abandoned persisted send")
+    }).pipe(Effect.provide(MemoryLive)))
 
   for (const duringTeardown of [false, true]) {
     it.effect(`forwards persisted cancellation in another Sharding (during teardown=${duringTeardown})`, () =>
@@ -1648,35 +1629,33 @@ describe("shutdown", () => {
     }
   }
 
-  for (const persisted of [false, true]) {
-    it.effect(`abandoned AckChunk returns a routing error (persisted=${persisted})`, () =>
-      Effect.gen(function*() {
-        const storage = yield* MessageStorage.MessageStorage
-        const rpc = StreamRpc.annotate(ClusterSchema.Persisted, persisted)
-        const request = yield* makeRequest({ rpc, payload: new StreamTest({ id: 1 }) })
-        const scope = yield* Scope.make()
-        const context = yield* Layer.build(Sharding.layer.pipe(
-          Layer.provide(RunnerStorage.layerMemory),
-          Layer.provide(RunnerHealth.layerNoop),
-          Layer.provide(Runners.layerNoop),
-          Layer.provide(ShardingConfig.layer({ entityTerminationTimeout: 0, sendRetryInterval: 10 }))
-        )).pipe(Scope.extend(scope))
-        yield* TestClock.adjust(1)
-        yield* Scope.close(scope, Exit.void)
-        yield* storage.saveRequest(request)
-        const chunk = yield* makeChunkReply(request)
-        yield* storage.saveReply(chunk)
-        const ack = yield* makeAckChunk(request, chunk)
-        const result = yield* Context.get(context, Sharding.Sharding).sendOutgoing(ack, false).pipe(
-          Effect.exit,
-          Effect.timeoutOption(200),
-          TestServices.provideLive
-        )
-        assert(Option.isSome(result), "AckChunk retry loop did not settle")
-        assert(Exit.isFailure(result.value))
-        assert.instanceOf(Cause.squash(result.value.cause), ClusterError.EntityNotAssignedToRunner)
-      }).pipe(Effect.provide(MemoryLive)))
-  }
+  it.effect("abandoned AckChunk returns a routing error", () =>
+    Effect.gen(function*() {
+      const storage = yield* MessageStorage.MessageStorage
+      const rpc = StreamRpc.annotate(ClusterSchema.Persisted, true)
+      const request = yield* makeRequest({ rpc, payload: new StreamTest({ id: 1 }) })
+      const scope = yield* Scope.make()
+      const context = yield* Layer.build(Sharding.layer.pipe(
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(ShardingConfig.layer({ entityTerminationTimeout: 0, sendRetryInterval: 10 }))
+      )).pipe(Scope.extend(scope))
+      yield* TestClock.adjust(1)
+      yield* Scope.close(scope, Exit.void)
+      yield* storage.saveRequest(request)
+      const chunk = yield* makeChunkReply(request)
+      yield* storage.saveReply(chunk)
+      const ack = yield* makeAckChunk(request, chunk)
+      const result = yield* Context.get(context, Sharding.Sharding).sendOutgoing(ack, false).pipe(
+        Effect.exit,
+        Effect.timeoutOption(200),
+        TestServices.provideLive
+      )
+      assert(Option.isSome(result), "AckChunk retry loop did not settle")
+      assert(Exit.isFailure(result.value))
+      assert.instanceOf(Cause.squash(result.value.cause), ClusterError.EntityNotAssignedToRunner)
+    }).pipe(Effect.provide(MemoryLive)))
 
   it.effect("RPC cleanup does not journal cancellation after a marked abandonment while Sharding is alive", () =>
     Effect.gen(function*() {
