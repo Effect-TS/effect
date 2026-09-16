@@ -81,6 +81,27 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(roundTrip.headers.get("content-length"), "5")
     }))
 
+  describe("toClientResponse", () => {
+    it.effect("supports repeated reads of raw Web Response bodies", () =>
+      Effect.gen(function*() {
+        const clientResponse = HttpServerResponse.toClientResponse(
+          HttpServerResponse.raw(new Response("hello"))
+        )
+
+        assert.strictEqual(yield* clientResponse.text, "hello")
+        assert.strictEqual(yield* clientResponse.text, "hello")
+        assert.deepStrictEqual(new Uint8Array(yield* clientResponse.arrayBuffer), new TextEncoder().encode("hello"))
+      }))
+
+    it.effect("leaves the raw Web Response servable after a client-body read", () =>
+      Effect.gen(function*() {
+        const response = HttpServerResponse.raw(new Response("hello"))
+
+        assert.strictEqual(yield* HttpServerResponse.toClientResponse(response).text, "hello")
+        assert.strictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).text()), "hello")
+      }))
+  })
+
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>
     Effect.gen(function*() {
       const request = HttpClientRequest.get("http://localhost:3000/todos/1?existing=1", {

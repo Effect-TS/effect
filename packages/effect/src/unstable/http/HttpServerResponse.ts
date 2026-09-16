@@ -1229,7 +1229,7 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
         const rawBody = body.body
         if (rawBody instanceof Response) {
           return Effect.tryPromise({
-            try: () => rawBody.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
+            try: () => rawBody.clone().arrayBuffer().then((buffer) => new Uint8Array(buffer)),
             catch: (cause) => this.decodeError(cause)
           })
         }
