@@ -46,11 +46,12 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   ) => Effect.Effect<void, PersistenceError | MalformedMessage>
 
   /**
-   * Save the provided `Reply` and its associated metadata.
+   * Save the provided `Reply`, returning the reply actually persisted.
+   * Encoding failures return the persisted defect reply instead of the original.
    */
   readonly saveReply: <R extends Rpc.Any>(
     reply: Reply.ReplyWithContext<R>
-  ) => Effect.Effect<void, PersistenceError | MalformedMessage>
+  ) => Effect.Effect<Reply.ReplyWithContext<R>, PersistenceError | MalformedMessage>
 
   /**
    * Clear the `Reply`s for the given request id.
@@ -431,11 +432,11 @@ export const make = (
         }),
       saveReply(reply) {
         const requestId = reply.reply.requestId
-        return Effect.flatMap(storage.saveReply(reply), () => {
+        return Effect.flatMap(storage.saveReply(reply), (persisted) => {
           const handlers = replyHandlers.get(requestId)
           if (!handlers) {
-            return Effect.void
-          } else if (reply.reply._tag === "WithExit") {
+            return Effect.succeed(persisted)
+          } else if (persisted.reply._tag === "WithExit") {
             replyHandlers.delete(requestId)
             for (let i = 0; i < handlers.length; i++) {
               const handler = handlers[i]
@@ -443,9 +444,12 @@ export const make = (
               handler.resume(Effect.void)
             }
           }
-          return handlers.length === 1
-            ? handlers[0].respond(reply)
-            : Effect.forEach(handlers, (handler) => handler.respond(reply))
+          return Effect.as(
+            handlers.length === 1
+              ? handlers[0].respond(persisted)
+              : Effect.forEach(handlers, (handler) => handler.respond(persisted)),
+            persisted
+          )
         })
       }
     })
@@ -502,7 +506,22 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
+    saveReply: (reply) =>
+      Reply.serialize(reply).pipe(
+        Effect.map((encodedReply) => ({ encodedReply, persisted: reply })),
+        Effect.catchTag("MalformedMessage", (error) => {
+          const persisted = Reply.ReplyWithContext.fromDefect({
+            id: reply.reply.id,
+            requestId: reply.reply.requestId,
+            defect: error
+          })
+          return Effect.map(
+            Effect.orDie(Reply.serialize(persisted)),
+            (encodedReply) => ({ encodedReply, persisted })
+          )
+        }),
+        Effect.flatMap(({ encodedReply, persisted }) => Effect.as(encoded.saveReply(encodedReply), persisted))
+      ),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -593,7 +612,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
               ? new Message.IncomingRequest({
                 envelope: message.envelope,
                 lastSentReply: envelope.lastSentReply,
-                respond: storage.saveReply
+                respond: (reply) => Effect.asVoid(storage.saveReply(reply))
               })
               : new Message.IncomingEnvelope({
                 envelope: message.envelope
@@ -663,7 +682,7 @@ export const noop: MessageStorage["Type"] = globalValue(
     Effect.runSync(make({
       saveRequest: () => Effect.succeed(SaveResult.Success()),
       saveEnvelope: () => Effect.void,
-      saveReply: () => Effect.void,
+      saveReply: (reply) => Effect.succeed(reply),
       clearReplies: () => Effect.void,
       repliesFor: () => Effect.succeed([]),
       repliesForUnfiltered: () => Effect.succeed([]),
