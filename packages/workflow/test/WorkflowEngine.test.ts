@@ -35,10 +35,12 @@ describe("WorkflowEngine", () => {
       )
       yield* TestClock.adjust("1 hour")
 
-      const result = yield* Effect.zipRight(nextMacrotask, ParentWorkflow.poll(executionId)).pipe(
-        Effect.repeat({ until: (r) => r?._tag === "Complete" })
+      const result = yield* WorkflowEngineContractTest.makeAwaitResult(nextMacrotask, 100)(
+        ParentWorkflow,
+        executionId,
+        "Complete"
       )
-      expect(result).toEqual(new Workflow.Complete({ exit: Exit.void }))
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
     }).pipe(
       Effect.provide(
         Layer.mergeAll(ParentWorkflowLayer, ChildWorkflowLayer).pipe(
