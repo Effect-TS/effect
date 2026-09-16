@@ -158,18 +158,15 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(yield* roundTrip.text, "")
     }))
 
-  it.effect("toClientResponse keeps raw Web Response bodies readable more than once", () =>
+  it.effect("toClientResponse supports repeated reads of raw Web Response bodies", () =>
     Effect.gen(function*() {
       const clientResponse = HttpServerResponse.toClientResponse(
-        HttpServerResponse.raw(
-          new Response("hello", { headers: { "content-type": "text/plain" } }),
-          { contentType: "text/plain" }
-        )
+        HttpServerResponse.raw(new Response("hello"))
       )
 
       assert.strictEqual(yield* clientResponse.text, "hello")
       assert.strictEqual(yield* clientResponse.text, "hello")
-      assert.strictEqual((yield* clientResponse.arrayBuffer).byteLength, 5)
+      assert.deepStrictEqual(new Uint8Array(yield* clientResponse.arrayBuffer), new TextEncoder().encode("hello"))
     }))
 
   it("fromClientResponse ignores malformed or unsafe content lengths", () => {
