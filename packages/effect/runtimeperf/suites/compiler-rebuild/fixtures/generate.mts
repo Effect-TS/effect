@@ -1,5 +1,5 @@
 import { writeFileSync } from "node:fs"
 import { compile } from "effect/unstable/schema/SchemaAOTCompiler"
-import { roots } from "./cases.ts"
+import { targets } from "./cases.ts"
 
-writeFileSync(process.argv[2], compile(roots))
+writeFileSync(process.argv[2], compile(targets))

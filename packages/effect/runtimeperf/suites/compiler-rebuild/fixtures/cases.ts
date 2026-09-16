@@ -90,9 +90,14 @@ export const cases: Record<string, Case> = {
   makeUnion: { schema: union, input: { tag: 7, value: 1 }, expected: { tag: 7, value: 1 }, operation: "make" }
 }
 
-export const roots = Object.values(cases).flatMap((
-  { schema }
-) => [schema.ast, SchemaAST.toType(schema.ast), SchemaAST.flip(schema.ast)])
+export const targets = Object.values(cases).map(({ operation, schema }) =>
+  operation === "encode"
+    ? { ast: SchemaAST.flip(schema.ast), operations: ["decode"] as const }
+    : operation === "is" || operation === "make"
+    ? { ast: SchemaAST.toType(schema.ast), operations: [operation] as const }
+    : { ast: schema.ast, operations: ["decode"] as const }
+)
+export const roots = targets.map((target) => target.ast)
 
 export const fixture = (name: string) => {
   const { schema, input, expected, operation, invalid, options } = cases[name]

@@ -1,11 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema } from "effect"
+import { Schema, SchemaParser } from "effect"
 import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
 import * as SchemaAOTCompiler from "effect/unstable/schema/SchemaAOTCompiler"
 import { execFileSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { roots, schemas, suspendEvaluations } from "./fixtures/aot.ts"
 
 describe("SchemaAOTCompiler", { concurrent: false }, () => {
@@ -18,8 +18,9 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       }))
     })
     const before = CompilerRegistry.resolve(schema.ast)
-    const source = SchemaAOTCompiler.compile([schema.ast])
-    assert.strictEqual(SchemaAOTCompiler.compile([schema.ast]), source)
+    const targets = [{ ast: schema.ast, operations: ["decode"] }] as const
+    const source = SchemaAOTCompiler.compile(targets)
+    assert.strictEqual(SchemaAOTCompiler.compile(targets), source)
     assert.strictEqual(CompilerRegistry.resolve(schema.ast), before)
     assert.strictEqual(checks, 0)
     assert.include(source, "effect/unstable/schema/SchemaCompiler/runtime")
@@ -27,13 +28,59 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.notInclude(source, "SchemaJITCompiler")
   })
 
+  it("emits only the requested operation family", () => {
+    const schema = Schema.Struct({ value: Schema.String })
+    const decode = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
+    assert.include(decode, "get decode(){")
+    assert.include(decode, "get decodeEffect(){")
+    assert.notInclude(decode, "get is(){")
+    assert.notInclude(decode, "get make(){")
+    assert.notInclude(decode, "get makeEffect(){")
+
+    const make = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["make"] }])
+    assert.include(make, "get make(){")
+    assert.include(make, "get makeEffect(){")
+    assert.notInclude(make, "get is(){")
+    assert.notInclude(make, "get decode(){")
+  })
+
+  it("uses registry fallbacks for operations that were not requested", async () => {
+    const schema = Schema.Struct({ value: Schema.String })
+    const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-operations-test-", import.meta.url)))
+    try {
+      const file = join(directory, "decode.mjs")
+      writeFileSync(file, SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }]))
+      const generated = await import(`${pathToFileURL(file).href}?test=${Date.now()}`)
+      generated.install([schema.ast])
+
+      const source = CompilerRegistry.resolve(schema.ast).source
+      assert.isDefined(source?.decode)
+      assert.isUndefined(source?.is)
+      assert.isUndefined(source?.make)
+      assert.isUndefined(source?.makeEffect)
+      assert.strictEqual(SchemaParser.is(schema)({ value: "a" }), true)
+      assert.deepStrictEqual(SchemaParser.make(schema)({ value: "a" }), { value: "a" })
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
   it("deduplicates repeated roots and dependencies shared across roots", () => {
     const child = Schema.Struct({ value: Schema.String })
     const first = Schema.Struct({ child })
     const second = Schema.Array(child)
-    const source = SchemaAOTCompiler.compile([first.ast, second.ast])
+    const source = SchemaAOTCompiler.compile([
+      { ast: first.ast, operations: ["decode"] },
+      { ast: second.ast, operations: ["decode"] }
+    ])
     assert.strictEqual(
-      SchemaAOTCompiler.compile([first.ast, second.ast, child.ast, first.ast, second.ast]),
+      SchemaAOTCompiler.compile([
+        { ast: first.ast, operations: ["decode"] },
+        { ast: second.ast, operations: ["decode"] },
+        { ast: child.ast, operations: ["decode"] },
+        { ast: first.ast, operations: ["decode"] },
+        { ast: second.ast, operations: ["decode"] }
+      ]),
       source
     )
   })
@@ -42,9 +89,15 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-test-", import.meta.url)))
     try {
       for (const [name, schema] of Object.entries(schemas)) {
-        writeFileSync(join(directory, `${name}.mjs`), SchemaAOTCompiler.compile([schema.ast]))
+        writeFileSync(
+          join(directory, `${name}.mjs`),
+          SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode", "is", "make"] }])
+        )
       }
-      writeFileSync(join(directory, "all.mjs"), SchemaAOTCompiler.compile(roots))
+      writeFileSync(
+        join(directory, "all.mjs"),
+        SchemaAOTCompiler.compile(roots.map((ast) => ({ ast, operations: ["decode", "is", "make"] })))
+      )
       writeFileSync(join(directory, "empty.mjs"), SchemaAOTCompiler.compile([]))
       assert.strictEqual(suspendEvaluations, 0)
       for (const mode of ["single", "multiple"]) {

@@ -100,6 +100,9 @@ describe("SchemaAOTCompilerBuild", { concurrent: false }, () => {
       })
       assert.notInclude(written, "import * as A from \"effect/SchemaAST\"")
       assert.notInclude(written, "ignored.ts")
+      assert.notInclude(written, "get is(){")
+      assert.notInclude(written, "get make(){")
+      assert.notInclude(written, "get makeEffect(){")
       assert.include(written, "install([m0[\"Port\"].ast,m0[\"User\"].ast]);")
     }))
 

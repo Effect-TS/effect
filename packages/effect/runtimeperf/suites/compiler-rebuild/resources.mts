@@ -371,7 +371,9 @@ if (command === "generate") {
   const [built, schemaCpu] = await measureCpu(() =>
     Array.from({ length: count }, (_, index) => buildEffectCase(modules, index).ast)
   )
-  const [source, generateCpu] = await measureCpu(() => modules.AOT.compile(built))
+  const operation = caseName === "struct-is" ? "is" : caseName === "default-make" ? "make" : "decode"
+  const [source, generateCpu] = await measureCpu(() =>
+    modules.AOT.compile(built.map((ast) => ({ ast, operations: [operation] }))))
   writeFileSync(output, source)
   process.stdout.write(JSON.stringify({
     generateCpu,

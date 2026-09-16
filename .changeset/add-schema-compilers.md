@@ -12,7 +12,9 @@ Schema exports from explicit module loaders and writes a self-installing AOT
 module through Effect's `FileSystem` and `Path` services. Compiled decoders can
 provide optional synchronous `decode` and `make` operations; normal
 `SchemaParser` calls consume them transparently and retain `decodeEffect` and
-`makeEffect` as the detailed fallbacks.
+`makeEffect` as the detailed fallbacks. AOT targets declare the operations to
+prepare, so generated modules contain only those operation families and use
+the interpreter if an omitted operation is later called.
 
 ### Breaking changes
 

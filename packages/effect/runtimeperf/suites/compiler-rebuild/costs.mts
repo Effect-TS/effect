@@ -48,7 +48,9 @@ const expected = shape === "transform" || shape === "default" ? { value: 1 } : v
 if (command === "generate") {
   const AOT = await load("unstable/schema/SchemaAOTCompiler")
   const schema = create()
-  writeFileSync(process.argv[8], AOT.compile([schema.ast, AST.toType(schema.ast)]))
+  const targetOperation = operation === "make" ? "make" : operation === "is" ? "is" : "decode"
+  const ast = targetOperation === "decode" ? schema.ast : AST.toType(schema.ast)
+  writeFileSync(process.argv[8], AOT.compile([{ ast, operations: [targetOperation] }]))
 } else {
   for (let i = 0; i < 5; i++) globalThis.gc?.()
   const beforeImport = process.memoryUsage().heapUsed
@@ -68,7 +70,7 @@ if (command === "generate") {
   const prepare = (schema: any) => {
     const ast = operation === "make" || operation === "is" ? AST.toType(schema.ast) : schema.ast
     if (enable) enable(ast)
-    if (install) install([schema.ast, AST.toType(schema.ast)])
+    if (install) install([ast])
     return operation === "make" ? Parser.make(schema)
       : operation === "is" ? Parser.is(schema)
       : Parser.decodeUnknownSync(schema)

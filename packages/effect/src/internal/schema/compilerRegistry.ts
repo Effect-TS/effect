@@ -12,7 +12,10 @@ export const invalid = Symbol()
 export type Resolve = (ast: SchemaAST.AST) => Entry
 
 /** @internal */
-export type Compile = (ast: SchemaAST.AST, resolve: Resolve) => CompiledDecoder | undefined
+export type DecoderSource = Partial<CompiledDecoder>
+
+/** @internal */
+export type Compile = (ast: SchemaAST.AST, resolve: Resolve) => DecoderSource | undefined
 
 const cache = new WeakMap<SchemaAST.AST, Entry>()
 let compiler: ((ast: SchemaAST.AST, resolve: Resolve) => Entry) | undefined
@@ -37,7 +40,7 @@ const makeField = (ast: SchemaAST.AST): Parser => Interpreter.compileField(ast, 
 /** @internal */
 export interface Entry {
   readonly ast: SchemaAST.AST
-  readonly source?: CompiledDecoder | undefined
+  readonly source?: DecoderSource | undefined
   readonly resolve?: Resolve | undefined
   readonly is?: Is | undefined
   readonly decode?: Decode | undefined
@@ -70,10 +73,10 @@ class InterpretedEntry implements Entry {
 }
 
 class CompilerEntry extends InterpretedEntry {
-  readonly source: CompiledDecoder | undefined
+  readonly source: DecoderSource | undefined
   readonly resolve: Resolve
 
-  constructor(ast: SchemaAST.AST, source: CompiledDecoder | undefined, resolve: Resolve) {
+  constructor(ast: SchemaAST.AST, source: DecoderSource | undefined, resolve: Resolve) {
     super(ast)
     this.source = source
     this.resolve = resolve
@@ -163,7 +166,7 @@ export function resolve(ast: SchemaAST.AST): Entry {
 }
 
 /** @internal */
-export function set(ast: SchemaAST.AST, decoder: CompiledDecoder | undefined, resolveChild: Resolve = resolve): Entry {
+export function set(ast: SchemaAST.AST, decoder: DecoderSource | undefined, resolveChild: Resolve = resolve): Entry {
   if (decoder !== undefined) activateCompilerAdapters()
   const entry = new CompilerEntry(ast, decoder, resolveChild)
   cache.set(ast, entry)

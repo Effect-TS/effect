@@ -10,26 +10,54 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import type { runtime } from "./SchemaCompiler/runtime.ts"
 
 const helper = (name: keyof typeof runtime): string => `R.${name}`
-const operations: ReadonlyArray<Codegen.DecoderOperation> = ["is", "decode", "make", "decodeEffect", "makeEffect"]
+const decoderOperationOrder: ReadonlyArray<Codegen.DecoderOperation> = [
+  "is",
+  "decode",
+  "make",
+  "decodeEffect",
+  "makeEffect"
+]
+const operationOrder: ReadonlyArray<Operation> = ["decode", "is", "make"]
 
-const decoder = (ast: SchemaAST.AST): string | undefined => {
-  if (!Codegen.shouldCompileParser(ast)) return undefined
-  return "{" + operations.flatMap((key) => {
-    const source = Codegen.generate(ast, key)
+const decoder = (sources: ReadonlyMap<Codegen.DecoderOperation, string>): string | undefined => {
+  const members = decoderOperationOrder.flatMap((key) => {
+    const source = sources.get(key)
     return source === undefined ? [] : [`get ${key}(){${source}}`]
-  }).join(",") + "}"
+  }).join(",")
+  return members.length === 0 ? undefined : `{${members}}`
+}
+
+/**
+ * A parser operation prepared by {@link compile}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Operation = "decode" | "is" | "make"
+
+/**
+ * An exact AST and the parser operations to prepare for it.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Target {
+  /** The registry key installed by the generated module. */
+  readonly ast: SchemaAST.AST
+  /** The operations that should be compiled for this AST. */
+  readonly operations: ReadonlyArray<Operation>
 }
 
 /**
  * Generates a JavaScript ES module exporting `install(asts): void` for an
- * ordered array of ASTs and their statically reachable parsing and construction dependencies.
+ * ordered array of compilation targets.
  *
  * **When to use**
  *
  * Use to prepare decoders at build time for environments that disallow dynamic
  * function construction. Save the returned source as a JavaScript module, then
- * call its `install` export with the corresponding runtime ASTs in the same
- * order before using parsers. Use a one-element array for a single schema.
+ * call its `install` export with the target ASTs in the same order before using
+ * parsers. Use a one-element array for a single schema.
  *
  * **Details**
  *
@@ -40,9 +68,11 @@ const decoder = (ast: SchemaAST.AST): string | undefined => {
  * asynchronous continuation helpers with the interpreter. Other detailed
  * traversals and transformation orchestration use the interpreter with
  * registry-resolved children. Transformations and middleware are not replayed.
- * Repeated ASTs and shared dependencies are installed once by identity. Fast
- * paths can still inline dependency code into multiple parent decoders.
- * An empty array generates a module whose installation does nothing.
+ * Only the requested operation families and their static dependencies are
+ * emitted. Missing operations retain the lazy interpreter fallback in the
+ * shared registry. Repeated ASTs and shared dependencies are installed once by
+ * identity. Fast paths can still inline dependency code into multiple parent
+ * decoders. An empty array generates a module whose installation does nothing.
  * Construction uses independently lazy `make` and `makeEffect` operations.
  * Pure fixed Struct and homogeneous Array constructors can use `make` for a
  * synchronous fast path; failures delegate to `makeEffect` for detailed issues.
@@ -55,7 +85,7 @@ const decoder = (ast: SchemaAST.AST): string | undefined => {
  *
  * Regenerate the module whenever the schema definition or Effect version
  * changes. Installation trusts that the runtime array has the same length and
- * root order, and its ASTs have the same definitions and sharing as at build
+ * target order, and its ASTs have the same definitions and sharing as at build
  * time. Functions and symbols are read from those ASTs, not serialized.
  * Suspend thunks are not evaluated during generation; their contents and other
  * unsupported nodes use the interpreter.
@@ -63,66 +93,127 @@ const decoder = (ast: SchemaAST.AST): string | undefined => {
  * older entries keep them. Type-side and flipped ASTs are separate registry
  * keys; generate and install them separately when needed. Importing the
  * generated module alone does not install anything.
- * In particular, include `SchemaAST.toType(schema.ast)` to prepare construction
- * when it differs from the encoded root. Unsupported constructors use the
- * interpreter while statically installed children remain available.
+ * In particular, target `SchemaAST.toType(schema.ast)` with `make` to prepare
+ * construction when it differs from the encoded root. Target
+ * `SchemaAST.flip(schema.ast)` with `decode` to prepare encoding. Unsupported
+ * operations use the interpreter while statically installed children remain
+ * available.
  *
  * @category compilation
  * @since 4.0.0
  */
-export const compile = (asts: ReadonlyArray<SchemaAST.AST>): string => {
-  const seen = new Map<SchemaAST.AST, string>()
+export const compile = (targets: ReadonlyArray<Target>): string => {
+  interface PlannedNode {
+    readonly index: number
+    readonly name: string
+    readonly reference: string
+    readonly requested: Set<Operation>
+    readonly sources: Map<Codegen.DecoderOperation, string>
+    readonly attempted: Set<Codegen.DecoderOperation>
+    readonly compilable: boolean
+  }
+
+  const seen = new Map<SchemaAST.AST, PlannedNode>()
   const bindings: Array<string> = []
   const factories: Array<string> = []
   const installations: Array<string> = []
 
-  const visit = (node: SchemaAST.AST, reference: string): void => {
-    if (seen.has(node)) return
-    const index = seen.size
-    const name = `a${index}`
-    seen.set(node, name)
-    bindings.push(`const ${name}=${reference};`)
+  const addSource = (node: SchemaAST.AST, plan: PlannedNode, operation: Codegen.DecoderOperation): boolean => {
+    if (plan.attempted.has(operation)) return plan.sources.has(operation)
+    plan.attempted.add(operation)
+    if (!plan.compilable) return false
+    const source = Codegen.generate(node, operation)
+    if (source === undefined) return false
+    plan.sources.set(operation, source)
+    return true
+  }
 
+  const visitDependencies = (node: SchemaAST.AST, name: string, operation: Operation): void => {
     switch (node._tag) {
       case "Declaration":
-        node.typeParameters.forEach((child, index) => visit(child, `${name}.typeParameters[${index}]`))
+        node.typeParameters.forEach((child, index) => visit(child, `${name}.typeParameters[${index}]`, operation))
         break
       case "TemplateLiteral":
-        node.parts.forEach((child, index) => visit(child, `${name}.parts[${index}]`))
+        node.parts.forEach((child, index) => visit(child, `${name}.parts[${index}]`, operation))
         break
       case "Arrays":
-        node.elements.forEach((child, index) => visit(child, `${name}.elements[${index}]`))
-        node.rest.forEach((child, index) => visit(child, `${name}.rest[${index}]`))
+        node.elements.forEach((child, index) => visit(child, `${name}.elements[${index}]`, operation))
+        node.rest.forEach((child, index) => visit(child, `${name}.rest[${index}]`, operation))
         break
       case "Objects":
         node.propertySignatures.forEach((property, index) =>
-          visit(property.type, `${name}.propertySignatures[${index}].type`)
+          visit(property.type, `${name}.propertySignatures[${index}].type`, operation)
         )
         node.indexSignatures.forEach((signature, index) => {
           visit(
             SchemaAST.parameterFromPropertyKey(signature.parameter),
-            `${helper("parameterFromPropertyKey")}(${name}.indexSignatures[${index}].parameter)`
+            `${helper("parameterFromPropertyKey")}(${name}.indexSignatures[${index}].parameter)`,
+            operation
           )
-          visit(signature.type, `${name}.indexSignatures[${index}].type`)
+          visit(signature.type, `${name}.indexSignatures[${index}].type`, operation)
         })
         break
       case "Union":
-        node.types.forEach((child, index) => visit(child, `${name}.types[${index}]`))
+        node.types.forEach((child, index) => visit(child, `${name}.types[${index}]`, operation))
         break
     }
-    node.encoding?.forEach((link, index) => visit(link.to, `${name}.encoding[${index}].to`))
-    const descriptor = SchemaAST.getConstructorDescriptor(node)
-    if (descriptor !== undefined) {
-      visit(descriptor.link.to, `${helper("getConstructorDescriptor")}(${name}).link.to`)
-    }
-
-    const source = decoder(node)
-    if (source !== undefined) {
-      factories.push(`function d${index}(ast,R,resolve){return ${source}}`)
-      installations.push(`${helper("set")}(${name},d${index}(${name},R,R.resolve));`)
+    node.encoding?.forEach((link, index) => visit(link.to, `${name}.encoding[${index}].to`, operation))
+    if (operation === "make") {
+      const descriptor = SchemaAST.getConstructorDescriptor(node)
+      if (descriptor !== undefined) {
+        visit(descriptor.link.to, `${helper("getConstructorDescriptor")}(${name}).link.to`, operation)
+      }
     }
   }
-  asts.forEach((ast, index) => visit(ast, `asts[${index}]`))
+
+  function visit(node: SchemaAST.AST, reference: string, operation: Operation): void {
+    let plan = seen.get(node)
+    if (plan === undefined) {
+      const index = seen.size
+      plan = {
+        index,
+        name: `a${index}`,
+        reference,
+        requested: new Set(),
+        sources: new Map(),
+        attempted: new Set(),
+        compilable: Codegen.shouldCompileParser(node)
+      }
+      seen.set(node, plan)
+    }
+    if (plan.requested.has(operation)) return
+    plan.requested.add(operation)
+
+    switch (operation) {
+      case "decode":
+        addSource(node, plan, "decode")
+        addSource(node, plan, "decodeEffect")
+        visitDependencies(node, plan.name, operation)
+        break
+      case "is":
+        if (!addSource(node, plan, "is")) visit(node, reference, "decode")
+        break
+      case "make":
+        addSource(node, plan, "make")
+        addSource(node, plan, "makeEffect")
+        visitDependencies(node, plan.name, operation)
+        break
+    }
+  }
+
+  targets.forEach((target, index) => {
+    for (const operation of operationOrder) {
+      if (target.operations.includes(operation)) visit(target.ast, `asts[${index}]`, operation)
+    }
+  })
+  for (const plan of seen.values()) {
+    bindings.push(`const ${plan.name}=${plan.reference};`)
+    const source = decoder(plan.sources)
+    if (source !== undefined) {
+      factories.push(`function d${plan.index}(ast,R,resolve){return ${source}}`)
+      installations.push(`${helper("set")}(${plan.name},d${plan.index}(${plan.name},R,R.resolve));`)
+    }
+  }
   return [
     "// Generated by SchemaAOTCompiler. Regenerate after schema or Effect changes.",
     "import { runtime as R } from \"effect/unstable/schema/SchemaCompiler/runtime\";",

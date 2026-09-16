@@ -81,15 +81,25 @@ fails, the interpreter remains available. Exceptions from executing a parser are
 not treated as compilation failures and do not trigger a retry.
 
 JIT and AOT use the same source generator. To generate an AOT module at build
-time, call `SchemaAOTCompiler.compile(asts)` with an ordered array of ASTs and
-save the returned JavaScript. The module exports `install(asts)`. Call it with
-the corresponding runtime ASTs before using normal `SchemaParser` functions.
-Use a one-element array for a single schema. Generated modules do not import
-the generator and work where `new Function` is forbidden.
+time, call `SchemaAOTCompiler.compile(targets)` with an ordered array of ASTs
+and the operations to prepare:
+
+```ts
+SchemaAOTCompiler.compile([
+  { ast: User.ast, operations: ["decode"] },
+  { ast: SchemaAST.toType(User.ast), operations: ["is", "make"] }
+])
+```
+
+The module exports `install(asts)`. Call it with the target ASTs in the same
+order before using normal `SchemaParser` functions. Generated modules contain
+only the requested operation families and their dependencies. Operations that
+were not requested use the interpreter if they are called. Generated modules
+do not import the generator and work where `new Function` is forbidden.
 
 The low-level installation trusts the supplied root order and AST definitions.
-Include `SchemaAST.toType(schema.ast)` for guards and construction, and
-`SchemaAST.flip(schema.ast)` for encoding, when those are distinct ASTs.
+Target `SchemaAST.toType(schema.ast)` with `is` or `make` for guards and
+construction. Target `SchemaAST.flip(schema.ast)` with `decode` for encoding.
 
 `effect/unstable/schema/SchemaAOTCompiler/Build` provides the higher-level
 workflow. Its `build` function loads direct Schema exports, writes a

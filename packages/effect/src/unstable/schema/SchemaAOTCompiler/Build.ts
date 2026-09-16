@@ -130,19 +130,28 @@ const importPath = (
 const root = (
   exported: ExportedSchema,
   operation: Operation
-): readonly [ast: SchemaAST.AST, expression: string, derived: boolean] => {
+): readonly [
+  ast: SchemaAST.AST,
+  operation: SchemaAOTCompiler.Operation,
+  expression: string,
+  derived: boolean
+] => {
   const expression = `${exported.alias}[${JSON.stringify(exported.exportName)}].ast`
   switch (operation) {
     case "decode":
-      return [exported.schema.ast, expression, false]
+      return [exported.schema.ast, "decode", expression, false]
     case "encode": {
       const ast = SchemaAST.flip(exported.schema.ast)
-      return ast === exported.schema.ast ? [ast, expression, false] : [ast, `A.flip(${expression})`, true]
+      return ast === exported.schema.ast
+        ? [ast, "decode", expression, false]
+        : [ast, "decode", `A.flip(${expression})`, true]
     }
     case "is":
     case "make": {
       const ast = SchemaAST.toType(exported.schema.ast)
-      return ast === exported.schema.ast ? [ast, expression, false] : [ast, `A.toType(${expression})`, true]
+      return ast === exported.schema.ast
+        ? [ast, operation, expression, false]
+        : [ast, operation, `A.toType(${expression})`, true]
     }
   }
 }
@@ -232,25 +241,32 @@ export const build: (
 
   const source = yield* Effect.try({
     try: () => {
-      const asts: Array<SchemaAST.AST> = []
-      const expressions: Array<string> = []
-      const seen = new Set<SchemaAST.AST>()
+      const targets: Array<{
+        readonly ast: SchemaAST.AST
+        readonly operations: Array<SchemaAOTCompiler.Operation>
+        readonly expression: string
+      }> = []
+      const seen = new Map<SchemaAST.AST, number>()
       let needsSchemaASTImport = false
       for (const exported of exportedSchemas) {
         for (const operation of operations) {
-          const [ast, expression, isDerived] = root(exported, operation)
-          if (seen.has(ast)) continue
-          seen.add(ast)
-          asts.push(ast)
-          expressions.push(expression)
+          const [ast, targetOperation, expression, isDerived] = root(exported, operation)
+          const index = seen.get(ast)
+          if (index !== undefined) {
+            const targetOperations = targets[index].operations
+            if (!targetOperations.includes(targetOperation)) targetOperations.push(targetOperation)
+            continue
+          }
+          seen.set(ast, targets.length)
+          targets.push({ ast, operations: [targetOperation], expression })
           needsSchemaASTImport ||= isDerived
         }
       }
       return [
         ...imports,
         ...(needsSchemaASTImport ? ["import * as A from \"effect/SchemaAST\";"] : []),
-        SchemaAOTCompiler.compile(asts),
-        `install([${expressions.join(",")}]);`,
+        SchemaAOTCompiler.compile(targets),
+        `install([${targets.map((target) => target.expression).join(",")}]);`,
         ""
       ].join("\n")
     },

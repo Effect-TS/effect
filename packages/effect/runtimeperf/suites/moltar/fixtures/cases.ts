@@ -18,7 +18,12 @@ export const schema = Schema.Struct({
   })
 })
 
-export const roots = [schema.ast, SchemaAST.toType(schema.ast), SchemaAST.flip(schema.ast)]
+export const targets = [
+  { ast: schema.ast, operations: ["decode"] },
+  { ast: SchemaAST.toType(schema.ast), operations: ["is"] },
+  { ast: SchemaAST.flip(schema.ast), operations: ["decode"] }
+] as const
+export const roots = targets.map((target) => target.ast)
 
 const parseCase = (input: unknown, invalid = false) => () => {
   const parse = SchemaParser.decodeUnknownSync(schema)
