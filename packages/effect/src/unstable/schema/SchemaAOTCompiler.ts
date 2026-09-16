@@ -10,10 +10,10 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import type { runtime } from "./SchemaCompiler/runtime.ts"
 
 const helper = (name: keyof typeof runtime): string => `R.${name}`
+const operations: ReadonlyArray<Codegen.DecoderOperation> = ["is", "decode", "make", "decodeEffect", "makeEffect"]
 
 const decoder = (ast: SchemaAST.AST): string | undefined => {
   if (!Codegen.shouldCompileParser(ast)) return undefined
-  const operations: ReadonlyArray<Codegen.DecoderOperation> = ["is", "decode", "make", "decodeEffect", "makeEffect"]
   return "{" + operations.flatMap((key) => {
     const source = Codegen.generate(ast, key)
     return source === undefined ? [] : [`get ${key}(){${source}}`]

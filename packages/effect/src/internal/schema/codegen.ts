@@ -142,7 +142,7 @@ const isMakeSafe = (
   }
 }
 
-const shouldCompileMake = (ast: SchemaAST.AST): boolean =>
+const shouldCompileMake = (ast: SchemaAST.AST): ast is SchemaAST.Arrays | SchemaAST.Objects =>
   (ast._tag === "Arrays" && ast.elements.length === 0 && ast.rest.length === 1 ||
     ast._tag === "Objects" && ast.propertySignatures.length > 0 && ast.indexSignatures.length === 0) &&
   isMakeSafe(ast)
@@ -682,7 +682,6 @@ export function generate(ast: SchemaAST.AST, operation: DecoderOperation): strin
         renderOperation(emitOperation(ast, "decode"))
       }`
     }
-    if (ast._tag !== "Arrays") return undefined
     const element = renderOperation(emitOperation(ast.rest[0], "decode", "ast.rest[0]"))
     return `const e=resolve(ast.rest[0]),m=e.source===void 0?${element}:e.make;if(m===void 0)return;` +
       "return function(i,o){if(i===R.missing)return R.missing;if(!Array.isArray(i))return R.invalid;" +
