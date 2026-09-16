@@ -289,8 +289,6 @@ export const makeDeferredState = (): DeferredState => {
       Effect.withFiberRuntime((fiber) => {
         const run = { instance, fiber: fiber as Fiber.RuntimeFiber<unknown, unknown> }
         running.set(instance.executionId, run)
-        // Retain completions for replay before their replies are persisted.
-        if (!pending.has(instance.executionId)) pending.set(instance.executionId, new Map())
         return Effect.ensuring(
           Effect.provideService(effect, WorkflowInstance, instance),
           Effect.sync(() => {

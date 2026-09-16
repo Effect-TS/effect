@@ -261,7 +261,7 @@ describe("memory lifecycle", () => {
         }).pipe(Effect.provide(layer))
       }))
   }
-  const awaitResult = makeAwaitResult(Effect.yieldNow(), 2000)
+  const awaitResult = makeAwaitResult(Effect.yieldNow())
 })
 
 describe("shutdown", () => {

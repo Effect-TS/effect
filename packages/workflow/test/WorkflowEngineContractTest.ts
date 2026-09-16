@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
 import { Duration, Effect, Exit, Layer, Schema, TestClock } from "effect"
 
-export const makeAwaitResult = (settle: Effect.Effect<void>, attempts: number) =>
+export const makeAwaitResult = (settle: Effect.Effect<void>, attempts = 2000) =>
 <A, E>(
   workflow: {
     readonly poll: (

@@ -25,33 +25,21 @@ export const isCause = (cause: Cause.Cause<unknown>): boolean =>
     Cause.find(cause, (c) => c._tag === "Interrupt" && isInterruptor(c.fiberId) ? Option.some(c) : Option.none())
   )
 
-/** @internal */
-export const reSignal = (cause: Cause.Cause<unknown>): Effect.Effect<void> =>
-  isCause(cause)
-    ? Effect.withFiberRuntime((fiber) => {
-      const owner = Context.getOption(fiber.currentContext, Owner)
-      if (Option.isSome(owner) && owner.value.active) {
-        owner.value.fiber.unsafeInterruptAsFork(interruptor)
-      }
-      return interrupt
-    })
-    : Effect.void
+const signalOwner = Effect.withFiberRuntime<void>((fiber) => {
+  const owner = Context.getOption(fiber.currentContext, Owner)
+  if (Option.isSome(owner) && owner.value.active) {
+    owner.value.fiber.unsafeInterruptAsFork(interruptor)
+  }
+  return Effect.void
+})
 
-/** Interrupt only the owner so the pump can still forward the cause. @internal */
+/** Interrupt only the owner, leaving the current fiber to forward the cause. @internal */
 export const interruptOwner = (cause: Cause.Cause<unknown>): Effect.Effect<void> =>
-  isCause(cause)
-    ? Effect.withFiberRuntime((fiber) => {
-      const owner = Context.getOption(fiber.currentContext, Owner)
-      if (Option.isSome(owner) && owner.value.active) {
-        owner.value.fiber.unsafeInterruptAsFork(interruptor)
-      }
-      return Effect.void
-    })
-    : Effect.void
+  isCause(cause) ? signalOwner : Effect.void
 
-/** @internal */
-export const onError = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.onError(effect, reSignal)
+/** Interrupt the owner and re-signal the current fiber; masking still applies. @internal */
+export const reSignal = (cause: Cause.Cause<unknown>): Effect.Effect<void> =>
+  isCause(cause) ? Effect.andThen(signalOwner, interrupt) : Effect.void
 
 const Owner = Context.GenericTag<{ readonly fiber: Fiber.RuntimeFiber<unknown, unknown>; active: boolean }>(
   "@effect/cluster/internal/clusterAbandon/Owner"
