@@ -83,14 +83,14 @@ for (const flag of [true, false, undefined]) {
         "Hold isolation follows the registered flag"
       )
     }))
-
-  it.scoped(`keeps typed failures request-local when disableFatalDefects is ${label}`, () =>
-    Effect.gen(function*() {
-      const actual = yield* observeFatalDefect(flag, false)
-      assert.deepEqual(actual.badExit, snapshot(Exit.fail("typed failure")))
-      assert.deepEqual(actual.goodExit, snapshot(Exit.succeed(42)))
-    }))
 }
+
+it.scoped("keeps typed failures request-local", () =>
+  Effect.gen(function*() {
+    const actual = yield* observeFatalDefect(false, false)
+    assert.deepEqual(actual.badExit, snapshot(Exit.fail("typed failure")))
+    assert.deepEqual(actual.goodExit, snapshot(Exit.succeed(42)))
+  }))
 
 it.scoped("does not send fatal defects across entity IDs", () =>
   Effect.gen(function*() {

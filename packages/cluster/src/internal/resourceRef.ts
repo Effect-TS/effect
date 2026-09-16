@@ -78,12 +78,8 @@ export class ResourceRef<A, E = never> {
     this.latch.unsafeClose()
     MutableRef.set(this.state, { _tag: "Acquiring", scope })
     const teardown = this.teardown
-    return Effect.suspend(() => {
-      const close = Scope.close(prevScope, Exit.void)
-      if (!teardown) return close
-      teardown.tracker.acquireEntity(teardown.address)
-      return Effect.ensuring(close, Effect.sync(() => teardown.tracker.releaseEntity(teardown.address)))
-    }).pipe(
+    const close = Scope.close(prevScope, Exit.void)
+    return (teardown ? teardown.tracker.aroundEntity(teardown.address, close) : close).pipe(
       Effect.andThen(this.acquire(scope)),
       Effect.flatMap((value) => {
         if (this.state.current._tag === "Closed") {

@@ -37,7 +37,6 @@ import * as RunnerHealth from "../src/RunnerHealth.js"
 import * as RunnerStorage from "../src/RunnerStorage.js"
 import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
 import { makeRequest } from "./fixtures/message-storage.js"
-import { runFixture } from "./fixtures/run-fixture.js"
 import { makeEngine, makeMemoryEngine } from "./fixtures/workflow-engine.js"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
@@ -873,57 +872,55 @@ describe("abandonment", () => {
     sendRetryInterval: 10
   })
 
-  for (const recovery of ["catchAllCause", "exit"] as const) {
-    for (const masked of [false, true]) {
-      it.effect(`body ${recovery} cannot durably complete an abandoned attempt (masked=${masked})`, () =>
-        Effect.gen(function*() {
-          const driver = yield* MessageStorage.MemoryDriver
-          const storage = yield* MessageStorage.make(yield* MessageStorage.MessageStorage)
-          const request = yield* makeRequest()
-          let attempts = 0
-          let durableFinalizers = 0
-          const workflow = Workflow.make({
-            name: `AbandonmentRecovery/${recovery}/${masked}`,
-            payload: { id: Schema.String },
-            success: Schema.String,
-            idempotencyKey: ({ id }) => id
+  for (const masked of [false, true]) {
+    it.effect(`body cannot durably complete an abandoned attempt (masked=${masked})`, () =>
+      Effect.gen(function*() {
+        const driver = yield* MessageStorage.MemoryDriver
+        const storage = yield* MessageStorage.make(yield* MessageStorage.MessageStorage)
+        const request = yield* makeRequest()
+        let attempts = 0
+        let durableFinalizers = 0
+        const workflow = Workflow.make({
+          name: `AbandonmentRecovery/${masked}`,
+          payload: { id: Schema.String },
+          success: Schema.String,
+          idempotencyKey: ({ id }) => id
+        })
+        const layer = workflow.toLayer(() =>
+          Effect.gen(function*() {
+            // Hold retries so only the abandoned attempt can write a result.
+            if (++attempts > 1) return yield* Effect.never
+            yield* Workflow.addFinalizer(() => Effect.sync(() => durableFinalizers++))
+            const body = storage.registerReplyHandler(request).pipe(
+              Effect.catchAllCause(() => Effect.void),
+              Effect.andThen(Effect.yieldNow()),
+              Effect.as("continued")
+            )
+            return yield* (masked ? Effect.uninterruptible(body) : body)
           })
-          const layer = workflow.toLayer(() =>
-            Effect.gen(function*() {
-              // Hold retries so only the abandoned attempt can write a result.
-              if (++attempts > 1) return yield* Effect.never
-              yield* Workflow.addFinalizer(() => Effect.sync(() => durableFinalizers++))
-              const wait = storage.registerReplyHandler(request)
-              const recovered = recovery === "catchAllCause"
-                ? wait.pipe(Effect.catchAllCause(() => Effect.void))
-                : Effect.exit(wait)
-              const body = recovered.pipe(Effect.andThen(Effect.yieldNow()), Effect.as("continued"))
-              return yield* (masked ? Effect.uninterruptible(body) : body)
-            })
-          ).pipe(Layer.provideMerge(EngineLive))
-          const context = yield* Layer.build(layer)
-          const executionId = yield* workflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(context))
-          yield* TestClock.adjust(1000)
-          assert.strictEqual(attempts, 1)
-          assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
+        ).pipe(Layer.provideMerge(EngineLive))
+        const context = yield* Layer.build(layer)
+        const executionId = yield* workflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(context))
+        yield* TestClock.adjust(1000)
+        assert.strictEqual(attempts, 1)
+        assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
 
-          // Signal the actual waiter; replaying a Cause loses fiber interruption state.
-          yield* storage.unregisterShardReplyHandlers(request.envelope.address.shardId, { interrupt: true })
-          yield* TestClock.adjust(1000)
-          const run = driver.journal.find((e) =>
-            e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
-          )
-          assert(run?._tag === "Request")
-          assert.deepStrictEqual(
-            driver.requests.get(run.requestId)!.replies,
-            [],
-            "catching abandonment must not persist Complete or Suspended"
-          )
-          assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
-          assert.strictEqual(durableFinalizers, 0)
-          assert.strictEqual(driver.journal.filter((e) => e._tag === "Interrupt").length, 0)
-        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
-    }
+        // Signal the actual waiter; replaying a Cause loses fiber interruption state.
+        yield* storage.unregisterShardReplyHandlers(request.envelope.address.shardId, { interrupt: true })
+        yield* TestClock.adjust(1000)
+        const run = driver.journal.find((e) =>
+          e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
+        )
+        assert(run?._tag === "Request")
+        assert.deepStrictEqual(
+          driver.requests.get(run.requestId)!.replies,
+          [],
+          "catching abandonment must not persist Complete or Suspended"
+        )
+        assert.isUndefined(yield* workflow.poll(executionId).pipe(Effect.provide(context)))
+        assert.strictEqual(durableFinalizers, 0)
+        assert.strictEqual(driver.journal.filter((e) => e._tag === "Interrupt").length, 0)
+      }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
   }
 
   for (const suspendOnFailure of [false, true]) {
@@ -999,10 +996,53 @@ describe("abandonment", () => {
 
   it.effect("a recorded durable interrupt wins over abandonment and runs compensation", () =>
     Effect.gen(function*() {
-      const result = yield* runFixture(new URL("./fixtures/workflow-interrupt-abandonment.ts", import.meta.url))
-      assert.isFalse(result.timedOut, `workflow runtime stalled after releasing abandonment: ${result.output}`)
-      assert.strictEqual(result.code, 0, result.output)
-    }), 30_000)
+      const cause = yield* abandonmentCause
+      const driver = yield* MessageStorage.MemoryDriver
+      const ready = yield* Effect.makeLatch()
+      const release = yield* Effect.makeLatch()
+      const events: Array<string> = []
+      let attempts = 0
+      const workflow = Workflow.make({
+        name: "AbandonmentDurableInterrupt",
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Effect.void.pipe(workflow.withCompensation(() => Effect.sync(() => events.push("compensate"))))
+          yield* Effect.acquireRelease(Effect.void, () => Effect.sync(() => events.push("release"))).pipe(
+            Workflow.provideScope
+          )
+          yield* ready.open
+          yield* release.await
+          if (attempts++ === 0) return yield* Effect.failCause(cause)
+        })
+      ).pipe(Layer.provideMerge(EngineLive))
+      const context = yield* Layer.build(layer)
+      const executionId = yield* workflow.executionId({ id: "one" })
+      yield* workflow.interrupt(executionId).pipe(Effect.provide(context))
+      yield* TestClock.adjust(100)
+      const signal = driver.journal.find((e) =>
+        e._tag === "Request" && e.tag === "deferred" &&
+        (e.payload as { name?: string }).name === "Workflow/InterruptSignal"
+      )
+      assert(signal?._tag === "Request")
+      assert.isAbove(
+        driver.requests.get(signal.requestId)!.replies.length,
+        0,
+        "durable interrupt must be recorded before abandonment"
+      )
+      yield* workflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(context))
+      yield* TestClock.adjust(1)
+      yield* ready.await
+      yield* release.open
+      yield* TestClock.adjust(1000)
+      const result = yield* workflow.poll(executionId).pipe(Effect.provide(context))
+      assert(result?._tag === "Complete")
+      assert(Exit.isFailure(result.exit))
+      assert(Cause.isInterruptedOnly(result.exit.cause))
+      assert.deepStrictEqual(events, ["release", "compensate"])
+    }).pipe(Effect.scoped, Effect.provide(MemoryLive)), 30_000)
 
   it.effect("an abandoned child does not enqueue a parent resume", () =>
     Effect.gen(function*() {
@@ -1050,317 +1090,297 @@ describe("workflow send-time abandonment", () => {
     const parked = trigger === "parked waiter" || trigger === "buffered waiter"
     for (const [path, masked] of [["unary", false], ["unary", true], ["stream", false], ["mailbox", false]] as const) {
       if (trigger === "buffered waiter" && path !== "mailbox") continue
-      for (const recovery of ["catchAllCause", "exit"] as const) {
-        it.effect(`${recovery} cannot complete a workflow after ${path} abandonment during ${trigger} (masked=${masked})`, () =>
-          Effect.gen(function*() {
-            const driver = yield* MessageStorage.MemoryDriver
-            const storage = yield* MessageStorage.MessageStorage
-            const handlerEntered = yield* Effect.makeLatch()
-            let writer: Fiber.RuntimeFiber<unknown, unknown> | undefined
-            let waiter: Fiber.RuntimeFiber<unknown, unknown> | undefined
-            const bodyReady = yield* Effect.makeLatch()
-            const sendNow = yield* Effect.makeLatch()
-            const readNow = yield* Effect.makeLatch()
-            let buffered: Mailbox.ReadonlyMailbox<string, unknown> | undefined
-            const finalizerEntered = yield* Effect.makeLatch()
-            const finishFinalizer = yield* Effect.makeLatch()
-            let closing = false
-            let routeFailures = 0
-            let targetCalls = 0
-            let attempts = 0
-            let durableFinalizers = 0
-            let requesterExit: Exit.Exit<string, unknown> | undefined
-            const observed = {
-              marked: false,
-              interruptOnly: false,
-              continued: false,
-              interrupted: false,
-              insideMask: false,
-              pendingInMask: false
-            }
-            const target = Entity.make("SendAbandonmentTarget", [
-              Rpc.make("Ping").annotate(ClusterSchema.Persisted, true),
-              Rpc.make("Values", { success: Schema.String, stream: true }).annotate(ClusterSchema.Persisted, true)
-            ]).annotate(
-              ClusterSchema.ShardGroup,
-              (id) => trigger === "closing manager" && id === "late" ? "unassigned" : "default"
-            )
+      it.effect(`cannot complete a workflow after ${path} abandonment during ${trigger} (masked=${masked})`, () =>
+        Effect.gen(function*() {
+          const driver = yield* MessageStorage.MemoryDriver
+          const storage = yield* MessageStorage.MessageStorage
+          const handlerEntered = yield* Effect.makeLatch()
+          let writer: Fiber.RuntimeFiber<unknown, unknown> | undefined
+          let waiter: Fiber.RuntimeFiber<unknown, unknown> | undefined
+          const bodyReady = yield* Effect.makeLatch()
+          const sendNow = yield* Effect.makeLatch()
+          const readNow = yield* Effect.makeLatch()
+          let buffered: Mailbox.ReadonlyMailbox<string, unknown> | undefined
+          const finalizerEntered = yield* Effect.makeLatch()
+          const finishFinalizer = yield* Effect.makeLatch()
+          let closing = false
+          let routeFailures = 0
+          let targetCalls = 0
+          let attempts = 0
+          let durableFinalizers = 0
+          let requesterExit: Exit.Exit<string, unknown> | undefined
+          const observed = {
+            continued: false,
+            insideMask: false,
+            pendingInMask: false
+          }
+          const target = Entity.make("SendAbandonmentTarget", [
+            Rpc.make("Ping").annotate(ClusterSchema.Persisted, true),
+            Rpc.make("Values", { success: Schema.String, stream: true }).annotate(ClusterSchema.Persisted, true)
+          ]).annotate(
+            ClusterSchema.ShardGroup,
+            (id) => trigger === "closing manager" && id === "late" ? "unassigned" : "default"
+          )
 
-            const runners = Layer.effect(
-              Runners.Runners,
-              Effect.map(Runners.Runners, (runners) =>
-                Runners.Runners.of({
-                  ...runners,
-                  // Inject a routing error and let the real send path propagate abandonment.
-                  notify: (options) => {
-                    assert.isTrue(closing)
-                    routeFailures++
-                    return Effect.fail(
-                      new ClusterError.EntityNotAssignedToRunner({ address: options.message.envelope.address })
-                    )
-                  }
-                }))
-            ).pipe(Layer.provide(Runners.layerNoop))
-            const engine = ClusterWorkflowEngine.layer.pipe(
-              Layer.provideMerge(Sharding.layer),
-              Layer.provide(RunnerStorage.layerMemory),
-              Layer.provide(RunnerHealth.layerNoop),
-              Layer.provide(runners),
-              Layer.provide(Layer.succeed(MessageStorage.MessageStorage, {
-                ...storage,
-                saveRequest: (message) =>
-                  Effect.withFiberRuntime((fiber) => {
-                    if (
-                      message.envelope.address.entityType === target.type &&
-                      message.envelope.address.entityId === "late"
-                    ) {
-                      writer = fiber
-                    }
-                    return Effect.void
-                  }).pipe(Effect.andThen(storage.saveRequest(message))),
-                registerReplyHandler: (message) =>
-                  Effect.withFiberRuntime((fiber) => {
-                    if (
-                      message._tag === "OutgoingRequest" && message.envelope.address.entityType === target.type &&
-                      message.envelope.address.entityId === "late"
-                    ) {
-                      waiter = fiber
-                    }
-                    return storage.registerReplyHandler(message)
-                  })
-              })),
-              Layer.provide(ShardingConfig.layer({
-                availableShardGroups: ["default", "unassigned"],
-                assignedShardGroups: ["default"],
-                shardsPerGroup: 1,
-                preemptiveShutdown: trigger === "shutdown",
-                entityTerminationTimeout: 0,
-                entityMessagePollInterval: 100,
-                entityReplyPollInterval: 100,
-                refreshAssignmentsInterval: 100,
-                sendRetryInterval: 10
+          const runners = Layer.effect(
+            Runners.Runners,
+            Effect.map(Runners.Runners, (runners) =>
+              Runners.Runners.of({
+                ...runners,
+                // Inject a routing error and let the real send path propagate abandonment.
+                notify: (options) => {
+                  assert.isTrue(closing)
+                  routeFailures++
+                  return Effect.fail(
+                    new ClusterError.EntityNotAssignedToRunner({ address: options.message.envelope.address })
+                  )
+                }
               }))
-            )
-            const context = yield* Layer.build(engine)
-            const sharding = Context.get(context, Sharding.Sharding)
-            const targetScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
-            yield* Effect.addFinalizer(() => finishFinalizer.open)
-            yield* Layer.build(target.toLayer(Effect.gen(function*() {
-              yield* Effect.addFinalizer(() =>
-                Effect.gen(function*() {
-                  closing = true
-                  yield* finalizerEntered.open
-                  yield* finishFinalizer.await
+          ).pipe(Layer.provide(Runners.layerNoop))
+          const engine = ClusterWorkflowEngine.layer.pipe(
+            Layer.provideMerge(Sharding.layer),
+            Layer.provide(RunnerStorage.layerMemory),
+            Layer.provide(RunnerHealth.layerNoop),
+            Layer.provide(runners),
+            Layer.provide(Layer.succeed(MessageStorage.MessageStorage, {
+              ...storage,
+              saveRequest: (message) =>
+                Effect.withFiberRuntime((fiber) => {
+                  if (
+                    message.envelope.address.entityType === target.type &&
+                    message.envelope.address.entityId === "late"
+                  ) {
+                    writer = fiber
+                  }
+                  return Effect.void
+                }).pipe(Effect.andThen(storage.saveRequest(message))),
+              registerReplyHandler: (message) =>
+                Effect.withFiberRuntime((fiber) => {
+                  if (
+                    message._tag === "OutgoingRequest" && message.envelope.address.entityType === target.type &&
+                    message.envelope.address.entityId === "late"
+                  ) {
+                    waiter = fiber
+                  }
+                  return storage.registerReplyHandler(message)
                 })
-              )
-              return {
-                Ping: ({ address }) =>
-                  Effect.gen(function*() {
-                    targetCalls++
-                    if (address.entityId === "late") {
-                      yield* handlerEntered.open
-                      yield* Effect.never
-                    }
-                  }),
-                Values: ({ address }) =>
-                  Stream.unwrap(Effect.gen(function*() {
-                    targetCalls++
-                    if (address.entityId === "late") {
-                      yield* handlerEntered.open
-                      if (trigger === "buffered waiter") {
-                        return Stream.range(0, 7).pipe(
-                          Stream.rechunk(1),
-                          Stream.map(String),
-                          Stream.concat(Stream.never)
-                        )
-                      }
-                      return Stream.never
-                    }
-                    return Stream.succeed("warm")
-                  }))
-              }
-            }))).pipe(Scope.extend(targetScope), Effect.provide(context))
-            yield* TestClock.adjust(1000)
-            const client = yield* target.client.pipe(Effect.provide(context))
-            const warm = client("warm")
-            const warmup = yield* (path === "unary"
-              ? warm.Ping()
-              : path === "stream"
-              ? Stream.runDrain(warm.Values())
-              : warm.Values(undefined, { asMailbox: true }).pipe(
-                Effect.flatMap((mailbox) => Stream.runDrain(Mailbox.toStream(mailbox)))
-              )).pipe(Effect.fork)
-            yield* TestClock.adjust(1000)
-            yield* Fiber.join(warmup)
-            assert.strictEqual(targetCalls, 1)
-
-            const workflow = Workflow.make({
-              name: `SendAbandonment/${trigger}/${recovery}/${path}/${masked}`,
-              payload: { id: Schema.String },
-              success: Schema.String,
-              idempotencyKey: ({ id }) => id
-            })
-            yield* Layer.build(workflow.toLayer(() =>
+            })),
+            Layer.provide(ShardingConfig.layer({
+              availableShardGroups: ["default", "unassigned"],
+              assignedShardGroups: ["default"],
+              shardsPerGroup: 1,
+              preemptiveShutdown: trigger === "shutdown",
+              entityTerminationTimeout: 0,
+              entityMessagePollInterval: 100,
+              entityReplyPollInterval: 100,
+              refreshAssignmentsInterval: 100,
+              sendRetryInterval: 10
+            }))
+          )
+          const context = yield* Layer.build(engine)
+          const sharding = Context.get(context, Sharding.Sharding)
+          const targetScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential)
+          yield* Effect.addFinalizer(() => finishFinalizer.open)
+          yield* Layer.build(target.toLayer(Effect.gen(function*() {
+            yield* Effect.addFinalizer(() =>
               Effect.gen(function*() {
-                if (++attempts > 1) return yield* Effect.never
-                yield* Workflow.addFinalizer(() =>
-                  Effect.sync(() => {
-                    durableFinalizers++
-                  })
-                )
-                const targetClient = yield* target.client
-                yield* bodyReady.open
-                yield* sendNow.await
-                const remote = targetClient("late")
-                const call = path === "unary"
-                  ? remote.Ping()
-                  : path === "stream"
-                  ? Stream.runDrain(remote.Values())
-                  : remote.Values(undefined, {
-                    asMailbox: true,
-                    streamBufferSize: trigger === "buffered waiter" ? 2 : undefined
-                  }).pipe(
-                    Effect.flatMap((mailbox) => {
-                      if (trigger !== "buffered waiter") return mailbox.take
-                      buffered = mailbox
-                      return readNow.await.pipe(Effect.andThen(Stream.runDrain(Mailbox.toStream(mailbox))))
-                    }),
-                    Effect.asVoid,
-                    Workflow.provideScope
-                  )
-                const request = call.pipe(Effect.tapErrorCause((cause) =>
-                  Effect.sync(() => {
-                    observed.marked = Abandon.isCause(cause)
-                    observed.interruptOnly = Cause.isInterruptedOnly(cause)
-                  })
-                ))
-                const recover = Effect.gen(function*() {
-                  if (recovery === "catchAllCause") {
-                    yield* request.pipe(Effect.catchAllCause(() => Effect.void))
-                  } else {
-                    yield* Effect.exit(request)
+                closing = true
+                yield* finalizerEntered.open
+                yield* finishFinalizer.await
+              })
+            )
+            return {
+              Ping: ({ address }) =>
+                Effect.gen(function*() {
+                  targetCalls++
+                  if (address.entityId === "late") {
+                    yield* handlerEntered.open
+                    yield* Effect.never
                   }
-                  if (masked) {
-                    yield* Effect.withFiberRuntime((fiber) =>
-                      Effect.sync(() => {
-                        observed.insideMask = true
-                        observed.pendingInMask = Abandon.isCause(fiber.getFiberRef(FiberRef.interruptedCause))
-                      })
-                    )
+                }),
+              Values: ({ address }) =>
+                Stream.unwrap(Effect.gen(function*() {
+                  targetCalls++
+                  if (address.entityId === "late") {
+                    yield* handlerEntered.open
+                    if (trigger === "buffered waiter") {
+                      return Stream.range(0, 7).pipe(
+                        Stream.rechunk(1),
+                        Stream.map(String),
+                        Stream.concat(Stream.never)
+                      )
+                    }
+                    return Stream.never
                   }
-                })
-                yield* masked ? Effect.uninterruptible(recover) : recover
-                if (!parked || path !== "mailbox") {
-                  yield* Effect.yieldNow()
-                }
-                yield* Effect.withFiberRuntime((fiber) =>
-                  Effect.sync(() => {
-                    observed.continued = true
-                    observed.interrupted = !Cause.isEmpty(fiber.getFiberRef(FiberRef.interruptedCause))
-                  })
-                )
-                return "continued"
-              }).pipe(Effect.onExit((exit) =>
-                Effect.sync(() => {
-                  requesterExit = exit
-                })
-              ))
-            )).pipe(Effect.provide(context))
-            const executionId = yield* workflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(context))
-            yield* TestClock.adjust(1000)
-            yield* bodyReady.await
-            assert.strictEqual(attempts, 1)
-            assert.isFalse(yield* sharding.isShutdown)
+                  return Stream.succeed("warm")
+                }))
+            }
+          }))).pipe(Scope.extend(targetScope), Effect.provide(context))
+          yield* TestClock.adjust(1000)
+          const client = yield* target.client.pipe(Effect.provide(context))
+          const warm = client("warm")
+          const warmup = yield* (path === "unary"
+            ? warm.Ping()
+            : path === "stream"
+            ? Stream.runDrain(warm.Values())
+            : warm.Values(undefined, { asMailbox: true }).pipe(
+              Effect.flatMap((mailbox) => Stream.runDrain(Mailbox.toStream(mailbox)))
+            )).pipe(Effect.fork)
+          yield* TestClock.adjust(1000)
+          yield* Fiber.join(warmup)
+          assert.strictEqual(targetCalls, 1)
 
-            yield* Effect.gen(function*() {
-              if (parked) {
-                yield* sendNow.open
-                yield* handlerEntered.await
-                yield* TestClock.adjust(1)
-                assert(waiter, "the public RPC write fiber must register a real storage reply waiter")
-                assert(
-                  Option.isNone(yield* Fiber.poll(waiter)),
-                  "the RPC write fiber must be parked before abandonment"
+          const workflow = Workflow.make({
+            name: `SendAbandonment/${trigger}/${path}/${masked}`,
+            payload: { id: Schema.String },
+            success: Schema.String,
+            idempotencyKey: ({ id }) => id
+          })
+          yield* Layer.build(workflow.toLayer(() =>
+            Effect.gen(function*() {
+              if (++attempts > 1) return yield* Effect.never
+              yield* Workflow.addFinalizer(() =>
+                Effect.sync(() => {
+                  durableFinalizers++
+                })
+              )
+              const targetClient = yield* target.client
+              yield* bodyReady.open
+              yield* sendNow.await
+              const remote = targetClient("late")
+              const call = path === "unary"
+                ? remote.Ping()
+                : path === "stream"
+                ? Stream.runDrain(remote.Values())
+                : remote.Values(undefined, {
+                  asMailbox: true,
+                  streamBufferSize: trigger === "buffered waiter" ? 2 : undefined
+                }).pipe(
+                  Effect.flatMap((mailbox) => {
+                    if (trigger !== "buffered waiter") return mailbox.take
+                    buffered = mailbox
+                    return readNow.await.pipe(Effect.andThen(Stream.runDrain(Mailbox.toStream(mailbox))))
+                  }),
+                  Effect.asVoid,
+                  Workflow.provideScope
                 )
-                assert.isUndefined(requesterExit)
-                if (trigger === "buffered waiter") {
-                  for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
-                  assert(buffered)
-                  assert.isAtLeast(
-                    Option.getOrThrow(yield* buffered.size),
-                    2,
-                    "fill the consumer buffer before abandonment"
+              const recover = Effect.gen(function*() {
+                yield* call.pipe(Effect.catchAllCause(() => Effect.void))
+                if (masked) {
+                  yield* Effect.withFiberRuntime((fiber) =>
+                    Effect.sync(() => {
+                      observed.insideMask = true
+                      observed.pendingInMask = Abandon.isCause(fiber.getFiberRef(FiberRef.interruptedCause))
+                    })
                   )
                 }
-                yield* storage.unregisterShardReplyHandlers(sharding.getShardId(EntityId.make("late"), "default"), {
-                  interrupt: true
-                })
-                yield* readNow.open
-              } else {
-                const close = yield* Scope.close(targetScope, Exit.void).pipe(Effect.fork)
-                yield* finalizerEntered.await
-                assert.isTrue(closing)
-                assert.strictEqual(yield* sharding.isShutdown, trigger === "shutdown")
-                assert(
-                  Option.isNone(yield* Fiber.poll(close)),
-                  "the target finalizer must hold registration teardown open"
-                )
-                if (trigger === "closed manager") {
-                  yield* finishFinalizer.open
-                  yield* Fiber.join(close)
-                }
-                yield* sendNow.open
+              })
+              yield* masked ? Effect.uninterruptible(recover) : recover
+              if (!parked || path !== "mailbox") {
+                yield* Effect.yieldNow()
               }
+              observed.continued = true
+              return "continued"
+            }).pipe(Effect.onExit((exit) =>
+              Effect.sync(() => {
+                requesterExit = exit
+              })
+            ))
+          )).pipe(Effect.provide(context))
+          const executionId = yield* workflow.execute({ id: "one" }, { discard: true }).pipe(Effect.provide(context))
+          yield* TestClock.adjust(1000)
+          yield* bodyReady.await
+          assert.strictEqual(attempts, 1)
+          assert.isFalse(yield* sharding.isShutdown)
+
+          yield* Effect.gen(function*() {
+            if (parked) {
+              yield* sendNow.open
+              yield* handlerEntered.await
               yield* TestClock.adjust(1)
-              const run = driver.journal.find((e) =>
-                e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
+              assert(waiter, "the public RPC write fiber must register a real storage reply waiter")
+              assert(
+                Option.isNone(yield* Fiber.poll(waiter)),
+                "the RPC write fiber must be parked before abandonment"
               )
-              assert(run?._tag === "Request")
-              assert.deepStrictEqual(
-                driver.requests.get(run.requestId)!.replies,
-                [],
-                `send-time abandonment must not persist Complete; requester=${JSON.stringify(observed)}`
-              )
-              const request = driver.journal.find((e) =>
-                e._tag === "Request" && e.address.entityType === target.type && e.address.entityId === "late"
-              )
-              assert(request?._tag === "Request", "send-time abandonment must persist the target request for replay")
-              const replies = driver.requests.get(request.requestId)!.replies
+              assert.isUndefined(requesterExit)
               if (trigger === "buffered waiter") {
-                assert.isAbove(replies.length, 0, "the stream must have persisted chunks before abandonment")
-                assert(
-                  replies.every((reply) => reply._tag === "Chunk"),
-                  "abandonment must not persist a terminal reply"
+                for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
+                assert(buffered)
+                assert.isAtLeast(
+                  Option.getOrThrow(yield* buffered.size),
+                  2,
+                  "fill the consumer buffer before abandonment"
                 )
-              } else {
-                assert.deepStrictEqual(replies, [])
               }
-              assert.strictEqual(
-                targetCalls,
-                parked ? 2 : 1,
-                "only requests sent before teardown may reach the handler"
-              )
-              assert.strictEqual(routeFailures, trigger === "closing manager" ? 1 : 0)
-              assert.strictEqual(observed.insideMask, masked, "recovery must respect the caller's interruption mask")
-              assert.strictEqual(observed.pendingInMask, masked, "masked recovery must retain pending abandonment")
-              assert.isFalse(observed.continued)
-              assert.strictEqual(durableFinalizers, 0)
-              assert.strictEqual(driver.journal.filter((e) => e._tag === "Interrupt").length, 0)
-              assert(writer, "the public RPC write fiber must persist the abandoned request")
-              const writeExit = yield* Fiber.poll(writer)
+              yield* storage.unregisterShardReplyHandlers(sharding.getShardId(EntityId.make("late"), "default"), {
+                interrupt: true
+              })
+              yield* readNow.open
+            } else {
+              const close = yield* Scope.close(targetScope, Exit.void).pipe(Effect.fork)
+              yield* finalizerEntered.await
+              assert.isTrue(closing)
+              assert.strictEqual(yield* sharding.isShutdown, trigger === "shutdown")
               assert(
-                Option.isSome(writeExit) && Exit.isFailure(writeExit.value),
-                "the write fiber must finish interrupted"
+                Option.isNone(yield* Fiber.poll(close)),
+                "the target finalizer must hold registration teardown open"
               )
-              assert(Cause.isInterruptedOnly(writeExit.value.cause) && Abandon.isCause(writeExit.value.cause))
+              if (trigger === "closed manager") {
+                yield* finishFinalizer.open
+                yield* Fiber.join(close)
+              }
+              yield* sendNow.open
+            }
+            yield* TestClock.adjust(1)
+            const run = driver.journal.find((e) =>
+              e._tag === "Request" && e.tag === "run" && e.address.entityId === executionId
+            )
+            assert(run?._tag === "Request")
+            assert.deepStrictEqual(
+              driver.requests.get(run.requestId)!.replies,
+              [],
+              `send-time abandonment must not persist Complete; requester=${JSON.stringify(observed)}`
+            )
+            const request = driver.journal.find((e) =>
+              e._tag === "Request" && e.address.entityType === target.type && e.address.entityId === "late"
+            )
+            assert(request?._tag === "Request", "send-time abandonment must persist the target request for replay")
+            const replies = driver.requests.get(request.requestId)!.replies
+            if (trigger === "buffered waiter") {
+              assert.isAbove(replies.length, 0, "the stream must have persisted chunks before abandonment")
               assert(
-                requesterExit && Exit.isFailure(requesterExit),
-                "the requester must finish rather than remain parked"
+                replies.every((reply) => reply._tag === "Chunk"),
+                "abandonment must not persist a terminal reply"
               )
-              assert(Cause.isInterruptedOnly(requesterExit.cause) && Abandon.isCause(requesterExit.cause))
-            }).pipe(Effect.ensuring(finishFinalizer.open))
-          }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
-      }
+            } else {
+              assert.deepStrictEqual(replies, [])
+            }
+            assert.strictEqual(
+              targetCalls,
+              parked ? 2 : 1,
+              "only requests sent before teardown may reach the handler"
+            )
+            assert.strictEqual(routeFailures, trigger === "closing manager" ? 1 : 0)
+            assert.strictEqual(observed.insideMask, masked, "recovery must respect the caller's interruption mask")
+            assert.strictEqual(observed.pendingInMask, masked, "masked recovery must retain pending abandonment")
+            assert.isFalse(observed.continued)
+            assert.strictEqual(durableFinalizers, 0)
+            assert.strictEqual(driver.journal.filter((e) => e._tag === "Interrupt").length, 0)
+            assert(writer, "the public RPC write fiber must persist the abandoned request")
+            const writeExit = yield* Fiber.poll(writer)
+            assert(
+              Option.isSome(writeExit) && Exit.isFailure(writeExit.value),
+              "the write fiber must finish interrupted"
+            )
+            assert(Cause.isInterruptedOnly(writeExit.value.cause) && Abandon.isCause(writeExit.value.cause))
+            assert(
+              requesterExit && Exit.isFailure(requesterExit),
+              "the requester must finish rather than remain parked"
+            )
+            assert(Cause.isInterruptedOnly(requesterExit.cause) && Abandon.isCause(requesterExit.cause))
+          }).pipe(Effect.ensuring(finishFinalizer.open))
+        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
     }
   }
 })

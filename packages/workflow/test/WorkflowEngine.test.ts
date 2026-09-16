@@ -10,7 +10,6 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as TestClock from "effect/TestClock"
 import * as WorkflowEngineContractTest from "./WorkflowEngineContractTest.js"
-import { makeAwaitResult } from "./WorkflowEngineContractTest.js"
 
 describe("WorkflowEngine", () => {
   it.effect("works with TestClock", () =>
@@ -225,43 +224,41 @@ describe("memory lifecycle", () => {
       }).pipe(Effect.provide(layer))
     }))
 
-  for (const observe of ["body", "terminal", "late completion"] as const) {
-    it.effect(`memory deposited interrupt ${observe} ordering`, () =>
-      Effect.gen(function*() {
-        const gate = DurableDeferred.make("interrupt-gate")
-        const body: Array<boolean> = []
-        const terminal: Array<boolean> = []
-        let runs = 0
-        const layer = TestWorkflow.toLayer(() =>
-          Effect.gen(function*() {
-            const instance = yield* WorkflowEngine.WorkflowInstance
-            if (++runs === 2) {
-              yield* Workflow.addFinalizer(() => Effect.sync(() => terminal.push(instance.interrupted)))
-            }
-            yield* DurableDeferred.await(gate).pipe(
-              Effect.onExit(() => Effect.sync(() => body.push(instance.interrupted)))
-            )
-          })
-        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
-        yield* Effect.gen(function*() {
-          const executionId = yield* TestWorkflow.execute(undefined, { discard: true })
-          yield* awaitResult(TestWorkflow, executionId, "Suspended")
-          yield* TestWorkflow.interrupt(executionId)
-          const result = yield* awaitResult(TestWorkflow, executionId, "Complete")
-          assert(result?._tag === "Complete" && Exit.isInterrupted(result.exit))
-          if (observe === "terminal") assert.deepStrictEqual(terminal, [true])
-          if (observe === "body") assert.deepStrictEqual(body, [false, false])
-          yield* DurableDeferred.succeed(gate, {
-            token: DurableDeferred.tokenFromExecutionId(gate, { workflow: TestWorkflow, executionId }),
-            value: undefined
-          })
-          yield* TestWorkflow.resume(executionId)
-          assert.deepStrictEqual(yield* TestWorkflow.poll(executionId), result)
-          assert.strictEqual(runs, 2)
-        }).pipe(Effect.provide(layer))
-      }))
-  }
-  const awaitResult = makeAwaitResult(Effect.yieldNow())
+  it.effect("memory deposited interrupt ordering", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("interrupt-gate")
+      const body: Array<boolean> = []
+      const terminal: Array<boolean> = []
+      let runs = 0
+      const layer = TestWorkflow.toLayer(() =>
+        Effect.gen(function*() {
+          const instance = yield* WorkflowEngine.WorkflowInstance
+          if (++runs === 2) {
+            yield* Workflow.addFinalizer(() => Effect.sync(() => terminal.push(instance.interrupted)))
+          }
+          yield* DurableDeferred.await(gate).pipe(
+            Effect.onExit(() => Effect.sync(() => body.push(instance.interrupted)))
+          )
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      yield* Effect.gen(function*() {
+        const executionId = yield* TestWorkflow.execute(undefined, { discard: true })
+        yield* awaitResult(TestWorkflow, executionId, "Suspended")
+        yield* TestWorkflow.interrupt(executionId)
+        const result = yield* awaitResult(TestWorkflow, executionId, "Complete")
+        assert(result?._tag === "Complete" && Exit.isInterrupted(result.exit))
+        assert.deepStrictEqual(terminal, [true])
+        assert.deepStrictEqual(body, [false, false])
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: TestWorkflow, executionId }),
+          value: undefined
+        })
+        yield* TestWorkflow.resume(executionId)
+        assert.deepStrictEqual(yield* TestWorkflow.poll(executionId), result)
+        assert.strictEqual(runs, 2)
+      }).pipe(Effect.provide(layer))
+    }))
+  const awaitResult = WorkflowEngineContractTest.makeAwaitResult(Effect.yieldNow())
 })
 
 describe("shutdown", () => {
