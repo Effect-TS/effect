@@ -21,6 +21,7 @@ const assertFencedCode = (
   assert.deepStrictEqual(Core.extractFencedCode(markdown), [expectedExamples, expectedWarnings])
 }
 
+// https://github.com/Effect-TS/effect/commit/32f9c60189225e0105af46d532272f7462b39aa8
 const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, runExamples = true) =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
@@ -40,7 +41,8 @@ const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, run
       tscExecutable: "tsc",
       runExamples,
       exclude: [],
-      parseCompilerOptions: {},
+      // These fixtures use only primitive types.
+      parseCompilerOptions: { noLib: true },
       examplesCompilerOptions: Configuration.defaultCompilerOptions
     }
     yield* fs.makeDirectory(config.srcDir)
@@ -154,11 +156,12 @@ describe("Core", () => {
       ))
   })
 
+  // https://github.com/Effect-TS/effect/commit/e7eebf4685c294b423da3f7618629c0e0efc34cc
   describe("[internal] getModuleMarkdownFiles", () => {
     for (const srcDir of [".", "src", "source/lib", path.resolve("source/lib"), process.cwd()]) {
       it.effect(`generates distinct source-relative pages for ${srcDir}`, () =>
         Effect.gen(function*() {
-          const project = new ast.Project({ useInMemoryFileSystem: true })
+          const project = new ast.Project({ useInMemoryFileSystem: true, compilerOptions: { noLib: true } })
           const sources = [
             ["left/Shared.ts", "leftMarker"],
             ["right/Shared.ts", "rightMarker"],
