@@ -97,6 +97,27 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder QUERY endpoints", (it) => {
+  it.effect("round trips a request body", () =>
+    Effect.gen(function*() {
+      const Payload = Schema.Struct({ query: Schema.String })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("search").add(
+          HttpApiEndpoint.query("run", "/search", {
+            payload: Payload,
+            success: Payload
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "search", (handlers) =>
+        handlers.handle("run", ({ payload }) =>
+          Effect.succeed(payload)))
+      const client = yield* HttpApiTest.groups(Api, ["search"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.search.run({ payload: { query: "effect" } }), { query: "effect" })
+    }))
+})
+
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
   it.effect("runs registered pre-response handlers", () =>
     Effect.gen(function*() {

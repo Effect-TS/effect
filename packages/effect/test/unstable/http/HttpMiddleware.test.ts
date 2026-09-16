@@ -77,6 +77,26 @@ describe("HttpMiddleware", () => {
         assert.deepStrictEqual(vary, ["access-control-request-headers", "origin"])
       }))
 
+    it.effect("allows QUERY in preflight requests by default", () =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.empty()).pipe(HttpMiddleware.cors())
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              method: "OPTIONS",
+              headers: {
+                Origin: "https://client.example",
+                "Access-Control-Request-Method": "QUERY"
+              }
+            })
+          )
+        )
+
+        assert.include(response.headers.get("access-control-allow-methods"), "QUERY")
+      }))
+
     it.effect("varies by Origin when the request origin is rejected", () =>
       Effect.gen(function*() {
         const handler = HttpEffect.toWebHandler(

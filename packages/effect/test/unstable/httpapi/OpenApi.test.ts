@@ -203,6 +203,84 @@ describe("OpenApi", () => {
     })
   })
 
+  it("represents QUERY operations with the OpenAPI 3.1 additional-operations extension", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("search").add(
+        HttpApiEndpoint.query("search", "/search", {
+          payload: Schema.Struct({ query: Schema.String }),
+          success: Schema.Struct({ result: Schema.String })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const operation = spec.paths["/search"]?.["x-oai-additionalOperations"]?.QUERY
+
+    assert.strictEqual(spec.openapi, "3.1.0")
+    assert.strictEqual(operation?.operationId, "search.search")
+    assert.deepStrictEqual(operation?.requestBody?.content["application/json"]?.schema, {
+      type: "object",
+      properties: { query: { type: "string" } },
+      required: ["query"],
+      additionalProperties: false
+    })
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["application/json"]?.schema, {
+      type: "object",
+      properties: { result: { type: "string" } },
+      required: ["result"],
+      additionalProperties: false
+    })
+  })
+
+  it("finalizes QUERY parameter and response schemas before applying operation annotations", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("search").add(
+        HttpApiEndpoint.query("search", "/search/:index", {
+          params: { index: Schema.String },
+          query: { limit: Schema.FiniteFromString },
+          headers: { "x-request-id": Schema.String },
+          payload: Schema.Struct({ query: Schema.String }),
+          success: HttpApiSchema.WithHeaders(Schema.Struct({ result: Schema.String }), {
+            "X-Count": Schema.FiniteFromString
+          })
+        })
+          .annotate(OpenApi.Override, { summary: "Search" })
+          .annotate(OpenApi.Transform, (operation: Record<string, any>) => ({
+            ...operation,
+            summary: `${operation.summary} records`,
+            parameters: [...operation.parameters].reverse()
+          }))
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const pathItem = spec.paths["/search/{index}"]
+    const operation = pathItem?.["x-oai-additionalOperations"]?.QUERY
+
+    assert.deepStrictEqual(Object.keys(pathItem), ["x-oai-additionalOperations"])
+    assert.strictEqual(operation?.summary, "Search records")
+    assert.deepStrictEqual(operation?.parameters, [
+      { name: "limit", in: "query", required: true, schema: { type: "string" } },
+      { name: "x-request-id", in: "header", required: true, schema: { type: "string" } },
+      { name: "index", in: "path", required: true, schema: { type: "string" } }
+    ])
+    assert.deepStrictEqual(operation?.responses[200]?.headers, {
+      "x-count": { required: true, schema: { type: "string" } }
+    })
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["application/json"]?.schema, {
+      type: "object",
+      properties: { result: { type: "string" } },
+      required: ["result"],
+      additionalProperties: false
+    })
+    assert.deepStrictEqual(operation?.requestBody?.content["application/json"]?.schema, {
+      type: "object",
+      properties: { query: { type: "string" } },
+      required: ["query"],
+      additionalProperties: false
+    })
+  })
+
   it("emits buffered and stream successes with the same status", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

@@ -2,7 +2,7 @@ import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type * as JsonSchema from "effect/JsonSchema"
-import type { OpenAPISpec, OpenAPISpecOperation } from "effect/unstable/httpapi/OpenApi"
+import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/unstable/httpapi/OpenApi"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -2864,6 +2864,115 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           ]
         }
       ))
+  })
+
+  describe("QUERY", () => {
+    const queryOperation: OpenAPISpecOperation = {
+      operationId: "search",
+      parameters: [],
+      tags: ["Search"],
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: { query: { type: "string" } },
+              required: ["query"],
+              additionalProperties: false
+            }
+          }
+        }
+      },
+      responses: { "204": { description: "No content" } }
+    }
+
+    const makeQuerySpec = (pathItem: OpenAPISpecPathItem & { query?: OpenAPISpecOperation }): OpenAPISpec => ({
+      openapi: "3.1.0",
+      info: { title: "QUERY API", version: "1.0.0" },
+      components: { schemas: {}, securitySchemes: {} },
+      security: [],
+      tags: [{ name: "Search" }],
+      paths: { "/search": pathItem }
+    })
+
+    it.effect.each([
+      {
+        name: "OpenAPI 3.1 extension",
+        spec: makeQuerySpec({ "x-oai-additionalOperations": { QUERY: queryOperation } })
+      },
+      {
+        name: "native OpenAPI 3.2 field",
+        spec: {
+          ...makeQuerySpec({ query: queryOperation }),
+          openapi: "3.2.0"
+        } as unknown as OpenAPISpec
+      }
+    ])("generates QUERY request bodies from the $name", ({ spec }) =>
+      Effect.all([
+        assertRuntimeIncludes(spec, [
+          `HttpClientRequest.query("/search")`,
+          `export const SearchRequestJson = Schema.Struct({ "query": Schema.String })`,
+          `HttpClientRequest.bodyJsonUnsafe(options.payload)`,
+          `readonly payload: typeof SearchRequestJson.Encoded`
+        ]),
+        assertTypeOnlyIncludes(spec, [
+          `HttpClientRequest.query("/search")`,
+          `HttpClientRequest.bodyJsonUnsafe(options.payload)`,
+          `export type SearchRequestJson = { readonly "query": string }`,
+          `readonly payload: SearchRequestJson`
+        ]),
+        assertHttpApiIncludes(spec, [
+          `export const SearchRequestJson = Schema.Struct({ "query": Schema.String })`,
+          `HttpApiEndpoint.query("search", "/search", { payload: SearchRequestJson, success: HttpApiSchema.Empty(204) })`
+        ])
+      ]))
+
+    it.effect("emits compilable QUERY clients with typed request payloads", () =>
+      assertGeneratedClientsCompile(
+        makeQuerySpec({ "x-oai-additionalOperations": { QUERY: queryOperation } }),
+        {
+          usage: `declare const client: TestClient
+export const search = client.search({ payload: { query: "effect" } })
+// @ts-expect-error QUERY requires a request payload.
+client.search({})
+// @ts-expect-error The query field must be a string.
+client.search({ payload: { query: 123 } })
+`
+        }
+      ), compilationTimeout)
+
+    it.effect("preserves standard operations alongside QUERY", () => {
+      const spec = makeQuerySpec({
+        get: {
+          operationId: "list",
+          parameters: [],
+          tags: ["Search"],
+          security: [],
+          responses: queryOperation.responses
+        },
+        "x-oai-additionalOperations": { QUERY: queryOperation }
+      })
+      return Effect.all([
+        assertRuntimeIncludes(spec, [`HttpClientRequest.get("/search")`, `HttpClientRequest.query("/search")`]),
+        assertHttpApiIncludes(spec, [
+          `HttpApiEndpoint.get("list", "/search"`,
+          `HttpApiEndpoint.query("search", "/search"`
+        ])
+      ])
+    })
+
+    it.effect("prefers the native QUERY operation over the extension", () => {
+      const spec = makeQuerySpec({
+        query: queryOperation,
+        "x-oai-additionalOperations": { QUERY: { ...queryOperation, operationId: "legacySearch" } }
+      })
+      return Effect.all([
+        assertRuntimeIncludes(spec, [`HttpClientRequest.query("/search")`], [`legacySearch`, `LegacySearch`]),
+        assertHttpApiIncludes(spec, [`HttpApiEndpoint.query("search", "/search"`], [`legacySearch`, `LegacySearch`])
+      ])
+    })
   })
 
   describe("regression", () => {

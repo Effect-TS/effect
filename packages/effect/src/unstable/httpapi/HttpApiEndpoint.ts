@@ -1410,6 +1410,14 @@ function transformPayload(schema: Schema.Top, method: HttpMethod): Schema.Top {
 export const get = make("GET")
 
 /**
+ * Creates a `QUERY` endpoint declaration.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const query = make("QUERY")
+
+/**
  * Creates a `POST` endpoint declaration.
  *
  * @category constructors
