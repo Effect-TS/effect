@@ -2069,20 +2069,28 @@
               "path": "extra-valid"
             },
             {
-              "name": "zod-jitless-parse-valid",
-              "export": "assertParseJitlessValid",
+              "name": "zod-jitless-validate-valid",
+              "export": "isJitlessValid",
               "scenario": "moltar-assert-loose-valid",
               "implementation": "zod4-jitless",
-              "operation": "parse-and-assert-jitless",
+              "operation": "validate-jitless",
               "path": "valid"
             },
             {
-              "name": "zod-jitless-parse-extra-valid",
-              "export": "assertParseJitlessExtraValid",
+              "name": "zod-jitless-validate-extra-valid",
+              "export": "isJitlessExtraValid",
               "scenario": "moltar-assert-loose-extra-valid",
               "implementation": "zod4-jitless",
-              "operation": "parse-and-assert-jitless",
+              "operation": "validate-jitless",
               "path": "extra-valid"
+            },
+            {
+              "name": "zod-jitless-validate-invalid",
+              "export": "isJitlessInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-jitless",
+              "operation": "validate-jitless",
+              "path": "invalid"
             },
             {
               "name": "zod-validate-valid",
@@ -2904,6 +2912,82 @@
             },
             {
               "name": "valibot-makeArray",
+              "export": "makeArray",
+              "scenario": "compiler-rebuild-makeArray",
+              "operation": "make",
+              "size": 32
+            }
+          ]
+        },
+        {
+          "file": "suites/compiler-rebuild/fixtures/zod-jitless.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "zod-jitless",
+            "implementation": "zod4-jitless",
+            "astTags": [],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "zod-jitless-parseValid",
+              "export": "parseValid",
+              "scenario": "compiler-rebuild-parseValid"
+            },
+            {
+              "name": "zod-jitless-parseInvalid",
+              "export": "parseInvalid",
+              "scenario": "compiler-rebuild-parseInvalid",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-jitless-isValid",
+              "export": "isValid",
+              "scenario": "compiler-rebuild-isValid",
+              "operation": "is"
+            },
+            {
+              "name": "zod-jitless-isInvalid",
+              "export": "isInvalid",
+              "scenario": "compiler-rebuild-isInvalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "zod-jitless-array",
+              "export": "array",
+              "scenario": "compiler-rebuild-array",
+              "size": 32
+            },
+            {
+              "name": "zod-jitless-record",
+              "export": "record",
+              "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "zod-jitless-union",
+              "export": "union",
+              "scenario": "compiler-rebuild-union",
+              "size": 8
+            },
+            {
+              "name": "zod-jitless-transform",
+              "export": "transform",
+              "scenario": "compiler-rebuild-transform",
+              "size": 32
+            },
+            {
+              "name": "zod-jitless-makeStruct",
+              "export": "makeStruct",
+              "scenario": "compiler-rebuild-makeStruct",
+              "operation": "make",
+              "size": 32
+            },
+            {
+              "name": "zod-jitless-makeArray",
               "export": "makeArray",
               "scenario": "compiler-rebuild-makeArray",
               "operation": "make",

@@ -87,13 +87,13 @@ const parseCompiled = (schema: ReturnType<typeof makeParseSchema>) => {
   return (input: unknown) => compiled.parse(input)
 }
 const validate = (schema: ReturnType<typeof makeGuardSchema>) => (input: unknown) => z.validate(schema, input)
+const validateJitless = (schema: ReturnType<typeof makeGuardSchema>) => (input: unknown) =>
+  z.validate(schema, input, { jitless: true })
 const validateCompiled = (schema: ReturnType<typeof makeGuardSchema>) => {
   const compiled = z.compile(schema, { strict: true })
   return (input: unknown) => z.validate(compiled, input)
 }
 const assertParse = (schema: ReturnType<typeof makeGuardSchema>) => (input: unknown) => schema.parse(input)
-const assertParseJitless = (schema: ReturnType<typeof makeGuardSchema>) => (input: unknown) =>
-  schema.parse(input, { jitless: true })
 
 export const parseValid = parseCase(parse, validData)
 export const parseExtraValid = parseCase(parse, validDataWithExtras)
@@ -107,10 +107,11 @@ export const parseCompiledInvalid = parseCase(parseCompiled, invalidData, true)
 export const isValid = guardCase(validate, validData, true)
 export const isExtraValid = guardCase(validate, validDataWithExtras, true)
 export const isInvalid = guardCase(validate, invalidData, false)
+export const isJitlessValid = guardCase(validateJitless, validData, true)
+export const isJitlessExtraValid = guardCase(validateJitless, validDataWithExtras, true)
+export const isJitlessInvalid = guardCase(validateJitless, invalidData, false)
 export const isCompiledValid = guardCase(validateCompiled, validData, true)
 export const isCompiledExtraValid = guardCase(validateCompiled, validDataWithExtras, true)
 export const isCompiledInvalid = guardCase(validateCompiled, invalidData, false)
 export const assertParseValid = assertParseCase(assertParse, validData)
 export const assertParseExtraValid = assertParseCase(assertParse, validDataWithExtras)
-export const assertParseJitlessValid = assertParseCase(assertParseJitless, validData)
-export const assertParseJitlessExtraValid = assertParseCase(assertParseJitless, validDataWithExtras)

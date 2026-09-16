@@ -2,8 +2,9 @@
 
 The `compiler-rebuild` suite measures 22 public SchemaParser operations with the
 interpreter, selective JIT and generated AOT modules. Eighteen cases also run
-against `z.compile(schema, { strict: true })`; ten representative cases also
-run against Valibot. The fixture families name the execution mode. Cases
+against `z.compile(schema, { strict: true })`; ten representative cases run
+against Valibot and Zod with `{ jitless: true }`. The fixture families name the
+execution mode. Cases
 cover simple and nested Structs, Arrays, tuples, Records, anyOf/oneOf Unions,
 transformations, middleware, recursive schemas, Declarations, construction,
 and successful and failing validation.
@@ -33,6 +34,27 @@ reports bootstrap confidence intervals. Cross-mode rankings are descriptive;
 the paired base/head comparison is the regression evidence.
 
 ## Retained heap and first use
+
+For a current cross-library comparison of retained heap, V8 code memory, peak
+RSS and preparation CPU, run:
+
+```sh
+node packages/effect/runtimeperf/suites/compiler-rebuild/run-resources.mts \
+  tmp/schema-compiler-resources.json 5 100,500
+node packages/effect/runtimeperf/suites/compiler-rebuild/report-resources.mts \
+  tmp/schema-compiler-resources.json
+```
+
+Each sample runs in a fresh process. The report calculates median per-schema
+slopes between 100 and 500 distinct schemas, which removes fixed module and
+lazy initialization costs. Fixture inputs are released before retained-memory
+measurement. Preparation CPU includes adapter creation and first use; AOT also
+includes loading and installing the generated module. AOT source generation is
+reported separately because it runs at build time. Hot synchronous CPU is
+already represented by the normal runtime measurements.
+
+The older Effect-only probe below remains available for comparisons with its
+existing archived results.
 
 The standalone cost probe accepts a checkout root, mode, operation, shape and
 schema count. Run several fresh processes per combination and alternate the

@@ -143,8 +143,23 @@ describe("runtimeperf registry", () => {
     const paths = new Set(compiled.map((fixture) => fixture.fixturePath))
     assert.equal(paths.size, 1)
     const source = await readFile([...paths][0], "utf8")
-    assert.match(source, /from "zod\/v4"/)
-    assert.match(source, /z\.compile\(source, \{ strict: true \}\)/)
+    assert.match(source, /from "\.\/zod-cases\.ts"/)
+    const shared = await readFile(new URL("../suites/compiler-rebuild/fixtures/zod-cases.ts", import.meta.url), "utf8")
+    assert.match(shared, /from "zod\/v4"/)
+    assert.match(shared, /z\.compile\(value\.schema, \{ strict: true \}\)/)
+  })
+
+  it("uses interpreted Zod for the jitless compiler comparison fixtures", async () => {
+    const { fixtures } = loadRegistry()
+    const jitless = fixtures.filter((fixture) =>
+      fixture.suite === "compiler-rebuild" && fixture.implementation === "zod4-jitless"
+    )
+    assert.equal(jitless.length, 10)
+    const paths = new Set(jitless.map((fixture) => fixture.fixturePath))
+    assert.equal(paths.size, 1)
+    const source = await readFile(new URL("../suites/compiler-rebuild/fixtures/zod-cases.ts", import.meta.url), "utf8")
+    assert.match(source, /z\.validate\(value\.schema, input, \{ jitless: true \}\)/)
+    assert.match(source, /value\.schema\.parse\(input, \{ jitless: true \}\)/)
   })
 
   it("loads, runs and validates every fixture export", async () => {
