@@ -2,8 +2,8 @@ import { SqlResolver } from "@effect/sql"
 import * as SqliteKysely from "@effect/sql-kysely/Sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, Schema } from "effect"
-import type { Generated } from "kysely"
+import { Context, Effect, Either, Exit, Layer, Option, Schema } from "effect"
+import { CamelCasePlugin, type Generated, type KyselyPlugin, type QueryId } from "kysely"
 
 export interface User {
   id: Generated<number>
@@ -24,6 +24,75 @@ const SqliteLive = Sqlite.SqliteClient.layer({
 const KyselyLive = Layer.effect(SqliteDB, SqliteKysely.make<Database>()).pipe(Layer.provide(SqliteLive))
 
 describe("SqliteKysely", () => {
+  it.effect("result plugins", () =>
+    Effect.gen(function*() {
+      const db = yield* SqliteKysely.make<{ users: { userName: string } }>({
+        plugins: [new CamelCasePlugin()]
+      })
+      yield* db.schema.createTable("users").addColumn("userName", "text", (c) => c.notNull())
+      assert.deepStrictEqual(yield* db.insertInto("users").values({ userName: "Alice" }).returningAll(), [
+        { userName: "Alice" }
+      ])
+      assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ userName: "Alice" }])
+      const failure = "rollback"
+      const result = yield* db.withTransaction(Effect.gen(function*() {
+        assert.deepStrictEqual(yield* db.updateTable("users").set({ userName: "Bob" }).returningAll(), [
+          { userName: "Bob" }
+        ])
+        return yield* Effect.fail(failure)
+      })).pipe(Effect.either)
+      assert.deepStrictEqual(result, Either.left(failure))
+      assert.deepStrictEqual(yield* db.deleteFrom("users").returningAll(), [{ userName: "Alice" }])
+    }).pipe(Effect.provide(SqliteLive)))
+
+  it.effect("scoped result plugins", () =>
+    Effect.gen(function*() {
+      const db = yield* SqliteKysely.make<{ users: { user_name: string } }>()
+      yield* db.schema.createTable("users").addColumn("user_name", "text")
+      yield* db.insertInto("users").values({ user_name: "Alice" })
+      const camel = db.withPlugin(new CamelCasePlugin())
+      assert.deepStrictEqual<unknown>(yield* camel.selectFrom("users").selectAll(), [{ userName: "Alice" }])
+      assert.deepStrictEqual(yield* camel.withoutPlugins().selectFrom("users").selectAll(), [{ user_name: "Alice" }])
+      assert.deepStrictEqual<unknown>(yield* db.selectFrom("users").selectAll().withPlugin(new CamelCasePlugin()), [
+        { userName: "Alice" }
+      ])
+      const query = db.selectFrom("users").selectAll()
+      assert.deepStrictEqual<unknown>(yield* query.$call((q) => q.withPlugin(new CamelCasePlugin())), [
+        { userName: "Alice" }
+      ])
+      assert.deepStrictEqual<unknown>(yield* query.$if(true, (q) => q.withPlugin(new CamelCasePlugin())), [
+        { userName: "Alice" }
+      ])
+      assert.deepStrictEqual(yield* query.$if(false, (q) => q.withPlugin(new CamelCasePlugin())), [
+        { user_name: "Alice" }
+      ])
+      assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ user_name: "Alice" }])
+    }).pipe(Effect.provide(SqliteLive)))
+
+  it.effect("result plugin order and query identity", () =>
+    Effect.gen(function*() {
+      const queries = new WeakSet<QueryId>()
+      const plugin: KyselyPlugin = {
+        transformQuery: ({ node, queryId }) => {
+          queries.add(queryId)
+          return node
+        },
+        transformResult: ({ queryId, result }) => {
+          assert.isTrue(queries.has(queryId))
+          return Promise.resolve({
+            ...result,
+            rows: result.rows.map((row) => ({ ...row, userName: `${row.userName}!` }))
+          })
+        }
+      }
+      const db = yield* SqliteKysely.make<{ users: { userName: string } }>({
+        plugins: [new CamelCasePlugin(), plugin]
+      })
+      yield* db.schema.createTable("users").addColumn("userName", "text")
+      yield* db.insertInto("users").values({ userName: "Alice" })
+      assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ userName: "Alice!" }])
+    }).pipe(Effect.provide(SqliteLive)))
+
   it.effect("queries", () =>
     Effect.gen(function*() {
       const db = yield* SqliteDB
