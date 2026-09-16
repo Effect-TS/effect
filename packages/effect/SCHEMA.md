@@ -128,15 +128,15 @@ stores functions, never parsing results. The interpreter, JIT, AOT and
 | Operation      | Result                                      | Purpose                                                                                         |
 | -------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `decodeEffect` | `Effect` with output or detailed issues     | Required complete decoding, including asynchronous work and transformations.                    |
-| `validate`     | Output or `SchemaCompiler.invalid`          | Optional synchronous fast path without detailed diagnostics.                                    |
+| `decode`       | Output or `SchemaCompiler.invalid`          | Optional synchronous decoding fast path without detailed diagnostics.                           |
 | `is`           | Boolean                                     | Optional validation without constructing output.                                                |
 | `make`         | Output or `SchemaCompiler.invalid`          | Optional synchronous construction fast path without detailed diagnostics.                       |
 | `makeEffect`   | `Effect` with a constructed value or issues | Optional specialized construction. The registry caches the interpreted constructor when absent. |
 
-Decoding tries `validate` when available. Success provides the output directly;
+Decoding tries `decode` when available. Success provides the output directly;
 failure calls `decodeEffect` for diagnostics. The diagnostic traversal uses child
 decoders directly, without restarting their validation fast paths. A boolean
-guard prefers `is`, otherwise it uses ordinary decoding (including `validate`
+guard prefers `is`, otherwise it uses ordinary decoding (including `decode`
 when available). An `invalid` result needs that diagnostic fallback because the
 marker is also a possible input value. Composite checks
 can require stripped, reconstructed values, so `is` is omitted when it cannot

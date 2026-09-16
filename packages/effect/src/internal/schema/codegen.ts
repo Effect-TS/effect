@@ -13,10 +13,10 @@ const maxGeneratedDepth = 256
 /** @internal */
 export const maxGeneratedNodes = 2048
 
-type Emission = "unsupported" | "validate" | "is"
-type Operation = "validate" | "is"
+type Emission = "unsupported" | "decode" | "is"
+type Operation = "decode" | "is"
 
-const failureExpression = (operation: Operation): string => operation === "validate" ? "I" : "false"
+const failureExpression = (operation: Operation): string => operation === "decode" ? "I" : "false"
 
 /** @internal */
 const getEmission = (
@@ -55,38 +55,38 @@ const getEmission = (
       for (const element of ast.elements) {
         const emission = getEmission(element, depth + 1, false, budget)
         if (emission === "unsupported") return "unsupported"
-        if (emission === "validate") isOutputFree = false
+        if (emission === "decode") isOutputFree = false
       }
       for (const element of ast.rest) {
         const emission = getEmission(element, depth + 1, false, budget)
         if (emission === "unsupported") return "unsupported"
-        if (emission === "validate") isOutputFree = false
+        if (emission === "decode") isOutputFree = false
       }
-      return isOutputFree ? "is" : "validate"
+      return isOutputFree ? "is" : "decode"
     }
     case "Objects": {
       let isOutputFree = ast.checks === undefined
       for (const property of ast.propertySignatures) {
         const emission = getEmission(property.type, depth + 1, false, budget)
         if (emission === "unsupported") return "unsupported"
-        if (emission === "validate") isOutputFree = false
+        if (emission === "decode") isOutputFree = false
       }
       for (const signature of ast.indexSignatures) {
         const key = getEmission(SchemaAST.parameterFromPropertyKey(signature.parameter), depth + 1, false, budget)
         const value = getEmission(signature.type, depth + 1, false, budget)
         if (key === "unsupported" || value === "unsupported") return "unsupported"
-        if (key === "validate" || value === "validate") isOutputFree = false
+        if (key === "decode" || value === "decode") isOutputFree = false
       }
-      return isOutputFree ? "is" : "validate"
+      return isOutputFree ? "is" : "decode"
     }
     case "Union": {
       let isOutputFree = ast.checks === undefined
       for (const type of ast.types) {
         const emission = getEmission(type, depth + 1, false, budget)
         if (emission === "unsupported") return "unsupported"
-        if (emission === "validate") isOutputFree = false
+        if (emission === "decode") isOutputFree = false
       }
-      return isOutputFree ? "is" : "validate"
+      return isOutputFree ? "is" : "decode"
     }
     case "Declaration":
     case "Suspend":
@@ -271,13 +271,13 @@ function emit(
   if (encodingChecks !== undefined) {
     statements.push(`if(K(${astConstant},${input},1,o))return ${invalid}`)
   }
-  if (ast.checks === undefined) return operation === "validate" ? output : "true"
+  if (ast.checks === undefined) return operation === "decode" ? output : "true"
   const checked = variable(emitter)
   statements.push(
     `const ${checked}=${output}`,
     `if(K(${astConstant},${checked},0,o))return ${invalid}`
   )
-  return operation === "validate" ? checked : "true"
+  return operation === "decode" ? checked : "true"
 }
 
 const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter, operation: Operation, path: string): string => {
@@ -372,7 +372,7 @@ const emitBase = (
   operation: Operation,
   path: string
 ): string => {
-  const needsValue = operation === "validate"
+  const needsValue = operation === "decode"
   const invalid = failureExpression(operation)
   switch (ast._tag) {
     case "Null":
@@ -661,7 +661,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): 
     D: "defaultParseOptions",
     E: "hasExcessProperties"
   } as const
-  const source = `"use strict";${runtimeBindings(operation === "validate" ? { I: "invalid", ...bindings } : bindings)}${
+  const source = `"use strict";${runtimeBindings(operation === "decode" ? { I: "invalid", ...bindings } : bindings)}${
     emitter.helpers.join(";")
   };${emitter.initializers.join(";")};return function(i,o){${emitter.statements.join(";")};return ${output}}`
   return { source, bindings: emitter.bindings }
@@ -679,18 +679,18 @@ export function generate(ast: SchemaAST.AST, operation: DecoderOperation): strin
     if (!shouldCompileMake(ast)) return undefined
     if (ast._tag === "Objects") {
       return `if(ast.propertySignatures.some(p=>resolve(p.type).source!==void 0))return;return ${
-        renderOperation(emitOperation(ast, "validate"))
+        renderOperation(emitOperation(ast, "decode"))
       }`
     }
     if (ast._tag !== "Arrays") return undefined
-    const element = renderOperation(emitOperation(ast.rest[0], "validate", "ast.rest[0]"))
+    const element = renderOperation(emitOperation(ast.rest[0], "decode", "ast.rest[0]"))
     return `const e=resolve(ast.rest[0]),m=e.source===void 0?${element}:e.make;if(m===void 0)return;` +
       "return function(i,o){if(i===R.missing)return R.missing;if(!Array.isArray(i))return R.invalid;" +
       "const out=new Array(i.length);for(let x=0;x<i.length;x++){const v=m(i[x],o);" +
       "if(v===R.invalid||v===R.missing)return R.invalid;out[x]=v}" +
       "return R.failsChecks(ast,out,false,o)?R.invalid:out}"
   }
-  if (operation === "is" || operation === "validate") {
+  if (operation === "is" || operation === "decode") {
     if (!shouldCompileParser(ast)) return undefined
     const emission = getEmission(ast)
     if (emission === "unsupported" || operation === "is" && emission !== "is") return undefined
@@ -705,7 +705,7 @@ export function generate(ast: SchemaAST.AST, operation: DecoderOperation): strin
     : "undefined"
   if (operation === "makeEffect") return `return R.make(ast,resolve,${object},${array})`
   const checkpoint = ast.encoding !== undefined && getEmission(ast, 0, true) !== "unsupported"
-    ? `()=>${renderOperation(emitOperation(ast, "validate"))}`
+    ? `()=>${renderOperation(emitOperation(ast, "decode"))}`
     : "undefined"
   return `return R.decode(ast,resolve,${object},${getEmission(ast) !== "unsupported"},${checkpoint},${array})`
 }

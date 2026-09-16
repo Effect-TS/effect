@@ -18,7 +18,7 @@ import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaIssue from "../../SchemaIssue.ts"
 
 /**
- * The result returned by {@link Validate} when validation fails.
+ * The result returned by {@link Decode} or {@link Make} when the fast path fails.
  *
  * @category symbols
  * @since 4.0.0
@@ -44,7 +44,7 @@ export const missing = InternalParser.missing
  * This optional fast path avoids constructing output. Omit it when validation
  * requires reconstructed values, such as a Struct check that must see the
  * object after excess properties are removed. Type guards then use ordinary
- * decoding, including `validate` and its diagnostic fallback when available.
+ * decoding, including `decode` and its diagnostic fallback when available.
  * It must honor the supplied parse options; public `Schema.is` and
  * `SchemaParser.is` use the defaults.
  *
@@ -56,7 +56,7 @@ export interface Is {
 }
 
 /**
- * A compiled validator that returns the decoded value without constructing
+ * A compiled decoder that returns the decoded value without constructing
  * diagnostic issues.
  *
  * **Details**
@@ -78,7 +78,7 @@ export interface Is {
  * @category models
  * @since 4.0.0
  */
-export interface Validate {
+export interface Decode {
   (input: unknown, options: SchemaAST.ParseOptions): unknown | typeof invalid
 }
 
@@ -113,13 +113,23 @@ export interface Make {
  * This required operation implements complete decoding for its AST, including
  * transformations, middleware, and asynchronous work when present. It makes
  * every parser API usable without optional fast paths and provides diagnostics
- * after `validate` returns `invalid`. The implementation can also be interpreted;
+ * after `decode` returns `invalid`. The implementation can also be interpreted;
  * invoking `decodeEffect` does not imply a switch from compiled to interpreted parsing.
  *
  * @category models
  * @since 4.0.0
  */
-export interface Decode {
+export interface DecodeEffect {
+  (input: unknown, options: SchemaAST.ParseOptions): Effect.Effect<unknown, SchemaIssue.Issue, any>
+}
+
+/**
+ * A complete constructor that returns detailed Schema issues on failure.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MakeEffect {
   (input: unknown, options: SchemaAST.ParseOptions): Effect.Effect<unknown, SchemaIssue.Issue, any>
 }
 
@@ -128,7 +138,7 @@ export interface Decode {
  *
  * **Details**
  *
- * `decodeEffect` is required for complete decoding and detailed failures. `validate`,
+ * `decodeEffect` is required for complete decoding and detailed failures. `decode`,
  * `is`, and `make` are optional optimizations, not requirements for an AST to be usable.
  * The interpreter supplies only `decodeEffect` in this same format.
  * An optional `makeEffect` supplies complete node construction. Otherwise the
@@ -136,19 +146,19 @@ export interface Decode {
  * for that operation. Public makers resolve the schema's exact type-side AST.
  *
  * The registry wraps these operations in an internal entry.
- * Decoding tries `validate` when present, returning its output on success or
- * calling `decodeEffect` after `invalid`. Without `validate`, or for the {@link missing}
+ * Decoding tries `decode` when present, returning its output on success or
+ * calling `decodeEffect` after `invalid`. Without `decode`, or for the {@link missing}
  * sentinel, it calls `decodeEffect` directly. Type guards prefer `is`; otherwise
- * they use ordinary decoding with the same validation/diagnostic fallback.
+ * they use ordinary decoding with the same fast-path/diagnostic fallback.
  * A boolean `false` from `is` needs no diagnostic replay.
  * Synchronous decoding and encoding share an adapter that returns successful
- * `validate` output directly, without wrapping it in an intermediate Effect.
+ * `decode` output directly, without wrapping it in an intermediate Effect.
  * Each operation is resolved lazily on first use, so unused fast paths need
  * not be compiled.
  * Synchronous construction tries `make` when present, returning its output on
  * success or calling `makeEffect` after {@link invalid}. Compilers must omit
  * `make` when replay could repeat observable construction work. Construction
- * never uses `is` or `validate`. Field/element defaults belong to the parent
+ * never uses `is` or `decode`. Field/element defaults belong to the parent
  * occurrence, not to the root node or a Union member.
  * Runtime options apply to construction too; Union candidate selection preserves
  * the constructor's conservative handling of absent discriminants.
@@ -158,9 +168,9 @@ export interface Decode {
  */
 export interface CompiledDecoder {
   readonly is?: Is | undefined
-  readonly validate?: Validate | undefined
+  readonly decode?: Decode | undefined
   readonly make?: Make | undefined
-  readonly decodeEffect: Decode
+  readonly decodeEffect: DecodeEffect
   /**
    * Constructs this node without replay, including Class construction and child
    * defaults. Omit it to use the lazy interpreted constructor. This operation
@@ -168,7 +178,7 @@ export interface CompiledDecoder {
    * Propagate `missing` as a success when no value is produced; the parent handles
    * optional omission or missing-key issues. A present `undefined` is not `missing`.
    */
-  readonly makeEffect?: Decode | undefined
+  readonly makeEffect?: MakeEffect | undefined
 }
 
 /**

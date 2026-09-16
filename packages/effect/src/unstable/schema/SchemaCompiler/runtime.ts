@@ -7,13 +7,13 @@
  */
 import * as Effect from "../../../Effect.ts"
 import { effectIsExit, resolveConcurrency } from "../../../internal/effect.ts"
-import { lazyParser, type Resolve, resolve, set, withValidation } from "../../../internal/schema/compilerRegistry.ts"
+import { lazyParser, type Resolve, resolve, set, withDecode } from "../../../internal/schema/compilerRegistry.ts"
 import * as Interpreter from "../../../internal/schema/interpreter.ts"
 import * as InternalParser from "../../../internal/schema/parser.ts"
 import * as SchemaAST from "../../../SchemaAST.ts"
 import * as SchemaIssue from "../../../SchemaIssue.ts"
 import type { Compiler } from "../../../SchemaParser.ts"
-import { invalid, type Validate } from "../SchemaCompiler.ts"
+import { type Decode, invalid } from "../SchemaCompiler.ts"
 
 type SchemaIssueParser = ReturnType<typeof Interpreter.compile>
 type ObjectParserState = Parameters<typeof SchemaAST.stepProperty>[0]
@@ -134,23 +134,23 @@ const decode = (
   resolve: Resolve,
   generate?: GenerateObject,
   detailed = false,
-  makeValidate?: () => Validate,
+  makeDecode?: () => Decode,
   generateArray?: GenerateArray
 ): SchemaIssueParser => {
   const child = (ast: SchemaAST.AST) => lazyParser(resolve, ast, detailed ? "decodeEffect" : "parser")
-  const localChild = makeValidate === undefined
+  const localChild = makeDecode === undefined
     ? child
     : (ast: SchemaAST.AST) => lazyParser(resolve, ast, "decodeEffect")
   const base = ast._tag === "Objects" && generate !== undefined ?
     makeObjectBase(ast, localChild, localChild, generate)
     : ast._tag === "Arrays" && generateArray !== undefined
     ? makeArrayBase(ast, localChild, localChild, generateArray)
-    : makeValidate !== undefined
+    : makeDecode !== undefined
     ? ast.getParser(localChild)
     : undefined
-  const specialize = makeValidate === undefined ? undefined : (local: SchemaIssueParser): SchemaIssueParser => {
+  const specialize = makeDecode === undefined ? undefined : (local: SchemaIssueParser): SchemaIssueParser => {
     try {
-      return withValidation(makeValidate(), () => local)
+      return withDecode(makeDecode(), () => local)
     } catch {
       // Initialization failure selects the local interpreter, without parsing again.
       return local

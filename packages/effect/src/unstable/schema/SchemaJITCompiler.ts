@@ -53,8 +53,8 @@ export const compiler: Registry.Compile = (ast, resolve) => {
     get is() {
       return operation("is")
     },
-    get validate() {
-      return operation("validate")
+    get decode() {
+      return operation("decode")
     },
     get make() {
       return operation("make")

@@ -1,7 +1,7 @@
 import * as Effect from "../../Effect.ts"
 import type * as SchemaAST from "../../SchemaAST.ts"
 import type { Parser } from "../../SchemaParser.ts"
-import type { CompiledDecoder, Is, Make, Validate } from "../../unstable/schema/SchemaCompiler.ts"
+import type { CompiledDecoder, Decode, Is, Make } from "../../unstable/schema/SchemaCompiler.ts"
 import * as Interpreter from "./interpreter.ts"
 import * as InternalParser from "./parser.ts"
 
@@ -40,7 +40,7 @@ export interface Entry {
   readonly source?: CompiledDecoder | undefined
   readonly resolve?: Resolve | undefined
   readonly is?: Is | undefined
-  readonly validate?: Validate | undefined
+  readonly decode?: Decode | undefined
   readonly make?: Make | undefined
   readonly decodeEffect: Parser
   readonly parser: Parser
@@ -88,8 +88,8 @@ class CompilerEntry extends InterpretedEntry {
     return this.save("is", this.source?.is)
   }
 
-  get validate(): Validate | undefined {
-    return this.save("validate", this.source?.validate)
+  get decode(): Decode | undefined {
+    return this.save("decode", this.source?.decode)
   }
 
   get make(): Make | undefined {
@@ -104,10 +104,10 @@ class CompilerEntry extends InterpretedEntry {
   }
 
   override get parser(): Parser {
-    const validate = this.validate
-    return validate === undefined
+    const decode = this.decode
+    return decode === undefined
       ? this.decodeEffect
-      : this.save("parser", withValidation(validate, () => this.decodeEffect))
+      : this.save("parser", withDecode(decode, () => this.decodeEffect))
   }
 
   override get makeEffect(): Parser {
@@ -126,18 +126,18 @@ class CompilerEntry extends InterpretedEntry {
 }
 
 /** @internal */
-export function withValidation(validate: Validate, decode: () => Parser): Parser {
+export function withDecode(fastDecode: Decode, decodeEffect: () => Parser): Parser {
   let detailed: Parser | undefined
   return (input, options) => {
     if (input !== InternalParser.missing) {
       try {
-        const value = validate(input, options)
+        const value = fastDecode(input, options)
         if (value !== invalid) return value === input ? InternalParser.sameExit : InternalParser.succeed(value)
       } catch (error) {
         return Effect.die(error)
       }
     }
-    return (detailed ??= decode())(input, options)
+    return (detailed ??= decodeEffect())(input, options)
   }
 }
 

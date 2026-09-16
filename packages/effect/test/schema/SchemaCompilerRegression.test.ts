@@ -195,18 +195,18 @@ describe("compiler regression contracts", () => {
       seen.push(options)
       return true
     }
-    const validate: SchemaCompiler.Validate = (input, options) => {
+    const decode: SchemaCompiler.Decode = (input, options) => {
       seen.push(options)
       return input
     }
-    for (const operation of [is, validate]) {
+    for (const operation of [is, decode]) {
       Object.defineProperty(operation, "default", {
         get() {
           throw new Error("Not part of the compiled decoder contract")
         }
       })
     }
-    SchemaCompiler.set(schema.ast, { is, validate, decodeEffect: Effect.succeed })
+    SchemaCompiler.set(schema.ast, { is, decode, decodeEffect: Effect.succeed })
     const input = { value: "a" }
     strictEqual(SchemaParser.is(schema)(input), true)
     strictEqual(SchemaParser.decodeUnknownSync(schema)(input), input)
@@ -357,14 +357,14 @@ describe("compiler regression contracts", () => {
         reads.push("is")
         return (_input: unknown) => true
       },
-      get validate() {
+      get decode() {
         strictEqual(this, decoder)
-        reads.push("validate")
+        reads.push("decode")
         return (input: unknown) => input
       },
       get decodeEffect() {
         strictEqual(this, decoder)
-        reads.push("decode")
+        reads.push("decodeEffect")
         return Effect.succeed
       }
     }
@@ -376,7 +376,7 @@ describe("compiler regression contracts", () => {
     const input = { value: "a" }
     strictEqual(SchemaParser.decodeUnknownSync(schema)(input), input)
     strictEqual(SchemaParser.decodeUnknownSync(schema)(input), input)
-    deepStrictEqual(reads, ["is", "validate"])
+    deepStrictEqual(reads, ["is", "decode"])
   })
 
   it("memoizes an absent optional operation", () => {
@@ -387,7 +387,7 @@ describe("compiler regression contracts", () => {
         reads++
         return undefined
       },
-      validate: (input) => input,
+      decode: (input) => input,
       decodeEffect: Effect.succeed
     })
     strictEqual(SchemaParser.is(schema)({ value: "a" }), true)
@@ -399,14 +399,14 @@ describe("compiler regression contracts", () => {
     const schema = Schema.Struct({ value: Schema.String })
     const reads: Array<string> = []
     const decoder = Object.freeze({
-      get validate() {
+      get decode() {
         strictEqual(this, decoder)
-        reads.push("validate")
+        reads.push("decode")
         return () => SchemaCompiler.invalid
       },
       get decodeEffect() {
         strictEqual(this, decoder)
-        reads.push("decode")
+        reads.push("decodeEffect")
         return Effect.succeed
       }
     })
@@ -415,7 +415,7 @@ describe("compiler regression contracts", () => {
     strictEqual(SchemaParser.decodeUnknownSync(schema)(input), input)
     deepStrictEqual(SchemaParser.decodeUnknownResult(schema)(input), Result.succeed(input))
     strictEqual(SchemaParser.decodeUnknownSync(schema, { reportInput: true })(input), input)
-    deepStrictEqual(reads, ["validate", "decode"])
+    deepStrictEqual(reads, ["decode", "decodeEffect"])
   })
 
   it("does not restart validation inside the detailed decoder", () => {

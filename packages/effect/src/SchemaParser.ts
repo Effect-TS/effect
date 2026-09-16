@@ -1056,9 +1056,9 @@ function makeSyncEntry<T>(
   entry: CompilerRegistry.Entry,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => T {
-  const validate = entry.validate
+  const decode = entry.decode
   let detailed: ((input: unknown, options?: SchemaAST.ParseOptions) => T) | undefined
-  const run = validate === undefined
+  const run = decode === undefined
     ? (input: unknown, parseOptions = SchemaAST.defaultParseOptions): T =>
       (detailed ??= makeDetailedSync<T>(entry))(input, parseOptions)
     : (input: unknown, parseOptions = SchemaAST.defaultParseOptions): T => {
@@ -1067,7 +1067,7 @@ function makeSyncEntry<T>(
       }
       let output: unknown
       try {
-        output = validate(input, parseOptions)
+        output = decode(input, parseOptions)
       } catch (error) {
         InternalSchemaCause.getSchemaIssueOrThrow(Cause.die(error), "Sync adapter can only throw schema issues")
         throw error

@@ -55,7 +55,7 @@ describe("SchemaCompiler", () => {
     let decodes = 0
     SchemaCompiler.set(schema.ast, {
       is: () => true,
-      validate: (_input, options) =>
+      decode: (_input, options) =>
         options.reportInput === true
           ? { value: "compiled" }
           : SchemaCompiler.invalid,
@@ -82,7 +82,7 @@ describe("SchemaCompiler", () => {
         strictEqual(options, SchemaAST.defaultParseOptions)
         return (input as { readonly value?: unknown }).value === "accepted"
       },
-      validate: (input) => {
+      decode: (input) => {
         validations++
         return input
       },
@@ -108,7 +108,7 @@ describe("SchemaCompiler", () => {
         deepStrictEqual(decode(input, firstOptions), input)
 
         SchemaCompiler.set(schema.ast, {
-          validate: () => ({ value: "replacement" }),
+          decode: () => ({ value: "replacement" }),
           decodeEffect: () => Effect.succeed({ value: "replacement" })
         })
 
@@ -123,7 +123,7 @@ describe("SchemaCompiler", () => {
     const child = Schema.String.annotate({ title: "lazy child" })
     let reads = 0
     SchemaCompiler.set(child.ast, {
-      get validate() {
+      get decode() {
         reads++
         return undefined
       },
@@ -145,7 +145,7 @@ describe("SchemaCompiler", () => {
   it("uses an installed child decoder from an interpreted Array", () => {
     const child = Schema.String.annotate({ title: "installed array child" })
     SchemaCompiler.set(child.ast, {
-      validate: (input) => typeof input === "string" ? `${input}!` : SchemaCompiler.invalid,
+      decode: (input) => typeof input === "string" ? `${input}!` : SchemaCompiler.invalid,
       decodeEffect: (input) => Effect.succeed(`${input}!`)
     })
 
@@ -161,7 +161,7 @@ describe("SchemaCompiler", () => {
     const value = schema.ast.propertySignatures[0].type
     let sawMissing = false
     SchemaCompiler.set(value, {
-      validate: (input) => typeof input === "string" ? input : SchemaCompiler.invalid,
+      decode: (input) => typeof input === "string" ? input : SchemaCompiler.invalid,
       decodeEffect: (input) => {
         sawMissing = input === SchemaCompiler.missing
         return Effect.succeed(input)
@@ -175,7 +175,7 @@ describe("SchemaCompiler", () => {
   it("installs encoders on the flipped AST", () => {
     const schema = Schema.FiniteFromString
     SchemaCompiler.set(SchemaAST.flip(schema.ast), {
-      validate: () => "aot",
+      decode: () => "aot",
       decodeEffect: () => Effect.succeed("detailed")
     })
 
@@ -302,7 +302,7 @@ describe("SchemaJITCompiler", () => {
     const child = Schema.Struct({ value: Schema.String })
     let reads = 0
     SchemaCompiler.set(child.ast, {
-      get validate() {
+      get decode() {
         reads++
         return undefined
       },
@@ -324,7 +324,7 @@ describe("SchemaJITCompiler", () => {
   it("preserves an installed decoder when dynamic code generation is unavailable", () => {
     const schema = Schema.Struct({ value: Schema.String })
     SchemaCompiler.set(schema.ast, {
-      validate: () => ({ value: "installed" }),
+      decode: () => ({ value: "installed" }),
       decodeEffect: () => Effect.succeed({ value: "installed" })
     })
     const Function = globalThis.Function

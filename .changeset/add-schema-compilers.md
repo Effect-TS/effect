@@ -10,9 +10,9 @@ requiring dynamic function construction. The new
 `effect/unstable/schema/SchemaAOTCompiler/Build` entrypoint discovers direct
 Schema exports from explicit module loaders and writes a self-installing AOT
 module through Effect's `FileSystem` and `Path` services. Compiled decoders can
-provide an optional synchronous `make` operation for construction-safe schemas;
-normal `SchemaParser.make` calls consume it transparently and retain
-`makeEffect` as the detailed fallback.
+provide optional synchronous `decode` and `make` operations; normal
+`SchemaParser` calls consume them transparently and retain `decodeEffect` and
+`makeEffect` as the detailed fallbacks.
 
 ### Breaking changes
 

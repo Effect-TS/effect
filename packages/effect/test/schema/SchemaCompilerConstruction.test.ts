@@ -49,7 +49,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
       SchemaJITCompiler.enable(schema.ast)
       assert.deepStrictEqual(SchemaParser.make(schema)({ a: "a" }), { a: "a" })
       assert.strictEqual(
-        emit.mock.calls.filter(([, operation]) => operation === "validate" || operation === "is").length,
+        emit.mock.calls.filter(([, operation]) => operation === "decode" || operation === "is").length,
         0
       )
       assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "make").length, 1)
@@ -139,7 +139,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
       SchemaJITCompiler.enable(schema.ast)
       const generate = Codegen.generate
       const failed = vi.spyOn(Codegen, "generate").mockImplementation((ast, key) => {
-        if (ast === schema.ast && key === (operation === "make" ? "make" : "validate")) {
+        if (ast === schema.ast && key === (operation === "make" ? "make" : "decode")) {
           throw new Error("compile failed")
         }
         return generate(ast, key)
@@ -151,7 +151,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
         assert.deepStrictEqual(second({ a: "a" }), { a: "a" })
         assert(
           failed.mock.calls.some(([ast, key]) =>
-            ast === schema.ast && key === (operation === "make" ? "validate" : "make")
+            ast === schema.ast && key === (operation === "make" ? "decode" : "make")
           )
         )
       } finally {
@@ -164,11 +164,11 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     let reads = 0
     let calls = 0
     SchemaCompiler.set(schema.ast, {
-      get decodeEffect(): SchemaCompiler.Decode {
+      get decodeEffect(): SchemaCompiler.DecodeEffect {
         throw new Error("unused decoder")
       },
-      get validate(): SchemaCompiler.Validate {
-        throw new Error("unused validator")
+      get decode(): SchemaCompiler.Decode {
+        throw new Error("unused fast decoder")
       },
       get is(): SchemaCompiler.Is {
         throw new Error("unused guard")
@@ -199,7 +199,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
         assert.strictEqual(options, SchemaAST.defaultParseOptions)
         return { a: `${(input as { readonly a: string }).a}!` }
       },
-      get makeEffect(): SchemaCompiler.Decode {
+      get makeEffect(): SchemaCompiler.MakeEffect {
         throw new Error("unused detailed constructor")
       }
     })
