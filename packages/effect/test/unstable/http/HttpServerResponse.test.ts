@@ -158,6 +158,20 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(yield* roundTrip.text, "")
     }))
 
+  it.effect("toClientResponse keeps raw Web Response bodies readable more than once", () =>
+    Effect.gen(function*() {
+      const clientResponse = HttpServerResponse.toClientResponse(
+        HttpServerResponse.raw(
+          new Response("hello", { headers: { "content-type": "text/plain" } }),
+          { contentType: "text/plain" }
+        )
+      )
+
+      assert.strictEqual(yield* clientResponse.text, "hello")
+      assert.strictEqual(yield* clientResponse.text, "hello")
+      assert.strictEqual((yield* clientResponse.arrayBuffer).byteLength, 5)
+    }))
+
   it("fromClientResponse ignores malformed or unsafe content lengths", () => {
     const request = HttpClientRequest.get("http://localhost:3000")
     for (const contentLength of ["2junk", "1.5", "1e3", "9007199254740992"]) {
