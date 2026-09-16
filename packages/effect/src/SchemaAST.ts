@@ -579,8 +579,8 @@ export const defaultParseOptions: ParseOptions = {}
  *
  * - `isOptional` — the property key may be absent from the input.
  * - `isMutable` — the property is `readonly` when `false`.
- * - `constructorDefault` — a {@link Link} applied during construction to
- *   supply missing values.
+ * - `constructorDefault` — an effect evaluated during construction to supply
+ *   missing values.
  * - `annotations` — key-level annotations (e.g. description of the key
  *   itself).
  *
@@ -593,7 +593,7 @@ export interface Context {
   readonly isOptional: boolean
   readonly isMutable: boolean
   /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  readonly constructorDefault: Link | undefined
+  readonly constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
 }
 
@@ -606,20 +606,20 @@ export interface Context {
 export const Context: new(
   isOptional: boolean,
   isMutable: boolean, /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  constructorDefault?: Link | undefined,
+  constructorDefault?: Effect.Effect<unknown, SchemaIssue.Issue> | undefined,
   annotations?: Schema.Annotations.Key<unknown> | undefined
 ) => Context = class {
   readonly isOptional: boolean
   readonly isMutable: boolean
   /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  readonly constructorDefault: Link | undefined
+  readonly constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
 
   constructor(
     isOptional: boolean,
     isMutable: boolean,
     /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-    constructorDefault: Link | undefined = undefined,
+    constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined = undefined,
     annotations: Schema.Annotations.Key<unknown> | undefined = undefined
   ) {
     this.isOptional = isOptional
@@ -4432,14 +4432,9 @@ export function withConstructorDefault<A extends AST>(
   ast: A,
   defaultValue: Effect.Effect<unknown, SchemaIssue.Issue>
 ): A {
-  const transformation = new SchemaTransformation.Transformation(
-    SchemaGetter.withDefault(defaultValue),
-    SchemaGetter.passthrough()
-  )
-  const constructorDefault = new Link(unknown, transformation)
   const context = ast.context ?
-    new Context(ast.context.isOptional, ast.context.isMutable, constructorDefault, ast.context.annotations) :
-    new Context(false, false, constructorDefault)
+    new Context(ast.context.isOptional, ast.context.isMutable, defaultValue, ast.context.annotations) :
+    new Context(false, false, defaultValue)
   return replaceContext(ast, context)
 }
 

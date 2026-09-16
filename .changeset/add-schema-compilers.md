@@ -31,3 +31,10 @@ The public `Getter` constructor is removed. Use
 `SchemaTransformation.compose` is now a dual standalone function. Replace
 `first.compose(second)` with `SchemaTransformation.compose(first, second)` or
 `SchemaTransformation.compose(second)(first)`.
+
+`SchemaAST.Context.constructorDefault` now stores the constructor-default
+`Effect` directly instead of wrapping it in a `SchemaAST.Link`. Constructor
+defaults apply only during construction, so the direct representation avoids
+giving them encoding semantics and lets construction reuse already-completed
+synchronous Effects. Code that constructs or inspects `SchemaAST.Context`
+should pass or read the default `Effect` directly.

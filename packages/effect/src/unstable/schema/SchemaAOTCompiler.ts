@@ -111,9 +111,6 @@ export const compile = (asts: ReadonlyArray<SchemaAST.AST>): string => {
         break
     }
     node.encoding?.forEach((link, index) => visit(link.to, `${name}.encoding[${index}].to`))
-    if (node.context?.constructorDefault !== undefined) {
-      visit(node.context.constructorDefault.to, `${name}.context.constructorDefault.to`)
-    }
     const descriptor = SchemaAST.getConstructorDescriptor(node)
     if (descriptor !== undefined) {
       visit(descriptor.link.to, `${helper("getConstructorDescriptor")}(${name}).link.to`)

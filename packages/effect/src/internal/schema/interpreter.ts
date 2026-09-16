@@ -91,16 +91,11 @@ function makeConstructorParser(descriptor: SchemaAST.ConstructorDescriptor, comp
   }
 }
 
-function withDefault(ast: SchemaAST.AST, parser: Parser, resolve: Compiler): Parser {
-  const link = ast.context!.constructorDefault!
-  const transform = compileTransformation(link.transformation)
-  let source: Parser | undefined
+function withDefault(ast: SchemaAST.AST, parser: Parser): Parser {
+  const defaultValue = ast.context!.constructorDefault!
   return (input, options) => {
-    const result = transform(
-      (source ??= resolve(link.to))(input, options),
-      input,
-      options
-    )
+    if (input !== InternalParser.missing && input !== undefined) return parser(input, options)
+    const result = defaultValue
     if (effectIsExit(result) && result._tag === "Success") {
       const local = parser((result as InternalParser.Success<unknown>)[InternalParser.args], options)
       return local === InternalParser.sameExit ? result : local
@@ -118,7 +113,7 @@ function withDefault(ast: SchemaAST.AST, parser: Parser, resolve: Compiler): Par
 /** @internal */
 export function compileField(ast: SchemaAST.AST, compile: Compiler): Parser {
   const parser = compile(ast)
-  return ast.context?.constructorDefault === undefined ? parser : withDefault(ast, parser, compile)
+  return ast.context?.constructorDefault === undefined ? parser : withDefault(ast, parser)
 }
 
 /** @internal */
