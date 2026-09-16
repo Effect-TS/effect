@@ -59,7 +59,7 @@ export class ResourceMap<K, A, E> {
           return Deferred.done(deferred, exit)
         }
         backingDelete(this.entries, key)
-        return Deferred.done(deferred, exit)
+        return Effect.andThen(Deferred.done(deferred, exit), Scope.close(scope, exit))
       })
     })
   }

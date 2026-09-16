@@ -1,11 +1,18 @@
+import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
-import { internalInterruptors } from "./interruptors.js"
+import type { EntityAddress } from "../EntityAddress.js"
+import type { ActiveTeardown } from "./interruptors.js"
 
-export type State<A> = {
+interface Teardown {
+  readonly address: EntityAddress
+  readonly tracker: ActiveTeardown
+}
+
+export type State<A, E> = {
   readonly _tag: "Closed"
 } | {
   readonly _tag: "Acquiring"
@@ -14,14 +21,19 @@ export type State<A> = {
   readonly _tag: "Acquired"
   readonly scope: Scope.CloseableScope
   readonly value: A
+} | {
+  readonly _tag: "Failed"
+  readonly scope: Scope.CloseableScope
+  readonly cause: Cause.Cause<E>
 }
 
 export class ResourceRef<A, E = never> {
   static from = Effect.fnUntraced(function*<A, E>(
     parentScope: Scope.Scope,
-    acquire: (scope: Scope.Scope) => Effect.Effect<A, E>
+    acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
+    teardown?: Teardown
   ) {
-    const state = MutableRef.make<State<A>>({ _tag: "Closed" })
+    const state = MutableRef.make<State<A, E>>({ _tag: "Closed" })
 
     yield* Scope.addFinalizerExit(parentScope, (exit) => {
       const s = MutableRef.get(state)
@@ -38,12 +50,13 @@ export class ResourceRef<A, E = never> {
     const value = yield* acquire(scope)
     MutableRef.set(state, { _tag: "Acquired", scope, value })
 
-    return new ResourceRef(state, acquire)
+    return new ResourceRef(state, acquire, teardown)
   })
 
   constructor(
-    readonly state: MutableRef.MutableRef<State<A>>,
-    readonly acquire: (scope: Scope.Scope) => Effect.Effect<A, E>
+    readonly state: MutableRef.MutableRef<State<A, E>>,
+    readonly acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
+    readonly teardown?: Teardown
   ) {}
 
   latch = Effect.unsafeMakeLatch(true)
@@ -64,9 +77,12 @@ export class ResourceRef<A, E = never> {
     const scope = Effect.runSync(Scope.make())
     this.latch.unsafeClose()
     MutableRef.set(this.state, { _tag: "Acquiring", scope })
-    return Effect.fiberIdWith((fiberId) => {
-      internalInterruptors.add(fiberId)
-      return Scope.close(prevScope, Exit.void)
+    const teardown = this.teardown
+    return Effect.suspend(() => {
+      const close = Scope.close(prevScope, Exit.void)
+      if (!teardown) return close
+      teardown.tracker.acquireEntity(teardown.address)
+      return Effect.ensuring(close, Effect.sync(() => teardown.tracker.releaseEntity(teardown.address)))
     }).pipe(
       Effect.andThen(this.acquire(scope)),
       Effect.flatMap((value) => {
@@ -75,16 +91,30 @@ export class ResourceRef<A, E = never> {
         }
         MutableRef.set(this.state, { _tag: "Acquired", scope, value })
         return this.latch.open
+      }),
+      Effect.onExit((exit) => {
+        if (Exit.isSuccess(exit)) return Effect.void
+        return Scope.close(scope, exit).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            const state = this.state.current
+            if (state._tag === "Acquiring" && state.scope === scope) {
+              MutableRef.set(this.state, { _tag: "Failed", scope, cause: exit.cause })
+              this.latch.unsafeOpen()
+            }
+          }))
+        )
       })
     )
   }
 
-  await: Effect.Effect<A> = Effect.suspend(() => {
+  await: Effect.Effect<A, E> = Effect.suspend(() => {
     const s = this.state.current
     if (s._tag === "Closed") {
       return Effect.interrupt
     } else if (s._tag === "Acquired") {
       return Effect.succeed(s.value)
+    } else if (s._tag === "Failed") {
+      return Effect.failCause(s.cause)
     }
     return Effect.zipRight(this.latch.await, this.await)
   })
