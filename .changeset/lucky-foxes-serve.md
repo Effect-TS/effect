@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add ability to parser literals in the program to brands
+Add ability to parse literals in the program to brands
