@@ -154,7 +154,6 @@ const makeStorageBackedWithTransaction = (
                 txn.rollback()
               }
               resolve()
-              // wait for the transaction to complete
               return Effect.flatten(Effect.promise(() => promise))
             }))
           })
@@ -162,6 +161,7 @@ const makeStorageBackedWithTransaction = (
           () => Exit.void,
           (cause) => {
             const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
+            // Report rejection before the transaction callback starts; later resumes are ignored.
             resume(exit)
             return exit
           }
