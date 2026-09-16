@@ -42,7 +42,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     assert.strictEqual(forced, 1)
   })
 
-  it("does not compile validators when only construction is used", () => {
+  it("compiles only the raw constructor when construction succeeds", () => {
     const schema = Schema.Struct({ a: Schema.String })
     const emit = vi.spyOn(Codegen, "generate")
     try {
@@ -52,6 +52,8 @@ describe("Schema compiler construction", { concurrent: false }, () => {
         emit.mock.calls.filter(([, operation]) => operation === "validate" || operation === "is").length,
         0
       )
+      assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "make").length, 1)
+      assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "makeEffect").length, 0)
     } finally {
       emit.mockRestore()
     }
@@ -65,7 +67,8 @@ describe("Schema compiler construction", { concurrent: false }, () => {
       assert.deepStrictEqual(SchemaParser.decodeUnknownSync(schema)({ a: "a" }), { a: "a" })
       assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "makeEffect").length, 0)
       assert.deepStrictEqual(SchemaParser.make(schema)({ a: "a" }), { a: "a" })
-      assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "makeEffect").length, 1)
+      assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "make").length, 1)
+      assert.strictEqual(emit.mock.calls.filter(([, operation]) => operation === "makeEffect").length, 0)
     } finally {
       emit.mockRestore()
     }
@@ -136,7 +139,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
       SchemaJITCompiler.enable(schema.ast)
       const generate = Codegen.generate
       const failed = vi.spyOn(Codegen, "generate").mockImplementation((ast, key) => {
-        if (ast === schema.ast && key === (operation === "make" ? "makeEffect" : "validate")) {
+        if (ast === schema.ast && key === (operation === "make" ? "make" : "validate")) {
           throw new Error("compile failed")
         }
         return generate(ast, key)
@@ -148,7 +151,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
         assert.deepStrictEqual(second({ a: "a" }), { a: "a" })
         assert(
           failed.mock.calls.some(([ast, key]) =>
-            ast === schema.ast && key === (operation === "make" ? "validate" : "makeEffect")
+            ast === schema.ast && key === (operation === "make" ? "validate" : "make")
           )
         )
       } finally {
@@ -184,6 +187,76 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     assert.deepStrictEqual(SchemaParser.make(schema)({ a: "b" }), { a: "b" })
     assert.strictEqual(reads, 1)
     assert.strictEqual(calls, 2)
+  })
+
+  it("uses an installed synchronous constructor without resolving makeEffect", () => {
+    const schema = Schema.Struct({ a: Schema.String })
+    let calls = 0
+    SchemaCompiler.set(schema.ast, {
+      decodeEffect: Effect.succeed,
+      make: (input, options) => {
+        calls++
+        assert.strictEqual(options, SchemaAST.defaultParseOptions)
+        return { a: `${(input as { readonly a: string }).a}!` }
+      },
+      get makeEffect(): SchemaCompiler.Decode {
+        throw new Error("unused detailed constructor")
+      }
+    })
+    assert.deepStrictEqual(SchemaParser.make(schema)({ a: "a" }), { a: "a!" })
+    assert.strictEqual(calls, 1)
+  })
+
+  it("falls back to makeEffect after an installed synchronous constructor fails", () => {
+    const schema = Schema.Struct({ a: Schema.String })
+    let fast = 0
+    let detailed = 0
+    SchemaCompiler.set(schema.ast, {
+      decodeEffect: Effect.succeed,
+      make: () => {
+        fast++
+        return SchemaCompiler.invalid
+      },
+      makeEffect: (input) => {
+        detailed++
+        return Effect.succeed(input)
+      }
+    })
+    assert.deepStrictEqual(SchemaParser.make(schema)({ a: "a" }), { a: "a" })
+    assert.strictEqual(fast, 1)
+    assert.strictEqual(detailed, 1)
+  })
+
+  it("does not return a missing result from an installed synchronous constructor", () => {
+    const schema = Schema.Struct({ a: Schema.String })
+    SchemaCompiler.set(schema.ast, {
+      decodeEffect: Effect.succeed,
+      make: () => SchemaCompiler.missing,
+      makeEffect: () => Effect.succeed(SchemaCompiler.missing)
+    })
+    assert.throws(() => SchemaParser.make(schema)({ a: "a" }), /Schema validation failed/)
+  })
+
+  it("composes an installed synchronous child constructor in a compiled Array", () => {
+    const child = Schema.Struct({ a: Schema.String })
+    SchemaCompiler.set(child.ast, {
+      decodeEffect: Effect.succeed,
+      make: (input) => ({ a: `${(input as { readonly a: string }).a}!` }),
+      makeEffect: () => {
+        throw new Error("unused detailed child constructor")
+      }
+    })
+    const schema = Schema.Array(child)
+    SchemaJITCompiler.enable(schema.ast)
+    assert.deepStrictEqual(SchemaParser.make(schema)([{ a: "a" }, { a: "b" }]), [{ a: "a!" }, { a: "b!" }])
+  })
+
+  it("falls back to detailed construction for an invalid compiled Array", () => {
+    const schema = Schema.Array(Schema.Struct({ a: Schema.String }))
+    SchemaJITCompiler.enable(schema.ast)
+    const make = SchemaParser.make(schema)
+    assert.deepStrictEqual(make([{ a: "a" }]), [{ a: "a" }])
+    assert.throws(() => make([{ a: 1 } as never]), /Schema validation failed/)
   })
 
   it("caches interpreted construction when an installed bundle omits it", () => {

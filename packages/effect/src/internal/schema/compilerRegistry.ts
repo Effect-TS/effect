@@ -1,7 +1,7 @@
 import * as Effect from "../../Effect.ts"
 import type * as SchemaAST from "../../SchemaAST.ts"
 import type { Parser } from "../../SchemaParser.ts"
-import type { CompiledDecoder, Is, Validate } from "../../unstable/schema/SchemaCompiler.ts"
+import type { CompiledDecoder, Is, Make, Validate } from "../../unstable/schema/SchemaCompiler.ts"
 import * as Interpreter from "./interpreter.ts"
 import * as InternalParser from "./parser.ts"
 
@@ -41,6 +41,7 @@ export interface Entry {
   readonly resolve?: Resolve | undefined
   readonly is?: Is | undefined
   readonly validate?: Validate | undefined
+  readonly make?: Make | undefined
   readonly decodeEffect: Parser
   readonly parser: Parser
   readonly makeEffect: Parser
@@ -89,6 +90,10 @@ class CompilerEntry extends InterpretedEntry {
 
   get validate(): Validate | undefined {
     return this.save("validate", this.source?.validate)
+  }
+
+  get make(): Make | undefined {
+    return this.save("make", this.source?.make)
   }
 
   override get decodeEffect(): Parser {

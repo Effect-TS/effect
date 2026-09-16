@@ -1119,6 +1119,17 @@ function makeConstructorSync<T, E>(
     const parseOptions = options?.disableChecks
       ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
       : options?.parseOptions ?? SchemaAST.defaultParseOptions
+    const make = entry.make
+    if (make !== undefined && input !== InternalParser.missing) {
+      let output: unknown
+      try {
+        output = make(input, parseOptions)
+      } catch (error) {
+        InternalSchemaCause.getSchemaIssueOrThrow(Cause.die(error), "Constructor adapter can only throw schema issues")
+        throw error
+      }
+      if (output !== CompilerRegistry.invalid && output !== InternalParser.missing) return output as T
+    }
     const result = (parser ??= entry.makeEffect)(input, parseOptions)
     return runSync(parserResult<T, never>(result, input), "Constructor adapter can only throw schema issues")
   }

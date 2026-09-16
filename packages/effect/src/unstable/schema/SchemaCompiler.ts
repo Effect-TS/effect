@@ -7,7 +7,7 @@
  * The cache associates each exact AST with an entry containing decoder
  * operations, never parsing results. The interpreter uses the same registry
  * with lazy `decodeEffect` and constructor fallback; JIT, AOT, and manual
- * installations may supply `makeEffect` and the optional validation fast paths.
+ * installations may supply `makeEffect` and optional synchronous fast paths.
  *
  * @since 4.0.0
  */
@@ -83,6 +83,29 @@ export interface Validate {
 }
 
 /**
+ * A compiled constructor that returns the constructed value without detailed
+ * diagnostic issues.
+ *
+ * **Details**
+ *
+ * This optional synchronous fast path lets construction return directly when
+ * it succeeds. Return {@link invalid} to let `makeEffect` produce the normal
+ * detailed result. Implementations must be deterministic and free of side
+ * effects because a failed construction can be repeated by `makeEffect`.
+ *
+ * Omit this operation when construction can execute defaults, Class
+ * constructors, transformations, middleware, or other effects that cannot be
+ * replayed safely. The operation must honor the supplied parse options and
+ * propagate {@link missing} when no value is produced.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Make {
+  (input: unknown, options: SchemaAST.ParseOptions): unknown | typeof invalid
+}
+
+/**
  * A compiled decoder that returns detailed Schema issues on failure.
  *
  * **Details**
@@ -105,8 +128,8 @@ export interface Decode {
  *
  * **Details**
  *
- * `decodeEffect` is required for complete decoding and detailed failures. `validate`
- * and `is` are optional optimizations, not requirements for an AST to be usable.
+ * `decodeEffect` is required for complete decoding and detailed failures. `validate`,
+ * `is`, and `make` are optional optimizations, not requirements for an AST to be usable.
  * The interpreter supplies only `decodeEffect` in this same format.
  * An optional `makeEffect` supplies complete node construction. Otherwise the
  * registry prepares and caches the interpreted constructor, never the decoder,
@@ -122,9 +145,11 @@ export interface Decode {
  * `validate` output directly, without wrapping it in an intermediate Effect.
  * Each operation is resolved lazily on first use, so unused fast paths need
  * not be compiled.
- * Construction calls `makeEffect` directly, without `is` or `validate`, so defaults
- * and Class constructors are not replayed after a failure. Field/element defaults
- * belong to the parent occurrence, not to the root node or a Union member.
+ * Synchronous construction tries `make` when present, returning its output on
+ * success or calling `makeEffect` after {@link invalid}. Compilers must omit
+ * `make` when replay could repeat observable construction work. Construction
+ * never uses `is` or `validate`. Field/element defaults belong to the parent
+ * occurrence, not to the root node or a Union member.
  * Runtime options apply to construction too; Union candidate selection preserves
  * the constructor's conservative handling of absent discriminants.
  *
@@ -134,6 +159,7 @@ export interface Decode {
 export interface CompiledDecoder {
   readonly is?: Is | undefined
   readonly validate?: Validate | undefined
+  readonly make?: Make | undefined
   readonly decodeEffect: Decode
   /**
    * Constructs this node without replay, including Class construction and child
@@ -160,8 +186,9 @@ export interface CompiledDecoder {
  * retain the supplied decoder as their receiver. The supplied object is not
  * mutated. JIT installation uses these same rules.
  * Replacement includes construction: omitting `makeEffect` in the replacement
- * selects interpreted construction for new consumers, without merging the old
- * operation into the new entry. Already captured constructors keep their entry.
+ * selects interpreted detailed construction for new consumers, without merging
+ * the old operation into the new entry. An installed `make` can still handle
+ * synchronous successes. Already captured constructors keep their entry.
  *
  * @category registry
  * @since 4.0.0

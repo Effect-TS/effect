@@ -130,6 +130,7 @@ stores functions, never parsing results. The interpreter, JIT, AOT and
 | `decodeEffect` | `Effect` with output or detailed issues     | Required complete decoding, including asynchronous work and transformations.                    |
 | `validate`     | Output or `SchemaCompiler.invalid`          | Optional synchronous fast path without detailed diagnostics.                                    |
 | `is`           | Boolean                                     | Optional validation without constructing output.                                                |
+| `make`         | Output or `SchemaCompiler.invalid`          | Optional synchronous construction fast path without detailed diagnostics.                       |
 | `makeEffect`   | `Effect` with a constructed value or issues | Optional specialized construction. The registry caches the interpreted constructor when absent. |
 
 Decoding tries `validate` when available. Success provides the output directly;
@@ -141,11 +142,13 @@ marker is also a possible input value. Composite checks
 can require stripped, reconstructed values, so `is` is omitted when it cannot
 avoid constructing those values safely.
 
-Each operation initializes independently. Construction calls `makeEffect`
-directly, without validation replay, so defaults and Class constructors execute
-once. Field defaults belong to the parent occurrence, not to construction of the
-root. Runtime parse options, including product concurrency, retain the
-interpreter's semantics.
+Each operation initializes independently. Synchronous construction tries `make`
+when available and falls back to `makeEffect` for detailed issues. Compilers omit
+`make` whenever replay could repeat defaults, Class constructors,
+transformations, middleware, or other effects. `makeEffect` itself never uses
+validation replay. Field defaults belong to the parent occurrence, not to
+construction of the root. Runtime parse options, including product concurrency,
+retain the interpreter's semantics.
 
 Installing a decoder replaces the entry for that AST. Existing consumers that
 already captured an entry retain it. Late installation is allowed, but startup
@@ -156,10 +159,13 @@ installation is needed to optimize every consumer. Custom decoders supplied to
 
 Encoding-free graphs of supported primitives, Objects, Arrays, tuples, Unions
 and template literals can use generated validators. Struct and homogeneous Array
-decoding and construction also have generated loops. These loops share the
-interpreter's diagnostic and asynchronous continuation helpers. Other detailed
-traversals and constructors use the existing interpreter with registry-resolved
-children; there is no separate diagnostic interpreter in the compiler.
+decoding and construction also have generated loops. Pure fixed Struct and
+homogeneous Array constructors can additionally use the synchronous `make` fast
+path; composite children are resolved through the same registry. These loops
+share the interpreter's diagnostic and asynchronous continuation helpers.
+Other detailed traversals and constructors use the existing interpreter with
+registry-resolved children; there is no separate diagnostic interpreter in the
+compiler.
 
 Transformations and middleware never participate in validation replay. Their
 orchestration uses the same implementation as interpreted parsing, and pure

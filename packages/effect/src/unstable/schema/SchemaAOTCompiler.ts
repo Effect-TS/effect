@@ -13,7 +13,7 @@ const helper = (name: keyof typeof runtime): string => `R.${name}`
 
 const decoder = (ast: SchemaAST.AST): string | undefined => {
   if (!Codegen.shouldCompileParser(ast)) return undefined
-  const operations: ReadonlyArray<Codegen.DecoderOperation> = ["is", "validate", "decodeEffect", "makeEffect"]
+  const operations: ReadonlyArray<Codegen.DecoderOperation> = ["is", "validate", "make", "decodeEffect", "makeEffect"]
   return "{" + operations.flatMap((key) => {
     const source = Codegen.generate(ast, key)
     return source === undefined ? [] : [`get ${key}(){${source}}`]
@@ -43,11 +43,13 @@ const decoder = (ast: SchemaAST.AST): string | undefined => {
  * Repeated ASTs and shared dependencies are installed once by identity. Fast
  * paths can still inline dependency code into multiple parent decoders.
  * An empty array generates a module whose installation does nothing.
- * Construction uses independently lazy `makeEffect` operations. Struct and
- * homogeneous Array loops are emitted as static functions; tuple, Record, Union, leaf, and Class
- * constructors use the existing interpreter. Constructor defaults
- * and Class source schemas are read from the supplied ASTs, not serialized or
- * executed during generation. Construction never runs a validation-and-replay pass.
+ * Construction uses independently lazy `make` and `makeEffect` operations.
+ * Pure fixed Struct and homogeneous Array constructors can use `make` for a
+ * synchronous fast path; failures delegate to `makeEffect` for detailed issues.
+ * Tuple, Record, Union, leaf, and Class constructors use the existing
+ * interpreter. Constructor defaults and Class source schemas are read from the
+ * supplied ASTs, not serialized or executed during generation. `make` is
+ * omitted whenever replay could repeat observable construction work.
  *
  * **Gotchas**
  *

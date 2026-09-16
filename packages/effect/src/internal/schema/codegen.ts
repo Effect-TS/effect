@@ -96,6 +96,57 @@ const getEmission = (
 
 const canEmit = (ast: SchemaAST.AST, depth = 0): boolean => getEmission(ast, depth) !== "unsupported"
 
+const isMakeSafe = (
+  ast: SchemaAST.AST,
+  depth = 0,
+  budget = { remaining: maxGeneratedNodes }
+): boolean => {
+  if (
+    --budget.remaining < 0 ||
+    depth > maxGeneratedDepth ||
+    ast.encoding !== undefined ||
+    ast.context?.constructorDefault !== undefined ||
+    SchemaAST.getConstructorDescriptor(ast) !== undefined
+  ) {
+    return false
+  }
+  switch (ast._tag) {
+    case "Null":
+    case "Undefined":
+    case "Void":
+    case "Never":
+    case "Any":
+    case "Unknown":
+    case "ObjectKeyword":
+    case "Enum":
+    case "UniqueSymbol":
+    case "Literal":
+    case "String":
+    case "Number":
+    case "Boolean":
+    case "Symbol":
+    case "BigInt":
+      return true
+    case "TemplateLiteral":
+      return ast.parts.every((part) => isMakeSafe(part, depth + 1, budget))
+    case "Arrays":
+      return ast.elements.every((element) => isMakeSafe(element, depth + 1, budget)) &&
+        ast.rest.every((element) => isMakeSafe(element, depth + 1, budget))
+    case "Objects":
+      return ast.indexSignatures.length === 0 &&
+        ast.propertySignatures.every((property) => isMakeSafe(property.type, depth + 1, budget))
+    case "Union":
+    case "Declaration":
+    case "Suspend":
+      return false
+  }
+}
+
+const shouldCompileMake = (ast: SchemaAST.AST): boolean =>
+  (ast._tag === "Arrays" && ast.elements.length === 0 && ast.rest.length === 1 ||
+    ast._tag === "Objects" && ast.propertySignatures.length > 0 && ast.indexSignatures.length === 0) &&
+  isMakeSafe(ast)
+
 type Emitter = {
   readonly statements: Array<string>
   readonly helpers: Array<string>
@@ -590,7 +641,7 @@ export interface GeneratedOperation {
   readonly bindings: ReadonlyArray<Binding>
 }
 
-const emitOperation = (ast: SchemaAST.AST, operation: Operation): GeneratedOperation => {
+const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): GeneratedOperation => {
   const emitter: Emitter = {
     statements: [],
     helpers: [],
@@ -601,7 +652,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation): GeneratedOpera
     constantIndexes: new Map(),
     next: 0
   }
-  const output = emit(ast, "i", emitter.statements, emitter, operation, "ast")
+  const output = emit(ast, "i", emitter.statements, emitter, operation, path)
   const bindings = {
     K: "failsChecks",
     T: "matchesTemplateLiteral",
@@ -624,6 +675,21 @@ const renderOperation = (emitted: GeneratedOperation): string =>
 
 /** @internal */
 export function generate(ast: SchemaAST.AST, operation: DecoderOperation): string | undefined {
+  if (operation === "make") {
+    if (!shouldCompileMake(ast)) return undefined
+    if (ast._tag === "Objects") {
+      return `if(ast.propertySignatures.some(p=>resolve(p.type).source!==void 0))return;return ${
+        renderOperation(emitOperation(ast, "validate"))
+      }`
+    }
+    if (ast._tag !== "Arrays") return undefined
+    const element = renderOperation(emitOperation(ast.rest[0], "validate", "ast.rest[0]"))
+    return `const e=resolve(ast.rest[0]),m=e.source===void 0?${element}:e.make;if(m===void 0)return;` +
+      "return function(i,o){if(i===R.missing)return R.missing;if(!Array.isArray(i))return R.invalid;" +
+      "const out=new Array(i.length);for(let x=0;x<i.length;x++){const v=m(i[x],o);" +
+      "if(v===R.invalid||v===R.missing)return R.invalid;out[x]=v}" +
+      "return R.failsChecks(ast,out,false,o)?R.invalid:out}"
+  }
   if (operation === "is" || operation === "validate") {
     if (!shouldCompileParser(ast)) return undefined
     const emission = getEmission(ast)

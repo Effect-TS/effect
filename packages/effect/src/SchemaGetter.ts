@@ -116,8 +116,8 @@ export interface TransformOptionalEffect<out T, in E, R> extends Pipeable.Pipeab
  * Effect.runSync(SchemaGetter.run(composed, Option.some("21"), {})) // => Option.some(42)
  * ```
  *
- * @see {@link transform} to create a getter from a pure function
  * @see {@link passthrough} for the identity getter
+ * @see {@link transform} to create a getter from a pure function
  * @see {@link transformEffect} for effectful transformation
  *
  * @category models
@@ -269,13 +269,12 @@ export const compose: {
             Effect.mapEager(self.transform(input, options), other.transform)
           )
         case "TransformOptional":
+        case "TransformOptionalEffect":
           return composeOptionalEffect(self, other)
         case "TransformEffect":
           return transformEffect((input: E, options) =>
             Effect.flatMapEager(self.transform(input, options), (output) => other.transform(output, options))
           )
-        case "TransformOptionalEffect":
-          return composeOptionalEffect(self, other)
       }
     }
     case "TransformOptionalEffect":

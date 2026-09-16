@@ -29,15 +29,17 @@ export const compiler: Registry.Compile = (ast, resolve) => {
   if (!supported) return undefined
   let decodeFailed = false
   let makeFailed = false
+  let makeEffectFailed = false
   const operation = (key: DecoderOperation) => {
-    if (!(key === "makeEffect" ? makeFailed : decodeFailed)) {
+    if (!(key === "make" ? makeFailed : key === "makeEffect" ? makeEffectFailed : decodeFailed)) {
       try {
         const source = generate(ast, key)
         if (source === undefined) return undefined
         return globalThis.Function("ast", "R", "resolve", source)(ast, runtime, resolve)
       } catch {
         // Only code generation and initialization are inside this catch.
-        if (key === "makeEffect") makeFailed = true
+        if (key === "make") makeFailed = true
+        else if (key === "makeEffect") makeEffectFailed = true
         else decodeFailed = true
       }
     }
@@ -53,6 +55,9 @@ export const compiler: Registry.Compile = (ast, resolve) => {
     },
     get validate() {
       return operation("validate")
+    },
+    get make() {
+      return operation("make")
     },
     get decodeEffect() {
       return operation("decodeEffect")

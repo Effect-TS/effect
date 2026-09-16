@@ -7,6 +7,7 @@ describe("SchemaCompiler", () => {
     const decoder = {
       is: (input, _options) => typeof input === "string",
       validate: (input, _options) => typeof input === "string" ? input : SchemaCompiler.invalid,
+      make: (input, _options) => typeof input === "string" ? input : SchemaCompiler.invalid,
       decodeEffect: (input, _options) => Effect.succeed(input),
       makeEffect: (input, _options) => Effect.succeed(input)
     } satisfies SchemaCompiler.CompiledDecoder
