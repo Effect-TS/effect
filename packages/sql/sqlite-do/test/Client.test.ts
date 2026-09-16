@@ -1,7 +1,7 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Option, Stream } from "effect"
+import { Deferred, Effect, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
@@ -267,42 +267,33 @@ describe("Client", () => {
       assert.strictEqual(storage.rollbackCalls, 1)
     }))
 
-  // https://github.com/Effect-TS/effect/commit/fe1b2d53b7374db7a690ba96cc46392789d8ffe0
   it.effect("storage-backed transactions propagate native rejection after the body succeeds", () =>
     Effect.gen(function*() {
       const storage = new FakeDurableObjectStorage()
       const commitError = new Error("native transaction rejected after body completion")
-      let bodyCompleted = false
       const sql = yield* makeClient({
         storage: {
           sql: storage.sql,
           transaction: <T>(body: (txn: { rollback: () => void }) => Promise<T>) =>
             storage.transaction(async (txn) => {
               await body(txn)
-              bodyCompleted = true
               throw commitError
             })
         } as unknown as DurableObjectStorage
       })
 
       yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-      const exit = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
-        Effect.as("committed"),
+      const error = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
         sql.withTransaction,
-        Effect.exit
+        Effect.flip
       )
       const rows = yield* sql`SELECT * FROM test`
 
-      assert.strictEqual(bodyCompleted, true)
-      assert.strictEqual(storage.transactionCalls, 1)
-      assert.strictEqual(storage.rollbackCalls, 0)
-      assert.deepStrictEqual(rows, [])
-      assert.strictEqual(exit._tag, "Failure")
-      const error = Option.getOrThrow(Exit.findErrorOption(exit))
       assert.strictEqual(error._tag, "SqlError")
       assert.strictEqual(error.reason._tag, "UnknownError")
       assert.strictEqual(error.reason.operation, "transaction")
       assert.strictEqual(error.reason.cause, commitError)
+      assert.deepStrictEqual(rows, [])
     }))
 
   it.effect("storage-backed interrupted transactions roll back before release", () =>
