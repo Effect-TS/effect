@@ -2,15 +2,17 @@
  * @since 1.0.0
  */
 import * as RpcServer from "@effect/rpc/RpcServer"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FiberId from "effect/FiberId"
 import { constant } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
-import type * as ClusterError from "./ClusterError.js"
+import * as ClusterError from "./ClusterError.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
@@ -21,6 +23,17 @@ import * as Sharding from "./Sharding.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 
 const constVoid = constant(Effect.void)
+
+// A handler interrupted by its own runner (shutdown or termination timeout)
+// rather than by the caller. The owner can no longer serve the request, so a
+// volatile caller must retry it elsewhere instead of receiving the interrupt.
+const isTransientInterrupt = (exit: Exit.Exit<unknown, unknown>): boolean =>
+  Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause) &&
+  Option.isSome(Cause.find(exit.cause, (cause) =>
+    cause._tag === "Interrupt" &&
+      Array.from(FiberId.ids(cause.fiberId)).includes(RpcServer.fiberIdTransientInterrupt.id)
+      ? Option.some(cause)
+      : Option.none()))
 
 /**
  * @since 1.0.0
@@ -52,6 +65,10 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         envelope: request,
         lastSentReply: Option.none(),
         respond(reply) {
+          if (!persisted && reply.reply._tag === "WithExit" && isTransientInterrupt(reply.reply.exit)) {
+            resume(Effect.fail(new ClusterError.EntityNotAssignedToRunner({ address: request.address })))
+            return Effect.void
+          }
           resume(Reply.serializeOrDefect(reply))
           return Effect.void
         }
@@ -107,6 +124,9 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
             envelope: request,
             lastSentReply: Option.none(),
             respond(reply) {
+              if (!persisted && reply.reply._tag === "WithExit" && isTransientInterrupt(reply.reply.exit)) {
+                return mailbox.fail(new ClusterError.EntityNotAssignedToRunner({ address: request.address }))
+              }
               return Effect.map(Reply.serializeOrDefect(reply), (reply) => {
                 mailbox.unsafeOffer(reply)
                 if (reply._tag === "WithExit") {
