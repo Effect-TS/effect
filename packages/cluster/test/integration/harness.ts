@@ -22,9 +22,10 @@ import { SqlClient, type SqlConnection, SqlError } from "@effect/sql"
 import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
 import { WorkflowEngine } from "@effect/workflow"
-import { Clock, Context, Duration, Effect, ExecutionStrategy, Exit, Layer, Option, Redacted, Scope } from "effect"
+import { Context, type Duration, Effect, ExecutionStrategy, Exit, Layer, Option, Redacted, Scope } from "effect"
 import * as Net from "node:net"
 import { inject } from "vitest"
+import { waitUntil as waitUntilWithDiagnostics } from "./waitUntil.js"
 
 export type Backend = "mysql" | "pg"
 type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "clear"
@@ -377,18 +378,7 @@ export const make = Effect.fnUntraced(function*(options: {
       condition: Effect.Effect<boolean, E, R>,
       timeout: Duration.DurationInput = "15 seconds"
     ) {
-      const deadline = (yield* Clock.currentTimeMillis) + Duration.toMillis(timeout)
-      while (true) {
-        if (
-          yield* condition.pipe(
-            Effect.provide(client),
-            Effect.timeout(Duration.millis(Math.max(1, deadline - (yield* Clock.currentTimeMillis))))
-          )
-        ) return
-        if ((yield* Clock.currentTimeMillis) >= deadline) break
-        yield* Effect.sleep(100)
-      }
-      return yield* Effect.fail(new Error(`${description}\n${JSON.stringify(yield* diagnostics, null, 2)}`))
+      yield* waitUntilWithDiagnostics(description, Effect.provide(condition, client), diagnostics, timeout)
     },
     Effect.onError(() => Effect.forEach(runners, (runner) => runner.faultLock("clear"), { discard: true }))
   )
