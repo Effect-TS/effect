@@ -768,8 +768,12 @@ const canInlineEncoding = (ast: SchemaAST.AST): ast is SchemaAST.AST & { readonl
     (link.transformation.decode._tag === "Passthrough" || link.transformation.decode._tag === "Transform")
   )
 
+const inlinePropertyHandler =
+  `const handle=(state,index,property,present,input,result)=>{let value;if(result===R.sameExit){if(!present)return;value=input}else{if(!R.effectIsExit(result))return resume(state,index,result);if(result._tag!=="Success"||(value=result[R.args])===R.missing)return step(state,property,result)}const name=property.name;if(name==="__proto__")Object.defineProperty(state.out,name,{value,writable:true,enumerable:true,configurable:true});else state.out[name]=value}`
+
 const emitObject = (ast: SchemaAST.Objects): string => {
   const initializers: Array<string> = []
+  let usesInlinePropertyHandler = false
   const statements = [
     "if(i===R.missing)return R.missingExit",
     "if(o.errors===\"all\"||o.onExcessProperty!==void 0||(o.concurrency!==void 0&&o.concurrency!==1))return fallback(i,o)",
@@ -787,6 +791,8 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       `else{t=step(state,p${index},r);if(t)return t}}`
     const propertyPath = `ast.propertySignatures[${index}].type`
     if (canInlineEncoding(property.type)) {
+      usesInlinePropertyHandler = true
+      const handleInline = `t=handle(state,${index},p${index},h${index},v${index},r);if(t)return t`
       const links = property.type.encoding
       const sourcePath = `${propertyPath}.encoding[${links.length - 1}].to`
       const source = inlineIdentityPredicate(links[links.length - 1].to, `v${index}`, sourcePath)!
@@ -813,11 +819,11 @@ const emitObject = (ast: SchemaAST.Objects): string => {
         )
       }
       fast.push(
-        `};if(r!==void 0){${handle}}else{${assignProperty("out", key, `x${index}`, property.name)}}`
+        `};if(r!==void 0){${handleInline}}else{${assignProperty("out", key, `x${index}`, property.name)}}`
       )
       const run = `if(v${index}!==R.missing&&(${source})){${
         fast.join(";")
-      }}else{r=p${index}.parser(v${index},o);${handle}}`
+      }}else{r=p${index}.parser(v${index},o);${handleInline}}`
       statements.push(
         `const p${index}=properties[${index}],h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
         run
@@ -831,6 +837,9 @@ const emitObject = (ast: SchemaAST.Objects): string => {
     }
   })
   statements.push("return R.succeed(out)")
+  if (usesInlinePropertyHandler) {
+    initializers.unshift(inlinePropertyHandler)
+  }
   return `function({ast,getProperties,fallback,resume,step}){${initializers.join(";")};return function(i,o){try{${
     statements.join(";")
   }}catch(e){return R.die(e)}}}`
