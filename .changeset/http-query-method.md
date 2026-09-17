@@ -3,4 +3,6 @@
 "@effect/openapi-generator": patch
 ---
 
-Add end-to-end support for the HTTP `QUERY` method across HTTP clients, routers, HttpApi endpoints, CORS defaults, AI request metadata, and OpenAPI generation. OpenAPI 3.1 output uses `x-oai-additionalOperations`, while the OpenAPI generator accepts both that extension and the native OpenAPI 3.2 `query` field.
+Add HTTP `QUERY` support to clients, routers, HttpApi endpoints, and AI request metadata. Configure CORS support through `allowedMethods`; defaults are unchanged.
+
+OpenAPI 3.1 output represents `QUERY` through `x-oai-additionalOperations`, which requires consumer support for that extension. The OpenAPI generator accepts the extension and the native OpenAPI 3.2 `query` field.
