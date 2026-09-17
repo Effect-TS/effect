@@ -89,8 +89,6 @@ export interface DecodeOptions {
 
 const defaultMaxEventSize = 10 * 1024 * 1024
 
-const eventFields = new WeakMap<Event, { readonly id: boolean; readonly event: boolean }>()
-
 /**
  * Creates a channel that parses Server-Sent Events text chunks into `Event` values.
  *
@@ -169,9 +167,9 @@ export interface EventCodec extends
  *
  * **Details**
  *
- * The schema receives the untagged event shape containing `id`, `event`, and
- * string `data`. The optional third argument configures schema parsing
- * independently of the SSE parser options.
+ * The schema receives the untagged event shape containing `event`, string
+ * `data`, and `id` when the event has one. `parseOptions` configures the
+ * schema decoder.
  *
  * @category decoding
  * @since 4.0.0
@@ -192,28 +190,9 @@ export const decodeSchema = <
   IE,
   Done,
   S["DecodingServices"]
-> => {
-  const events = decode<IE, Done>(options)
-  if (parseOptions?.onExcessProperty === "error") {
-    return Channel.pipeTo(
-      Channel.map(
-        events,
-        Arr.map((event) => {
-          const fields = eventFields.get(event)!
-          // Declared properties still receive SSE defaults and inherited IDs.
-          // Only fields present on the wire are own keys for excess validation.
-          const input = Object.create({ id: event.id, event: event.event }) as EventEncoded
-          Object.assign(input, { data: event.data })
-          if (fields.id) Object.assign(input, { id: event.id })
-          if (fields.event) Object.assign(input, { event: event.event })
-          return input
-        })
-      ),
-      ChannelSchema.decode(schema, parseOptions)()
-    )
-  }
-  return Channel.pipeTo(
-    events,
+> =>
+  Channel.pipeTo(
+    decode<IE, Done>(options),
     ChannelSchema.decode(
       Event.pipe(
         Schema.decodeTo(schema, transformEvent)
@@ -221,7 +200,6 @@ export const decodeSchema = <
       parseOptions
     )()
   )
-}
 
 /**
  * Creates an SSE decoder channel that JSON-decodes each event `data` field with a schema.
@@ -287,7 +265,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
 
   // Event state
   let lastEventId: string | undefined
-  let hasId: boolean
   let eventName: string | undefined
   let data: string
 
@@ -302,7 +279,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     discardTrailingNewline = false
 
     lastEventId = undefined
-    hasId = false
     eventName = undefined
     data = ""
   }
@@ -392,18 +368,15 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     if (lineLength === 0) {
       // We reached the last line of this event
       if (data.length > 0) {
-        const event: Event = {
+        onParse({
           _tag: "Event",
           id: lastEventId,
           event: eventName || "message",
           data: data.slice(0, -1) // remove trailing newline
-        }
-        eventFields.set(event, { id: hasId, event: eventName !== undefined })
-        onParse(event)
+        })
         data = ""
       }
       eventName = undefined
-      hasId = false
       return
     }
 
@@ -429,7 +402,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       eventName = value
     } else if (field === "id" && !value.includes("\u0000")) {
       lastEventId = value
-      hasId = true
     } else if (field === "retry" && /^\d+$/.test(value)) {
       const retry = parseInt(value, 10)
       onParse(new Retry({ duration: Duration.millis(retry), lastEventId }))
@@ -595,7 +567,10 @@ export const transformEvent = SchemaTransformation.transform<{
   readonly event: string
   readonly data: string
 }>({
-  decode: (event) => ({ id: event.id, event: event.event, data: event.data }),
+  decode: (event) =>
+    event.id === undefined
+      ? { event: event.event, data: event.data }
+      : { id: event.id, event: event.event, data: event.data },
   encode: (event) => ({
     _tag: "Event",
     id: event.id,

@@ -382,23 +382,21 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
 
         // encoders
-        const encodeParams = UndefinedOr.map(endpoint.params, (schema) =>
-          Schema.encodeUnknownEffect(schema, parseOptions))
+        const encodeUnknownEffect = <S extends Schema.Constraint>(schema: S) =>
+          Schema.encodeUnknownEffect(schema, parseOptions)
+        const encodeParams = UndefinedOr.map(endpoint.params, encodeUnknownEffect)
 
         const payloadSchemas = HttpApiEndpoint.getPayloadSchemas(endpoint)
         const encodePayload = Arr.isArrayNonEmpty(payloadSchemas) ?
           HttpMethod.hasBody(endpoint.method)
-            ? Schema.encodeUnknownEffect(getEncodePayloadSchema(payloadSchemas, endpoint.method), parseOptions)
-            : Schema.encodeUnknownEffect(Schema.Union(payloadSchemas), parseOptions) :
+            ? encodeUnknownEffect(getEncodePayloadSchema(payloadSchemas, endpoint.method))
+            : encodeUnknownEffect(Schema.Union(payloadSchemas)) :
           undefined
 
-        const encodeHeaders = UndefinedOr.map(endpoint.headers, (schema) =>
-          Schema.encodeUnknownEffect(schema, parseOptions))
-        const encodeQuery = UndefinedOr.map(endpoint.query, (schema) =>
-          Schema.encodeUnknownEffect(schema, parseOptions))
+        const encodeHeaders = UndefinedOr.map(endpoint.headers, encodeUnknownEffect)
+        const encodeQuery = UndefinedOr.map(endpoint.query, encodeUnknownEffect)
 
-        const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) =>
-          `${tag.key}/Client`)
+        const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {

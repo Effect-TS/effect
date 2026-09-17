@@ -77,7 +77,7 @@ describe("OpenApi representation v2 consumer", () => {
           event: { type: "string" },
           data: { $ref: "#/components/schemas/Tool.ContentEncoded" }
         },
-        required: ["id", "event", "data"],
+        required: ["event", "data"],
         additionalProperties: false
       }
     )

@@ -811,13 +811,14 @@ function handlerToHttpEffect(
 ) {
   const annotations = Context.merge(Context.merge(api.annotations, group.annotations), endpoint.annotations)
   const options = Context.getOrUndefined(annotations, HttpApi.ParseOptions)
+  const decodeUnknownEffect = <S extends Schema.Constraint>(schema: S) => Schema.decodeUnknownEffect(schema, options)
   const encodeSuccess = Schema.encodeUnknownEffect(makeSuccessSchema(endpoint), options)
   const encodeError = Schema.encodeUnknownEffect(makeErrorSchema(endpoint), options)
-  const decodeParams = UndefinedOr.map(endpoint.params, (schema) => Schema.decodeUnknownEffect(schema, options))
-  const decodeHeaders = UndefinedOr.map(endpoint.headers, (schema) => Schema.decodeUnknownEffect(schema, options))
+  const decodeParams = UndefinedOr.map(endpoint.params, decodeUnknownEffect)
+  const decodeHeaders = UndefinedOr.map(endpoint.headers, decodeUnknownEffect)
   const decodeQuery = UndefinedOr.map(
     endpoint.query,
-    (schema) => Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
+    (schema) => decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema))
   )
   const encodeStream = makeStreamEncoder(endpoint, options)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options)

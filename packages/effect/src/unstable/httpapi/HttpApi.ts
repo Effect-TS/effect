@@ -339,23 +339,21 @@ export class AdditionalSchemas extends Context.Service<
 >()("effect/httpapi/HttpApi/AdditionalSchemas") {}
 
 /**
- * Configures schema parsing for server request decoding and response encoding,
- * and client request encoding and response decoding.
+ * Schema parse options for every codec an API, group, or endpoint uses: server
+ * request decoding and response encoding, and client request encoding and
+ * response decoding.
  *
  * **Details**
  *
- * Annotate an API, group, or endpoint. Group options replace API options, and
- * endpoint options replace group options. Each annotation replaces the whole
- * options object. Without an annotation, Schema defaults apply.
+ * An endpoint annotation replaces a group annotation, which replaces an API
+ * annotation. The whole options object is replaced, not merged field by field.
+ * Without an annotation, Schema defaults apply.
  *
- * Header codecs receive the complete HTTP header record. With
- * `onExcessProperty: "error"`, undeclared headers such as `content-type` cause
- * request or response decoding to fail.
- *
- * Server routes capture annotations from the API passed to
- * `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`. Apply API annotations
- * before constructing those handlers; annotating only the API passed to
- * `HttpApiBuilder.layer` does not update existing routes.
+ * Header codecs receive the complete HTTP header record, so
+ * `onExcessProperty: "error"` rejects undeclared headers such as
+ * `content-type`. Server handlers read the annotation from the API passed to
+ * `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`, so annotate the API
+ * before building them.
  *
  * @category services
  * @since 4.0.0
