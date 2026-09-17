@@ -1021,6 +1021,16 @@ export const toWeb = (
   }
   const body = response.body
   if (omitsBody(response, options?.withoutBody)) {
+    if (body._tag === "Raw" && body.body instanceof Response) {
+      for (const [key, value] of headers as any) {
+        body.body.headers.set(key, value)
+      }
+      return new Response(undefined, {
+        status: body.body.status,
+        statusText: body.body.statusText,
+        headers: body.body.headers
+      })
+    }
     if (body._tag === "Raw" && isReadableStream(body.body)) {
       body.body.cancel().catch(constVoid)
     }
