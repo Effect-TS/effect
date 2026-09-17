@@ -73,18 +73,24 @@ class InterpretedEntry implements Entry {
 }
 
 class CompilerEntry extends InterpretedEntry {
-  readonly source: DecoderSource | undefined
   readonly resolve: Resolve
+  private sourceValue: DecoderSource | Compile | undefined
 
-  constructor(ast: SchemaAST.AST, source: DecoderSource | undefined, resolve: Resolve) {
+  constructor(ast: SchemaAST.AST, source: DecoderSource | Compile | undefined, resolve: Resolve) {
     super(ast)
-    this.source = source
     this.resolve = resolve
+    this.sourceValue = source
   }
 
   private save<K extends keyof Entry>(key: K, value: Entry[K]): Entry[K] {
     Object.defineProperty(this, key, { value })
     return value
+  }
+
+  get source(): DecoderSource | undefined {
+    const source = this.sourceValue
+    if (typeof source !== "function") return source
+    return this.save("source", this.sourceValue = source(this.ast, this.resolve))
   }
 
   get is(): Is | undefined {
@@ -169,6 +175,16 @@ export function resolve(ast: SchemaAST.AST): Entry {
 export function set(ast: SchemaAST.AST, decoder: DecoderSource | undefined, resolveChild: Resolve = resolve): Entry {
   if (decoder !== undefined) activateCompilerAdapters()
   const entry = new CompilerEntry(ast, decoder, resolveChild)
+  cache.set(ast, entry)
+  return entry
+}
+
+/** @internal */
+export function setFactory(ast: SchemaAST.AST, compile: Compile, resolveChild: Resolve = resolve): Entry {
+  // Install the entry immediately so that replacement order remains identical
+  // to `set`; only materialization of its decoder source is deferred.
+  activateCompilerAdapters()
+  const entry = new CompilerEntry(ast, compile, resolveChild)
   cache.set(ast, entry)
   return entry
 }

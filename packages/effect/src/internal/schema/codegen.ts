@@ -775,11 +775,15 @@ const emitObject = (ast: SchemaAST.Objects): string => {
   const initializers: Array<string> = []
   const transforms = new Map<object, string>()
   let usesInlinePropertyHandler = false
+  const lazyProperties = ast.propertySignatures.every((property) =>
+    typeof property.name !== "symbol" && canInlineEncoding(property.type)
+  )
+  if (lazyProperties) initializers.push("const p=i=>getProperties()[i]")
   const statements = [
     "if(i===R.missing)return R.missingExit",
     "if(o.errors===\"all\"||o.onExcessProperty!==void 0||(o.concurrency!==void 0&&o.concurrency!==1))return fallback(i,o)",
     "if(typeof i!==\"object\"||i===null||Array.isArray(i))return R.invalidType(ast,i,o)",
-    "const properties=getProperties(),out={}",
+    lazyProperties ? "const out={}" : "const properties=getProperties(),out={}",
     "const state={ast,input:i,out,options:o,issues:void 0}",
     "let r,t,value"
   ]
@@ -793,7 +797,8 @@ const emitObject = (ast: SchemaAST.Objects): string => {
     const propertyPath = `ast.propertySignatures[${index}].type`
     if (canInlineEncoding(property.type)) {
       usesInlinePropertyHandler = true
-      const handleInline = `t=handle(state,${index},p${index},h${index},v${index},r);if(t)return t`
+      const descriptor = lazyProperties ? `p(${index})` : `p${index}`
+      const handleInline = `t=handle(state,${index},${descriptor},h${index},v${index},r);if(t)return t`
       const links = property.type.encoding
       const sourcePath = `${propertyPath}.encoding[${links.length - 1}].to`
       const source = inlineIdentityPredicate(links[links.length - 1].to, `v${index}`, sourcePath)!
@@ -817,7 +822,7 @@ const emitObject = (ast: SchemaAST.Objects): string => {
         const target = linkIndex === 0 ? property.type : links[linkIndex - 1].to
         const predicate = inlineIdentityPredicate(target, `x${index}`, targetPath)!
         fast.push(
-          `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=R.invalidEncoding(p${index}.type,${linkIndex},v${index},x${index},o);break l${index}}`
+          `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=R.invalidEncoding(${descriptor}.type,${linkIndex},v${index},x${index},o);break l${index}}`
         )
       }
       fast.push(
@@ -825,9 +830,11 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       )
       const run = `if(v${index}!==R.missing&&(${source})){${
         fast.join(";")
-      }}else{r=p${index}.parser(v${index},o);${handleInline}}`
+      }}else{r=${descriptor}.parser(v${index},o);${handleInline}}`
       statements.push(
-        `const p${index}=properties[${index}],h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
+        lazyProperties
+          ? `const h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`
+          : `const p${index}=properties[${index}],h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
         run
       )
     } else {

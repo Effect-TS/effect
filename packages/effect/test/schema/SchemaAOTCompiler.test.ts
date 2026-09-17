@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaParser } from "effect"
 import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 import * as SchemaAOTCompiler from "effect/unstable/schema/SchemaAOTCompiler"
 import { execFileSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -44,6 +45,13 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.notInclude(make, "get decode(){")
   })
 
+  it("allows a target without requested operations", () => {
+    const schema = Schema.Struct({ value: Schema.String })
+    const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: [] }])
+    assert.notInclude(source, "R.set(")
+    assert.notInclude(source, "R.setFactory(")
+  })
+
   it("omits fast decode operations from diagnostic-only dependencies", () => {
     const child = Schema.Struct({ value: Schema.String })
     const schema = Schema.Array(child)
@@ -80,6 +88,36 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     }
   })
 
+  it("materializes dependency decoders on first use", async () => {
+    const child = Schema.String.pipe(
+      Schema.decodeTo(
+        Schema.Number,
+        SchemaTransformation.transform({ decode: Number, encode: String })
+      ),
+      Schema.annotate({ title: "lazy AOT dependency" })
+    )
+    const schema = Schema.Struct({ child })
+    const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-lazy-test-", import.meta.url)))
+    try {
+      const file = join(directory, "decode.mjs")
+      writeFileSync(file, SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }]))
+      const generated = await import(`${pathToFileURL(file).href}?test=${Date.now()}`)
+      generated.install([schema.ast])
+
+      const dependency = CompilerRegistry.resolve(child.ast)
+      assert.isFalse(Object.hasOwn(dependency, "source"))
+
+      const decode = SchemaParser.decodeUnknownSync(schema)
+      assert.deepStrictEqual(decode({ child: "1" }), { child: 1 })
+      assert.isFalse(Object.hasOwn(dependency, "source"))
+
+      assert.throws(() => decode({ child: false }))
+      assert.isTrue(Object.hasOwn(dependency, "source"))
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
   it("deduplicates repeated roots and dependencies shared across roots", () => {
     const child = Schema.Struct({ value: Schema.String })
     const first = Schema.Struct({ child })
@@ -97,7 +135,8 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       ]),
       source
     )
-    assert.strictEqual(source.match(/R\.set\(/g)?.length, 3)
+    assert.strictEqual(source.match(/R\.set\(/g)?.length, 2)
+    assert.strictEqual(source.match(/R\.setFactory\(/g)?.length, 1)
   })
 
   it("reuses identical decoder factories", () => {

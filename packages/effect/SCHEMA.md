@@ -165,6 +165,12 @@ already captured an entry retain it. Late installation is allowed, but startup
 installation is needed to optimize every consumer. Custom decoders supplied to
 `set` are trusted to implement the AST's semantics.
 
+An AOT module materializes explicitly requested roots during installation. It
+also installs entries for their static dependencies immediately, but creates a
+dependency's decoder source only when an operation first needs it. Both kinds
+of entry live in the same `WeakMap`: there is no separate AOT cache, and a later
+`SchemaCompiler.set` for the same AST replaces either kind in the same way.
+
 ### What is specialized
 
 Encoding-free graphs of supported primitives, Objects, Arrays, tuples, Unions

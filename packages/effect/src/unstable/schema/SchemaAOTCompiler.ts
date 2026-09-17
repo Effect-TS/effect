@@ -71,10 +71,13 @@ export interface Target {
  * traversals and transformation orchestration use the interpreter with
  * registry-resolved children. Transformations and middleware are not replayed.
  * Only the requested operation families and their static dependencies are
- * emitted. Missing operations retain the lazy interpreter fallback in the
- * shared registry. Repeated ASTs and shared dependencies are installed once by
- * identity. Fast paths can still inline dependency code into multiple parent
- * decoders. An empty array generates a module whose installation does nothing.
+ * emitted. Installation materializes each requested root immediately. Its
+ * dependency entries are installed in the same registry at the same time, but
+ * their decoder sources are materialized only on first use. Missing operations
+ * retain the lazy interpreter fallback. Repeated ASTs and shared dependencies
+ * are installed once by identity. Fast paths can still inline dependency code
+ * into multiple parent decoders. An empty array generates a module whose
+ * installation does nothing.
  * Construction uses independently lazy `make` and `makeEffect` operations.
  * Pure fixed Struct and homogeneous Array constructors can use `make` for a
  * synchronous fast path; failures delegate to `makeEffect` for detailed issues.
@@ -113,8 +116,10 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
     readonly sources: Map<Codegen.DecoderOperation, string>
     readonly attempted: Set<Codegen.DecoderOperation>
     readonly compilable: boolean
+    readonly targeted: boolean
   }
 
+  const targetsByAst = new Set(targets.map((target) => target.ast))
   const seen = new Map<SchemaAST.AST, PlannedNode>()
   const bindings: Array<string> = []
   const factories: Array<string> = []
@@ -180,7 +185,8 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
         requested: new Set(),
         sources: new Map(),
         attempted: new Set(),
-        compilable: Codegen.shouldCompileParser(node)
+        compilable: Codegen.shouldCompileParser(node),
+        targeted: targetsByAst.has(node)
       }
       seen.set(node, plan)
     }
@@ -222,7 +228,11 @@ export const compile = (targets: ReadonlyArray<Target>): string => {
         factoryNames.set(source, factory)
         factories.push(`function ${factory}(ast,R,resolve){return ${source}}`)
       }
-      installations.push(`${helper("set")}(${plan.name},${factory}(${plan.name},R,R.resolve));`)
+      installations.push(
+        plan.targeted
+          ? `${helper("set")}(${plan.name},${factory}(${plan.name},R,R.resolve));`
+          : `${helper("setFactory")}(${plan.name},${factory},R);`
+      )
     }
   }
   return [
