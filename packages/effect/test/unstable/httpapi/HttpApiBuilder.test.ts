@@ -38,6 +38,126 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
   const Fields = { firstName: Schema.String, lastName: Schema.String }
   const Person = Schema.Struct(Fields)
 
+  it.effect("strict request header decoding rejects undeclared HTTP headers", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/test", {
+          headers: { "x-token": Schema.String }
+        }))
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      let handled = false
+      const handler = yield* HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(api).pipe(
+          Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
+            handlers.handle("get", () =>
+              Effect.sync(() => {
+                handled = true
+              }))))
+        )
+      )
+      const exit = yield* handler.pipe(
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(
+            new Request("http://localhost/test", {
+              headers: { "x-token": "valid", "content-type": "application/json" }
+            })
+          )
+        ),
+        Effect.exit
+      )
+      assert.isFalse(handled)
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause)
+        assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+        assert.strictEqual(error.kind, "Headers")
+        assert.include(error.cause.message, "Expected no excess property")
+        assert.include(error.cause.message, "[\"content-type\"]")
+      }
+    }))
+
+  it.effect("strict SSE encoding accepts valid user data", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+        }))
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers.handle("events", () =>
+          Effect.succeed(Stream.make({ firstName: "Ada", lastName: "Lovelace" }))))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      assert.strictEqual(yield* response.text, "data: {\"firstName\":\"Ada\",\"lastName\":\"Lovelace\"}\n\n")
+    }))
+
+  it.effect("strict SSE encoding preserves reserved failure causes", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+        }))
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers.handle("events", () =>
+          Effect.succeed(Stream.fail({ reason: "boom" }))))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const text = yield* response.text
+      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      const data = text.split("\n")[1]!.slice("data: ".length)
+      const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+      const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
+      assert.deepStrictEqual(cause, Cause.fail({ reason: "boom" }))
+    }))
+
+  it.effect("strict SSE encoding rejects excess properties in user event data", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+        }))
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers.handle("events", () =>
+          Effect.succeed(Stream.make({ firstName: "Ada", lastName: "Lovelace", extra: true }))))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const text = yield* response.text
+      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      const data = text.split("\n")[1]!.slice("data: ".length)
+      const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+      const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, Error)
+      assert.include(error.message, "Expected no excess property")
+      assert.include(error.message, "[\"data\"][\"extra\"]")
+    }))
+
+  it.effect("SSE encoding aggregates all user data issues in the reserved failure event", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+        }))
+      ).annotate(HttpApi.ParseOptions, { errors: "all" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers.handle("events", () =>
+          Effect.succeed(Stream.make({} as typeof Person.Type))))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const text = yield* response.text
+      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      const data = text.split("\n")[1]!.slice("data: ".length)
+      const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+      const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, Error)
+      assert.include(error.message, "firstName")
+      assert.include(error.message, "lastName")
+    }))
+
   for (const method of ["post", "patch"] as const) {
     for (const scope of ["unset", "api", "group", "endpoint"] as const) {
       it.effect(`${method} payload uses ${scope} options`, () =>

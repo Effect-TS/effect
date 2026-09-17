@@ -10,6 +10,140 @@ describe("HttpApiClient", () => {
     const Fields = { firstName: Schema.String, lastName: Schema.String }
     const Person = Schema.Struct(Fields)
 
+    const SseApi = HttpApi.make("SseApi").add(
+      HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+        success: HttpApiSchema.StreamSse({ data: Person, error: Schema.Struct({ reason: Schema.String }) })
+      }))
+    )
+
+    it.effect("strict SSE decoding accepts valid user data and framework event metadata", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(
+          SseApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+          {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(
+                textStream([
+                  "id: 1\nevent: person\ndata: {\"firstName\":\"Ada\",\"lastName\":\"Lovelace\"}\n\n"
+                ]),
+                { headers: { "content-type": "text/event-stream" } }
+              )
+            )
+          }
+        )
+        const events = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.deepStrictEqual(events, [{ firstName: "Ada", lastName: "Lovelace" }])
+      }))
+
+    it.effect("strict SSE decoding preserves reserved failure causes", () =>
+      Effect.gen(function*() {
+        const expected = Cause.fail({ reason: "boom" })
+        const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+        const data = yield* Schema.encodeEffect(FailureSchema)(expected)
+        const client = yield* HttpApiClient.makeWith(
+          SseApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+          {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(
+                textStream([
+                  Sse.encoder.write({ _tag: "Event", event: "effect/httpapi/stream/failure", id: undefined, data })
+                ]),
+                { headers: { "content-type": "text/event-stream" } }
+              )
+            )
+          }
+        )
+        const exit = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.isFalse(Schema.isSchemaError(error), error instanceof Error ? error.message : undefined)
+          assert.deepStrictEqual(exit.cause, expected)
+        }
+      }))
+
+    it.effect("strict SSE decoding rejects excess properties in user event data", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(
+          SseApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+          {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(
+                textStream([
+                  "data: {\"firstName\":\"Ada\",\"lastName\":\"Lovelace\",\"extra\":true}\n\n"
+                ]),
+                { headers: { "content-type": "text/event-stream" } }
+              )
+            )
+          }
+        )
+        const exit = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.ok(Schema.isSchemaError(error))
+          assert.include(error.message, "Expected no excess property")
+          assert.include(error.message, "[\"data\"][\"extra\"]")
+          assert.notInclude(error.message, "[\"_tag\"]")
+        }
+      }))
+
+    it.effect("SSE decoding collects all missing user data fields", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(SseApi.annotate(HttpApi.ParseOptions, { errors: "all" }), {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response(textStream(["data: {}\n\n"]), {
+              headers: { "content-type": "text/event-stream" }
+            })
+          )
+        })
+        const exit = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.ok(Schema.isSchemaError(error))
+          assert.include(error.message, "firstName")
+          assert.include(error.message, "lastName")
+        }
+      }))
+
+    for (const streaming of [false, true]) {
+      it.effect(`strict WithHeaders ${streaming ? "stream" : "buffered"} decoding rejects undeclared HTTP headers`, () =>
+        Effect.gen(function*() {
+          const Api = HttpApi.make("Api").add(
+            HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/test", {
+              success: HttpApiSchema.WithHeaders(
+                streaming ? HttpApiSchema.StreamUint8Array() : Schema.String,
+                { "x-source": Schema.String }
+              )
+            }))
+          ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(streaming ? new Uint8Array([1]) : "\"ok\"", {
+                headers: {
+                  "x-source": "server",
+                  "content-type": streaming ? "application/octet-stream" : "application/json"
+                }
+              })
+            )
+          })
+          const exit = yield* Effect.exit(client.test.get({}))
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const error = Cause.squash(exit.cause)
+            assert.ok(Schema.isSchemaError(error))
+            assert.include(error.message, "Expected no excess property")
+            assert.include(error.message, "[\"content-type\"]")
+          }
+        }))
+    }
+
     for (const part of ["params", "payload", "headers", "query"] as const) {
       it.effect(`collects all request ${part} encoding issues`, () =>
         Effect.gen(function*() {
