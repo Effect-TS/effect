@@ -30,9 +30,15 @@ The public `Getter` constructor is removed. Use
 `transformEffect` for an effectful transformation of present values and
 `transformOptionalEffect` when the transformation handles missing values.
 
-`SchemaTransformation.compose` is now a dual standalone function. Replace
-`first.compose(second)` with `SchemaTransformation.compose(first, second)` or
-`SchemaTransformation.compose(second)(first)`.
+`Transformation#compose` is replaced by the dual standalone function
+`SchemaTransformation.composeTransformation`. Replace `first.compose(second)`
+with `SchemaTransformation.composeTransformation(first, second)` or
+`SchemaTransformation.composeTransformation(second)(first)`.
+
+`SchemaTransformation.make` is renamed to
+`SchemaTransformation.makeTransformation`. `SchemaTransformation.Transformation`
+and `SchemaTransformation.Middleware` now implement `Pipeable`, so both values
+can be passed through standalone combinators with `.pipe(...)`.
 
 `SchemaAST.Context.constructorDefault` now stores the constructor-default
 `Effect` directly instead of wrapping it in a `SchemaAST.Link`. Constructor

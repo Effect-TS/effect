@@ -20,6 +20,7 @@ import * as Effect from "./Effect.ts"
 import { format, formatDate, formatJson } from "./Formatter.ts"
 import { dual } from "./Function.ts"
 import * as Option from "./Option.ts"
+import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import type { ErrorOptions, Json } from "./Schema.ts"
 import type * as SchemaAST from "./SchemaAST.ts"
@@ -48,6 +49,7 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  *   `Effect<Option<E>, Issue, REE>`.
  * - `flip()` swaps the decode and encode functions, producing a
  *   `Middleware<E, T, ...>`.
+ * - Middleware values implement `Pipeable`.
  *
  * Typically constructed indirectly via `Schema.middlewareDecoding` or
  * `Schema.middlewareEncoding` rather than by using `new Middleware` directly.
@@ -70,7 +72,7 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  * @category models
  * @since 4.0.0
  */
-export interface Middleware<in out T, in out E, RDE, RDT, RET, REE> {
+export interface Middleware<in out T, in out E, RDE, RDT, RET, REE> extends Pipeable.Pipeable {
   readonly _tag: "Middleware"
   readonly decode: (
     effect: Effect.Effect<Option.Option<E>, SchemaIssue.Issue, RDE>,
@@ -98,7 +100,7 @@ export const Middleware: new<T, E, RDE, RDT, RET, REE>(
     effect: Effect.Effect<Option.Option<T>, SchemaIssue.Issue, RET>,
     options: SchemaAST.ParseOptions
   ) => Effect.Effect<Option.Option<E>, SchemaIssue.Issue, REE>
-) => Middleware<T, E, RDE, RDT, RET, REE> = class<in out T, in out E, RDE, RDT, RET, REE> {
+) => Middleware<T, E, RDE, RDT, RET, REE> = class<in out T, in out E, RDE, RDT, RET, REE> extends Pipeable.Class {
   readonly _tag = "Middleware"
   readonly decode: (
     effect: Effect.Effect<Option.Option<E>, SchemaIssue.Issue, RDE>,
@@ -119,6 +121,7 @@ export const Middleware: new<T, E, RDE, RDT, RET, REE>(
       options: SchemaAST.ParseOptions
     ) => Effect.Effect<Option.Option<E>, SchemaIssue.Issue, REE>
   ) {
+    super()
     this.decode = decode
     this.encode = encode
   }
@@ -146,9 +149,10 @@ const TypeId = "~effect/SchemaTransformation/Transformation"
  * `Schema.decode`, `Schema.encode`, and `Schema.link`. Each direction is a
  * `SchemaGetter.Getter` that handles optionality, failure, and Effect services.
  *
- * - Immutable — `flip()` and {@link compose} return new instances.
+ * - Immutable — `flip()` and {@link composeTransformation} return new instances.
+ * - Transformation values implement `Pipeable`.
  * - `flip()` swaps the decode and encode getters.
- * - `compose(self, other)` chains: `self.decode` then `other.decode` for decoding,
+ * - `composeTransformation(self, other)` chains: `self.decode` then `other.decode` for decoding,
  *   `other.encode` then `self.encode` for encoding.
  *
  * **Example** (Composing two transformations)
@@ -156,14 +160,14 @@ const TypeId = "~effect/SchemaTransformation/Transformation"
  * ```ts import.meta.vitest
  * import { SchemaTransformation } from "effect"
  *
- * const trimAndLower = SchemaTransformation.compose(
+ * const trimAndLower = SchemaTransformation.composeTransformation(
  *   SchemaTransformation.trim(),
  *   SchemaTransformation.toLowerCase()
  * )
  * trimAndLower._tag // => "Transformation"
  * ```
  *
- * @see {@link make} — construct from `{ decode, encode }` getters
+ * @see {@link makeTransformation} — construct from `{ decode, encode }` getters
  * @see {@link transform} — construct from pure functions
  * @see {@link transformEffect} — construct from effectful functions
  * @see {@link Middleware} — effect-pipeline-level alternative
@@ -171,7 +175,7 @@ const TypeId = "~effect/SchemaTransformation/Transformation"
  * @category models
  * @since 4.0.0
  */
-export interface Transformation<in out T, in out E, RD = never, RE = never> {
+export interface Transformation<in out T, in out E, RD = never, RE = never> extends Pipeable.Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly _tag: "Transformation"
   readonly decode: SchemaGetter.Getter<T, E, RD>
@@ -188,7 +192,7 @@ export interface Transformation<in out T, in out E, RD = never, RE = never> {
 export const Transformation: new<T, E, RD = never, RE = never>(
   decode: SchemaGetter.Getter<T, E, RD>,
   encode: SchemaGetter.Getter<E, T, RE>
-) => Transformation<T, E, RD, RE> = class<in out T, in out E, RD = never, RE = never> {
+) => Transformation<T, E, RD, RE> = class<in out T, in out E, RD = never, RE = never> extends Pipeable.Class {
   readonly [TypeId] = TypeId
   readonly _tag = "Transformation"
   readonly decode: SchemaGetter.Getter<T, E, RD>
@@ -198,6 +202,7 @@ export const Transformation: new<T, E, RD = never, RE = never>(
     decode: SchemaGetter.Getter<T, E, RD>,
     encode: SchemaGetter.Getter<E, T, RE>
   ) {
+    super()
     this.decode = decode
     this.encode = encode
   }
@@ -218,14 +223,14 @@ export const Transformation: new<T, E, RD = never, RE = never>(
  *
  * Decoding applies `self.decode` followed by `other.decode`. Encoding applies
  * `other.encode` followed by `self.encode`. The function supports both
- * `compose(self, other)` and `compose(other)(self)`.
+ * `composeTransformation(self, other)` and `composeTransformation(other)(self)`.
  *
  * **Example** (Trimming and lowercasing a string)
  *
  * ```ts import.meta.vitest
  * import { Schema, SchemaTransformation } from "effect"
  *
- * const transformation = SchemaTransformation.compose(
+ * const transformation = SchemaTransformation.composeTransformation(
  *   SchemaTransformation.trim(),
  *   SchemaTransformation.toLowerCase()
  * )
@@ -237,7 +242,7 @@ export const Transformation: new<T, E, RD = never, RE = never>(
  * @category combining
  * @since 4.0.0
  */
-export const compose: {
+export const composeTransformation: {
   <T, T2, RD2, RE2>(
     other: Transformation<T2, T, RD2, RE2>
   ): <E, RD, RE>(self: Transformation<T, E, RD, RE>) => Transformation<T2, E, RD | RD2, RE | RE2>
@@ -277,7 +282,7 @@ export const compose: {
  * ```
  *
  * @see {@link Transformation}
- * @see {@link make}
+ * @see {@link makeTransformation}
  *
  * @category guards
  * @since 4.0.0
@@ -305,7 +310,7 @@ export function isTransformation(u: unknown): u is Transformation<any, any, unkn
  * ```ts import.meta.vitest
  * import { SchemaGetter, SchemaTransformation } from "effect"
  *
- * const t = SchemaTransformation.make({
+ * const t = SchemaTransformation.makeTransformation({
  *   decode: SchemaGetter.transform<number, string>((s) => Number(s)),
  *   encode: SchemaGetter.transform<string, number>((n) => String(n))
  * })
@@ -319,7 +324,7 @@ export function isTransformation(u: unknown): u is Transformation<any, any, unkn
  * @category constructors
  * @since 3.10.0
  */
-export const make = <T, E, RD = never, RE = never>(options: {
+export const makeTransformation = <T, E, RD = never, RE = never>(options: {
   readonly decode: SchemaGetter.Getter<T, E, RD>
   readonly encode: SchemaGetter.Getter<E, T, RE>
 }): Transformation<T, E, RD, RE> => {
@@ -367,7 +372,7 @@ export const make = <T, E, RD = never, RE = never>(options: {
  *
  * @see {@link transform} — for infallible, pure transformations
  * @see {@link transformOptional} — for transformations that handle missing keys
- * @see {@link make} — for transformations from existing Getters
+ * @see {@link makeTransformation} — for transformations from existing Getters
  *
  * @category transforming
  * @since 3.10.0

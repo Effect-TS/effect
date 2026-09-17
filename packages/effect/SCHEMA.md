@@ -3237,7 +3237,7 @@ In this case:
 
 ## Composing Transformations
 
-You can combine transformations using `SchemaTransformation.compose`. The resulting transformation applies the `decode` and `encode` logic of both transformations in sequence.
+You can combine transformations using `SchemaTransformation.composeTransformation`. The resulting transformation applies the `decode` and `encode` logic of both transformations in sequence.
 
 **Example** (Trim and lowercase a string)
 
@@ -3245,7 +3245,7 @@ You can combine transformations using `SchemaTransformation.compose`. The result
 import { Schema, SchemaTransformation } from "effect"
 
 // Compose two transformations: trim followed by toLowerCase
-const trimToLowerCase = SchemaTransformation.compose(
+const trimToLowerCase = SchemaTransformation.composeTransformation(
   SchemaTransformation.trim(),
   SchemaTransformation.toLowerCase()
 )

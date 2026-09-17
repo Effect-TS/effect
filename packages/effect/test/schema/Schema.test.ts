@@ -2406,7 +2406,7 @@ Expected a value between -2147483648 and 2147483647`
     it("double transformation", async () => {
       const schema = Schema.String.pipe(
         Schema.decode(
-          SchemaTransformation.compose(
+          SchemaTransformation.composeTransformation(
             SchemaTransformation.trim(),
             SchemaTransformation.toLowerCase()
           )
@@ -2555,7 +2555,7 @@ Expected a value between -2147483648 and 2147483647`
     it("double transformation", async () => {
       const schema = Schema.String.pipe(
         Schema.encode(
-          SchemaTransformation.compose(
+          SchemaTransformation.composeTransformation(
             SchemaTransformation.trim(),
             SchemaTransformation.toLowerCase()
           ).flip()
