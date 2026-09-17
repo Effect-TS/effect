@@ -14,6 +14,7 @@ import * as Channel from "../../Channel.ts"
 import * as Context from "../../Context.ts"
 import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
+import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
@@ -253,7 +254,6 @@ export const make = <Out = OutgoingPacket, In = IncomingPacket>(options: {
  *
  * `onMessage` copies accepted payloads before returning. Adapters convert native
  * source addresses to `NetAddress` and pass conversion failures to `onError`.
- * A connected adapter must supply only packets from its associated peer.
  *
  * @category models
  * @since 4.0.0
@@ -291,8 +291,7 @@ export interface Binding {
  *
  * `acquire` registers resource cleanup in the provided scope and returns the
  * bound address and send operation. It must clean up partial acquisition,
- * including resources obtained after interruption. Connected adapters must
- * filter incoming packets before delivering them.
+ * including resources obtained after interruption.
  *
  * The constructor owns buffering and closure signaling for pending acquisition,
  * reads, and sends. Adapters own native resources and interruptible I/O. Failure
@@ -394,7 +393,8 @@ export const fromTransport = (
  * **Details**
  *
  * Validates the remote address before asking the adapter to bind and associate
- * the endpoint. Peer association does not establish a handshake.
+ * the endpoint. Incoming packets are filtered to the canonical peer IP address,
+ * port, and IPv6 scope. Peer association does not establish a handshake.
  *
  * @see {@link fromTransport} for acquisition ownership and adapter requirements
  * @category constructors
@@ -404,7 +404,8 @@ export const fromConnectedTransport = Effect.fnUntraced(function*(
   options: ConnectOptions,
   acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>
 ): Effect.fn.Return<ConnectedDatagramSocket, DatagramSocketError, Scope.Scope> {
-  if (options.remote.port === 0 || NetAddress.isUnspecified(NetAddress.toCanonical(options.remote.address))) {
+  const peer = canonicalPeer(options.remote)
+  if (peer.port === 0 || NetAddress.isUnspecified(peer.address)) {
     return yield* error(
       new DatagramSocketInvalidOptionsError({
         message: "A datagram peer must have a nonzero port and a specified IP address"
@@ -412,7 +413,13 @@ export const fromConnectedTransport = Effect.fnUntraced(function*(
     )
   }
 
-  const socket = yield* fromTransport(options, acquire)
+  const socket = yield* fromTransport(options, (handlers) =>
+    acquire({
+      ...handlers,
+      onMessage(data, source) {
+        if (Equal.equals(canonicalPeer(source), peer)) handlers.onMessage(data, source)
+      }
+    }))
   return {
     ...socket,
     remote: options.remote,
@@ -680,4 +687,10 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
 })
 
 const error = (reason: DatagramSocketErrorReason) => new DatagramSocketError({ reason })
+
+const canonicalPeer = (peer: NetAddress.InetAddress): NetAddress.InetAddress => {
+  const address = NetAddress.toCanonical(peer.address)
+  return address === peer.address ? peer : NetAddress.inetAddressUnsafe(address, peer.port)
+}
+
 const defaultMaxPacketBytes = 65507

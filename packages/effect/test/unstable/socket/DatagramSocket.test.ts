@@ -258,3 +258,33 @@ describe("DatagramSocket.fromTransport", () => {
       })
   )
 })
+
+describe("DatagramSocket.fromConnectedTransport", () => {
+  it.effect("filters packets to a canonical peer address and port", () =>
+    Effect.gen(function*() {
+      const remote = NetAddress.inetAddressFromIpStringUnsafe("::ffff:127.0.0.1", 54321)
+      let handlers!: Datagram.Handlers
+      const socket = yield* Datagram.fromConnectedTransport({ localAddress: address, remote }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({ address, send: () => Effect.void })
+      })
+
+      handlers.onMessage(
+        new Uint8Array([9]),
+        NetAddress.inetAddressFromIpStringUnsafe("127.0.0.2", remote.port)
+      )
+      handlers.onMessage(
+        new Uint8Array([8]),
+        NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", remote.port + 1)
+      )
+      handlers.onMessage(
+        new Uint8Array([1]),
+        NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", remote.port)
+      )
+
+      assert.deepStrictEqual(yield* socket.reader.pull, [{
+        data: new Uint8Array([1]),
+        source: NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", remote.port)
+      }])
+    }))
+})

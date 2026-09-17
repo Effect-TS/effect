@@ -13,7 +13,6 @@
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
 import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
@@ -112,8 +111,7 @@ const open = Effect.fnUntraced(function*(
   socket.on("message", (data, info) => {
     try {
       const source = Result.getOrThrow(NetAddress.inetAddressFromHostString(info.address, info.port, scopeIds))
-      // Some Node-compatible runtimes associate the peer without native receive filtering.
-      if (remote === undefined || Equal.equals(source, remote)) handlers.onMessage(data, source)
+      handlers.onMessage(data, source)
     } catch (cause) {
       handlers.onError(cause)
     }

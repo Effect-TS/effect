@@ -45,6 +45,27 @@ export const suite = (name: string, layer: Layer.Layer<Datagram.DatagramSocketFa
           }))
       }
 
+      it.effect("accepts an IPv4-mapped IPv6 peer", () =>
+        Effect.gen(function*() {
+          const peer = yield* Datagram.bind({ localAddress: loopback })
+          const client = yield* Datagram.connect({
+            localAddress: NetAddress.inetAddressFromIpStringUnsafe("::", 0),
+            remote: NetAddress.inetAddressFromIpStringUnsafe("::ffff:127.0.0.1", peer.address.port)
+          })
+
+          yield* client.writer.write(new Uint8Array([1]))
+          yield* peer.reader.pull
+          yield* peer.writer.write({
+            data: new Uint8Array([2]),
+            destination: NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", client.address.port)
+          })
+
+          const [reply] = yield* client.reader.pull
+          assert.deepStrictEqual(Array.from(reply.data), [2])
+          assert.strictEqual(reply.source.port, peer.address.port)
+          assert.deepStrictEqual(NetAddress.toCanonical(reply.source.address), peer.address.address)
+        }))
+
       it.effect("reports occupied bindings as open errors", () =>
         Effect.gen(function*() {
           const socket = yield* Datagram.bind({ localAddress: loopback })
