@@ -129,6 +129,66 @@ by the existing module tests.
   caller-disconnect controls outside the original fix list. No compatible case
   is omitted merely because it was unfinished in the initial port.
 
+## Harness diagnostics and merged core dependency
+
+The shared branch merged `origin/v3` at `05803bd021` at merge commit `0b9db1486e`, preserving
+`cf03af64fe` and importing #8271 through upstream history, not a duplicate
+cherry-pick. The polling correction itself changes only test code.
+
+`waitUntil` now uses `timeoutOption` to distinguish its own deadline from
+a failure raised by the condition. Both expiry paths collect the same descriptive
+diagnostics; condition failures (including their own TimeoutException), defects
+and interruptions retain their causes. The default 15-second deadline, 100 ms
+poll interval, minimum 1 ms condition timeout and fault-clear cleanup are unchanged.
+Seven TestClock controls cover these contracts without database startup. Restoring
+the previous timeout behavior fails only the suspended-condition diagnostic case;
+the corrected helper passes all seven. An explicit-file module run passes 236/236
+in 34.48 seconds, excluding the two container-backed SQL suites. Root lint-fix,
+check, build and docgen pass.
+
+Two attempted broad module runs hit their outer deadlines. The workspace ignored
+the CLI SQL exclusion and started SQL tests, overlapping another agent's database
+validation. Neither attempt is a completed bundle result; the explicit-file run
+above replaces neither historical SQL nor integration evidence. Coordinate a new
+database slot before the full post-merge integration and SQL bundle runs.
+
+### JSON-based reconciliation
+
+The six original completion reports total 92 passes / 14 failures. Reviewer's six
+`rv-*` integration reports at `a35ad33c36` plus the core-only candidate
+`4c1b29dcc2` total 95 passes / 11 failures. Compare by full test name,
+not by error text or a prose inventory:
+
+| Case | Original completion | Core-only rerun |
+| --- | --- | --- |
+| PostgreSQL queue restart | failed | passed |
+| MySQL concurrent end-to-end execution | failed | passed |
+| MySQL synthetic activity handoff | passed | failed: condition timeout |
+| MySQL actual owner handoff | passed | failed: condition timeout |
+| MySQL directional socket cut | passed | failed: no active socket |
+| PostgreSQL shutdown-finalizer reply | failed | passed, attribution unresolved |
+| MySQL shutdown-finalizer reply | failed | failed |
+| Forced handler interruption, both backends | failed | failed |
+| Graceful-stop rebalance, both backends | failed | failed |
+| Frozen advisory-lock closure, both backends | failed | passed |
+| MySQL frozen row-lock expiry | failed | passed |
+| PostgreSQL cron previous/current instant | failed | failed |
+| MySQL cron previous/current instant | passed | failed |
+| MySQL cron owner-death recovery | failed | passed |
+| Raw caller disconnect | failed | failed |
+
+Seven original failures passed once; four other cases failed in the rerun. This
+is not causal evidence for each change and does not resolve the PostgreSQL
+shutdown-finalizer provenance question. All historical failures remain recorded.
+
+Pending: rerun the two obscured MySQL handoff cases with diagnostics in a
+coordinated slot; perform the full post-merge validation; then add the requested
+unary/stream drain and cause-classification controls in a separate test-only run.
+Keep v3 graceful draining and inherited local-caller interruption. A subsequent
+remote-volatile implementation must document possible handler re-execution;
+handover timing remains a compatibility difference, not a reason to shorten the
+drain timeout. No RunnerServer candidate or changeset edit is included here.
+
 ## Completion validation
 
 All 106 applicable cases ran once across six sequential foreground batches on
