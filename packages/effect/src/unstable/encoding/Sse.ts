@@ -167,9 +167,16 @@ export interface EventCodec extends
  *
  * **Details**
  *
- * The schema receives the untagged event shape containing `event`, string
- * `data`, and `id` when the event has one. `parseOptions` configures the
- * schema decoder.
+ * The schema receives the normalized, untagged event shape containing `event`,
+ * string `data`, and `id` when the event has one. An absent `id` is omitted, even
+ * with default parse options: use `Schema.optional(Schema.String)` instead of
+ * `Schema.UndefinedOr(Schema.String)` to accept events without an ID.
+ *
+ * `parseOptions` configures the schema decoder. With `onExcessProperty: "error"`,
+ * the schema must declare `event` (which defaults to `"message"`) and `id` whenever
+ * the stream carries IDs, including IDs inherited from earlier events.
+ * `HttpApiSchema.StreamSse` data-mode event types and OpenAPI schemas also mark
+ * `id` as optional.
  *
  * @category decoding
  * @since 4.0.0
