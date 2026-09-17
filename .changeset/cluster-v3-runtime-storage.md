@@ -12,6 +12,8 @@ Deferred completions wait for suspension replies before resuming discarded workf
 
 Persisted requests abandoned during teardown interrupt active workflow/activity owners for replay, including when abandonment is relayed from detached children. Volatile requests and acknowledgements can fail with `EntityNotAssignedToRunner`. Persisted `Sharding.sendOutgoing(request, false)` calls stop at abandonment even in uninterruptible regions. Workflow proxy discard calls return execution IDs. Suspended activities run again on replay, so side effects before suspension must be idempotent.
 
+Remote volatile unary and stream requests retry routing when their handler returns an interrupt-only transient-shutdown reply. The same request may execute its handler again, so side effects must tolerate re-execution. Caller-requested interrupts, mixed failure/defect causes, persisted replies, graceful draining and local caller behavior are unchanged.
+
 Entity clients using `asMailbox: true` forward replies through a request-scoped pump with the requested consumer capacity (default 16), one RPC buffer element and one forwarding element. A producer chunk may also be in flight. Element-wise forwarding adds per-element work and can change chunk boundaries. Closing the request scope cancels blocked forwarding.
 
 Abandonment may wait behind buffered values. Unary, stream and mailbox relays interrupt an active workflow/activity owner without separately re-interrupting the relaying fiber. Callers outside an active owner window receive a recoverable cause and may continue, including performing durable writes after recovery. The abandoned run still cannot persist a completed result. The mailbox pump signals the owner before forwarding the cause.
