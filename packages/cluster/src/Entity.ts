@@ -24,7 +24,12 @@ import * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
 import { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
+import type {
+  AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
+  MailboxFull,
+  PersistenceError
+} from "./ClusterError.js"
 import { ShardGroup } from "./ClusterSchema.js"
 import * as ClusterSchema from "./ClusterSchema.js"
 import { EntityAddress } from "./EntityAddress.js"
@@ -111,7 +116,7 @@ export interface Entity<
       entityId: string
     ) => RpcClient.RpcClient.From<
       Rpcs,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
     >,
     never,
     Sharding
@@ -516,6 +521,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
   const entityMap = new Map<string, {
     readonly context: Context.Context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | LR>
     readonly concurrency: number | "unbounded"
+    readonly disableFatalDefects: boolean | undefined
     readonly build: Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>
   }>()
   const sharding = shardingTag.of({
@@ -525,6 +531,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
         entityMap.set(entity.type, {
           context: context as any,
           concurrency: options?.concurrency ?? 1,
+          disableFatalDefects: options?.disableFatalDefects,
           build: entity.protocol.toHandlersContext(handlers) as any
         })
       })
@@ -555,6 +562,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
     let client!: Effect.Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<Rpcs, never>>>
     const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
       concurrency: entityEntry.concurrency,
+      disableFatalDefects: entityEntry.disableFatalDefects,
       onFromServer(response) {
         return client.write(response)
       }

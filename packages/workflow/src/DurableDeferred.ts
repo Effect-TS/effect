@@ -111,6 +111,7 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
+  instance.awaitedDeferreds.add(self.name)
   const exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Predicate.isUndefined
@@ -163,15 +164,13 @@ export const into: {
     const instance = { ...parentInstance }
     return Effect.onExit(Effect.provideService(effect, InstanceTag, instance), (exit) => {
       if (Exit.isFailure(exit) && Cause.isInterrupted(exit.cause)) {
-        const isInterruptedOnly = Cause.isInterruptedOnly(exit.cause)
-        if (isInterruptedOnly && instance.suspended) {
-          parentInstance.suspended = true
+        if (Cause.isInterruptedOnly(exit.cause)) {
+          if (instance.suspended) parentInstance.suspended = true
           return Effect.void
-        } else if (!isInterruptedOnly) {
-          exit = Exit.failCause(
-            Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
-          )
         }
+        exit = Exit.failCause(
+          Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
+        )
       }
       return engine.deferredDone(self, {
         workflowName: parentInstance.workflow.name,
