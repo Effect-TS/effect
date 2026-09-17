@@ -1,8 +1,12 @@
 /**
  * Parses YAML configuration files.
  *
- * This is a focused YAML 1.2 configuration parser. It supports block and flow
- * collections, quoted and block scalars, anchors, and aliases.
+ * Supports YAML 1.2 block and flow collections, indentless sequence values,
+ * multiline plain and quoted scalars, block scalars, anchors, and aliases.
+ *
+ * Unsupported: compact nested block sequences (`- - value` on one line),
+ * multiline flow collections, explicit complex keys, tag/directive processing,
+ * recursive aliases, and document streams. Mapping keys are JavaScript strings.
  *
  * @since 4.0.0
  */
@@ -45,58 +49,70 @@ const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
   })
 }
 
-const stripComment = (input: string): string => {
-  let quote: "'" | "\"" | undefined
-  let escaped = false
-  for (let index = 0; index < input.length; index++) {
+const closingQuote = (input: string, quote: string, start: number): number => {
+  for (let index = start; index < input.length; index++) {
     const character = input[index]
-    if (quote === "\"") {
-      if (escaped) {
-        escaped = false
-      } else if (character === "\\") {
-        escaped = true
-      } else if (character === quote) {
-        quote = undefined
-      }
-    } else if (quote === "'") {
-      if (character === quote && input[index + 1] === quote) {
-        index++
-      } else if (character === quote) {
-        quote = undefined
-      }
-    } else if (character === "'" || character === "\"") {
-      quote = character
-    } else if (character === "#" && (index === 0 || /\s/.test(input[index - 1]))) {
-      return input.slice(0, index).trimEnd()
-    }
-  }
-  return input.trimEnd()
-}
-
-const mappingSeparator = (input: string): number => {
-  let quote: "'" | "\"" | undefined
-  let escaped = false
-  let depth = 0
-  for (let index = 0; index < input.length; index++) {
-    const character = input[index]
-    if (quote === "\"") {
-      if (escaped) escaped = false
-      else if (character === "\\") escaped = true
-      else if (character === quote) quote = undefined
-    } else if (quote === "'") {
-      if (character === quote && input[index + 1] === quote) index++
-      else if (character === quote) quote = undefined
-    } else if (character === "'" || character === "\"") {
-      quote = character
-    } else if (character === "[" || character === "{") {
-      depth++
-    } else if (character === "]" || character === "}") {
-      depth--
-    } else if (character === ":" && depth === 0 && (input[index + 1] === undefined || /\s/.test(input[index + 1]))) {
-      return index
+    if (quote === "\"" && character === "\\") {
+      index++
+    } else if (character === quote) {
+      if (quote === "'" && input[index + 1] === quote) index++
+      else return index
     }
   }
   return -1
+}
+
+const findIndicator = (input: string, indicator: ":" | "#"): number => {
+  let depth = 0
+  let tokenStart = true
+  for (let index = 0; index < input.length; index++) {
+    const character = input[index]
+    if (tokenStart && (character === "'" || character === "\"")) {
+      index = closingQuote(input, character, index + 1)
+      if (index === -1) return -1
+      tokenStart = false
+    } else if (tokenStart && character === "&") {
+      while (index + 1 < input.length && !/[\s,[\]{}]/.test(input[index + 1])) index++
+    } else if (character === "#" && (index === 0 || /\s/.test(input[index - 1]))) {
+      return indicator === "#" ? index : -1
+    } else if (tokenStart && (character === "[" || character === "{")) {
+      depth++
+    } else if (depth > 0 && (character === "]" || character === "}")) {
+      depth--
+      tokenStart = false
+    } else if (depth > 0 && character === ",") {
+      tokenStart = true
+    } else if (character === ":" && (depth > 0 || input[index + 1] === undefined || /\s/.test(input[index + 1]))) {
+      if (depth === 0 && indicator === ":") return index
+      tokenStart = true
+    } else if (tokenStart && character === "-" && /\s/.test(input[index + 1] ?? "")) {
+      continue
+    } else if (!/\s/.test(character)) {
+      tokenStart = false
+    }
+  }
+  return -1
+}
+
+const stripComment = (input: string): string => {
+  const index = findIndicator(input, "#")
+  return index === -1 ? input : input.slice(0, index).trimEnd()
+}
+
+const mappingSeparator = (input: string): number => findIndicator(input, ":")
+
+const isSequenceEntry = (text: string): boolean => text === "-" || text.startsWith("- ")
+
+const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
+
+const endsWithEscape = (text: string): boolean => /\\*$/.exec(text)![0].length % 2 === 1
+
+// Escaped trailing spaces are content, not folding whitespace.
+const trimFoldedEnd = (line: string, quote: string): string => {
+  const trailing = /[ \t]+$/.exec(line)
+  if (trailing === null) return line
+  const escaped = quote === "\"" && endsWithEscape(line.slice(0, trailing.index))
+  return line.slice(0, trailing.index + (escaped ? 1 : 0))
 }
 
 const parseDoubleQuoted = (input: string): string => {
@@ -283,16 +299,11 @@ class FlowParser {
   }
 
   private readQuoted(quote: string): string {
-    const start = this.index++
-    let escaped = false
-    while (this.index < this.input.length) {
-      const character = this.input[this.index++]
-      if (quote === "\"" && escaped) escaped = false
-      else if (quote === "\"" && character === "\\") escaped = true
-      else if (quote === "'" && character === quote && this.input[this.index] === quote) this.index++
-      else if (character === quote) return this.input.slice(start, this.index)
-    }
-    this.fail("Unterminated quoted scalar")
+    const start = this.index
+    const end = closingQuote(this.input, quote, start + 1)
+    if (end === -1) this.fail("Unterminated quoted scalar")
+    this.index = end + 1
+    return this.input.slice(start, this.index)
   }
 
   private readUntil(stop: RegExp): string {
@@ -322,6 +333,7 @@ class FlowParser {
 class YamlParser {
   private readonly lines: ReadonlyArray<Line>
   private index = 0
+  private documentStarted = false
   private readonly anchors = new Map<string, unknown>()
 
   constructor(lines: ReadonlyArray<Line>) {
@@ -331,6 +343,7 @@ class YamlParser {
   parse(): unknown {
     this.skipIgnored()
     if (this.index >= this.lines.length) return null
+    this.documentStarted = true
     const value = this.parseNode(this.lines[this.index].indent)
     this.skipIgnored()
     if (this.index < this.lines.length) {
@@ -339,19 +352,18 @@ class YamlParser {
     return value
   }
 
-  private parseNode(indent: number): unknown {
+  private parseNode(indent: number, parentIndent = indent - 1): unknown {
     this.skipIgnored()
     const line = this.lines[this.index]
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
-    if (line.text === "-" || line.text.startsWith("- ")) return this.parseSequence(indent)
+    if (isSequenceEntry(line.text)) return this.parseSequence(indent)
     if (mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
     this.index++
-    return this.parseInlineValue(line.text)
+    return this.parseNodeValue(line.text, parentIndent)
   }
 
-  private parseMapping(indent: number): YamlRecord {
-    const output: YamlRecord = {}
+  private parseMapping(indent: number, output: YamlRecord = {}): YamlRecord {
     while (true) {
       this.skipIgnored()
       const line = this.lines[this.index]
@@ -372,8 +384,8 @@ class YamlParser {
     line: Line
   ): void {
     const key = parseKey(text.slice(0, separator).trim())
-    const rawValue = text.slice(separator + 1).trim()
-    const value = this.parseNodeValue(rawValue, indent)
+    const rawValue = text.slice(separator + 1).trimStart()
+    const value = this.parseNodeValue(rawValue, indent, true)
     if (hasOwn.call(output, key)) this.fail(line, `Duplicate key '${key}'`)
     setProperty(output, key, value)
   }
@@ -385,66 +397,100 @@ class YamlParser {
       const line = this.lines[this.index]
       if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
-      if (line.text !== "-" && !line.text.startsWith("- ")) return output
+      if (!isSequenceEntry(line.text)) return output
       this.index++
       const item = line.text.slice(1).trimStart()
+      if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
       const separator = mappingSeparator(item)
       if (separator === -1) {
         output.push(this.parseNodeValue(item, indent))
-        continue
+      } else {
+        const mapping: YamlRecord = {}
+        this.parseMappingEntry(mapping, item, separator, indent + 2, line)
+        output.push(this.parseMapping(indent + 2, mapping))
       }
-
-      const mapping: YamlRecord = {}
-      this.parseMappingEntry(mapping, item, separator, indent + 2, line)
-      while (true) {
-        this.skipIgnored()
-        const continuation = this.lines[this.index]
-        if (continuation === undefined || continuation.indent <= indent) break
-        if (continuation.indent !== indent + 2) {
-          this.fail(continuation, `Expected indentation of ${indent + 2} spaces`)
-        }
-        const nextSeparator = mappingSeparator(continuation.text)
-        if (nextSeparator === -1) this.fail(continuation, "Expected a mapping entry")
-        this.index++
-        this.parseMappingEntry(mapping, continuation.text, nextSeparator, indent + 2, continuation)
-      }
-      output.push(mapping)
     }
   }
 
-  private parseNodeValue(rawValue: string, parentIndent: number): unknown {
-    let value = rawValue
-    let anchor: string | undefined
-    const anchorMatch = /^&([^\s,[\]{}]+)(?:\s+(.*))?$/.exec(value)
-    if (anchorMatch !== null) {
-      anchor = anchorMatch[1]
-      value = anchorMatch[2] ?? ""
-    }
+  private parseNodeValue(rawValue: string, parentIndent: number, allowIndentless = false): unknown {
+    const anchor = /^&([^\s,[\]{}]+)(?:\s+(.*))?$/.exec(rawValue)
+    if (anchor === null) return this.parseValue(rawValue, parentIndent, allowIndentless)
+    const value = this.parseValue(anchor[2] ?? "", parentIndent, allowIndentless)
+    this.anchors.set(anchor[1], value)
+    return value
+  }
 
-    let parsed: unknown
-    if (value.length === 0) {
+  private parseValue(value: string, parentIndent: number, allowIndentless: boolean): unknown {
+    const text = value.trimEnd()
+    if (text.length === 0) {
       this.skipIgnored()
       const next = this.lines[this.index]
-      parsed = next !== undefined && next.indent > parentIndent ? this.parseNode(next.indent) : null
-    } else if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(value)) {
-      parsed = this.parseBlockScalar(value, parentIndent)
-    } else {
-      parsed = this.parseInlineValue(value)
+      if (next === undefined) return null
+      if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent)
+      if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
+        return this.parseSequence(parentIndent)
+      }
+      return null
     }
-    if (anchor !== undefined) this.anchors.set(anchor, parsed)
-    return parsed
-  }
-
-  private parseInlineValue(value: string): unknown {
-    if (value.startsWith("*")) {
-      const name = value.slice(1).trim()
+    if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) return this.parseBlockScalar(text, parentIndent)
+    // Keep escaped trailing whitespace in quoted values.
+    if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
+    if (text.startsWith("*")) {
+      const name = text.slice(1).trim()
       if (!this.anchors.has(name)) throw new SyntaxError(`Unknown YAML alias '*${name}'`)
       return this.anchors.get(name)
     }
-    if (value.startsWith("[") || value.startsWith("{")) {
-      return new FlowParser(value, this.anchors).parse()
+    if (text.startsWith("[") || text.startsWith("{")) return new FlowParser(text, this.anchors).parse()
+    return this.parsePlainValue(text, parentIndent)
+  }
+
+  private parsePlainValue(value: string, parentIndent: number): unknown {
+    const first = this.lines[this.index - 1]
+    if (/:(?:\s|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
+    let output = value
+    let terminated = findIndicator(first.raw, "#") !== -1
+    while (!terminated) {
+      const blankLines = this.skipBlankLines()
+      const next = this.lines[this.index]
+      if (next === undefined || next.indent <= parentIndent) break
+      // Quotes in plain continuations are literal.
+      const content = next.raw.slice(next.indent)
+      const comment = content.search(/(?:^|[ \t])#/)
+      const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
+      if (text.length === 0 || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(text))) break
+      if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
+      output += foldLineBreak(blankLines) + text
+      this.index++
+      terminated = comment !== -1
     }
-    return parseScalar(value)
+    return parseScalar(output)
+  }
+
+  private parseQuotedValue(value: string, parentIndent: number): unknown {
+    const quote = value[0]
+    let output = quote
+    let line = value.slice(1)
+    while (true) {
+      const end = closingQuote(line, quote, 0)
+      if (end !== -1) {
+        const rest = line.slice(end + 1)
+        if (rest.trim().length > 0 && !/^[ \t]+#/.test(rest)) {
+          throw new SyntaxError("Unexpected content after quoted YAML scalar")
+        }
+        return parseScalar(output + line.slice(0, end + 1))
+      }
+      if (quote === "\"" && endsWithEscape(line)) {
+        output += line.slice(0, -1)
+      } else {
+        output += trimFoldedEnd(line, quote) + foldLineBreak(this.skipBlankLines())
+      }
+      const next = this.lines[this.index++]
+      if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
+      if (next.raw.trim().length > 0 && next.indent <= parentIndent) {
+        this.fail(next, "Invalid quoted scalar indentation")
+      }
+      line = next.raw.trimStart()
+    }
   }
 
   private parseBlockScalar(indicator: string, parentIndent: number): string {
@@ -503,14 +549,25 @@ class YamlParser {
     return chomp === "strip" ? output : `${output}\n`
   }
 
+  private skipBlankLines(): number {
+    const start = this.index
+    while (this.index < this.lines.length && this.lines[this.index].raw.trim().length === 0) this.index++
+    return this.index - start
+  }
+
   private skipIgnored(): void {
     while (this.index < this.lines.length) {
       const line = this.lines[this.index]
-      if (line.text.length === 0 || line.text.startsWith("%") || line.text === "---") {
+      const text = line.text.trimEnd()
+      if (text.length === 0 || text.startsWith("%")) {
         this.index++
-      } else if (line.text === "...") {
+      } else if (line.indent === 0 && text === "---") {
+        if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
+        this.documentStarted = true
         this.index++
-        while (this.index < this.lines.length && this.lines[this.index].text.length === 0) this.index++
+      } else if (line.indent === 0 && text === "...") {
+        this.index++
+        while (this.index < this.lines.length && this.lines[this.index].text.trimEnd().length === 0) this.index++
         if (this.index < this.lines.length) {
           this.fail(this.lines[this.index], "Multiple YAML documents are not supported")
         }
