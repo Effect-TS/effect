@@ -125,13 +125,19 @@ const makeStorageBackedWithTransaction = (
   Effect.withFiber((fiber) => {
     const services = fiber.context
     const connOption = Context.getOption(services, SqliteTransaction)
-    const [conn, depth] = connOption._tag === "Some"
-      ? [connOption.value[0], connOption.value[1] + 1] as const
-      : [connection, 0] as const
+    if (connOption._tag === "Some" && connOption.value[0] !== connection) {
+      return Effect.fail(
+        unsupportedTransaction(
+          "Transactions cannot use a connection from a different SQLite client",
+          "transaction"
+        )
+      )
+    }
+    const depth = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
 
     const effectWithTxn = Effect.provideContext(
       effect,
-      Context.add(services, SqliteTransaction, [conn, depth] as const)
+      Context.add(services, SqliteTransaction, [connection, depth] as const)
     )
 
     const transaction = Effect.callback<A, E | SqlError, R>((resume) => {
