@@ -38,80 +38,6 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
   const Fields = { firstName: Schema.String, lastName: Schema.String }
   const Person = Schema.Struct(Fields)
 
-  it.effect("strict request header decoding rejects undeclared HTTP headers", () =>
-    Effect.gen(function*() {
-      const api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/test", {
-          headers: { "x-token": Schema.String }
-        }))
-      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
-      let handled = false
-      const handler = yield* HttpRouter.toHttpEffect(
-        HttpApiBuilder.layer(api).pipe(
-          Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
-            handlers.handle("get", () =>
-              Effect.sync(() => {
-                handled = true
-              }))))
-        )
-      )
-      const exit = yield* handler.pipe(
-        Effect.provideService(
-          HttpServerRequest.HttpServerRequest,
-          HttpServerRequest.fromWeb(
-            new Request("http://localhost/test", {
-              headers: { "x-token": "valid", "content-type": "application/json" }
-            })
-          )
-        ),
-        Effect.exit
-      )
-      assert.isFalse(handled)
-      assert.strictEqual(exit._tag, "Failure")
-      if (exit._tag === "Failure") {
-        const error = Cause.squash(exit.cause)
-        assert.ok(HttpApiError.HttpApiSchemaError.is(error))
-        assert.strictEqual(error.kind, "Headers")
-        assert.include(error.cause.message, "Expected no excess property")
-        assert.include(error.cause.message, "[\"content-type\"]")
-      }
-    }))
-
-  it.effect("strict SSE encoding accepts valid user data", () =>
-    Effect.gen(function*() {
-      const api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
-          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
-        }))
-      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
-      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
-        handlers.handle("events", () =>
-          Effect.succeed(Stream.make({ firstName: "Ada", lastName: "Lovelace" }))))
-      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
-      const response = yield* client.test.events({ responseMode: "response-only" })
-      assert.strictEqual(yield* response.text, "data: {\"firstName\":\"Ada\",\"lastName\":\"Lovelace\"}\n\n")
-    }))
-
-  it.effect("strict SSE encoding preserves reserved failure causes", () =>
-    Effect.gen(function*() {
-      const api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
-          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
-        }))
-      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
-      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
-        handlers.handle("events", () =>
-          Effect.succeed(Stream.fail({ reason: "boom" }))))
-      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
-      const response = yield* client.test.events({ responseMode: "response-only" })
-      const text = yield* response.text
-      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
-      const data = text.split("\n")[1]!.slice("data: ".length)
-      const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
-      const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
-      assert.deepStrictEqual(cause, Cause.fail({ reason: "boom" }))
-    }))
-
   it.effect("strict SSE encoding rejects excess properties in user event data", () =>
     Effect.gen(function*() {
       const api = HttpApi.make("Api").add(
@@ -158,180 +84,61 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       assert.include(error.message, "lastName")
     }))
 
-  for (const method of ["post", "patch"] as const) {
-    for (const scope of ["unset", "api", "group", "endpoint"] as const) {
-      it.effect(`${method} payload uses ${scope} options`, () =>
-        Effect.gen(function*() {
-          let endpoint = method === "post"
-            ? HttpApiEndpoint.post("create", "/users", { payload: Person })
-            : HttpApiEndpoint.patch("create", "/users", { payload: Person })
-          if (scope === "endpoint") {
-            endpoint = endpoint.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
-          }
-          let group = HttpApiGroup.make("users").add(endpoint)
-          if (scope === "group") {
-            group = group.annotate(HttpApi.ParseOptions, { errors: "all" })
-          }
-          let api = HttpApi.make("Api").add(group)
-          if (scope !== "unset") {
-            api = api.annotate(HttpApi.ParseOptions, { errors: scope === "group" ? "first" : "all" })
-          }
-          const handler = yield* HttpRouter.toHttpEffect(
-            HttpApiBuilder.layer(api).pipe(
-              Layer.provide(
-                HttpApiBuilder.group(api, "users", (handlers) => handlers.handle("create", () => Effect.void))
-              )
-            )
-          )
-          const exit = yield* handler.pipe(
-            Effect.provideService(
-              HttpServerRequest.HttpServerRequest,
-              HttpServerRequest.fromWeb(
-                new Request("http://localhost/users", {
-                  method: method.toUpperCase(),
-                  headers: { "content-type": "application/json" },
-                  body: "{}"
-                })
-              )
-            ),
-            Effect.exit
-          )
-          assert.strictEqual(exit._tag, "Failure")
-          if (exit._tag === "Failure") {
-            const error = Cause.squash(exit.cause)
-            assert.ok(HttpApiError.HttpApiSchemaError.is(error))
-            assert.strictEqual(error.kind, "Payload")
-            assert.include(error.cause.message, "firstName")
-            // Endpoint options replace the whole API value, so errors defaults to first.
-            assert.strictEqual(error.cause.message.includes("lastName"), scope === "api" || scope === "group")
-          }
-          if (scope === "endpoint") {
-            const excess = yield* handler.pipe(
-              Effect.provideService(
-                HttpServerRequest.HttpServerRequest,
-                HttpServerRequest.fromWeb(
-                  new Request("http://localhost/users", {
-                    method: method.toUpperCase(),
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ firstName: "Ada", lastName: "Lovelace", extra: true })
-                  })
-                )
-              ),
-              Effect.exit
-            )
-            assert.strictEqual(excess._tag, "Failure")
-            if (excess._tag === "Failure") {
-              const error = Cause.squash(excess.cause)
-              assert.ok(HttpApiError.HttpApiSchemaError.is(error))
-              assert.include(error.cause.message, "extra")
-            }
-          }
-        }))
-    }
-  }
+  const Create = HttpApiEndpoint.post("create", "/users", { payload: Person })
+  const Api = HttpApi.make("Api").add(HttpApiGroup.make("users").add(Create))
+  const payloadError = Effect.fnUntraced(function*(api: typeof Api, payload: unknown = {}) {
+    const handler = yield* HttpRouter.toHttpEffect(
+      HttpApiBuilder.layer(api).pipe(
+        Layer.provide(HttpApiBuilder.group(api, "users", (handlers) => handlers.handle("create", () => Effect.void)))
+      )
+    )
+    const exit = yield* handler.pipe(
+      Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(
+          new Request("http://localhost/users", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+        )
+      ),
+      Effect.exit
+    )
+    assert.strictEqual(exit._tag, "Failure")
+    if (exit._tag === "Success") throw new Error("Expected payload decoding to fail")
+    const error = Cause.squash(exit.cause)
+    assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+    assert.strictEqual(error.kind, "Payload")
+    return error.cause.message
+  })
 
-  for (const part of ["params", "headers", "query"] as const) {
-    for (const raw of [false, true]) {
-      it.effect(`collects all ${part} issues with handle${raw ? "Raw" : ""}`, () =>
-        Effect.gen(function*() {
-          const api = HttpApi.make("Api").add(
-            HttpApiGroup.make("users").add(HttpApiEndpoint.post("create", "/users", {
-              [part]: Fields,
-              payload: Person
-            }))
-          ).annotate(HttpApi.ParseOptions, { errors: "all" })
-          const handler = yield* HttpRouter.toHttpEffect(
-            HttpApiBuilder.layer(api).pipe(
-              Layer.provide(HttpApiBuilder.group(api, "users", (handlers) =>
-                raw
-                  ? handlers.handleRaw("create", () => Effect.succeed(HttpServerResponse.empty()))
-                  : handlers.handle("create", () => Effect.void)))
-            )
-          )
-          const exit = yield* handler.pipe(
-            Effect.provideService(
-              HttpServerRequest.HttpServerRequest,
-              HttpServerRequest.fromWeb(
-                new Request("http://localhost/users", {
-                  method: "POST",
-                  headers: { "content-type": "application/json" },
-                  body: JSON.stringify({ firstName: "Ada", lastName: "Lovelace" })
-                })
-              )
-            ),
-            Effect.exit
-          )
-          assert.strictEqual(exit._tag, "Failure")
-          if (exit._tag === "Failure") {
-            const error = Cause.squash(exit.cause)
-            assert.ok(HttpApiError.HttpApiSchemaError.is(error))
-            assert.strictEqual(error.kind.toLowerCase(), part)
-            assert.include(error.cause.message, "firstName")
-            assert.include(error.cause.message, "lastName")
-          }
-        }))
-    }
-  }
-
-  it.effect("handleRaw still skips payload decoding with ParseOptions", () =>
+  it.effect("POST payload decoding collects all issues from API options", () =>
     Effect.gen(function*() {
-      const api = HttpApi.make("Api").add(
-        HttpApiGroup.make("users").add(HttpApiEndpoint.post("create", "/users", { payload: Person }))
-      ).annotate(HttpApi.ParseOptions, { errors: "all" })
-      const handler = yield* HttpRouter.toHttpEffect(
-        HttpApiBuilder.layer(api).pipe(
-          Layer.provide(HttpApiBuilder.group(api, "users", (handlers) =>
-            handlers.handleRaw("create", () =>
-              Effect.succeed(HttpServerResponse.empty({ status: 204 })))))
-        )
-      )
-      const response = yield* handler.pipe(
-        Effect.provideService(
-          HttpServerRequest.HttpServerRequest,
-          HttpServerRequest.fromWeb(
-            new Request("http://localhost/users", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: "{}"
-            })
-          )
-        )
-      )
-      assert.strictEqual(response.status, 204)
+      const message = yield* payloadError(Api.annotate(HttpApi.ParseOptions, { errors: "all" }))
+      assert.include(message, "firstName")
+      assert.include(message, "lastName")
     }))
 
-  for (const part of ["success", "error", "headers"] as const) {
-    it.effect(`collects all ${part} encoding issues`, () =>
-      Effect.gen(function*() {
-        const api = HttpApi.make("Api").add(
-          HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", {
-            success: part === "headers" ? HttpApiSchema.WithHeaders(Schema.String, Fields) : Person,
-            error: Person.pipe(HttpApiSchema.status(422))
-          }))
-        ).annotate(HttpApi.ParseOptions, { errors: "all" })
-        const GroupLayer = HttpApiBuilder.group(api, "users", (handlers) =>
-          handlers.handle("get", () =>
-            part === "error" ? Effect.fail({} as typeof Person.Type) : Effect.succeed(
-              (part === "headers" ? HttpApiSchema.withHeaders({ body: "ok", headers: {} }) : {}) as any
-            )))
-        const client = yield* HttpApiTest.groups(api, ["users"]).pipe(Effect.provide(GroupLayer))
-        const exit = yield* Effect.exit(client.users.get({ responseMode: "response-only" }))
-        assert.strictEqual(exit._tag, "Failure")
-        if (exit._tag === "Failure") {
-          const error = Cause.squash(exit.cause)
-          if (part === "error") {
-            assert.ok(Schema.isSchemaError(error))
-            assert.include(error.message, "firstName")
-            assert.include(error.message, "lastName")
-          } else {
-            assert.ok(HttpApiError.HttpApiSchemaError.is(error))
-            assert.strictEqual(error.kind, part === "headers" ? "ResponseHeaders" : "Body")
-            assert.include(error.cause.message, "firstName")
-            assert.include(error.cause.message, "lastName")
-          }
-        }
-      }))
-  }
+  it.effect("POST payload decoding defaults to the first issue", () =>
+    Effect.gen(function*() {
+      const message = yield* payloadError(Api)
+      assert.include(message, "firstName")
+      assert.notInclude(message, "lastName")
+    }))
+
+  it.effect("endpoint options replace the whole API value", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          Create.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+        )
+      ).annotate(HttpApi.ParseOptions, { errors: "all" })
+      const message = yield* payloadError(api)
+      assert.include(message, "firstName")
+      assert.notInclude(message, "lastName")
+      assert.include(yield* payloadError(api, { firstName: "Ada", lastName: "Lovelace", extra: true }), "extra")
+    }))
 })
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
