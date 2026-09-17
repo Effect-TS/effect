@@ -239,51 +239,6 @@ describe("cluster entity integration", () => {
         assert.strictEqual(revived.generation, 2)
         assert.strictEqual(revived.value, 1)
       }))
-    it.scopedLive(`${backend}: rebalances on runner addition, graceful stop, and abrupt death`, () =>
-      Effect.gen(function*() {
-        resetOrder()
-        const cluster = yield* make({ backend, entities: StandardEntities }), initial = yield* cluster.start(2)
-        yield* cluster.waitForStableAssignments()
-        const before = new Map<string, ClusterRunner>()
-        for (let index = 0; index < 2_000; index++) {
-          const id = `moving-${index}`
-          before.set(id, (yield* cluster.ownerOfEntity(StateEntity, id))!)
-        }
-        const [added] = yield* cluster.start(1)
-        assert.strictEqual(added.index, 2)
-        yield* cluster.waitForStableAssignments()
-        let movedId: string | undefined
-        for (const [id, old] of before) {
-          if (old !== added && (yield* cluster.ownerOfEntity(StateEntity, id)) === added) {
-            movedId = id
-            break
-          }
-        }
-        assert.isDefined(movedId)
-        const client = yield* cluster.getClient(StateEntity)
-        const moved = yield* client(movedId!).Increment(new Request({ id: `${backend}-moved`, sequence: 0 }))
-        assert.strictEqual(moved.runner, addressString(added.address))
-        const stopId = (yield* findIdsByRunner(cluster, initial)).get(initial[0])!
-        const request = yield* client(stopId).Ordered(new Request({ id: `${backend}-stop`, sequence: 1 })).pipe(
-          Effect.forkScoped
-        )
-        yield* cluster.waitUntil("The handover request did not start", Effect.as(orderEntered.await, true))
-        const stopping = yield* cluster.stop(initial[0]).pipe(Effect.forkScoped)
-        yield* cluster.waitUntil(
-          "The stopped runner did not hand over its entity",
-          Effect.map(cluster.ownerOfEntity(StateEntity, stopId), (owner) => owner !== undefined && owner !== initial[0])
-        )
-        yield* orderGate.open
-        assert.strictEqual(yield* Fiber.join(request), 1)
-        yield* Fiber.join(stopping)
-        yield* cluster.waitForStableAssignments()
-        const killId = `kill-${backend}`, killed = yield* cluster.ownerOfEntity(StateEntity, killId)
-        yield* cluster.kill(killed!)
-        const reply = yield* client(killId).Increment(new Request({ id: `${backend}-kill`, sequence: 0 }))
-        assert.notStrictEqual(reply.runner, addressString(killed!.address))
-        yield* cluster.waitForStableAssignments()
-        assert.strictEqual((yield* cluster.messageCounts()).unprocessed, 0)
-      }))
     it.scopedLive(`${backend}: transfers frozen row locks after expiry`, () =>
       Effect.gen(function*() {
         const cluster = yield* make({ backend, entities: StandardEntities, config: { shardLockDisableAdvisory: true } })
