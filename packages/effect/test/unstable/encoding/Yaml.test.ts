@@ -282,8 +282,7 @@ development:
   })
 
   describe("unsupported compact nested block sequences", () => {
-    // These are valid YAML, but unsupported by this configuration parser.
-    // Reject them instead of folding nested entries into strings or mapping keys.
+    // Valid YAML, deliberately rejected as unsupported.
     it.each([
       ["indentless mapping value", "a:\n- - 1\n  - 2\n"],
       ["indented mapping value", "a:\n  - - 1\n    - 2\n"],
@@ -309,7 +308,6 @@ development:
 
   describe("document boundaries", () => {
     // YAML 1.2.2 §9.1.2: document markers must start at column zero.
-    // Indented marker-like text is scalar content, including before a comment.
     it.each([
       ["---", ""],
       ["---", " # comment"],

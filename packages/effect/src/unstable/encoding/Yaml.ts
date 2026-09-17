@@ -1,15 +1,12 @@
 /**
  * Parses YAML configuration files.
  *
- * This is a focused YAML 1.2 configuration parser. It supports block and flow
- * collections, multiline plain and quoted scalars, block scalars, anchors, and
- * aliases. Block sequence values in mappings may use indentless notation.
+ * Supports YAML 1.2 block and flow collections, indentless sequence values,
+ * multiline plain and quoted scalars, block scalars, anchors, and aliases.
  *
- * It is not a full YAML processor: compact nested block sequences (a sequence
- * item's value starting with another sequence entry on the same line, such as
- * `- - value`), multiline flow collections, explicit complex mapping keys,
- * tag/directive processing, recursive aliases, and document streams are
- * unsupported. Mapping keys are represented as JavaScript strings.
+ * Unsupported: compact nested block sequences (`- - value` on one line),
+ * multiline flow collections, explicit complex keys, tag/directive processing,
+ * recursive aliases, and document streams. Mapping keys are JavaScript strings.
  *
  * @since 4.0.0
  */
@@ -52,7 +49,6 @@ const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
   })
 }
 
-// Index of the quote closing the scalar whose content starts at `start`, or -1.
 const closingQuote = (input: string, quote: string, start: number): number => {
   for (let index = start; index < input.length; index++) {
     const character = input[index]
@@ -111,7 +107,7 @@ const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "
 
 const endsWithEscape = (text: string): boolean => /\\*$/.exec(text)![0].length % 2 === 1
 
-// Strips trailing whitespace before a folded line break, keeping an escaped space.
+// Escaped trailing spaces are content, not folding whitespace.
 const trimFoldedEnd = (line: string, quote: string): string => {
   const trailing = /[ \t]+$/.exec(line)
   if (trailing === null) return line
@@ -437,7 +433,7 @@ class YamlParser {
       return null
     }
     if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) return this.parseBlockScalar(text, parentIndent)
-    // Trailing whitespace may be escaped content in a double-quoted scalar.
+    // Keep escaped trailing whitespace in quoted values.
     if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
     if (text.startsWith("*")) {
       const name = text.slice(1).trim()
@@ -457,7 +453,7 @@ class YamlParser {
       const blankLines = this.skipBlankLines()
       const next = this.lines[this.index]
       if (next === undefined || next.indent <= parentIndent) break
-      // Quotes in a plain continuation are literal characters, not delimiters.
+      // Quotes in plain continuations are literal.
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
       const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
@@ -484,7 +480,6 @@ class YamlParser {
         return parseScalar(output + line.slice(0, end + 1))
       }
       if (quote === "\"" && endsWithEscape(line)) {
-        // An escaped line break joins the lines without a separator.
         output += line.slice(0, -1)
       } else {
         output += trimFoldedEnd(line, quote) + foldLineBreak(this.skipBlankLines())
