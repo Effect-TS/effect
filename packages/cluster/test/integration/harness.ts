@@ -14,14 +14,16 @@ import {
   SqlMessageStorage,
   SqlRunnerStorage
 } from "@effect/cluster"
-import { NodeClusterSocket, NodeSocketServer } from "@effect/platform-node"
+import { NodeClusterSocket, NodeSocket, NodeSocketServer } from "@effect/platform-node"
+import * as Socket from "@effect/platform/Socket"
 import { SocketServer } from "@effect/platform/SocketServer"
-import { type Rpc, RpcSerialization } from "@effect/rpc"
+import { type Rpc, RpcClient, RpcSerialization } from "@effect/rpc"
 import { SqlClient, type SqlConnection, SqlError } from "@effect/sql"
 import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
 import { WorkflowEngine } from "@effect/workflow"
 import { Clock, Context, Duration, Effect, ExecutionStrategy, Exit, Layer, Option, Redacted, Scope } from "effect"
+import * as Net from "node:net"
 import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
@@ -36,9 +38,61 @@ export interface ClusterRunner {
   readonly index: number
   readonly sharding: Sharding.Sharding["Type"]
   readonly scope: Scope.CloseableScope
-  readonly state: () => "killed" | "running" | "stopped"
-  readonly setState: (state: "killed" | "running" | "stopped") => void
+  readonly state: () => "killed" | "running" | "stopped" | "frozen"
+  readonly setState: (state: "killed" | "running" | "stopped" | "frozen") => void
   readonly faultLock: (mode: LockFaultMode) => Effect.Effect<void>
+  readonly freeze: Effect.Effect<void>
+}
+
+const addressKey = (address: RunnerAddress.RunnerAddress) => `${address.host}:${address.port}`
+const makeSocketController = () => {
+  const connections = new Map<string, Set<Net.Socket>>()
+  const protocol = (source: string) =>
+    Layer.effect(Runners.RpcClientProtocol)(Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      return Effect.fnUntraced(function*(address) {
+        const key = `${source}->${addressKey(address)}`
+        const socket = yield* NodeSocket.fromDuplex(
+          Effect.acquireRelease(
+            Effect.async<Net.Socket, Socket.SocketError>((resume) => {
+              const connection = Net.createConnection({ host: address.host, port: address.port })
+              connection.once("connect", () => {
+                const active = connections.get(key) ?? new Set<Net.Socket>()
+                active.add(connection)
+                connections.set(key, active)
+                resume(Effect.succeed(connection))
+              })
+              connection.on(
+                "error",
+                (cause) => resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
+              )
+              return Effect.sync(() => {
+                connection.destroy()
+              })
+            }),
+            (connection) =>
+              Effect.sync(() => {
+                const active = connections.get(key)
+                active?.delete(connection)
+                if (active?.size === 0) connections.delete(key)
+                if (!connection.closed) connection.destroySoon()
+              })
+          ),
+          { openTimeout: 1_000 }
+        )
+        return yield* RpcClient.makeProtocolSocket().pipe(
+          Effect.provideService(Socket.Socket, socket),
+          Effect.provideService(RpcSerialization.RpcSerialization, serialization)
+        )
+      }, Effect.orDie)
+    })).pipe(Layer.provide(RpcSerialization.layerNdjson))
+  const cut = (source: string, target: string) =>
+    Effect.sync(() => {
+      const socket = connections.get(`${source}->${target}`)?.values().next().value
+      if (socket === undefined) throw new Error(`No active socket from ${source} to ${target}`)
+      socket.destroy(new Error(`Socket cut from ${source} to ${target}`))
+    })
+  return { protocol, cut }
 }
 
 const makeLockFaultController = (sql: SqlClient.SqlClient) => {
@@ -123,6 +177,7 @@ export const make = Effect.fnUntraced(function*(options: {
   readonly backend: Backend
   readonly entities: RunnerEntities | ((options: { readonly prefix: string }) => RunnerEntities)
   readonly config?: Partial<ShardingConfig.ShardingConfig["Type"]>
+  readonly trackSockets?: boolean
 }) {
   const parentScope = yield* Effect.scope
   const prefix = `cluster_${process.pid}_${nextCluster++}`
@@ -144,6 +199,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<ClusterRunner> = []
   const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(RpcSerialization.layerNdjson))
+  const socketController = makeSocketController()
   const makeStorage = (scope: Scope.CloseableScope, storageDatabase: Context.Context<SqlClient.SqlClient> = database) =>
     SqlRunnerStorage.layerWith({ prefix }).pipe(
       Layer.provide(ShardingConfig.layer(config)),
@@ -154,7 +210,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const clientScope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
   const clientStorage = yield* makeStorage(clientScope)
   const clientBase = yield* SocketRunner.layerClientOnly.pipe(
-    Layer.provide(protocol),
+    Layer.provide(options.trackSockets ? socketController.protocol("client") : protocol),
     Layer.provide(RpcSerialization.layerNdjson),
     Layer.provide(ShardingConfig.layer(config)),
     Layer.buildWithScope(clientScope),
@@ -180,32 +236,50 @@ export const make = Effect.fnUntraced(function*(options: {
           RunnerStorage.RunnerStorage
         )
         yield* Scope.addFinalizer(scope, lockFault.set("clear"))
-        let state: "killed" | "running" | "stopped" = "running"
+        let state: ReturnType<ClusterRunner["state"]> = "running"
+        const gate = Effect.unsafeMakeLatch(true)
+        const refreshPaused = Effect.unsafeMakeLatch()
+        const syncPaused = Effect.unsafeMakeLatch()
+        const waitWhileFrozen = <A, E>(
+          paused: Effect.Latch,
+          effect: Effect.Effect<A, E>,
+          onKilled: () => A
+        ): Effect.Effect<A, E> =>
+          Effect.suspend(() => {
+            if (state === "killed") return Effect.succeed(onKilled())
+            if (state !== "frozen") return effect
+            paused.unsafeOpen()
+            return gate.await.pipe(
+              Effect.uninterruptible,
+              Effect.andThen(Effect.suspend(() => state === "killed" ? Effect.succeed(onKilled()) : effect))
+            )
+          })
         let lastRunners: Effect.Effect.Success<typeof raw.getRunners> = []
         const storage = RunnerStorage.RunnerStorage.of({
           ...raw,
-          getRunners: Effect.suspend(() =>
-            state === "killed"
-              ? Effect.succeed(lastRunners)
-              : raw.getRunners.pipe(Effect.tap((runners) =>
-                Effect.sync(() => {
-                  lastRunners = runners
-                })
-              ))
+          getRunners: waitWhileFrozen(
+            syncPaused,
+            raw.getRunners.pipe(Effect.tap((runners) =>
+              Effect.sync(() => {
+                lastRunners = runners
+              })
+            )),
+            () => lastRunners
           ),
           refresh: (address, shards) => {
             const shardIds = Array.from(shards)
-            return Effect.suspend(() => state === "killed" ? Effect.succeed(shardIds) : raw.refresh(address, shardIds))
+            return waitWhileFrozen(refreshPaused, raw.refresh(address, shardIds), () => shardIds)
           },
           release: (address, shard) => state === "killed" ? Effect.void : raw.release(address, shard),
           releaseAll: (address) => state === "killed" ? Effect.void : raw.releaseAll(address),
           unregister: (address) => state === "killed" ? Effect.void : raw.unregister(address)
         })
+        const runnerProtocol = options.trackSockets ? socketController.protocol(addressKey(address)) : protocol
         const context = yield* (startOptions?.entities ?? entities).pipe(
           Layer.provideMerge(SocketRunner.layer),
-          Layer.provide(RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(protocol))),
+          Layer.provide(RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(runnerProtocol))),
           Layer.provide(Layer.succeed(SocketServer, server)),
-          Layer.provide(protocol),
+          Layer.provide(runnerProtocol),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(ShardingConfig.layer({ ...config, ...startOptions, runnerAddress: Option.some(address) })),
           Layer.buildWithScope(scope),
@@ -220,7 +294,23 @@ export const make = Effect.fnUntraced(function*(options: {
           state: () => state,
           setState: (next) => {
             state = next
-          }
+            if (next !== "frozen") gate.unsafeOpen()
+          },
+          freeze: Scope.addFinalizer(
+            parentScope,
+            Effect.sync(() => {
+              if (state === "frozen") {
+                state = "running"
+                gate.unsafeOpen()
+              }
+            })
+          ).pipe(
+            Effect.andThen(Effect.sync(() => {
+              state = "frozen"
+              gate.unsafeClose()
+            })),
+            Effect.andThen(Effect.all([refreshPaused.await, syncPaused.await], { discard: true }))
+          )
         }
         runners.push(runner)
         yield* Scope.addFinalizer(
@@ -232,13 +322,13 @@ export const make = Effect.fnUntraced(function*(options: {
   })
   const stop = (runner: ClusterRunner) =>
     Effect.suspend(() => {
-      if (runner.state() !== "running") return Effect.void
+      if (runner.state() !== "running" && runner.state() !== "frozen") return Effect.void
       runner.setState("stopped")
       return Scope.close(runner.scope, Exit.void)
     })
   const kill = (runner: ClusterRunner) =>
     Effect.suspend(() => {
-      if (runner.state() !== "running") return Effect.void
+      if (runner.state() !== "running" && runner.state() !== "frozen") return Effect.void
       runner.setState("killed")
       return Scope.close(runner.scope, Exit.void)
     })
@@ -253,8 +343,8 @@ export const make = Effect.fnUntraced(function*(options: {
     }
     return assignments
   }
-  const ownersOfShard = (shard: ShardId.ShardId) =>
-    runners.filter((r) => r.state() === "running" && r.sharding.hasShardId(shard))
+  const ownersOfShard = (shard: ShardId.ShardId, includeInactive = false) =>
+    runners.filter((r) => (includeInactive || r.state() === "running") && r.sharding.hasShardId(shard))
   const messageCounts = Effect.fnUntraced(function*() {
     const rows = yield* sql<{ processed: boolean | number; reply_payload: string | Record<string, unknown> | null }>`
       SELECT m.processed, r.payload AS reply_payload FROM ${sql(`${prefix}_messages`)} m
@@ -332,6 +422,18 @@ export const make = Effect.fnUntraced(function*(options: {
     start,
     stop,
     kill,
+    freeze: (runner: ClusterRunner) => runner.freeze,
+    cutSocket: (
+      runner: ClusterRunner,
+      options: { readonly peer: ClusterRunner | "client"; readonly direction: "inbound" | "outbound" }
+    ) => {
+      const peer = options.peer === "client" ? "client" : addressKey(options.peer.address)
+      return options.direction === "inbound"
+        ? socketController.cut(peer, addressKey(runner.address))
+        : socketController.cut(addressKey(runner.address), peer)
+    },
+    insertMessage: (row: Readonly<Record<string, string | number | bigint | boolean | null>>) =>
+      sql`INSERT INTO ${sql(`${prefix}_messages`)} ${sql.insert({ ...row })}`.unprepared.pipe(Effect.asVoid),
     runners,
     assignmentMap,
     ownersOfShard,
