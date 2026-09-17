@@ -280,6 +280,56 @@ development:
     })
   })
 
+  describe("unsupported compact nested block sequences", () => {
+    // These are valid YAML, but unsupported by this configuration parser.
+    // Reject them instead of folding nested entries into strings or mapping keys.
+    it.each([
+      ["indentless mapping value", "a:\n- - 1\n  - 2\n"],
+      ["indented mapping value", "a:\n  - - 1\n    - 2\n"],
+      ["root sequence", "- - 1\n  - 2\n"],
+      ["blank line between nested entries", "- - 1\n\n  - 2\n"],
+      ["nested entry after a scalar item", "a:\n- 1\n- - 2\n"],
+      ["nested mapping item", "a:\n- - b: 1\n"],
+      ["single-line nested sequence", "- - 1\n"],
+      ["empty nested entry", "- -\n"]
+    ])("rejects %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    it.each(
+      [
+        ["mapping value", "a: one\n  - two\n", { a: "one - two" }],
+        ["sequence item", "- one\n  - two\n", ["one - two"]]
+      ] as const
+    )("preserves a dash in a plain continuation of a %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+  })
+
+  describe("document boundaries", () => {
+    it.each([
+      ["mappings", "a: 1\n---\nb: 2\n"],
+      ["sequences", "- one\n---\n- two\n"],
+      ["plain scalars", "one\n---\ntwo\n"],
+      ["explicit initial marker", "---\na: 1\n--- # second document\nb: 2\n"],
+      ["empty first document", "---\n---\nb: 2\n"],
+      ["empty trailing document", "a: 1\n---\n"]
+    ])("rejects a document stream containing %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    it.each(
+      [
+        ["mapping", "# before\n--- # start\na: 1\n... # end\n# after\n", { a: 1 }],
+        ["sequence", "---\n- one\n- two\n...\n", ["one", "two"]],
+        ["plain scalar", "---\none\n...\n", "one"],
+        ["empty document", "---\n...\n", null]
+      ] as const
+    )("preserves single-document markers around a %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+  })
+
   describe("anchors and quoted comment boundaries", () => {
     it.each([
       ["plain", "description: &text Deploy\n  and verify.\nalias: *text\n", "Deploy and verify."],
