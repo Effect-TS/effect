@@ -108,7 +108,10 @@ const open = Effect.fnUntraced(function*(
   })
 
   const address = yield* Effect.try({
-    try: () => fromSocketAddress(native.socket.address, scopeIds),
+    try: () => {
+      const { address, port } = native.socket.address
+      return Result.getOrThrow(NetAddress.inetAddressFromHostString(address, port, scopeIds))
+    },
     catch: openError
   })
 
@@ -137,7 +140,7 @@ const makeSocketOptions = (
     ) => {
       if (state.isClosed || flags?.truncated) return
       try {
-        handlers.onMessage(data, fromSocketAddress({ address, port }, scopeIds))
+        handlers.onMessage(data, Result.getOrThrow(NetAddress.inetAddressFromHostString(address, port, scopeIds)))
       } catch (cause) {
         handlers.onError(cause)
       }
@@ -199,12 +202,6 @@ const closeSocket = (state: SocketState) =>
     state.isClosed = true
     state.socket?.close()
   })
-
-const fromSocketAddress = (
-  address: { readonly address: string; readonly port: number },
-  scopeIds: ReadonlyMap<string, number>
-): NetAddress.InetAddress =>
-  Result.getOrThrow(NetAddress.inetAddressFromHostString(address.address, address.port, scopeIds))
 
 const openError = (cause: unknown) =>
   new Datagram.DatagramSocketError({
