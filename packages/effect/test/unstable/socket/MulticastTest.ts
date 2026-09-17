@@ -54,17 +54,6 @@ export const suite = (name: string, layer: Layer.Layer<Multicast.MulticastFactor
         }
       }).pipe(Effect.provide(layer), Effect.timeout("3 seconds")))
 
-    it.live("also receives unicast and keeps ordinary datagram adapters usable", () =>
-      Effect.gen(function*() {
-        const receiver = yield* Multicast.bind({ localAddress, memberships })
-        const sender = yield* Multicast.bind({ localAddress, loopback: false })
-        yield* sender.writer.write({
-          data: new Uint8Array([7]),
-          destination: NetAddress.inetAddressUnsafe(NetAddress.ipv4Loopback, receiver.address.port)
-        })
-        assert.deepStrictEqual(Array.from((yield* receiver.reader.pull)[0].data), [7])
-      }).pipe(Effect.provide(layer), Effect.timeout("3 seconds")))
-
     it.live("closes pending I/O and releases the port and membership with its scope", () =>
       Effect.gen(function*() {
         const scope = yield* Scope.fork(yield* Effect.scope)

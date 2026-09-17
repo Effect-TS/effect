@@ -43,18 +43,43 @@ describe("NodeMulticast configuration", { concurrent: false }, () => {
       assert.deepStrictEqual(join.mock.calls, [["ff02::114", zone]])
     }))
 
-  it.live("reports which setting failed and preserves the native cause", () =>
+  it.live("passes IPv4 interface addresses directly to native configuration", () =>
     Effect.gen(function*() {
-      const cause = new Error("unsupported multicast option")
-      vi.spyOn(Dgram.Socket.prototype, "setMulticastTTL").mockImplementation(() => {
+      const outgoing = vi.spyOn(Dgram.Socket.prototype, "setMulticastInterface").mockImplementation(() => {})
+      const join = vi.spyOn(Dgram.Socket.prototype, "addMembership").mockImplementation(() => {})
+      const networkInterface = {
+        _tag: "Ipv4" as const,
+        address: Result.getOrThrow(NetAddress.ipv4FromString("192.0.2.1"))
+      }
+      yield* NodeMulticast.bind({
+        localAddress: NetAddress.inetAddressFromIpStringUnsafe("0.0.0.0", 0),
+        memberships: [{
+          group: Result.getOrThrow(NetAddress.ipv4FromString("239.255.23.42")),
+          interface: networkInterface
+        }],
+        outgoingInterface: networkInterface
+      })
+      assert.deepStrictEqual(outgoing.mock.calls, [["192.0.2.1"]])
+      assert.deepStrictEqual(join.mock.calls, [["239.255.23.42", "192.0.2.1"]])
+    }))
+
+  it.live("reports native rejection of a well-formed IPv4 selector as an open error", () =>
+    Effect.gen(function*() {
+      const cause = new Error("interface address is not assigned locally")
+      const outgoing = vi.spyOn(Dgram.Socket.prototype, "setMulticastInterface").mockImplementation(() => {
         throw cause
       })
+      const networkInterface = {
+        _tag: "Ipv4" as const,
+        address: Result.getOrThrow(NetAddress.ipv4FromString("192.0.2.1"))
+      }
       const error = yield* NodeMulticast.bind({
         localAddress: NetAddress.inetAddressFromIpStringUnsafe("0.0.0.0", 0),
-        hopLimit: 17
+        outgoingInterface: networkInterface
       }).pipe(Effect.flip)
+      assert.deepStrictEqual(outgoing.mock.calls, [["192.0.2.1"]])
       assert.strictEqual(error.reason._tag, "DatagramSocketOpenError")
-      assert.deepStrictEqual(error.cause, { operation: "setMulticastTTL", value: 17, cause })
+      assert.deepStrictEqual(error.cause, { operation: "setMulticastInterface", value: networkInterface, cause })
     }))
 
   describe.skipIf(Process.platform === "win32")("Unix interface lookup", () => {

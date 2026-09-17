@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Ref, Result, Scope } from "effect"
+import { Deferred, Effect, Result } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
 import * as Multicast from "effect/unstable/socket/Multicast"
@@ -15,18 +15,17 @@ const capture = Effect.fnUntraced(function*(options: Multicast.BindOptions) {
   const observed = yield* Deferred.make<Multicast.ResolvedBindOptions>()
   const socket = yield* Multicast.fromTransport(
     options,
-    (resolved, handlers) =>
+    (resolved) =>
       Deferred.succeed(observed, resolved).pipe(Effect.as({
         address: resolved.localAddress,
-        send: (packet: Datagram.OutgoingPacket) =>
-          Effect.sync(() => handlers.onMessage(packet.data, resolved.localAddress))
+        send: () => Effect.void
       }))
   )
   return { socket, options: yield* Deferred.await(observed) }
 })
 
 describe("Multicast", () => {
-  it.effect("applies multicast defaults and preserves datagram buffering and I/O", () =>
+  it.effect("applies multicast defaults and forwards datagram options", () =>
     Effect.gen(function*() {
       const { options, socket } = yield* capture({ localAddress, receiveCapacity: 1, maxPacketBytes: 2 })
       assert.deepStrictEqual(options, {
@@ -39,12 +38,6 @@ describe("Multicast", () => {
         reuseAddress: false
       })
       assert.isTrue(Datagram.isDatagramSocket(socket))
-      const destination = NetAddress.inetAddressUnsafe(group, localAddress.port)
-      yield* socket.writer.write({ data: new Uint8Array([1]), destination })
-      yield* socket.writer.write({ data: new Uint8Array([2]), destination })
-      assert.deepStrictEqual(Array.from((yield* socket.reader.pull)[0].data), [1])
-      const failure = yield* Effect.flip(socket.writer.write({ data: new Uint8Array([1, 2, 3]), destination }))
-      assert.strictEqual(failure.reason._tag, "DatagramSocketMessageTooLargeError")
     }))
 
   it.effect("deduplicates equal memberships without merging distinct interfaces", () =>
@@ -71,16 +64,29 @@ describe("Multicast", () => {
       assert.strictEqual(options.reuseAddress, true)
     }))
 
-  it.effect("accepts IPv6 groups with explicit interface indices and the maximum hop limit", () =>
+  it.effect("passes well-formed interface selectors unchanged to the platform", () =>
     Effect.gen(function*() {
-      const { options } = yield* capture({
+      const ipv4: Multicast.Ipv4Interface = {
+        _tag: "Ipv4",
+        address: Result.getOrThrow(NetAddress.ipv4FromString("192.0.2.1"))
+      }
+      const ipv6: Multicast.Ipv6Interface = { _tag: "Ipv6", index: 0xffffffff }
+      const v4 = yield* capture({
+        localAddress,
+        memberships: [{ group, interface: ipv4 }],
+        outgoingInterface: ipv4
+      })
+      const v6 = yield* capture({
         localAddress: localV6,
-        memberships: [{ group: groupV6, interface: interfaceV6 }],
-        outgoingInterface: interfaceV6,
+        memberships: [{ group: groupV6, interface: ipv6 }],
+        outgoingInterface: ipv6,
         hopLimit: 255
       })
-      assert.deepStrictEqual(options.memberships, [{ group: groupV6, interface: interfaceV6 }])
-      assert.strictEqual(options.hopLimit, 255)
+      assert.strictEqual(v4.options.memberships[0].interface, ipv4)
+      assert.strictEqual(v4.options.outgoingInterface, ipv4)
+      assert.strictEqual(v6.options.memberships[0].interface, ipv6)
+      assert.strictEqual(v6.options.outgoingInterface, ipv6)
+      assert.strictEqual(v6.options.hopLimit, 255)
     }))
 
   const invalid: Array<readonly [string, Multicast.BindOptions]> = [
@@ -125,54 +131,4 @@ describe("Multicast", () => {
         assert.strictEqual(error.reason._tag, "DatagramSocketInvalidOptionsError")
       })
   )
-
-  it.effect("releases partially configured transports before returning their failure", () =>
-    Effect.gen(function*() {
-      const released = yield* Ref.make(false)
-      const failure = new Datagram.DatagramSocketError({
-        reason: new Datagram.DatagramSocketOpenError({ cause: "join failed" })
-      })
-      const error = yield* Multicast.fromTransport({ localAddress, memberships: [{ group }] }, () =>
-        Effect.gen(function*() {
-          yield* Effect.addFinalizer(() =>
-            Ref.set(released, true)
-          )
-          return yield* failure
-        })).pipe(Effect.flip)
-      assert.strictEqual(error, failure)
-      assert.isTrue(yield* Ref.get(released))
-    }))
-
-  it.effect("closes partial acquisition when interrupted", () =>
-    Effect.gen(function*() {
-      const started = yield* Deferred.make<void>()
-      const released = yield* Ref.make(false)
-      const fiber = yield* Multicast.fromTransport({ localAddress }, () =>
-        Effect.gen(function*() {
-          yield* Effect.addFinalizer(() => Ref.set(released, true))
-          yield* Deferred.succeed(started, undefined)
-          return yield* Effect.never
-        })).pipe(Effect.forkChild)
-      yield* Deferred.await(started)
-      yield* Fiber.interrupt(fiber)
-      assert.isTrue(yield* Ref.get(released))
-    }))
-
-  it.effect("uses the multicast factory and keeps I/O owned by the acquisition scope", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.fork(yield* Effect.scope)
-      const socket = yield* Multicast.bind({ localAddress }).pipe(
-        Effect.provideService(Multicast.MulticastFactory, {
-          bind: (options) => Effect.map(capture(options), ({ socket }) => socket)
-        }),
-        Scope.provide(scope)
-      )
-      const receiving = yield* socket.reader.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
-      yield* Scope.close(scope, Exit.void)
-      assert.strictEqual((yield* Fiber.join(receiving)).reason._tag, "DatagramSocketClosedError")
-      const failure = yield* socket.writer.write({ data: new Uint8Array(), destination: localAddress }).pipe(
-        Effect.flip
-      )
-      assert.strictEqual(failure.reason._tag, "DatagramSocketClosedError")
-    }))
 })

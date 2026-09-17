@@ -12,7 +12,8 @@ import * as NetAddress from "../net/NetAddress.ts"
 import * as DatagramSocket from "./DatagramSocket.ts"
 
 /**
- * A local IPv4 interface selected by its assigned unicast address.
+ * An IPv4 interface selector containing a unicast address assigned to the local
+ * interface, not the multicast group or a remote destination.
  *
  * @category models
  * @since 4.0.0
@@ -23,19 +24,37 @@ export interface Ipv4Interface {
 }
 
 /**
- * A local IPv6 interface selected by its positive, unsigned 32-bit index.
+ * An IPv6 interface selected by its operating-system name or positive unsigned
+ * 32-bit index. Names also work on Unix interfaces without scoped IPv6 addresses.
  *
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6Interface {
-  readonly _tag: "Ipv6"
-  readonly index: number
-}
+export type Ipv6Interface =
+  | { readonly _tag: "Ipv6"; readonly index: number; readonly name?: never }
+  | { readonly _tag: "Ipv6"; readonly name: string; readonly index?: never }
 
 /**
  * An interface selector for multicast reception or transmission.
  *
+ * **Details**
+ *
+ * Supply an assigned local IPv4 address or an IPv6 interface name or index. Selectors
+ * are plain data, not resolved handles. Core validation checks the selector's
+ * form and address family without querying local interfaces. Platform adapters
+ * translate selectors and configure the native socket during acquisition.
+ * Unix index lookup requires a scoped IPv6 address; use a name when unavailable.
+ * Windows name lookup requires a scoped IPv6 address; use an index when unavailable.
+ * Interfaces are resolved during acquisition without monitoring later changes.
+ *
+ * **Gotchas**
+ *
+ * A well-formed selector does not guarantee that the interface exists or
+ * supports multicast. Platform configuration failures surface as datagram open
+ * errors during acquisition.
+ *
+ * @see {@link Ipv4Interface} for selection by an assigned IPv4 address
+ * @see {@link Ipv6Interface} for selection by an interface name or index
  * @category models
  * @since 4.0.0
  */
@@ -46,9 +65,11 @@ export type NetworkInterface = Ipv4Interface | Ipv6Interface
  *
  * **Details**
  *
- * IPv4 may omit the interface to let the operating system choose one. IPv6
- * requires an explicit interface index. The group's receiving port comes from
+ * Omit the interface to let the operating system choose one. Scoped IPv6 groups
+ * may require an explicit interface depending on local routing. The receiving port comes from
  * the socket's local binding. Membership does not select the outgoing interface.
+ * Supply a unicast source to join a source-specific multicast channel. Sources
+ * must match the group's family. Native support depends on the runtime and OS.
  *
  * @category models
  * @since 4.0.0
@@ -57,10 +78,12 @@ export type Membership =
   | {
     readonly group: NetAddress.Ipv4Address
     readonly interface?: Ipv4Interface | undefined
+    readonly source?: NetAddress.Ipv4Address | undefined
   }
   | {
     readonly group: NetAddress.Ipv6Address
-    readonly interface: Ipv6Interface
+    readonly interface?: Ipv6Interface | undefined
+    readonly source?: NetAddress.Ipv6Address | undefined
   }
 
 /**
@@ -96,6 +119,11 @@ export interface BindOptions extends DatagramSocket.BindOptions {
 
 /**
  * Validated multicast settings with defaults applied and memberships deduplicated.
+ *
+ * **Details**
+ *
+ * Interface selectors remain caller-supplied data; validation does not resolve
+ * them against the machine's network configuration.
  *
  * @category models
  * @since 4.0.0
@@ -210,8 +238,13 @@ const resolveOptions = Effect.fnUntraced(function*(
     }
     if (membership.interface !== undefined) {
       yield* validateInterface(membership.interface, ipv4)
-    } else if (!ipv4) {
-      return yield* invalidOptions("IPv6 memberships require an explicit interface index")
+    }
+    if (membership.source !== undefined && (
+      NetAddress.isIpv4Address(membership.source) !== ipv4 ||
+      NetAddress.isUnspecified(membership.source) || NetAddress.isMulticast(membership.source) ||
+      NetAddress.isBroadcast(membership.source)
+    )) {
+      return yield* invalidOptions("Membership source must be a specified unicast address of the group's family")
     }
     const networkInterface = membership.interface
     const key = `${membership.group}/${
@@ -219,8 +252,8 @@ const resolveOptions = Effect.fnUntraced(function*(
         "default" :
         networkInterface._tag === "Ipv4"
         ? networkInterface.address
-        : networkInterface.index
-    }`
+        : networkInterface.name ?? networkInterface.index
+    }/${membership.source ?? "any"}`
     if (!seen.has(key)) {
       seen.add(key)
       memberships.push(membership)
@@ -243,6 +276,12 @@ const validateInterface = Effect.fnUntraced(function*(
     return yield* invalidOptions("Multicast interface must match the local address family")
   }
   if (networkInterface._tag === "Ipv6") {
+    if (networkInterface.name !== undefined) {
+      if (networkInterface.name.length === 0 || /[%\s\0]/.test(networkInterface.name) || networkInterface.index !== undefined) {
+        return yield* invalidOptions("IPv6 interface name must be nonempty, contain no zone separator or whitespace, and exclude an index")
+      }
+      return
+    }
     if (
       !Number.isInteger(networkInterface.index) || networkInterface.index < 1 || networkInterface.index > 0xffffffff
     ) {
