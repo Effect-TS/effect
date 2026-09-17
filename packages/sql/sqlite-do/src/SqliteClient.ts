@@ -1,32 +1,18 @@
 /**
  * Connects Effect SQL to SQLite storage inside Cloudflare Durable Objects.
  *
- * This module adapts a Durable Object `SqlStorage` handle into both the
- * Durable Object-specific `SqliteClient` service and the generic Effect
- * `SqlClient` service. Use it from inside a Durable Object to run local
- * per-object queries, repositories, migrations, transactional read/write
- * workflows, and tests that exercise Cloudflare's SQLite-backed storage API.
+ * Provides `SqliteClient` and the generic `SqlClient` service. Pass `db` for
+ * queries only, or `storage` for transactions and migrations. SQLite blobs are
+ * returned as `Uint8Array`; `updateValues` is unsupported.
  *
- * Durable Object SQLite storage is scoped to one object id, so each object
- * instance has its own database. Callers can pass the `SqlStorage` handle for
- * normal queries, or the full `DurableObjectStorage` when `withTransaction` or
- * migrations need Cloudflare-managed transactions. This adapter serializes
- * Effect SQL access through one connection; an outer transaction holds that permit
- * until Cloudflare completes it, so keep transactions short, avoid suspending them
- * across unrelated work, and use them when multi-statement writes must commit
- * atomically. `SqlStorage.exec` returns `ArrayBuffer` values
- * for SQLite blobs, which this client normalizes to `Uint8Array`, and SQLite
- * does not support `updateValues`.
+ * The outer transaction holds the connection semaphore until storage completes.
+ * Nested `withTransaction` calls reuse that connection and call
+ * `storage.transaction()` without emitting transaction SQL. Child failures and
+ * interruptions roll back the child; uncaught failures also roll back the parent.
  *
- * Nested `withTransaction` calls reuse the active connection and create child
- * boundaries through nested `storage.transaction()` callbacks, without emitting
- * transaction SQL. A caught child failure or interruption rolls back only that
- * child's writes; an uncaught failure also rolls back the outer transaction.
- * Run children sequentially: concurrent sibling transactions are unsupported.
- * Fibers inheriting the transaction context must finish their transaction work
- * before the enclosing transaction exits. Using that context afterwards is
- * unsupported: it can bypass the semaphore after the connection is released.
- * Clients configured with only `db` do not support transactions.
+ * Concurrent sibling transactions are unsupported. Fibers inheriting the
+ * transaction context must finish their transaction work before the enclosing
+ * transaction exits; later use can bypass the connection semaphore.
  *
  * @since 4.0.0
  */
@@ -157,7 +143,7 @@ const makeStorageBackedWithTransaction = (
             if (Exit.isFailure(exit)) {
               txn.rollback()
             }
-            // Resolve after rollback: throwing from a child callback can abort its parent.
+            // Throwing from a child callback can abort its parent.
             resolve()
             return Effect.flatten(Effect.promise(() => promise))
           }))
