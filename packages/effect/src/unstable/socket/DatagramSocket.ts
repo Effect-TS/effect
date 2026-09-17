@@ -332,51 +332,53 @@ export const fromTransport = (
   options: BindOptions,
   acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>
 ): Effect.Effect<DatagramSocket, DatagramSocketError, Scope.Scope> =>
-  Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (parentScope) => {
-      const socketScope = Scope.forkUnsafe(parentScope)
-      return Effect.gen(function*() {
-        const transportScope = Scope.makeUnsafe()
-        const receiver = yield* makeReceiver(options)
-        const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
-        // In an already closed scope this runs immediately, before acquisition.
-        yield* Scope.addFinalizerExit(socketScope, (exit) =>
-          Effect.sync(() => {
-            // Settle I/O and discard buffered packets before native cleanup can suspend.
-            receiver.fail(closedError)
-            Deferred.doneUnsafe(closed, Exit.fail(closedError))
-          }).pipe(Effect.andThen(Scope.close(transportScope, exit))))
-
-        const whileOpen = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
-          Effect.raceFirst(
-            Effect.suspend(() => Deferred.isDoneUnsafe(closed) ? Effect.fail(closedError) : operation),
-            Deferred.await(closed)
-          )
-        const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(
-          Scope.provide(transportScope),
-          whileOpen,
-          restore
-        )
-        if (Deferred.isDoneUnsafe(closed)) return yield* closedError
-
-        const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
-        const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
-          if (packet.data.byteLength > maxPacketBytes) {
-            return yield* error(
-              new DatagramSocketMessageTooLargeError({
-                size: packet.data.byteLength,
-                maxPacketBytes
-              })
-            )
-          }
-          return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
-        }, whileOpen)
-        return make({ address: binding.address, reader: { pull: receiver.pull }, writer: { write } })
-      }).pipe(
-        Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause)))
+  Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
+    const parentScope = yield* Effect.scope
+    const socketScope = Scope.forkUnsafe(parentScope)
+    return yield* Effect.gen(function*() {
+      const transportScope = Scope.makeUnsafe()
+      const receiver = yield* makeReceiver(options)
+      const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
+      // In an already closed scope this runs immediately, before acquisition.
+      yield* Scope.addFinalizerExit(
+        socketScope,
+        Effect.fnUntraced(function*(exit) {
+          // Settle I/O and discard buffered packets before native cleanup can suspend.
+          receiver.fail(closedError)
+          Deferred.doneUnsafe(closed, Exit.fail(closedError))
+          yield* Scope.close(transportScope, exit)
+        })
       )
-    })
-  )
+
+      const whileOpen = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
+        Effect.raceFirst(
+          Effect.suspend(() => Deferred.isDoneUnsafe(closed) ? Effect.fail(closedError) : operation),
+          Deferred.await(closed)
+        )
+      const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(
+        Scope.provide(transportScope),
+        whileOpen,
+        restore
+      )
+      if (Deferred.isDoneUnsafe(closed)) return yield* closedError
+
+      const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
+      const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
+        if (packet.data.byteLength > maxPacketBytes) {
+          return yield* error(
+            new DatagramSocketMessageTooLargeError({
+              size: packet.data.byteLength,
+              maxPacketBytes
+            })
+          )
+        }
+        return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
+      }, whileOpen)
+      return make({ address: binding.address, reader: { pull: receiver.pull }, writer: { write } })
+    }).pipe(
+      Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause)))
+    )
+  }))
 
 /**
  * Acquires a scoped peer-associated socket with a byte-oriented writer.

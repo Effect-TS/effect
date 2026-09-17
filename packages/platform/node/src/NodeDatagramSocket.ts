@@ -93,16 +93,13 @@ const open = Effect.fnUntraced(function*(
     yield* awaitOpen(socket, "connect", () => socket.connect(remote.port, NetAddress.formatHost(remote)))
   }
   const address = yield* Effect.try({
-    try: () => {
-      const address = socket.address()
-      return addressFromNative(address.address, address.port)
-    },
+    try: () => addressFromNative(socket.address()),
     catch: openError
   })
   // Connected sockets must not buffer packets received before association.
-  socket.on("message", (data: Uint8Array, info: Dgram.RemoteInfo) => {
+  socket.on("message", (data, info) => {
     try {
-      handlers.onMessage(data, addressFromNative(info.address, info.port))
+      handlers.onMessage(data, addressFromNative(info))
     } catch (cause) {
       handlers.onError(cause)
     }
@@ -151,7 +148,7 @@ const writeError = (cause: unknown, [packet]: [Datagram.OutgoingPacket]) =>
     reason: new Datagram.DatagramSocketWriteError({ cause, destination: packet.destination })
   })
 
-const addressFromNative = (address: string, port: number) =>
+const addressFromNative = ({ address, port }: { readonly address: string; readonly port: number }) =>
   Result.getOrThrow(NetAddress.inetAddressFromHostString(
     address,
     port,
