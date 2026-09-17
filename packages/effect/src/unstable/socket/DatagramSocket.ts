@@ -335,10 +335,12 @@ export const fromTransport = (
   Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
     const parentScope = yield* Effect.scope
     const socketScope = Scope.forkUnsafe(parentScope)
+
     return yield* Effect.gen(function*() {
       const transportScope = Scope.makeUnsafe()
       const receiver = yield* makeReceiver(options)
       const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
+
       // In an already closed scope this runs immediately, before acquisition.
       yield* Scope.addFinalizerExit(
         socketScope,
@@ -350,16 +352,14 @@ export const fromTransport = (
         })
       )
 
-      const whileOpen = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
+      const guard = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
         Effect.raceFirst(
           Effect.suspend(() => Deferred.isDoneUnsafe(closed) ? Effect.fail(closedError) : operation),
           Deferred.await(closed)
         )
-      const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(
-        Scope.provide(transportScope),
-        whileOpen,
-        restore
-      )
+
+      const scoped = Scope.provide(transportScope)
+      const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(scoped, guard, restore)
       if (Deferred.isDoneUnsafe(closed)) return yield* closedError
 
       const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
@@ -372,12 +372,16 @@ export const fromTransport = (
             })
           )
         }
+
         return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
-      }, whileOpen)
-      return make({ address: binding.address, reader: { pull: receiver.pull }, writer: { write } })
-    }).pipe(
-      Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause)))
-    )
+      }, guard)
+
+      return make({
+        address: binding.address,
+        reader: { pull: receiver.pull },
+        writer: { write }
+      })
+    }).pipe(Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause))))
   }))
 
 /**
@@ -403,11 +407,14 @@ export const fromConnectedTransport = Effect.fnUntraced(function*(
       })
     )
   }
+
   const socket = yield* fromTransport(options, acquire)
   return {
     ...socket,
     remote: options.remote,
-    writer: { write: (data: Uint8Array) => socket.writer.write({ data, destination: options.remote }) }
+    writer: {
+      write: (data: Uint8Array) => socket.writer.write({ data, destination: options.remote })
+    }
   }
 })
 
@@ -630,6 +637,7 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
     if (readError !== undefined) return
     fail(error(new DatagramSocketReadError({ cause })))
   }
+
   const onMessage = (data: Uint8Array, source: NetAddress.InetAddress) => {
     const size = data.byteLength
     if (
@@ -639,6 +647,7 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
     ) return
     if (Queue.offerUnsafe(incoming, { data: Uint8Array.from(data), source })) queuedBytes += size
   }
+
   const pull: Reader["pull"] = Effect.gen(function*() {
     while (true) {
       if (readError !== undefined) return yield* readError
@@ -651,11 +660,14 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
         queuedBytes -= next.value.data.byteLength
         packets.push(next.value)
       }
+
       if (isArrayNonEmpty(packets)) return packets
+
       // Wait without reserving a packet; the queue schedules reader wakeups.
       yield* Queue.peek(incoming)
     }
   })
+
   return { onError, onMessage, pull, fail }
 })
 
