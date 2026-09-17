@@ -24,16 +24,20 @@ import { ShardingConfig } from "./ShardingConfig.js"
 
 const constVoid = constant(Effect.void)
 
-// A handler interrupted by its own runner (shutdown or termination timeout)
-// rather than by the caller. The owner can no longer serve the request, so a
-// volatile caller must retry it elsewhere instead of receiving the interrupt.
+const hasInterruptor = (cause: Cause.Cause<unknown>, id: number): boolean =>
+  Option.isSome(
+    Cause.find(cause, (cause) =>
+      cause._tag === "Interrupt" && Array.from(FiberId.ids(cause.fiberId)).includes(id)
+        ? Option.some(cause)
+        : Option.none())
+  )
+
+// Shutdown, termination timeout and disconnects carry the transient marker.
+// Caller cancellation takes precedence, even when both markers are present.
 const isTransientInterrupt = (exit: Exit.Exit<unknown, unknown>): boolean =>
   Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause) &&
-  Option.isSome(Cause.find(exit.cause, (cause) =>
-    cause._tag === "Interrupt" &&
-      Array.from(FiberId.ids(cause.fiberId)).includes(RpcServer.fiberIdTransientInterrupt.id)
-      ? Option.some(cause)
-      : Option.none()))
+  hasInterruptor(exit.cause, RpcServer.fiberIdTransientInterrupt.id) &&
+  !hasInterruptor(exit.cause, RpcServer.fiberIdClientInterrupt.id)
 
 /**
  * @since 1.0.0
