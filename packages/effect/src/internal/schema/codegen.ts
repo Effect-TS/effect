@@ -811,11 +811,8 @@ const emitObject = (ast: SchemaAST.Objects): string => {
           : `${propertyPath}.encoding[${linkIndex - 1}].to`
         const target = linkIndex === 0 ? property.type : links[linkIndex - 1].to
         const predicate = inlineIdentityPredicate(target, `x${index}`, targetPath)!
-        const failure = linkIndex === 0
-          ? `R.invalidType(${propertyPath},x${index},o)`
-          : `R.wrapEncoding(${propertyPath},v${index},o,R.invalidType(${targetPath},x${index},o))`
         fast.push(
-          `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=${failure};break l${index}}`
+          `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=R.invalidEncoding(p${index}.type,${linkIndex},v${index},x${index},o);break l${index}}`
         )
       }
       fast.push(

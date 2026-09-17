@@ -200,6 +200,20 @@ const hasExcessProperties = (
   return Reflect.ownKeys(input).some((key) => !covered.has(key))
 }
 
+const invalidType = (ast: SchemaAST.AST, input: unknown, options: SchemaAST.ParseOptions) =>
+  Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+
+const invalidEncoding = (
+  ast: SchemaAST.AST & { readonly encoding: SchemaAST.Encoding },
+  index: number,
+  input: unknown,
+  value: unknown,
+  options: SchemaAST.ParseOptions
+) =>
+  index === 0
+    ? invalidType(ast, value, options)
+    : Interpreter.wrapEncoding(ast, input, options, invalidType(ast.encoding[index - 1].to, value, options))
+
 /** @internal */
 export const runtime = {
   decode,
@@ -214,9 +228,8 @@ export const runtime = {
   succeed: InternalParser.succeed,
   effectIsExit,
   die: Effect.die,
-  invalidType: (ast: SchemaAST.AST, input: unknown, options: SchemaAST.ParseOptions) =>
-    Effect.fail(new SchemaIssue.InvalidType(ast, input, options)),
-  wrapEncoding: Interpreter.wrapEncoding,
+  invalidType,
+  invalidEncoding,
   failsChecks,
   getExpectedKeys: (ast: SchemaAST.Objects) =>
     ast.propertySignatures.map((p) => typeof p.name === "number" ? String(p.name) : p.name),
