@@ -613,11 +613,11 @@ class YamlParser {
       const text = line.text.trimEnd()
       if (text.length === 0 || text.startsWith("%")) {
         this.index++
-      } else if (text === "---") {
+      } else if (line.indent === 0 && text === "---") {
         if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
         this.documentStarted = true
         this.index++
-      } else if (text === "...") {
+      } else if (line.indent === 0 && text === "...") {
         this.index++
         while (this.index < this.lines.length && this.lines[this.index].text.trimEnd().length === 0) this.index++
         if (this.index < this.lines.length) {
