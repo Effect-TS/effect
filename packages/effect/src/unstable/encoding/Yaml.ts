@@ -5,9 +5,11 @@
  * collections, multiline plain and quoted scalars, block scalars, anchors, and
  * aliases. Block sequence values in mappings may use indentless notation.
  *
- * It is not a full YAML processor: multiline flow collections, explicit complex
- * mapping keys, tag/directive processing, recursive aliases, and document streams
- * are unsupported. Mapping keys are represented as JavaScript strings.
+ * It is not a full YAML processor: compact nested block sequences (a sequence
+ * item's value starting with another sequence entry on the same line, such as
+ * `- - value`), multiline flow collections, explicit complex mapping keys,
+ * tag/directive processing, recursive aliases, and document streams are
+ * unsupported. Mapping keys are represented as JavaScript strings.
  *
  * @since 4.0.0
  */
@@ -103,6 +105,8 @@ const stripComment = (input: string): string => {
 }
 
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
+
+const isSequenceEntry = (text: string): boolean => text === "-" || text.startsWith("- ")
 
 const parseDoubleQuoted = (input: string): string => {
   if (!input.endsWith("\"") || input.length < 2) {
@@ -327,6 +331,7 @@ class FlowParser {
 class YamlParser {
   private readonly lines: ReadonlyArray<Line>
   private index = 0
+  private documentStarted = false
   private readonly anchors = new Map<string, unknown>()
 
   constructor(lines: ReadonlyArray<Line>) {
@@ -336,6 +341,7 @@ class YamlParser {
   parse(): unknown {
     this.skipIgnored()
     if (this.index >= this.lines.length) return null
+    this.documentStarted = true
     const value = this.parseNode(this.lines[this.index].indent)
     this.skipIgnored()
     if (this.index < this.lines.length) {
@@ -349,7 +355,7 @@ class YamlParser {
     const line = this.lines[this.index]
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
-    if (line.text === "-" || line.text.startsWith("- ")) return this.parseSequence(indent)
+    if (isSequenceEntry(line.text)) return this.parseSequence(indent)
     if (mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
     this.index++
     return this.parseNodeValue(line.text, parentIndent)
@@ -390,9 +396,10 @@ class YamlParser {
       const line = this.lines[this.index]
       if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
-      if (line.text !== "-" && !line.text.startsWith("- ")) return output
+      if (!isSequenceEntry(line.text)) return output
       this.index++
       const item = line.text.slice(1).trimStart()
+      if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
       const separator = mappingSeparator(item)
       if (separator === -1) {
         output.push(this.parseNodeValue(item, indent))
@@ -430,12 +437,15 @@ class YamlParser {
     if (value.length === 0) {
       this.skipIgnored()
       const next = this.lines[this.index]
-      parsed = next !== undefined && next.indent > parentIndent
-        ? this.parseNode(next.indent, parentIndent)
-        : next !== undefined && allowIndentless && next.indent === parentIndent &&
-            (next.text === "-" || next.text.startsWith("- "))
-        ? this.parseSequence(parentIndent)
-        : null
+      if (next === undefined) {
+        parsed = null
+      } else if (next.indent > parentIndent) {
+        parsed = this.parseNode(next.indent, parentIndent)
+      } else if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
+        parsed = this.parseSequence(parentIndent)
+      } else {
+        parsed = null
+      }
     } else if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(value.trimEnd())) {
       parsed = this.parseBlockScalar(value.trimEnd(), parentIndent)
     } else if (value.startsWith("\"") || value.startsWith("'")) {
@@ -460,12 +470,14 @@ class YamlParser {
       const next = this.lines[nextIndex]
       if (next === undefined || next.indent <= parentIndent) break
       // Quotes in a plain continuation are literal characters, not delimiters.
-      const text = next.raw.slice(next.indent).replace(/(?:^|[ \t]+)#.*$/, "").trimEnd()
+      const content = next.raw.slice(next.indent)
+      const comment = content.search(/(?:^|[ \t])#/)
+      const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
       if (text.length === 0 || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(text))) break
       if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
       output += (nextIndex === this.index ? " " : "\n".repeat(nextIndex - this.index)) + text
       this.index = nextIndex + 1
-      terminated = text.length !== next.raw.slice(next.indent).trimEnd().length
+      terminated = comment !== -1
     }
     return parseScalar(output)
   }
@@ -599,7 +611,11 @@ class YamlParser {
     while (this.index < this.lines.length) {
       const line = this.lines[this.index]
       const text = line.text.trimEnd()
-      if (text.length === 0 || text.startsWith("%") || text === "---") {
+      if (text.length === 0 || text.startsWith("%")) {
+        this.index++
+      } else if (text === "---") {
+        if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
+        this.documentStarted = true
         this.index++
       } else if (text === "...") {
         this.index++
