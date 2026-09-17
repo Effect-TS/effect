@@ -27,6 +27,11 @@ export * as DenoCrypto from "./DenoCrypto.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoDatagramSocket from "./DenoDatagramSocket.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoFileSystem from "./DenoFileSystem.ts"
 
 /**

@@ -207,6 +207,20 @@ describe("NodeDatagramSocket I/O", { concurrent: false }, () => {
 })
 
 describe("NodeDatagramSocket connected sockets", { concurrent: false }, () => {
+  it.effect("filters other senders when the runtime delivers them after association", () =>
+    Effect.gen(function*() {
+      const peer = yield* NodeDatagramSocket.bind({ localAddress: loopback })
+      const client = yield* NodeDatagramSocket.connect({ localAddress: loopback, remote: peer.address })
+      const native = currentNative()
+      native.emit("message", new Uint8Array([9]), { address: "127.0.0.2", port: peer.address.port })
+      native.emit("message", new Uint8Array([9]), { address: "127.0.0.1", port: peer.address.port + 1 })
+      yield* peer.writer.write({ data: new Uint8Array([1]), destination: client.address })
+      const packets = yield* client.reader.pull
+      assert.strictEqual(packets.length, 1)
+      assert.deepStrictEqual(Array.from(packets[0].data), [1])
+      assert.deepStrictEqual(packets[0].source, peer.address)
+    }))
+
   it.effect("discards packets received before peer association completes", () =>
     Effect.gen(function*() {
       const peer = yield* NodeDatagramSocket.bind({ localAddress: loopback })
