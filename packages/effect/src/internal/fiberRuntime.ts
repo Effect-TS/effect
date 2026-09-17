@@ -1719,12 +1719,14 @@ export const addFinalizer = <X, R>(
           core.withFiberRuntime((runtimeFinalizer) => {
             const preRefs = runtimeFinalizer.getFiberRefs()
             const preFlags = runtimeFinalizer.currentRuntimeFlags
+            const interruptedCause = runtimeFinalizer.getFiberRef(core.currentInterruptedCause)
             const patchRefs = FiberRefsPatch.diff(preRefs, acquireRefs)
             const patchFlags = runtimeFlags_.diff(preFlags, acquireFlags)
             const inverseRefs = FiberRefsPatch.diff(acquireRefs, preRefs)
             runtimeFinalizer.setFiberRefs(
               FiberRefsPatch.patch(patchRefs, runtimeFinalizer.id(), acquireRefs)
             )
+            runtimeFinalizer.setFiberRef(core.currentInterruptedCause, interruptedCause)
 
             return ensuring(
               core.withRuntimeFlags(finalizer(exit) as Effect.Effect<X>, patchFlags),
