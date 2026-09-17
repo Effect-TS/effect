@@ -32,39 +32,38 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
   it("emits only the requested operation family", () => {
     const schema = Schema.Struct({ value: Schema.String })
     const decode = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
-    assert.include(decode, "get decode(){")
-    assert.include(decode, "get decodeEffect(){")
-    assert.notInclude(decode, "get is(){")
-    assert.notInclude(decode, "get make(){")
-    assert.notInclude(decode, "get makeEffect(){")
+    assert.include(decode, "case \"decode\":{")
+    assert.include(decode, "case \"decodeEffect\":{")
+    assert.notInclude(decode, "case \"is\":{")
+    assert.notInclude(decode, "case \"make\":{")
+    assert.notInclude(decode, "case \"makeEffect\":{")
 
     const make = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["make"] }])
-    assert.include(make, "get make(){")
-    assert.include(make, "get makeEffect(){")
-    assert.notInclude(make, "get is(){")
-    assert.notInclude(make, "get decode(){")
+    assert.include(make, "case \"make\":{")
+    assert.include(make, "case \"makeEffect\":{")
+    assert.notInclude(make, "case \"is\":{")
+    assert.notInclude(make, "case \"decode\":{")
   })
 
   it("allows a target without requested operations", () => {
     const schema = Schema.Struct({ value: Schema.String })
     const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: [] }])
-    assert.notInclude(source, "R.set(")
-    assert.notInclude(source, "R.setFactory(")
+    assert.notInclude(source, "runtime.setCompiler(")
   })
 
   it("omits fast decode operations from diagnostic-only dependencies", () => {
     const child = Schema.Struct({ value: Schema.String })
     const schema = Schema.Array(child)
     const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
-    assert.strictEqual(source.match(/get decode\(\)\{/g)?.length, 1)
-    assert.strictEqual(source.match(/get decodeEffect\(\)\{/g)?.length, 2)
+    assert.strictEqual(source.match(/case "decode":\{/g)?.length, 1)
+    assert.strictEqual(source.match(/case "decodeEffect":\{/g)?.length, 2)
 
     const targeted = SchemaAOTCompiler.compile([
       { ast: schema.ast, operations: ["decode"] },
       { ast: child.ast, operations: ["decode"] }
     ])
-    assert.strictEqual(targeted.match(/get decode\(\)\{/g)?.length, 2)
-    assert.strictEqual(targeted.match(/get decodeEffect\(\)\{/g)?.length, 2)
+    assert.strictEqual(targeted.match(/case "decode":\{/g)?.length, 2)
+    assert.strictEqual(targeted.match(/case "decodeEffect":\{/g)?.length, 2)
   })
 
   it("uses registry fallbacks for operations that were not requested", async () => {
@@ -76,11 +75,11 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       const generated = await import(`${pathToFileURL(file).href}?test=${Date.now()}`)
       generated.install([schema.ast])
 
-      const source = CompilerRegistry.resolve(schema.ast).source
-      assert.isDefined(source?.decode)
-      assert.isUndefined(source?.is)
-      assert.isUndefined(source?.make)
-      assert.isUndefined(source?.makeEffect)
+      const entry = CompilerRegistry.resolve(schema.ast)
+      assert.strictEqual(typeof entry.compiled, "function")
+      assert.isDefined(entry.decode)
+      assert.isUndefined(entry.is)
+      assert.isUndefined(entry.make)
       assert.strictEqual(SchemaParser.is(schema)({ value: "a" }), true)
       assert.deepStrictEqual(SchemaParser.make(schema)({ value: "a" }), { value: "a" })
     } finally {
@@ -88,7 +87,7 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     }
   })
 
-  it("materializes dependency decoders on first use", async () => {
+  it("initializes dependency operations on first use", async () => {
     const child = Schema.String.pipe(
       Schema.decodeTo(
         Schema.Number,
@@ -105,14 +104,14 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       generated.install([schema.ast])
 
       const dependency = CompilerRegistry.resolve(child.ast)
-      assert.isFalse(Object.hasOwn(dependency, "source"))
+      assert.isFalse(Object.hasOwn(dependency, "decodeEffect"))
 
       const decode = SchemaParser.decodeUnknownSync(schema)
       assert.deepStrictEqual(decode({ child: "1" }), { child: 1 })
-      assert.isFalse(Object.hasOwn(dependency, "source"))
+      assert.isFalse(Object.hasOwn(dependency, "decodeEffect"))
 
       assert.throws(() => decode({ child: false }))
-      assert.isTrue(Object.hasOwn(dependency, "source"))
+      assert.isTrue(Object.hasOwn(dependency, "decodeEffect"))
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
@@ -135,8 +134,7 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       ]),
       source
     )
-    assert.strictEqual(source.match(/R\.set\(/g)?.length, 2)
-    assert.strictEqual(source.match(/R\.setFactory\(/g)?.length, 1)
+    assert.strictEqual(source.match(/runtime\.setCompiler\(/g)?.length, 3)
   })
 
   it("reuses identical decoder factories", () => {
@@ -144,7 +142,7 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       Array.from({ length: 8 }, (_, tag) => Schema.Struct({ tag: Schema.Literal(tag), value: Schema.Number }))
     )
     const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
-    assert.strictEqual(source.match(/function d\d+\(ast,R,resolve\)/g)?.length, 2)
+    assert.strictEqual(source.match(/function d\d+\(ast,resolve,operation\)/g)?.length, 2)
   })
 
   it("runs generated decoders without dynamic code generation", () => {

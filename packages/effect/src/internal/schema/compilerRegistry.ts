@@ -15,10 +15,23 @@ export type Resolve = (ast: SchemaAST.AST) => Entry
 export type DecoderSource = Partial<CompiledDecoder>
 
 /** @internal */
-export type Compile = (ast: SchemaAST.AST, resolve: Resolve) => DecoderSource | undefined
+export type DecoderOperation = keyof CompiledDecoder
+
+/** @internal */
+export type Compile = <K extends DecoderOperation>(
+  ast: SchemaAST.AST,
+  resolve: Resolve,
+  operation: K
+) => CompiledDecoder[K] | undefined
+
+/** @internal */
+export type CompileSource = (ast: SchemaAST.AST, resolve: Resolve) => DecoderSource | undefined
+
+/** @internal */
+export type Compiled = DecoderSource | Compile
 
 const cache = new WeakMap<SchemaAST.AST, Entry>()
-let compiler: ((ast: SchemaAST.AST, resolve: Resolve) => Entry) | undefined
+let compiler: CompileSource | undefined
 
 /** @internal */
 export let compilerAdaptersEnabled = false
@@ -40,7 +53,7 @@ const makeField = (ast: SchemaAST.AST): Parser => Interpreter.compileField(ast, 
 /** @internal */
 export interface Entry {
   readonly ast: SchemaAST.AST
-  readonly source?: DecoderSource | undefined
+  readonly compiled?: Compiled | undefined
   readonly resolve?: Resolve | undefined
   readonly is?: Is | undefined
   readonly decode?: Decode | undefined
@@ -73,13 +86,13 @@ class InterpretedEntry implements Entry {
 }
 
 class CompilerEntry extends InterpretedEntry {
+  readonly compiled: Compiled | undefined
   readonly resolve: Resolve
-  private sourceValue: DecoderSource | Compile | undefined
 
-  constructor(ast: SchemaAST.AST, source: DecoderSource | Compile | undefined, resolve: Resolve) {
+  constructor(ast: SchemaAST.AST, compiled: Compiled | undefined, resolve: Resolve) {
     super(ast)
+    this.compiled = compiled
     this.resolve = resolve
-    this.sourceValue = source
   }
 
   private save<K extends keyof Entry>(key: K, value: Entry[K]): Entry[K] {
@@ -87,28 +100,27 @@ class CompilerEntry extends InterpretedEntry {
     return value
   }
 
-  get source(): DecoderSource | undefined {
-    const source = this.sourceValue
-    if (typeof source !== "function") return source
-    return this.save("source", this.sourceValue = source(this.ast, this.resolve))
+  private operation<K extends DecoderOperation>(key: K): CompiledDecoder[K] | undefined {
+    const compiled = this.compiled
+    return typeof compiled === "function" ? compiled(this.ast, this.resolve, key) : compiled?.[key]
   }
 
   get is(): Is | undefined {
-    return this.save("is", this.source?.is)
+    return this.save("is", this.operation("is"))
   }
 
   get decode(): Decode | undefined {
-    return this.save("decode", this.source?.decode)
+    return this.save("decode", this.operation("decode"))
   }
 
   get make(): Make | undefined {
-    return this.save("make", this.source?.make)
+    return this.save("make", this.operation("make"))
   }
 
   override get decodeEffect(): Parser {
     return this.save(
       "decodeEffect",
-      this.source?.decodeEffect ?? Interpreter.compile(this.ast, (ast) => lazyParser(this.resolve, ast, "parser"))
+      this.operation("decodeEffect") ?? Interpreter.compile(this.ast, (ast) => lazyParser(this.resolve, ast, "parser"))
     )
   }
 
@@ -120,7 +132,7 @@ class CompilerEntry extends InterpretedEntry {
   }
 
   override get makeEffect(): Parser {
-    const makeEffect = this.source?.makeEffect
+    const makeEffect = this.operation("makeEffect")
     if (makeEffect !== undefined) return this.save("makeEffect", makeEffect)
     const child = (ast: SchemaAST.AST): Parser => lazyParser(this.resolve, ast, "makeEffect")
     return this.save(
@@ -157,7 +169,9 @@ export function lazyParser(
   operation: "parser" | "decodeEffect" | "makeEffect"
 ): Parser {
   const entry = resolve(ast)
-  if (entry.source === undefined || Object.hasOwn(entry, operation)) return entry[operation]
+  if (entry.compiled === undefined || Object.hasOwn(entry, operation)) {
+    return entry[operation]
+  }
   let parser: Parser | undefined
   return (input, options) => (parser ??= entry[operation])(input, options)
 }
@@ -166,7 +180,9 @@ export function lazyParser(
 export function resolve(ast: SchemaAST.AST): Entry {
   const cached = cache.get(ast)
   if (cached !== undefined) return cached
-  const entry = compiler === undefined ? new InterpretedEntry(ast) : compiler(ast, resolve)
+  const entry = compiler === undefined
+    ? new InterpretedEntry(ast)
+    : new CompilerEntry(ast, compiler(ast, resolve), resolve)
   cache.set(ast, entry)
   return entry
 }
@@ -180,9 +196,11 @@ export function set(ast: SchemaAST.AST, decoder: DecoderSource | undefined, reso
 }
 
 /** @internal */
-export function setFactory(ast: SchemaAST.AST, compile: Compile, resolveChild: Resolve = resolve): Entry {
-  // Install the entry immediately so that replacement order remains identical
-  // to `set`; only materialization of its decoder source is deferred.
+export function setCompiler(
+  ast: SchemaAST.AST,
+  compile: Compile,
+  resolveChild: Resolve = resolve
+): Entry {
   activateCompilerAdapters()
   const entry = new CompilerEntry(ast, compile, resolveChild)
   cache.set(ast, entry)
@@ -190,20 +208,23 @@ export function setFactory(ast: SchemaAST.AST, compile: Compile, resolveChild: R
 }
 
 /** @internal */
-export function install(compile: Compile): void {
+export function install(compile: CompileSource): void {
   activateCompilerAdapters()
-  compiler = (ast, resolve) => new CompilerEntry(ast, compile(ast, resolve), resolve)
+  compiler = compile
 }
 
 /** @internal */
-export function enable(ast: SchemaAST.AST, compile: Compile): void {
+export function enable(ast: SchemaAST.AST, compile: CompileSource): void {
   activateCompilerAdapters()
   const scoped: Resolve = (child) => {
     const cached = cache.get(child)
-    return cached !== undefined && (cached.source !== undefined || cached.resolve === scoped)
+    return cached !== undefined && (cached.compiled !== undefined || cached.resolve === scoped)
       ? cached
       : set(child, compile(child, scoped), scoped)
   }
   const decoder = compile(ast, scoped)
-  if (decoder !== undefined || cache.get(ast)?.source === undefined) set(ast, decoder, scoped)
+  const cached = cache.get(ast)
+  if (decoder !== undefined || cached?.compiled === undefined) {
+    set(ast, decoder, scoped)
+  }
 }

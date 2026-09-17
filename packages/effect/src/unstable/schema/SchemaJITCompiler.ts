@@ -15,7 +15,7 @@ let checked: FunctionConstructor | undefined
 let supported = false
 
 /** @internal */
-export const compiler: Registry.Compile = (ast, resolve) => {
+export const compiler: Registry.CompileSource = (ast, resolve) => {
   if (!shouldCompileParser(ast)) return undefined
   if (checked !== globalThis.Function) {
     checked = globalThis.Function

@@ -103,7 +103,7 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     const schema = Schema.ReadonlySet(child)
     SchemaJITCompiler.enable(SchemaAST.toType(schema.ast))
     assert.deepStrictEqual(SchemaParser.make(schema)(new Set([{ value: "a" }])), new Set([{ value: "a" }]))
-    assert.strictEqual(Registry.resolve(child.ast).source !== undefined, true)
+    assert.strictEqual(Registry.resolve(child.ast).compiled !== undefined, true)
   })
 
   it("does not restart a parent if compilation fails after a default", () => {
@@ -249,6 +249,16 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     const schema = Schema.Array(child)
     SchemaJITCompiler.enable(schema.ast)
     assert.deepStrictEqual(SchemaParser.make(schema)([{ a: "a" }, { a: "b" }]), [{ a: "a!" }, { a: "b!" }])
+  })
+
+  it("composes a compiled synchronous child constructor in a compiled Array", () => {
+    const child = Schema.Struct({ a: Schema.String })
+    SchemaJITCompiler.enable(child.ast)
+    const childEntry = Registry.resolve(child.ast)
+    const schema = Schema.Array(child)
+    SchemaJITCompiler.enable(schema.ast)
+    assert.deepStrictEqual(SchemaParser.make(schema)([{ a: "a" }]), [{ a: "a" }])
+    assert.isTrue(Object.hasOwn(childEntry, "make"))
   })
 
   it("falls back to detailed construction for an invalid compiled Array", () => {

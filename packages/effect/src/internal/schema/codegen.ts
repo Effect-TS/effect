@@ -678,12 +678,12 @@ export function generate(ast: SchemaAST.AST, operation: DecoderOperation): strin
   if (operation === "make") {
     if (!shouldCompileMake(ast)) return undefined
     if (ast._tag === "Objects") {
-      return `if(ast.propertySignatures.some(p=>resolve(p.type).source!==void 0))return;return ${
+      return `if(ast.propertySignatures.some(p=>resolve(p.type).compiled!==void 0))return;return ${
         renderOperation(emitOperation(ast, "decode"))
       }`
     }
     const element = renderOperation(emitOperation(ast.rest[0], "decode", "ast.rest[0]"))
-    return `const e=resolve(ast.rest[0]),m=e.source===void 0?${element}:e.make;if(m===void 0)return;` +
+    return `const e=resolve(ast.rest[0]),m=e.compiled===void 0?${element}:e.make;if(m===void 0)return;` +
       "return function(i,o){if(i===R.missing)return R.missing;if(!Array.isArray(i))return R.invalid;" +
       "const out=new Array(i.length);for(let x=0;x<i.length;x++){const v=m(i[x],o);" +
       "if(v===R.invalid||v===R.missing)return R.invalid;out[x]=v}" +

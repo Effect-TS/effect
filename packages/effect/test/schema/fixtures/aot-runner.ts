@@ -115,14 +115,14 @@ for (
     "middleware"
   ]
 ) {
-  assert.equal(CompilerRegistry.resolve(schemas[name].ast).source !== undefined, true, name)
+  assert.equal(typeof CompilerRegistry.resolve(schemas[name].ast).compiled, "function", name)
 }
 
 assert.deepEqual(snapshot(), interpreted)
 assert.deepEqual(await snapshotAsync(), interpretedAsync)
 for (const [name, schema] of Object.entries(constructionSchemas)) {
   if (name === "construct-declaration") continue
-  assert.equal(CompilerRegistry.resolve(schema.ast).source !== undefined, true, name)
+  assert.equal(typeof CompilerRegistry.resolve(schema.ast).compiled, "function", name)
 }
 assert.deepEqual(await snapshotConstruction(), interpretedConstruction)
 const instance = Constructed.make({})

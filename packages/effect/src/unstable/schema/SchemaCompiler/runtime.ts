@@ -8,12 +8,10 @@
 import * as Effect from "../../../Effect.ts"
 import { effectIsExit, resolveConcurrency } from "../../../internal/effect.ts"
 import {
-  type DecoderSource,
   lazyParser,
   type Resolve,
   resolve,
-  set,
-  setFactory as setCompilerFactory,
+  setCompiler,
   withDecode
 } from "../../../internal/schema/compilerRegistry.ts"
 import * as Interpreter from "../../../internal/schema/interpreter.ts"
@@ -189,12 +187,6 @@ const make = (
   return Interpreter.compile(ast, child, field, base)
 }
 
-const setFactory = <A>(
-  ast: SchemaAST.AST,
-  factory: (ast: SchemaAST.AST, context: A, resolve: Resolve) => DecoderSource | undefined,
-  context: A
-) => setCompilerFactory(ast, (ast, resolve) => factory(ast, context, resolve))
-
 const getCheckIssues = (
   ast: SchemaAST.AST,
   value: unknown,
@@ -251,8 +243,7 @@ export const runtime = {
   decode,
   make,
   resolve,
-  set,
-  setFactory,
+  setCompiler,
   invalid,
   missing: InternalParser.missing,
   missingExit: InternalParser.missingExit,
