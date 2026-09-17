@@ -67,9 +67,10 @@ export interface Target {
  * Installation uses the same registry as `SchemaCompiler.set`; normal
  * `SchemaParser` functions consume those entries. Generated validators and
  * Struct and homogeneous Array loops are static functions. They share diagnostic and
- * asynchronous continuation helpers with the interpreter. Other detailed
- * traversals and transformation orchestration use the interpreter with
- * registry-resolved children. Transformations and middleware are not replayed.
+ * asynchronous continuation helpers with the interpreter. A single synchronous
+ * transformation between supported leaf types can use generated orchestration.
+ * Other detailed traversals, transformations, and middleware use the interpreter
+ * with registry-resolved children. Transformations and middleware are not replayed.
  * Only the requested operation families and their static dependencies are
  * emitted. Installation materializes each requested root immediately. Its
  * dependency entries are installed in the same registry at the same time, but

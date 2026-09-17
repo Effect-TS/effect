@@ -183,12 +183,14 @@ Other detailed traversals and constructors use the existing interpreter with
 registry-resolved children; there is no separate diagnostic interpreter in the
 compiler.
 
-Transformations and middleware never participate in validation replay. Their
-orchestration uses the same implementation as interpreted parsing, and pure
-child checkpoints can still use generated validators. Suspend is resolved lazily
-by JIT. AOT does not evaluate Suspend thunks at build time, so dynamically reached
-schemas fall back to the interpreter unless installed separately. Declaration
-callbacks remain runtime code; their type parameters can be compiled.
+Transformations and middleware never participate in validation replay. A single
+synchronous transformation between supported leaf types can use generated
+orchestration directly. Other transformations and middleware use the interpreted
+orchestration, while pure child checkpoints can still use generated validators.
+Suspend is resolved lazily by JIT. AOT does not evaluate Suspend thunks at build
+time, so dynamically reached schemas fall back to the interpreter unless installed
+separately. Declaration callbacks remain runtime code; their type parameters can
+be compiled.
 
 Checks and property getters in replayable validation must be deterministic and
 free of side effects. Proxy inputs and modifications to built-in object behavior

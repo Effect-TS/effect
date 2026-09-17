@@ -195,15 +195,27 @@ const setFactory = <A>(
   context: A
 ) => setCompilerFactory(ast, (ast, resolve) => factory(ast, context, resolve))
 
-const failsChecks = (
+const getCheckIssues = (
   ast: SchemaAST.AST,
   value: unknown,
   encoded: boolean,
   options: SchemaAST.ParseOptions
-): boolean => {
+): ReturnType<typeof SchemaAST.collectIssues> => {
   const checks = encoded ? "encodingChecks" in ast ? ast.encodingChecks : undefined : ast.checks
-  return !options.disableChecks && checks !== undefined &&
-    SchemaAST.collectIssues(checks, value, undefined, ast, options) !== undefined
+  return !options.disableChecks && checks !== undefined
+    ? SchemaAST.collectIssues(checks, value, undefined, ast, options)
+    : undefined
+}
+
+const check = (
+  ast: SchemaAST.AST,
+  value: unknown,
+  options: SchemaAST.ParseOptions
+): Effect.Effect<unknown, SchemaIssue.Issue> => {
+  const issues = getCheckIssues(ast, value, false, options)
+  return issues === undefined
+    ? InternalParser.succeed(value)
+    : Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
 }
 
 const hasExcessProperties = (
@@ -251,7 +263,8 @@ export const runtime = {
   die: Effect.die,
   invalidType,
   invalidEncoding,
-  failsChecks,
+  getCheckIssues,
+  check,
   getExpectedKeys: (ast: SchemaAST.Objects) =>
     ast.propertySignatures.map((p) => typeof p.name === "number" ? String(p.name) : p.name),
   hasExcessProperties,

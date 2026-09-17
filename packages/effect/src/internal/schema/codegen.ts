@@ -654,7 +654,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): 
   }
   const output = emit(ast, "i", emitter.statements, emitter, operation, path)
   const bindings = {
-    K: "failsChecks",
+    K: "getCheckIssues",
     T: "matchesTemplateLiteral",
     U: "getCandidates",
     G: "getIndexSignatureKeys",
@@ -687,13 +687,17 @@ export function generate(ast: SchemaAST.AST, operation: DecoderOperation): strin
       "return function(i,o){if(i===R.missing)return R.missing;if(!Array.isArray(i))return R.invalid;" +
       "const out=new Array(i.length);for(let x=0;x<i.length;x++){const v=m(i[x],o);" +
       "if(v===R.invalid||v===R.missing)return R.invalid;out[x]=v}" +
-      "return R.failsChecks(ast,out,false,o)?R.invalid:out}"
+      "return R.getCheckIssues(ast,out,false,o)?R.invalid:out}"
   }
   if (operation === "is" || operation === "decode") {
     if (!shouldCompileParser(ast)) return undefined
     const emission = getEmission(ast)
     if (emission === "unsupported" || operation === "is" && emission !== "is") return undefined
     return "return " + renderOperation(emitOperation(ast, operation))
+  }
+  if (operation === "decodeEffect") {
+    const encoding = emitEncoding(ast)
+    if (encoding !== undefined) return encoding
   }
   const object = ast._tag === "Objects" && ast.propertySignatures.length > 0 &&
       ast.indexSignatures.length === 0 && ast.propertySignatures.length <= maxGeneratedNodes
@@ -721,8 +725,7 @@ const emitArray = (): string =>
     }
   }}`
 
-const inlineIdentityPredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined => {
-  if (ast.checks !== undefined || getEncodingChecks(ast) !== undefined) return undefined
+const inlineTypePredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined => {
   switch (ast._tag) {
     case "Null":
       return `${input}===null`
@@ -754,6 +757,39 @@ const inlineIdentityPredicate = (ast: SchemaAST.AST, input: string, path: string
     default:
       return undefined
   }
+}
+
+const inlineIdentityPredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined =>
+  ast.checks === undefined && getEncodingChecks(ast) === undefined
+    ? inlineTypePredicate(ast, input, path)
+    : undefined
+
+const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
+  const links = ast.encoding
+  if (links?.length !== 1 || getEncodingChecks(ast) !== undefined) return undefined
+  const link = links[0]
+  const transformation = link.transformation
+  if (
+    link.to.encoding !== undefined ||
+    link.to.checks !== undefined ||
+    getEncodingChecks(link.to) !== undefined ||
+    transformation._tag !== "Transformation" ||
+    transformation.decode._tag !== "Transform"
+  ) {
+    return undefined
+  }
+  const source = inlineTypePredicate(link.to, "i", "ast.encoding[0].to")
+  const target = inlineTypePredicate(ast, "value", "ast")
+  if (source === undefined || target === undefined) return undefined
+  const success = ast.checks === undefined ? "R.succeed(value)" : "R.check(ast,value,o)"
+  return `const transform=ast.encoding[0].transformation.decode.transform;return function(i,o){try{
+    if(i===R.missing)return R.missingExit;
+    if(!(${source}))return R.invalidEncoding(ast,1,i,i,o);
+    const value=transform(i);
+    if(value===R.missing)return R.missingExit;
+    if(!(${target}))return R.invalidEncoding(ast,0,i,value,o);
+    return ${success}
+  }catch(e){return R.die(e)}}`
 }
 
 const canInlineEncoding = (ast: SchemaAST.AST): ast is SchemaAST.AST & { readonly encoding: SchemaAST.Encoding } =>
