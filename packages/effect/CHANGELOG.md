@@ -1,5 +1,11 @@
 # effect
 
+## 3.22.3
+
+### Patch Changes
+
+- [#8271](https://github.com/Effect-TS/effect/pull/8271) [`05803bd`](https://github.com/Effect-TS/effect/commit/05803bd0219a71ea91d7e99e3d5a86b56f832c1c) Thanks @tim-smart! - Prevent interrupted acquisition from causing an uninterrupted scope closure to fail in `Effect.addFinalizer` and `Effect.acquireRelease`.
+
 ## 3.22.2
 
 ### Patch Changes
