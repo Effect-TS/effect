@@ -196,6 +196,8 @@ development:
       ["space before escaped line break", "description: \"Deploy \\\n  it\"\n", "Deploy it"],
       ["escaped line break followed by blank line", "description: \"Deploy\\\n\n  it\"\n", "Deploy it"],
       ["escaped leading space after line break", "description: \"Deploy\\\n  \\ it\"\n", "Deploy it"],
+      ["escaped trailing space before a folded break", "description: \"Deploy\\ \n  it\"\n", "Deploy  it"],
+      ["escaped break followed by multiple blank lines", "description: \"Deploy\\\n\n\n  it\"\n", "Deploy\nit"],
       ["hash inside double quotes", "description: \"Deploy\n  # still text\" # comment\n", "Deploy # still text"],
       ["hash inside single quotes", "description: 'Deploy\n  # still text' # comment\n", "Deploy # still text"],
       [
@@ -204,7 +206,10 @@ development:
         "Visit https://example.com for issue#123"
       ],
       ["apostrophe in plain text before a comment", "description: Don't deploy # comment\n", "Don't deploy"],
-      ["quote in plain text before a comment", "description: Use a \"quote # comment\n", "Use a \"quote"]
+      ["quote in plain text before a comment", "description: Use a \"quote # comment\n", "Use a \"quote"],
+      ["single quote starting a plain continuation", "description: Deploy\n  'it # end\n", "Deploy 'it"],
+      ["double quote starting a plain continuation", "description: Deploy\n  \"it # end\n", "Deploy \"it"],
+      ["bracket and quote inside plain text", "description: plain [ a 'quote # comment\n", "plain [ a 'quote"]
     ])("folds %s", (_, source, expected) => {
       assert.deepStrictEqual(Yaml.parse(source), { description: expected })
       const nested = source.split(/\r?\n/).map((line) => `  ${line}`).join("\n")
@@ -232,6 +237,8 @@ development:
       ["continuation after an inline comment", "description: Deploy # end\n  and verify.\n"],
       ["continuation after a comment line", "description: Deploy\n  # end\n  and verify.\n"],
       ["continuation after a trailing continuation comment", "description: Deploy\n  and verify # end\n  again\n"],
+      ["continuation after a comment following a literal single quote", "description: Deploy\n  'it # end\n  again\n"],
+      ["continuation after a comment following a literal double quote", "description: Deploy\n  \"it # end\n  again\n"],
       ["unterminated double quote", "description: \"Deploy\n  and verify\n"],
       ["unterminated single quote", "description: 'Deploy\n  and verify\n"],
       ["content after closing double quote", "description: \"Deploy\n  it\" extra\n"],
@@ -270,6 +277,42 @@ development:
         assert.throws(() => Yaml.parse(malformed + source), SyntaxError, undefined, `before ${name}`)
         assert.throws(() => Yaml.parse(source + malformed), SyntaxError, undefined, `after ${name}`)
       }
+    })
+  })
+
+  describe("anchors and quoted comment boundaries", () => {
+    it.each([
+      ["plain", "description: &text Deploy\n  and verify.\nalias: *text\n", "Deploy and verify."],
+      [
+        "single-quoted",
+        "description: &text 'Deploy # first\n  # second' # end\nalias: *text\n",
+        "Deploy # first # second"
+      ],
+      [
+        "double-quoted",
+        "description: &text \"Deploy # first\n  # second\" # end\nalias: *text\n",
+        "Deploy # first # second"
+      ]
+    ])("resolves anchored multiline %s scalars", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), { description: expected, alias: expected })
+    })
+
+    it("resolves anchored nested indentless sequences", () => {
+      assert.deepStrictEqual(
+        Yaml.parse("metadata:\n  tools: &tools\n  - Read\n  - Bash\n  alias: *tools\n"),
+        { metadata: { tools: ["Read", "Bash"], alias: ["Read", "Bash"] } }
+      )
+    })
+
+    it("preserves hashes in JSON-style flow strings without colon spacing", () => {
+      assert.deepStrictEqual(Yaml.parse("{\"description\":\"Deploy # now\"} # end\n"), { description: "Deploy # now" })
+    })
+
+    it("preserves hashes in single- and double-quoted flow sequence items", () => {
+      assert.deepStrictEqual(
+        Yaml.parse("descriptions: [\"Deploy # now\", 'Verify # later'] # end\n"),
+        { descriptions: ["Deploy # now", "Verify # later"] }
+      )
     })
   })
 })
