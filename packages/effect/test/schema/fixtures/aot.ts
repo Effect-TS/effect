@@ -32,6 +32,15 @@ const pureTransformed = Schema.String.pipe(
   )
 )
 
+const pureTransform = (decode: (input: string) => number) =>
+  Schema.String.pipe(
+    Schema.decodeTo(
+      Schema.Number,
+      SchemaTransformation.transform({ decode, encode: String })
+    )
+  )
+const sharedPureTransform = pureTransform(Number)
+
 const middleware = transformed.pipe(
   Schema.middlewareDecoding((effect) => {
     events.push("middleware")
@@ -176,6 +185,18 @@ export const synchronous = {
   pureTransformedStruct: {
     schema: Schema.Struct({ value: pureTransformed }),
     inputs: [{ value: "2" }, { value: false }, { value: "invalid" }]
+  },
+  pureTransformedFields: {
+    schema: Schema.Struct({
+      first: sharedPureTransform,
+      second: sharedPureTransform,
+      incremented: pureTransform((input) => Number(input) + 1),
+      doubled: pureTransform((input) => Number(input) * 2)
+    }),
+    inputs: [
+      { first: "1", second: "2", incremented: "3", doubled: "4" },
+      { first: false, second: "2", incremented: "3", doubled: "4" }
+    ]
   },
   middleware: {
     schema: middleware,

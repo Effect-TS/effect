@@ -773,6 +773,7 @@ const inlinePropertyHandler =
 
 const emitObject = (ast: SchemaAST.Objects): string => {
   const initializers: Array<string> = []
+  const transforms = new Map<object, string>()
   let usesInlinePropertyHandler = false
   const statements = [
     "if(i===R.missing)return R.missingExit",
@@ -800,10 +801,14 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       for (let linkIndex = links.length - 1; linkIndex >= 0; linkIndex--) {
         const transformation = links[linkIndex].transformation
         if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
-          const transform = `t${index}_${linkIndex}`
-          initializers.push(
-            `const ${transform}=${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
-          )
+          let transform = transforms.get(transformation.decode.transform)
+          if (transform === undefined) {
+            transform = `t${transforms.size}`
+            transforms.set(transformation.decode.transform, transform)
+            initializers.push(
+              `const ${transform}=${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
+            )
+          }
           fast.push(`x${index}=${transform}(x${index})`)
         }
         const targetPath = linkIndex === 0
