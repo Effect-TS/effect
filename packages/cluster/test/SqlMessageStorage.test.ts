@@ -40,6 +40,60 @@ describe("SqlMessageStorage", () => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {
+      if (label === "mysql") {
+        for (
+          const [representation, id] of [
+            ["number", 226271763047567360n],
+            ["string", 226271763047567361n]
+          ] as const
+        ) {
+          for (const operation of ["duplicate detection", "primary-key lookup", "reply matching"] as const) {
+            it.effect(`normalizes MySQL ${representation} IDs through ${operation}`, () =>
+              Effect.gen(function*() {
+                yield* truncate
+                const sql = yield* SqlClient
+                const storage = yield* MessageStorage.MessageStorage
+                const rpc = Rpc.fromTaggedRequest(PrimaryKeyTest)
+                const request = yield* makeRequest({ rpc, payload: new PrimaryKeyTest({ id: 987655 }) })
+                const original = new Message.OutgoingRequest({
+                  ...request,
+                  envelope: Envelope.makeRequest<any>({ ...request.envelope, requestId: Snowflake.Snowflake(id) })
+                })
+                assert.strictEqual((yield* storage.saveRequest(original))._tag, "Success")
+                const rows = yield* sql<{ id: string | number }>`SELECT id FROM cluster_messages`
+                assert.strictEqual(rows.length, 1)
+                assert.strictEqual(typeof rows[0].id, representation)
+                assert.strictEqual(BigInt(rows[0].id), id)
+
+                if (operation === "primary-key lookup") {
+                  const found = yield* storage.requestIdForPrimaryKey({
+                    address: original.envelope.address,
+                    tag: original.envelope.tag,
+                    id: "987655"
+                  })
+                  assert(Option.isSome(found))
+                  assert.strictEqual<bigint>(found.value, id)
+                  return
+                }
+
+                const duplicate = yield* storage.saveRequest(request)
+                assert(duplicate._tag === "Duplicate")
+                if (operation === "duplicate detection") {
+                  assert.strictEqual<bigint>(duplicate.originalId, id)
+                  return
+                }
+
+                const pending = new Map([[duplicate.originalId, request.envelope.requestId]])
+                yield* storage.saveReply(yield* makeReply(original))
+                const replies = yield* storage.repliesFor([original])
+                assert.strictEqual(replies.length, 1)
+                assert.strictEqual<bigint>(replies[0].requestId, id)
+                assert.strictEqual(pending.get(replies[0].requestId), request.envelope.requestId)
+              }))
+          }
+        }
+      }
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage
