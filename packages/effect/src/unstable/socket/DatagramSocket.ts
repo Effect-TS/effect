@@ -241,7 +241,7 @@ export const connect = (options: ConnectOptions): Effect.Effect<
  */
 export const make = <Out = OutgoingPacket, In = IncomingPacket>(options: {
   readonly address: NetAddress.InetAddress
-  readonly reader: DatagramSocket<Out, In>["reader"]
+  readonly reader: Reader<In>
   readonly writer: Writer<Out>
 }): DatagramSocket<Out, In> => ({ [TypeId]: TypeId, ...options })
 
@@ -332,47 +332,48 @@ export const fromTransport = (
   options: BindOptions,
   acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>
 ): Effect.Effect<DatagramSocket, DatagramSocketError, Scope.Scope> =>
-  Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-    const parent = yield* Effect.scope
-    if (Scope.isClosed(parent)) return yield* closedError
-    const scope = Scope.forkUnsafe(parent)
-    return yield* Effect.gen(function*() {
-      // Finalizers run in reverse order: settle I/O before releasing the transport.
-      const transportScope = Scope.forkUnsafe(scope)
-      const receiver = yield* makeReceiver(options)
-      const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
-      yield* Effect.addFinalizer(() => Deferred.fail(closed, closedError))
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(Effect.scope, (parentScope) => {
+      if (Scope.isClosed(parentScope)) return Effect.fail(closedError)
+      const socketScope = Scope.forkUnsafe(parentScope)
+      return Effect.gen(function*() {
+        // Finalizers run in reverse order: settle I/O before releasing the transport.
+        const transportScope = Scope.forkUnsafe(socketScope)
+        const receiver = yield* makeReceiver(options)
+        const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
+        yield* Effect.addFinalizer(() => Deferred.fail(closed, closedError))
 
-      const whileOpen = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
-        Effect.raceFirst(
-          Effect.suspend(() => Scope.isClosed(scope) ? Effect.fail(closedError) : operation),
-          Deferred.await(closed)
-        )
-      const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(
-        Scope.provide(transportScope),
-        whileOpen,
-        restore
-      )
-      if (Scope.isClosed(scope)) return yield* closedError
-
-      const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
-      const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
-        if (packet.data.byteLength > maxPacketBytes) {
-          return yield* error(
-            new DatagramSocketMessageTooLargeError({
-              size: packet.data.byteLength,
-              maxPacketBytes
-            })
+        const whileOpen = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
+          Effect.raceFirst(
+            Effect.suspend(() => Scope.isClosed(socketScope) ? Effect.fail(closedError) : operation),
+            Deferred.await(closed)
           )
-        }
-        return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
-      }, whileOpen)
-      return make({ address: binding.address, reader: { pull: receiver.pull }, writer: { write } })
-    }).pipe(
-      Scope.provide(scope),
-      Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
-    )
-  }))
+        const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(
+          Scope.provide(transportScope),
+          whileOpen,
+          restore
+        )
+        if (Scope.isClosed(socketScope)) return yield* closedError
+
+        const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
+        const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
+          if (packet.data.byteLength > maxPacketBytes) {
+            return yield* error(
+              new DatagramSocketMessageTooLargeError({
+                size: packet.data.byteLength,
+                maxPacketBytes
+              })
+            )
+          }
+          return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
+        }, whileOpen)
+        return make({ address: binding.address, reader: { pull: receiver.pull }, writer: { write } })
+      }).pipe(
+        Scope.provide(socketScope),
+        Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause)))
+      )
+    })
+  )
 
 /**
  * Acquires a scoped peer-associated socket with a byte-oriented writer.
@@ -584,7 +585,7 @@ export const toChannel = <Out, IE = never, In = IncomingPacket>(self: DatagramSo
   IE
 > =>
   Channel.merge(
-    Channel.fromTransform(() => Effect.succeed(self.reader.pull)),
+    Channel.fromPull(Effect.succeed(self.reader.pull)),
     Channel.identity<NonEmptyReadonlyArray<Out>, IE, unknown>().pipe(
       Channel.mapEffect((packets) => Effect.forEach(packets, self.writer.write, { discard: true })),
       Channel.drain,
@@ -605,36 +606,36 @@ export const toChannelWith = <IE = never>() => <Out, In = IncomingPacket>(self: 
 const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
   const scope = yield* Effect.scope
   const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
+  const receiveCapacity = options.receiveCapacity ?? 256
   const receiveCapacityBytes = options.receiveCapacityBytes ?? 4 * 1024 * 1024
-
+  const readBatchSize = options.readBatchSize ?? 16
   const incoming = yield* Effect.acquireRelease(
-    Queue.dropping<IncomingPacket, DatagramSocketError>(options.receiveCapacity ?? 256),
+    Queue.dropping<IncomingPacket, DatagramSocketError>(receiveCapacity),
     (queue) => Queue.fail(queue, closedError).pipe(Effect.andThen(Queue.shutdown(queue)))
   )
 
   // The endpoint owns the buffer, independently of the fibers receiving packets.
   let queuedBytes = 0
+  // Receive failures take precedence over packets awaiting a scheduled dequeue.
   let readError: DatagramSocketError | undefined
 
   const onError = (cause: unknown) => {
-    if (Scope.isClosed(scope) || readError) return
+    if (Scope.isClosed(scope) || readError !== undefined) return
     readError = error(new DatagramSocketReadError({ cause }))
     Queue.failCauseUnsafe(incoming, Cause.fail(readError))
   }
   const onMessage = (data: Uint8Array, source: NetAddress.InetAddress) => {
     const size = data.byteLength
     if (
-      Scope.isClosed(scope) || readError || size > maxPacketBytes ||
+      Scope.isClosed(scope) || readError !== undefined || size > maxPacketBytes ||
       Queue.isFullUnsafe(incoming) ||
       queuedBytes + size > receiveCapacityBytes
     ) return
-    const packet = { data: Uint8Array.from(data), source }
-    if (Queue.offerUnsafe(incoming, packet)) queuedBytes += size
+    if (Queue.offerUnsafe(incoming, { data: Uint8Array.from(data), source })) queuedBytes += size
   }
-  const readBatchSize = options.readBatchSize ?? 16
   const pull: Reader["pull"] = Effect.suspend(() => {
     if (Scope.isClosed(scope)) return Effect.fail(closedError)
-    if (readError) return Effect.fail(readError)
+    if (readError !== undefined) return Effect.fail(readError)
     const packets: Array<IncomingPacket> = []
     // Dequeue and byte accounting cannot be separated by a fiber interruption.
     while (packets.length < readBatchSize) {

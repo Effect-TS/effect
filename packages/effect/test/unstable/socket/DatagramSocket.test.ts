@@ -211,6 +211,78 @@ describe("DatagramSocket.fromTransport", () => {
       assert.deepStrictEqual(yield* socket.reader.pull, [packet([]), packet([5, 6])])
     }))
 
+  it.effect("shares batches across concurrent pulls and restores capacity after interruption", () =>
+    Effect.gen(function*() {
+      let handlers!: Datagram.Handlers
+      const socket = yield* Datagram.fromTransport({
+        localAddress: address,
+        receiveCapacity: 2,
+        receiveCapacityBytes: 2,
+        readBatchSize: 1
+      }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({ address, send: () => Effect.void })
+      })
+      const first = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      const cancelled = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      const second = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Fiber.interrupt(cancelled)
+      handlers.onMessage(new Uint8Array([1]), address)
+      handlers.onMessage(new Uint8Array([2]), address)
+      assert.deepStrictEqual(yield* Fiber.join(first), [packet([1])])
+      assert.deepStrictEqual(yield* Fiber.join(second), [packet([2])])
+
+      handlers.onMessage(new Uint8Array([3]), address)
+      handlers.onMessage(new Uint8Array([4]), address)
+      assert.deepStrictEqual(yield* socket.reader.pull, [packet([3])])
+      assert.deepStrictEqual(yield* socket.reader.pull, [packet([4])])
+
+      const waiting = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isUndefined(waiting.pollUnsafe())
+      handlers.onMessage(new Uint8Array([5]), address)
+      assert.deepStrictEqual(yield* Fiber.join(waiting), [packet([5])])
+    }))
+
+  it.effect("fails all readers with the first receive error until the socket closes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      let handlers!: Datagram.Handlers
+      let writes = 0
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({
+          address,
+          send: () =>
+            Effect.sync(() => {
+              writes++
+            })
+        })
+      }).pipe(Scope.provide(scope))
+      const first = yield* socket.reader.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+      const second = yield* socket.reader.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+      const cause = new Error("receive failed")
+      handlers.onMessage(new Uint8Array([1]), address)
+      handlers.onError(cause)
+      handlers.onError(new Error("late failure"))
+      handlers.onMessage(new Uint8Array([2]), address)
+
+      const failure = yield* Fiber.join(first)
+      assert.strictEqual(failure.reason._tag, "DatagramSocketReadError")
+      assert.strictEqual(failure.cause, cause)
+      assert.strictEqual(yield* Fiber.join(second), failure)
+      assert.strictEqual(yield* socket.reader.pull.pipe(Effect.flip), failure)
+      yield* socket.writer.write(outgoing)
+      assert.strictEqual(writes, 1)
+
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual((yield* socket.reader.pull.pipe(Effect.flip)).reason._tag, "DatagramSocketClosedError")
+      assert.strictEqual(
+        (yield* socket.writer.write(outgoing).pipe(Effect.flip)).reason._tag,
+        "DatagramSocketClosedError"
+      )
+      assert.strictEqual(writes, 1)
+    }))
+
   it.effect("rejects acquisition in a closed scope without invoking the transport", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Effect.scope)
