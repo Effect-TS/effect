@@ -9,8 +9,11 @@
  * @since 4.0.0
  */
 import * as Bun from "bun"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
+import * as MutableRef from "effect/MutableRef"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as NetAddress from "effect/unstable/net/NetAddress"
@@ -60,13 +63,8 @@ export const layer: Layer.Layer<Datagram.DatagramSocketFactory> = Layer.succeed(
   connect
 })
 
-interface PendingWrite {
-  readonly retry: () => void
-  readonly fail: (cause: unknown) => void
-}
-
 interface SocketState {
-  readonly pendingWrites: Set<PendingWrite>
+  readonly writable: MutableRef.MutableRef<Deferred.Deferred<void, unknown>>
   socket: Bun.udp.BaseUDPSocket | undefined
   isClosed: boolean
 }
@@ -86,7 +84,7 @@ const open = Effect.fnUntraced(function*(
     catch: openError
   })
   const state: SocketState = {
-    pendingWrites: new Set(),
+    writable: MutableRef.make(Deferred.makeUnsafe<void, unknown>()),
     socket: undefined,
     isClosed: false
   }
@@ -116,7 +114,7 @@ const open = Effect.fnUntraced(function*(
 
   return {
     address,
-    send: makeSend(native.send, state.pendingWrites)
+    send: makeSend(native.send, state)
   }
 })
 
@@ -145,11 +143,11 @@ const makeSocketOptions = (
       }
     },
     drain: () => {
-      for (const write of Array.from(state.pendingWrites)) write.retry()
+      notifyWriters(state, Exit.void)
     },
     error: (_socket: Bun.udp.BaseUDPSocket, cause: Error) => {
       handlers.onError(cause)
-      for (const write of Array.from(state.pendingWrites)) write.fail(cause)
+      notifyWriters(state, Exit.fail(cause))
     }
   }
 })
@@ -176,37 +174,29 @@ const openNativeSocket = async (
   }
 }
 
-const makeSend = (
-  send: NativeBinding["send"],
-  pendingWrites: Set<PendingWrite>
-): Datagram.Binding["send"] => {
-  return (packet) =>
-    Effect.callback<void, Datagram.DatagramSocketError>((resume) => {
-      const finish = (result: Effect.Effect<void, Datagram.DatagramSocketError>) => {
-        pendingWrites.delete(write)
-        resume(result)
-      }
-      const fail = (cause: unknown) => finish(Effect.fail(writeError(cause, packet)))
-      const retry = () => {
-        try {
-          if (send(packet)) finish(Effect.void)
-        } catch (cause) {
-          fail(cause)
-        }
-      }
-      const write: PendingWrite = { retry, fail }
-
-      pendingWrites.add(write)
-      retry()
-
-      return Effect.sync(() => pendingWrites.delete(write))
-    })
+const notifyWriters = (state: SocketState, result: Exit.Exit<void, unknown>) => {
+  // Install the next signal before waking writers that may encounter backpressure again.
+  const writable = MutableRef.getAndSet(state.writable, Deferred.makeUnsafe())
+  Deferred.doneUnsafe(writable, result)
 }
+
+const makeSend = (send: NativeBinding["send"], state: SocketState): Datagram.Binding["send"] =>
+  Effect.fnUntraced(function*(packet) {
+    while (true) {
+      // Capture the signal before sending so a drain cannot be missed.
+      const writable = MutableRef.get(state.writable)
+      const accepted = yield* Effect.try({
+        try: () => send(packet),
+        catch: (cause) => writeError(cause, packet)
+      })
+      if (accepted) return
+      yield* Deferred.await(writable).pipe(Effect.mapError((cause) => writeError(cause, packet)))
+    }
+  })
 
 const closeSocket = (state: SocketState) =>
   Effect.sync(() => {
     state.isClosed = true
-    state.pendingWrites.clear()
     state.socket?.close()
   })
 
