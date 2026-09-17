@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve raw Response headers when HttpServerResponse.toWeb omits the body for HEAD or outer statuses 204, 205, and 304. Keep the outer status and status text for those bodyless statuses, otherwise preserve the native status and status text for HEAD. Append outer cookies to native Set-Cookie headers in both bodyless and ordinary raw Response conversions.
+`HttpServerResponse.toWeb` now keeps a raw `Response`'s headers and `Set-Cookie` values when the body is omitted (HEAD, or status 204, 205 or 304). Bodyless outer statuses keep the outer status and status text; HEAD keeps the raw `Response`'s. Outer cookies are appended to native `Set-Cookie` headers instead of replacing them.

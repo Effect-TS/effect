@@ -12,34 +12,34 @@ describe("HttpServerResponse", () => {
       { status: 304, withoutBody: false },
       { status: 200, withoutBody: true }
     ])(
-      "preserves raw Response headers for status $status with withoutBody=$withoutBody",
-      async ({ status, withoutBody }) => {
-        const cookies = ["sid=abc; Path=/; HttpOnly", "theme=dark; Path=/"]
+      "preserves raw Response headers and appends outer cookies for status $status with withoutBody=$withoutBody",
+      ({ status, withoutBody }) => {
+        const nativeCookies = ["sid=abc; Path=/; HttpOnly", "theme=dark; Path=/"]
         const native = new Response(withoutBody ? "body" : null, {
           status,
           headers: [
             ["x-probe", "native"],
             ["etag", "\"version-1\""],
             ["x-shared", "native"],
-            ...cookies.map((cookie): [string, string] => ["set-cookie", cookie])
+            ...nativeCookies.map((cookie): [string, string] => ["set-cookie", cookie])
           ]
         })
         const web = HttpServerResponse.toWeb(
           HttpServerResponse.raw(native, {
             status,
-            headers: { "x-outer": "outer", "x-shared": "outer" }
+            headers: { "x-outer": "outer", "x-shared": "outer" },
+            cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}], ["b", "2", {}]])
           }),
           { withoutBody }
         )
 
         assert.strictEqual(web.status, status)
         assert.strictEqual(web.body, null)
-        assert.strictEqual(await web.text(), "")
         assert.strictEqual(web.headers.get("x-outer"), "outer")
         assert.strictEqual(web.headers.get("x-shared"), "outer")
         assert.strictEqual(web.headers.get("x-probe"), "native")
         assert.strictEqual(web.headers.get("etag"), "\"version-1\"")
-        assert.deepStrictEqual(web.headers.getSetCookie(), cookies)
+        assert.deepStrictEqual(web.headers.getSetCookie(), [...nativeCookies, "a=1", "b=2"])
       }
     )
 
@@ -70,37 +70,6 @@ describe("HttpServerResponse", () => {
       }
     )
 
-    it.each([
-      { status: 204, withoutBody: false },
-      { status: 205, withoutBody: false },
-      { status: 304, withoutBody: false },
-      { status: 200, withoutBody: true },
-      { status: 200, withoutBody: false }
-    ])(
-      "appends outer cookies to raw Response cookies for status $status with withoutBody=$withoutBody",
-      ({ status, withoutBody }) => {
-        const nativeCookies = ["sid=abc; Path=/; HttpOnly", "theme=dark; Path=/"]
-        const native = new Response(status === 200 ? "body" : null, {
-          status,
-          headers: nativeCookies.map((cookie): [string, string] => ["set-cookie", cookie])
-        })
-        const web = HttpServerResponse.toWeb(
-          HttpServerResponse.raw(native, {
-            status,
-            cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}], ["b", "2", {}]])
-          }),
-          { withoutBody }
-        )
-
-        if (status === 200 && !withoutBody) {
-          assert.strictEqual(web, native)
-        } else {
-          assert.strictEqual(web.body, null)
-        }
-        assert.deepStrictEqual(web.headers.getSetCookie(), [...nativeCookies, "a=1", "b=2"])
-      }
-    )
-
     it("preserves the raw Response status and status text for HEAD", () => {
       const native = new Response("body", { status: 202, statusText: "Accepted by upstream" })
       const web = HttpServerResponse.toWeb(
@@ -120,7 +89,10 @@ describe("HttpServerResponse", () => {
         headers: { "x-probe": "native", "x-shared": "native", "set-cookie": "sid=abc; Path=/; HttpOnly" }
       })
       const web = HttpServerResponse.toWeb(
-        HttpServerResponse.raw(native, { headers: { "x-outer": "outer", "x-shared": "outer" } })
+        HttpServerResponse.raw(native, {
+          headers: { "x-outer": "outer", "x-shared": "outer" },
+          cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}], ["b", "2", {}]])
+        })
       )
 
       assert.strictEqual(web, native)
@@ -129,7 +101,7 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(web.headers.get("x-probe"), "native")
       assert.strictEqual(web.headers.get("x-outer"), "outer")
       assert.strictEqual(web.headers.get("x-shared"), "outer")
-      assert.deepStrictEqual(web.headers.getSetCookie(), ["sid=abc; Path=/; HttpOnly"])
+      assert.deepStrictEqual(web.headers.getSetCookie(), ["sid=abc; Path=/; HttpOnly", "a=1", "b=2"])
       assert.strictEqual(await web.text(), "body")
     })
 
