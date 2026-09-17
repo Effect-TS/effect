@@ -216,7 +216,9 @@ export const make = Effect.fnUntraced(function*(options?: {
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
-  const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
+  const selectByMessageId = (
+    message_id: string
+  ): Effect.Effect<ReadonlyArray<Row & Pick<MessageRow, "id">>, SqlError> =>
     sql`
       SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
       FROM ${messagesTableSql} m
@@ -227,7 +229,7 @@ export const make = Effect.fnUntraced(function*(options?: {
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
-  ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
+  ) => Effect.Effect<ReadonlyArray<Row & Pick<MessageRow, "id">>, SqlError> = sql.onDialectOrElse({
     pg: () => (row, message_id) =>
       sql`
         INSERT INTO ${messagesTableSql} ${sql.insert(row)}
@@ -409,7 +411,7 @@ export const make = Effect.fnUntraced(function*(options?: {
             const row = rows[0]
             const replyKindNum = typeof row.reply_kind === "bigint" ? Number(row.reply_kind) : row.reply_kind
             return SaveResultEncoded.Duplicate({
-              originalId: Snowflake.Snowflake(row.id as any),
+              originalId: Snowflake.Snowflake(row.id),
               lastReceivedReply: row.reply_id ?
                 Option.some({
                   id: String(row.reply_id),
@@ -466,11 +468,11 @@ export const make = Effect.fnUntraced(function*(options?: {
     requestIdForPrimaryKey: (primaryKey) =>
       messageIdForPrimaryKey(primaryKey).pipe(
         Effect.flatMap((messageId) =>
-          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+          sql<{ id: string | number | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
         ),
         Effect.flatMap((rows) =>
           rows.length === 0 && mayHaveLegacyRow(primaryKey)
-            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            ? sql<{ id: string | number | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
             : Effect.succeed(rows)
         ),
         Effect.map((rows) =>
@@ -967,7 +969,7 @@ const replyFromRow = (row: ReplyRow): Reply.ReplyEncoded<any> =>
     }
 
 type MessageRow = {
-  readonly id: string | bigint
+  readonly id: string | number | bigint
   readonly message_id: string | null
   readonly shard_id: string
   readonly entity_type: string
@@ -979,21 +981,21 @@ type MessageRow = {
   readonly trace_id: string | null
   readonly span_id: string | null
   readonly sampled: boolean | number | bigint | null
-  readonly request_id: string | bigint | null
-  readonly reply_id: string | bigint | null
+  readonly request_id: string | number | bigint | null
+  readonly reply_id: string | number | bigint | null
   readonly deliver_at: number | bigint | null
 }
 
 type ReplyRow = {
-  readonly id: string | bigint
+  readonly id: string | number | bigint
   readonly kind: 0 | null | 0n
-  readonly request_id: string | bigint
+  readonly request_id: string | number | bigint
   readonly payload: string
   readonly sequence: number | bigint | null
 }
 
 type ReplyJoinRow = {
-  readonly reply_reply_id: string | bigint | null
+  readonly reply_reply_id: string | number | bigint | null
   readonly reply_payload: string | null
   readonly reply_sequence: number | bigint | null
 }
