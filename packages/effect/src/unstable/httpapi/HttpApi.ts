@@ -348,6 +348,15 @@ export class AdditionalSchemas extends Context.Service<
  * endpoint options replace group options. Each annotation replaces the whole
  * options object. Without an annotation, Schema defaults apply.
  *
+ * Header codecs receive the complete HTTP header record. With
+ * `onExcessProperty: "error"`, undeclared headers such as `content-type` cause
+ * request or response decoding to fail.
+ *
+ * Server routes capture annotations from the API passed to
+ * `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`. Apply API annotations
+ * before constructing those handlers; annotating only the API passed to
+ * `HttpApiBuilder.layer` does not update existing routes.
+ *
  * @category services
  * @since 4.0.0
  */

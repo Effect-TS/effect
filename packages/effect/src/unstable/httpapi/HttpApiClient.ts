@@ -12,7 +12,6 @@
  */
 import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
-import * as Channel from "../../Channel.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import { identity } from "../../Function.ts"
@@ -921,16 +920,15 @@ function makeSseDecoder(
 ) {
   const Event = Schema.Union([
     Schema.Struct({
+      id: Schema.optional(Schema.String),
       event: Schema.Literal(reservedStreamFailureEvent),
       data: Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(declaration.error, Schema.Defect())))
     }),
     declaration.events
   ])
-  const decode = Schema.decodeEffect(Schema.NonEmptyArray(Sse.EventEncoded.pipe(Schema.decodeTo(Event))), parseOptions)
-  const makeDecoder = (options?: Sse.DecodeOptions) =>
-    Sse.decode(options).pipe(Channel.mapEffect((events) => decode(events)))
-  const defaultDecoder = makeDecoder()
-  return (options?: Sse.DecodeOptions) => options === undefined ? defaultDecoder : makeDecoder(options)
+  const defaultDecoder = Sse.decodeSchema(Event, undefined, parseOptions)
+  return (options?: Sse.DecodeOptions) =>
+    options === undefined ? defaultDecoder : Sse.decodeSchema(Event, options, parseOptions)
 }
 
 function decodeSseStream(
