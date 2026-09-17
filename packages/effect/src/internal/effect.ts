@@ -3907,12 +3907,6 @@ export const ScopeCloseableTypeId = "~effect/Scope/Closeable"
 export const scopeTag: Context.Service<Scope.Scope, Scope.Scope> = Context.Service<Scope.Scope>("effect/Scope")
 
 /** @internal */
-export const scopeIsOpen = (self: Scope.Scope): boolean => self.state._tag !== "Closed"
-
-/** @internal */
-export const scopeIsClosed = (self: Scope.Scope): boolean => self.state._tag === "Closed"
-
-/** @internal */
 export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
   suspend(() => scopeCloseUnsafe(self, exit_) ?? void_)
 
@@ -5561,7 +5555,7 @@ export const forkIn: {
     withFiber((parent) => {
       const fiber = forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
-        if (scopeIsOpen(scope)) {
+        if (scope.state._tag !== "Closed") {
           const key = {}
           const finalizer = () => withFiberId((interruptor) => interruptor === fiber.id ? void_ : fiberInterrupt(fiber))
           scopeAddFinalizerUnsafe(scope, key, finalizer)
@@ -5646,7 +5640,7 @@ export const fiberRunIn: {
 ): Fiber.Fiber<A, E> => {
   if (self._exit) {
     return self
-  } else if (scopeIsClosed(scope)) {
+  } else if (scope.state._tag === "Closed") {
     self.interruptUnsafe(self.id)
     return self
   }

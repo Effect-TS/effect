@@ -9,7 +9,6 @@ import * as Equal from "../../../Equal.ts"
 import * as Exit from "../../../Exit.ts"
 import * as Fiber from "../../../Fiber.ts"
 import { identity } from "../../../Function.ts"
-import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../../internal/effect.ts"
 import * as Latch from "../../../Latch.ts"
 import * as Metric from "../../../Metric.ts"
 import * as Option from "../../../Option.ts"
@@ -465,105 +464,126 @@ export const make = Effect.fnUntraced(function*<
         (server): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> => {
           switch (message._tag) {
             case "IncomingRequestLocal": {
-              // If the request is already running, then we might have more than
-              // one sender for the same request. In this case, the other senders
-              // should resume from storage only.
-              let entry = server.activeRequests.get(message.envelope.requestId)
-              if (entry || processedRequestIds.has(message.envelope.requestId)) {
-                return Effect.fail(
-                  new AlreadyProcessingMessage({
-                    envelopeId: message.envelope.requestId,
-                    address: message.envelope.address
-                  })
-                )
-              }
-
-              const rpc = entityRpcs.get(message.envelope.tag)! as any as Rpc.AnyWithProps
-              if (!storageEnabled && Context.get(message.annotations, Persisted)) {
-                return Effect.die(
-                  "EntityManager.sendLocal: Cannot process a persisted message without MessageStorage"
-                )
-              }
-
-              // Cluster internal RPCs
-
-              // keep-alive RPC
-              if (rpc._tag === KeepAliveRpc._tag) {
-                const msg = message as unknown as Message.IncomingRequestLocal<typeof KeepAliveRpc>
-                const reply = Effect.suspend(() =>
-                  Effect.orDie(retryRespond(
-                    4,
-                    msg.respond(
-                      new Reply.WithExit<typeof KeepAliveRpc>({
-                        requestId: message.envelope.requestId,
-                        id: snowflakeGen.nextUnsafe(),
-                        exit: Exit.void
-                      })
-                    )
-                  ))
-                )
-
-                if (server.keepAliveEnabled) return reply
-                server.keepAliveEnabled = true
-                return server.keepAliveLatch.whenOpen(Effect.suspend(() => {
-                  server.keepAliveEnabled = false
-                  return reply
-                })).pipe(
-                  Effect.forkIn(server.scope, { startImmediately: true }),
-                  Effect.asVoid
-                )
-              }
-
-              if (mailboxCapacity !== "unbounded" && server.activeRequests.size >= mailboxCapacity) {
-                return Effect.fail(new MailboxFull({ address: message.envelope.address }))
-              }
-
               const callerScope = message.callerScope !== undefined &&
                   !Context.get(message.annotations, Persisted) &&
                   Context.get(message.annotations, ClusterSchema.Uninterruptible) === false
                 ? message.callerScope
                 : undefined
-              if (callerScope !== undefined && Scope.isClosed(callerScope)) {
-                return Effect.void
-              }
-              entry = {
-                rpc,
-                message,
-                sentReply: false,
-                lastSentChunk: Option.filter(
-                  message.lastSentReply,
-                  (reply): reply is Reply.Chunk<Rpc.Any> => reply._tag === "Chunk"
-                ),
-                sequence: Option.match(message.lastSentReply, {
-                  onNone: () => 0,
-                  onSome: (reply) => reply._tag === "Chunk" ? reply.sequence + 1 : 0
-                }),
-                callerScope
-              }
-              server.activeRequests.set(message.envelope.requestId, entry)
-              if (callerScope !== undefined) {
-                // Register cleanup atomically with admission, including requests awaiting delivery.
-                scopeAddFinalizerUnsafe(callerScope, {}, () =>
-                  Effect.sync(() => {
-                    if (server.activeRequests.delete(message.envelope.requestId) && server.activeRequests.size === 0) {
-                      server.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                    }
-                  }))
-              }
-              return server.write(
-                0,
-                {
-                  ...message.envelope,
-                  id: message.envelope.requestId as any,
-                  payload: new Request({
+              let cancelled = false
+              let admitted = false
+              let cleanup = () => {}
+              const admit = Effect.suspend((): Effect.Effect<void, AlreadyProcessingMessage | MailboxFull> => {
+                // If the request is already running, then we might have more than
+                // one sender for the same request. In this case, the other senders
+                // should resume from storage only.
+                let entry = server.activeRequests.get(message.envelope.requestId)
+                if (entry || processedRequestIds.has(message.envelope.requestId)) {
+                  return Effect.fail(
+                    new AlreadyProcessingMessage({
+                      envelopeId: message.envelope.requestId,
+                      address: message.envelope.address
+                    })
+                  )
+                }
+
+                const rpc = entityRpcs.get(message.envelope.tag)! as any as Rpc.AnyWithProps
+                if (!storageEnabled && Context.get(message.annotations, Persisted)) {
+                  return Effect.die(
+                    "EntityManager.sendLocal: Cannot process a persisted message without MessageStorage"
+                  )
+                }
+
+                // Cluster internal RPCs
+
+                // keep-alive RPC
+                if (rpc._tag === KeepAliveRpc._tag) {
+                  const msg = message as unknown as Message.IncomingRequestLocal<typeof KeepAliveRpc>
+                  const reply = Effect.suspend(() =>
+                    Effect.orDie(retryRespond(
+                      4,
+                      msg.respond(
+                        new Reply.WithExit<typeof KeepAliveRpc>({
+                          requestId: message.envelope.requestId,
+                          id: snowflakeGen.nextUnsafe(),
+                          exit: Exit.void
+                        })
+                      )
+                    ))
+                  )
+
+                  if (server.keepAliveEnabled) return reply
+                  server.keepAliveEnabled = true
+                  return server.keepAliveLatch.whenOpen(Effect.suspend(() => {
+                    server.keepAliveEnabled = false
+                    return reply
+                  })).pipe(
+                    Effect.forkIn(server.scope, { startImmediately: true }),
+                    Effect.asVoid
+                  )
+                }
+
+                if (mailboxCapacity !== "unbounded" && server.activeRequests.size >= mailboxCapacity) {
+                  return Effect.fail(new MailboxFull({ address: message.envelope.address }))
+                }
+
+                if (cancelled) {
+                  return Effect.void
+                }
+                entry = {
+                  rpc,
+                  message,
+                  sentReply: false,
+                  lastSentChunk: Option.filter(
+                    message.lastSentReply,
+                    (reply): reply is Reply.Chunk<Rpc.Any> => reply._tag === "Chunk"
+                  ),
+                  sequence: Option.match(message.lastSentReply, {
+                    onNone: () => 0,
+                    onSome: (reply) => reply._tag === "Chunk" ? reply.sequence + 1 : 0
+                  }),
+                  callerScope
+                }
+                server.activeRequests.set(message.envelope.requestId, entry)
+                admitted = true
+                const admittedEntry = entry
+                cleanup = () => {
+                  if (server.activeRequests.get(message.envelope.requestId) !== admittedEntry) return
+                  server.activeRequests.delete(message.envelope.requestId)
+                  if (server.activeRequests.size === 0) {
+                    server.lastActiveCheck = clock.currentTimeMillisUnsafe()
+                  }
+                }
+                return server.write(
+                  0,
+                  {
                     ...message.envelope,
-                    lastSentChunk: Option.filter(
-                      message.lastSentReply,
-                      (reply): reply is Reply.Chunk<R> => reply._tag === "Chunk"
-                    )
-                  })
-                },
-                requestWriteOptions(entry)
+                    id: message.envelope.requestId as any,
+                    payload: new Request({
+                      ...message.envelope,
+                      lastSentChunk: Option.filter(
+                        message.lastSentReply,
+                        (reply): reply is Reply.Chunk<R> => reply._tag === "Chunk"
+                      )
+                    })
+                  },
+                  requestWriteOptions(entry)
+                )
+              })
+              if (callerScope === undefined) return admit
+              return Effect.uninterruptibleMask((restore) =>
+                Effect.flatMap(Scope.fork(callerScope), (scope) =>
+                  Scope.addFinalizer(
+                    scope,
+                    Effect.sync(() => {
+                      cancelled = true
+                      cleanup()
+                    })
+                  ).pipe(
+                    // Register cancellation before the synchronous admission checks and insertion.
+                    Effect.andThen(restore(admit)),
+                    // Rejected or interrupted admission must not retain a caller finalizer.
+                    Effect.onExit((exit) => admitted ? Effect.void : Scope.close(scope, exit))
+                  ))
               )
             }
             case "IncomingEnvelope": {
@@ -598,12 +618,33 @@ export const make = Effect.fnUntraced(function*<
 
   // Bind each handler fiber, including replays, before its body runs.
   const bindToCaller = (callerScope: Scope.Scope) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    Effect.withFiber<A, E, R>((fiber) => {
-      if (Scope.isClosed(callerScope)) return Effect.interrupt
-      const key = {}
-      scopeAddFinalizerUnsafe(callerScope, key, () => Effect.sync(() => fiber.interruptUnsafe(fiber.id)))
-      return Effect.ensuring(effect, Effect.sync(() => scopeRemoveFinalizerUnsafe(callerScope, key)))
-    })
+    Effect.withFiber<A, E, R>((fiber) =>
+      Effect.uninterruptibleMask((restore) =>
+        Effect.flatMap(Scope.fork(callerScope), (scope) => {
+          let running = false
+          let cancelled = false
+          return Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              cancelled = true
+              // Caller teardown signals cancellation without waiting for handler cleanup.
+              if (running) fiber.interruptUnsafe(fiber.id)
+            })
+          ).pipe(
+            Effect.andThen(Effect.suspend(() => {
+              if (cancelled) return Effect.interrupt
+              running = true
+              return restore(effect)
+            })),
+            Effect.onExit((exit) => {
+              // Closing our own scope must only detach the binding, not interrupt us.
+              running = false
+              return Scope.close(scope, exit)
+            })
+          )
+        })
+      )
+    )
 
   const requestWriteOptions = (
     entry: { readonly message: Message.IncomingRequestLocal<any>; readonly callerScope?: Scope.Scope | undefined }
