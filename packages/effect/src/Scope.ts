@@ -215,6 +215,36 @@ export declare namespace State {
 export const Scope: Context.Service<Scope, Scope> = effect.scopeTag
 
 /**
+ * Returns whether a scope is open.
+ *
+ * **Details**
+ *
+ * Reads the current state synchronously. Returns `true` for both empty scopes
+ * and scopes with registered finalizers, and `false` as soon as closure starts.
+ *
+ * @see {@link isClosed} for the complementary predicate
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isOpen = (self: Scope): boolean => self.state._tag !== "Closed"
+
+/**
+ * Returns whether a scope is closed.
+ *
+ * **Details**
+ *
+ * Reads the current state synchronously. Returns `true` as soon as closure
+ * starts, even while registered finalizers are still running.
+ *
+ * @see {@link isOpen} for the complementary predicate
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isClosed = (self: Scope): boolean => self.state._tag === "Closed"
+
+/**
  * Creates a new `Scope` with the specified finalizer strategy.
  *
  * **Example** (Creating a scope)
