@@ -62,6 +62,11 @@ export * as NodeHttpServerRequest from "./NodeHttpServerRequest.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeMulticast from "./NodeMulticast.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodeMultipart from "./NodeMultipart.ts"
 
 /**

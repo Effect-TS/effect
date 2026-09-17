@@ -37,6 +37,11 @@ export * as NodeHttpCompression from "./NodeHttpCompression.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeMulticast from "./NodeMulticast.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodePath from "./NodePath.ts"
 
 /**

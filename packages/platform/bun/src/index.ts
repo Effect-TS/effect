@@ -57,6 +57,11 @@ export * as BunHttpServerRequest from "./BunHttpServerRequest.ts"
 /**
  * @since 4.0.0
  */
+export * as BunMulticast from "./BunMulticast.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as BunMultipart from "./BunMultipart.ts"
 
 /**
