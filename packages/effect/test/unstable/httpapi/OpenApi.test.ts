@@ -215,7 +215,26 @@ describe("OpenApi", () => {
 
     assert.strictEqual(spec.openapi, "3.1.0")
     assert.deepStrictEqual(Object.keys(pathItem), ["x-oai-additionalOperations"])
-    assert.strictEqual(pathItem["x-oai-additionalOperations"]?.QUERY.operationId, "search.search")
+    assert.strictEqual(pathItem["x-oai-additionalOperations"]?.QUERY?.operationId, "search.search")
+  })
+
+  it("preserves GET and QUERY schemas on the same path", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("search").add(
+        HttpApiEndpoint.get("list", "/search", { success: Schema.Finite }),
+        HttpApiEndpoint.query("search", "/search", {
+          payload: Schema.String,
+          success: Schema.Boolean
+        })
+      )
+    )
+
+    const pathItem = OpenApi.fromApi(Api).paths["/search"]
+    const query = pathItem["x-oai-additionalOperations"]?.QUERY
+
+    assert.deepStrictEqual(pathItem.get?.responses[200]?.content?.["application/json"]?.schema, { type: "number" })
+    assert.deepStrictEqual(query?.requestBody?.content["application/json"]?.schema, { type: "string" })
+    assert.deepStrictEqual(query?.responses[200]?.content?.["application/json"]?.schema, { type: "boolean" })
   })
 
   it("finalizes QUERY parameter and response schemas before applying operation annotations", () => {
