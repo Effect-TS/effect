@@ -1035,6 +1035,18 @@ export const inetAddressFromHostString = (
 }
 
 /**
+ * Network interface address metadata used to resolve IPv6 scope IDs.
+ *
+ * @see {@link scopeIdsFromInterfaces}
+ * @category models
+ * @since 4.0.0
+ */
+export interface NetworkInterfaceAddress {
+  readonly family: string
+  readonly scopeid?: number | undefined
+}
+
+/**
  * Creates a map from interface names to IPv6 scope IDs using supplied interface
  * entries.
  *
@@ -1051,17 +1063,7 @@ export const inetAddressFromHostString = (
  * @since 4.0.0
  */
 export const scopeIdsFromInterfaces = (
-  interfaces: Iterable<
-    readonly [
-      name: string,
-      addresses:
-        | ReadonlyArray<{
-          readonly family: string
-          readonly scopeid?: number | undefined
-        }>
-        | undefined
-    ]
-  >
+  interfaces: Iterable<readonly [name: string, addresses: ReadonlyArray<NetworkInterfaceAddress> | undefined]>
 ): Map<string, number> => {
   const scopeIds = new Map<string, number>()
   for (const [name, addresses] of interfaces) {
