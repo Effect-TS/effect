@@ -11,12 +11,19 @@
  * instance has its own database. Callers can pass the `SqlStorage` handle for
  * normal queries, or the full `DurableObjectStorage` when `withTransaction` or
  * migrations need Cloudflare-managed transactions. This adapter serializes
- * Effect SQL access through one connection; a transaction holds that permit for
- * the lifetime of its scope, so keep transactions short, avoid suspending them
+ * Effect SQL access through one connection; an outer transaction holds that permit
+ * until Cloudflare completes it, so keep transactions short, avoid suspending them
  * across unrelated work, and use them when multi-statement writes must commit
  * atomically. `SqlStorage.exec` returns `ArrayBuffer` values
  * for SQLite blobs, which this client normalizes to `Uint8Array`, and SQLite
  * does not support `updateValues`.
+ *
+ * Nested `withTransaction` calls reuse the active connection and create child
+ * boundaries through nested `storage.transaction()` callbacks, without emitting
+ * transaction SQL. A caught child failure or interruption rolls back only that
+ * child's writes; an uncaught failure also rolls back the outer transaction.
+ * Run children sequentially: concurrent sibling transactions are unsupported.
+ * Clients configured with only `db` do not support transactions.
  *
  * @since 4.0.0
  */
@@ -129,49 +136,44 @@ const makeStorageBackedWithTransaction = (
   Effect.withFiber((fiber) => {
     const services = fiber.context
     const connOption = Context.getOption(services, SqliteTransaction)
-    if (connOption._tag === "Some") {
-      return Effect.fail(
-        unsupportedTransaction(
-          "Nested transactions are not supported by Cloudflare Durable Object SQLite storage",
-          "transaction"
-        )
-      )
-    }
+    const [conn, depth] = connOption._tag === "Some"
+      ? [connOption.value[0], connOption.value[1] + 1] as const
+      : [connection, 0] as const
 
     const effectWithTxn = Effect.provideContext(
       effect,
-      Context.add(services, SqliteTransaction, [connection, 0] as const)
+      Context.add(services, SqliteTransaction, [conn, depth] as const)
     )
 
-    return semaphore.withPermits(1)(
-      Effect.callback((resume) => {
-        let interrupted = false
-        const promise = storage.transaction((txn) =>
-          new Promise<void>((resolve) => {
-            if (interrupted) return resolve()
-            resume(Effect.onExit(effectWithTxn, (exit) => {
-              if (Exit.isFailure(exit)) {
-                txn.rollback()
-              }
-              resolve()
-              return Effect.flatten(Effect.promise(() => promise))
-            }))
-          })
-        ).then(
-          () => Exit.void,
-          (cause) => {
-            const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
-            // Report rejection before the transaction callback starts; later resumes are ignored.
-            resume(exit)
-            return exit
-          }
-        )
-        return Effect.suspend(() => {
-          interrupted = true
-          return Effect.asVoid(Effect.promise(() => promise))
+    const transaction = Effect.callback<A, E | SqlError, R>((resume) => {
+      let interrupted = false
+      const promise = storage.transaction((txn) =>
+        new Promise<void>((resolve) => {
+          if (interrupted) return resolve()
+          resume(Effect.onExit(effectWithTxn, (exit) => {
+            if (Exit.isFailure(exit)) {
+              txn.rollback()
+            }
+            // Resolve after rollback: throwing from a child callback can abort its parent.
+            resolve()
+            return Effect.flatten(Effect.promise(() => promise))
+          }))
         })
+      ).then(
+        () => Exit.void,
+        (cause) => {
+          const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
+          // Report rejection before the transaction callback starts; later resumes are ignored.
+          resume(exit)
+          return exit
+        }
+      )
+      return Effect.suspend(() => {
+        interrupted = true
+        return Effect.asVoid(Effect.promise(() => promise))
       })
-    )
+    })
+    return connOption._tag === "Some" ? transaction : semaphore.withPermits(1)(transaction)
   })
 
 /**
