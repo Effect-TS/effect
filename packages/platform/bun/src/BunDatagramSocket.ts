@@ -8,13 +8,14 @@
  *
  * @since 4.0.0
  */
-import * as NodeNetAddress from "@effect/platform-node-shared/NodeNetAddress"
 import * as Bun from "bun"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
+import * as Os from "node:os"
 
 /**
  * Acquires a bound Bun UDP socket owned by the current scope.
@@ -64,6 +65,10 @@ const open = Effect.fnUntraced(function*(
   handlers: Datagram.Handlers,
   remote?: NetAddress.InetAddress
 ): Effect.fn.Return<Datagram.Binding, Datagram.DatagramSocketError, Scope.Scope> {
+  const scopeIds = yield* Effect.try({
+    try: () => NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces())),
+    catch: openError
+  })
   const pending = new Set<{ readonly retry: () => void; readonly fail: (cause: unknown) => void }>()
   let socket: Bun.udp.BaseUDPSocket | undefined
   let finalized = false
@@ -90,7 +95,7 @@ const open = Effect.fnUntraced(function*(
       ) => {
         if (finalized || flags?.truncated) return
         try {
-          handlers.onMessage(data, NodeNetAddress.inetAddressFromHostStringUnsafe(address, port))
+          handlers.onMessage(data, Result.getOrThrow(NetAddress.inetAddressFromHostString(address, port, scopeIds)))
         } catch (cause) {
           handlers.onError(cause)
         }
@@ -128,7 +133,10 @@ const open = Effect.fnUntraced(function*(
   })
 
   const address = yield* Effect.try({
-    try: () => NodeNetAddress.inetAddressFromHostStringUnsafe(socket!.address.address, socket!.address.port),
+    try: () => {
+      const { address, port } = socket!.address
+      return Result.getOrThrow(NetAddress.inetAddressFromHostString(address, port, scopeIds))
+    },
     catch: openError
   })
 

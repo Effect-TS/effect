@@ -37,11 +37,6 @@ export * as NodeHttpCompression from "./NodeHttpCompression.ts"
 /**
  * @since 4.0.0
  */
-export * as NodeNetAddress from "./NodeNetAddress.ts"
-
-/**
- * @since 4.0.0
- */
 export * as NodePath from "./NodePath.ts"
 
 /**

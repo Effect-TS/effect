@@ -16,7 +16,3 @@ Bun uses native UDP sockets with interruptible backpressure handling. Node and
 Deno share the Node-compatible adapter, which explicitly filters connected
 sockets to their configured peer. The shared adapter is also exported from
 `@effect/platform-node-shared/NodeDatagramSocket`.
-
-Add `NodeNetAddress.inetAddressFromHostStringUnsafe` in
-`@effect/platform-node-shared` to convert numeric hosts and ports while resolving
-named IPv6 zones through the host's network interfaces.

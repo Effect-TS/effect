@@ -15,11 +15,12 @@
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Layer from "effect/Layer"
+import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
 import * as Dgram from "node:dgram"
-import * as NodeNetAddress from "./NodeNetAddress.ts"
+import * as Os from "node:os"
 
 /**
  * Acquires a bound Node.js UDP socket owned by the current scope.
@@ -69,6 +70,10 @@ const open = Effect.fnUntraced(function*(
   handlers: Datagram.Handlers,
   remote?: NetAddress.InetAddress
 ): Effect.fn.Return<Datagram.Binding, Datagram.DatagramSocketError, Scope.Scope> {
+  const scopeIds = yield* Effect.try({
+    try: () => NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces())),
+    catch: openError
+  })
   const create = Effect.try({
     catch: openError,
     try: () => {
@@ -98,7 +103,7 @@ const open = Effect.fnUntraced(function*(
   const address = yield* Effect.try({
     try: () => {
       const { address, port } = socket.address()
-      return NodeNetAddress.inetAddressFromHostStringUnsafe(address, port)
+      return Result.getOrThrow(NetAddress.inetAddressFromHostString(address, port, scopeIds))
     },
     catch: openError
   })
@@ -106,7 +111,7 @@ const open = Effect.fnUntraced(function*(
   // Connected sockets must not buffer packets received before association.
   socket.on("message", (data, info) => {
     try {
-      const source = NodeNetAddress.inetAddressFromHostStringUnsafe(info.address, info.port)
+      const source = Result.getOrThrow(NetAddress.inetAddressFromHostString(info.address, info.port, scopeIds))
       // Some Node-compatible runtimes associate the peer without native receive filtering.
       if (remote === undefined || Equal.equals(source, remote)) handlers.onMessage(data, source)
     } catch (cause) {
