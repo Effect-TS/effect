@@ -243,6 +243,74 @@ describe("DatagramSocket.fromTransport", () => {
       assert.deepStrictEqual(yield* Fiber.join(waiting), [packet([5])])
     }))
 
+  it.effect("batches packets arriving before a waiting reader resumes", () =>
+    Effect.gen(function*() {
+      let handlers!: Datagram.Handlers
+      const socket = yield* Datagram.fromTransport({ localAddress: address, readBatchSize: 2 }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({ address, send: () => Effect.void })
+      })
+      const waiting = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      handlers.onMessage(new Uint8Array([1]), address)
+      handlers.onMessage(new Uint8Array(), address)
+      handlers.onMessage(new Uint8Array([2]), address)
+      assert.deepStrictEqual(yield* Fiber.join(waiting), [packet([1]), packet([])])
+      assert.deepStrictEqual(yield* socket.reader.pull, [packet([2])])
+    }))
+
+  it.effect("leaves a notified packet available when its waiting reader is interrupted", () =>
+    Effect.gen(function*() {
+      let handlers!: Datagram.Handlers
+      const socket = yield* Datagram.fromTransport({
+        localAddress: address,
+        receiveCapacity: 1,
+        receiveCapacityBytes: 1
+      }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({ address, send: () => Effect.void })
+      })
+      const waiting = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      handlers.onMessage(new Uint8Array([1]), address)
+      yield* Fiber.interrupt(waiting)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiting)))
+      assert.deepStrictEqual(yield* socket.reader.pull, [packet([1])])
+      handlers.onMessage(new Uint8Array([2]), address)
+      assert.deepStrictEqual(yield* socket.reader.pull, [packet([2])])
+    }))
+
+  it.effect("waits again when another reader consumes the available packet", () =>
+    Effect.gen(function*() {
+      let handlers!: Datagram.Handlers
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({ address, send: () => Effect.void })
+      })
+      const first = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      const second = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      handlers.onMessage(new Uint8Array([1]), address)
+      assert.deepStrictEqual(yield* Fiber.join(first), [packet([1])])
+      yield* Effect.yieldNow
+      assert.isUndefined(second.pollUnsafe())
+      handlers.onMessage(new Uint8Array([2]), address)
+      assert.deepStrictEqual(yield* Fiber.join(second), [packet([2])])
+    }))
+
+  it.effect("discards packets when closed before a notified reader resumes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      let handlers!: Datagram.Handlers
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, (callbacks) => {
+        handlers = callbacks
+        return Effect.succeed({ address, send: () => Effect.void })
+      }).pipe(Scope.provide(scope))
+      const waiting = yield* socket.reader.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+      handlers.onMessage(new Uint8Array([1]), address)
+      handlers.onMessage(new Uint8Array([2]), address)
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual((yield* Fiber.join(waiting)).reason._tag, "DatagramSocketClosedError")
+      assert.strictEqual((yield* Effect.flip(socket.reader.pull)).reason._tag, "DatagramSocketClosedError")
+    }))
+
   it.effect("fails all readers with the first receive error until the socket closes", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Effect.scope)
@@ -361,6 +429,31 @@ describe("DatagramSocket.fromTransport", () => {
       data[0] = 4
       assert.deepStrictEqual(writes.map((packet) => Array.from(packet.data)), [[2], [3]])
       for (const packet of writes) assert.strictEqual(packet.destination, address)
+    }))
+
+  it.effect("settles pending acquisition before waiting for transport cleanup", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const acquiring = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const cleanupStarted = yield* Deferred.make<void>()
+      const finishCleanup = yield* Deferred.make<void>()
+      const opening = yield* Datagram.fromTransport({ localAddress: address }, () =>
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Deferred.succeed(cleanupStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCleanup)))
+          )
+          yield* Deferred.succeed(acquiring, undefined)
+          return yield* Effect.never.pipe(Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined)))
+        })).pipe(Scope.provide(scope), Effect.flip, Effect.forkChild)
+      yield* Deferred.await(acquiring)
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      yield* Effect.gen(function*() {
+        yield* Deferred.await(cleanupStarted)
+        yield* Deferred.await(interrupted)
+        assert.strictEqual((yield* Fiber.join(opening)).reason._tag, "DatagramSocketClosedError")
+      }).pipe(Effect.ensuring(Deferred.succeed(finishCleanup, undefined)))
+      yield* Fiber.join(closing)
     }))
 
   it.effect("settles reads and sends before waiting for transport cleanup", () =>

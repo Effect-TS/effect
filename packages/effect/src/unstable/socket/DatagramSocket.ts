@@ -334,18 +334,22 @@ export const fromTransport = (
 ): Effect.Effect<DatagramSocket, DatagramSocketError, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.flatMap(Effect.scope, (parentScope) => {
-      if (Scope.isClosed(parentScope)) return Effect.fail(closedError)
       const socketScope = Scope.forkUnsafe(parentScope)
       return Effect.gen(function*() {
-        // Finalizers run in reverse order: settle I/O before releasing the transport.
-        const transportScope = Scope.forkUnsafe(socketScope)
+        const transportScope = Scope.makeUnsafe()
         const receiver = yield* makeReceiver(options)
         const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
-        yield* Effect.addFinalizer(() => Deferred.fail(closed, closedError))
+        // In an already closed scope this runs immediately, before acquisition.
+        yield* Scope.addFinalizerExit(socketScope, (exit) =>
+          Effect.sync(() => {
+            // Settle I/O and discard buffered packets before native cleanup can suspend.
+            receiver.fail(closedError)
+            Deferred.doneUnsafe(closed, Exit.fail(closedError))
+          }).pipe(Effect.andThen(Scope.close(transportScope, exit))))
 
         const whileOpen = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
           Effect.raceFirst(
-            Effect.suspend(() => Scope.isClosed(socketScope) ? Effect.fail(closedError) : operation),
+            Effect.suspend(() => Deferred.isDoneUnsafe(closed) ? Effect.fail(closedError) : operation),
             Deferred.await(closed)
           )
         const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(
@@ -353,7 +357,7 @@ export const fromTransport = (
           whileOpen,
           restore
         )
-        if (Scope.isClosed(socketScope)) return yield* closedError
+        if (Deferred.isDoneUnsafe(closed)) return yield* closedError
 
         const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
         const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
@@ -369,7 +373,6 @@ export const fromTransport = (
         }, whileOpen)
         return make({ address: binding.address, reader: { pull: receiver.pull }, writer: { write } })
       }).pipe(
-        Scope.provide(socketScope),
         Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause)))
       )
     })
@@ -604,53 +607,54 @@ export const toChannelWith = <IE = never>() => <Out, In = IncomingPacket>(self: 
   toChannel<Out, IE, In>(self)
 
 const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
-  const scope = yield* Effect.scope
   const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
   const receiveCapacity = options.receiveCapacity ?? 256
   const receiveCapacityBytes = options.receiveCapacityBytes ?? 4 * 1024 * 1024
   const readBatchSize = options.readBatchSize ?? 16
-  const incoming = yield* Effect.acquireRelease(
-    Queue.dropping<IncomingPacket, DatagramSocketError>(receiveCapacity),
-    (queue) => Queue.fail(queue, closedError).pipe(Effect.andThen(Queue.shutdown(queue)))
-  )
+  const incoming = yield* Queue.dropping<IncomingPacket, DatagramSocketError>(receiveCapacity)
 
   // The endpoint owns the buffer, independently of the fibers receiving packets.
   let queuedBytes = 0
-  // Receive failures take precedence over packets awaiting a scheduled dequeue.
   let readError: DatagramSocketError | undefined
 
+  const fail = (cause: DatagramSocketError) => {
+    readError = cause
+    queuedBytes = 0
+    Queue.failCauseUnsafe(incoming, Cause.fail(cause))
+    Queue.shutdownUnsafe(incoming)
+  }
+
   const onError = (cause: unknown) => {
-    if (Scope.isClosed(scope) || readError !== undefined) return
-    readError = error(new DatagramSocketReadError({ cause }))
-    Queue.failCauseUnsafe(incoming, Cause.fail(readError))
+    if (readError !== undefined) return
+    fail(error(new DatagramSocketReadError({ cause })))
   }
   const onMessage = (data: Uint8Array, source: NetAddress.InetAddress) => {
     const size = data.byteLength
     if (
-      Scope.isClosed(scope) || readError !== undefined || size > maxPacketBytes ||
+      readError !== undefined || size > maxPacketBytes ||
       Queue.isFullUnsafe(incoming) ||
       queuedBytes + size > receiveCapacityBytes
     ) return
     if (Queue.offerUnsafe(incoming, { data: Uint8Array.from(data), source })) queuedBytes += size
   }
-  const pull: Reader["pull"] = Effect.suspend(() => {
-    if (Scope.isClosed(scope)) return Effect.fail(closedError)
-    if (readError !== undefined) return Effect.fail(readError)
-    const packets: Array<IncomingPacket> = []
-    // Dequeue and byte accounting cannot be separated by a fiber interruption.
-    while (packets.length < readBatchSize) {
-      const next = Queue.takeUnsafe(incoming)
-      if (next === undefined) break
-      if (next._tag === "Failure") return Effect.failCause(next.cause)
-      queuedBytes -= next.value.data.byteLength
-      packets.push(next.value)
+  const pull: Reader["pull"] = Effect.gen(function*() {
+    while (true) {
+      if (readError !== undefined) return yield* readError
+      // Dequeue and byte accounting cannot be separated by a fiber interruption.
+      const packets: Array<IncomingPacket> = []
+      while (packets.length < readBatchSize) {
+        const next = Queue.takeUnsafe(incoming)
+        if (next === undefined) break
+        if (Exit.isFailure(next)) return yield* Effect.failCause(next.cause)
+        queuedBytes -= next.value.data.byteLength
+        packets.push(next.value)
+      }
+      if (isArrayNonEmpty(packets)) return packets
+      // Wait without reserving a packet; the queue schedules reader wakeups.
+      yield* Queue.peek(incoming)
     }
-    return isArrayNonEmpty(packets)
-      ? Effect.succeed(packets)
-      // Waiting is interruptible and leaves the packet for an atomic dequeue.
-      : Effect.andThen(Queue.peek(incoming), pull)
   })
-  return { onError, onMessage, pull }
+  return { onError, onMessage, pull, fail }
 })
 
 const error = (reason: DatagramSocketErrorReason) => new DatagramSocketError({ reason })
