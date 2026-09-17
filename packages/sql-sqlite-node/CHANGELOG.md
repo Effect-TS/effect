@@ -1,5 +1,18 @@
 # @effect/sql-sqlite-node
 
+## 0.54.0
+
+### Minor Changes
+
+- [#8277](https://github.com/Effect-TS/effect/pull/8277) [`1ce1e62`](https://github.com/Effect-TS/effect/commit/1ce1e62367e67a04e63bdf62ce2911cfee8c716c) Thanks @tim-smart! - Upgrade `better-sqlite3` to `^13.0.3`, removing deprecated `prebuild-install`. Requires Node.js 22+.
+
+  Binaries are bundled for Linux (glibc/musl), macOS, and Windows on x64/arm64. Other platforms require a manual source build.
+
+### Patch Changes
+
+- Updated dependencies [[`05803bd`](https://github.com/Effect-TS/effect/commit/05803bd0219a71ea91d7e99e3d5a86b56f832c1c)]:
+  - effect@3.22.3
+
 ## 0.53.0
 
 ### Patch Changes
