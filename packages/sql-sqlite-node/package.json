@@ -29,6 +29,9 @@
     "directory": "dist",
     "linkDirectory": false
   },
+  "engines": {
+    "node": ">=22"
+  },
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
@@ -58,9 +61,6 @@
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
-  },
-  "engines": {
-    "node": ">=22"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3"
