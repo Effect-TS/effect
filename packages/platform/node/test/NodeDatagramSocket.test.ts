@@ -1,10 +1,11 @@
 import * as NodeDatagramSocket from "@effect/platform-node/NodeDatagramSocket"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Scope, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
 import * as Dgram from "node:dgram"
 import { vi } from "vitest"
+import { testLayer } from "../../../effect/test/unstable/socket/DatagramSocket.test-utils.ts"
 
 vi.mock("node:dgram", async (importOriginal) => {
   const original = await importOriginal<typeof Dgram>()
@@ -25,6 +26,10 @@ const bind = (localAddress: NetAddress.InetAddress) =>
     address: socket.address,
     socket: currentNative()
   })))
+
+describe("NodeDatagramSocket", { concurrent: false }, () => {
+  testLayer(NodeDatagramSocket.layer)
+})
 
 describe("NodeDatagramSocket binding", { concurrent: false }, () => {
   for (const host of ["127.0.0.1", "::1"]) {
@@ -99,27 +104,6 @@ describe("NodeDatagramSocket binding", { concurrent: false }, () => {
 
 // Deterministic boundary cases use events on real sockets; delivery tests use loopback UDP.
 describe("NodeDatagramSocket I/O", { concurrent: false }, () => {
-  for (const host of ["127.0.0.1", "::1"]) {
-    it.effect(`preserves payloads, empty packets, and sources over ${host}`, () =>
-      Effect.gen(function*() {
-        const localAddress = NetAddress.inetAddressFromIpStringUnsafe(host, 0)
-        const receiver = yield* NodeDatagramSocket.bind({ localAddress })
-        const sender = yield* NodeDatagramSocket.bind({ localAddress })
-        yield* Effect.forEach(
-          [
-            { data: new Uint8Array([1, 2]), destination: receiver.address },
-            { data: new Uint8Array(), destination: receiver.address },
-            { data: new Uint8Array([3]), destination: receiver.address }
-          ],
-          sender.writer.write,
-          { discard: true }
-        )
-        const packets = yield* Datagram.toStream(receiver).pipe(Stream.take(3), Stream.runCollect)
-        assert.deepStrictEqual(packets.map((packet) => Array.from(packet.data)), [[1, 2], [], [3]])
-        for (const packet of packets) assert.deepStrictEqual(packet.source, sender.address)
-      }))
-  }
-
   it.effect("converts scoped IPv6 sources", () =>
     Effect.gen(function*() {
       const socket = yield* NodeDatagramSocket.bind({ localAddress: loopback })
@@ -237,7 +221,7 @@ describe("NodeDatagramSocket connected sockets", { concurrent: false }, () => {
     }))
 
   for (const [host, wildcard] of [["127.0.0.1", "0.0.0.0"], ["::1", "::"]]) {
-    it.effect(`associates ${host} and exchanges byte payloads with its peer`, () =>
+    it.effect(`associates ${host} natively and resolves its wildcard local address`, () =>
       Effect.gen(function*() {
         const localAddress = NetAddress.inetAddressFromIpStringUnsafe(host, 0)
         const peer = yield* Datagram.bind({ localAddress })
@@ -250,18 +234,6 @@ describe("NodeDatagramSocket connected sockets", { concurrent: false }, () => {
         assert.strictEqual(remote.port, peer.address.port)
         assert.deepStrictEqual(client.remote, peer.address)
         assert.strictEqual(NetAddress.formatHost(client.address), host)
-        yield* client.writer.write(new Uint8Array())
-        yield* client.writer.write(new Uint8Array([1, 2]))
-        const packets = yield* Datagram.toStream(peer).pipe(Stream.take(2), Stream.runCollect)
-        assert.deepStrictEqual(
-          packets.map((packet) => Array.from(packet.data)),
-          [[], [1, 2]]
-        )
-        for (const packet of packets) assert.deepStrictEqual(packet.source, client.address)
-        yield* peer.writer.write({ data: new Uint8Array([3]), destination: client.address })
-        const received = yield* Datagram.toStream(client).pipe(Stream.take(1), Stream.runCollect)
-        assert.deepStrictEqual(Array.from(received[0].data), [3])
-        assert.deepStrictEqual(received[0].source, peer.address)
       }).pipe(Effect.provide(NodeDatagramSocket.layer)))
   }
 
