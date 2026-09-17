@@ -6,6 +6,8 @@
 
 Fix cluster shutdown, routing, registration, persisted stream decoding, shard-lock recovery, and resource cleanup. Fix workflow replay after runner restart, deferred races, self-completion deadlocks, finalization ordering, and zero-duration clocks. Interrupted RPC stream writes now release waiting consumers.
 
+Normalize numeric MySQL request IDs to bigint in duplicate detection and primary-key lookups so they match persisted replies, preventing stalled deduplicated callers and replayed activities.
+
 Malformed persisted replies now release waiters and notify callers with the stored terminal defect. `MessageStorage.saveReply` returns `ReplyWithContext<R>` instead of `void`, preserving v3's support for wrapping a service with `MessageStorage.make`. Custom implementations must return the actual persisted reply; use `Effect.asVoid` where a void result is required. Encoded storage drivers are unchanged.
 
 Deferred completions wait for suspension replies before resuming discarded workflows. Unrelated completions do not occupy that wait, leaving mailbox capacity for the required completion. The v3 `DeferredState` API retains `pendingResult` and the `exit` argument to `deferredDone`; these differ from v4.
