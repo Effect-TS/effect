@@ -195,6 +195,7 @@ development:
       ["double-quoted escaped line break", "description: \"De\\\n  ploy\"\n", "Deploy"],
       ["space before escaped line break", "description: \"Deploy \\\n  it\"\n", "Deploy it"],
       ["escaped line break followed by blank line", "description: \"Deploy\\\n\n  it\"\n", "Deploy it"],
+      ["space before escaped line break followed by blank line", "description: \"Deploy \\\n\n  it\"\n", "Deploy  it"],
       ["escaped leading space after line break", "description: \"Deploy\\\n  \\ it\"\n", "Deploy it"],
       ["escaped trailing space before a folded break", "description: \"Deploy\\ \n  it\"\n", "Deploy  it"],
       ["escaped break followed by multiple blank lines", "description: \"Deploy\\\n\n\n  it\"\n", "Deploy\nit"],
