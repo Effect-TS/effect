@@ -45,6 +45,17 @@ export const suite = (name: string, layer: Layer.Layer<Datagram.DatagramSocketFa
           }))
       }
 
+      it.effect("preserves retained payloads across subsequent receives", () =>
+        Effect.gen(function*() {
+          const socket = yield* Datagram.bind({ localAddress: loopback })
+          yield* socket.writer.write({ data: new Uint8Array([1, 2]), destination: socket.address })
+          const [first] = yield* socket.reader.pull
+          yield* socket.writer.write({ data: new Uint8Array([3, 4]), destination: socket.address })
+          const [second] = yield* socket.reader.pull
+          assert.deepStrictEqual(Array.from(first.data), [1, 2])
+          assert.deepStrictEqual(Array.from(second.data), [3, 4])
+        }))
+
       it.effect("accepts an IPv4-mapped IPv6 peer", () =>
         Effect.gen(function*() {
           const peer = yield* Datagram.bind({ localAddress: loopback })

@@ -97,16 +97,17 @@ describe("DatagramSocket.fromTransport", () => {
       assert.deepStrictEqual(yield* socket.reader.pull, [packet([6, 7])])
     }))
 
-  it.effect("copies and batches packets arriving before a waiting reader resumes", () =>
+  it.effect("retains and batches packets arriving before a waiting reader resumes", () =>
     Effect.gen(function*() {
       const { handlers, socket } = yield* transportFixture({ readBatchSize: 2 })
       const waiting = yield* socket.reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
       const data = new Uint8Array([1])
       handlers.onMessage(data, address)
-      data.fill(9)
       handlers.onMessage(new Uint8Array(), address)
       handlers.onMessage(new Uint8Array([2]), address)
-      assert.deepStrictEqual(yield* Fiber.join(waiting), [packet([1]), packet([])])
+      const packets = yield* Fiber.join(waiting)
+      assert.strictEqual(packets[0].data, data)
+      assert.deepStrictEqual(packets, [packet([1]), packet([])])
       assert.deepStrictEqual(yield* socket.reader.pull, [packet([2])])
     }))
 

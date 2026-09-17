@@ -252,8 +252,10 @@ export const make = <Out = OutgoingPacket, In = IncomingPacket>(options: {
  *
  * **Details**
  *
- * `onMessage` copies accepted payloads before returning. Adapters convert native
- * source addresses to `NetAddress` and pass conversion failures to `onError`.
+ * `onMessage` takes ownership of the payload without copying it. Adapters must
+ * not mutate or reuse its backing memory after calling `onMessage`; copy native
+ * receive buffers first if their memory is reused. Adapters convert native source
+ * addresses to `NetAddress` and pass conversion failures to `onError`.
  *
  * @category models
  * @since 4.0.0
@@ -657,7 +659,7 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
       queuedBytes + size > receiveCapacityBytes
     ) return
 
-    if (Queue.offerUnsafe(incoming, { data: Uint8Array.from(data), source })) {
+    if (Queue.offerUnsafe(incoming, { data, source })) {
       queuedBytes += size
     }
   }
