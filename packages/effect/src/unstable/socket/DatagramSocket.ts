@@ -346,21 +346,25 @@ export const fromTransport = (
         socketScope,
         Effect.fnUntraced(function*(exit) {
           // Settle I/O and discard buffered packets before native cleanup can suspend.
-          receiver.fail(closedError)
-          Deferred.doneUnsafe(closed, Exit.fail(closedError))
+          const err = error(new DatagramSocketClosedError({}))
+          receiver.fail(err)
+          Deferred.doneUnsafe(closed, Exit.fail(err))
           yield* Scope.close(transportScope, exit)
         })
       )
 
       const guard = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
         Effect.raceFirst(
-          Effect.suspend(() => Deferred.isDoneUnsafe(closed) ? Effect.fail(closedError) : operation),
+          Effect.suspend(() =>
+            Deferred.isDoneUnsafe(closed) ? Effect.fail(error(new DatagramSocketClosedError({}))) : operation
+          ),
           Deferred.await(closed)
         )
 
       const scoped = Scope.provide(transportScope)
       const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(scoped, guard, restore)
-      if (Deferred.isDoneUnsafe(closed)) return yield* closedError
+
+      if (Deferred.isDoneUnsafe(closed)) return yield* error(new DatagramSocketClosedError({}))
 
       const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
       const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
@@ -595,16 +599,16 @@ export const toChannel = <Out, IE = never, In = IncomingPacket>(self: DatagramSo
   void,
   NonEmptyReadonlyArray<Out>,
   IE
-> =>
-  Channel.merge(
-    Channel.fromPull(Effect.succeed(self.reader.pull)),
-    Channel.identity<NonEmptyReadonlyArray<Out>, IE, unknown>().pipe(
-      Channel.mapEffect((packets) => Effect.forEach(packets, self.writer.write, { discard: true })),
-      Channel.drain,
-      Channel.mapDone(() => undefined)
-    ),
-    { haltStrategy: "left" }
+> => {
+  const pull = Channel.fromPull(Effect.succeed(self.reader.pull))
+  const identity = Channel.identity<NonEmptyReadonlyArray<Out>, IE, unknown>().pipe(
+    Channel.mapEffect((packets) => Effect.forEach(packets, self.writer.write, { discard: true })),
+    Channel.drain,
+    Channel.mapDone(() => undefined)
   )
+
+  return Channel.merge(pull, identity, { haltStrategy: "left" })
+}
 
 /**
  * Creates a duplex channel adapter with a fixed upstream error type.
@@ -645,12 +649,16 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
       Queue.isFullUnsafe(incoming) ||
       queuedBytes + size > receiveCapacityBytes
     ) return
-    if (Queue.offerUnsafe(incoming, { data: Uint8Array.from(data), source })) queuedBytes += size
+
+    if (Queue.offerUnsafe(incoming, { data: Uint8Array.from(data), source })) {
+      queuedBytes += size
+    }
   }
 
   const pull: Reader["pull"] = Effect.gen(function*() {
     while (true) {
       if (readError !== undefined) return yield* readError
+
       // Dequeue and byte accounting cannot be separated by a fiber interruption.
       const packets: Array<IncomingPacket> = []
       while (packets.length < readBatchSize) {
@@ -672,5 +680,4 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
 })
 
 const error = (reason: DatagramSocketErrorReason) => new DatagramSocketError({ reason })
-const closedError = error(new DatagramSocketClosedError({}))
 const defaultMaxPacketBytes = 65507

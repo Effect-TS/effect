@@ -69,33 +69,37 @@ const open = Effect.fnUntraced(function*(
   handlers: Datagram.Handlers,
   remote?: NetAddress.InetAddress
 ): Effect.fn.Return<Datagram.Binding, Datagram.DatagramSocketError, Scope.Scope> {
-  const socket = yield* Effect.acquireRelease(
-    Effect.try({
-      try: () =>
-        Dgram.createSocket(NetAddress.isIpv4Address(localAddress.address) ? "udp4" : "udp6")
-          .on("error", handlers.onError),
-      catch: openError
-    }),
-    (socket) =>
-      Effect.callback<void>((resume) => {
-        socket.close(() => {
-          socket.removeAllListeners()
-          resume(Effect.void)
-        })
+  const create = Effect.try({
+    catch: openError,
+    try: () => {
+      const type = NetAddress.isIpv4Address(localAddress.address) ? "udp4" : "udp6"
+      return Dgram.createSocket(type).on("error", handlers.onError)
+    }
+  })
+
+  const socket = yield* Effect.acquireRelease(create, (socket) =>
+    Effect.callback<void>((resume) => {
+      socket.close(() => {
+        socket.removeAllListeners()
+        resume(Effect.void)
       })
-  )
-  yield* awaitOpen(
-    socket,
-    "listening",
-    () => socket.bind({ address: NetAddress.formatHost(localAddress), port: localAddress.port, exclusive: true })
-  )
+    }))
+
+  yield* awaitOpen(socket, "listening", () => {
+    return socket.bind({ address: NetAddress.formatHost(localAddress), port: localAddress.port, exclusive: true })
+  })
+
   if (remote !== undefined) {
-    yield* awaitOpen(socket, "connect", () => socket.connect(remote.port, NetAddress.formatHost(remote)))
+    yield* awaitOpen(socket, "connect", () => {
+      return socket.connect(remote.port, NetAddress.formatHost(remote))
+    })
   }
+
   const address = yield* Effect.try({
     try: () => addressFromNative(socket.address()),
     catch: openError
   })
+
   // Connected sockets must not buffer packets received before association.
   socket.on("message", (data, info) => {
     try {
@@ -104,6 +108,7 @@ const open = Effect.fnUntraced(function*(
       handlers.onError(cause)
     }
   })
+
   const send = Effect.effectify(
     (packet: Datagram.OutgoingPacket, callback: (cause: Error | null, bytes: number) => void) => {
       if (remote === undefined) {
@@ -115,7 +120,11 @@ const open = Effect.fnUntraced(function*(
     writeError,
     writeError
   )
-  return { address, send: (packet) => Effect.asVoid(send(packet)) }
+
+  return {
+    address,
+    send: (packet) => Effect.asVoid(send(packet))
+  }
 })
 
 const awaitOpen = (socket: Dgram.Socket, event: "listening" | "connect", start: () => void) =>
@@ -124,24 +133,30 @@ const awaitOpen = (socket: Dgram.Socket, event: "listening" | "connect", start: 
       socket.off("error", onError)
       socket.off(event, onReady)
     }
+
     const finish = (result: Effect.Effect<void, Datagram.DatagramSocketError>) => {
       cleanup()
       resume(result)
     }
+
     const onError = (cause: unknown) => finish(Effect.fail(openError(cause)))
     const onReady = () => finish(Effect.void)
     socket.once("error", onError)
     socket.once(event, onReady)
+
     try {
       start()
     } catch (cause) {
       onError(cause)
     }
+
     return Effect.sync(cleanup)
   })
 
 const openError = (cause: unknown) =>
-  new Datagram.DatagramSocketError({ reason: new Datagram.DatagramSocketOpenError({ cause }) })
+  new Datagram.DatagramSocketError({
+    reason: new Datagram.DatagramSocketOpenError({ cause })
+  })
 
 const writeError = (cause: unknown, [packet]: [Datagram.OutgoingPacket]) =>
   new Datagram.DatagramSocketError({
