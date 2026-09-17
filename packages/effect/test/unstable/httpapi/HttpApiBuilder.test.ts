@@ -11,11 +11,12 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpEffect, HttpPlatform, HttpServerResponse } from "effect/unstable/http"
+import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
   HttpApiEndpoint,
+  HttpApiError,
   HttpApiGroup,
   HttpApiMiddleware,
   HttpApiSchema,
@@ -32,6 +33,186 @@ const TestServices = Layer.mergeAll(
   Etag.layerWeak,
   HttpPlatform.layer
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
+
+it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
+  const Fields = { firstName: Schema.String, lastName: Schema.String }
+  const Person = Schema.Struct(Fields)
+
+  for (const method of ["post", "patch"] as const) {
+    for (const scope of ["unset", "api", "group", "endpoint"] as const) {
+      it.effect(`${method} payload uses ${scope} options`, () =>
+        Effect.gen(function*() {
+          let endpoint = method === "post"
+            ? HttpApiEndpoint.post("create", "/users", { payload: Person })
+            : HttpApiEndpoint.patch("create", "/users", { payload: Person })
+          if (scope === "endpoint") {
+            endpoint = endpoint.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+          }
+          let group = HttpApiGroup.make("users").add(endpoint)
+          if (scope === "group") {
+            group = group.annotate(HttpApi.ParseOptions, { errors: "all" })
+          }
+          let api = HttpApi.make("Api").add(group)
+          if (scope !== "unset") {
+            api = api.annotate(HttpApi.ParseOptions, { errors: scope === "group" ? "first" : "all" })
+          }
+          const handler = yield* HttpRouter.toHttpEffect(
+            HttpApiBuilder.layer(api).pipe(
+              Layer.provide(
+                HttpApiBuilder.group(api, "users", (handlers) => handlers.handle("create", () => Effect.void))
+              )
+            )
+          )
+          const exit = yield* handler.pipe(
+            Effect.provideService(
+              HttpServerRequest.HttpServerRequest,
+              HttpServerRequest.fromWeb(
+                new Request("http://localhost/users", {
+                  method: method.toUpperCase(),
+                  headers: { "content-type": "application/json" },
+                  body: "{}"
+                })
+              )
+            ),
+            Effect.exit
+          )
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const error = Cause.squash(exit.cause)
+            assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+            assert.strictEqual(error.kind, "Payload")
+            assert.include(error.cause.message, "firstName")
+            // Endpoint options replace the whole API value, so errors defaults to first.
+            assert.strictEqual(error.cause.message.includes("lastName"), scope === "api" || scope === "group")
+          }
+          if (scope === "endpoint") {
+            const excess = yield* handler.pipe(
+              Effect.provideService(
+                HttpServerRequest.HttpServerRequest,
+                HttpServerRequest.fromWeb(
+                  new Request("http://localhost/users", {
+                    method: method.toUpperCase(),
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ firstName: "Ada", lastName: "Lovelace", extra: true })
+                  })
+                )
+              ),
+              Effect.exit
+            )
+            assert.strictEqual(excess._tag, "Failure")
+            if (excess._tag === "Failure") {
+              const error = Cause.squash(excess.cause)
+              assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+              assert.include(error.cause.message, "extra")
+            }
+          }
+        }))
+    }
+  }
+
+  for (const part of ["params", "headers", "query"] as const) {
+    for (const raw of [false, true]) {
+      it.effect(`collects all ${part} issues with handle${raw ? "Raw" : ""}`, () =>
+        Effect.gen(function*() {
+          const api = HttpApi.make("Api").add(
+            HttpApiGroup.make("users").add(HttpApiEndpoint.post("create", "/users", {
+              [part]: Fields,
+              payload: Person
+            }))
+          ).annotate(HttpApi.ParseOptions, { errors: "all" })
+          const handler = yield* HttpRouter.toHttpEffect(
+            HttpApiBuilder.layer(api).pipe(
+              Layer.provide(HttpApiBuilder.group(api, "users", (handlers) =>
+                raw
+                  ? handlers.handleRaw("create", () => Effect.succeed(HttpServerResponse.empty()))
+                  : handlers.handle("create", () => Effect.void)))
+            )
+          )
+          const exit = yield* handler.pipe(
+            Effect.provideService(
+              HttpServerRequest.HttpServerRequest,
+              HttpServerRequest.fromWeb(
+                new Request("http://localhost/users", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ firstName: "Ada", lastName: "Lovelace" })
+                })
+              )
+            ),
+            Effect.exit
+          )
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const error = Cause.squash(exit.cause)
+            assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+            assert.strictEqual(error.kind.toLowerCase(), part)
+            assert.include(error.cause.message, "firstName")
+            assert.include(error.cause.message, "lastName")
+          }
+        }))
+    }
+  }
+
+  it.effect("handleRaw still skips payload decoding with ParseOptions", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(HttpApiEndpoint.post("create", "/users", { payload: Person }))
+      ).annotate(HttpApi.ParseOptions, { errors: "all" })
+      const handler = yield* HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(api).pipe(
+          Layer.provide(HttpApiBuilder.group(api, "users", (handlers) =>
+            handlers.handleRaw("create", () =>
+              Effect.succeed(HttpServerResponse.empty({ status: 204 })))))
+        )
+      )
+      const response = yield* handler.pipe(
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(
+            new Request("http://localhost/users", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: "{}"
+            })
+          )
+        )
+      )
+      assert.strictEqual(response.status, 204)
+    }))
+
+  for (const part of ["success", "error", "headers"] as const) {
+    it.effect(`collects all ${part} encoding issues`, () =>
+      Effect.gen(function*() {
+        const api = HttpApi.make("Api").add(
+          HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", {
+            success: part === "headers" ? HttpApiSchema.WithHeaders(Schema.String, Fields) : Person,
+            error: Person.pipe(HttpApiSchema.status(422))
+          }))
+        ).annotate(HttpApi.ParseOptions, { errors: "all" })
+        const GroupLayer = HttpApiBuilder.group(api, "users", (handlers) =>
+          handlers.handle("get", () =>
+            part === "error" ? Effect.fail({} as typeof Person.Type) : Effect.succeed(
+              (part === "headers" ? HttpApiSchema.withHeaders({ body: "ok", headers: {} }) : {}) as any
+            )))
+        const client = yield* HttpApiTest.groups(api, ["users"]).pipe(Effect.provide(GroupLayer))
+        const exit = yield* Effect.exit(client.users.get({ responseMode: "response-only" }))
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          if (part === "error") {
+            assert.ok(Schema.isSchemaError(error))
+            assert.include(error.message, "firstName")
+            assert.include(error.message, "lastName")
+          } else {
+            assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+            assert.strictEqual(error.kind, part === "headers" ? "ResponseHeaders" : "Body")
+            assert.include(error.cause.message, "firstName")
+            assert.include(error.cause.message, "lastName")
+          }
+        }
+      }))
+  }
+})
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
   it.effect("round trips a path parameter followed by a literal action suffix", () =>

@@ -6,6 +6,111 @@ import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } fr
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
 describe("HttpApiClient", () => {
+  describe("ParseOptions", () => {
+    const Fields = { firstName: Schema.String, lastName: Schema.String }
+    const Person = Schema.Struct(Fields)
+
+    for (const part of ["params", "payload", "headers", "query"] as const) {
+      it.effect(`collects all request ${part} encoding issues`, () =>
+        Effect.gen(function*() {
+          const Api = HttpApi.make("Api").add(
+            HttpApiGroup.make("users").add(HttpApiEndpoint.post("create", "/users", {
+              [part]: Person
+            }))
+          ).annotate(HttpApi.ParseOptions, { errors: "all" })
+          let requests = 0
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() => {
+              requests++
+              return new Response(null, { status: 204 })
+            })
+          })
+          const exit = yield* Effect.exit(client.users.create({ [part]: {} } as any))
+          assert.strictEqual(requests, 0)
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const error = Cause.squash(exit.cause)
+            assert.ok(Schema.isSchemaError(error))
+            assert.include(error.message, "firstName")
+            assert.include(error.message, "lastName")
+          }
+        }))
+    }
+
+    for (const part of ["body", "headers"] as const) {
+      for (const annotated of [false, true]) {
+        it.effect(`response ${part} decoding uses ${annotated ? "annotated" : "default"} options`, () =>
+          Effect.gen(function*() {
+            let Api = HttpApi.make("Api").add(
+              HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", {
+                success: part === "body" ? Person : HttpApiSchema.WithHeaders(Schema.String, Fields)
+              }))
+            )
+            if (annotated) {
+              Api = Api.annotate(HttpApi.ParseOptions, { errors: "all" })
+            }
+            const client = yield* HttpApiClient.makeWith(Api, {
+              baseUrl: "http://test",
+              httpClient: clientFromResponse(() =>
+                new Response(part === "body" ? "{}" : "\"ok\"", {
+                  headers: { "content-type": "application/json" }
+                })
+              )
+            })
+            const exit = yield* Effect.exit(client.users.get({}))
+            assert.strictEqual(exit._tag, "Failure")
+            if (exit._tag === "Failure") {
+              const error = Cause.squash(exit.cause)
+              assert.ok(Schema.isSchemaError(error))
+              assert.include(error.message, "firstName")
+              assert.strictEqual(error.message.includes("lastName"), annotated)
+            }
+          }))
+      }
+    }
+
+    for (const part of ["params", "query"] as const) {
+      it(`urlBuilder collects all ${part} encoding issues from group annotations`, () => {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", {
+            [part]: Person
+          })).annotate(HttpApi.ParseOptions, { errors: "all" })
+        ).annotate(HttpApi.ParseOptions, { errors: "first" })
+        const urls = HttpApiClient.urlBuilder(Api)
+        assert.throws(() => urls.users.get({ [part]: {} } as any), /firstName[\s\S]*lastName/)
+      })
+    }
+
+    it.effect("endpoint options replace the entire API value for client encoding", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("users").add(
+            HttpApiEndpoint.post("create", "/users", { payload: Person })
+              .annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+          )
+        ).annotate(HttpApi.ParseOptions, { errors: "all" })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 204 }))
+        })
+        for (const payload of [{}, { firstName: "Ada", lastName: "Lovelace", extra: true }]) {
+          const exit = yield* Effect.exit(client.users.create({ payload: payload as typeof Person.Type }))
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const error = Cause.squash(exit.cause)
+            assert.ok(Schema.isSchemaError(error))
+            if ("extra" in payload) {
+              assert.include(error.message, "extra")
+            } else {
+              assert.include(error.message, "firstName")
+              assert.notInclude(error.message, "lastName")
+            }
+          }
+        }
+      }))
+  })
+
   describe("literal action suffixes", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("operations").add(
