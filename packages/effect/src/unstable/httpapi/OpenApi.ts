@@ -632,24 +632,15 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       if (!Object.hasOwn(spec.paths, path)) {
         InternalRecord.assignProperty(spec.paths, path, {})
       }
-      const setOperation = (operation: OpenAPISpecOperation) => {
+      const operationKey = method === "query" ? "QUERY" : method
+      const getOperations = (): Partial<Record<OpenAPISpecMethodName | "QUERY", OpenAPISpecOperation>> => {
         const pathItem = spec.paths[path]
-        if (method === "query") {
-          pathItem["x-oai-additionalOperations"] ??= {}
-          pathItem["x-oai-additionalOperations"].QUERY = operation
-        } else {
-          pathItem[method] = operation
-        }
+        return method === "query" ? (pathItem["x-oai-additionalOperations"] ??= {}) : pathItem
       }
-      const getOperation = (): OpenAPISpecOperation => {
-        const pathItem = spec.paths[path]
-        return method === "query"
-          ? pathItem["x-oai-additionalOperations"]!.QUERY!
-          : pathItem[method]!
-      }
-      setOperation(op)
+      getOperations()[operationKey] = op
       finalizeOperations.push(() => {
-        let op = getOperation()
+        const operations = getOperations()
+        let op = operations[operationKey]!
         processAnnotation(endpoint.annotations, Override, (override) => {
           // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
           for (const [key, value] of Object.entries(override)) {
@@ -666,7 +657,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
           }
           operationIds.add(operationId)
         }
-        setOperation(op)
+        operations[operationKey] = op
       })
     }
   })
