@@ -316,14 +316,6 @@ development:
       ["...", " # comment"]
     ])("preserves indented %s%s as a mapping value", (marker, suffix) => {
       assert.deepStrictEqual(Yaml.parse(`a:\n  ${marker}${suffix}\n`), { a: marker })
-    })
-
-    it.each([
-      ["---", ""],
-      ["---", " # comment"],
-      ["...", ""],
-      ["...", " # comment"]
-    ])("preserves indented %s%s as a nested mapping value", (marker, suffix) => {
       assert.deepStrictEqual(Yaml.parse(`metadata:\n  a:\n    ${marker}${suffix}\n`), { metadata: { a: marker } })
     })
 
