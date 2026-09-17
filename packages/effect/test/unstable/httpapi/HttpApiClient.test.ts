@@ -6,6 +6,158 @@ import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } fr
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
 describe("HttpApiClient", () => {
+  describe("ParseOptions", () => {
+    const Fields = { firstName: Schema.String, lastName: Schema.String }
+    const Person = Schema.Struct(Fields)
+
+    const SseApi = HttpApi.make("SseApi").add(
+      HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+        success: HttpApiSchema.StreamSse({ data: Person, error: Schema.Struct({ reason: Schema.String }) })
+      }))
+    )
+
+    it.effect("strict events-mode decoding omits an absent event ID", () =>
+      Effect.gen(function*() {
+        const decode = (wire: string) =>
+          HttpApiClient.makeWith(
+            StreamingApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+            { baseUrl: "http://test", httpClient: clientFromResponse(() => new Response(textStream([wire]))) }
+          ).pipe(Effect.flatMap((client) => client.test.events({})), Effect.flatMap(Stream.runCollect))
+
+        const error = yield* Effect.flip(decode("id: 1\nevent: person\ndata: hello\n\n"))
+        assert.ok(Schema.isSchemaError(error))
+        assert.include(error.message, "[\"id\"]")
+        assert.deepStrictEqual(yield* decode("event: person\ndata: hello\n\n"), [{ event: "person", data: "hello" }])
+      }))
+
+    it.effect("strict SSE decoding accepts valid user data and framework event metadata", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(
+          SseApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+          {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(
+                textStream([
+                  "id: 1\nevent: person\ndata: {\"firstName\":\"Ada\",\"lastName\":\"Lovelace\"}\n\n"
+                ]),
+                { headers: { "content-type": "text/event-stream" } }
+              )
+            )
+          }
+        )
+        const events = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.deepStrictEqual(events, [{ firstName: "Ada", lastName: "Lovelace" }])
+      }))
+
+    it.effect("strict SSE decoding preserves reserved failure causes", () =>
+      Effect.gen(function*() {
+        const expected = Cause.fail({ reason: "boom" })
+        const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+        const data = yield* Schema.encodeEffect(FailureSchema)(expected)
+        const client = yield* HttpApiClient.makeWith(
+          SseApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+          {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(
+                textStream([
+                  Sse.encoder.write({ _tag: "Event", event: "effect/httpapi/stream/failure", id: undefined, data })
+                ]),
+                { headers: { "content-type": "text/event-stream" } }
+              )
+            )
+          }
+        )
+        const exit = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.isFalse(Schema.isSchemaError(error), error instanceof Error ? error.message : undefined)
+          assert.deepStrictEqual(exit.cause, expected)
+        }
+      }))
+
+    it.effect("strict SSE decoding rejects excess properties in user event data", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(
+          SseApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+          {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(
+                textStream([
+                  "data: {\"firstName\":\"Ada\",\"lastName\":\"Lovelace\",\"extra\":true}\n\n"
+                ]),
+                { headers: { "content-type": "text/event-stream" } }
+              )
+            )
+          }
+        )
+        const exit = yield* client.test.events({}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.ok(Schema.isSchemaError(error))
+          assert.include(error.message, "Expected no excess property")
+          assert.include(error.message, "[\"data\"][\"extra\"]")
+          assert.notInclude(error.message, "[\"_tag\"]")
+        }
+      }))
+
+    it.effect("client payload encoding collects all issues", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("users").add(HttpApiEndpoint.post("create", "/users", { payload: Person }))
+        ).annotate(HttpApi.ParseOptions, { errors: "all" })
+        let requests = 0
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => {
+            requests++
+            return new Response(null, { status: 204 })
+          })
+        })
+        const exit = yield* Effect.exit(client.users.create({ payload: {} as typeof Person.Type }))
+        assert.strictEqual(requests, 0)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.ok(Schema.isSchemaError(error))
+          assert.include(error.message, "firstName")
+          assert.include(error.message, "lastName")
+        }
+      }))
+
+    it.effect("client response decoding collects all issues", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", { success: Person }))
+        ).annotate(HttpApi.ParseOptions, { errors: "all" })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response("{}", { headers: { "content-type": "application/json" } }))
+        })
+        const exit = yield* Effect.exit(client.users.get({}))
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          const error = Cause.squash(exit.cause)
+          assert.ok(Schema.isSchemaError(error))
+          assert.include(error.message, "firstName")
+          assert.include(error.message, "lastName")
+        }
+      }))
+
+    it("urlBuilder uses group options over API options", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", { query: Person }))
+          .annotate(HttpApi.ParseOptions, { errors: "all" })
+      ).annotate(HttpApi.ParseOptions, { errors: "first" })
+      const urls = HttpApiClient.urlBuilder(Api)
+      assert.throws(() => urls.users.get({ query: {} as typeof Person.Type }), /firstName[\s\S]*lastName/)
+    })
+  })
+
   describe("literal action suffixes", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("operations").add(

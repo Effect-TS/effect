@@ -81,7 +81,7 @@ export const groups = Effect.fnUntraced(function*<
         uninterruptible: false
       }
       handlers.set(endpointIdentifier, handler)
-      routes.push(HttpApiBuilder.handlerToRoute(group as any, handler, context))
+      routes.push(HttpApiBuilder.handlerToRoute(api, group as any, handler, context))
     }
     context = Context.add(context, group as any, { handlers, routes })
   }

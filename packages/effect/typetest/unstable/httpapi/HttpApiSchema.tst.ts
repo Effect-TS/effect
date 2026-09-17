@@ -73,7 +73,7 @@ describe("HttpApiSchema", () => {
         HttpApiSchema.StreamSse<HttpApiSchema.SseEventFromData<typeof Data>, typeof Error, { readonly id: string }>
       >()
       expect(stream.events["Type"]).type.toBe<{
-        readonly id: string | undefined
+        readonly id?: string | undefined
         readonly event: string
         readonly data: { readonly id: string }
       }>()

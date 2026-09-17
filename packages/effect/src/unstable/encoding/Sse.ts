@@ -20,6 +20,7 @@ import { hasProperty } from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
+import type * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 
 const SseErrorTypeId = "~effect/encoding/Sse/SseError"
@@ -166,8 +167,12 @@ export interface EventCodec extends
  *
  * **Details**
  *
- * The schema receives the untagged event shape containing `id`, `event`, and
- * string `data`.
+ * The schema receives `{ event, data, id? }`, with string `data`. Absent IDs are
+ * omitted, even with default options: use `Schema.optional(Schema.String)`, not
+ * `Schema.UndefinedOr(Schema.String)`, to accept events without an ID.
+ *
+ * With `onExcessProperty: "error"`, declare `event` (default: `"message"`) and
+ * `id` if the stream carries IDs, including inherited IDs.
  *
  * @category decoding
  * @since 4.0.0
@@ -178,7 +183,8 @@ export const decodeSchema = <
   Done
 >(
   schema: S,
-  options?: DecodeOptions
+  options?: DecodeOptions,
+  parseOptions?: SchemaAST.ParseOptions
 ): Channel.Channel<
   NonEmptyReadonlyArray<S["Type"]>,
   IE | Retry | SseError | Schema.SchemaError,
@@ -190,9 +196,12 @@ export const decodeSchema = <
 > =>
   Channel.pipeTo(
     decode<IE, Done>(options),
-    ChannelSchema.decode(EventEncoded.pipe(
-      Schema.decodeTo(schema)
-    ))()
+    ChannelSchema.decode(
+      Event.pipe(
+        Schema.decodeTo(schema, transformEvent)
+      ),
+      parseOptions
+    )()
   )
 
 /**
@@ -561,7 +570,10 @@ export const transformEvent = SchemaTransformation.transform<{
   readonly event: string
   readonly data: string
 }>({
-  decode: (event) => event,
+  decode: (event) =>
+    event.id === undefined
+      ? { event: event.event, data: event.data }
+      : { id: event.id, event: event.event, data: event.data },
   encode: (event) => ({
     _tag: "Event",
     id: event.id,

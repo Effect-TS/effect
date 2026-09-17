@@ -10550,7 +10550,16 @@ export function CauseReason<E extends Constraint, D extends Constraint>(
                   return Cause_.makeInterruptReason(e.fiberId)
               }
             },
-            encode: identity
+            encode: (reason) => {
+              switch (reason._tag) {
+                case "Fail":
+                  return { _tag: "Fail" as const, error: reason.error }
+                case "Die":
+                  return { _tag: "Die" as const, defect: reason.defect }
+                case "Interrupt":
+                  return { _tag: "Interrupt" as const, fiberId: reason.fiberId }
+              }
+            }
           })
         )
     }

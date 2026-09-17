@@ -15,6 +15,7 @@ import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Record from "../../Record.ts"
 import type * as Schema from "../../Schema.ts"
+import type * as SchemaAST from "../../SchemaAST.ts"
 import type { PathInput } from "../http/HttpRouter.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
@@ -336,3 +337,24 @@ export class AdditionalSchemas extends Context.Service<
   AdditionalSchemas,
   ReadonlyArray<Schema.Constraint>
 >()("effect/httpapi/HttpApi/AdditionalSchemas") {}
+
+/**
+ * Schema parse options for server and client codecs, set on an API, group, or
+ * endpoint.
+ *
+ * **Details**
+ *
+ * Endpoint options override group options, which override API options. Objects
+ * are replaced, not merged. Without an annotation, Schema defaults apply.
+ *
+ * Header codecs receive all HTTP headers, so `onExcessProperty: "error"` rejects
+ * undeclared headers such as `content-type`. Annotate the API before passing it
+ * to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class ParseOptions extends Context.Service<
+  ParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/httpapi/HttpApi/ParseOptions") {}

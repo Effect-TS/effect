@@ -11,11 +11,12 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpEffect, HttpPlatform, HttpServerResponse } from "effect/unstable/http"
+import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
   HttpApiEndpoint,
+  HttpApiError,
   HttpApiGroup,
   HttpApiMiddleware,
   HttpApiSchema,
@@ -32,6 +33,113 @@ const TestServices = Layer.mergeAll(
   Etag.layerWeak,
   HttpPlatform.layer
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
+
+it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
+  const Fields = { firstName: Schema.String, lastName: Schema.String }
+  const Person = Schema.Struct(Fields)
+
+  it.effect("strict SSE encoding rejects excess properties in user event data", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+        }))
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers.handle("events", () =>
+          Effect.succeed(Stream.make({ firstName: "Ada", lastName: "Lovelace", extra: true }))))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const text = yield* response.text
+      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      const data = text.split("\n")[1]!.slice("data: ".length)
+      const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+      const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, Error)
+      assert.include(error.message, "Expected no excess property")
+      assert.include(error.message, "[\"data\"][\"extra\"]")
+    }))
+
+  it.effect("SSE encoding aggregates all user data issues in the reserved failure event", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+          success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+        }))
+      ).annotate(HttpApi.ParseOptions, { errors: "all" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers.handle("events", () =>
+          Effect.succeed(Stream.make({} as typeof Person.Type))))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const text = yield* response.text
+      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      const data = text.split("\n")[1]!.slice("data: ".length)
+      const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
+      const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, Error)
+      assert.include(error.message, "firstName")
+      assert.include(error.message, "lastName")
+    }))
+
+  const Create = HttpApiEndpoint.post("create", "/users", { payload: Person })
+  const Api = HttpApi.make("Api").add(HttpApiGroup.make("users").add(Create))
+  const payloadError = Effect.fnUntraced(function*(api: typeof Api, payload: unknown = {}) {
+    const handler = yield* HttpRouter.toHttpEffect(
+      HttpApiBuilder.layer(api).pipe(
+        Layer.provide(HttpApiBuilder.group(api, "users", (handlers) => handlers.handle("create", () => Effect.void)))
+      )
+    )
+    const exit = yield* handler.pipe(
+      Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(
+          new Request("http://localhost/users", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+        )
+      ),
+      Effect.exit
+    )
+    assert.strictEqual(exit._tag, "Failure")
+    if (exit._tag === "Success") throw new Error("Expected payload decoding to fail")
+    const error = Cause.squash(exit.cause)
+    assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+    assert.strictEqual(error.kind, "Payload")
+    return error.cause.message
+  })
+
+  it.effect("POST payload decoding collects all issues from API options", () =>
+    Effect.gen(function*() {
+      const message = yield* payloadError(Api.annotate(HttpApi.ParseOptions, { errors: "all" }))
+      assert.include(message, "firstName")
+      assert.include(message, "lastName")
+    }))
+
+  it.effect("POST payload decoding defaults to the first issue", () =>
+    Effect.gen(function*() {
+      const message = yield* payloadError(Api)
+      assert.include(message, "firstName")
+      assert.notInclude(message, "lastName")
+    }))
+
+  it.effect("endpoint options replace the whole API value", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          Create.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+        )
+      ).annotate(HttpApi.ParseOptions, { errors: "all" })
+      const message = yield* payloadError(api)
+      assert.include(message, "firstName")
+      assert.notInclude(message, "lastName")
+      assert.include(yield* payloadError(api, { firstName: "Ada", lastName: "Lovelace", extra: true }), "extra")
+    }))
+})
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
   it.effect("round trips a path parameter followed by a literal action suffix", () =>
