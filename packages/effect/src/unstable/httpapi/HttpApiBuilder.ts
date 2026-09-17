@@ -226,6 +226,7 @@ type HandlerRequirements<
 
 interface HandlerOptions {
   readonly uninterruptible?: boolean | undefined
+  readonly parseOptions?: SchemaAST.ParseOptions | undefined
 }
 
 /** @internal */
@@ -234,6 +235,7 @@ export interface HandlerRuntime {
   readonly handler: HttpApiEndpoint.Handler<HttpApiEndpoint.Constraint, unknown, unknown>
   readonly isRaw: boolean
   readonly uninterruptible: boolean
+  readonly parseOptions: SchemaAST.ParseOptions | undefined
 }
 
 type HandleAllEntry<Endpoint extends HttpApiEndpoint.Constraint> =
@@ -324,6 +326,14 @@ export interface Handlers<
 
   /**
    * Add the implementation for an unhandled `HttpApiEndpoint` to a `Handlers` group.
+   *
+   * **Details**
+   *
+   * Pass `parseOptions` to control how the request parts (`params`, `headers`,
+   * `query`, and `payload`) are decoded with their schemas. Use it to collect
+   * every decoding error instead of only the first one, for example
+   * `{ errors: "all" }`. The `uninterruptible` option controls whether the
+   * handler fiber is uninterruptible.
    */
   handle<
     Identifier extends keyof EndpointsByIdentifier,
@@ -335,7 +345,7 @@ export interface Handlers<
       HttpApiEndpoint.MiddlewareError<EndpointsByIdentifier[Identifier]>,
       R1
     >,
-    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    options?: HandlerOptions | undefined
   ): Handlers<
     R | HandlerRequirements<EndpointsByIdentifier[Identifier], R1>,
     EndpointsByIdentifier,
@@ -344,6 +354,11 @@ export interface Handlers<
 
   /**
    * Add implementations for unhandled `HttpApiEndpoint`s in a `Handlers` group.
+   *
+   * **Details**
+   *
+   * Each entry is either the handler itself or an object with `handler` and
+   * `options`, accepting the same options as `handle`.
    */
   handleAll<const HandlersByIdentifier extends HandleAllHandlers<Omit<EndpointsByIdentifier, HandledIdentifiers>>>(
     handlers:
@@ -358,6 +373,14 @@ export interface Handlers<
   /**
    * Add the implementation for an unhandled `HttpApiEndpoint` to a `Handlers` group.
    * This version opts out of automatic payload decoding and provides the raw request.
+   *
+   * **Details**
+   *
+   * Pass `parseOptions` to control how the request parts that are still decoded
+   * automatically (`params`, `headers`, and `query`) are decoded with their
+   * schemas. The payload is left untouched, so parsing it stays the handler's
+   * responsibility. The `uninterruptible` option controls whether the handler
+   * fiber is uninterruptible.
    */
   handleRaw<
     Identifier extends keyof EndpointsByIdentifier,
@@ -369,7 +392,7 @@ export interface Handlers<
       HttpApiEndpoint.MiddlewareError<EndpointsByIdentifier[Identifier]>,
       R1
     >,
-    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    options?: HandlerOptions | undefined
   ): Handlers<
     R | HandlerRequirements<EndpointsByIdentifier[Identifier], R1>,
     EndpointsByIdentifier,
@@ -481,6 +504,11 @@ type EndpointReturn<
  * Builds the server-side HTTP effect for a single endpoint in an API group using
  * the endpoint metadata, middleware, codecs, and supplied handler.
  *
+ * **Details**
+ *
+ * Pass `parseOptions` to control how the request parts (`params`, `headers`,
+ * `query`, and `payload`) are decoded with their schemas.
+ *
  * @category handlers
  * @since 4.0.0
  */
@@ -503,7 +531,8 @@ export const endpoint = <
       never,
       R
     >
-  >
+  >,
+  options?: { readonly parseOptions?: SchemaAST.ParseOptions | undefined } | undefined
 ): EndpointReturn<Groups, GroupIdentifier, EndpointIdentifier, R> =>
   Effect.contextWith((context: Context.Context<any>) => {
     const group = api.groups[groupIdentifier] as unknown as HttpApiGroup.Top
@@ -513,7 +542,8 @@ export const endpoint = <
       endpoint,
       Context.omit(Scope.Scope)(context),
       handler as any,
-      false
+      false,
+      options?.parseOptions
     ))
   })
 
@@ -653,7 +683,8 @@ const registerHandler = (
     endpoint,
     handler,
     isRaw,
-    uninterruptible: options?.uninterruptible ?? false
+    uninterruptible: options?.uninterruptible ?? false,
+    parseOptions: options?.parseOptions
   })
   return self
 }
@@ -667,7 +698,7 @@ const HandlersProto = {
     this: Handlers<any, any, any>,
     identifier: string,
     handler: HttpApiEndpoint.Handler<HttpApiEndpoint.Constraint, any, any>,
-    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    options?: HandlerOptions | undefined
   ) {
     return registerHandler(this, identifier, handler, false, options)
   },
@@ -692,7 +723,7 @@ const HandlersProto = {
     this: Handlers<any, any, any>,
     identifier: string,
     handler: HttpApiEndpoint.Handler<HttpApiEndpoint.Constraint, any, any>,
-    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    options?: HandlerOptions | undefined
   ) {
     return registerHandler(this, identifier, handler, true, options)
   }
@@ -721,11 +752,12 @@ type PayloadDecoder =
   }
 
 function buildPayloadDecoders(
-  payloadMap: HttpApiEndpoint.PayloadMap
+  payloadMap: HttpApiEndpoint.PayloadMap,
+  parseOptions: SchemaAST.ParseOptions | undefined
 ): Map<string, PayloadDecoder> {
   const result = new Map<string, PayloadDecoder>()
   payloadMap.forEach(({ encoding, schemas }, contentType) => {
-    const decode = Schema.decodeUnknownEffect(Schema.Union(schemas))
+    const decode = Schema.decodeUnknownEffect(Schema.Union(schemas), parseOptions)
     if (encoding._tag === "Multipart") {
       result.set(contentType, { _tag: "Multipart", mode: encoding.mode, limits: encoding.limits, decode })
     } else {
@@ -804,21 +836,28 @@ function handlerToHttpEffect(
   endpoint: HttpApiEndpoint.Top,
   context: Context.Context<any>,
   handler: HttpApiEndpoint.Handler<HttpApiEndpoint.Constraint, any, any>,
-  isRaw: boolean
+  isRaw: boolean,
+  parseOptions: SchemaAST.ParseOptions | undefined
 ) {
   const encodeSuccess = Schema.encodeUnknownEffect(makeSuccessSchema(endpoint))
   const encodeError = Schema.encodeUnknownEffect(makeErrorSchema(endpoint))
-  const decodeParams = UndefinedOr.map(endpoint.params, Schema.decodeUnknownEffect)
-  const decodeHeaders = UndefinedOr.map(endpoint.headers, Schema.decodeUnknownEffect)
+  const decodeParams = UndefinedOr.map(
+    endpoint.params,
+    (schema) => Schema.decodeUnknownEffect(schema, parseOptions)
+  )
+  const decodeHeaders = UndefinedOr.map(
+    endpoint.headers,
+    (schema) => Schema.decodeUnknownEffect(schema, parseOptions)
+  )
   const decodeQuery = UndefinedOr.map(
     endpoint.query,
-    (schema) => Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema))
+    (schema) => Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), parseOptions)
   )
   const encodeStream = makeStreamEncoder(endpoint)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint)
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
-  const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload) : undefined
+  const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, parseOptions) : undefined
 
   return applyMiddleware(
     group,
@@ -894,7 +933,14 @@ export function handlerToRoute(
   return HttpRouter.route(
     endpoint.method,
     HttpApiPath.toRouterPath(endpoint.path, endpoint.params) as HttpRouter.PathInput,
-    handlerToHttpEffect(group, endpoint, context, handler.handler, handler.isRaw),
+    handlerToHttpEffect(
+      group,
+      endpoint,
+      context,
+      handler.handler,
+      handler.isRaw,
+      handler.parseOptions
+    ),
     { uninterruptible: handler.uninterruptible }
   )
 }

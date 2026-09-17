@@ -78,7 +78,8 @@ export const groups = Effect.fnUntraced(function*<
         endpoint: endpoint as any,
         handler: () => Effect.die(new Error(`Unhandled endpoint: ${endpointIdentifier}`)),
         isRaw: false,
-        uninterruptible: false
+        uninterruptible: false,
+        parseOptions: undefined
       }
       handlers.set(endpointIdentifier, handler)
       routes.push(HttpApiBuilder.handlerToRoute(group as any, handler, context))

@@ -11,11 +11,13 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpEffect, HttpPlatform, HttpServerResponse } from "effect/unstable/http"
+import type * as SchemaAST from "effect/SchemaAST"
+import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServer, HttpServerResponse } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
   HttpApiEndpoint,
+  HttpApiError,
   HttpApiGroup,
   HttpApiMiddleware,
   HttpApiSchema,
@@ -1554,5 +1556,211 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
       const error = yield* Effect.flip(client.test.limited())
 
       assert.deepStrictEqual(error, { retryAfter: 30n })
+    }))
+})
+
+it.layer(TestServices)("HttpApiBuilder request parse options", (it) => {
+  const Payload = Schema.Struct({
+    firstName: Schema.String,
+    lastName: Schema.String
+  })
+  const Query = Schema.Struct({
+    firstName: Schema.String,
+    lastName: Schema.String
+  })
+
+  // Captures the decoding error message the way user middleware would, mirroring
+  // the reproduction in https://github.com/Effect-TS/effect/issues/8266.
+  const makeInspector = () => {
+    const messages: Array<string> = []
+
+    class Inspect extends HttpApiMiddleware.Service<Inspect>()("Inspect") {}
+
+    const layer = Layer.succeed(Inspect)((effect) =>
+      effect.pipe(
+        Effect.tapError((error) =>
+          HttpApiError.HttpApiSchemaError.is(error)
+            ? Effect.sync(() => {
+              messages.push(error.cause.message)
+            })
+            : Effect.void
+        )
+      )
+    )
+
+    return { Inspect, layer, messages }
+  }
+
+  const serve = (
+    appLayer: Layer.Layer<never, never, HttpRouter.HttpRouter>,
+    request: Request
+  ) =>
+    Effect.gen(function*() {
+      const { dispose, handler } = HttpRouter.toWebHandler(appLayer, { disableLogger: true })
+      yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
+      return yield* Effect.promise(() => handler(request))
+    })
+
+  const postEmptyPayload = () =>
+    new Request("http://localhost/users", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}"
+    })
+
+  const payloadApp = (parseOptions?: SchemaAST.ParseOptions) => {
+    const { Inspect, layer, messages } = makeInspector()
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("users").add(
+        HttpApiEndpoint.post("create", "/users", { payload: Payload }).middleware(Inspect)
+      )
+    )
+
+    return {
+      appLayer: HttpApiBuilder.layer(Api).pipe(
+        Layer.provide(
+          HttpApiBuilder.group(
+            Api,
+            "users",
+            (handlers) => handlers.handle("create", () => Effect.void, { parseOptions })
+          )
+        ),
+        Layer.provide(layer),
+        Layer.provide(HttpServer.layerServices)
+      ),
+      messages
+    }
+  }
+
+  it.effect("reports only the first payload error by default", () =>
+    Effect.gen(function*() {
+      const { appLayer, messages } = payloadApp()
+      const response = yield* serve(appLayer, postEmptyPayload())
+
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(messages.length, 1)
+      assert.ok(messages[0].includes("firstName"))
+      assert.ok(!messages[0].includes("lastName"))
+    }))
+
+  it.effect("collects every payload error when errors is all", () =>
+    Effect.gen(function*() {
+      const { appLayer, messages } = payloadApp({ errors: "all" })
+      const response = yield* serve(appLayer, postEmptyPayload())
+
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(messages.length, 1)
+      assert.ok(messages[0].includes("firstName"))
+      assert.ok(messages[0].includes("lastName"))
+    }))
+
+  it.effect("applies parse options to query decoding", () =>
+    Effect.gen(function*() {
+      const makeQueryApp = (parseOptions?: SchemaAST.ParseOptions) => {
+        const { Inspect, layer, messages } = makeInspector()
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("users").add(
+            HttpApiEndpoint.get("find", "/users", { query: Query }).middleware(Inspect)
+          )
+        )
+
+        return {
+          appLayer: HttpApiBuilder.layer(Api).pipe(
+            Layer.provide(
+              HttpApiBuilder.group(
+                Api,
+                "users",
+                (handlers) => handlers.handle("find", () => Effect.void, { parseOptions })
+              )
+            ),
+            Layer.provide(layer),
+            Layer.provide(HttpServer.layerServices)
+          ),
+          messages
+        }
+      }
+
+      const defaultApp = makeQueryApp()
+      assert.strictEqual(
+        (yield* serve(defaultApp.appLayer, new Request("http://localhost/users"))).status,
+        400
+      )
+      assert.strictEqual(defaultApp.messages.length, 1)
+      assert.ok(!defaultApp.messages[0].includes("lastName"))
+
+      const allApp = makeQueryApp({ errors: "all" })
+      assert.strictEqual(
+        (yield* serve(allApp.appLayer, new Request("http://localhost/users"))).status,
+        400
+      )
+      assert.strictEqual(allApp.messages.length, 1)
+      assert.ok(allApp.messages[0].includes("firstName"))
+      assert.ok(allApp.messages[0].includes("lastName"))
+    }))
+
+  it.effect("does not decode the payload for handleRaw", () =>
+    Effect.gen(function*() {
+      const { Inspect, layer } = makeInspector()
+      // `handleRaw` opts out of payload decoding, so a payload that cannot be
+      // decoded must still reach the handler untouched.
+      const state: { sawPayloadKey: boolean } = { sawPayloadKey: true }
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          HttpApiEndpoint.post("create", "/users", { payload: Payload }).middleware(Inspect)
+        )
+      )
+      const appLayer = HttpApiBuilder.layer(Api).pipe(
+        Layer.provide(
+          HttpApiBuilder.group(
+            Api,
+            "users",
+            (handlers) =>
+              handlers.handleRaw("create", (request) =>
+                Effect.sync(() => {
+                  state.sawPayloadKey = "payload" in request
+                  return undefined as any
+                }))
+          )
+        ),
+        Layer.provide(layer),
+        Layer.provide(HttpServer.layerServices)
+      )
+
+      yield* serve(appLayer, postEmptyPayload())
+
+      assert.isFalse(state.sawPayloadKey)
+    }))
+
+  it.effect("applies parse options through HttpApiBuilder.endpoint", () =>
+    Effect.gen(function*() {
+      const { Inspect, layer, messages } = makeInspector()
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          HttpApiEndpoint.post("create", "/users", { payload: Payload }).middleware(Inspect)
+        )
+      )
+
+      const appLayer = Layer.unwrap(
+        Effect.gen(function*() {
+          const route = yield* HttpApiBuilder.endpoint(
+            Api,
+            "users",
+            "create",
+            () => Effect.void,
+            { parseOptions: { errors: "all" } }
+          )
+          return HttpRouter.add("POST", "/users", route)
+        })
+      ).pipe(
+        Layer.provide(layer),
+        Layer.provide(HttpServer.layerServices)
+      )
+
+      const response = yield* serve(appLayer, postEmptyPayload())
+
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(messages.length, 1)
+      assert.ok(messages[0].includes("firstName"))
+      assert.ok(messages[0].includes("lastName"))
     }))
 })
