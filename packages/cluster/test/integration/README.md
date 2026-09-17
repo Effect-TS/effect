@@ -12,6 +12,81 @@ Test names retain the upstream scenario names so individual results can be
 compared directly. The original 68 scenarios are unchanged from `1874e6f186`;
 the completion adds 38 cases in separate files.
 
+## Reviewed fixes and exact-tip integration validation (2026-09-17)
+
+SQL type cleanup: d74c1985c265154cd3ea253cd29735a6c69e4ce9 (parent 5c4366c215).
+Message/reply IDs, joined IDs and primary-key query results now include driver-returned numbers.
+The duplicate-query result retains its ID type instead of erasing it to unknown,
+so Snowflake construction no longer needs an any cast. Runtime behavior, SQL,
+tests, thresholds and the single changeset are unchanged by this cleanup.
+
+Independently reviewed preceding corrections:
+- bbbd576527: caller-interrupt markers take precedence over transient markers,
+  including composite FiberIds. Remote volatile interrupt-only transient replies
+  can retry; caller cancellations and mixed failure/defect causes do not.
+- 5c4366c215: Snowflake converts number inputs to bigint, exactly matching
+  main. MySQL duplicate and primary-key IDs now match persisted bigint reply keys.
+
+All **106 distinct integration cases** completed at d74c1985c265154cd3ea253cd29735a6c69e4ce9:
+**103 passed / 3 failed**, across eight sequential foreground batches. This is
+not a single uninterrupted full-suite run. No tests or thresholds were edited.
+An earlier combined cron attempt hit the 240-second outer tool deadline without
+producing JSON; it remains failed/incomplete evidence, not a pass. Both subsequent
+backend-separated cron batches completed, 5/5 each. Per-backend filtered entries
+are complementary; all 106 unique cases have measured final outcomes.
+
+| Batch | Pass / fail |
+| --- | ---: |
+| Transport, raw disconnect, persistence lifecycle | 8 / 1 |
+| Entity lifecycle | 17 / 2 |
+| Workflow PostgreSQL | 13 / 0 |
+| Workflow MySQL | 13 / 0 |
+| Persistence | 18 / 0 |
+| Entity, locks, smoke | 24 / 0 |
+| Cron PostgreSQL (after incomplete combined attempt) | 5 / 0 |
+| Cron MySQL (after incomplete combined attempt) | 5 / 0 |
+
+Against the historical 35493eb1af **97/106** sweep, 97 cases remain passing,
+six change from failed to passed, and three remain failed. The six are both
+forced-handler interruptions, MySQL end-to-end deduplication and synthetic activity
+handoff, and both cron previous/current-instant scenarios. No previously passing
+case failed in the completed batches. These observations do not individually
+prove causality or erase any historical failures.
+
+Remaining failures and limits:
+- Raw caller disconnect: host handler did not stop after the caller died; the
+  known #8227 disconnect scope limit is not resolved by retry classification.
+- Graceful-stop rebalance on both backends: stopped runner did not hand over its
+  entity within the original deadline. V3 graceful draining is preserved; do not
+  shorten its timeout to make this upstream timing expectation pass.
+- Cron remains timing-sensitive despite these completed passes. Preserve the
+  earlier PostgreSQL **2076 ms versus <=1000 ms** failure, MySQL assignment timeout,
+  upstream MySQL 60-second timeout and shard-lock-unhealthy failures, and measured
+  v3 lock latency **p50 215 / p99 274 / max 402 ms** over 605 operations against
+  the 500 ms deadline. Harness intervals remain **500 ms / 1.75 s**. The incomplete
+  combined cron attempt in this run supplies no per-case attribution.
+- Remote volatile retries may re-execute handlers. Local caller behavior and
+  persisted handling remain unchanged. Synthetic activity handoff is not actual
+  owner transfer; both actual-owner cases also passed in this sweep.
+- SQL cancellation risk, NDJSON rather than binary-codec coverage, excluded v4-only
+  scenarios, and the **full-stop deployment requirement** for advisory-lock protocol
+  changes remain. No mixed-version rolling upgrade or production-readiness claim.
+
+Root lint-fix, check, build, docgen and diff checks passed for the type cleanup.
+Constructor controls **7/7** and deterministic MySQL controls **6/6** passed;
+IDs **226271763047567360n** (driver number) and **226271763047567361n** (driver
+string) are unchanged. The first typecheck exposed the erased query result type;
+the corrected typed result passed. No full module bundle rerun: the independently
+reviewed **362/362 across 30 files remains tied to 5c4366c215**, not this tip.
+
+Database access followed Reviewer's **10:35:38 UTC** release and free-host checks
+at 10:38:34 and 10:42:52. All work was sequential and foreground. After the combined
+cron deadline, no test process remained; its containers were observed then gone
+by the cleanup call before any next batch. Final release confirmed at **11:05:11 UTC**:
+no test processes or batch containers/reapers remained; pre-existing
+busy_galileo was untouched. This is release-based coordination, not an atomic
+exclusive reservation. Historical sections below describe their original revisions.
+
 ## Run and cleanup
 
 Run from the repository root with Docker available:
