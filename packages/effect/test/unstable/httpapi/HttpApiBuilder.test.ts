@@ -95,10 +95,8 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
       assert.deepStrictEqual(result, { id: 42, name: "Ada" })
       assert.strictEqual(callback.mock.calls.length, 1)
     }))
-})
 
-it.layer(TestServices)("HttpApiBuilder QUERY endpoints", (it) => {
-  it.effect("round trips a request body", () =>
+  it.effect("round trips a QUERY request body", () =>
     Effect.gen(function*() {
       const Payload = Schema.Struct({ query: Schema.String })
       const Api = HttpApi.make("Api").add(
