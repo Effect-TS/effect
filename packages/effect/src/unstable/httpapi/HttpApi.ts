@@ -15,6 +15,7 @@ import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Record from "../../Record.ts"
 import type * as Schema from "../../Schema.ts"
+import type * as SchemaAST from "../../SchemaAST.ts"
 import type { PathInput } from "../http/HttpRouter.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
@@ -336,3 +337,21 @@ export class AdditionalSchemas extends Context.Service<
   AdditionalSchemas,
   ReadonlyArray<Schema.Constraint>
 >()("effect/httpapi/HttpApi/AdditionalSchemas") {}
+
+/**
+ * Configures schema parsing for server request decoding and response encoding,
+ * and client request encoding and response decoding.
+ *
+ * **Details**
+ *
+ * Annotate an API, group, or endpoint. Group options replace API options, and
+ * endpoint options replace group options. Each annotation replaces the whole
+ * options object. Without an annotation, Schema defaults apply.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class ParseOptions extends Context.Service<
+  ParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/httpapi/HttpApi/ParseOptions") {}
