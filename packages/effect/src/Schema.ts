@@ -10155,49 +10155,79 @@ export interface BigDecimal extends declare<BigDecimal_.BigDecimal> {
   readonly "Rebuild": BigDecimal
 }
 const BigDecimalString = String.annotate({ expected: "a string that will be decoded as a BigDecimal" })
-const arbitraryBigDecimalMaxScale = 20
-function bigIntArbitrarySchema(minimum: bigint | undefined, maximum: bigint | undefined): Codec<bigint> {
+// Keep ordinary amounts common while also exercising overflow and underflow when converted to a number.
+const arbitraryBigDecimalScales = [0, 1, 2, 3, 6, 9, 12, 18, 20, 50, 100, 200, 400, -20, -100, -400]
+function bigDecimalCoefficientSchema(minimum: bigint | undefined, maximum: bigint | undefined): Codec<bigint> {
   if (minimum !== undefined && maximum !== undefined) {
     return BigInt.check(isBetweenBigInt({ minimum, maximum }))
   }
-  if (minimum !== undefined) return BigInt.check(isGreaterThanOrEqualToBigInt(minimum))
-  if (maximum !== undefined) return BigInt.check(isLessThanOrEqualToBigInt(maximum))
-  return BigInt
+  const zero = globalThis.BigInt(0)
+  const center = minimum !== undefined && minimum > zero
+    ? minimum
+    : maximum !== undefined && maximum < zero
+    ? maximum
+    : zero
+  return Union([
+    globalThis.BigInt(100),
+    globalThis.BigInt(1_000_000),
+    globalThis.BigInt(2) ** globalThis.BigInt(64),
+    globalThis.BigInt(2) ** globalThis.BigInt(256)
+  ].map((radius) =>
+    BigInt.check(isBetweenBigInt({
+      minimum: minimum !== undefined && minimum > center - radius ? minimum : center - radius,
+      maximum: maximum !== undefined && maximum < center + radius ? maximum : center + radius
+    }))
+  ))
 }
-function bigDecimalValueAtScale(value: BigDecimal_.BigDecimal, scale: number): bigint {
-  return value.value * globalThis.BigInt(10) ** globalThis.BigInt(scale - value.scale)
+function bigDecimalCoefficientAtScale(value: BigDecimal_.BigDecimal, scale: number, ceil: boolean): bigint {
+  const difference = scale - value.scale
+  if (difference >= 0) return value.value * globalThis.BigInt(10) ** globalThis.BigInt(difference)
+  const divisor = globalThis.BigInt(10) ** globalThis.BigInt(-difference)
+  const quotient = value.value / divisor
+  const remainder = value.value % divisor
+  const zero = globalThis.BigInt(0)
+  return quotient +
+    (ceil && remainder > zero ? globalThis.BigInt(1) : !ceil && remainder < zero ? globalThis.BigInt(-1) : zero)
 }
 function bigDecimalArbitrarySchema(
   constraint: Annotations.ToArbitrary.GenerationConstraint<BigDecimal_.BigDecimal> | undefined
 ): Codec<{ readonly value: bigint; readonly scale: number }> {
-  if (constraint?.minimum === undefined && constraint?.maximum === undefined) {
-    return Struct({
-      value: BigInt,
-      scale: Int.check(isBetween({ minimum: 0, maximum: arbitraryBigDecimalMaxScale }))
-    })
+  const scales = new Set(arbitraryBigDecimalScales)
+  // Boundary scales make narrow intervals and bounds outside the default scale range constructible.
+  for (const bound of [constraint?.minimum, constraint?.maximum]) {
+    if (bound !== undefined) {
+      scales.add(bound.scale)
+      if (bound.scale < globalThis.Number.MAX_SAFE_INTEGER) scales.add(bound.scale + 1)
+    }
   }
-  const scale = Math.max(
-    arbitraryBigDecimalMaxScale,
-    constraint.minimum?.scale ?? 0,
-    constraint.maximum?.scale ?? 0,
-    constraint.exclusiveMinimum === true && constraint.minimum !== undefined ? constraint.minimum.scale + 1 : 0,
-    constraint.exclusiveMaximum === true && constraint.maximum !== undefined ? constraint.maximum.scale + 1 : 0
-  )
-  const minimum = constraint.minimum === undefined
-    ? undefined
-    : bigDecimalValueAtScale(constraint.minimum, scale) +
-      (constraint.exclusiveMinimum === true ? globalThis.BigInt(1) : globalThis.BigInt(0))
-  const maximum = constraint.maximum === undefined
-    ? undefined
-    : bigDecimalValueAtScale(constraint.maximum, scale) -
-      (constraint.exclusiveMaximum === true ? globalThis.BigInt(1) : globalThis.BigInt(0))
-  if (minimum !== undefined && maximum !== undefined && minimum > maximum) {
-    return Struct({
-      value: BigInt,
-      scale: Int.check(isBetween({ minimum: 0, maximum: arbitraryBigDecimalMaxScale }))
-    })
+  const members: Array<Codec<{ readonly value: bigint; readonly scale: number }>> = []
+  const ordinary: typeof members = []
+  for (const scale of scales) {
+    // Inclusive bounds require ceil(min) / floor(max); exclusive bounds require floor(min) + 1 / ceil(max) - 1.
+    const minimum = constraint?.minimum === undefined ?
+      undefined :
+      bigDecimalCoefficientAtScale(constraint.minimum, scale, !constraint.exclusiveMinimum) +
+      (constraint.exclusiveMinimum ? globalThis.BigInt(1) : globalThis.BigInt(0))
+    const maximum = constraint?.maximum === undefined ?
+      undefined :
+      bigDecimalCoefficientAtScale(constraint.maximum, scale, !!constraint.exclusiveMaximum) -
+      (constraint.exclusiveMaximum ? globalThis.BigInt(1) : globalThis.BigInt(0))
+    if (minimum !== undefined && maximum !== undefined && minimum > maximum) continue
+    members.push(Struct({ value: bigDecimalCoefficientSchema(minimum, maximum), scale: Literal(scale) }))
+    if (scale >= 0 && scale <= 6) {
+      const radius = globalThis.BigInt(1_000_000)
+      const low = minimum !== undefined && minimum > -radius ? minimum : -radius
+      const high = maximum !== undefined && maximum < radius ? maximum : radius
+      if (low <= high) {
+        ordinary.push(Struct({
+          value: BigInt.check(isBetweenBigInt({ minimum: low, maximum: high })),
+          scale: Literal(scale)
+        }))
+      }
+    }
   }
-  return Struct({ value: bigIntArbitrarySchema(minimum, maximum), scale: Literal(scale) })
+  // Give everyday decimals their own branch so adding extreme scales does not crowd them out.
+  return ordinary.length > 0 ? Union([Union(ordinary), Union(members)]) : Union(members)
 }
 /**
  * Schema for `BigDecimal` values.
@@ -10231,11 +10261,24 @@ export const BigDecimal: BigDecimal = declare(
       importDeclarations: [`import * as BigDecimal from "effect/BigDecimal"`]
     }),
     expected: "BigDecimal",
-    toCodecArbitrary: ({ constraint }) =>
-      linkDecoding<BigDecimal_.BigDecimal>()(
-        bigDecimalArbitrarySchema(constraint),
-        SchemaGetter.transform(({ scale, value }) => BigDecimal_.make(value, scale))
-      ),
+    toCodecArbitrary: ({ constraint }) => {
+      // Shrink offsets toward zero so even a coarse scale can reach the exact inclusive boundary.
+      const origin = constraint?.minimum !== undefined && BigDecimal_.isPositive(constraint.minimum)
+        ? constraint.minimum
+        : constraint?.maximum !== undefined && BigDecimal_.isNegative(constraint.maximum)
+        ? constraint.maximum
+        : BigDecimal_.fromBigInt(globalThis.BigInt(0))
+      return linkDecoding<BigDecimal_.BigDecimal>()(
+        bigDecimalArbitrarySchema(
+          constraint === undefined ? undefined : {
+            ...constraint,
+            minimum: constraint.minimum === undefined ? undefined : BigDecimal_.subtract(constraint.minimum, origin),
+            maximum: constraint.maximum === undefined ? undefined : BigDecimal_.subtract(constraint.maximum, origin)
+          }
+        ),
+        SchemaGetter.transform(({ scale, value }) => BigDecimal_.sum(origin, BigDecimal_.make(value, scale)))
+      )
+    },
     toCodecJson: () =>
       link<BigDecimal_.BigDecimal>()(
         BigDecimalString,
