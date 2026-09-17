@@ -20,9 +20,22 @@ import { MemoryLive } from "./fixtures/abandonment.js"
 import { makeRequest } from "./fixtures/message-storage.js"
 
 const transient = Cause.interrupt(RpcServer.fiberIdTransientInterrupt)
+const caller = Cause.interrupt(RpcServer.fiberIdClientInterrupt)
 const cases = [
   ["transient", transient, true],
-  ["caller interrupt", Cause.interrupt(RpcServer.fiberIdClientInterrupt), false],
+  ["caller interrupt", caller, false],
+  ["sequential caller + transient", Cause.sequential(caller, transient), false],
+  ["parallel caller + transient", Cause.parallel(caller, transient), false],
+  [
+    "composite caller + transient",
+    Cause.interrupt(FiberId.combine(RpcServer.fiberIdClientInterrupt, RpcServer.fiberIdTransientInterrupt)),
+    false
+  ],
+  [
+    "composite transient + caller",
+    Cause.interrupt(FiberId.combine(RpcServer.fiberIdTransientInterrupt, RpcServer.fiberIdClientInterrupt)),
+    false
+  ],
   ["unrelated interrupt", Cause.interrupt(FiberId.runtime(123, 0)), false],
   ["sequential failure", Cause.sequential(transient, Cause.fail("failure")), false],
   ["parallel failure", Cause.parallel(transient, Cause.fail("failure")), false],
