@@ -966,6 +966,40 @@ function numberSample(
   )
 }
 
+function bigIntGenerator(
+  minimum: bigint | undefined,
+  maximum: bigint | undefined
+): (state: Model.GenerationState) => bigint {
+  if (minimum !== undefined && maximum !== undefined) return Model.makeRandomNumericBigInt(minimum, maximum)
+  const zero = BigInt(0)
+  const center = minimum !== undefined && minimum > zero
+    ? minimum
+    : maximum !== undefined && maximum < zero
+    ? maximum
+    : zero
+  // A single wide uniform interval would almost always produce huge values. Mix magnitude ranges instead,
+  // independently of collection size, and cap default coefficient widths rather than attempting an infinite range.
+  const radii = [
+    BigInt(1),
+    BigInt(100),
+    BigInt(1_000_000),
+    ...[53, 64, 256, 1024, 2048].map((bits) => (BigInt(1) << BigInt(bits)) - BigInt(1))
+  ]
+  const generators = radii.map((radius) =>
+    Model.makeRandomNumericBigInt(
+      minimum !== undefined && minimum > center - radius ? minimum : center - radius,
+      maximum !== undefined && maximum < center + radius ? maximum : center + radius
+    )
+  )
+  // A bound on the far side of zero may lie outside every default range. Still exercise that explicit boundary.
+  if (minimum !== undefined && minimum < zero) {
+    generators.push(Model.makeRandomNumericBigInt(minimum, minimum + BigInt(100)))
+  } else if (maximum !== undefined && maximum > zero) {
+    generators.push(Model.makeRandomNumericBigInt(maximum - BigInt(100), maximum))
+  }
+  return (state) => generators[Model.randomIndex(state, generators.length)](state)
+}
+
 interface BigIntShrink {
   readonly value: bigint
   readonly context: bigint | undefined
@@ -975,14 +1009,28 @@ function shrinkBigInt(current: bigint, target: bigint, tryTargetAsap: boolean): 
   const out: Array<BigIntShrink> = []
   const realGap = current - target
   let previous = tryTargetAsap ? undefined : target
-  for (
-    let toRemove = tryTargetAsap ? realGap : realGap / BigInt(2);
-    toRemove !== BigInt(0);
-    toRemove /= BigInt(2)
-  ) {
+  let toRemove = tryTargetAsap ? realGap : realGap / BigInt(2)
+  const magnitude = realGap < BigInt(0) ? -realGap : realGap
+  if (tryTargetAsap && magnitude > (BigInt(1) << BigInt(64))) {
+    // Halving a thousand-bit root can exhaust the default shrink budget before reaching ordinary magnitudes.
+    // Try useful smaller offsets first, retaining the preceding candidate as the passing-value context.
+    out.push({ value: target, context: previous })
+    previous = target
+    const sign = realGap < BigInt(0) ? BigInt(-1) : BigInt(1)
+    for (const bits of [0, 4, 16, 32, 53, 64, 128, 256, 512, 1024]) {
+      const offset = BigInt(1) << BigInt(bits)
+      if (offset >= magnitude / BigInt(2)) break
+      const value = target + sign * offset
+      out.push({ value, context: previous })
+      previous = value
+    }
+    toRemove = realGap / BigInt(2)
+  }
+  while (toRemove !== BigInt(0)) {
     const value = current - toRemove
     out.push({ value, context: previous })
     previous = value
+    toRemove /= BigInt(2)
   }
   return out
 }
@@ -1199,26 +1247,11 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         if (minimum !== undefined && maximum !== undefined && minimum > maximum) {
           throw arbitraryError("bigint constraints", path)
         }
-        let previousLow: bigint | undefined
-        let previousHigh: bigint | undefined
-        let randomBigInt: ((state: Model.GenerationState) => bigint) | undefined
+        const randomBigInt = bigIntGenerator(minimum, maximum)
         return Model.makeCompiled(
           [],
           () => 0,
           (state) => {
-            const magnitude = BigInt(Math.max(1, state.size * state.size))
-            const center = minimum !== undefined && minimum > BigInt(0)
-              ? minimum
-              : maximum !== undefined && maximum < BigInt(0)
-              ? maximum
-              : BigInt(0)
-            const low = minimum ?? center - magnitude
-            const high = maximum ?? center + magnitude
-            if (randomBigInt === undefined || low !== previousLow || high !== previousHigh) {
-              previousLow = low
-              previousHigh = high
-              randomBigInt = Model.makeRandomNumericBigInt(low, high)
-            }
             const value = randomBigInt(state)
             return state.shrinks
               ? bigIntSample(value, minimum, maximum)
