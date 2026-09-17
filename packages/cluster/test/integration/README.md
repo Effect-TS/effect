@@ -6,11 +6,20 @@ Source: `Effect-TS/effect` main at
 The v3 production base is PR #8195 at
 `5448e8c688dfe6fa942d81b500245befb20f297b`.
 
-This ports 106 applicable upstream cases. The eight excluded backend cases need
-v4-only residency configuration or v4's strict JSON encoding of `Schema.Unknown`.
+This retains 103 upstream cases. Eight excluded backend cases need
+v4-only residency configuration or v4's strict JSON encoding of `Schema.Unknown`;
+three confirmed failing cases were removed as accepted v3 limits (see Exclusions).
 Test names retain the upstream scenario names so individual results can be
-compared directly. The original 68 scenarios are unchanged from `1874e6f186`;
-the completion adds 38 cases in separate files.
+compared directly. The original 68 cases are unchanged from `1874e6f186`;
+the completion added 38 cases in separate files before the three removals.
+
+## Accepted-limit cleanup validation (2026-09-17)
+
+After removing only the three approved cases from `17b44a97a7`, the affected
+`EntityLifecycle.test.ts` passed **17/17**, including both force-interrupt
+controls. Unchanged `ShutdownDrain.test.ts` passed **8/8**. Root `lint-fix`,
+`check`, `build`, `docgen` and `git diff --check` passed. No new failure was
+removed or suppressed. The full retained 103-case suite was not rerun.
 
 ## Reviewed fixes and exact-tip integration validation (2026-09-17)
 
@@ -127,12 +136,11 @@ MySQL; parameterized discard settings retain all four combinations.
 | `Workflow.test.ts` | Same name, all 13 scenarios | Concurrent execution returns 42 twice with one activity; completed activity replay remains once; full restart completion originates on another runner; race winner survives owner loss without rerunning the losing branch; compensation runs once and SuspendOnFailure remains suspended; late race completion crosses the suspension commit; retry attempts remain `[1,2,3]` and preserve the final typed error; durable clock waits at least 900 ms; durable queue survives restart and consumes once; interruption survives restart; synthetic activity handoff preserves acquire/release ordering, once-only execution and no compensation; safe interruption preserves compensation; actual owner handoff finishes with no pending messages | 26 |
 | `Locks.test.ts` | Same name, complete file | Blackholed connection rebuild and rejoin; no reacquisition before forced release; peer progress with stuck lock query; repeated connection failures and hung release. Ownership cardinality and stable-assignment assertions retained | 8 |
 | `Entity.test.ts` | Same name, selected scenarios | Unroutable durable reply during shutdown exits interrupted-only; outgoing finalizer discard succeeds for persisted/volatile and preemptive/non-preemptive combinations; slow registration retains exactly one pending request; absent registration stores exactly one defect | 14 |
-| `Entity.test.ts` | `EntityLifecycle.test.ts`, all remaining scenarios | Fatal rebuild executes both in-flight attempts and builds exactly twice; forced handler interruption retries exactly twice; entity state isolation and exact mailbox order; saturation and fresh idle revival; addition/stop/death rebalance with no pending messages; frozen row-lock expiry; frozen advisory-lock retention; shard-group placement; singleton movement with maximum concurrency one; explicit resource release; prefix-isolated registration and routing | 19 |
+| `Entity.test.ts` | `EntityLifecycle.test.ts`, selected remaining scenarios | Fatal rebuild executes both in-flight attempts and builds exactly twice; forced handler interruption retries exactly twice; entity state isolation and exact mailbox order; saturation and fresh idle revival; frozen row-lock expiry; frozen advisory-lock retention; shard-group placement; singleton movement with maximum concurrency one; explicit resource release; prefix-isolated registration and routing | 17 |
 | `Persistence.test.ts` | Same name, selected scenarios | Request sent while owner is down executes once; duplicate key returns stored reply after owner death; volatile discard is neither stored nor redelivered; discarded caller finishes while handler is blocked; typed failure and defect deduplicate while sibling request succeeds; stream acknowledgement survives shutdown; chunk round-trip; stream restart yields exactly `[0,1,2,3,4]`; terminal takeover yields exactly `[0]` and one terminal reply | 18 |
 | `Persistence.test.ts` | `PersistenceLifecycle.test.ts`, all remaining compatible scenarios | Uninterruptible request replays after shutdown but completes once; invalid stored headers produce one defect without running the handler and a subsequent request succeeds; scheduled requests are absent before the deadline and execute once at or after it | 6 |
 | `Transport.test.ts` | Same name, complete file | Directional socket cut leaves runner alive; volatile call retries exactly twice, persisted call executes once, both exact response values retained | 2 |
 | `ClusterCron.test.ts` | Same name, complete file | Unique scheduled instants and recovery after error; previous-time/current-time scheduling; stale-run skip and catch-up across restart; singleton-owner failover without missing/duplicate ticks; singleton/execution shard-group placement. Original timing thresholds and schedule comparisons retained | 10 |
-| `StreamDisconnect.test.ts` | Same name, complete file | Raw caller disconnects with no further messages; exactly one host handler starts and stops | 1 |
 | `harness.ts`, `globalSetup.ts` | Same names | Upstream scoped socket/SQL topology, runner lifecycle, polling, SQL counts, fault injection and container setup, reduced to facilities used by these cases | n/a |
 
 The old bespoke multi-process controller and worker are not used.
@@ -150,9 +158,9 @@ The old bespoke multi-process controller and worker are not used.
 - TCP serialization uses v3 NDJSON. V3 has no `layerSchemaBinary`/`codecFor`
   transport contract. Exact decoded values, reply counts and stream order are
   retained; binary codec behavior is not covered.
-- The raw disconnect case uses `Envelope.Request.PartialEncoded`,
+- The removed raw disconnect case used `Envelope.Request.PartialEncoded`,
   `Schema.encode` and `asMailbox`/`mailbox.take` in place of the v4 codec and raw
-  queue. It closes the transport scope directly, without using the Sharding
+  queue. It closed the transport scope directly, without using the Sharding
   client's retry path. Transport socket tracking is opt-in so the original 68
   tests retain their original protocol layer.
 - Freeze support is ported from upstream's storage controller: heartbeats and
@@ -200,9 +208,23 @@ by the existing module tests.
   that value the same way. They are excluded as written, rather than changing
   their payload to make a different test pass. Existing v3 module regressions
   cover malformed schema values and delivery of their persisted defect.
-- All other upstream scenarios are now represented, including cron and raw
-  caller-disconnect controls outside the original fix list. No compatible case
-  is omitted merely because it was unfinished in the initial port.
+- `StreamDisconnect.test.ts`: `dead caller: socket closed with no further messages`
+  (PostgreSQL) was removed with Tim's approval on 2026-09-17. The host handler
+  continues after the caller disconnects because #8227 disconnect cleanup is
+  outside this backport. Restore this case when that cleanup is ported.
+- `EntityLifecycle.test.ts`: `rebalances on runner addition, graceful stop, and abrupt death`
+  was removed for PostgreSQL and MySQL with the same approval. Its blocked
+  handler prevents handover within the upstream deadline while v3 correctly
+  drains for the full termination timeout. Upstream passes through a v4 RPC
+  registration race that skips draining; matching that behavior is not a fix.
+  Removing this combined scenario also removes its addition/death assertions.
+  `ShutdownDrain.test.ts` retains all eight passing unary/stream drain controls,
+  and both integration force-interrupt cases remain enabled. Production code,
+  termination timeouts and test deadlines are unchanged.
+
+These are the only three removals from the 106-case port. Historical results
+below and in the reviewed validation section above still describe the original
+106 cases, including their failures; they are not results for the retained suite.
 
 ## Harness diagnostics and merged core dependency
 
