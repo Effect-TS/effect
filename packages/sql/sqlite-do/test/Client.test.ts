@@ -363,6 +363,28 @@ describe("Client", () => {
       assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
     }))
 
+  it.effect("cross-client nested transactions fail before opening storage or running the body", () =>
+    Effect.gen(function*() {
+      const storageA = new FakeDurableObjectStorage()
+      const storageB = new FakeDurableObjectStorage()
+      const sqlA = yield* makeClient({ storage: storageA as unknown as DurableObjectStorage })
+      const sqlB = yield* makeClient({ storage: storageB as unknown as DurableObjectStorage })
+      let bodyRan = false
+
+      const exit = yield* sqlA.withTransaction(
+        sqlB.withTransaction(Effect.sync(() => {
+          bodyRan = true
+        }))
+      ).pipe(Effect.exit)
+
+      assert.strictEqual(storageA.transactionCalls, 1)
+      assert.strictEqual(storageB.transactionCalls, 0)
+      assert.strictEqual(bodyRan, false)
+      const error = yield* Effect.flip(exit)
+      assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.match(error.message, /Transactions cannot use a connection from a different SQLite client/)
+    }))
+
   it.effect("caught nested failure rolls back only inner writes and lets the outer transaction commit", () =>
     Effect.gen(function*() {
       const storage = new FakeDurableObjectStorage()
