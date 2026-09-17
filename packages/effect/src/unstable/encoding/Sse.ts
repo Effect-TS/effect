@@ -89,6 +89,8 @@ export interface DecodeOptions {
 
 const defaultMaxEventSize = 10 * 1024 * 1024
 
+const eventFields = new WeakMap<Event, { readonly id: boolean; readonly event: boolean }>()
+
 /**
  * Creates a channel that parses Server-Sent Events text chunks into `Event` values.
  *
@@ -190,9 +192,28 @@ export const decodeSchema = <
   IE,
   Done,
   S["DecodingServices"]
-> =>
-  Channel.pipeTo(
-    decode<IE, Done>(options),
+> => {
+  const events = decode<IE, Done>(options)
+  if (parseOptions?.onExcessProperty === "error") {
+    return Channel.pipeTo(
+      Channel.map(
+        events,
+        Arr.map((event) => {
+          const fields = eventFields.get(event)!
+          // Declared properties still receive SSE defaults and inherited IDs.
+          // Only fields present on the wire are own keys for excess validation.
+          const input = Object.create({ id: event.id, event: event.event }) as EventEncoded
+          Object.assign(input, { data: event.data })
+          if (fields.id) Object.assign(input, { id: event.id })
+          if (fields.event) Object.assign(input, { event: event.event })
+          return input
+        })
+      ),
+      ChannelSchema.decode(schema, parseOptions)()
+    )
+  }
+  return Channel.pipeTo(
+    events,
     ChannelSchema.decode(
       Event.pipe(
         Schema.decodeTo(schema, transformEvent)
@@ -200,6 +221,7 @@ export const decodeSchema = <
       parseOptions
     )()
   )
+}
 
 /**
  * Creates an SSE decoder channel that JSON-decodes each event `data` field with a schema.
@@ -265,6 +287,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
 
   // Event state
   let lastEventId: string | undefined
+  let hasId: boolean
   let eventName: string | undefined
   let data: string
 
@@ -279,6 +302,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     discardTrailingNewline = false
 
     lastEventId = undefined
+    hasId = false
     eventName = undefined
     data = ""
   }
@@ -368,15 +392,18 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     if (lineLength === 0) {
       // We reached the last line of this event
       if (data.length > 0) {
-        onParse({
+        const event: Event = {
           _tag: "Event",
           id: lastEventId,
           event: eventName || "message",
           data: data.slice(0, -1) // remove trailing newline
-        })
+        }
+        eventFields.set(event, { id: hasId, event: eventName !== undefined })
+        onParse(event)
         data = ""
       }
       eventName = undefined
+      hasId = false
       return
     }
 
@@ -402,6 +429,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       eventName = value
     } else if (field === "id" && !value.includes("\u0000")) {
       lastEventId = value
+      hasId = true
     } else if (field === "retry" && /^\d+$/.test(value)) {
       const retry = parseInt(value, 10)
       onParse(new Retry({ duration: Duration.millis(retry), lastEventId }))

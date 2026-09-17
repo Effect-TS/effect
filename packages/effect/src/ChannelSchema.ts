@@ -133,7 +133,8 @@ export const decode = <S extends Schema.Constraint>(
  * @since 4.0.0
  */
 export const decodeUnknown: <S extends Schema.Constraint>(
-  schema: S
+  schema: S,
+  options?: SchemaAST.ParseOptions
 ) => <IE = never, Done = unknown>() => Channel.Channel<
   Arr.NonEmptyReadonlyArray<S["Type"]>,
   IE | Schema.SchemaError,
