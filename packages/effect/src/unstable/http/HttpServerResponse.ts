@@ -1002,6 +1002,12 @@ export const omitsBody = (response: HttpServerResponse, withoutBody = false): bo
  * (for example, for HEAD responses). Omitted raw `ReadableStream` bodies are
  * cancelled without awaiting completion, and cancellation errors are ignored.
  *
+ * A raw `Response` body is returned as-is after the outer headers are merged
+ * into it: outer headers replace native ones, and cookies are appended. When
+ * its body is omitted, the bodyless `Response` keeps those merged headers and
+ * uses the outer status for 204, 205 and 304, or the raw `Response` status
+ * otherwise.
+ *
  * @category converting
  * @since 4.0.0
  */
@@ -1020,7 +1026,30 @@ export const toWeb = (
     }
   }
   const body = response.body
-  if (omitsBody(response, options?.withoutBody)) {
+  const outerOmitsBody = omitsBody(response)
+  const withoutBody = outerOmitsBody || options?.withoutBody === true
+  if (body._tag === "Raw" && body.body instanceof Response) {
+    const raw = body.body
+    for (const [key, value] of headers as any) {
+      if (key === "set-cookie") {
+        raw.headers.append(key, value)
+      } else {
+        raw.headers.set(key, value)
+      }
+    }
+    if (!withoutBody) {
+      return raw
+    }
+    // A bodyless outer status is what the caller chose to send; otherwise the
+    // body is only omitted for HEAD and the raw Response describes the resource.
+    const source = outerOmitsBody ? response : raw
+    return new Response(undefined, {
+      status: source.status,
+      statusText: source.statusText as string,
+      headers: raw.headers
+    })
+  }
+  if (withoutBody) {
     if (body._tag === "Raw" && isReadableStream(body.body)) {
       body.body.cancel().catch(constVoid)
     }
@@ -1046,12 +1075,6 @@ export const toWeb = (
       })
     }
     case "Raw": {
-      if (body.body instanceof Response) {
-        for (const [key, value] of headers as any) {
-          body.body.headers.set(key, value)
-        }
-        return body.body
-      }
       return new Response(body.body as any, {
         status: response.status,
         statusText: response.statusText!,

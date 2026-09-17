@@ -1,11 +1,89 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Stream } from "effect"
-import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/unstable/http"
+import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/unstable/http"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpServerResponse", () => {
   describe("toWeb", () => {
+    it.each([
+      { status: 204, withoutBody: false },
+      { status: 205, withoutBody: false },
+      { status: 304, withoutBody: true }
+    ])(
+      "prefers outer status $status and merges raw Response headers with withoutBody=$withoutBody",
+      ({ status, withoutBody }) => {
+        const nativeCookies = ["sid=abc; Path=/; HttpOnly", "theme=dark; Path=/"]
+        const native = new Response("cached body", {
+          status: 200,
+          statusText: "Native status",
+          headers: [
+            ["etag", "\"version-1\""],
+            ["x-shared", "native"],
+            ...nativeCookies.map((cookie): [string, string] => ["set-cookie", cookie])
+          ]
+        })
+        const web = HttpServerResponse.toWeb(
+          HttpServerResponse.raw(native, {
+            status,
+            statusText: "Outer status",
+            headers: { "x-outer": "outer", "x-shared": "outer" },
+            cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}], ["b", "2", {}]])
+          }),
+          { withoutBody }
+        )
+
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.statusText, "Outer status")
+        assert.strictEqual(web.body, null)
+        assert.strictEqual(web.headers.get("etag"), "\"version-1\"")
+        assert.strictEqual(web.headers.get("x-outer"), "outer")
+        assert.strictEqual(web.headers.get("x-shared"), "outer")
+        assert.deepStrictEqual(web.headers.getSetCookie(), [...nativeCookies, "a=1", "b=2"])
+      }
+    )
+
+    it("preserves raw Response metadata for HEAD", () => {
+      const native = new Response("body", {
+        status: 202,
+        statusText: "Accepted by upstream",
+        headers: { "x-probe": "native", "set-cookie": "sid=abc" }
+      })
+      const web = HttpServerResponse.toWeb(
+        HttpServerResponse.raw(native, { status: 200, statusText: "Outer status" }),
+        { withoutBody: true }
+      )
+
+      assert.strictEqual(web.body, null)
+      assert.strictEqual(web.status, 202)
+      assert.strictEqual(web.statusText, "Accepted by upstream")
+      assert.strictEqual(web.headers.get("x-probe"), "native")
+      assert.deepStrictEqual(web.headers.getSetCookie(), ["sid=abc"])
+    })
+
+    it("returns the raw Response with merged headers for GET", async () => {
+      const native = new Response("body", {
+        status: 202,
+        statusText: "Accepted by upstream",
+        headers: { "x-probe": "native", "x-shared": "native", "set-cookie": "sid=abc; Path=/; HttpOnly" }
+      })
+      const web = HttpServerResponse.toWeb(
+        HttpServerResponse.raw(native, {
+          headers: { "x-outer": "outer", "x-shared": "outer" },
+          cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}], ["b", "2", {}]])
+        })
+      )
+
+      assert.strictEqual(web, native)
+      assert.strictEqual(web.status, 202)
+      assert.strictEqual(web.statusText, "Accepted by upstream")
+      assert.strictEqual(web.headers.get("x-probe"), "native")
+      assert.strictEqual(web.headers.get("x-outer"), "outer")
+      assert.strictEqual(web.headers.get("x-shared"), "outer")
+      assert.deepStrictEqual(web.headers.getSetCookie(), ["sid=abc; Path=/; HttpOnly", "a=1", "b=2"])
+      assert.strictEqual(await web.text(), "body")
+    })
+
     it.each([
       { status: 200, withoutBody: true },
       { status: 304, withoutBody: false }
