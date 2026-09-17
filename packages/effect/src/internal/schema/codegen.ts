@@ -775,6 +775,7 @@ const emitObject = (ast: SchemaAST.Objects): string => {
   const initializers: Array<string> = []
   const transforms = new Map<object, string>()
   let usesInlinePropertyHandler = false
+  let usesInlinePropertyFailure = false
   const lazyProperties = ast.propertySignatures.every((property) =>
     typeof property.name !== "symbol" && canInlineEncoding(property.type)
   )
@@ -802,6 +803,30 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       const links = property.type.encoding
       const sourcePath = `${propertyPath}.encoding[${links.length - 1}].to`
       const source = inlineIdentityPredicate(links[links.length - 1].to, `v${index}`, sourcePath)!
+      // Share cold diagnostics without adding a call to the successful path.
+      if (lazyProperties && links.length === 1 && property.name !== "__proto__") {
+        usesInlinePropertyFailure = true
+        const transformation = links[0].transformation
+        let decoded = `v${index}`
+        if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
+          let transform = transforms.get(transformation.decode.transform)
+          if (transform === undefined) {
+            transform = `t${transforms.size}`
+            transforms.set(transformation.decode.transform, transform)
+            initializers.push(`const ${transform}=${propertyPath}.encoding[0].transformation.decode.transform`)
+          }
+          decoded = `${transform}(v${index})`
+        }
+        const predicate = inlineIdentityPredicate(property.type, `x${index}`, propertyPath)!
+        statements.push(
+          `const h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
+          `if(v${index}!==R.missing&&(${source})){const x${index}=${decoded};` +
+            `if(x${index}!==R.missing&&(${predicate})){out[${key}]=x${index}}` +
+            `else{t=invalid(state,${index},h${index},v${index},x${index},o);if(t)return t}}` +
+            `else{t=fallbackProperty(state,${index},h${index},v${index},o);if(t)return t}`
+        )
+        return
+      }
       const fast: Array<string> = [`let x${index}=v${index};r=void 0;l${index}:{`]
       for (let linkIndex = links.length - 1; linkIndex >= 0; linkIndex--) {
         const transformation = links[linkIndex].transformation
@@ -848,6 +873,12 @@ const emitObject = (ast: SchemaAST.Objects): string => {
   statements.push("return R.succeed(out)")
   if (usesInlinePropertyHandler) {
     initializers.unshift(inlinePropertyHandler)
+  }
+  if (usesInlinePropertyFailure) {
+    initializers.push(
+      "const invalid=(state,index,present,input,output,o)=>{const property=p(index);return handle(state,index,property,present,input,output===R.missing?R.missingExit:R.invalidEncoding(property.type,0,input,output,o))}",
+      "const fallbackProperty=(state,index,present,input,o)=>{const property=p(index);return handle(state,index,property,present,input,property.parser(input,o))}"
+    )
   }
   return `function({ast,getProperties,fallback,resume,step}){${initializers.join(";")};return function(i,o){try{${
     statements.join(";")
