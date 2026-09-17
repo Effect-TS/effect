@@ -999,6 +999,81 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
   Result.getOrThrow(inetAddressFromIpString(address, port))
 
 /**
+ * Parses an unbracketed numeric host and port, resolving named IPv6 zones using
+ * a supplied map of interface names to numeric scope IDs.
+ *
+ * **Details**
+ *
+ * IPv4, unscoped IPv6, and numeric IPv6 zones need no map. Named zones must have
+ * a matching map entry. This function performs no DNS or operating-system lookup.
+ *
+ * @see {@link formatHost} for formatting the host of an internet address
+ * @see {@link scopeIdsFromInterfaces} for building a scope map from interface entries
+ * @category decoding
+ * @since 4.0.0
+ */
+export const inetAddressFromHostString = (
+  host: string,
+  port: number,
+  scopeIds?: ReadonlyMap<string, number>
+): Result.Result<InetAddress, NetAddressError> => {
+  const separator = host.indexOf("%")
+  if (separator !== -1) {
+    const zone = host.slice(separator + 1)
+    if (zone.length === 0 || zone.includes("%")) {
+      return addressError(host, "invalid IPv6 scope identifier")
+    }
+    if (!/^\d+$/.test(zone)) {
+      const scopeId = scopeIds?.get(zone)
+      if (scopeId === undefined) {
+        return addressError(host, `unknown IPv6 interface: ${zone}`)
+      }
+      host = `${host.slice(0, separator)}%${scopeId}`
+    }
+  }
+  return inetAddressFromString(host.includes(":") ? `[${host}]:${port}` : `${host}:${port}`)
+}
+
+/**
+ * Network interface address metadata used to resolve IPv6 scope IDs.
+ *
+ * @see {@link scopeIdsFromInterfaces}
+ * @category models
+ * @since 4.0.0
+ */
+export interface NetworkInterfaceAddress {
+  readonly family: string
+  readonly scopeid?: number | undefined
+}
+
+/**
+ * Creates a map from interface names to IPv6 scope IDs using supplied interface
+ * entries.
+ *
+ * **Details**
+ *
+ * Each entry pairs an interface name with its addresses. The first IPv6 address
+ * with a positive scope ID supplies that interface's mapping. Accepts entries
+ * such as `Object.entries(os.networkInterfaces())` without performing any
+ * operating-system lookup itself. Later changes to the entries do not affect
+ * the map.
+ *
+ * @see {@link inetAddressFromHostString} for resolving named IPv6 zones with the map
+ * @category converting
+ * @since 4.0.0
+ */
+export const scopeIdsFromInterfaces = (
+  interfaces: Iterable<readonly [name: string, addresses: ReadonlyArray<NetworkInterfaceAddress> | undefined]>
+): Map<string, number> => {
+  const scopeIds = new Map<string, number>()
+  for (const [name, addresses] of interfaces) {
+    const address = addresses?.find((address) => address.family === "IPv6" && (address.scopeid ?? 0) > 0)
+    if (address?.scopeid !== undefined) scopeIds.set(name, address.scopeid)
+  }
+  return scopeIds
+}
+
+/**
  * Parses `IPv4:port` or `[IPv6]:port` without DNS resolution.
  *
  * @category decoding
@@ -1062,15 +1137,30 @@ export const inetAddressFromStringUnsafe = (input: string): InetAddress =>
   Result.getOrThrow(inetAddressFromString(input))
 
 /**
+ * Formats the numeric host of an internet address without brackets or a port,
+ * preserving a nonzero IPv6 scope ID as a `%` suffix.
+ *
+ * **When to use**
+ *
+ * Use when the host and port are represented separately.
+ *
+ * @see {@link formatInet} for a complete socket address
+ * @see {@link formatUrlHost} for a bracketed URL authority host
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatHost = (self: InetAddress): string =>
+  formatIp(self.address) + (isInetAddressV6(self) && self.scopeId !== 0 ? `%${self.scopeId}` : "")
+
+/**
  * Formats a resolved internet address, bracketing IPv6 around its port.
  *
  * @category encoding
  * @since 4.0.0
  */
 export const formatInet = (self: InetAddress): string => {
-  if (self._tag === "InetAddressV4") return `${formatIp(self.address)}:${self.port}`
-  const scope = self.scopeId === 0 ? "" : `%${self.scopeId}`
-  return `[${formatIp(self.address)}${scope}]:${self.port}`
+  const host = formatHost(self)
+  return isInetAddressV4(self) ? `${host}:${self.port}` : `[${host}]:${self.port}`
 }
 
 /**

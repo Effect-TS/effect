@@ -498,6 +498,54 @@ describe("NetAddress", () => {
       assert.strictEqual(NetAddress.formatUrlHost(success(NetAddress.ipv6FromString("::1"))), "[::1]")
     })
 
+    it("formats separate socket hosts while preserving IPv6 scope", () => {
+      for (
+        const [input, expected] of [
+          ["127.0.0.1:8080", "127.0.0.1"],
+          ["[0:0:0:0:0:0:0:1]:8080", "::1"],
+          ["[fe80::1%7]:4567", "fe80::1%7"],
+          ["[fe80::1%0]:4567", "fe80::1"]
+        ]
+      ) {
+        const address = NetAddress.inetAddressFromStringUnsafe(input)
+        const host = NetAddress.formatHost(address)
+        assert.strictEqual(host, expected)
+        assert.deepStrictEqual(success(NetAddress.inetAddressFromHostString(host, address.port)), address)
+      }
+    })
+
+    it("resolves named IPv6 zones only through the supplied scope map", () => {
+      for (const scopeId of [7, 9]) {
+        const scopeIds = new Map([["en0", scopeId]])
+        const address = success(NetAddress.inetAddressFromHostString("fe80::1%en0", 4567, scopeIds))
+        assert.deepStrictEqual(address, NetAddress.inetAddressFromStringUnsafe(`[fe80::1%${scopeId}]:4567`))
+      }
+      const unknown = failure(NetAddress.inetAddressFromHostString("fe80::1%en0", 4567, new Map([["en1", 7]])))
+      assert.strictEqual(unknown.input, "fe80::1%en0")
+      failure(NetAddress.inetAddressFromHostString("fe80::1%en0", 4567))
+    })
+
+    it("snapshots the first positive IPv6 scope ID from each interface", () => {
+      const linkLocal = { family: "IPv6", scopeid: 7 }
+      const interfaces = {
+        en0: [
+          { family: "IPv4", scopeid: 99 },
+          { family: "IPv6" },
+          { family: "IPv6", scopeid: 0 },
+          { family: "IPv6", scopeid: -1 },
+          linkLocal,
+          { family: "IPv6", scopeid: 9 }
+        ],
+        en1: undefined,
+        en2: [{ family: "IPv4" }, { family: "IPv6", scopeid: 0 }],
+        en3: [{ family: "IPv6", scopeid: 11 }]
+      }
+      const scopeIds = NetAddress.scopeIdsFromInterfaces(Object.entries(interfaces))
+      linkLocal.scopeid = 12
+      assert.deepStrictEqual(scopeIds, new Map([["en0", 7], ["en3", 11]]))
+      assert.deepStrictEqual(NetAddress.scopeIdsFromInterfaces([]), new Map())
+    })
+
     it("provides throwing counterparts for trusted construction", () => {
       const ip = NetAddress.ipFromStringUnsafe("::1")
       assert.strictEqual(NetAddress.formatIp(ip), "::1")
