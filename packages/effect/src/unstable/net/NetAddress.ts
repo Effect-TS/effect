@@ -1142,7 +1142,7 @@ export const inetAddressFromStringUnsafe = (input: string): InetAddress =>
  *
  * **When to use**
  *
- * Use when a socket API accepts the host and port as separate arguments.
+ * Use when the host and port are represented separately.
  *
  * @see {@link formatInet} for a complete socket address
  * @see {@link formatUrlHost} for a bracketed URL authority host
