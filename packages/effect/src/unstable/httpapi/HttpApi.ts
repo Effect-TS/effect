@@ -339,21 +339,17 @@ export class AdditionalSchemas extends Context.Service<
 >()("effect/httpapi/HttpApi/AdditionalSchemas") {}
 
 /**
- * Schema parse options for every codec an API, group, or endpoint uses: server
- * request decoding and response encoding, and client request encoding and
- * response decoding.
+ * Schema parse options for server and client codecs, set on an API, group, or
+ * endpoint.
  *
  * **Details**
  *
- * An endpoint annotation replaces a group annotation, which replaces an API
- * annotation. The whole options object is replaced, not merged field by field.
- * Without an annotation, Schema defaults apply.
+ * Endpoint options override group options, which override API options. Objects
+ * are replaced, not merged. Without an annotation, Schema defaults apply.
  *
- * Header codecs receive the complete HTTP header record, so
- * `onExcessProperty: "error"` rejects undeclared headers such as
- * `content-type`. Server handlers read the annotation from the API passed to
- * `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`, so annotate the API
- * before building them.
+ * Header codecs receive all HTTP headers, so `onExcessProperty: "error"` rejects
+ * undeclared headers such as `content-type`. Annotate the API before passing it
+ * to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
  *
  * @category services
  * @since 4.0.0

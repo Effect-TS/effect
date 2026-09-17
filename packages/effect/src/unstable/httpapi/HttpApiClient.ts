@@ -381,7 +381,6 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           decodeMap[status] = makeResponseDecoder(alternatives)
         }
 
-        // encoders
         const encodeUnknownEffect = <S extends Schema.Constraint>(schema: S) =>
           Schema.encodeUnknownEffect(schema, parseOptions)
         const encodeParams = UndefinedOr.map(endpoint.params, encodeUnknownEffect)
