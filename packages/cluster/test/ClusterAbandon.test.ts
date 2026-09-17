@@ -28,4 +28,47 @@ describe("clusterAbandon", () => {
       assert.isFalse(Abandon.isCause(Cause.interrupt(FiberId.unsafeMake())))
       assert.isFalse(Abandon.isCause(Cause.fail("typed failure")))
     }).pipe(Effect.provide(MemoryLive)))
+
+  for (const owner of ["none", "active", "inactive"] as const) {
+    it.effect(`reSignal permits recovery only outside an active owner (owner=${owner})`, () =>
+      Effect.gen(function*() {
+        const cause = yield* abandonmentCause
+        let recovered = false
+        let continued = false
+        const recovery = Effect.failCause(cause).pipe(
+          Effect.onError(Abandon.reSignal),
+          Effect.catchAllCause((cause) =>
+            Effect.sync(() => {
+              assert.isTrue(Abandon.isCause(cause))
+              recovered = true
+            })
+          ),
+          Effect.uninterruptible,
+          Effect.andThen(Effect.yieldNow()),
+          Effect.andThen(Effect.sync(() => {
+            continued = true
+            return "continued" as const
+          }))
+        )
+        const caller = owner === "active" ?
+          Abandon.withOwner(recovery)
+          : owner === "inactive" ?
+          Effect.gen(function*() {
+            const context = yield* Abandon.withOwner(Effect.context<never>())
+            return yield* recovery.pipe(Effect.provide(context))
+          })
+          : recovery
+        const fiber = yield* Effect.fork(caller)
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(recovered, "the masked caller must observe the relayed abandonment cause")
+        if (owner === "active") {
+          assert.isFalse(continued, "an active owner cannot continue after recovering abandonment")
+          assert(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause))
+          assert.isTrue(Abandon.isCause(exit.cause))
+        } else {
+          assert.isTrue(continued, "a caller outside an active owner must continue after recovery")
+          assert.deepStrictEqual(exit, Exit.succeed("continued"))
+        }
+      }).pipe(Effect.provide(MemoryLive)))
+  }
 })
