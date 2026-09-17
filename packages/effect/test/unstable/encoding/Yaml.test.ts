@@ -307,6 +307,26 @@ development:
   })
 
   describe("document boundaries", () => {
+    // YAML 1.2.2 §9.1.2: document markers must start at column zero.
+    // Indented marker-like text is scalar content, including before a comment.
+    it.each([
+      ["---", ""],
+      ["---", " # comment"],
+      ["...", ""],
+      ["...", " # comment"]
+    ])("preserves indented %s%s as a mapping value", (marker, suffix) => {
+      assert.deepStrictEqual(Yaml.parse(`a:\n  ${marker}${suffix}\n`), { a: marker })
+    })
+
+    it.each([
+      ["---", ""],
+      ["---", " # comment"],
+      ["...", ""],
+      ["...", " # comment"]
+    ])("preserves indented %s%s as a nested mapping value", (marker, suffix) => {
+      assert.deepStrictEqual(Yaml.parse(`metadata:\n  a:\n    ${marker}${suffix}\n`), { metadata: { a: marker } })
+    })
+
     it.each([
       ["mappings", "a: 1\n---\nb: 2\n"],
       ["sequences", "- one\n---\n- two\n"],
