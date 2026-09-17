@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Stream } from "effect"
-import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/unstable/http"
+import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/unstable/http"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
@@ -40,6 +40,64 @@ describe("HttpServerResponse", () => {
         assert.strictEqual(web.headers.get("x-probe"), "native")
         assert.strictEqual(web.headers.get("etag"), "\"version-1\"")
         assert.deepStrictEqual(web.headers.getSetCookie(), cookies)
+      }
+    )
+
+    it.each([
+      { status: 204, withoutBody: false },
+      { status: 205, withoutBody: false },
+      { status: 304, withoutBody: false },
+      { status: 204, withoutBody: true },
+      { status: 205, withoutBody: true },
+      { status: 304, withoutBody: true }
+    ])(
+      "prefers outer bodyless status $status and status text with withoutBody=$withoutBody",
+      ({ status, withoutBody }) => {
+        const native = new Response("cached body", {
+          status: 200,
+          statusText: "Native status",
+          headers: { etag: "\"version-1\"" }
+        })
+        const web = HttpServerResponse.toWeb(
+          HttpServerResponse.raw(native, { status, statusText: "Outer status" }),
+          { withoutBody }
+        )
+
+        assert.strictEqual(web.body, null)
+        assert.strictEqual(web.headers.get("etag"), "\"version-1\"")
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.statusText, "Outer status")
+      }
+    )
+
+    it.each([
+      { status: 204, withoutBody: false },
+      { status: 205, withoutBody: false },
+      { status: 304, withoutBody: false },
+      { status: 200, withoutBody: true },
+      { status: 200, withoutBody: false }
+    ])(
+      "appends outer cookies to raw Response cookies for status $status with withoutBody=$withoutBody",
+      ({ status, withoutBody }) => {
+        const nativeCookies = ["sid=abc; Path=/; HttpOnly", "theme=dark; Path=/"]
+        const native = new Response(status === 200 ? "body" : null, {
+          status,
+          headers: nativeCookies.map((cookie): [string, string] => ["set-cookie", cookie])
+        })
+        const web = HttpServerResponse.toWeb(
+          HttpServerResponse.raw(native, {
+            status,
+            cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}], ["b", "2", {}]])
+          }),
+          { withoutBody }
+        )
+
+        if (status === 200 && !withoutBody) {
+          assert.strictEqual(web, native)
+        } else {
+          assert.strictEqual(web.body, null)
+        }
+        assert.deepStrictEqual(web.headers.getSetCookie(), [...nativeCookies, "a=1", "b=2"])
       }
     )
 
