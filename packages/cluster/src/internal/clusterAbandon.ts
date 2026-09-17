@@ -37,9 +37,8 @@ const signalOwner = Effect.withFiberRuntime<void>((fiber) => {
 export const interruptOwner = (cause: Cause.Cause<unknown>): Effect.Effect<void> =>
   isCause(cause) ? signalOwner : Effect.void
 
-/** Interrupt the owner and re-signal the current fiber; masking still applies. @internal */
-export const reSignal = (cause: Cause.Cause<unknown>): Effect.Effect<void> =>
-  isCause(cause) ? Effect.andThen(signalOwner, interrupt) : Effect.void
+/** Signal only an active owner when relaying abandonment. @internal */
+export const reSignal = interruptOwner
 
 const Owner = Context.GenericTag<{ readonly fiber: Fiber.RuntimeFiber<unknown, unknown>; active: boolean }>(
   "@effect/cluster/internal/clusterAbandon/Owner"
