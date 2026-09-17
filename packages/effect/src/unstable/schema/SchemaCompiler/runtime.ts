@@ -48,12 +48,18 @@ const makeObjectBase = (
   generate: GenerateObject
 ): SchemaIssueParser => {
   let properties: Array<ParsedProperty> | undefined
-  const getProperties = (): Array<ParsedProperty> =>
-    properties ??= ast.propertySignatures.map((property) => ({
-      parser: compileField(property.type),
-      name: property.name,
-      type: property.type
-    }))
+  const getProperties = (): Array<ParsedProperty> => {
+    if (properties !== undefined) return properties
+    const parsers = new Map<SchemaAST.AST, SchemaIssueParser>()
+    return properties = ast.propertySignatures.map((property) => {
+      let parser = parsers.get(property.type)
+      if (parser === undefined) {
+        parser = compileField(property.type)
+        parsers.set(property.type, parser)
+      }
+      return { parser, name: property.name, type: property.type }
+    })
+  }
   let fallback: SchemaIssueParser | undefined
   const runFallback: SchemaIssueParser = (input, options) =>
     (fallback ??= ast.getParser(compile, compileField))(input, options)
