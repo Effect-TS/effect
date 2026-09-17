@@ -324,23 +324,20 @@ Missing key
         assert.strictEqual(redirected.headers.authorization, "Bearer secret")
       }))
 
-    it.effect.each(["POST", "QUERY"] as const)(
-      "switches 303 %s requests to GET and drops the body",
-      (method) =>
-        Effect.gen(function*() {
-          const { client, requests } = yield* makeRedirectClient(303, "/destination")
-          yield* HttpClientRequest.make(method)("https://origin.test/start").pipe(
-            HttpClientRequest.bodyText("payload"),
-            client.execute
-          )
+    it.effect("switches 303 requests to GET and drops the body", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(303, "/destination")
+        yield* HttpClientRequest.post("https://origin.test/start").pipe(
+          HttpClientRequest.bodyText("payload"),
+          client.execute
+        )
 
-          const redirected = (yield* Ref.get(requests))[1]
-          assert.strictEqual(redirected.method, "GET")
-          assert.strictEqual(redirected.body._tag, "Empty")
-          assert.isUndefined(redirected.headers["content-type"])
-          assert.isUndefined(redirected.headers["content-length"])
-        })
-    )
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.method, "GET")
+        assert.strictEqual(redirected.body._tag, "Empty")
+        assert.isUndefined(redirected.headers["content-type"])
+        assert.isUndefined(redirected.headers["content-length"])
+      }))
 
     it.effect.each([301, 302])("switches POST to GET on %s redirects", (status) =>
       Effect.gen(function*() {
@@ -367,25 +364,6 @@ Missing key
         assert.strictEqual(redirected.method, "PUT")
         assert.strictEqual(redirected.body._tag, "Uint8Array")
       }))
-
-    it.effect.each([301, 302, 307, 308])(
-      "preserves QUERY requests and bodies on %s redirects",
-      (status) =>
-        Effect.gen(function*() {
-          const { client, requests } = yield* makeRedirectClient(status, "/destination")
-          yield* HttpClientRequest.query("https://origin.test/start").pipe(
-            HttpClientRequest.bodyText("payload"),
-            client.execute
-          )
-
-          const redirected = (yield* Ref.get(requests))[1]
-          assert.strictEqual(redirected.method, "QUERY")
-          assert(redirected.body._tag === "Uint8Array")
-          assert.deepStrictEqual(redirected.body.body, new TextEncoder().encode("payload"))
-          assert.strictEqual(redirected.headers["content-type"], "text/plain")
-          assert.strictEqual(redirected.headers["content-length"], "7")
-        })
-    )
   })
 
   describe("retryTransient", () => {

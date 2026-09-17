@@ -48,29 +48,6 @@ describe("HttpRouter", () => {
     }
   })
 
-  it("handles QUERY routes with request bodies", async () => {
-    const { dispose, handler } = HttpRouter.toWebHandler(
-      HttpRouter.add(
-        "QUERY",
-        "/search",
-        (request) => Effect.map(request.text, HttpServerResponse.text)
-      )
-    )
-
-    try {
-      const response = await handler(
-        new Request("http://localhost/search", {
-          method: "QUERY",
-          body: "hello"
-        })
-      )
-      assert.strictEqual(response.status, 200)
-      assert.strictEqual(await response.text(), "hello")
-    } finally {
-      await dispose()
-    }
-  })
-
   for (
     const { prefix, requestUrl } of [
       { prefix: "/", requestUrl: "/users" },

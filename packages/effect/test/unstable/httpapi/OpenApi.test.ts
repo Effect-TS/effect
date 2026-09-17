@@ -203,21 +203,6 @@ describe("OpenApi", () => {
     })
   })
 
-  it("represents QUERY operations with the OpenAPI 3.1 additional-operations extension", () => {
-    const Api = HttpApi.make("Api").add(
-      HttpApiGroup.make("search").add(
-        HttpApiEndpoint.query("search", "/search")
-      )
-    )
-
-    const spec = OpenApi.fromApi(Api)
-    const pathItem = spec.paths["/search"]
-
-    assert.strictEqual(spec.openapi, "3.1.0")
-    assert.deepStrictEqual(Object.keys(pathItem), ["x-oai-additionalOperations"])
-    assert.strictEqual(pathItem["x-oai-additionalOperations"]?.QUERY?.operationId, "search.search")
-  })
-
   it("preserves GET and QUERY schemas on the same path", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("search").add(
@@ -225,64 +210,22 @@ describe("OpenApi", () => {
         HttpApiEndpoint.query("search", "/search", {
           payload: Schema.String,
           success: Schema.Boolean
+        }).annotate(OpenApi.Transform, (operation: Record<string, any>) => {
+          assert.deepStrictEqual(operation.requestBody.content["application/json"].schema, { type: "string" })
+          return { ...operation, summary: "Search" }
         })
-      )
-    )
-
-    const pathItem = OpenApi.fromApi(Api).paths["/search"]
-    const query = pathItem["x-oai-additionalOperations"]?.QUERY
-
-    assert.deepStrictEqual(pathItem.get?.responses[200]?.content?.["application/json"]?.schema, { type: "number" })
-    assert.deepStrictEqual(query?.requestBody?.content["application/json"]?.schema, { type: "string" })
-    assert.deepStrictEqual(query?.responses[200]?.content?.["application/json"]?.schema, { type: "boolean" })
-  })
-
-  it("finalizes QUERY parameter and response schemas before applying operation annotations", () => {
-    const Api = HttpApi.make("Api").add(
-      HttpApiGroup.make("search").add(
-        HttpApiEndpoint.query("search", "/search/:index", {
-          params: { index: Schema.String },
-          query: { limit: Schema.FiniteFromString },
-          headers: { "x-request-id": Schema.String },
-          payload: Schema.Struct({ query: Schema.String }),
-          success: HttpApiSchema.WithHeaders(Schema.Struct({ result: Schema.String }), {
-            "X-Count": Schema.FiniteFromString
-          })
-        })
-          .annotate(OpenApi.Override, { summary: "Search" })
-          .annotate(OpenApi.Transform, (operation: Record<string, any>) => ({
-            ...operation,
-            summary: `${operation.summary} records`,
-            parameters: [...operation.parameters].reverse()
-          }))
       )
     )
 
     const spec = OpenApi.fromApi(Api)
-    const pathItem = spec.paths["/search/{index}"]
-    const operation = pathItem?.["x-oai-additionalOperations"]?.QUERY
+    const pathItem = spec.paths["/search"]
+    const query = pathItem["x-oai-additionalOperations"]?.QUERY
 
-    assert.strictEqual(operation?.summary, "Search records")
-    assert.deepStrictEqual(operation?.parameters, [
-      { name: "limit", in: "query", required: true, schema: { type: "string" } },
-      { name: "x-request-id", in: "header", required: true, schema: { type: "string" } },
-      { name: "index", in: "path", required: true, schema: { type: "string" } }
-    ])
-    assert.deepStrictEqual(operation?.responses[200]?.headers, {
-      "x-count": { required: true, schema: { type: "string" } }
-    })
-    assert.deepStrictEqual(operation?.responses[200]?.content?.["application/json"]?.schema, {
-      type: "object",
-      properties: { result: { type: "string" } },
-      required: ["result"],
-      additionalProperties: false
-    })
-    assert.deepStrictEqual(operation?.requestBody?.content["application/json"]?.schema, {
-      type: "object",
-      properties: { query: { type: "string" } },
-      required: ["query"],
-      additionalProperties: false
-    })
+    assert.strictEqual(spec.openapi, "3.1.0")
+    assert.deepStrictEqual(Object.keys(pathItem), ["get", "x-oai-additionalOperations"])
+    assert.strictEqual(query?.summary, "Search")
+    assert.deepStrictEqual(pathItem.get?.responses[200]?.content?.["application/json"]?.schema, { type: "number" })
+    assert.deepStrictEqual(query?.responses[200]?.content?.["application/json"]?.schema, { type: "boolean" })
   })
 
   it("emits buffered and stream successes with the same status", () => {

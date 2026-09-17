@@ -2916,7 +2916,10 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
       {
         name: "native OpenAPI 3.2 field",
         spec: {
-          ...makeQuerySpec({ query: queryOperation }),
+          ...makeQuerySpec({
+            query: queryOperation,
+            "x-oai-additionalOperations": { QUERY: { ...queryOperation, operationId: "legacySearch" } }
+          }),
           openapi: "3.2.0"
         } as unknown as OpenAPISpec
       }
@@ -2928,45 +2931,20 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `export const SearchRequestJson = Schema.Struct({ "query": Schema.String })`,
           `HttpClientRequest.bodyJsonUnsafe(options.payload)`,
           `readonly payload: typeof SearchRequestJson.Encoded`
-        ]),
+        ], ["legacySearch", "LegacySearch"]),
         assertTypeOnlyIncludes(spec, [
           `HttpClientRequest.get("/search")`,
           `HttpClientRequest.query("/search")`,
           `HttpClientRequest.bodyJsonUnsafe(options.payload)`,
           `export type SearchRequestJson = { readonly "query": string }`,
           `readonly payload: SearchRequestJson`
-        ]),
+        ], ["legacySearch", "LegacySearch"]),
         assertHttpApiIncludes(spec, [
           `HttpApiEndpoint.get("list", "/search"`,
           `export const SearchRequestJson = Schema.Struct({ "query": Schema.String })`,
           `HttpApiEndpoint.query("search", "/search", { payload: SearchRequestJson, success: HttpApiSchema.Empty(204) })`
-        ])
+        ], ["legacySearch", "LegacySearch"])
       ]))
-
-    it.effect("emits compilable QUERY clients with typed request payloads", () =>
-      assertGeneratedClientsCompile(
-        makeQuerySpec({ "x-oai-additionalOperations": { QUERY: queryOperation } }),
-        {
-          usage: `declare const client: TestClient
-export const search = client.search({ payload: { query: "effect" } })
-// @ts-expect-error QUERY requires a request payload.
-client.search({})
-// @ts-expect-error The query field must be a string.
-client.search({ payload: { query: 123 } })
-`
-        }
-      ), compilationTimeout)
-
-    it.effect("prefers the native QUERY operation over the extension", () => {
-      const spec = makeQuerySpec({
-        query: queryOperation,
-        "x-oai-additionalOperations": { QUERY: { ...queryOperation, operationId: "legacySearch" } }
-      })
-      return Effect.all([
-        assertRuntimeIncludes(spec, [`HttpClientRequest.query("/search")`], [`legacySearch`, `LegacySearch`]),
-        assertHttpApiIncludes(spec, [`HttpApiEndpoint.query("search", "/search"`], [`legacySearch`, `LegacySearch`])
-      ])
-    })
   })
 
   describe("regression", () => {

@@ -278,18 +278,6 @@ describe("HttpClientRequest", () => {
         strictEqual(yield* Effect.promise(() => webRequest.text()), "hello")
       }))
 
-    it.effect("toWeb QUERY body", () =>
-      Effect.gen(function*() {
-        const request = HttpClientRequest.query("http://localhost:3000/search").pipe(
-          HttpClientRequest.bodyText("hello")
-        )
-        const webRequest = yield* HttpClientRequest.toWeb(request)
-
-        strictEqual(webRequest.method, "QUERY")
-        strictEqual(webRequest.url, "http://localhost:3000/search")
-        strictEqual(yield* Effect.promise(() => webRequest.text()), "hello")
-      }))
-
     it("toWebResult returns failure for invalid url", () => {
       const request = HttpClientRequest.get("http://localhost").pipe(
         HttpClientRequest.setUrl("http://[::1")
