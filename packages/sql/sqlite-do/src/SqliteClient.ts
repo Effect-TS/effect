@@ -26,6 +26,7 @@ import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Rec from "effect/Record"
+import * as Scheduler from "effect/Scheduler"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
@@ -135,9 +136,13 @@ const makeStorageBackedWithTransaction = (
     }
     const depth = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
 
-    const effectWithTxn = Effect.provideContext(
-      effect,
-      Context.add(services, SqliteTransaction, [connection, depth] as const)
+    // Timers queued outside the storage transaction cannot pass its input gate.
+    // Use a fresh microtask dispatcher through both the body and its finalizer,
+    // so yielding never waits for one of those timers to run.
+    const transactionServices = Context.add(
+      Context.add(services, SqliteTransaction, [connection, depth] as const),
+      Scheduler.Scheduler,
+      new Scheduler.MixedScheduler("sync")
     )
 
     const transaction = Effect.callback<A, E | SqlError, R>((resume) => {
@@ -145,14 +150,17 @@ const makeStorageBackedWithTransaction = (
       const promise = storage.transaction((txn) =>
         new Promise<void>((resolve) => {
           if (interrupted) return resolve()
-          resume(Effect.onExit(effectWithTxn, (exit) => {
-            if (Exit.isFailure(exit)) {
-              txn.rollback()
-            }
-            // Throwing from a child callback can abort its parent.
-            resolve()
-            return Effect.flatten(Effect.promise(() => promise))
-          }))
+          resume(Effect.provideContext(
+            Effect.onExit(effect, (exit) => {
+              if (Exit.isFailure(exit)) {
+                txn.rollback()
+              }
+              // Throwing from a child callback can abort its parent.
+              resolve()
+              return Effect.flatten(Effect.promise(() => promise))
+            }),
+            transactionServices
+          ))
         })
       ).then(
         () => Exit.void,

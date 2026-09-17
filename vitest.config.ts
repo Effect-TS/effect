@@ -200,6 +200,7 @@ export default defineConfig({
         "packages/sql/sqlite-do",
         true,
         {},
+        // Miniflare needs Node/Bun; keep the in-process client tests on Deno.
         isDeno ? [...exclude, "test/Miniflare.test.ts"] : undefined
       ),
       ...project("@effect/sql-sqlite-node", "packages/sql/sqlite-node", isNode),
