@@ -18,7 +18,8 @@ import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Rec from "effect/Record"
 import * as String from "effect/String"
-import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecMethodName } from "effect/unstable/httpapi/OpenApi"
+import type { HttpMethod } from "effect/unstable/http/HttpMethod"
+import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/unstable/httpapi/OpenApi"
 import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
@@ -74,7 +75,7 @@ export interface OpenApiGeneratorWarning {
   readonly code: OpenApiGeneratorWarningCode
   readonly message: string
   readonly path?: string | undefined
-  readonly method?: OpenAPISpecMethodName | undefined
+  readonly method?: Lowercase<HttpMethod> | undefined
   readonly operationId?: string | undefined
 }
 
@@ -111,7 +112,7 @@ interface HttpApiMultipartSchemaRefs {
 
 type MultipartSchemaRefs = HttpApiMultipartSchemaRefs | { readonly kind: "client"; readonly singleFile: string }
 
-const methodNames: ReadonlyArray<OpenAPISpecMethodName> = [
+const methodNames: ReadonlyArray<Lowercase<HttpMethod>> = [
   "get",
   "put",
   "post",
@@ -119,7 +120,8 @@ const methodNames: ReadonlyArray<OpenAPISpecMethodName> = [
   "options",
   "head",
   "patch",
-  "trace"
+  "trace",
+  "query"
 ]
 
 /**
@@ -231,13 +233,14 @@ const parseOpenApi = (
   }
 
   for (const [path, methods] of Object.entries(spec.paths)) {
+    const pathItem: Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>> = methods
     for (const method of methodNames) {
-      const operation = methods[method]
-
+      const operation = method === "query"
+        ? pathItem.query ?? methods["x-oai-additionalOperations"]?.QUERY
+        : pathItem[method]
       if (Predicate.isUndefined(operation)) {
         continue
       }
-
       const id = operation.operationId
         ? Utils.camelize(operation.operationId)
         : `${method.toUpperCase()}${path}`
@@ -1289,7 +1292,7 @@ const hasUnsupportedSuccessfulSseResponse = (
 const remapDefaultResponseStatusForHttpApi = (status: string, hasExplicitSuccessResponse: boolean): string =>
   status === "default" ? (hasExplicitSuccessResponse ? "500" : "200") : status
 
-const methodSupportsRequestBody = (method: OpenAPISpecMethodName): boolean =>
+const methodSupportsRequestBody = (method: Lowercase<HttpMethod>): boolean =>
   method !== "get" && method !== "head" && method !== "options" && method !== "trace"
 
 const warnForOperation = (

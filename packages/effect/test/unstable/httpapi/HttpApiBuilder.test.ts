@@ -95,6 +95,25 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
       assert.deepStrictEqual(result, { id: 42, name: "Ada" })
       assert.strictEqual(callback.mock.calls.length, 1)
     }))
+
+  it.effect("round trips a QUERY request body", () =>
+    Effect.gen(function*() {
+      const Payload = Schema.Struct({ query: Schema.String })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("search").add(
+          HttpApiEndpoint.query("run", "/search", {
+            payload: Payload,
+            success: Payload
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "search", (handlers) =>
+        handlers.handle("run", ({ payload }) =>
+          Effect.succeed(payload)))
+      const client = yield* HttpApiTest.groups(Api, ["search"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.search.run({ payload: { query: "effect" } }), { query: "effect" })
+    }))
 })
 
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {

@@ -203,6 +203,31 @@ describe("OpenApi", () => {
     })
   })
 
+  it("preserves GET and QUERY schemas on the same path", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("search").add(
+        HttpApiEndpoint.get("list", "/search", { success: Schema.Finite }),
+        HttpApiEndpoint.query("search", "/search", {
+          payload: Schema.String,
+          success: Schema.Boolean
+        }).annotate(OpenApi.Transform, (operation: Record<string, any>) => {
+          assert.deepStrictEqual(operation.requestBody.content["application/json"].schema, { type: "string" })
+          return { ...operation, summary: "Search" }
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const pathItem = spec.paths["/search"]
+    const query = pathItem["x-oai-additionalOperations"]?.QUERY
+
+    assert.strictEqual(spec.openapi, "3.1.0")
+    assert.deepStrictEqual(Object.keys(pathItem), ["get", "x-oai-additionalOperations"])
+    assert.strictEqual(query?.summary, "Search")
+    assert.deepStrictEqual(pathItem.get?.responses[200]?.content?.["application/json"]?.schema, { type: "number" })
+    assert.deepStrictEqual(query?.responses[200]?.content?.["application/json"]?.schema, { type: "boolean" })
+  })
+
   it("emits buffered and stream successes with the same status", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

@@ -89,6 +89,10 @@ export declare namespace HttpClient {
       url: string | URL,
       options?: HttpClientRequest.Options.NoUrl
     ) => Effect.Effect<HttpClientResponse.HttpClientResponse, E, R>
+    readonly query: (
+      url: string | URL,
+      options?: HttpClientRequest.Options.NoUrl
+    ) => Effect.Effect<HttpClientResponse.HttpClientResponse, E, R>
     readonly head: (
       url: string | URL,
       options?: HttpClientRequest.Options.NoUrl
@@ -178,6 +182,18 @@ export const get: (url: string | URL, options?: HttpClientRequest.Options.NoUrl 
   Error.HttpClientError,
   HttpClient
 > = accessor("get")
+
+/**
+ * Executes a `QUERY` request using the `HttpClient` service from the environment.
+ *
+ * @category accessors
+ * @since 4.0.0
+ */
+export const query: (url: string | URL, options?: HttpClientRequest.Options.NoUrl | undefined) => Effect.Effect<
+  HttpClientResponse.HttpClientResponse,
+  Error.HttpClientError,
+  HttpClient
+> = accessor("query")
 
 /**
  * Executes a `HEAD` request using the `HttpClient` service from the environment.

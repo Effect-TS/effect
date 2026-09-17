@@ -185,6 +185,18 @@ describe("HttpApiEndpoint", () => {
       })
     })
 
+    describe("QUERY", () => {
+      it("accepts a body schema", () => {
+        const endpoint = HttpApiEndpoint.query("a", "/a", {
+          payload: Schema.Struct({ a: Schema.String })
+        })
+        expect(endpoint.method).type.toBe<"QUERY">()
+        expect(endpoint["~Payload"]).type.toBe<
+          Schema.toCodecJson<Schema.Struct<{ readonly a: Schema.String }>>
+        >()
+      })
+    })
+
     describe("HEAD", () => {
       it("accepts a field record", () => {
         const endpoint = HttpApiEndpoint.head("a", "/a", {

@@ -24,6 +24,7 @@ export type HttpMethod =
   | "HEAD"
   | "OPTIONS"
   | "TRACE"
+  | "QUERY"
 
 /**
  * Namespace containing subtype helpers associated with `HttpMethod`.
@@ -76,7 +77,8 @@ export const all: ReadonlySet<HttpMethod> = new Set([
   "PATCH",
   "HEAD",
   "OPTIONS",
-  "TRACE"
+  "TRACE",
+  "QUERY"
 ])
 
 /**
@@ -99,7 +101,8 @@ export const allShort = [
   ["PATCH", "patch"],
   ["HEAD", "head"],
   ["OPTIONS", "options"],
-  ["TRACE", "trace"]
+  ["TRACE", "trace"],
+  ["QUERY", "query"]
 ] as const
 
 /**
