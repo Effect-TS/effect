@@ -2,6 +2,6 @@
 "@effect/sql-sqlite-node": minor
 ---
 
-Upgrade better-sqlite3 to ^13.0.3, removing its deprecated prebuild-install dependency. This requires Node.js 22 or later; Node.js 20 is no longer supported.
+Upgrade `better-sqlite3` to `^13.0.3`, removing deprecated `prebuild-install`. Requires Node.js 22+.
 
-Prebuilt binaries are now bundled for Linux (glibc and musl), macOS, and Windows, each on x64 and arm64. Installation no longer automatically falls back to building from source on unsupported platforms (for example, Linux armv7 or FreeBSD).
+Binaries are bundled for Linux (glibc/musl), macOS, and Windows on x64/arm64. Other platforms require a manual source build.
