@@ -125,18 +125,6 @@ describe("DatagramSocket.fromTransport", () => {
       assert.deepStrictEqual(yield* socket.reader.pull, [packet([2])])
     }))
 
-  it.effect("discards packets when closed before a notified reader resumes", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.fork(yield* Effect.scope)
-      const { handlers, socket } = yield* transportFixture().pipe(Scope.provide(scope))
-      const waiting = yield* socket.reader.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
-      handlers.onMessage(new Uint8Array([1]), address)
-      handlers.onMessage(new Uint8Array([2]), address)
-      yield* Scope.close(scope, Exit.void)
-      assert.strictEqual((yield* Fiber.join(waiting)).reason._tag, "DatagramSocketClosedError")
-      assert.strictEqual((yield* Effect.flip(socket.reader.pull)).reason._tag, "DatagramSocketClosedError")
-    }))
-
   it.effect("fails all readers with the first receive error until the socket closes", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Effect.scope)
@@ -221,68 +209,52 @@ describe("DatagramSocket.fromTransport", () => {
       assert.isTrue(released)
     }))
 
-  it.effect("settles pending acquisition before waiting for transport cleanup", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.fork(yield* Effect.scope)
-      const acquiring = yield* Deferred.make<void>()
-      const interrupted = yield* Deferred.make<void>()
-      const cleanupStarted = yield* Deferred.make<void>()
-      const finishCleanup = yield* Deferred.make<void>()
-      const opening = yield* Datagram.fromTransport({ localAddress: address }, () =>
-        Effect.gen(function*() {
-          yield* Effect.addFinalizer(() =>
-            Deferred.succeed(cleanupStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCleanup)))
-          )
-          yield* Deferred.succeed(acquiring, undefined)
-          return yield* Effect.never.pipe(Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined)))
-        })).pipe(Scope.provide(scope), Effect.flip, Effect.forkChild)
-      yield* Deferred.await(acquiring)
-      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
-      yield* Effect.gen(function*() {
-        yield* Deferred.await(cleanupStarted)
-        yield* Deferred.await(interrupted)
-        assert.strictEqual((yield* Fiber.join(opening)).reason._tag, "DatagramSocketClosedError")
-      }).pipe(Effect.ensuring(Deferred.succeed(finishCleanup, undefined)))
-      yield* Fiber.join(closing)
-    }))
-
-  it.effect("settles reads and sends before waiting for transport cleanup", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.fork(yield* Effect.scope)
-      const sendStarted = yield* Deferred.make<void>()
-      const sendInterrupted = yield* Deferred.make<void>()
-      const cleanupStarted = yield* Deferred.make<void>()
-      const finishCleanup = yield* Deferred.make<void>()
-      let handlers!: Datagram.Handlers
-      const socket = yield* Datagram.fromTransport({ localAddress: address }, (callbacks) =>
-        Effect.gen(function*() {
-          handlers = callbacks
-          yield* Effect.addFinalizer(() =>
-            Deferred.succeed(cleanupStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCleanup)))
-          )
-          return {
-            address,
-            send: () =>
-              Deferred.succeed(sendStarted, undefined).pipe(
-                Effect.andThen(Effect.never),
-                Effect.onInterrupt(() => Deferred.succeed(sendInterrupted, undefined))
-              )
-          }
-        })).pipe(Scope.provide(scope))
-      const reading = yield* socket.reader.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
-      const sending = yield* socket.writer.write(outgoing).pipe(Effect.flip, Effect.forkChild)
-      yield* Deferred.await(sendStarted)
-      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
-      yield* Effect.gen(function*() {
-        yield* Deferred.await(cleanupStarted)
-        yield* Deferred.await(sendInterrupted)
-        assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "DatagramSocketClosedError")
-        assert.strictEqual((yield* Fiber.join(sending)).reason._tag, "DatagramSocketClosedError")
+  it.effect.each(["acquisition", "I/O"] as const)(
+    "settles pending %s before transport cleanup finishes",
+    (phase) =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.fork(yield* Effect.scope)
+        const started = yield* Deferred.make<void>()
+        const interrupted = yield* Deferred.make<void>()
+        const cleanupStarted = yield* Deferred.make<void>()
+        const finishCleanup = yield* Deferred.make<void>()
+        const pending = Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Effect.never),
+          Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+        )
+        let handlers!: Datagram.Handlers
+        const acquire = Datagram.fromTransport({ localAddress: address }, (callbacks) =>
+          Effect.gen(function*() {
+            handlers = callbacks
+            yield* Effect.addFinalizer(() =>
+              Deferred.succeed(cleanupStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCleanup)))
+            )
+            if (phase === "acquisition") return yield* pending
+            return { address, send: () => pending }
+          })).pipe(Scope.provide(scope))
+        const operations = phase === "acquisition"
+          ? [Effect.asVoid(acquire)]
+          : yield* Effect.map(acquire, (socket) => [Effect.asVoid(socket.reader.pull), socket.writer.write(outgoing)])
+        const fibers = yield* Effect.forEach(operations, (operation) =>
+          operation.pipe(Effect.flip, Effect.forkChild({ startImmediately: true })))
+        yield* Deferred.await(started)
+        // Closing must discard packets even if a reader was just notified.
         handlers.onMessage(new Uint8Array([1]), address)
-        handlers.onError("late error")
-        assert.strictEqual((yield* Effect.flip(socket.reader.pull)).reason._tag, "DatagramSocketClosedError")
-        assert.strictEqual((yield* Effect.flip(socket.writer.write(outgoing))).reason._tag, "DatagramSocketClosedError")
-      }).pipe(Effect.ensuring(Deferred.succeed(finishCleanup, undefined)))
-      yield* Fiber.join(closing)
-    }))
+        handlers.onMessage(new Uint8Array([2]), address)
+        const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.gen(function*() {
+          yield* Deferred.await(cleanupStarted)
+          yield* Deferred.await(interrupted)
+          for (const fiber of fibers) {
+            assert.strictEqual((yield* Fiber.join(fiber)).reason._tag, "DatagramSocketClosedError")
+          }
+          handlers.onMessage(new Uint8Array([3]), address)
+          handlers.onError("late error")
+          for (const operation of operations) {
+            assert.strictEqual((yield* Effect.flip(operation)).reason._tag, "DatagramSocketClosedError")
+          }
+        }).pipe(Effect.ensuring(Deferred.succeed(finishCleanup, undefined)))
+        yield* Fiber.join(closing)
+      })
+  )
 })
