@@ -16,6 +16,39 @@ describe("HttpApiClient", () => {
       }))
     )
 
+    it.effect("strict events-mode decoding distinguishes absent from undeclared wire IDs", () =>
+      Effect.gen(function*() {
+        const decode = (wire: string) =>
+          HttpApiClient.makeWith(
+            StreamingApi.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }),
+            { baseUrl: "http://test", httpClient: clientFromResponse(() => new Response(textStream([wire]))) }
+          ).pipe(Effect.flatMap((client) => client.test.events({})), Effect.flatMap(Stream.runCollect))
+
+        const error = yield* Effect.flip(decode("id: 1\nevent: person\ndata: hello\n\n"))
+        assert.ok(Schema.isSchemaError(error))
+        assert.include(error.message, "[\"id\"]")
+        assert.deepStrictEqual(yield* decode("event: person\ndata: hello\n\n"), [{ event: "person", data: "hello" }])
+      }))
+
+    it.effect("strict events-mode decoding distinguishes absent from undeclared wire event names", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+            success: HttpApiSchema.StreamSse({ events: Schema.Struct({ id: Schema.String, data: Schema.String }) })
+          }))
+        ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+        const decode = (wire: string) =>
+          HttpApiClient.makeWith(Api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() => new Response(textStream([wire])))
+          }).pipe(Effect.flatMap((client) => client.test.events({})), Effect.flatMap(Stream.runCollect))
+
+        const error = yield* Effect.flip(decode("id: 1\nevent: message\ndata: hello\n\n"))
+        assert.ok(Schema.isSchemaError(error))
+        assert.include(error.message, "[\"event\"]")
+        assert.deepStrictEqual(yield* decode("id: 1\ndata: hello\n\n"), [{ id: "1", data: "hello" }])
+      }))
+
     it.effect("strict SSE decoding accepts valid user data and framework event metadata", () =>
       Effect.gen(function*() {
         const client = yield* HttpApiClient.makeWith(

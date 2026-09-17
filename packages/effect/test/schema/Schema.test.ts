@@ -3306,6 +3306,22 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Cause", () => {
+    it("strict encoding preserves the default wire format for every reason variant", () => {
+      const schema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(Schema.String, Schema.Number)))
+      const cause = Cause.fromReasons([
+        Cause.makeFailReason("boom"),
+        Cause.makeDieReason(42),
+        Cause.makeInterruptReason(7),
+        Cause.makeInterruptReason()
+      ])
+      const wire =
+        "[{\"_tag\":\"Fail\",\"error\":\"boom\"},{\"_tag\":\"Die\",\"defect\":42},{\"_tag\":\"Interrupt\",\"fiberId\":7},{\"_tag\":\"Interrupt\",\"fiberId\":null}]"
+      strictEqual(Schema.encodeSync(schema)(cause), wire)
+      strictEqual(Schema.encodeSync(schema, { onExcessProperty: "error" })(cause), wire)
+      assert.deepStrictEqual(Schema.decodeSync(schema)(wire), cause)
+      assert.deepStrictEqual(Schema.decodeSync(schema, { onExcessProperty: "error" })(wire), cause)
+    })
+
     it("should expose the values", () => {
       const schema = Schema.Cause(Schema.String, Schema.Number)
       strictEqual(schema.error, Schema.String)
