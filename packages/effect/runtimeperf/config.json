@@ -2264,6 +2264,16 @@
               "size": 32
             },
             {
+              "name": "interpreted-recordTransformedKeys",
+              "export": "recordTransformedKeys",
+              "scenario": "compiler-rebuild-recordTransformedKeys",
+              "astTags": [
+                "Objects",
+                "String"
+              ],
+              "size": 32
+            },
+            {
               "name": "interpreted-union",
               "export": "union",
               "scenario": "compiler-rebuild-union",
@@ -2310,6 +2320,16 @@
               "size": 1
             },
             {
+              "name": "interpreted-rootTransform",
+              "export": "rootTransform",
+              "scenario": "compiler-rebuild-rootTransform",
+              "astTags": [
+                "String",
+                "Number"
+              ],
+              "size": 1
+            },
+            {
               "name": "interpreted-middleware",
               "export": "middleware",
               "scenario": "compiler-rebuild-middleware"
@@ -2325,6 +2345,17 @@
                 "Number"
               ],
               "size": 31
+            },
+            {
+              "name": "interpreted-suspendRoot",
+              "export": "suspendRoot",
+              "scenario": "compiler-rebuild-suspendRoot",
+              "astTags": [
+                "Suspend",
+                "Objects",
+                "Number"
+              ],
+              "size": 1
             },
             {
               "name": "interpreted-declaration",
@@ -2496,6 +2527,16 @@
               "size": 32
             },
             {
+              "name": "jit-recordTransformedKeys",
+              "export": "recordTransformedKeys",
+              "scenario": "compiler-rebuild-recordTransformedKeys",
+              "astTags": [
+                "Objects",
+                "String"
+              ],
+              "size": 32
+            },
+            {
               "name": "jit-union",
               "export": "union",
               "scenario": "compiler-rebuild-union",
@@ -2542,6 +2583,16 @@
               "size": 1
             },
             {
+              "name": "jit-rootTransform",
+              "export": "rootTransform",
+              "scenario": "compiler-rebuild-rootTransform",
+              "astTags": [
+                "String",
+                "Number"
+              ],
+              "size": 1
+            },
+            {
               "name": "jit-middleware",
               "export": "middleware",
               "scenario": "compiler-rebuild-middleware"
@@ -2557,6 +2608,17 @@
                 "Number"
               ],
               "size": 31
+            },
+            {
+              "name": "jit-suspendRoot",
+              "export": "suspendRoot",
+              "scenario": "compiler-rebuild-suspendRoot",
+              "astTags": [
+                "Suspend",
+                "Objects",
+                "Number"
+              ],
+              "size": 1
             },
             {
               "name": "jit-declaration",
@@ -2728,6 +2790,16 @@
               "size": 32
             },
             {
+              "name": "aot-recordTransformedKeys",
+              "export": "recordTransformedKeys",
+              "scenario": "compiler-rebuild-recordTransformedKeys",
+              "astTags": [
+                "Objects",
+                "String"
+              ],
+              "size": 32
+            },
+            {
               "name": "aot-union",
               "export": "union",
               "scenario": "compiler-rebuild-union",
@@ -2774,6 +2846,16 @@
               "size": 1
             },
             {
+              "name": "aot-rootTransform",
+              "export": "rootTransform",
+              "scenario": "compiler-rebuild-rootTransform",
+              "astTags": [
+                "String",
+                "Number"
+              ],
+              "size": 1
+            },
+            {
               "name": "aot-middleware",
               "export": "middleware",
               "scenario": "compiler-rebuild-middleware"
@@ -2789,6 +2871,17 @@
                 "Number"
               ],
               "size": 31
+            },
+            {
+              "name": "aot-suspendRoot",
+              "export": "suspendRoot",
+              "scenario": "compiler-rebuild-suspendRoot",
+              "astTags": [
+                "Suspend",
+                "Objects",
+                "Number"
+              ],
+              "size": 1
             },
             {
               "name": "aot-declaration",
@@ -2892,6 +2985,12 @@
               "size": 32
             },
             {
+              "name": "valibot-recordTransformedKeys",
+              "export": "recordTransformedKeys",
+              "scenario": "compiler-rebuild-recordTransformedKeys",
+              "size": 32
+            },
+            {
               "name": "valibot-union",
               "export": "union",
               "scenario": "compiler-rebuild-union",
@@ -2965,6 +3064,12 @@
               "name": "zod-jitless-record",
               "export": "record",
               "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "zod-jitless-recordTransformedKeys",
+              "export": "recordTransformedKeys",
+              "scenario": "compiler-rebuild-recordTransformedKeys",
               "size": 32
             },
             {
@@ -3071,6 +3176,12 @@
               "name": "zod-compiled-record",
               "export": "record",
               "scenario": "compiler-rebuild-record",
+              "size": 32
+            },
+            {
+              "name": "zod-compiled-recordTransformedKeys",
+              "export": "recordTransformedKeys",
+              "scenario": "compiler-rebuild-recordTransformedKeys",
               "size": 32
             },
             {

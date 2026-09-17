@@ -139,7 +139,7 @@ describe("runtimeperf registry", () => {
     const compiled = fixtures.filter((fixture) =>
       fixture.suite === "compiler-rebuild" && fixture.implementation === "zod4-compiled"
     )
-    assert.equal(compiled.length, 18)
+    assert.equal(compiled.length, 19)
     const paths = new Set(compiled.map((fixture) => fixture.fixturePath))
     assert.equal(paths.size, 1)
     const source = await readFile([...paths][0], "utf8")
@@ -154,7 +154,7 @@ describe("runtimeperf registry", () => {
     const jitless = fixtures.filter((fixture) =>
       fixture.suite === "compiler-rebuild" && fixture.implementation === "zod4-jitless"
     )
-    assert.equal(jitless.length, 10)
+    assert.equal(jitless.length, 11)
     const paths = new Set(jitless.map((fixture) => fixture.fixturePath))
     assert.equal(paths.size, 1)
     const source = await readFile(new URL("../suites/compiler-rebuild/fixtures/zod-cases.ts", import.meta.url), "utf8")

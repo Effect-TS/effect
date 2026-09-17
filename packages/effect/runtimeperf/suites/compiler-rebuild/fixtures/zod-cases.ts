@@ -1,3 +1,4 @@
+import * as Str from "effect/String"
 import assert from "node:assert/strict"
 import * as z from "zod/v4"
 
@@ -9,6 +10,16 @@ const arraySchema = z.array(person())
 const arrayInput = Array.from({ length: 32 }, () => ({ ...input }))
 const recordSchema = z.record(z.string(), person())
 const recordInput = Object.fromEntries(arrayInput.map((value, i) => [String(i), value]))
+const transformedKeyRecordSchema = z.record(
+  z.string().overwrite(Str.snakeToCamel),
+  z.string()
+)
+const transformedKeyRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, i) => [`field_${i}_value`, String(i)])
+)
+const transformedKeyRecordOutput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, i) => [`field${i}Value`, String(i)])
+)
 const unionSchema = z.union(
   Array.from({ length: 8 }, (_, i) => z.object({ tag: z.literal(i), value: z.number() })) as [
     z.ZodObject,
@@ -62,6 +73,11 @@ const cases: Record<string, Case> = {
     invalid: true
   },
   record: { schema: recordSchema, input: recordInput, expected: recordInput },
+  recordTransformedKeys: {
+    schema: transformedKeyRecordSchema,
+    input: transformedKeyRecordInput,
+    expected: transformedKeyRecordOutput
+  },
   union: { schema: unionSchema, input: { tag: 7, value: 1 }, expected: { tag: 7, value: 1 } },
   transform: { schema: transformedSchema, input: transformedInput, expected: transformedOutput },
   transformInvalid: { schema: checkedTransform, input: "-1", expected: true, invalid: true },

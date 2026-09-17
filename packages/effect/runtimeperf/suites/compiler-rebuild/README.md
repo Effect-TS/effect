@@ -1,12 +1,13 @@
 # Compiler rebuild comparison
 
-The `compiler-rebuild` suite measures 22 public SchemaParser operations with the
-interpreter, selective JIT and generated AOT modules. Eighteen cases also run
-against `z.compile(schema, { strict: true })`; ten representative cases run
+The `compiler-rebuild` suite measures 25 public SchemaParser operations with the
+interpreter, selective JIT and generated AOT modules. Nineteen cases also run
+against `z.compile(schema, { strict: true })`; eleven representative cases run
 against Valibot and Zod with `{ jitless: true }`. The fixture families name the
 execution mode. Cases
-cover simple and nested Structs, Arrays, tuples, Records, anyOf/oneOf Unions,
-transformations, middleware, recursive schemas, Declarations, construction,
+cover simple and nested Structs, Arrays, tuples, Records, transformed Record
+keys, anyOf/oneOf Unions, transformations, middleware, recursive and suspended
+schemas, Declarations, construction,
 and successful and failing validation.
 
 The Effect tuple has a trailing element after its rest element, Zod compilation

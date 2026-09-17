@@ -15,6 +15,16 @@ const tuple = Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number
 const tupleInput = ["head", ...Array.from({ length: 32 }, (_, i) => i), true]
 const record = Schema.Record(Schema.String, person())
 const recordInput = Object.fromEntries(arrayInput.map((value, i) => [String(i), value]))
+const transformedKeyRecord = Schema.Record(
+  Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel())),
+  Schema.String
+)
+const transformedKeyRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field_${index}_value`, `value${index}`])
+)
+const transformedKeyRecordOutput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}Value`, `value${index}`])
+)
 const union = Schema.Union(
   Array.from({ length: 8 }, (_, i) => Schema.Struct({ tag: Schema.Literal(i), value: Schema.Number }))
 )
@@ -31,6 +41,7 @@ const checkedTransform = Schema.String.pipe(
     SchemaTransformation.transform({ decode: Number, encode: String })
   )
 )
+const rootTransform = Schema.FiniteFromString
 const middleware = small.pipe(Schema.middlewareDecoding((effect) => effect))
 const declaration = Schema.ReadonlySet(person())
 const declarationInput = new Set(arrayInput)
@@ -47,6 +58,7 @@ const node = (depth: number): Node => ({
   children: depth === 0 ? [] : [node(depth - 1), node(depth - 1)]
 })
 const recursiveInput = node(4)
+const suspendRoot = Schema.suspend(() => Schema.Struct({ value: Schema.Number }))
 const defaults = Schema.Struct(
   Object.fromEntries(
     Array.from(
@@ -78,12 +90,19 @@ export const cases: Record<string, Case> = {
   arrayInvalid: { schema: array, input: [...arrayInput, { ...input, age: "bad" }], expected: true, invalid: true },
   tuple: { schema: tuple, input: tupleInput, expected: tupleInput },
   record: { schema: record, input: recordInput, expected: recordInput },
+  recordTransformedKeys: {
+    schema: transformedKeyRecord,
+    input: transformedKeyRecordInput,
+    expected: transformedKeyRecordOutput
+  },
   union: { schema: union, input: { tag: 7, value: 1 }, expected: { tag: 7, value: 1 } },
   oneOf: { schema: oneOf, input: { b: 1 }, expected: { b: 1 } },
   transform: { schema: transformed, input: transformedInput, expected: transformedOutput },
   transformInvalid: { schema: checkedTransform, input: "-1", expected: true, invalid: true },
+  rootTransform: { schema: rootTransform, input: "123", expected: 123 },
   middleware: { schema: middleware, input, expected: input },
   recursive: { schema: recursive, input: recursiveInput, expected: recursiveInput },
+  suspendRoot: { schema: suspendRoot, input: { value: 1 }, expected: { value: 1 } },
   declaration: { schema: declaration, input: declarationInput, expected: declarationInput },
   makeStruct: { schema: defaults, input: {}, expected: transformedOutput, operation: "make" },
   makeArray: { schema: array, input: arrayInput, expected: arrayInput, operation: "make" },
