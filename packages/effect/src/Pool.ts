@@ -602,7 +602,7 @@ const leaseItem = <A, E>(
     return item.exit
   }
   const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-  if (scope.state._tag === "Closed") {
+  if (Scope.isClosed(scope)) {
     return internal.flatMap(item.release(item.exit), () => item.exit)
   }
   internal.scopeAddFinalizerUnsafe(scope, {}, item.release)

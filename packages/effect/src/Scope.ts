@@ -227,7 +227,7 @@ export const Scope: Context.Service<Scope, Scope> = effect.scopeTag
  * @category predicates
  * @since 4.0.0
  */
-export const isOpen = (self: Scope): boolean => self.state._tag !== "Closed"
+export const isOpen: (self: Scope) => boolean = effect.scopeIsOpen
 
 /**
  * Returns whether a scope is closed.
@@ -242,7 +242,7 @@ export const isOpen = (self: Scope): boolean => self.state._tag !== "Closed"
  * @category predicates
  * @since 4.0.0
  */
-export const isClosed = (self: Scope): boolean => self.state._tag === "Closed"
+export const isClosed: (self: Scope) => boolean = effect.scopeIsClosed
 
 /**
  * Creates a new `Scope` with the specified finalizer strategy.

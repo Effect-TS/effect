@@ -2513,7 +2513,7 @@ const flatMapSequential = <
       const catchHalt = Pull.catchDone((_) => {
         childPull = undefined
         // we can reuse the scope if the only finalizer is the "fork" one
-        if (childScope!.state._tag === "Open" && scopeFinalizerCountUnsafe(childScope!) === 1) {
+        if (Scope.isOpen(childScope!) && scopeFinalizerCountUnsafe(childScope!) === 1) {
           return makePull
         }
         const close = Scope.close(childScope!, Exit.void)

@@ -523,7 +523,7 @@ export const make = Effect.fnUntraced(function*<
                   Context.get(message.annotations, ClusterSchema.Uninterruptible) === false
                 ? message.callerScope
                 : undefined
-              if (callerScope?.state._tag === "Closed") {
+              if (callerScope !== undefined && Scope.isClosed(callerScope)) {
                 return Effect.void
               }
               entry = {
@@ -599,7 +599,7 @@ export const make = Effect.fnUntraced(function*<
   // Bind each handler fiber, including replays, before its body runs.
   const bindToCaller = (callerScope: Scope.Scope) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     Effect.withFiber<A, E, R>((fiber) => {
-      if (callerScope.state._tag === "Closed") return Effect.interrupt
+      if (Scope.isClosed(callerScope)) return Effect.interrupt
       const key = {}
       scopeAddFinalizerUnsafe(callerScope, key, () => Effect.sync(() => fiber.interruptUnsafe(fiber.id)))
       return Effect.ensuring(effect, Effect.sync(() => scopeRemoveFinalizerUnsafe(callerScope, key)))
