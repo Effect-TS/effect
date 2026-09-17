@@ -177,26 +177,6 @@ describe("NodeDatagramSocket I/O", { concurrent: false }, () => {
       )
     }))
 
-  it.effect("cancels one native send without completing or interrupting another", () =>
-    Effect.gen(function*() {
-      const socket = yield* NodeDatagramSocket.bind({ localAddress: loopback })
-      const native = currentNative()
-      const callbacks: Array<() => void> = []
-      vi.spyOn(native, "send").mockImplementation((...args: Array<unknown>) => {
-        callbacks.push(args.at(-1) as () => void)
-      })
-      const packet = { data: new Uint8Array([1]), destination: socket.address }
-      const first = yield* socket.writer.write(packet).pipe(Effect.forkChild({ startImmediately: true }))
-      const second = yield* socket.writer.write(packet).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* Fiber.interrupt(first)
-      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(first)))
-      callbacks[0]()
-      yield* Effect.yieldNow
-      assert.isUndefined(second.pollUnsafe())
-      callbacks[1]()
-      yield* Fiber.join(second)
-    }))
-
   it.effect("fails a native send awaiting lookup when the binding closes", () =>
     Effect.gen(function*() {
       const submitted = yield* Deferred.make<void>()

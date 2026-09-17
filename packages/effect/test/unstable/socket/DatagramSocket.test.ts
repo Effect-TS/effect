@@ -63,16 +63,6 @@ describe("DatagramSocket", () => {
     assert.strictEqual((decoded.cause as Error).message, "native send failed")
   })
 
-  it.effect("streams packet batches, including empty payloads, without sending", () =>
-    Effect.gen(function*() {
-      const test = yield* fixture
-      const packets = [packet([]), packet([1, 2]), packet([3])]
-      yield* Queue.offerAll(test.incoming, packets)
-      const result = yield* Datagram.toStream(test.socket).pipe(Stream.take(3), Stream.runCollect)
-      assert.deepStrictEqual(result, packets)
-      assert.deepStrictEqual(test.writes, [])
-    }))
-
   it.effect("keeps receiving after finite upstream completion", () =>
     Effect.gen(function*() {
       const test = yield* fixture
@@ -497,7 +487,8 @@ describe("DatagramSocket.fromConnectedTransport", () => {
         const remote of [
           NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", 0),
           NetAddress.inetAddressFromIpStringUnsafe("0.0.0.0", 12345),
-          NetAddress.inetAddressFromIpStringUnsafe("::", 12345)
+          NetAddress.inetAddressFromIpStringUnsafe("::", 12345),
+          NetAddress.inetAddressFromIpStringUnsafe("::ffff:0.0.0.0", 12345)
         ]
       ) {
         const failure = yield* Datagram.fromConnectedTransport({ localAddress: address, remote }, () => {

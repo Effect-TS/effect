@@ -404,7 +404,7 @@ export const fromConnectedTransport = Effect.fnUntraced(function*(
   options: ConnectOptions,
   acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>
 ): Effect.fn.Return<ConnectedDatagramSocket, DatagramSocketError, Scope.Scope> {
-  if (options.remote.port === 0 || NetAddress.isUnspecified(options.remote.address)) {
+  if (options.remote.port === 0 || NetAddress.isUnspecified(NetAddress.toCanonical(options.remote.address))) {
     return yield* error(
       new DatagramSocketInvalidOptionsError({
         message: "A datagram peer must have a nonzero port and a specified IP address"
