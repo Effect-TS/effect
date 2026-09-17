@@ -1,7 +1,7 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
@@ -121,10 +121,12 @@ class FakeDurableObjectStorage {
   readonly sql = new FakeSqlStorage()
   transactionCalls = 0
   rollbackCalls = 0
+  readonly snapshots: Array<ReturnType<FakeSqlStorage["snapshot"]>> = []
 
   transaction<T>(body: (txn: { rollback: () => void }) => Promise<T>): Promise<T> {
     this.transactionCalls++
     const snapshot = this.sql.snapshot()
+    this.snapshots.push(snapshot)
     let rolledBack = false
     const txn = {
       rollback: () => {
@@ -143,7 +145,9 @@ class FakeDurableObjectStorage {
         this.sql.restore(snapshot)
         throw error
       }
-    )
+    ).finally(() => {
+      assert.strictEqual(this.snapshots.pop(), snapshot)
+    })
   }
 }
 
@@ -333,7 +337,83 @@ describe("Client", () => {
       assert.strictEqual(storage.rollbackCalls, 1)
     }))
 
-  it.effect("nested transactions fail clearly without savepoint SQL", () =>
+  it.effect("nested transactions commit inner and outer writes without transaction SQL", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* sql`INSERT INTO test (name) VALUES ('outer')`
+          yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('inner')`)
+          yield* sql`INSERT INTO test (name) VALUES ('after')`
+        })
+      )
+      const rows = yield* sql`SELECT * FROM test`
+
+      assert.deepStrictEqual(rows, [
+        { id: 1, name: "outer" },
+        { id: 2, name: "inner" },
+        { id: 3, name: "after" }
+      ])
+      assert.strictEqual(storage.transactionCalls, 2)
+      assert.strictEqual(storage.rollbackCalls, 0)
+      assert.deepStrictEqual(storage.snapshots, [])
+      assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
+    }))
+
+  it.effect("cross-client nested transactions fail before opening storage or running the body", () =>
+    Effect.gen(function*() {
+      const storageA = new FakeDurableObjectStorage()
+      const storageB = new FakeDurableObjectStorage()
+      const sqlA = yield* makeClient({ storage: storageA as unknown as DurableObjectStorage })
+      const sqlB = yield* makeClient({ storage: storageB as unknown as DurableObjectStorage })
+      let bodyRan = false
+
+      const exit = yield* sqlA.withTransaction(
+        sqlB.withTransaction(Effect.sync(() => {
+          bodyRan = true
+        }))
+      ).pipe(Effect.exit)
+
+      assert.strictEqual(storageA.transactionCalls, 1)
+      assert.strictEqual(storageB.transactionCalls, 0)
+      assert.strictEqual(bodyRan, false)
+      const error = yield* Effect.flip(exit)
+      assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.match(error.message, /Transactions cannot use a connection from a different SQLite client/)
+    }))
+
+  it.effect("caught nested failure rolls back only inner writes and lets the outer transaction commit", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* sql`INSERT INTO test (name) VALUES ('outer')`
+          const error = yield* sql`INSERT INTO test (name) VALUES ('inner')`.pipe(
+            Effect.andThen(Effect.fail("inner failure")),
+            sql.withTransaction,
+            Effect.flip
+          )
+          assert.strictEqual(error, "inner failure")
+          assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1, name: "outer" }])
+          yield* sql`INSERT INTO test (name) VALUES ('after')`
+        })
+      )
+      const rows = yield* sql`SELECT * FROM test`
+
+      assert.deepStrictEqual(rows, [{ id: 1, name: "outer" }, { id: 2, name: "after" }])
+      assert.strictEqual(storage.transactionCalls, 2)
+      assert.strictEqual(storage.rollbackCalls, 1)
+      assert.deepStrictEqual(storage.snapshots, [])
+      assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
+    }))
+
+  it.effect("uncaught nested failure rolls back the whole transaction", () =>
     Effect.gen(function*() {
       const storage = new FakeDurableObjectStorage()
       const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
@@ -342,15 +422,53 @@ describe("Client", () => {
       const error = yield* sql.withTransaction(
         Effect.gen(function*() {
           yield* sql`INSERT INTO test (name) VALUES ('outer')`
-          yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('inner')`)
+          return yield* sql`INSERT INTO test (name) VALUES ('inner')`.pipe(
+            Effect.andThen(Effect.fail("inner failure")),
+            sql.withTransaction
+          )
         })
       ).pipe(Effect.flip)
       const rows = yield* sql`SELECT * FROM test`
 
-      assert.strictEqual(error.reason._tag, "UnknownError")
-      assert.match(error.message, /Nested transactions are not supported/)
+      assert.strictEqual(error, "inner failure")
       assert.deepStrictEqual(rows, [])
+      assert.strictEqual(storage.transactionCalls, 2)
+      assert.strictEqual(storage.rollbackCalls, 2)
+      assert.deepStrictEqual(storage.snapshots, [])
+      assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
+    }))
+
+  it.effect("interrupted nested transactions roll back only the child before the outer transaction continues", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+      const inserted = yield* Deferred.make<void>()
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* sql`INSERT INTO test (name) VALUES ('outer')`
+          const fiber = yield* sql`INSERT INTO test (name) VALUES ('inner')`.pipe(
+            Effect.tap(() => Deferred.succeed(inserted, void 0)),
+            Effect.andThen(Effect.never),
+            sql.withTransaction,
+            Effect.forkChild
+          )
+          // Surface an early transaction failure rather than waiting for an insert that never happens.
+          yield* Effect.raceFirst(Deferred.await(inserted), Fiber.join(fiber))
+          yield* Fiber.interrupt(fiber)
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+          assert.strictEqual(storage.rollbackCalls, 1)
+          assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1, name: "outer" }])
+          yield* sql`INSERT INTO test (name) VALUES ('after')`
+        })
+      )
+      const rows = yield* sql`SELECT * FROM test`
+
+      assert.deepStrictEqual(rows, [{ id: 1, name: "outer" }, { id: 2, name: "after" }])
+      assert.strictEqual(storage.transactionCalls, 2)
       assert.strictEqual(storage.rollbackCalls, 1)
+      assert.deepStrictEqual(storage.snapshots, [])
       assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
     }))
 
