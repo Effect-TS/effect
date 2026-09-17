@@ -333,7 +333,7 @@ export const cors = (options?: {
 ) => Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> => {
   const opts = {
     allowedOrigins: options?.allowedOrigins ?? [],
-    allowedMethods: options?.allowedMethods ?? ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "QUERY"],
+    allowedMethods: options?.allowedMethods ?? ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
     allowedHeaders: options?.allowedHeaders ?? [],
     exposedHeaders: options?.exposedHeaders ?? [],
     credentials: options?.credentials ?? false,

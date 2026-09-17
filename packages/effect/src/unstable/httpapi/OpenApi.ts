@@ -399,9 +399,11 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         (match, key: string) => paramNames === undefined || paramNames.has(key) ? `{${key}}` : match
       )
       const method = endpoint.method.toLowerCase() as Lowercase<HttpMethod.HttpMethod>
-      const operationPath = method === "query"
-        ? ["paths", path, "x-oai-additionalOperations", "QUERY"]
-        : ["paths", path, method]
+      const isQuery = method === "query"
+      const operationKey = isQuery ? "QUERY" : method
+      const operationPath = isQuery
+        ? ["paths", path, "x-oai-additionalOperations", operationKey]
+        : ["paths", path, operationKey]
 
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
         for (const [status, { content, descriptions, headers, streamContent }] of bodies) {
@@ -632,10 +634,9 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       if (!Object.hasOwn(spec.paths, path)) {
         InternalRecord.assignProperty(spec.paths, path, {})
       }
-      const operationKey = method === "query" ? "QUERY" : method
       const getOperations = (): Partial<Record<OpenAPISpecMethodName | "QUERY", OpenAPISpecOperation>> => {
         const pathItem = spec.paths[path]
-        return method === "query" ? (pathItem["x-oai-additionalOperations"] ??= {}) : pathItem
+        return isQuery ? (pathItem["x-oai-additionalOperations"] ??= {}) : pathItem
       }
       getOperations()[operationKey] = op
       finalizeOperations.push(() => {
@@ -1084,6 +1085,7 @@ export type OpenAPISpecMethodName =
 
 /**
  * Generated OpenAPI path item mapping HTTP methods to operations for a single route path.
+ * Parameters declared here are shared by every operation on the path.
  * `QUERY` operations are emitted under `x-oai-additionalOperations`.
  *
  * @category models
@@ -1095,7 +1097,7 @@ export type OpenAPISpecPathItem =
   }
   & {
     parameters?: Array<OpenAPISpecParameter>
-    "x-oai-additionalOperations"?: Record<string, OpenAPISpecOperation>
+    "x-oai-additionalOperations"?: Partial<Record<HttpMethod.HttpMethod, OpenAPISpecOperation>>
   }
 
 /**
