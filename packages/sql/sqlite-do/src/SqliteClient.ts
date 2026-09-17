@@ -23,6 +23,9 @@
  * transaction SQL. A caught child failure or interruption rolls back only that
  * child's writes; an uncaught failure also rolls back the outer transaction.
  * Run children sequentially: concurrent sibling transactions are unsupported.
+ * Fibers inheriting the transaction context must finish their transaction work
+ * before the enclosing transaction exits. Using that context afterwards is
+ * unsupported: it can bypass the semaphore after the connection is released.
  * Clients configured with only `db` do not support transactions.
  *
  * @since 4.0.0
