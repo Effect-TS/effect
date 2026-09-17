@@ -1020,17 +1020,25 @@ export const toWeb = (
     }
   }
   const body = response.body
-  if (omitsBody(response, options?.withoutBody)) {
-    if (body._tag === "Raw" && body.body instanceof Response) {
-      for (const [key, value] of headers as any) {
+  const outerOmitsBody = omitsBody(response)
+  if (body._tag === "Raw" && body.body instanceof Response) {
+    for (const [key, value] of headers as any) {
+      if (key === "set-cookie") {
+        body.body.headers.append(key, value)
+      } else {
         body.body.headers.set(key, value)
       }
+    }
+    if (outerOmitsBody || options?.withoutBody) {
       return new Response(undefined, {
-        status: body.body.status,
-        statusText: body.body.statusText,
+        status: outerOmitsBody ? response.status : body.body.status,
+        statusText: outerOmitsBody ? response.statusText as string : body.body.statusText,
         headers: body.body.headers
       })
     }
+    return body.body
+  }
+  if (outerOmitsBody || options?.withoutBody) {
     if (body._tag === "Raw" && isReadableStream(body.body)) {
       body.body.cancel().catch(constVoid)
     }
@@ -1056,12 +1064,6 @@ export const toWeb = (
       })
     }
     case "Raw": {
-      if (body.body instanceof Response) {
-        for (const [key, value] of headers as any) {
-          body.body.headers.set(key, value)
-        }
-        return body.body
-      }
       return new Response(body.body as any, {
         status: response.status,
         statusText: response.statusText!,
