@@ -161,6 +161,53 @@ describe("TypeSafeDecisionModel", () => {
       assert.strictEqual(usage.outputTokens, 48)
     }))
 
+  it.effect("omits an explicitly undefined optional input field from JSON state", () =>
+    Effect.gen(function*() {
+      const requests: Array<HttpClientRequest.HttpClientRequest> = []
+      const definition = Decision.make({
+        input: Schema.Struct({ message: Schema.String, orderId: Schema.optional(Schema.String) }),
+        decisions: TicketTriage.decisions
+      })
+      const { answers } = yield* DecisionModel.decide(definition, {
+        input: { message: ticket.message, orderId: undefined }
+      }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) => {
+          requests.push(request)
+          return Effect.succeed(jsonResponse(request, systemOneResponse))
+        }))
+      )
+
+      assert.strictEqual(requests.length, 1)
+      const body = yield* getRequestBody(requests[0])
+      assert.deepStrictEqual(body.state, { message: ticket.message })
+      assert.strictEqual(answers.urgent.probability, 0.999)
+    }))
+
+  for (
+    const { extra, inputTokens, name, outputTokens } of [
+      { name: "absent usage", extra: {}, inputTokens: undefined, outputTokens: undefined },
+      { name: "empty usage", extra: { usage: {} }, inputTokens: undefined, outputTokens: undefined },
+      { name: "input tokens only", extra: { usage: { input_tokens: 312 } }, inputTokens: 312, outputTokens: undefined },
+      { name: "output tokens only", extra: { usage: { output_tokens: 48 } }, inputTokens: undefined, outputTokens: 48 }
+    ]
+  ) {
+    it.effect("preserves answers with " + name, () =>
+      Effect.gen(function*() {
+        const { usage: _usage, ...response } = systemOneResponse
+        const { answers, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+          Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+          Effect.provide(makeClientLayer((request) => Effect.succeed(jsonResponse(request, { ...response, ...extra }))))
+        )
+
+        assert.strictEqual(answers.department.label, "billing")
+        assert.strictEqual(answers.frustration.rating, 1.6)
+        assert.strictEqual(answers.urgent.probability, 0.999)
+        assert.strictEqual(usage.inputTokens, inputTokens)
+        assert.strictEqual(usage.outputTokens, outputTokens)
+      }))
+  }
+
   it.effect("sends a pinned model id through unchanged", () =>
     Effect.gen(function*() {
       const requests: Array<HttpClientRequest.HttpClientRequest> = []

@@ -97,13 +97,27 @@ describe("TypeSafeSchema", () => {
     assert.throws(() => Schema.decodeUnknownSync(TypeSafeSchema.Answer)(answer))
   })
 
-  it("rejects a response without usage", () => {
-    assert.throws(() =>
-      Schema.decodeUnknownSync(TypeSafeSchema.SystemOneResponse)({
-        model: "jev-latest",
-        answers: { urgent: noulAnswer }
-      })
-    )
+  it.each([
+    { name: "absent usage", extra: {} },
+    { name: "empty usage", extra: { usage: {} } },
+    { name: "input tokens only", extra: { usage: { input_tokens: 312 } } },
+    { name: "output tokens only", extra: { usage: { output_tokens: 48 } } }
+  ])("decodes a response with $name", ({ extra }) => {
+    const response = { model: "jev-latest", answers: { urgent: noulAnswer }, ...extra }
+    const decoded = Schema.decodeUnknownSync(TypeSafeSchema.SystemOneResponse)(response)
+
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(decoded)), response)
+  })
+
+  it.each([
+    { name: "neither optional field", model: { name: "jev-latest" } },
+    { name: "description only", model: { name: "jev-latest", description: "Latest Jev" } },
+    { name: "release date only", model: { name: "jev-latest", release_date: "2026-08-01" } }
+  ])("decodes a model with $name", ({ model }) => {
+    const response = { models: [model] }
+    const decoded = Schema.decodeUnknownSync(TypeSafeSchema.ListModelsResponse)(response)
+
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(decoded)), response)
   })
 
   it("decodes a models list response", () => {

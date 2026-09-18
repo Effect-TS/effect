@@ -6,7 +6,7 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientError from "effect/unstable/http/HttpClientError"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-
+import { vi } from "vitest"
 const systemOneRequest = {
   state: "My card was charged twice.",
   model: "jev-latest",
@@ -215,6 +215,71 @@ describe("TypeSafeClient", () => {
   })
 
   describe("error mapping", () => {
+    it.effect("maps undocumented 409 status to the generic UnknownError fallback", () =>
+      Effect.gen(function*() {
+        const client = yield* TypeSafeClient.TypeSafeClient
+        const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
+
+        assert.strictEqual(result.reason._tag, "UnknownError")
+        if (result.reason._tag === "UnknownError") {
+          assert.strictEqual(result.reason.http?.response?.status, 409)
+          assert.include(result.reason.description ?? "", "Conflict")
+        }
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        status: 409,
+        body: { message: "Conflict" }
+      }))))
+
+    it.effect("retains 429 diagnostics in provider metadata", () =>
+      Effect.gen(function*() {
+        const client = yield* TypeSafeClient.TypeSafeClient
+        const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
+
+        assert.strictEqual(result.reason._tag, "RateLimitError")
+        if (result.reason._tag === "RateLimitError") {
+          assert.deepStrictEqual(result.reason.metadata.typesafe, {
+            requestId: "req_typesafe_429",
+            errorCode: "rate_limit_exceeded",
+            errorType: "requests"
+          })
+          assert.strictEqual(result.reason.http?.response?.status, 429)
+        }
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        status: 429,
+        body: { message: "Slow down", code: "rate_limit_exceeded", type: "requests" },
+        headers: { "x-typesafe-request-id": "req_typesafe_429" }
+      }))))
+
+    describe("HTTP-date Retry-After", { concurrent: false }, () => {
+      for (
+        const { date, expected, name } of [
+          { name: "future", date: "Fri, 18 Sep 2026 12:00:30 GMT", expected: 30000 },
+          { name: "past", date: "Fri, 18 Sep 2026 11:59:30 GMT", expected: 0 }
+        ]
+      ) {
+        it.effect("honors a " + name + " HTTP-date Retry-After", () =>
+          Effect.gen(function*() {
+            const now = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-18T12:00:00Z"))
+            try {
+              const client = yield* TypeSafeClient.TypeSafeClient
+              const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
+
+              assert.strictEqual(result.reason._tag, "RateLimitError")
+              if (result.reason._tag === "RateLimitError") {
+                assert.isDefined(result.reason.retryAfter)
+                assert.strictEqual(Duration.toMillis(result.reason.retryAfter!), expected)
+              }
+            } finally {
+              now.mockRestore()
+            }
+          }).pipe(Effect.provide(makeTestLayer(undefined, {
+            status: 429,
+            body: { message: "Rate limit exceeded" },
+            headers: { "retry-after": date }
+          }))))
+      }
+    })
+
     it.effect("maps TransportError to NetworkError reason", () =>
       Effect.gen(function*() {
         const client = yield* TypeSafeClient.make({
