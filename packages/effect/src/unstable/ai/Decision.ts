@@ -308,9 +308,10 @@ export const probability = (options: {
  *
  * **Details**
  *
- * The schema encodes the value passed to `DecisionModel.decide`, and the
- * encoded value is what the provider receives. Answer keys match the decision
- * keys, with answer types inferred from each decision's criteria.
+ * The JSON codec derived through `Schema.toCodecJson` from the input schema
+ * encodes the value passed to `DecisionModel.decide`. The provider receives
+ * that encoded `Schema.Json` value. Answer keys match the decision keys, with
+ * answer types inferred from each decision's criteria.
  *
  * **Gotchas**
  *

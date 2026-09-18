@@ -366,6 +366,12 @@ export const make = (params: {
  * The input is encoded through `Schema.toCodecJson` of the definition's input
  * schema, so any encoding services the schema needs are part of the requirements.
  *
+ * **Gotchas**
+ *
+ * JSON encoding turns explicitly `undefined` optional fields into `null`,
+ * while absent fields remain absent. The provider cannot distinguish those
+ * encoded `undefined` values from explicit `null` values.
+ *
  * **Example** (Triaging a ticket)
  *
  * ```ts
