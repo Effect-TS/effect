@@ -123,6 +123,33 @@ describe("Decision", () => {
 
 describe("DecisionModel", () => {
   for (const key of ["__proto__", "constructor", "toString"]) {
+    it.effect("preserves the own enumerable rate probability " + key, () => {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: {
+          intensity: Decision.rate({
+            instructions: "How intense",
+            criteria: ["low", key, "high"]
+          })
+        }
+      })
+
+      return Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
+        const { label, probabilities, rating } = answers.intensity
+
+        assert.isTrue(Object.hasOwn(probabilities, key))
+        assert.isTrue(Object.getOwnPropertyDescriptor(probabilities, key)?.enumerable)
+        assert.deepStrictEqual(Object.keys(probabilities), ["low", key, "high"])
+        assert.deepStrictEqual(probabilities, { low: 0.1, [key]: 0.7, high: 0.2 })
+        assert.strictEqual(label, key)
+        assert.strictEqual(rating, 1.1)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+      }).pipe(Effect.provide(succeedWith({
+        intensity: { _tag: "Rate", rating: 1.1, probabilities: { low: 0.1, [key]: 0.7, high: 0.2 } }
+      })))
+    })
+
     it.effect("preserves the own enumerable answer key " + key, () => {
       const definition = Decision.make({
         input: Schema.String,
@@ -137,7 +164,7 @@ describe("DecisionModel", () => {
       return Effect.gen(function*() {
         const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
 
-        assert.isTrue(Object.getPrototypeOf(answers) === Object.prototype || Object.getPrototypeOf(answers) === null)
+        assert.strictEqual(Object.getPrototypeOf(answers), Object.prototype)
         assert.isTrue(Object.hasOwn(answers, key))
         assert.isTrue(Object.getOwnPropertyDescriptor(answers, key)?.enumerable)
         assert.deepStrictEqual(Object.keys(answers), [key])
@@ -160,9 +187,7 @@ describe("DecisionModel", () => {
         const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
         const probabilities = answers.category.probabilities
 
-        assert.isTrue(
-          Object.getPrototypeOf(probabilities) === Object.prototype || Object.getPrototypeOf(probabilities) === null
-        )
+        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
         assert.isTrue(Object.hasOwn(probabilities, key))
         assert.isTrue(Object.getOwnPropertyDescriptor(probabilities, key)?.enumerable)
         assert.deepStrictEqual(Object.keys(probabilities), [key, "ordinary"])

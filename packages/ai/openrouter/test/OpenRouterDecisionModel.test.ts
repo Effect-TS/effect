@@ -69,6 +69,95 @@ const decisionsResponse = {
 
 describe("OpenRouterDecisionModel", () => {
   for (const key of ["__proto__", "constructor", "toString"]) {
+    it.effect("round trips a classification label named " + key, () =>
+      Effect.gen(function*() {
+        const definition = Decision.make({
+          input: Schema.String,
+          decisions: {
+            category: Decision.classify({
+              instructions: "Choose a category",
+              criteria: { [key]: "Special category", ordinary: "Ordinary category" }
+            })
+          }
+        })
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Help" }).pipe(
+          Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+          Effect.provide(makeClientLayer((request) =>
+            Effect.gen(function*() {
+              const { questions } = yield* getRequestBody(request)
+              const criteria = questions.category.criteria
+
+              assert.isTrue(Object.hasOwn(criteria, key))
+              assert.isTrue(Object.getOwnPropertyDescriptor(criteria, key)?.enumerable)
+              assert.deepStrictEqual(Object.keys(criteria), [key, "ordinary"])
+              assert.strictEqual(criteria[key], "Special category")
+              assert.strictEqual(Object.getPrototypeOf(criteria), Object.prototype)
+
+              return jsonResponse(request, {
+                model: "test/decision-model",
+                answers: {
+                  category: {
+                    type: "choice",
+                    choice: key,
+                    probabilities: { [key]: 0.75, ordinary: 0.25 },
+                    confidence: 0.5
+                  }
+                }
+              })
+            })
+          ))
+        )
+        const { label, probabilities } = answers.category
+
+        assert.isTrue(Object.hasOwn(probabilities, key))
+        assert.isTrue(Object.getOwnPropertyDescriptor(probabilities, key)?.enumerable)
+        assert.deepStrictEqual(Object.keys(probabilities), [key, "ordinary"])
+        assert.deepStrictEqual(probabilities, { [key]: 0.75, ordinary: 0.25 })
+        assert.strictEqual(label, key)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+      }))
+
+    it.effect("maps a score distribution to a rate level named " + key, () =>
+      Effect.gen(function*() {
+        const definition = Decision.make({
+          input: Schema.String,
+          decisions: {
+            intensity: Decision.rate({ instructions: "How intense", criteria: ["low", key, "high"] })
+          }
+        })
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Help" }).pipe(
+          Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+          Effect.provide(makeClientLayer((request) =>
+            Effect.gen(function*() {
+              const { questions } = yield* getRequestBody(request)
+              assert.deepStrictEqual(questions.intensity.criteria, ["low", key, "high"])
+
+              return jsonResponse(request, {
+                model: "test/decision-model",
+                answers: {
+                  intensity: {
+                    type: "score",
+                    score: 1.1,
+                    legend: { "0": "low", "1": key, "2": "high" },
+                    probabilities: { "0": 0.1, "1": 0.7, "2": 0.2 },
+                    confidence: 0.5
+                  }
+                }
+              })
+            })
+          ))
+        )
+        const { label, probabilities, rating } = answers.intensity
+
+        assert.isTrue(Object.hasOwn(probabilities, key))
+        assert.isTrue(Object.getOwnPropertyDescriptor(probabilities, key)?.enumerable)
+        assert.deepStrictEqual(Object.keys(probabilities), ["low", key, "high"])
+        assert.deepStrictEqual(probabilities, { low: 0.1, [key]: 0.7, high: 0.2 })
+        assert.strictEqual(label, key)
+        assert.strictEqual(rating, 1.1)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+      }))
+
     it.effect("sends an own enumerable question named " + key, () =>
       Effect.gen(function*() {
         const definition = Decision.make({
@@ -105,7 +194,7 @@ describe("OpenRouterDecisionModel", () => {
           ))
         )
 
-        assert.isTrue(Object.getPrototypeOf(answers) === Object.prototype || Object.getPrototypeOf(answers) === null)
+        assert.strictEqual(Object.getPrototypeOf(answers), Object.prototype)
         assert.isTrue(Object.hasOwn(answers, key))
         assert.isTrue(Object.getOwnPropertyDescriptor(answers, key)?.enumerable)
         assert.deepStrictEqual(Object.keys(answers), [key])
