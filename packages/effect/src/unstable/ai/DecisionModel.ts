@@ -346,6 +346,7 @@ export const make = (params: {
  * Encodes the input with `Schema.toCodecJson`, requiring the schema's encoding services.
  * Explicit `undefined` fields become `null`; absent fields stay absent.
  * Custom declarations need a JSON codec annotation or encoding fails.
+ * Returned answers and probability dictionaries have null prototypes.
  *
  * **Example** (Triaging a ticket)
  *
