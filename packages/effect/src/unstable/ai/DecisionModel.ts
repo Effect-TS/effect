@@ -16,6 +16,7 @@
  */
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import * as AiError from "./AiError.ts"
 import type * as Decision from "./Decision.ts"
@@ -194,11 +195,9 @@ const invalidOutput = (description: string): AiError.AiError =>
     reason: new AiError.InvalidOutputError({ description })
   })
 
-const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
+const isFiniteNumber = (value: unknown): value is number => Predicate.isNumber(value) && Number.isFinite(value)
 
 const isUnitInterval = (value: unknown): value is number => isFiniteNumber(value) && value >= 0 && value <= 1
-
-const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
 const validateDistribution = (
   key: string,
@@ -206,7 +205,7 @@ const validateDistribution = (
   answer: Record<string, unknown>
 ): Record<string, number> | AiError.AiError => {
   const raw = answer.probabilities
-  if (!isObject(raw)) {
+  if (!Predicate.isObject(raw)) {
     return invalidOutput(`Provider returned no probabilities for decision "${key}"`)
   }
   const probabilities: Record<string, number> = {}
@@ -230,13 +229,13 @@ const validateAnswer = (
   decision: Decision.Any,
   answer: unknown
 ): Decision.Answer<Decision.Any> | AiError.AiError => {
-  if (!isObject(answer)) {
+  if (!Predicate.isObject(answer)) {
     return invalidOutput(`Provider returned no answer for decision "${key}"`)
   }
   switch (decision._tag) {
     case "Classify": {
       const labels = Object.keys(decision.criteria)
-      if (typeof answer.label !== "string" || !labels.includes(answer.label)) {
+      if (!Predicate.isString(answer.label) || !labels.includes(answer.label)) {
         return invalidOutput(`Provider returned an unknown label for decision "${key}"`)
       }
       if (!isUnitInterval(answer.confidence)) {
@@ -399,4 +398,4 @@ export const decide = <Input extends Schema.Constraint, Decisions extends Record
   definition: Decision.Definition<Input, Decisions>,
   options: DecideOptions<Input>
 ): Effect.Effect<DecideResponse<Decisions>, AiError.AiError, DecisionModel | Input["EncodingServices"]> =>
-  Effect.flatMap(Effect.service(DecisionModel), (model) => model.decide(definition, options))
+  DecisionModel.use((model) => model.decide(definition, options))
