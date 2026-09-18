@@ -2,7 +2,7 @@
  * Defines schemas for Model Context Protocol messages.
  *
  * MCP clients and servers use these schemas to describe the JSON-RPC requests,
- * notifications, results, and errors that can cross the protocol boundary. This
+ * notifications, results, and errors that can cross the protocol boundary.
  * This is the stable public compatibility and authoring surface. It is not an
  * exact dated wire contract: MCP protocol adapters use frozen schemas under
  * `internal/mcpSchema` for decoding and encoding. This module groups the
@@ -1585,6 +1585,8 @@ export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
 
 /**
  * JSON Schema used by MCP tool outputs.
+ *
+ * **Details**
  *
  * Unlike tool inputs, tool outputs may use any JSON Schema root type.
  *
