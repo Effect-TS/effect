@@ -35,7 +35,7 @@ const TicketTriage = Decision.make({
 
 const ticket = { subject: "Card was charged twice", priority: 3 }
 
-const triageAnswers = {
+const expectedAnswers: Decision.Answers<typeof TicketTriage.decisions> = {
   department: {
     label: "billing",
     probabilities: { billing: 0.8, technical: 0.15, sales: 0.05 },
@@ -50,6 +50,12 @@ const triageAnswers = {
   urgent: {
     probability: 0.9
   }
+}
+
+const triageAnswers = {
+  department: { _tag: "Classify" as const, ...expectedAnswers.department },
+  frustration: { _tag: "Rate" as const, ...expectedAnswers.frustration },
+  urgent: { _tag: "Probability" as const, ...expectedAnswers.urgent }
 }
 
 const makeLayer = (
@@ -209,7 +215,12 @@ describe("DecisionModel", () => {
           states.push(state)
           return Effect.succeed({
             answers: {
-              tone: { label: "positive", probabilities: { positive: 0.95, negative: 0.05 }, confidence: 0.95 }
+              tone: {
+                _tag: "Classify" as const,
+                label: "positive",
+                probabilities: { positive: 0.95, negative: 0.05 },
+                confidence: 0.95
+              }
             },
             usage: { inputTokens: undefined, outputTokens: undefined }
           })
@@ -305,7 +316,7 @@ describe("DecisionModel", () => {
         makeLayer(({ state }) => {
           states.push(state)
           return Effect.succeed({
-            answers: { urgent: { probability: 0.5 } },
+            answers: { urgent: { _tag: "Probability" as const, probability: 0.5 } },
             usage: { inputTokens: undefined, outputTokens: undefined }
           })
         })
@@ -416,7 +427,7 @@ describe("DecisionModel", () => {
     }).pipe(
       Effect.provide(succeedWith({
         ...triageAnswers,
-        urgent: { probability: 1.5 }
+        urgent: { _tag: "Probability" as const, probability: 1.5 }
       }))
     ))
 
@@ -468,10 +479,12 @@ describe("Decision validation contracts", () => {
       Effect.gen(function*() {
         const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
         assert.strictEqual(answers.frustration.label, expected)
-      }).pipe(Effect.provide(succeedWith({
-        ...triageAnswers,
-        frustration: { ...triageAnswers.frustration, label: "angry", probabilities }
-      }))))
+      }).pipe(Effect.provide(succeedWith(
+        {
+          ...triageAnswers,
+          frustration: { ...triageAnswers.frustration, label: "angry", probabilities }
+        } as unknown as DecisionModel.ProviderResponse["answers"]
+      ))))
   }
 
   it.effect("classify retains the provider label even when it is not the argmax", () =>
@@ -571,7 +584,7 @@ describe("Decision validation contracts", () => {
   it.effect("extra provider keys never leak into answers", () => {
     const raw = {
       ...triageAnswers,
-      extraDecision: { probability: 0.5 },
+      extraDecision: { _tag: "Probability" as const, probability: 0.5 },
       department: {
         ...triageAnswers.department,
         extra: "discard",
@@ -586,7 +599,7 @@ describe("Decision validation contracts", () => {
     }
     return Effect.gen(function*() {
       const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
-      assert.deepStrictEqual(answers, triageAnswers)
+      assert.deepStrictEqual(answers, expectedAnswers)
     }).pipe(Effect.provide(succeedWith(raw)))
   })
 })

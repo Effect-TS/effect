@@ -103,9 +103,10 @@ export interface ProviderOptions {
  * @since 4.0.0
  */
 export interface ProviderClassifyAnswer {
+  readonly _tag: "Classify"
   readonly label: string
   readonly probabilities: Readonly<Record<string, number>>
-  readonly confidence: number
+  readonly confidence?: number | undefined
 }
 
 /**
@@ -120,9 +121,10 @@ export interface ProviderClassifyAnswer {
  * @since 4.0.0
  */
 export interface ProviderRateAnswer {
+  readonly _tag: "Rate"
   readonly rating: number
   readonly probabilities: Readonly<Record<string, number>>
-  readonly confidence: number
+  readonly confidence?: number | undefined
 }
 
 /**
@@ -132,6 +134,7 @@ export interface ProviderRateAnswer {
  * @since 4.0.0
  */
 export interface ProviderProbabilityAnswer {
+  readonly _tag: "Probability"
   readonly probability: number
 }
 
@@ -212,6 +215,18 @@ const validateDistribution = (
   return probabilities
 }
 
+const validateConfidence = (
+  key: string,
+  answer: Record<string, unknown>
+): number | undefined | AiError.AiError => {
+  if (answer.confidence === undefined) {
+    return undefined
+  }
+  return isUnitInterval(answer.confidence)
+    ? answer.confidence
+    : invalidOutput(`Provider returned confidence outside [0, 1] for decision "${key}"`)
+}
+
 const validateAnswer = (
   key: string,
   decision: Decision.Any,
@@ -220,28 +235,35 @@ const validateAnswer = (
   if (!Predicate.isObject(answer)) {
     return invalidOutput(`Provider returned no answer for decision "${key}"`)
   }
+  if (answer._tag !== decision._tag) {
+    return invalidOutput(
+      `Provider returned a "${String(answer._tag)}" answer for decision "${key}", expected "${decision._tag}"`
+    )
+  }
   switch (decision._tag) {
     case "Classify": {
       const labels = Object.keys(decision.criteria)
       if (!Predicate.isString(answer.label) || !labels.includes(answer.label)) {
         return invalidOutput(`Provider returned an unknown label for decision "${key}"`)
       }
-      if (!isUnitInterval(answer.confidence)) {
-        return invalidOutput(`Provider returned confidence outside [0, 1] for decision "${key}"`)
+      const confidence = validateConfidence(key, answer)
+      if (AiError.isAiError(confidence)) {
+        return confidence
       }
       const probabilities = validateDistribution(key, labels, answer)
       if (AiError.isAiError(probabilities)) {
         return probabilities
       }
-      return { label: answer.label, probabilities, confidence: answer.confidence }
+      return { label: answer.label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
     }
     case "Rate": {
       const levels = decision.criteria
       if (!isFiniteNumber(answer.rating) || answer.rating < 0 || answer.rating > levels.length - 1) {
         return invalidOutput(`Provider returned a rating outside [0, ${levels.length - 1}] for decision "${key}"`)
       }
-      if (!isUnitInterval(answer.confidence)) {
-        return invalidOutput(`Provider returned confidence outside [0, 1] for decision "${key}"`)
+      const confidence = validateConfidence(key, answer)
+      if (AiError.isAiError(confidence)) {
+        return confidence
       }
       const probabilities = validateDistribution(key, levels, answer)
       if (AiError.isAiError(probabilities)) {
@@ -253,7 +275,7 @@ const validateAnswer = (
           label = levels[i]
         }
       }
-      return { rating: answer.rating, label, probabilities, confidence: answer.confidence }
+      return { rating: answer.rating, label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
     }
     case "Probability": {
       if (!isUnitInterval(answer.probability)) {

@@ -102,6 +102,8 @@ export type Any = Classify<string> | Rate<string> | Probability
  * **Details**
  *
  * `label` is chosen by the provider and need not have the highest probability.
+ * `confidence` is a provider-reported measure of how concentrated the
+ * distribution is, absent when the provider does not report one.
  *
  * @category models
  * @since 4.0.0
@@ -109,7 +111,7 @@ export type Any = Classify<string> | Rate<string> | Probability
 export interface ClassifyAnswer<Label extends string> {
   readonly label: Label
   readonly probabilities: { readonly [L in Label]: number }
-  readonly confidence: number
+  readonly confidence?: number | undefined
 }
 
 /**
@@ -120,6 +122,8 @@ export interface ClassifyAnswer<Label extends string> {
  * `rating` is the probability-weighted position on the scale and may fall
  * between two levels, within `[0, criteria.length - 1]`. `label` is the level
  * with the highest probability, choosing the first criteria entry on ties.
+ * `confidence` is a provider-reported measure of how concentrated the
+ * distribution is, absent when the provider does not report one.
  *
  * @category models
  * @since 4.0.0
@@ -128,7 +132,7 @@ export interface RateAnswer<Level extends string> {
   readonly rating: number
   readonly label: Level
   readonly probabilities: { readonly [L in Level]: number }
-  readonly confidence: number
+  readonly confidence?: number | undefined
 }
 
 /**

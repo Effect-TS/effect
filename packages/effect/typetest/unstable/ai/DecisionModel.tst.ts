@@ -70,7 +70,7 @@ describe("Decision", () => {
       readonly technical: number
       readonly sales: number
     }>()
-    expect<Answers["department"]["confidence"]>().type.toBe<number>()
+    expect<Answers["department"]["confidence"]>().type.toBe<number | undefined>()
   })
 
   it("rate infers labels from the ordered criteria", () => {
@@ -81,7 +81,7 @@ describe("Decision", () => {
       readonly frustrated: number
       readonly angry: number
     }>()
-    expect<Answers["frustration"]["confidence"]>().type.toBe<number>()
+    expect<Answers["frustration"]["confidence"]>().type.toBe<number | undefined>()
   })
 
   it("rate widens to string for non-literal criteria", () => {
@@ -144,6 +144,7 @@ describe("Decision", () => {
 describe("DecisionModel", () => {
   it("provider rate answers do not require a label", () => {
     expect<{
+      readonly _tag: "Rate"
       readonly rating: number
       readonly probabilities: Readonly<Record<string, number>>
       readonly confidence: number
@@ -153,6 +154,7 @@ describe("DecisionModel", () => {
   it("provider classify answers require a label", () => {
     expect<DecisionModel.ProviderClassifyAnswer["label"]>().type.toBe<string>()
     expect<{
+      readonly _tag: "Classify"
       readonly probabilities: Readonly<Record<string, number>>
       readonly confidence: number
     }>().type.not.toBeAssignableTo<DecisionModel.ProviderClassifyAnswer>()

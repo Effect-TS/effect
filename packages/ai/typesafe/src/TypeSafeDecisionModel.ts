@@ -5,7 +5,6 @@
  */
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as AiError from "effect/unstable/ai/AiError"
 import * as DecisionModel from "effect/unstable/ai/DecisionModel"
 import * as AiModel from "effect/unstable/ai/Model"
 import { TypeSafeClient } from "./TypeSafeClient.ts"
@@ -61,21 +60,29 @@ export const make = Effect.fnUntraced(
         const response = yield* client.systemOne({ model: options.model, state, questions })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
-          const answer = Object.hasOwn(response.answers, key) ? response.answers[key] : undefined
-          if (decision._tag === "Classify" && answer?.type === "choice") {
-            answers[key] = { label: answer.choice, probabilities: answer.probabilities, confidence: answer.confidence }
-          } else if (decision._tag === "Rate" && answer?.type === "score") {
-            const probabilities: Record<string, number> = Object.create(null)
-            for (let index = 0; index < decision.criteria.length; index++) {
-              const probability = answer.probabilities[String(index)]
-              if (probability === undefined) return yield* invalidOutput(key)
-              probabilities[decision.criteria[index]] = probability
+          const answer = response.answers[key]
+          switch (answer?.type) {
+            case "choice":
+              answers[key] = {
+                _tag: "Classify",
+                label: answer.choice,
+                probabilities: answer.probabilities,
+                confidence: answer.confidence
+              }
+              break
+            case "score": {
+              const levels = decision._tag === "Rate" ? decision.criteria : []
+              const probabilities: Record<string, number> = Object.create(null)
+              for (let index = 0; index < levels.length; index++) {
+                const probability = answer.probabilities[String(index)]
+                if (probability !== undefined) probabilities[levels[index]] = probability
+              }
+              answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
+              break
             }
-            answers[key] = { rating: answer.score, probabilities, confidence: answer.confidence }
-          } else if (decision._tag === "Probability" && answer?.type === "noul") {
-            answers[key] = { probability: answer.noul }
-          } else {
-            return yield* invalidOutput(key)
+            case "noul":
+              answers[key] = { _tag: "Probability", probability: answer.noul }
+              break
           }
         }
         return {
@@ -97,12 +104,3 @@ export const layer = (
   options: { readonly model: Model | (string & {}) }
 ): Layer.Layer<DecisionModel.DecisionModel, never, TypeSafeClient> =>
   Layer.effect(DecisionModel.DecisionModel, make(options))
-
-const invalidOutput = (key: string) =>
-  AiError.make({
-    module: "TypeSafeDecisionModel",
-    method: "decide",
-    reason: new AiError.InvalidOutputError({
-      description: "Missing or mismatched answer for decision " + JSON.stringify(key)
-    })
-  })
