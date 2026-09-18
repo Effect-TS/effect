@@ -44,7 +44,7 @@ export const make = Effect.fnUntraced(
     const client = yield* TypeSafeClient
     return yield* DecisionModel.make({
       decide: Effect.fnUntraced(function*({ state, decisions }) {
-        const questions: Record<string, typeof TypeSafeSchema.Question.Type> = Object.create(null)
+        const questions: Record<string, typeof TypeSafeSchema.Question.Encoded> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           switch (decision._tag) {
             case "Classify":
@@ -67,8 +67,9 @@ export const make = Effect.fnUntraced(
           } else if (decision._tag === "Rate" && answer?.type === "score") {
             const probabilities: Record<string, number> = Object.create(null)
             for (let index = 0; index < decision.criteria.length; index++) {
-              if (!Object.hasOwn(answer.probabilities, String(index))) return yield* invalidOutput(key)
-              probabilities[decision.criteria[index]] = answer.probabilities[String(index)]
+              const probability = answer.probabilities[String(index)]
+              if (probability === undefined) return yield* invalidOutput(key)
+              probabilities[decision.criteria[index]] = probability
             }
             answers[key] = { rating: answer.score, probabilities, confidence: answer.confidence }
           } else if (decision._tag === "Probability" && answer?.type === "noul") {

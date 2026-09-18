@@ -1,5 +1,6 @@
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
@@ -21,18 +22,31 @@ const ErrorBody = Schema.Struct({
   code: Schema.optional(Schema.String)
 })
 
+const decodeErrorBody = Schema.decodeUnknownOption(ErrorBody)
+
+const nonNegative = (value: string | undefined): number | undefined => {
+  if (value === undefined) return undefined
+  const parsed = Option.getOrUndefined(Num.parse(value))
+  return parsed !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
+}
+
 const retryAfter = (headers: Readonly<Record<string, string>>) => {
-  const ms = headers["retry-after-ms"]
-  if (ms !== undefined && ms.trim() !== "" && Number.isFinite(Number(ms)) && Number(ms) >= 0) {
-    return Duration.millis(Number(ms))
-  }
+  const ms = nonNegative(headers["retry-after-ms"])
+  if (ms !== undefined) return Duration.millis(ms)
   const raw = headers["retry-after"]
   if (raw === undefined || raw.trim() === "") return undefined
-  const seconds = Number(raw)
-  if (Number.isFinite(seconds) && seconds >= 0) return Duration.seconds(seconds)
+  const seconds = nonNegative(raw)
+  if (seconds !== undefined) return Duration.seconds(seconds)
   const date = Date.parse(raw)
-  return Number.isFinite(date) ? Duration.millis(Math.max(0, date - Date.now())) : undefined
+  return Number.isNaN(date) ? undefined : Duration.millis(Math.max(0, date - Date.now()))
 }
+
+export const mapSchemaError = (error: Schema.SchemaError, method: string): AiError.AiError =>
+  AiError.make({
+    module: "TypeSafeClient",
+    method,
+    reason: AiError.InvalidOutputError.fromSchemaError(error)
+  })
 
 export const mapHttpClientError = Effect.fnUntraced(
   function*(error: HttpClientError.HttpClientError, method: string): Effect.fn.Return<never, AiError.AiError> {
@@ -57,9 +71,8 @@ export const mapHttpClientError = Effect.fnUntraced(
       case "StatusCodeError": {
         const { request, response } = source
         const body = yield* response.text.pipe(Effect.catch(() => Effect.succeed(source.description)))
-        const parsed = yield* response.json.pipe(Effect.catch(() => Effect.succeed(undefined)))
-        const decoded = Schema.decodeUnknownOption(ErrorBody)(parsed)
-        const details = Option.getOrUndefined(decoded)
+        const parsed = yield* Effect.try(() => JSON.parse(body ?? "")).pipe(Effect.orElseSucceed(() => undefined))
+        const details = Option.getOrUndefined(decodeErrorBody(parsed))
         const http = {
           request: requestDetails(request),
           response: { status: response.status, headers: Redactable.redact(response.headers) as Record<string, string> },

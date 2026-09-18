@@ -12,6 +12,7 @@ import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import * as HttpClient from "effect/unstable/http/HttpClient"
+import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as Errors from "./internal/errors.ts"
@@ -52,6 +53,9 @@ export interface Options {
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }
 
+const decodeSystemOne = HttpClientResponse.schemaBodyJson(TypeSafeSchema.SystemOneResponse)
+const decodeListModels = HttpClientResponse.schemaBodyJson(TypeSafeSchema.ListModelsResponse)
+
 /**
  * Builds a client without automatic retries. Scoped transforms run after the constructor transform.
  *
@@ -72,26 +76,21 @@ export const make = Effect.fnUntraced(
     )
     const resolveClient = Effect.map(
       TypeSafeConfig.getOrUndefined,
-      (config) => config?.transformClient ? config.transformClient(client) : client
+      (config) => config?.transformClient?.(client) ?? client
     )
-    const execute = <S extends Schema.Top & { readonly DecodingServices: never }>(
+    const execute = <A>(
       request: HttpClientRequest.HttpClientRequest,
-      schema: S,
+      decode: (
+        response: HttpClientResponse.HttpClientResponse
+      ) => Effect.Effect<A, HttpClientError.HttpClientError | Schema.SchemaError>,
       method: string
     ) =>
       resolveClient.pipe(
         Effect.flatMap((client) => client.execute(request)),
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
+        Effect.flatMap(decode),
         Effect.catchTags({
           HttpClientError: (error) => Errors.mapHttpClientError(error, method),
-          SchemaError: (error) =>
-            Effect.fail(
-              AiError.make({
-                module: "TypeSafeClient",
-                method,
-                reason: AiError.InvalidOutputError.fromSchemaError(error)
-              })
-            )
+          SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, method))
         })
       )
     return TypeSafeClient.of({
@@ -105,9 +104,9 @@ export const make = Effect.fnUntraced(
               reason: new AiError.InvalidRequestError({ description: String(error) })
             })
           ),
-          Effect.flatMap((request) => execute(request, TypeSafeSchema.SystemOneResponse, "systemOne"))
+          Effect.flatMap((request) => execute(request, decodeSystemOne, "systemOne"))
         ),
-      listModels: () => execute(HttpClientRequest.get("/models"), TypeSafeSchema.ListModelsResponse, "listModels")
+      listModels: () => execute(HttpClientRequest.get("/models"), decodeListModels, "listModels")
     })
   }
 )

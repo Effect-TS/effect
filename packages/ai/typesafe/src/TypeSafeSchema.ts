@@ -57,7 +57,7 @@ export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestio
  */
 export const SystemOneRequest = Schema.Struct({
   model: Schema.String,
-  state: Schema.Unknown,
+  state: Schema.Json,
   questions: Schema.Record(Schema.String, Question)
 })
 
