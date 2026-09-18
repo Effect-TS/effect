@@ -2,8 +2,6 @@
 "effect": patch
 ---
 
-Add `DecisionModel` and `Decision` to `effect/unstable/ai`.
+Add `Decision` and `DecisionModel` to `effect/unstable/ai` for classification, rating, and probability estimates. Named decisions share one input and one provider call, returning typed answers and token usage.
 
-`Decision.make` pairs an input `Schema` with named `classify`, `rate`, and `probability` decisions. `DecisionModel.decide` encodes the input, answers every decision in one provider call, and returns typed answers keyed like the decisions, with classify and rate labels inferred as literal unions from the criteria. Providers implement the service through `DecisionModel.make`, and a `DecisionModel` layer can be wrapped with `Model.make` like the language and embedding models.
-
-Input encoding uses `Schema.toCodecJson` to produce `Schema.Json` provider state. Explicitly `undefined` optional fields become `null`; absent fields remain absent. Inputs without a defined JSON encoding, such as a raw `Schema.declare<Date>` without a `toCodecJson` or `toCodec` annotation, fail with `InvalidUserInputError` before the provider is called. Use `Schema.Date` or supply a codec annotation for custom declarations.
+Inputs are encoded with `Schema.toCodecJson`: explicit `undefined` fields become `null`, and absent fields stay absent. Custom declarations need a JSON codec annotation or encoding fails with `InvalidUserInputError`.

@@ -1,5 +1,5 @@
 /**
- * Handwritten codecs for the TypeSafe System One API.
+ * Codecs for the TypeSafe System One API.
  *
  * @since 4.0.0
  */

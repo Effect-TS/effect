@@ -1,13 +1,8 @@
 /**
  * Defines decisions that a `DecisionModel` answers over a single input.
  *
- * A decision definition pairs an input `Schema` with a map of named decisions.
- * Each decision is one of three kinds: `classify` picks a label from a set of
- * criteria, `rate` places the input on an ordered scale, and `probability`
- * estimates the likelihood that a statement holds. The definition is built
- * ahead of time and passed to `DecisionModel.decide`, which encodes the input
- * and runs every decision against it in one provider call. Answer types are
- * inferred from the criteria, so classify and rate labels are literal unions.
+ * Pair an input schema with named classification, rating, or probability
+ * decisions using `make`, then answer them with `DecisionModel.decide`.
  *
  * @see {@link make} for building a definition from an input schema and decisions
  *
@@ -36,10 +31,8 @@ export const TypeId: TypeId = "~effect/ai/Decision"
  *
  * **Details**
  *
- * `criteria` maps each label to a description of when that label applies. The
- * answer carries the label chosen by the provider together with a full
- * probability distribution over every label. The chosen label need not have
- * the highest probability.
+ * `criteria` maps labels to descriptions. See {@link ClassifyAnswer} for
+ * the provider's label and probability distribution.
  *
  * @see {@link classify} for the constructor
  * @see {@link ClassifyAnswer} for the answer produced by this decision
@@ -58,9 +51,8 @@ export interface Classify<Label extends string> {
  *
  * **Details**
  *
- * `criteria` lists the scale from lowest to highest. The answer carries a
- * numeric rating that may sit between levels, the argmax level as `label`,
- * and a full probability distribution over every level.
+ * `criteria` lists levels from lowest to highest. See {@link RateAnswer}
+ * for the rating and probability distribution.
  *
  * @see {@link rate} for the constructor
  * @see {@link RateAnswer} for the answer produced by this decision
@@ -79,8 +71,7 @@ export interface Rate<Level extends string> {
  *
  * **Details**
  *
- * `criteria` describes what the `false` and `true` outcomes mean. The answer is
- * a single Bernoulli probability for the `true` outcome.
+ * `criteria` describes both outcomes. The answer is the probability of `true`.
  *
  * @see {@link probability} for the constructor
  * @see {@link ProbabilityAnswer} for the answer produced by this decision
@@ -110,8 +101,7 @@ export type Any = Classify<string> | Rate<string> | Probability
  *
  * **Details**
  *
- * `label` is the label chosen by the provider, preserved without recomputing
- * it from `probabilities`. It need not be the highest-probability label.
+ * `label` is chosen by the provider and need not have the highest probability.
  *
  * @category models
  * @since 4.0.0
@@ -191,7 +181,9 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
  *
  * **Gotchas**
  *
- * At least two labels are required. Fewer labels throw at construction time.
+ * **Details**
+ *
+ * Throws if fewer than two labels are supplied.
  *
  * **Example** (Choosing a department)
  *
@@ -233,8 +225,9 @@ export const classify = <Label extends string>(options: {
  *
  * **Gotchas**
  *
- * The scale needs at least two distinct levels. Fewer levels or duplicate
- * levels throw at construction time.
+ * **Details**
+ *
+ * Throws if fewer than two levels or duplicate levels are supplied.
  *
  * **Example** (Rating frustration)
  *
@@ -274,6 +267,8 @@ export const rate = <const Level extends string>(options: {
  *
  * **Example** (Estimating urgency)
  *
+ * **Details**
+ *
  * ```ts
  * import { Decision } from "effect/unstable/ai"
  *
@@ -308,10 +303,8 @@ export const probability = (options: {
  *
  * **Details**
  *
- * The JSON codec derived through `Schema.toCodecJson` from the input schema
- * encodes the value passed to `DecisionModel.decide`. The provider receives
- * that encoded `Schema.Json` value. Answer keys match the decision keys, with
- * answer types inferred from each decision's criteria.
+ * `DecisionModel.decide` encodes the input with `Schema.toCodecJson` before
+ * calling the provider. Answer keys and types are inferred from the decisions.
  *
  * **Gotchas**
  *

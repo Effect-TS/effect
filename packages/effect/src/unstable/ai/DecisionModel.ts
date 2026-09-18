@@ -1,14 +1,8 @@
 /**
  * Defines the provider-neutral service for structured decisions.
  *
- * A `DecisionModel` answers a fixed set of decisions about one input in a
- * single provider call. Decisions are declared ahead of time with `Decision`
- * and answered with `decide`, which encodes the input through its JSON codec,
- * hands the encoded value and the decisions to the provider, validates the
- * provider's answers against the definition, and represents failures as
- * `AiError` values. This module includes the service, usage metadata, the
- * provider contract, and a constructor that adapts a provider implementation
- * into the service.
+ * `decide` encodes one input as JSON, sends its named decisions in one provider
+ * call, and validates the answers. Failures are reported as `AiError` values.
  *
  * @see {@link make} for constructing a decision model service from a provider
  *
@@ -51,12 +45,7 @@ export type TypeId = "~effect/ai/DecisionModel"
 export const TypeId: TypeId = "~effect/ai/DecisionModel"
 
 /**
- * Represents token usage metadata for decision operations.
- *
- * **Details**
- *
- * Contains optional provider-reported `inputTokens` and `outputTokens`. Either
- * value may be `undefined` when the provider does not report it.
+ * Provider-reported token usage. Unreported counts are `undefined`.
  *
  * @category models
  * @since 4.0.0
@@ -96,10 +85,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  *
  * **Details**
  *
- * `state` is the input encoded through `Schema.toCodecJson` of the definition's
- * input schema, passed as a JSON value without stringifying it.
- * `decisions` is the definition's decision map, so every decision is answered
- * in one call.
+ * `state` is encoded with `Schema.toCodecJson`, not stringified.
+ * All `decisions` must be answered in one call.
  *
  * @category options
  * @since 4.0.0
@@ -293,27 +280,16 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
 }
 
 /**
- * Creates a DecisionModel service from a provider decide implementation.
- *
- * **When to use**
- *
- * Use to adapt a provider that answers a batch of decisions about an encoded
- * input into a `DecisionModel`.
- *
- * **Details**
- *
- * The returned service encodes the input through the definition's JSON codec,
- * passes the encoded value and the decision map to the provider in one call,
- * and validates every answer against its decision before returning it.
+ * Creates a `DecisionModel` that encodes inputs as JSON and validates provider answers.
  *
  * **Gotchas**
  *
- * Provider answers must cover every decision and use the definition's labels.
- * Distributions must sum to 1 within `1e-6`. Confidence must be in `[0, 1]`,
- * and ratings must be in `[0, criteria.length - 1]`. A missing answer, an
- * unknown classify label, an invalid distribution, or an out-of-range value
- * fails with `AiError.InvalidOutputError`. Input
- * encoding failures fail with `AiError.InvalidUserInputError`.
+ * **Details**
+ *
+ * Answers must cover every decision and use its labels. Distributions must
+ * sum to 1 within `1e-6`, confidence must be in `[0, 1]`, and ratings must be
+ * in `[0, criteria.length - 1]`. Invalid answers fail with
+ * `AiError.InvalidOutputError`; encoding failures use `AiError.InvalidUserInputError`.
  *
  * @see {@link DecisionModel} for the service shape returned by this constructor
  * @see {@link ProviderOptions} for the input passed to the provider implementation
@@ -368,9 +344,8 @@ export const make = (params: {
  *
  * **Gotchas**
  *
- * JSON encoding turns explicitly `undefined` optional fields into `null`,
- * while absent fields remain absent. The provider cannot distinguish those
- * encoded `undefined` values from explicit `null` values.
+ * Explicit `undefined` fields become `null`, indistinguishable from explicit
+ * `null` values. Absent fields stay absent.
  *
  * **Example** (Triaging a ticket)
  *

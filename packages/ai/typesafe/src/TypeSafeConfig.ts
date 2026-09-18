@@ -1,7 +1,5 @@
 /**
- * The `TypeSafeConfig` module lets a workflow temporarily customize the HTTP
- * client used by `@effect/ai-typesafe` request helpers. The TypeSafe client reads
- * this scoped transform when executing provider calls.
+ * Scoped HTTP client customization for TypeSafe requests.
  *
  * @since 4.0.0
  */
@@ -11,12 +9,7 @@ import { dual } from "effect/Function"
 import type { HttpClient } from "effect/unstable/http/HttpClient"
 
 /**
- * Context service for scoped TypeSafe configuration used by provider operations.
- *
- * **When to use**
- *
- * Use to provide scoped TypeSafe client configuration, such as an HTTP client
- * transform, to TypeSafe provider operations without passing it through each call.
+ * Scoped configuration read when executing TypeSafe requests.
  *
  * @see {@link withClientTransform} for scoping an HTTP client transformation
  *
@@ -28,7 +21,7 @@ export class TypeSafeConfig extends Context.Service<
   TypeSafeConfig.Service
 >()("@effect/ai-typesafe/TypeSafeConfig") {
   /**
-   * Gets the configured TypeSafe service from the current context when present.
+   * Reads the current configuration, if present.
    *
    * @since 4.0.0
    */
@@ -45,8 +38,7 @@ export class TypeSafeConfig extends Context.Service<
  */
 export declare namespace TypeSafeConfig {
   /**
-   * Configuration values read by TypeSafe provider operations when executing
-   * requests.
+   * Per-request HTTP client configuration.
    *
    * @category services
    * @since 4.0.0
@@ -57,24 +49,8 @@ export declare namespace TypeSafeConfig {
 }
 
 /**
- * Provides a scoped transform for the TypeSafe HTTP client used by provider
- * operations.
- *
- * **When to use**
- *
- * Use when you need temporary TypeSafe HTTP client customization for a single
- * effect or workflow without rebuilding the client layer.
- *
- * **Details**
- *
- * Supports both data-first and data-last forms. The transform is stored in the
- * scoped `TypeSafeConfig` service and read by TypeSafe provider operations while
- * running the supplied effect.
- *
- * **Gotchas**
- *
- * If a transform is already present in the scoped config, this helper replaces
- * it. Compose transforms manually when both should apply.
+ * Transforms the TypeSafe HTTP client for requests made by the supplied effect.
+ * Replaces any existing scoped transform; compose them manually to apply both.
  *
  * @category configuration
  * @since 4.0.0
