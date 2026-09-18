@@ -218,6 +218,72 @@ describe("DecisionModel", () => {
     )
   })
 
+  it.effect("derives JSON codecs for nested input before calling the provider", () => {
+    const states: Array<unknown> = []
+    const definition = Decision.make({
+      input: Schema.Struct({
+        amount: Schema.BigInt,
+        createdAt: Schema.Date,
+        priority: Schema.FiniteFromString,
+        values: Schema.Array(Schema.BigInt)
+      }),
+      decisions: TicketTriage.decisions
+    })
+
+    return Effect.gen(function*() {
+      yield* DecisionModel.decide(definition, {
+        input: { amount: 42n, createdAt: new Date("2026-01-01T00:00:00.000Z"), priority: 3, values: [1n, 2n] }
+      })
+
+      assert.deepStrictEqual(states, [{
+        amount: "42",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        priority: "3",
+        values: ["1", "2"]
+      }])
+    }).pipe(Effect.provide(makeLayer(({ state }) => {
+      states.push(state)
+      return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
+    })))
+  })
+
+  it.effect("JSON encoding distinguishes absent optional fields from explicit undefined", () => {
+    const states: Array<unknown> = []
+    const definition = Decision.make({
+      input: Schema.Struct({ note: Schema.optional(Schema.String) }),
+      decisions: TicketTriage.decisions
+    })
+
+    return Effect.gen(function*() {
+      yield* DecisionModel.decide(definition, { input: {} })
+      yield* DecisionModel.decide(definition, { input: { note: undefined } })
+
+      assert.deepStrictEqual(states, [{}, { note: null }])
+    }).pipe(Effect.provide(makeLayer(({ state }) => {
+      states.push(state)
+      return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
+    })))
+  })
+
+  it.effect("JSON codec encoding failures become InvalidUserInputError before the provider runs", () => {
+    let calls = 0
+    const definition = Decision.make({
+      input: Schema.declare<Date>((value): value is Date => value instanceof Date),
+      decisions: TicketTriage.decisions
+    })
+
+    return Effect.gen(function*() {
+      const error = yield* failureOf(DecisionModel.decide(definition, { input: new Date("2026-01-01") }))
+
+      assert.strictEqual(calls, 0)
+      assert.isTrue(AiError.isAiError(error))
+      assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+    }).pipe(Effect.provide(makeLayer(() => {
+      calls++
+      return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
+    })))
+  })
+
   it.effect("input encoding services are resolved from the environment", () => {
     const states: Array<unknown> = []
     const Redacted = Decision.make({

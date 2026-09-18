@@ -214,7 +214,7 @@ describe("DecisionModel", () => {
 
   it("make takes a provider decide returning AiError", () => {
     const provider = (options: DecisionModel.ProviderOptions) => {
-      expect(options.state).type.toBe<unknown>()
+      expect(options.state).type.toBe<Schema.Json>()
       expect(options.decisions).type.toBeAssignableTo<Record<string, Decision.Any>>()
       return Effect.succeed<DecisionModel.ProviderResponse>({
         answers: {},

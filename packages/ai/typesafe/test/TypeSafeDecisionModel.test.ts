@@ -161,7 +161,7 @@ describe("TypeSafeDecisionModel", () => {
       assert.strictEqual(usage.outputTokens, 48)
     }))
 
-  it.effect("omits an explicitly undefined optional input field from JSON state", () =>
+  it.effect("encodes an explicitly undefined optional input field as JSON null", () =>
     Effect.gen(function*() {
       const requests: Array<HttpClientRequest.HttpClientRequest> = []
       const definition = Decision.make({
@@ -180,7 +180,7 @@ describe("TypeSafeDecisionModel", () => {
 
       assert.strictEqual(requests.length, 1)
       const body = yield* getRequestBody(requests[0])
-      assert.deepStrictEqual(body.state, { message: ticket.message })
+      assert.deepStrictEqual(body.state, { message: ticket.message, orderId: null })
       assert.strictEqual(answers.urgent.probability, 0.999)
     }))
 
