@@ -18,9 +18,6 @@ The API used here is currently available from `effect/unstable/arbitrary`. The `
 the ideas are stable, but names, result types, generation policies, and replay format may still change before this
 module is promoted.
 
-If you are upgrading from the earlier Schema arbitrary integration available in `effect@4.0.0-rc.109`, see the
-[migration guide](ARBITRARY-MIGRATION.md).
-
 ## Writing a First Property
 
 Consider the rule “adding zero does not change an integer.” With `@effect/vitest`, we can write it directly:

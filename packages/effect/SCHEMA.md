@@ -35,7 +35,7 @@ Use Schema to:
 11. **Middlewares** — intercept decoding/encoding to provide fallbacks or inject services.
 12. **Advanced topics** — internal type model and type hierarchy (for library authors).
 13. **Integrations** — working examples for TanStack Form and Elysia.
-14. **Migration from v3** — API mapping from Schema v3 to v4.
+14. **[Migration from v3](../../migration/schema.md)** — API mapping from Schema v3 to v4.
 
 ## Runtime Performance
 
