@@ -1,5 +1,36 @@
 # @effect/sql-pg
 
+## 4.0.0-rc.116
+
+### Patch Changes
+
+- [#8215](https://github.com/Effect-TS/effect/pull/8215) [`9367dcb`](https://github.com/Effect-TS/effect/commit/9367dcbeda92c6473e9f2d90377663152b285d08) Thanks @hsyntax! - Preserve the original `SqlError` when a PostgreSQL LISTEN connection fails after registration, allowing `Stream.retry` to acquire a new listener. Intentional scope closure still interrupts consumers.
+  
+  Notification queues returned by `PgClient.listen` and `PgConnection.listen` now carry `SqlError`. Update explicit queue and stream type annotations to include this error.
+
+- [#8200](https://github.com/Effect-TS/effect/pull/8200) [`8feeb3c`](https://github.com/Effect-TS/effect/commit/8feeb3c4cdbd0f2e57fa25bb0d6fe3b9509117db) Thanks @tim-smart! - Support `sslmode=prefer` and `sslmode=allow` by trying TLS first, then plaintext if the server declines `SSLRequest`. Unlike libpq, `allow` also tries TLS first. Explicit `ssl` overrides and certificate verification are unchanged. TLS handshake and certificate failures remain fatal. Cancellation never downgrades a TLS session to plaintext.
+
+- [#8234](https://github.com/Effect-TS/effect/pull/8234) [`4e4a3a6`](https://github.com/Effect-TS/effect/commit/4e4a3a60554b8fa8075cf44cf29f50698e871644) Thanks @tim-smart! - Add structured `startupParameters` and opaque `startupOptions` to connection config, and restore support for URL `options`. Explicit `startupOptions` overrides URL `options`; the startup packet field remains `options`. Send session defaults in every physical connection's startup packet, including pooled replacements, with config validation and documented application-name precedence.
+
+- [#8224](https://github.com/Effect-TS/effect/pull/8224) [`205066a`](https://github.com/Effect-TS/effect/commit/205066a76f6b131cf5889bb655e755b4bbcdd8c4) Thanks @alvarosevilla95! - Support infallible Effect password providers with no service requirements, refreshed per PostgreSQL connection and schema dump.
+
+- [#8241](https://github.com/Effect-TS/effect/pull/8241) [`8ef3fcb`](https://github.com/Effect-TS/effect/commit/8ef3fcbbe7cd75f63114ba19755fad620a1b3c17) Thanks @tim-smart! - Decode `timestamp` and `timestamptz` values, including array elements, as `Date` instead of epoch milliseconds. Their encoders, including `PgTypes.timestamp` and `PgTypes.timestamptz`, accept either form. Precision remains milliseconds.
+  
+  ### Breaking changes
+  
+  - Numeric readers must call `date.getTime()` or restore numeric codecs with `PgTypes.register` or a client `Registry` passed as `types`.
+  - `infinity`, `-infinity` and values outside the JavaScript `Date` range decode to an invalid `Date`. Numeric `±Infinity` still encodes PostgreSQL's sentinels; encoding an invalid `Date` fails with `PgTypes.CodecError`.
+  
+  Date parameters bind as `timestamptz`. Inserting one into a `timestamp` column applies the session `TimeZone`. Use UTC or `PgTypes.timestamp(value)` to preserve its UTC fields. `timestamptz` round trips preserve the instant regardless of session timezone.
+
+- [#8240](https://github.com/Effect-TS/effect/pull/8240) [`fd910d1`](https://github.com/Effect-TS/effect/commit/fd910d1cc6f817ceb677c688d964f4173b3aa0e3) Thanks @tim-smart! - Decode unregistered OIDs as UTF-8 text so scalar enums return string labels.
+  
+  Other binary user-defined types, including enum arrays, may produce garbled text or fail UTF-8 decoding. Decode failures close the connection, failing its pending queries and discarding transactions and `LISTEN` subscriptions; the pool replaces it.
+  
+  Register scalar codecs with `PgTypes.register`. For arrays, use `PgTypes.makeRegistry().register(elementOid, codec, { arrayOid })` and pass the registry as the client's `types` option.
+- Updated dependencies [[`c19c63f`](https://github.com/Effect-TS/effect/commit/c19c63fb710422aaf00b8d923188aa2e52a6776f), [`8cb0a4f`](https://github.com/Effect-TS/effect/commit/8cb0a4f28fba991e15659d08ecc09da28cf742d2), [`8f420bb`](https://github.com/Effect-TS/effect/commit/8f420bb3dc3c9be8c4a48d57dccee201dcb0260d), [`1393080`](https://github.com/Effect-TS/effect/commit/1393080f1cc8f47d459119fcb759e2cc00fd7356), [`ccae354`](https://github.com/Effect-TS/effect/commit/ccae35423188f58d7c3dec5db3e36ed4bf42bcdf), [`553c403`](https://github.com/Effect-TS/effect/commit/553c403f1d9199df738f73446dacd090da2e698b), [`45b5103`](https://github.com/Effect-TS/effect/commit/45b510352d42ac55718f9f5f43573975b323143f), [`77a5612`](https://github.com/Effect-TS/effect/commit/77a56120354d1d3f7341b117266f211143a3734a), [`1076170`](https://github.com/Effect-TS/effect/commit/10761707b5cae0a66ef605abd1737ae59a18f5ac), [`f110af1`](https://github.com/Effect-TS/effect/commit/f110af1ac5a54a7d62c2b96e35d4521a09f3fa06), [`0045152`](https://github.com/Effect-TS/effect/commit/0045152cdf796f20be5e690c69c40da611f813b8), [`51d4a2f`](https://github.com/Effect-TS/effect/commit/51d4a2f08a5c7691dc876415bc9fc0ecf467e153), [`4d4c4e8`](https://github.com/Effect-TS/effect/commit/4d4c4e8a4436d49997a5a7234860ede651467537), [`ccfe152`](https://github.com/Effect-TS/effect/commit/ccfe152d11bed497f2d26aba8ef1a3613d0d6746), [`d30a0c8`](https://github.com/Effect-TS/effect/commit/d30a0c880f8ffe06d7f0695c17f35910f1fcfbc9), [`84fe64a`](https://github.com/Effect-TS/effect/commit/84fe64a5fbfdecd23b66c207d0daa848d59dd825), [`49e4b37`](https://github.com/Effect-TS/effect/commit/49e4b37b831a573567e0b67d3ec4593403dc2e72), [`49e4b37`](https://github.com/Effect-TS/effect/commit/49e4b37b831a573567e0b67d3ec4593403dc2e72), [`a2c4154`](https://github.com/Effect-TS/effect/commit/a2c4154cf8bcbe455bd43bf7f3f12d9cbf38247c), [`23a58c0`](https://github.com/Effect-TS/effect/commit/23a58c020b25dde573ce523c2d157032676de0a3), [`feef90c`](https://github.com/Effect-TS/effect/commit/feef90ccbd86e5ab49b7e3cc3845591e23bdcb1b), [`755e863`](https://github.com/Effect-TS/effect/commit/755e863a793e5621183e7992cb3f85d29030ad7b), [`49e4b37`](https://github.com/Effect-TS/effect/commit/49e4b37b831a573567e0b67d3ec4593403dc2e72), [`9ad9891`](https://github.com/Effect-TS/effect/commit/9ad9891e24058065bcd445772e005f8ce4b3e42f), [`0beded0`](https://github.com/Effect-TS/effect/commit/0beded04f5cffe8dd263f989c38a609e27f27fa5), [`2940742`](https://github.com/Effect-TS/effect/commit/2940742c3f8529bc3b024b379904fbefd40ece55), [`63c1566`](https://github.com/Effect-TS/effect/commit/63c15662f90ae970969de29761207c99ecdbf66b)]:
+  - effect@4.0.0-rc.116
+
 ## 4.0.0-rc.115
 
 ### Patch Changes
