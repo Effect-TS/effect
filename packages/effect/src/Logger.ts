@@ -969,13 +969,21 @@ export const consoleJson: Logger<unknown, void> = withConsoleLog(formatJson)
  *
  * **Details**
  *
- * This logger integrates logging with distributed tracing by recording
- * all log messages as events on the current trace span, making them visible
- * in tracing tools like OpenTelemetry, Jaeger, or Zipkin.
+ * This logger records every log message as an event on the current span.
+ * OpenTelemetry has deprecated that representation: events are now emitted
+ * through the Logs API and correlated to their span by trace and span id.
+ * `OtlpLogger` from `effect/unstable/observability/OtlpLogger`, and
+ * `OtelLogger` from `@effect/opentelemetry`, already stamp both ids onto every
+ * log record, so a log exporter gives the same correlation without span
+ * events.
  *
  * This logger is included in the default set of loggers for all Effect programs,
- * so log messages automatically appear as span events unless you override the
- * default loggers.
+ * so log messages appear as span events unless you override the default
+ * loggers. Installing a log exporter alongside it exports each log twice, once
+ * as a log record and once as a span event.
+ *
+ * Reach for it when a backend renders only events attached to spans, or for
+ * local debugging where the trace is the only sink you read.
  *
  * **Example** (Recording logs as trace span events)
  *
@@ -989,6 +997,11 @@ export const consoleJson: Logger<unknown, void> = withConsoleLog(formatJson)
  * Effect.runSync(program)
  * ```
  *
+ * @deprecated Emit logs through a log exporter instead, such as `OtlpLogger`
+ * from `effect/unstable/observability/OtlpLogger`, which correlates each log
+ * record to its span by trace and span id.
+ * @see https://opentelemetry.io/blog/2026/deprecating-span-events/
+ * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/oteps/4430-span-event-api-deprecation-plan.md
  * @category constructors
  * @since 2.0.0
  */

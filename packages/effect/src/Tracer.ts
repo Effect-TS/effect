@@ -383,6 +383,19 @@ export interface Span {
   readonly kind: SpanKind
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void
   attribute(key: string, value: unknown): void
+  /**
+   * Records an event on this span.
+   *
+   * @deprecated OpenTelemetry has deprecated the Span Event API in favour of
+   * emitting events through the Logs API, correlated to the active span by
+   * trace and span id. New instrumentation should emit a log record instead.
+   * Reading events back off a span, as an exporter does, is unaffected.
+   *
+   * @see https://opentelemetry.io/blog/2026/deprecating-span-events/
+   * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/oteps/4430-span-event-api-deprecation-plan.md
+   *
+   * @since 2.0.0
+   */
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void
   addLinks(links: ReadonlyArray<SpanLink>): void
 }
