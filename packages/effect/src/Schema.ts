@@ -13441,7 +13441,7 @@ export function Redacted<S extends Constraint>(value: S, options?: {
             Effect.mapBothEager(
               SchemaParser.decodeUnknownEffect(value)(Redacted_.value(input), poptions),
               {
-                onSuccess: () => input,
+                onSuccess: (value) => Redacted_.make(value, { label: input.label }),
                 onFailure: () => {
                   return new SchemaIssue.Composite(
                     ast,
