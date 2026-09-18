@@ -1,5 +1,5 @@
 /**
- * Handwritten schemas for OpenRouter's alpha Decisions API.
+ * Schemas for OpenRouter's alpha Decisions API.
  *
  * @since 4.0.0
  */
@@ -55,7 +55,7 @@ export const DecisionsQuestion = Schema.Union([
 ])
 
 /**
- * An upstream answer. Distributions and confidence may be absent upstream.
+ * A provider answer with optional probabilities and confidence.
  *
  * @category schemas
  * @since 4.0.0
@@ -78,8 +78,7 @@ export const Answer = Schema.Union([
 ])
 
 /**
- * Request body for the alpha Decisions endpoint. Trace is an observability
- * metadata object, not a boolean flag.
+ * Request body for the alpha Decisions endpoint.
  *
  * @category schemas
  * @since 4.0.0

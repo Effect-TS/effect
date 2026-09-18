@@ -13,7 +13,7 @@ import { OpenRouterClient } from "./OpenRouterClient.ts"
 import type * as OpenRouterSchema from "./OpenRouterSchema.ts"
 
 /**
- * Request defaults, overridden by the Config service at call time.
+ * Request options that override model defaults at call time.
  *
  * @category services
  * @since 4.0.0
@@ -39,9 +39,8 @@ export const model = (
   Model.make("openrouter", model, layer({ model, config }))
 
 /**
- * Creates a decision service. Missing choice or score distributions fail with
- * InvalidOutputError; score indices are mapped to the requested criteria.
- * Provider-only cost, id, and provider metadata are not returned.
+ * Creates a decision service that requires full choice and score distributions.
+ * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
  *
  * @category constructors
  * @since 4.0.0

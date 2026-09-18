@@ -1,8 +1,6 @@
 /**
- * The `OpenRouterClient` module provides an Effect service for calling
- * OpenRouter's chat completions and alpha Decisions APIs. It wraps the generated OpenRouter HTTP
- * client with Effect-native constructors, layers, authentication and optional
- * site ranking headers, typed errors, and streaming support.
+ * HTTP client for OpenRouter's chat completions and alpha Decisions APIs,
+ * with authentication, site ranking headers, typed errors, and chat streaming.
  *
  * @since 4.0.0
  */
@@ -152,10 +150,6 @@ export type Options = {
 /**
  * Creates an OpenRouter client service from explicit options.
  *
- * **When to use**
- *
- * Use when you need the OpenRouter client service value inside an effect.
- *
  * **Details**
  *
  * The returned service uses the current `HttpClient`, prepends `apiUrl` or
@@ -163,11 +157,8 @@ export type Options = {
  * `HTTP-Referer` and `X-Title` headers, accepts JSON responses, and applies
  * `transformClient` when provided.
  *
- * **Gotchas**
- *
  * Scoped `OpenRouterConfig.withClientTransform` applies to generated client
- * request methods and alpha Decisions requests. Streaming chat completion requests are sent directly by this
- * module and do not read that scoped transform.
+ * methods and alpha Decisions requests, but not streaming chat completions.
  *
  * @see {@link layer} for providing this client from explicit options
  * @see {@link layerConfig} for loading client settings from `Config`
@@ -196,8 +187,7 @@ export const make = Effect.fnUntraced(
     const httpClient = makeHttpClient(options.apiUrl ?? "https://openrouter.ai/api/v1")
     const httpClientOk = HttpClient.filterStatusOk(httpClient)
 
-    // Alpha decisions live beside /api/v1, not underneath it. Preserve custom
-    // proxy prefixes while replacing the trailing versioned API path.
+    // Remove the version suffix for alpha requests, preserving proxy prefixes.
     const decisionsClient = makeHttpClient(
       (options.apiUrl ?? "https://openrouter.ai/api/v1").replace(/\/v1\/?$/, "")
     )
