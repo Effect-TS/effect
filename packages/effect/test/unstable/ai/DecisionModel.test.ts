@@ -159,6 +159,38 @@ describe("DecisionModel", () => {
       Effect.provide(succeedWith(triageAnswers, { inputTokens: 12, outputTokens: undefined }))
     ))
 
+  it.effect("classify and rate retain distributions when the provider omits confidence", () =>
+    Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+
+      assert.deepStrictEqual(answers.department, {
+        label: "billing",
+        probabilities: { billing: 0.8, technical: 0.15, sales: 0.05 }
+      })
+      assert.isFalse("confidence" in answers.department)
+
+      assert.deepStrictEqual(answers.frustration, {
+        rating: 1.4,
+        label: "frustrated",
+        probabilities: { calm: 0.1, frustrated: 0.5, angry: 0.4 }
+      })
+      assert.isFalse("confidence" in answers.frustration)
+    }).pipe(
+      Effect.provide(succeedWith({
+        department: {
+          _tag: "Classify",
+          label: "billing",
+          probabilities: { billing: 0.8, technical: 0.15, sales: 0.05 }
+        },
+        frustration: {
+          _tag: "Rate",
+          rating: 1.4,
+          probabilities: { calm: 0.1, frustrated: 0.5, angry: 0.4 }
+        },
+        urgent: triageAnswers.urgent
+      }))
+    ))
+
   it.effect("the service exposes the same decide operation", () =>
     Effect.gen(function*() {
       const model = yield* DecisionModel.DecisionModel
