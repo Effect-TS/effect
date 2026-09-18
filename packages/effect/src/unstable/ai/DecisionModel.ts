@@ -3,7 +3,7 @@
  *
  * A `DecisionModel` answers a fixed set of decisions about one input in a
  * single provider call. Decisions are declared ahead of time with `Decision`
- * and answered with `decide`, which encodes the input through its schema,
+ * and answered with `decide`, which encodes the input through its JSON codec,
  * hands the encoded value and the decisions to the provider, validates the
  * provider's answers against the definition, and represents failures as
  * `AiError` values. This module includes the service, usage metadata, the
@@ -96,7 +96,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  *
  * **Details**
  *
- * `state` is the input encoded through the definition's schema, passed as is.
+ * `state` is the input encoded through `Schema.toCodecJson` of the definition's
+ * input schema, passed as a JSON value without stringifying it.
  * `decisions` is the definition's decision map, so every decision is answered
  * in one call.
  *
@@ -104,7 +105,7 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * @since 4.0.0
  */
 export interface ProviderOptions {
-  readonly state: unknown
+  readonly state: Schema.Json
   readonly decisions: Record<string, Decision.Any>
 }
 
@@ -301,7 +302,7 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * **Details**
  *
- * The returned service encodes the input through the definition's schema,
+ * The returned service encodes the input through the definition's JSON codec,
  * passes the encoded value and the decision map to the provider in one call,
  * and validates every answer against its decision before returning it.
  *
@@ -331,7 +332,7 @@ export const make = (params: {
         definition: Decision.Definition<Input, Decisions>,
         options: DecideOptions<Input>
       ): Effect.Effect<DecideResponse<Decisions>, AiError.AiError, Input["EncodingServices"]> =>
-        Schema.encodeEffect(definition.input)(options.input).pipe(
+        Schema.encodeEffect(Schema.toCodecJson(definition.input))(options.input).pipe(
           Effect.mapError((error) =>
             AiError.make({
               module: "DecisionModel",
@@ -362,8 +363,8 @@ export const make = (params: {
  *
  * **Details**
  *
- * The input is encoded through the definition's schema, so any encoding
- * services the schema needs are part of the requirements.
+ * The input is encoded through `Schema.toCodecJson` of the definition's input
+ * schema, so any encoding services the schema needs are part of the requirements.
  *
  * **Example** (Triaging a ticket)
  *
