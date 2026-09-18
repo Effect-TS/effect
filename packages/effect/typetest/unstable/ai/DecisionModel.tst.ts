@@ -94,7 +94,8 @@ describe("Decision", () => {
     })
     const wide = DecisionModel.decide(Wide, { input: "text" })
 
-    type WideAnswers = typeof wide extends Effect.Effect<infer A, any, any> ? A["answers"] : never
+    type WideSuccess = typeof wide extends Effect.Effect<infer A, any, any> ? A : never
+    type WideAnswers = WideSuccess["answers"]
 
     expect<WideAnswers["level"]["label"]>().type.toBe<string>()
   })
