@@ -76,8 +76,18 @@ export const mapHttpClientError = Effect.fnUntraced(
           requestId: response.headers["x-typesafe-request-id"]
         })
         if (response.status === 429) {
-          reason = new AiError.RateLimitError({ retryAfter: retryAfter(response.headers), http })
-        } else if (response.status === 404 || response.status === 409 || response.status === 422) {
+          reason = new AiError.RateLimitError({
+            retryAfter: retryAfter(response.headers),
+            http,
+            metadata: {
+              typesafe: {
+                requestId: response.headers["x-typesafe-request-id"] ?? null,
+                errorCode: details?.code ?? null,
+                errorType: details?.type ?? null
+              }
+            }
+          })
+        } else if (response.status === 404 || response.status === 422) {
           reason = new AiError.InvalidRequestError({ description, http })
         } else {
           reason = AiError.reasonFromHttpStatus({ status: response.status, description, http })

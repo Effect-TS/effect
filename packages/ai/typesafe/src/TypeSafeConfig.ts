@@ -1,7 +1,7 @@
 /**
  * The `TypeSafeConfig` module lets a workflow temporarily customize the HTTP
- * client used by `@effect/ai-typesafe` request helpers. TypeSafe client code read this scoped transform when they execute
- * provider calls.
+ * client used by `@effect/ai-typesafe` request helpers. The TypeSafe client reads
+ * this scoped transform when executing provider calls.
  *
  * @since 4.0.0
  */

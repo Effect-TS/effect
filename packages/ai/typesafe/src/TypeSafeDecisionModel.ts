@@ -5,7 +5,6 @@
  */
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import * as DecisionModel from "effect/unstable/ai/DecisionModel"
 import * as AiModel from "effect/unstable/ai/Model"
@@ -45,15 +44,6 @@ export const make = Effect.fnUntraced(
     const client = yield* TypeSafeClient
     return yield* DecisionModel.make({
       decide: Effect.fnUntraced(function*({ state, decisions }) {
-        const encodedState = yield* Schema.decodeUnknownEffect(Schema.Json)(state).pipe(
-          Effect.mapError((error) =>
-            AiError.make({
-              module: "TypeSafeDecisionModel",
-              method: "decide",
-              reason: new AiError.InvalidUserInputError({ description: error.message })
-            })
-          )
-        )
         const questions: Record<string, typeof TypeSafeSchema.Question.Type> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           switch (decision._tag) {
@@ -68,7 +58,7 @@ export const make = Effect.fnUntraced(
               break
           }
         }
-        const response = yield* client.systemOne({ model: options.model, state: encodedState, questions })
+        const response = yield* client.systemOne({ model: options.model, state, questions })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           const answer = Object.hasOwn(response.answers, key) ? response.answers[key] : undefined
@@ -89,7 +79,7 @@ export const make = Effect.fnUntraced(
         }
         return {
           answers,
-          usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
+          usage: { inputTokens: response.usage?.input_tokens, outputTokens: response.usage?.output_tokens }
         }
       })
     })

@@ -57,7 +57,7 @@ export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestio
  */
 export const SystemOneRequest = Schema.Struct({
   model: Schema.String,
-  state: Schema.Json,
+  state: Schema.Unknown,
   questions: Schema.Record(Schema.String, Question)
 })
 
@@ -113,7 +113,10 @@ export const Answer = Schema.Union([ChoiceAnswer, ScoreAnswer, NoulAnswer])
 export const SystemOneResponse = Schema.Struct({
   model: Schema.String,
   answers: Schema.Record(Schema.String, Answer),
-  usage: Schema.Struct({ input_tokens: Schema.Number, output_tokens: Schema.Number })
+  usage: Schema.optional(Schema.Struct({
+    input_tokens: Schema.optional(Schema.Number),
+    output_tokens: Schema.optional(Schema.Number)
+  }))
 })
 
 /**
@@ -123,5 +126,9 @@ export const SystemOneResponse = Schema.Struct({
  * @since 4.0.0
  */
 export const ListModelsResponse = Schema.Struct({
-  models: Schema.Array(Schema.Struct({ name: Schema.String, description: Schema.String, release_date: Schema.String }))
+  models: Schema.Array(Schema.Struct({
+    name: Schema.String,
+    description: Schema.optional(Schema.String),
+    release_date: Schema.optional(Schema.String)
+  }))
 })
