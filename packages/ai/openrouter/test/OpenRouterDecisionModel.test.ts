@@ -102,7 +102,8 @@ describe("OpenRouterDecisionModel", () => {
                     probabilities: { [key]: 0.75, ordinary: 0.25 },
                     confidence: 0.5
                   }
-                }
+                },
+                usage: { input_tokens: 10, output_tokens: 5 }
               })
             })
           ))
@@ -142,7 +143,8 @@ describe("OpenRouterDecisionModel", () => {
                     probabilities: { "0": 0.1, "1": 0.7, "2": 0.2 },
                     confidence: 0.5
                   }
-                }
+                },
+                usage: { input_tokens: 10, output_tokens: 5 }
               })
             })
           ))
