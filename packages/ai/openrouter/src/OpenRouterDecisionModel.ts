@@ -64,7 +64,7 @@ export const make = Effect.fnUntraced(function*(options: {
           })
         })
       }
-      const questions: Record<string, typeof OpenRouterSchema.DecisionsQuestion.Encoded> = {}
+      const questions: Record<string, typeof OpenRouterSchema.DecisionsQuestion.Encoded> = Object.create(null)
       for (const [key, decision] of Object.entries(decisions)) {
         switch (decision._tag) {
           case "Classify":
@@ -79,7 +79,7 @@ export const make = Effect.fnUntraced(function*(options: {
         }
       }
       const [response] = yield* client.createDecisions({ ...yield* config, model: options.model, state, questions })
-      const answers: Record<string, DecisionModel.ProviderAnswer> = {}
+      const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
       for (const [key, answer] of Object.entries(response.answers)) {
         if (answer.type === "noul") {
           answers[key] = { _tag: "Probability", probability: answer.noul }
@@ -103,7 +103,7 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         } else {
           const decision = decisions[key]
-          const probabilities: Record<string, number> = {}
+          const probabilities: Record<string, number> = Object.create(null)
           if (decision?._tag === "Rate") {
             for (const [index, label] of decision.criteria.entries()) {
               const probability = answer.probabilities[String(index)]

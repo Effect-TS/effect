@@ -189,7 +189,7 @@ const validateDistribution = (
   if (!Predicate.isObject(raw)) {
     return invalidOutput(`Provider returned no probabilities for decision "${key}"`)
   }
-  const probabilities: Record<string, number> = {}
+  const probabilities: Record<string, number> = Object.create(null)
   let total = 0
   for (const label of labels) {
     const value = raw[label]
@@ -280,7 +280,7 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
   decisions: Decisions,
   answers: Readonly<Record<string, ProviderAnswer>>
 ): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
-  const validated: Record<string, Decision.Answer<Decision.Any>> = {}
+  const validated: Record<string, Decision.Answer<Decision.Any>> = Object.create(null)
   for (const key of Object.keys(decisions)) {
     const answer = validateAnswer(key, decisions[key], answers[key])
     if (AiError.isAiError(answer)) {
