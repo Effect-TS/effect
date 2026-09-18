@@ -10155,50 +10155,6 @@ export interface BigDecimal extends declare<BigDecimal_.BigDecimal> {
   readonly "Rebuild": BigDecimal
 }
 const BigDecimalString = String.annotate({ expected: "a string that will be decoded as a BigDecimal" })
-const arbitraryBigDecimalMaxScale = 20
-function bigIntArbitrarySchema(minimum: bigint | undefined, maximum: bigint | undefined): Codec<bigint> {
-  if (minimum !== undefined && maximum !== undefined) {
-    return BigInt.check(isBetweenBigInt({ minimum, maximum }))
-  }
-  if (minimum !== undefined) return BigInt.check(isGreaterThanOrEqualToBigInt(minimum))
-  if (maximum !== undefined) return BigInt.check(isLessThanOrEqualToBigInt(maximum))
-  return BigInt
-}
-function bigDecimalValueAtScale(value: BigDecimal_.BigDecimal, scale: number): bigint {
-  return value.value * globalThis.BigInt(10) ** globalThis.BigInt(scale - value.scale)
-}
-function bigDecimalArbitrarySchema(
-  constraint: Annotations.ToArbitrary.GenerationConstraint<BigDecimal_.BigDecimal> | undefined
-): Codec<{ readonly value: bigint; readonly scale: number }> {
-  if (constraint?.minimum === undefined && constraint?.maximum === undefined) {
-    return Struct({
-      value: BigInt,
-      scale: Int.check(isBetween({ minimum: 0, maximum: arbitraryBigDecimalMaxScale }))
-    })
-  }
-  const scale = Math.max(
-    arbitraryBigDecimalMaxScale,
-    constraint.minimum?.scale ?? 0,
-    constraint.maximum?.scale ?? 0,
-    constraint.exclusiveMinimum === true && constraint.minimum !== undefined ? constraint.minimum.scale + 1 : 0,
-    constraint.exclusiveMaximum === true && constraint.maximum !== undefined ? constraint.maximum.scale + 1 : 0
-  )
-  const minimum = constraint.minimum === undefined
-    ? undefined
-    : bigDecimalValueAtScale(constraint.minimum, scale) +
-      (constraint.exclusiveMinimum === true ? globalThis.BigInt(1) : globalThis.BigInt(0))
-  const maximum = constraint.maximum === undefined
-    ? undefined
-    : bigDecimalValueAtScale(constraint.maximum, scale) -
-      (constraint.exclusiveMaximum === true ? globalThis.BigInt(1) : globalThis.BigInt(0))
-  if (minimum !== undefined && maximum !== undefined && minimum > maximum) {
-    return Struct({
-      value: BigInt,
-      scale: Int.check(isBetween({ minimum: 0, maximum: arbitraryBigDecimalMaxScale }))
-    })
-  }
-  return Struct({ value: bigIntArbitrarySchema(minimum, maximum), scale: Literal(scale) })
-}
 /**
  * Schema for `BigDecimal` values.
  *
@@ -10231,11 +10187,6 @@ export const BigDecimal: BigDecimal = declare(
       importDeclarations: [`import * as BigDecimal from "effect/BigDecimal"`]
     }),
     expected: "BigDecimal",
-    toCodecArbitrary: ({ constraint }) =>
-      linkDecoding<BigDecimal_.BigDecimal>()(
-        bigDecimalArbitrarySchema(constraint),
-        SchemaGetter.transform(({ scale, value }) => BigDecimal_.make(value, scale))
-      ),
     toCodecJson: () =>
       link<BigDecimal_.BigDecimal>()(
         BigDecimalString,
