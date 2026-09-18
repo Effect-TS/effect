@@ -2845,6 +2845,9 @@ Expected a value between -2147483648 and 2147483647`
 
       const decoding = asserts.decoding()
       await decoding.succeed(Redacted.make("123"), Redacted.make(123))
+      const decoded = Schema.decodeUnknownSync(schema)(Redacted.make("123", { label: "secret" }))
+      strictEqual(Redacted.value(decoded), 123)
+      strictEqual(decoded.label, "secret")
       await decoding.fail(null, `Expected Redacted`)
       await decoding.fail(
         Redacted.make(null),
@@ -2864,6 +2867,9 @@ Expected a value between -2147483648 and 2147483647`
 
       const encoding = asserts.encoding()
       await encoding.succeed(Redacted.make(123), Redacted.make("123"))
+      const encoded = Schema.encodeSync(schema)(Redacted.make(123, { label: "secret" }))
+      strictEqual(Redacted.value(encoded), "123")
+      strictEqual(encoded.label, "secret")
       await encoding.fail(null, `Expected Redacted`)
       await encoding.fail(
         Redacted.make(null),
