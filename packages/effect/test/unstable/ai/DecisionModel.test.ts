@@ -144,7 +144,7 @@ describe("DecisionModel", () => {
         assert.deepStrictEqual(probabilities, { low: 0.1, [key]: 0.7, high: 0.2 })
         assert.strictEqual(label, key)
         assert.strictEqual(rating, 1.1)
-        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), null)
       }).pipe(Effect.provide(succeedWith({
         intensity: { _tag: "Rate", rating: 1.1, probabilities: { low: 0.1, [key]: 0.7, high: 0.2 } }
       })))
@@ -164,7 +164,7 @@ describe("DecisionModel", () => {
       return Effect.gen(function*() {
         const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
 
-        assert.strictEqual(Object.getPrototypeOf(answers), Object.prototype)
+        assert.strictEqual(Object.getPrototypeOf(answers), null)
         assert.isTrue(Object.hasOwn(answers, key))
         assert.isTrue(Object.getOwnPropertyDescriptor(answers, key)?.enumerable)
         assert.deepStrictEqual(Object.keys(answers), [key])
@@ -187,7 +187,7 @@ describe("DecisionModel", () => {
         const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
         const probabilities = answers.category.probabilities
 
-        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), null)
         assert.isTrue(Object.hasOwn(probabilities, key))
         assert.isTrue(Object.getOwnPropertyDescriptor(probabilities, key)?.enumerable)
         assert.deepStrictEqual(Object.keys(probabilities), [key, "ordinary"])

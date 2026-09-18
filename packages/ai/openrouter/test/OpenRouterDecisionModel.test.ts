@@ -115,7 +115,7 @@ describe("OpenRouterDecisionModel", () => {
         assert.deepStrictEqual(Object.keys(probabilities), [key, "ordinary"])
         assert.deepStrictEqual(probabilities, { [key]: 0.75, ordinary: 0.25 })
         assert.strictEqual(label, key)
-        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), null)
       }))
 
     it.effect("maps a score distribution to a rate level named " + key, () =>
@@ -157,7 +157,7 @@ describe("OpenRouterDecisionModel", () => {
         assert.deepStrictEqual(probabilities, { low: 0.1, [key]: 0.7, high: 0.2 })
         assert.strictEqual(label, key)
         assert.strictEqual(rating, 1.1)
-        assert.strictEqual(Object.getPrototypeOf(probabilities), Object.prototype)
+        assert.strictEqual(Object.getPrototypeOf(probabilities), null)
       }))
 
     it.effect("sends an own enumerable question named " + key, () =>
@@ -196,7 +196,7 @@ describe("OpenRouterDecisionModel", () => {
           ))
         )
 
-        assert.strictEqual(Object.getPrototypeOf(answers), Object.prototype)
+        assert.strictEqual(Object.getPrototypeOf(answers), null)
         assert.isTrue(Object.hasOwn(answers, key))
         assert.isTrue(Object.getOwnPropertyDescriptor(answers, key)?.enumerable)
         assert.deepStrictEqual(Object.keys(answers), [key])
