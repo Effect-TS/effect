@@ -1,8 +1,8 @@
-import { OpenRouterClient, OpenRouterDecisionModel } from "@effect/ai-openrouter"
+import { OpenRouterClient, OpenRouterConfig, OpenRouterDecisionModel } from "@effect/ai-openrouter"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
 import { Decision, DecisionModel, Model } from "effect/unstable/ai"
-import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 const Ticket = Schema.Struct({
   message: Schema.String,
@@ -68,6 +68,81 @@ const decisionsResponse = {
 }
 
 describe("OpenRouterDecisionModel", () => {
+  for (
+    const apiUrl of [
+      "https://proxy.test/openrouter/v1",
+      "https://proxy.test/openrouter/v1/",
+      "https://proxy.test/openrouter",
+      "https://proxy.test/openrouter/"
+    ]
+  ) {
+    it.effect("resolves the alpha endpoint for " + apiUrl, () =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+          Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+          Effect.provide(makeClientLayer((request) => {
+            requests.push(request)
+            return Effect.succeed(jsonResponse(request, decisionsResponse))
+          }, apiUrl))
+        )
+        assert.strictEqual(requests.length, 1)
+        assert.strictEqual(requests[0].url, "https://proxy.test/openrouter/alpha/decisions")
+      }))
+  }
+
+  it.effect("applies a scoped client transform only to the enclosed decisions request", () =>
+    Effect.gen(function*() {
+      const requests: Array<HttpClientRequest.HttpClientRequest> = []
+      yield* Effect.gen(function*() {
+        yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+          OpenRouterConfig.withClientTransform(
+            HttpClient.mapRequest(HttpClientRequest.setHeader("x-decision-scope", "scoped"))
+          )
+        )
+        yield* DecisionModel.decide(TicketTriage, { input: ticket })
+      }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer((request) => {
+          requests.push(request)
+          return Effect.succeed(jsonResponse(request, decisionsResponse))
+        }))
+      )
+      assert.strictEqual(requests.length, 2)
+      assert.strictEqual(requests[0].headers["x-decision-scope"], "scoped")
+      assert.isUndefined(requests[1].headers["x-decision-scope"])
+    }))
+
+  it.effect("rejects numeric state before making an HTTP request", () =>
+    Effect.gen(function*() {
+      const definition = Decision.make({ input: Schema.Number, decisions: TicketTriage.decisions })
+      const error = yield* DecisionModel.decide(definition, { input: 42 }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer(() => Effect.die(new Error("Unexpected HTTP request")))),
+        Effect.flip
+      )
+      assert.strictEqual(error._tag, "AiError")
+      assert.strictEqual(error.reason._tag, "InvalidUserInputError")
+    }))
+
+  it.effect("maps a malformed successful response to a client InvalidOutputError", () =>
+    Effect.gen(function*() {
+      const error = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            ...decisionsResponse,
+            usage: { input_tokens: "not a number", output_tokens: 48 }
+          }))
+        )),
+        Effect.flip
+      )
+      assert.strictEqual(error._tag, "AiError")
+      assert.strictEqual(error.module, "OpenRouterClient")
+      assert.strictEqual(error.method, "createDecisions")
+      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+    }))
+
   it.effect("make constructs a DecisionModel service", () =>
     Effect.gen(function*() {
       const service = yield* OpenRouterDecisionModel.make({ model: "test/decision-model" })
@@ -476,9 +551,11 @@ describe("OpenRouterDecisionModel", () => {
 const makeClientLayer = (
   handler: (
     request: HttpClientRequest.HttpClientRequest
-  ) => Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
+  ) => Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>,
+  apiUrl?: string
 ) =>
   OpenRouterClient.layer({
+    apiUrl,
     apiKey: Redacted.make("or-test-key"),
     siteReferrer: "https://example.com",
     siteTitle: "Decision contract tests"
