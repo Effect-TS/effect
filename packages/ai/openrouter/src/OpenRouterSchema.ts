@@ -86,12 +86,12 @@ export const Answer = Schema.Union([
  */
 export const DecisionsRequest = Schema.Struct({
   model: Schema.String,
-  state: Schema.Union([Schema.String, Schema.Record(Schema.String, Schema.Json), Schema.Array(Schema.Json)]),
+  state: Schema.Unknown,
   questions: Schema.Record(Schema.String, DecisionsQuestion),
   provider: Schema.optional(Generated.ProviderPreferences),
   session_id: Schema.optional(Schema.String),
   user: Schema.optional(Schema.String),
-  trace: Schema.optional(Schema.Record(Schema.String, Schema.Json))
+  trace: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
 })
 
 /**
