@@ -78,10 +78,15 @@ describe("OpenRouterDecisionModel", () => {
     Effect.gen(function*() {
       const requests: Array<HttpClientRequest.HttpClientRequest> = []
       yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
-        Effect.provideService(OpenRouterDecisionModel.Config, { user: "scoped-user", trace: false }),
+        Effect.provideService(OpenRouterDecisionModel.Config, { user: "scoped-user", trace: { trace_id: "scoped" } }),
         Effect.provide(OpenRouterDecisionModel.layer({
           model: "test/decision-model",
-          config: { provider: { order: ["test-provider"] }, session_id: "session-1", user: "default-user", trace: true }
+          config: {
+            provider: { order: ["test-provider"] },
+            session_id: "session-1",
+            user: "default-user",
+            trace: { trace_id: "default" }
+          }
         })),
         Effect.provide(makeClientLayer((request) => {
           requests.push(request)
@@ -92,7 +97,7 @@ describe("OpenRouterDecisionModel", () => {
       assert.deepStrictEqual(body.provider, { order: ["test-provider"] })
       assert.strictEqual(body.session_id, "session-1")
       assert.strictEqual(body.user, "scoped-user")
-      assert.strictEqual(body.trace, false)
+      assert.deepStrictEqual(body.trace, { trace_id: "scoped" })
     }))
 
   it.effect("accepts absent confidence, cost, id and provider without inventing values", () =>
@@ -112,7 +117,7 @@ describe("OpenRouterDecisionModel", () => {
       assert.isUndefined(answers.frustration.confidence)
       assert.strictEqual(answers.frustration.label, "Very angry, strong language")
       assert.strictEqual(answers.urgent.probability, 0.999)
-      assert.deepStrictEqual(usage, { inputTokens: 312, outputTokens: 48 })
+      assert.deepStrictEqual({ ...usage }, { inputTokens: 312, outputTokens: 48 })
     }))
 
   it.effect("drops provider-specific cost, id and provider metadata", () =>
@@ -128,7 +133,7 @@ describe("OpenRouterDecisionModel", () => {
           }))
         ))
       )
-      assert.deepStrictEqual(result.usage, { inputTokens: 312, outputTokens: 48 })
+      assert.deepStrictEqual({ ...result.usage }, { inputTokens: 312, outputTokens: 48 })
       assert.isFalse("id" in result)
       assert.isFalse("provider" in result)
       assert.isFalse("cost" in result.answers.department)
