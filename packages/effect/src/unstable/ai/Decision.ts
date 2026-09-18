@@ -122,7 +122,8 @@ export interface ClassifyAnswer<Label extends string> {
  * **Details**
  *
  * `rating` is the probability-weighted position on the scale and may fall
- * between two levels. `label` is the level with the highest probability.
+ * between two levels, within `[0, criteria.length - 1]`. `label` is the level
+ * with the highest probability, choosing the first criteria entry on ties.
  *
  * @category models
  * @since 4.0.0
@@ -182,6 +183,10 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
 /**
  * Creates a classification decision from labelled criteria.
  *
+ * **Gotchas**
+ *
+ * At least two labels are required. Fewer labels throw at construction time.
+ *
  * **Example** (Choosing a department)
  *
  * ```ts
@@ -206,19 +211,24 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
 export const classify = <Label extends string>(options: {
   readonly instructions: string
   readonly criteria: { readonly [L in Label]: string }
-}): Classify<Label> => ({
-  _tag: "Classify",
-  instructions: options.instructions,
-  criteria: options.criteria
-})
+}): Classify<Label> => {
+  if (Object.keys(options.criteria).length < 2) {
+    throw new Error("Decision.classify: criteria must contain at least two labels")
+  }
+  return {
+    _tag: "Classify",
+    instructions: options.instructions,
+    criteria: options.criteria
+  }
+}
 
 /**
  * Creates a rating decision from an ordered list of criteria.
  *
  * **Gotchas**
  *
- * The scale needs at least two levels. Fewer levels throw at construction
- * time.
+ * The scale needs at least two distinct levels. Fewer levels or duplicate
+ * levels throw at construction time.
  *
  * **Example** (Rating frustration)
  *
@@ -242,6 +252,9 @@ export const rate = <const Level extends string>(options: {
 }): Rate<Level> => {
   if (options.criteria.length < 2) {
     throw new Error("Decision.rate: criteria must contain at least two levels")
+  }
+  if (new Set(options.criteria).size !== options.criteria.length) {
+    throw new Error("Decision.rate: criteria must contain distinct levels")
   }
   return {
     _tag: "Rate",

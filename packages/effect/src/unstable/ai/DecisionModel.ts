@@ -122,12 +122,16 @@ export interface ProviderClassifyAnswer {
 /**
  * Provider answer for a rate decision.
  *
+ * **Details**
+ *
+ * The core derives the label from the highest probability, choosing the
+ * first criteria entry on ties.
+ *
  * @category models
  * @since 4.0.0
  */
 export interface ProviderRateAnswer {
   readonly rating: number
-  readonly label: string
   readonly probabilities: Readonly<Record<string, number>>
   readonly confidence: number
 }
@@ -206,12 +210,17 @@ const validateDistribution = (
     return invalidOutput(`Provider returned no probabilities for decision "${key}"`)
   }
   const probabilities: Record<string, number> = {}
+  let total = 0
   for (const label of labels) {
     const value = raw[label]
     if (!isUnitInterval(value)) {
       return invalidOutput(`Provider returned no probability for label "${label}" of decision "${key}"`)
     }
     probabilities[label] = value
+    total += value
+  }
+  if (Math.abs(total - 1) > 1e-6) {
+    return invalidOutput(`Provider returned probabilities that do not sum to 1 for decision "${key}"`)
   }
   return probabilities
 }
@@ -230,8 +239,8 @@ const validateAnswer = (
       if (typeof answer.label !== "string" || !labels.includes(answer.label)) {
         return invalidOutput(`Provider returned an unknown label for decision "${key}"`)
       }
-      if (!isFiniteNumber(answer.confidence)) {
-        return invalidOutput(`Provider returned no confidence for decision "${key}"`)
+      if (!isUnitInterval(answer.confidence)) {
+        return invalidOutput(`Provider returned confidence outside [0, 1] for decision "${key}"`)
       }
       const probabilities = validateDistribution(key, labels, answer)
       if (AiError.isAiError(probabilities)) {
@@ -241,20 +250,23 @@ const validateAnswer = (
     }
     case "Rate": {
       const levels = decision.criteria
-      if (!isFiniteNumber(answer.rating)) {
-        return invalidOutput(`Provider returned no rating for decision "${key}"`)
+      if (!isFiniteNumber(answer.rating) || answer.rating < 0 || answer.rating > levels.length - 1) {
+        return invalidOutput(`Provider returned a rating outside [0, ${levels.length - 1}] for decision "${key}"`)
       }
-      if (typeof answer.label !== "string" || !levels.includes(answer.label)) {
-        return invalidOutput(`Provider returned an unknown label for decision "${key}"`)
-      }
-      if (!isFiniteNumber(answer.confidence)) {
-        return invalidOutput(`Provider returned no confidence for decision "${key}"`)
+      if (!isUnitInterval(answer.confidence)) {
+        return invalidOutput(`Provider returned confidence outside [0, 1] for decision "${key}"`)
       }
       const probabilities = validateDistribution(key, levels, answer)
       if (AiError.isAiError(probabilities)) {
         return probabilities
       }
-      return { rating: answer.rating, label: answer.label, probabilities, confidence: answer.confidence }
+      let label = levels[0]
+      for (let i = 1; i < levels.length; i++) {
+        if (probabilities[levels[i]] > probabilities[label]) {
+          label = levels[i]
+        }
+      }
+      return { rating: answer.rating, label, probabilities, confidence: answer.confidence }
     }
     case "Probability": {
       if (!isUnitInterval(answer.probability)) {
@@ -297,8 +309,10 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * **Gotchas**
  *
  * Provider answers must cover every decision and use the definition's labels.
- * A missing answer, an unknown label, an incomplete distribution, or a
- * probability outside `[0, 1]` fails with `AiError.InvalidOutputError`. Input
+ * Distributions must sum to 1 within `1e-6`. Confidence must be in `[0, 1]`,
+ * and ratings must be in `[0, criteria.length - 1]`. A missing answer, an
+ * unknown classify label, an invalid distribution, or an out-of-range value
+ * fails with `AiError.InvalidOutputError`. Input
  * encoding failures fail with `AiError.InvalidUserInputError`.
  *
  * @see {@link DecisionModel} for the service shape returned by this constructor
