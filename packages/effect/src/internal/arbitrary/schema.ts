@@ -1,3 +1,4 @@
+import * as BigDecimal from "../../BigDecimal.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import { identity } from "../../Function.ts"
@@ -14,6 +15,8 @@ import { effectIsExit } from "../effect.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import { sample as arraySample } from "./array.ts"
+import * as BigDecimalArbitrary from "./bigDecimal.ts"
+import * as BigIntArbitrary from "./bigInt.ts"
 import * as Model from "./model.ts"
 import * as Regexp from "./regexp.ts"
 
@@ -934,64 +937,6 @@ function numberSample(
   )
 }
 
-interface BigIntShrink {
-  readonly value: bigint
-  readonly context: bigint | undefined
-}
-
-function shrinkBigInt(current: bigint, target: bigint, tryTargetAsap: boolean): ReadonlyArray<BigIntShrink> {
-  const out: Array<BigIntShrink> = []
-  const realGap = current - target
-  let previous = tryTargetAsap ? undefined : target
-  for (
-    let toRemove = tryTargetAsap ? realGap : realGap / BigInt(2);
-    toRemove !== BigInt(0);
-    toRemove /= BigInt(2)
-  ) {
-    const value = current - toRemove
-    out.push({ value, context: previous })
-    previous = value
-  }
-  return out
-}
-
-function bigIntSample(
-  value: bigint,
-  minimum: bigint | undefined,
-  maximum: bigint | undefined,
-  context?: bigint
-): Model.Sample<bigint> {
-  // The passing-value context and gap-halving sequence are adapted from fast-check v4.9.0's BigIntArbitrary and
-  // ShrinkBigInt (MIT). Retaining the closest passing candidate lets the runner converge on a local failure boundary.
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/BigIntArbitrary.ts
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/helpers/ShrinkBigInt.ts
-  let candidates: ReadonlyArray<BigIntShrink>
-  if (context === undefined) {
-    const target = minimum !== undefined && minimum > BigInt(0)
-      ? minimum
-      : maximum !== undefined && maximum < BigInt(0)
-      ? maximum
-      : BigInt(0)
-    candidates = shrinkBigInt(value, target, true)
-  } else if (
-    value > BigInt(0) && value === context + BigInt(1) && (minimum === undefined || value > minimum) ||
-    value < BigInt(0) && value === context - BigInt(1) && (maximum === undefined || value < maximum)
-  ) {
-    candidates = [{ value: context, context: undefined }]
-  } else {
-    candidates = shrinkBigInt(value, context, false)
-  }
-  return Model.makeSample(
-    value,
-    candidates.length === 0
-      ? undefined
-      : Effect.map(
-        Model.pullFromArray(candidates),
-        (candidate) => bigIntSample(candidate.value, minimum, maximum, candidate.context)
-      )
-  )
-}
-
 /** @internal */
 export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<S["Type"]> {
   const rootAst = SchemaAST.toType(schema.ast)
@@ -1167,32 +1112,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         if (minimum !== undefined && maximum !== undefined && minimum > maximum) {
           throw arbitraryError("bigint constraints", path)
         }
-        let previousLow: bigint | undefined
-        let previousHigh: bigint | undefined
-        let randomBigInt: ((state: Model.GenerationState) => bigint) | undefined
-        return Model.makeCompiled(
-          [],
-          () => 0,
-          (state) => {
-            const magnitude = BigInt(Math.max(1, state.size * state.size))
-            const center = minimum !== undefined && minimum > BigInt(0)
-              ? minimum
-              : maximum !== undefined && maximum < BigInt(0)
-              ? maximum
-              : BigInt(0)
-            const low = minimum ?? center - magnitude
-            const high = maximum ?? center + magnitude
-            if (randomBigInt === undefined || low !== previousLow || high !== previousHigh) {
-              previousLow = low
-              previousHigh = high
-              randomBigInt = Model.makeRandomNumericBigInt(low, high)
-            }
-            const value = randomBigInt(state)
-            return state.shrinks
-              ? bigIntSample(value, minimum, maximum)
-              : Model.makeSample(value)
-          }
-        )
+        return BigIntArbitrary.make(minimum, maximum)
       }
       case "Symbol": {
         const strings = recur(SchemaAST.string, path, constraint)
@@ -1653,6 +1573,18 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     const typeParameters = ast.typeParameters.map((parameter, index) => recur(parameter, [...path, index]))
     const parameters = ast.typeParameters.map((parameter) => Schema.make(SchemaAST.toType(parameter)))
     const getArbitrary = ast.annotations?.toCodecArbitrary
+    const representation = (ast.annotations as Schema.Annotations.Declaration<any> | undefined)?.representation
+    if (typeof getArbitrary !== "function" && representation?.id === "effect/schema/BigDecimal") {
+      const ordered = constraint?.order === BigDecimal.Order ? constraint : undefined
+      const compiled: Model.Compiled<unknown> | undefined = BigDecimalArbitrary.make({
+        minimum: ordered?.minimum as BigDecimal.BigDecimal | undefined,
+        exclusiveMinimum: ordered?.exclusiveMinimum,
+        maximum: ordered?.maximum as BigDecimal.BigDecimal | undefined,
+        exclusiveMaximum: ordered?.exclusiveMaximum
+      })
+      if (compiled === undefined) throw arbitraryError("BigDecimal constraints", path)
+      return compiled
+    }
     let link: SchemaAST.Link
     if (typeof getArbitrary === "function") {
       link = getArbitrary({
