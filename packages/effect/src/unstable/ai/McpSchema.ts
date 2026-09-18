@@ -1,8 +1,6 @@
 /**
  * Defines schemas for Model Context Protocol messages.
  *
- * **Details**
- *
  * MCP clients and servers use these schemas to describe the JSON-RPC requests,
  * notifications, results, and errors that can cross the protocol boundary.
  * This is the stable public compatibility and authoring surface. It is not an
