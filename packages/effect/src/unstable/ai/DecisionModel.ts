@@ -336,7 +336,7 @@ export const make = (params: {
               })
             )
           ),
-          Effect.withSpan("DecisionModel.decide")
+          (effect) => Effect.withSpan(effect, "DecisionModel.decide", { captureStackTrace: false })
         )
     })
   )
