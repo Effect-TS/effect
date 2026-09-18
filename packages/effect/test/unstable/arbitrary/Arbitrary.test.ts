@@ -902,6 +902,62 @@ describe("Arbitrary", () => {
           assert.strictEqual(result._tag, "Passed")
         }))
 
+      it.effect("does not generate omitted fixed property names from indexes", () =>
+        Effect.gen(function*() {
+          const cases = [
+            ["a", Schema.Struct({ a: Schema.optionalKey(Schema.Never) })],
+            [0, Schema.Record(Schema.Literal(0), Schema.optionalKey(Schema.Never))]
+          ] as const
+          for (const [key, fields] of cases) {
+            const schema = Schema.StructWithRest(fields, [
+              Schema.Record(Schema.String.check(Schema.isPattern(new RegExp(`^${key}$`))), Schema.Boolean)
+            ])
+            const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+              count: 20,
+              maxDiscards: 100,
+              seed: "indexed-optional-never",
+              size: 1
+            })
+
+            assert.isTrue(values.every(Schema.is(schema)))
+            assert.isTrue(values.every((value) => !(key in value)))
+
+            const shrinkingSchema = Schema.StructWithRest(fields, [
+              Schema.Record(Schema.String.check(Schema.isPattern(new RegExp(`^${key}+$`))), Schema.Boolean)
+            ]).check(Schema.isPropertiesLengthBetween(1, 1))
+            const result = yield* Arbitrary.checkEffect(Arbitrary.schema(shrinkingSchema), () => false, {
+              runs: 1,
+              maxDiscards: 100,
+              maxShrinks: 100,
+              seed: 0,
+              size: 4
+            })
+
+            assert.strictEqual(result._tag, "Falsified")
+            if (result._tag === "Falsified") {
+              assert.deepStrictEqual(result.shrunkInput, { [`${key}${key}`]: false })
+              assert.isTrue(Schema.is(shrinkingSchema)(result.shrunkInput))
+            }
+          }
+        }))
+
+      it.effect("uses indexes when optional properties cannot satisfy the minimum", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(
+            Schema.Struct({ a: Schema.optionalKey(Schema.Never) }),
+            [Schema.Record(Schema.String.check(Schema.isPattern(/^b$/)), Schema.Boolean)]
+          ).check(Schema.isPropertiesLengthBetween(1, 1))
+          const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+            count: 20,
+            maxDiscards: 0,
+            seed: "indexed-optional-never-minimum",
+            size: 0
+          })
+
+          assert.isTrue(values.every(Schema.is(schema)))
+          assert.isTrue(values.every((value) => "b" in value && !("a" in value)))
+        }))
+
       it.effect("shrinks and replays fixed fields within the combined constraints", () =>
         Effect.gen(function*() {
           const schema = Schema.StructWithRest(
@@ -1466,6 +1522,34 @@ describe("Arbitrary", () => {
         })
 
         assert.isTrue(values.every(Schema.is(schema)))
+      }))
+
+    it.effect("omits optional Never properties", () =>
+      Effect.gen(function*() {
+        const schema = Schema.Struct({ value: Schema.optionalKey(Schema.Never) })
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+          count: 1,
+          maxDiscards: 0,
+          seed: "optional-never"
+        })
+
+        assert.deepStrictEqual(values, [{}])
+      }))
+
+    it.effect("uses inhabited branches around Never", () =>
+      Effect.gen(function*() {
+        const union = yield* Arbitrary.sampleEffect(
+          Arbitrary.schema(Schema.Union([Schema.Never, Schema.Literal("value")])),
+          { count: 1, maxDiscards: 0, seed: "never-union" }
+        )
+        const array = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.Array(Schema.Never)), {
+          count: 1,
+          maxDiscards: 0,
+          seed: "never-array"
+        })
+
+        assert.deepStrictEqual(union, ["value"])
+        assert.deepStrictEqual(array, [[]])
       }))
 
     it.effect("constructively selects optional properties affordable by the recursion budget", () =>
@@ -2085,7 +2169,14 @@ describe("Arbitrary", () => {
         ]))
 
       it("rejects uninhabited structural schemas", () => {
-        assert.throws(() => Arbitrary.schema(Schema.Never), /Unable to derive an arbitrary for Never/)
+        assert.throws(
+          () => Arbitrary.schema(Schema.Never),
+          /Unable to derive an arbitrary for a schema without a finite generation path/
+        )
+        assert.throws(
+          () => Arbitrary.schema(Schema.Struct({ value: Schema.Never })),
+          /Unable to derive an arbitrary for a schema without a finite generation path/
+        )
         assert.throws(
           () => Arbitrary.schema(Schema.Array(Schema.String).check(Schema.isMinLength(2), Schema.isMaxLength(1))),
           /Unable to derive an arbitrary for array constraints/
@@ -2321,7 +2412,7 @@ describe("Arbitrary", () => {
 
       assert.throws(
         () => Arbitrary.schema(schema),
-        /Unable to derive an arbitrary for a recursive schema without a finite generation path/
+        /Unable to derive an arbitrary for a schema without a finite generation path/
       )
     })
 

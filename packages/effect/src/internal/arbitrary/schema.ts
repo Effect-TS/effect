@@ -379,6 +379,8 @@ function constant<A>(value: A): Model.Compiled<A> {
   return Model.makeCompiled([], () => 0, () => sample)
 }
 
+const uninhabited: Model.Compiled<never> = Model.makeCompiled([], () => infinity, () => Model.discarded)
+
 interface ObjectEntry {
   readonly key: PropertyKey
   readonly keySample?: Model.Sample<PropertyKey> | undefined
@@ -402,6 +404,7 @@ function objectSample(
   entries: ReadonlyArray<ObjectEntry>,
   minimum: number,
   nullPrototype: boolean,
+  reservedKeys: ReadonlySet<PropertyKey>,
   shrinks = true
 ): Model.Sample<Record<PropertyKey, any>> {
   const make = (entries: ReadonlyArray<ObjectEntry | RetainedObjectEntry>) => {
@@ -443,7 +446,9 @@ function objectSample(
       if (entry.keySample === undefined || entry.keySample.shrinks === undefined) continue
       const filtered = Model.filterSample(
         Model.fromRetained(entry.keySample),
-        (key) => !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
+        (key) =>
+          !reservedKeys.has(key) &&
+          !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
       )
       if (filtered?.shrinks === undefined) continue
       pulls.push(Effect.map(
@@ -1046,7 +1051,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   ): Model.Compiled<any> => {
     switch (ast._tag) {
       case "Never":
-        throw arbitraryError("Never", path)
+        return uninhabited
       case "Null":
         return constant(null)
       case "Undefined":
@@ -1502,6 +1507,11 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       optional: SchemaAST.isOptional(property.type),
       compiled: compileIndexedValue(property.type, [...path, property.name]).forKey(property.name)
     }))
+    const propertyNames = new Set<PropertyKey>(
+      properties.map(({ property }) =>
+        typeof property.name === "symbol" ? property.name : globalThis.String(property.name)
+      )
+    )
     const indexes = ast.indexSignatures.map((index, position) => {
       const value = compileIndexedValue(index.type, [...path, `index-${position}-value`])
       return {
@@ -1523,21 +1533,28 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     }
     const needed = Math.max(0, minimum - required.length)
     const minOptional = indexes.length === 0 ? needed : 0
-    const fallbackOptionalCount = Math.min(optional.length, needed)
+    const minimumPropertyPlan = () => {
+      const indexCost = Math.min(...indexes.map((index) => index.parameter.minCost + index.value.minCost))
+      const selected = optional
+        .filter((property) => property.compiled.minCost <= indexCost)
+        .sort((a, b) => a.compiled.minCost - b.compiled.minCost)
+        .slice(0, needed)
+      const indexCount = needed - selected.length
+      return {
+        optional: selected,
+        indexCount,
+        indexCost,
+        cost: sumCosts(selected.map((property) => property.compiled.minCost)) +
+          (indexCount === 0 ? 0 : indexCount * indexCost)
+      }
+    }
     const dependencies = [
       ...properties.map((property) => property.compiled),
       ...indexes.flatMap((index) => [index.parameter, index.value])
     ]
     return Model.makeCompiled(
       dependencies,
-      () => {
-        const requiredCost = sumCosts(required.map((property) => property.compiled.minCost))
-        const optionalCosts = optional.map((property) => property.compiled.minCost).sort((a, b) => a - b)
-        if (needed <= optionalCosts.length) return requiredCost + sumCosts(optionalCosts.slice(0, needed))
-        if (indexes.length === 0) return infinity
-        const indexCost = Math.min(...indexes.map((index) => index.parameter.minCost + index.value.minCost))
-        return requiredCost + sumCosts(optionalCosts) + (needed - optionalCosts.length) * indexCost
-      },
+      () => sumCosts(required.map((property) => property.compiled.minCost)) + minimumPropertyPlan().cost,
       (state) => {
         if (!state.shrinks && optional.length === 0 && indexes.length === 0) {
           return generateRequiredObjectValues(required, state, state.nullPrototype)
@@ -1545,21 +1562,17 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         const currentMaximum = Math.max(minimum, required.length, state.size)
         const upper = maximum === undefined ? currentMaximum : Math.min(maximum, currentMaximum)
         const maxOptional = Math.min(optional.length, upper - required.length)
-        const minimumIndexCost = indexes.length === 0
-          ? infinity
-          : Math.min(...indexes.map((index) => index.parameter.minCost + index.value.minCost))
+        const minimumPlan = minimumPropertyPlan()
+        const minimumIndexCost = minimumPlan.indexCost
         const optionalCount = Model.randomInt(state, minOptional, maxOptional)
-        const shuffledOptional = optionalCount === 0 ? undefined : Model.shuffle(state, optional)
-        let selectedOptional = optionalCount === 0 ? [] : shuffledOptional!.slice(0, optionalCount)
-        let named = [...required, ...selectedOptional]
+        let named = optionalCount === 0
+          ? required
+          : [...required, ...Model.shuffle(state, optional).slice(0, optionalCount)]
         let minimumIndexes = Math.max(0, minimum - named.length)
         let namedCost = sumCosts(named.map((property) => property.compiled.minCost))
         if (namedCost + (minimumIndexes === 0 ? 0 : minimumIndexes * minimumIndexCost) > state.budget.remaining) {
-          selectedOptional = (shuffledOptional ?? Model.shuffle(state, optional))
-            .sort((a, b) => a.compiled.minCost - b.compiled.minCost)
-            .slice(0, fallbackOptionalCount)
-          named = [...required, ...selectedOptional]
-          minimumIndexes = Math.max(0, minimum - named.length)
+          named = [...required, ...minimumPlan.optional]
+          minimumIndexes = minimumPlan.indexCount
           namedCost = sumCosts(named.map((property) => property.compiled.minCost))
         }
         const maximumIndexes = indexes.length === 0
@@ -1583,7 +1596,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
               removable: named[index].optional
             }))
             if (indexCount === 0) {
-              return objectSample(entries, minimum, state.nullPrototype, state.shrinks)
+              return objectSample(entries, minimum, state.nullPrototype, propertyNames, state.shrinks)
             }
             return Effect.gen(function*() {
               for (let position = 0; position < indexCount; position++) {
@@ -1607,7 +1620,10 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
                   const normalized = normalizePropertyKeySample(keyAttempt)
                   if (normalized === undefined) return Model.discarded
                   keySample = normalized
-                  if (!entries.some((entry) => entry.key === keySample.value)) break
+                  if (
+                    !propertyNames.has(keySample.value) &&
+                    !entries.some((entry) => entry.key === keySample.value)
+                  ) break
                   if (retries++ >= 10) return Model.discarded
                   state.budget.remaining = budget
                   keyAttempt = yield* Model.toEffectGeneration(
@@ -1620,7 +1636,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
                 if (value._tag === "Discarded") return Model.discarded
                 entries.push({ key: keySample.value, keySample, sample: value, removable: true })
               }
-              return objectSample(entries, minimum, state.nullPrototype, state.shrinks)
+              return objectSample(entries, minimum, state.nullPrototype, propertyNames, state.shrinks)
             })
           }
         )
@@ -1704,7 +1720,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     }
   }
   if (root.minCost === infinity) {
-    throw arbitraryError("a recursive schema without a finite generation path", [])
+    throw arbitraryError("a schema without a finite generation path", [])
   }
   return root
 }
