@@ -181,8 +181,6 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
  *
  * **Gotchas**
  *
- * **Details**
- *
  * Throws if fewer than two labels are supplied.
  *
  * **Example** (Choosing a department)
@@ -225,8 +223,6 @@ export const classify = <Label extends string>(options: {
  *
  * **Gotchas**
  *
- * **Details**
- *
  * Throws if fewer than two levels or duplicate levels are supplied.
  *
  * **Example** (Rating frustration)
@@ -266,8 +262,6 @@ export const rate = <const Level extends string>(options: {
  * Creates a probability decision from descriptions of both outcomes.
  *
  * **Example** (Estimating urgency)
- *
- * **Details**
  *
  * ```ts
  * import { Decision } from "effect/unstable/ai"

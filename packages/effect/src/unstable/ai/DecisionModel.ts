@@ -284,8 +284,6 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * **Gotchas**
  *
- * **Details**
- *
  * Answers must cover every decision and use its labels. Distributions must
  * sum to 1 within `1e-6`, confidence must be in `[0, 1]`, and ratings must be
  * in `[0, criteria.length - 1]`. Invalid answers fail with
