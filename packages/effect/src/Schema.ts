@@ -5404,7 +5404,7 @@ export function decodeTo<To extends Constraint, From extends Constraint, RD = ne
       SchemaAST.decodeTo(
         from.ast,
         to.ast,
-        transformation ? SchemaTransformation.make(transformation) : SchemaTransformation.passthrough()
+        transformation ? SchemaTransformation.makeTransformation(transformation) : SchemaTransformation.passthrough()
       ),
       {
         from,
@@ -6391,7 +6391,7 @@ export function link<T>() {
       readonly encode: SchemaGetter.Getter<NoInfer<To["Type"]>, T>
     }
   ): SchemaAST.Link => {
-    return new SchemaAST.Link(encodeTo.ast, SchemaTransformation.make(transformation))
+    return new SchemaAST.Link(encodeTo.ast, SchemaTransformation.makeTransformation(transformation))
   }
 }
 /**
@@ -14783,7 +14783,7 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
   return (schema: S): overrideToCodecIso<S, Iso> => {
     return make(
       SchemaAST.annotate(schema.ast, {
-        toCodecIso: () => new SchemaAST.Link(to.ast, SchemaTransformation.make(transformation))
+        toCodecIso: () => new SchemaAST.Link(to.ast, SchemaTransformation.makeTransformation(transformation))
       }),
       { schema }
     )

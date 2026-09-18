@@ -579,8 +579,8 @@ export const defaultParseOptions: ParseOptions = {}
  *
  * - `isOptional` — the property key may be absent from the input.
  * - `isMutable` — the property is `readonly` when `false`.
- * - `constructorDefault` — a {@link Link} applied during construction to
- *   supply missing values.
+ * - `constructorDefault` — an effect evaluated during construction to supply
+ *   missing values.
  * - `annotations` — key-level annotations (e.g. description of the key
  *   itself).
  *
@@ -593,7 +593,7 @@ export interface Context {
   readonly isOptional: boolean
   readonly isMutable: boolean
   /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  readonly constructorDefault: Link | undefined
+  readonly constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
 }
 
@@ -606,20 +606,20 @@ export interface Context {
 export const Context: new(
   isOptional: boolean,
   isMutable: boolean, /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  constructorDefault?: Link | undefined,
+  constructorDefault?: Effect.Effect<unknown, SchemaIssue.Issue> | undefined,
   annotations?: Schema.Annotations.Key<unknown> | undefined
 ) => Context = class {
   readonly isOptional: boolean
   readonly isMutable: boolean
   /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  readonly constructorDefault: Link | undefined
+  readonly constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
 
   constructor(
     isOptional: boolean,
     isMutable: boolean,
     /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-    constructorDefault: Link | undefined = undefined,
+    constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined = undefined,
     annotations: Schema.Annotations.Key<unknown> | undefined = undefined
   ) {
     this.isOptional = isOptional
@@ -2222,7 +2222,10 @@ export interface Arrays extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileField?: SchemaParser.Compiler
+  ): SchemaParser.Parser
   /** @internal */
 
   recur(recur: (ast: AST) => AST): Arrays
@@ -2294,7 +2297,7 @@ export const Arrays: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile
+    compileField: SchemaParser.Compiler = compile
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -2326,8 +2329,8 @@ export const Arrays: new(
         return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       if (!elements) {
-        elements = ast.elements.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
-        rest = ast.rest.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
+        elements = ast.elements.map((ast) => ({ ast, parser: compileField(ast) }))
+        rest = ast.rest.map((ast) => ({ ast, parser: compileField(ast) }))
       }
 
       const len = input.length
@@ -2403,9 +2406,10 @@ export const Arrays: new(
     return "array"
   }
 }
+
 type ArrayParserState = {
   readonly ast: AST
-  readonly input: unknown
+  readonly input: ReadonlyArray<unknown>
   readonly len: number
   readonly getParser: (
     tailThreshold: number,
@@ -2414,7 +2418,37 @@ type ArrayParserState = {
   readonly tailThreshold: number
   readonly options: ParseOptions
   readonly output: Array<unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
+}
+
+/** @internal */
+export function stepArray(
+  s: ArrayParserState,
+  item: unknown,
+  exit: Exit.Exit<unknown, SchemaIssue.Issue>,
+  i: number
+) {
+  if (exit._tag === "Failure") {
+    return wrapPropertyKeyIssue(s, s.ast, i, exit)
+  }
+  const value = exit === InternalParser.sameExit
+    ? item
+    : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+  if (value !== InternalParser.missing) {
+    s.output[i] = value
+  } else {
+    const p = s.getParser(s.tailThreshold, i)
+    if (isOptional(p.ast)) return
+    const issue = new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(p.ast.context?.annotations))
+    if (s.options.errors === "all") {
+      if (s.issues) s.issues.push(issue)
+      else s.issues = [issue]
+    } else {
+      return Exit.fail(
+        new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
+      )
+    }
+  }
 }
 
 const parseArrayOptions = {
@@ -2422,32 +2456,11 @@ const parseArrayOptions = {
     const value = i < s.len ? item : InternalParser.missing
     return s.getParser(s.tailThreshold, i).parser(value, s.options)
   },
-  step(s: ArrayParserState, item: unknown, exit: Exit.Exit<unknown, SchemaIssue.Issue>, i: number) {
-    if (exit._tag === "Failure") {
-      return wrapPropertyKeyIssue(s, s.ast, i, exit)
-    }
-    const value = exit === InternalParser.sameExit
-      ? item
-      : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    if (value !== InternalParser.missing) {
-      s.output[i] = value
-    } else {
-      const p = s.getParser(s.tailThreshold, i)
-      if (isOptional(p.ast)) return
-      const issue = new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(p.ast.context?.annotations))
-      if (s.options.errors === "all") {
-        if (s.issues) s.issues.push(issue)
-        else s.issues = [issue]
-      } else {
-        return Exit.fail(
-          new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
-        )
-      }
-    }
-  }
+  step: stepArray
 }
 
-const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
+/** @internal */
+export const parseArray = iterateEager<ArrayParserState, unknown>()(parseArrayOptions)
 const parseArrayConcurrent = iterateConcurrent<ArrayParserState, unknown>()(parseArrayOptions)
 
 const wrapPropertyKeyIssue = (
@@ -2707,7 +2720,10 @@ export interface Objects extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileField?: SchemaParser.Compiler
+  ): SchemaParser.Parser
   /** @internal */
 
   flip(recur: (ast: AST) => AST): AST
@@ -2771,7 +2787,7 @@ export const Objects: new(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault: SchemaParser.Compiler = compile
+    compileField: SchemaParser.Compiler = compile
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -2866,7 +2882,7 @@ export const Objects: new(
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
-          parser: compileConstructorDefault(ps.type),
+          parser: compileField(ps.type),
           name: ps.name,
           type: ps.type
         }))
@@ -2874,7 +2890,7 @@ export const Objects: new(
           ? ast.indexSignatures.map((is) => ({
             is,
             parserKey: compile(parameterFromPropertyKey(is.parameter)),
-            parserValue: compileConstructorDefault(is.type)
+            parserValue: compileField(is.type)
           }))
           : undefined
       }
@@ -3104,7 +3120,7 @@ type ObjectParserState = {
   readonly input: Record<PropertyKey, unknown>
   readonly options: ParseOptions
   readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
 }
 
 type ParsedProperty = {
@@ -3113,7 +3129,8 @@ type ParsedProperty = {
   readonly type: AST
 }
 
-function stepProperty(
+/** @internal */
+export function stepProperty(
   s: ObjectParserState,
   p: ParsedProperty,
   exit: Exit.Exit<unknown, SchemaIssue.Issue>
@@ -3154,7 +3171,8 @@ const parsePropertiesOptions = {
   step: stepProperty
 }
 
-const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
+/** @internal */
+export const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 const parsePropertiesConcurrent = iterateConcurrent<ObjectParserState, ParsedProperty>()(parsePropertiesOptions)
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {
@@ -3584,7 +3602,7 @@ export interface Union<A extends AST = AST> extends ASTNode {
   readonly encodingChecks: Checks | undefined
   /** @internal */
 
-  getParser(compile: SchemaParser.Compiler, compileConstructorDefault?: SchemaParser.Compiler): SchemaParser.Parser
+  getParser(compile: SchemaParser.Compiler, compileField?: SchemaParser.Compiler): SchemaParser.Parser
   /** @internal */
 
   recur(recur: (ast: AST) => AST): Union<AST>
@@ -3647,7 +3665,7 @@ export const Union: new<A extends AST = AST>(
   /** @internal */
   getParser(
     compile: SchemaParser.Compiler,
-    compileConstructorDefault?: SchemaParser.Compiler
+    compileField?: SchemaParser.Compiler
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
@@ -3656,7 +3674,7 @@ export const Union: new<A extends AST = AST>(
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
-      const candidates = getCandidates(input, ast.types, compileConstructorDefault !== undefined)
+      const candidates = getCandidates(input, ast.types, compileField !== undefined)
 
       if (candidates.length === 0) {
         return Effect.fail(new SchemaIssue.AnyOf(ast, [], input, options))
@@ -4414,14 +4432,9 @@ export function withConstructorDefault<A extends AST>(
   ast: A,
   defaultValue: Effect.Effect<unknown, SchemaIssue.Issue>
 ): A {
-  const transformation = new SchemaTransformation.Transformation(
-    SchemaGetter.withDefault(defaultValue),
-    SchemaGetter.passthrough()
-  )
-  const constructorDefault = new Link(unknown, transformation)
   const context = ast.context ?
-    new Context(ast.context.isOptional, ast.context.isMutable, constructorDefault, ast.context.annotations) :
-    new Context(false, false, constructorDefault)
+    new Context(ast.context.isOptional, ast.context.isMutable, defaultValue, ast.context.annotations) :
+    new Context(false, false, defaultValue)
   return replaceContext(ast, context)
 }
 
@@ -4738,7 +4751,8 @@ function segmentTemplateLiteralParts(
   return go(0, 0) ? out : undefined
 }
 
-const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+/** @internal */
+export const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast
