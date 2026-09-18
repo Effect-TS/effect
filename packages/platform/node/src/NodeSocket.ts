@@ -11,7 +11,7 @@
  */
 import { NodeWS as WS } from "@effect/platform-node-shared/NodeSocket"
 import type * as Duration from "effect/Duration"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import { flow } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Socket from "effect/unstable/socket/Socket"
@@ -22,7 +22,7 @@ import * as Socket from "effect/unstable/socket/Socket"
 export * from "@effect/platform-node-shared/NodeSocket"
 
 const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) =>
-  new WS.WebSocket(url, options as WS.ClientOptions)
+  Effect.sync(() => new WS.WebSocket(url, options as WS.ClientOptions))
 
 /**
  * Provides a `Socket.WebSocketConstructor`, using `globalThis.WebSocket` when
@@ -37,7 +37,7 @@ export const layerWebSocketConstructor: Layer.Layer<
   if ("WebSocket" in globalThis) {
     return (url, options) => {
       if (options === undefined || typeof options === "string" || Array.isArray(options)) {
-        return new globalThis.WebSocket(url, options)
+        return Effect.sync(() => new globalThis.WebSocket(url, options))
       }
       return makeWebSocketWS(url, options)
     }

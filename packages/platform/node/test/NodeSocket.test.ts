@@ -611,11 +611,9 @@ describe("Socket", () => {
 
         const makeWebSocket = yield* Socket.WebSocketConstructor
         const client = yield* Effect.acquireRelease(
-          Effect.sync(() =>
-            makeWebSocket(`ws://127.0.0.1:${port}`, {
-              headers: { Authorization: "Bearer test" }
-            })
-          ),
+          makeWebSocket(`ws://127.0.0.1:${port}`, {
+            headers: { Authorization: "Bearer test" }
+          }),
           (client) => Effect.sync(() => client.close())
         )
         client.addEventListener("error", () => {})
@@ -631,7 +629,7 @@ describe("Socket", () => {
         const error = yield* upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
         assert.strictEqual(error.reason._tag, "SocketUpgradeError")
       }).pipe(
-        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
+        Effect.provideService(Socket.WebSocketConstructor, (url) => Effect.sync(() => new globalThis.WebSocket(url)))
       ))
 
     it.effect("messages", () =>
@@ -674,7 +672,7 @@ describe("Socket", () => {
           }
         }
       }).pipe(
-        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
+        Effect.provideService(Socket.WebSocketConstructor, (url) => Effect.sync(() => new globalThis.WebSocket(url)))
       ))
 
     it.effect("clean closes are errors", () =>
@@ -706,7 +704,7 @@ describe("Socket", () => {
           }
         }
       }).pipe(
-        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
+        Effect.provideService(Socket.WebSocketConstructor, (url) => Effect.sync(() => new globalThis.WebSocket(url)))
       ))
 
     it.effect("reports send errors as SocketError", () =>
@@ -724,7 +722,7 @@ describe("Socket", () => {
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url)).pipe(
           Effect.provideService(
             Socket.WebSocketConstructor,
-            () => webSocket
+            () => Effect.succeed(webSocket)
           )
         )
         const exit = yield* Effect.scoped(Effect.gen(function*() {

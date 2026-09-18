@@ -9,7 +9,7 @@
  * @since 4.0.0
  */
 import type * as Duration from "effect/Duration"
-import type { Effect } from "effect/Effect"
+import * as Effect from "effect/Effect"
 import { flow } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Socket from "effect/unstable/socket/Socket"
@@ -32,7 +32,7 @@ export const layerWebSocketConstructor: Layer.Layer<
   (url, options) =>
     // Bun accepts `WebSocketOptions`, but `bun-types` selects the DOM overload
     // when `lib.dom` is loaded and hides those constructor options.
-    new globalThis.WebSocket(url, options as string | Array<string> | undefined)
+    Effect.sync(() => new globalThis.WebSocket(url, options as string | Array<string> | undefined))
 )
 
 /**
@@ -44,7 +44,7 @@ export const layerWebSocketConstructor: Layer.Layer<
  * @since 4.0.0
  */
 export const layerWebSocket: (
-  url: string | Effect<string>,
+  url: string | Effect.Effect<string>,
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     readonly protocols?: string | Array<string> | undefined
