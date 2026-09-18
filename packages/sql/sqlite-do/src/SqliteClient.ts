@@ -26,6 +26,7 @@ import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Rec from "effect/Record"
+import * as Scheduler from "effect/Scheduler"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
@@ -169,7 +170,10 @@ const makeStorageBackedWithTransaction = (
       })
     })
     return connOption._tag === "Some" ? transaction : semaphore.withPermits(1)(transaction)
-  })
+  }).pipe(
+    // The storage transaction closes the input gate, blocking dispatcher tasks until it completes.
+    Effect.provideService(Scheduler.PreventSchedulerYield, true)
+  )
 
 /**
  * Creates a scoped Cloudflare Durable Object SQLite client around Durable Object SQLite storage, serializing access and converting returned `ArrayBuffer` values to `Uint8Array`.

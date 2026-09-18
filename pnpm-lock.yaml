@@ -623,6 +623,12 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+      miniflare:
+        specifier: 5.20260911.0-alpha
+        version: 5.20260911.0-alpha(@types/node@26.5.1)
 
   packages/sql/sqlite-node:
     devDependencies:
