@@ -122,6 +122,59 @@ describe("Decision", () => {
 })
 
 describe("DecisionModel", () => {
+  for (const key of ["__proto__", "constructor", "toString"]) {
+    it.effect("preserves the own enumerable answer key " + key, () => {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: {
+          [key]: Decision.probability({
+            instructions: "Needs action now",
+            criteria: { false: "No", true: "Yes" }
+          })
+        }
+      })
+
+      return Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
+
+        assert.isTrue(Object.getPrototypeOf(answers) === Object.prototype || Object.getPrototypeOf(answers) === null)
+        assert.isTrue(Object.hasOwn(answers, key))
+        assert.isTrue(Object.getOwnPropertyDescriptor(answers, key)?.enumerable)
+        assert.deepStrictEqual(Object.keys(answers), [key])
+        assert.deepStrictEqual(answers[key], { probability: 0.75 })
+      }).pipe(Effect.provide(succeedWith({ [key]: { _tag: "Probability", probability: 0.75 } })))
+    })
+
+    it.effect("preserves the own enumerable classification probability " + key, () => {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: {
+          category: Decision.classify({
+            instructions: "Choose a category",
+            criteria: { [key]: "Special category", ordinary: "Ordinary category" }
+          })
+        }
+      })
+
+      return Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Help" })
+        const probabilities = answers.category.probabilities
+
+        assert.isTrue(
+          Object.getPrototypeOf(probabilities) === Object.prototype || Object.getPrototypeOf(probabilities) === null
+        )
+        assert.isTrue(Object.hasOwn(probabilities, key))
+        assert.isTrue(Object.getOwnPropertyDescriptor(probabilities, key)?.enumerable)
+        assert.deepStrictEqual(Object.keys(probabilities), [key, "ordinary"])
+        assert.strictEqual(probabilities[key], 0.75)
+        assert.strictEqual(probabilities.ordinary, 0.25)
+        assert.strictEqual(answers.category.label, key)
+      }).pipe(Effect.provide(succeedWith({
+        category: { _tag: "Classify", label: key, probabilities: { [key]: 0.75, ordinary: 0.25 } }
+      })))
+    })
+  }
+
   it.effect("round trips usage with undefined tokens through JSON", () =>
     Effect.gen(function*() {
       const usage = new DecisionModel.DecisionUsage({ inputTokens: undefined, outputTokens: undefined })

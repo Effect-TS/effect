@@ -68,6 +68,51 @@ const decisionsResponse = {
 }
 
 describe("OpenRouterDecisionModel", () => {
+  for (const key of ["__proto__", "constructor", "toString"]) {
+    it.effect("sends an own enumerable question named " + key, () =>
+      Effect.gen(function*() {
+        const definition = Decision.make({
+          input: Schema.String,
+          decisions: {
+            [key]: Decision.probability({
+              instructions: "Needs action now",
+              criteria: { false: "No", true: "Yes" }
+            })
+          }
+        })
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Help" }).pipe(
+          Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+          Effect.provide(makeClientLayer((request) =>
+            Effect.gen(function*() {
+              const { questions } = yield* getRequestBody(request)
+
+              assert.strictEqual(Object.getPrototypeOf(questions), Object.prototype)
+              assert.isTrue(Object.hasOwn(questions, key))
+              assert.isTrue(Object.getOwnPropertyDescriptor(questions, key)?.enumerable)
+              assert.deepStrictEqual(Object.keys(questions), [key])
+              assert.deepStrictEqual(questions[key], {
+                type: "noul",
+                instructions: "Needs action now",
+                criteria: { false: "No", true: "Yes" }
+              })
+
+              return jsonResponse(request, {
+                model: "test/decision-model",
+                answers: { [key]: { type: "noul", noul: 0.75 } },
+                usage: { input_tokens: 20, output_tokens: 4 }
+              })
+            })
+          ))
+        )
+
+        assert.isTrue(Object.getPrototypeOf(answers) === Object.prototype || Object.getPrototypeOf(answers) === null)
+        assert.isTrue(Object.hasOwn(answers, key))
+        assert.isTrue(Object.getOwnPropertyDescriptor(answers, key)?.enumerable)
+        assert.deepStrictEqual(Object.keys(answers), [key])
+        assert.deepStrictEqual(answers[key], { probability: 0.75 })
+      }))
+  }
+
   for (
     const apiUrl of [
       "https://proxy.test/openrouter/v1",
