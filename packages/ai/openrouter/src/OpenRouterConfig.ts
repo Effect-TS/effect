@@ -1,7 +1,7 @@
 /**
  * The `OpenRouterConfig` module lets a workflow temporarily customize the HTTP
- * client used by generated OpenRouter request methods. `OpenRouterClient` reads
- * this scoped transform when generated client operations execute, so callers can
+ * client used by generated OpenRouter request methods and alpha Decisions requests.
+ * `OpenRouterClient` reads this scoped transform when these operations execute, so callers can
  * add middleware or instrumentation without rebuilding the client layer.
  *
  * @since 4.0.0
@@ -48,7 +48,7 @@ export class OpenRouterConfig extends Context.Service<
 export declare namespace OpenRouterConfig {
   /**
    * Configuration values read by OpenRouter provider operations when resolving
-   * the generated HTTP client.
+   * the HTTP client for generated methods and alpha Decisions requests.
    *
    * @category services
    * @since 4.0.0
@@ -71,7 +71,7 @@ export declare namespace OpenRouterConfig {
  *
  * Supports both data-first and data-last forms. The transform is stored in the
  * scoped `OpenRouterConfig` service and read by generated OpenRouter request
- * operations while running the supplied effect.
+ * operations and alpha Decisions requests while running the supplied effect.
  *
  * **Gotchas**
  *

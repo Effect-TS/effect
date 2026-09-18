@@ -4,6 +4,31 @@
  * @since 4.0.0
  */
 import * as Schema from "effect/Schema"
+import * as Generated from "./Generated.ts"
+
+/**
+ * A choice question with descriptions keyed by choice label.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ChoiceQuestion = Schema.Struct({
+  type: Schema.Literal("choice"),
+  instructions: Schema.String,
+  criteria: Schema.Record(Schema.String, Schema.String)
+})
+
+/**
+ * A score question with ordered criteria.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ScoreQuestion = Schema.Struct({
+  type: Schema.Literal("score"),
+  instructions: Schema.String,
+  criteria: Schema.Array(Schema.String)
+})
 
 /**
  * A probability question with optional true and false descriptions.
@@ -24,16 +49,8 @@ export const NoulQuestion = Schema.Struct({
  * @since 4.0.0
  */
 export const DecisionsQuestion = Schema.Union([
-  Schema.Struct({
-    type: Schema.Literal("choice"),
-    instructions: Schema.String,
-    criteria: Schema.Record(Schema.String, Schema.String)
-  }),
-  Schema.Struct({
-    type: Schema.Literal("score"),
-    instructions: Schema.String,
-    criteria: Schema.Array(Schema.String)
-  }),
+  ChoiceQuestion,
+  ScoreQuestion,
   NoulQuestion
 ])
 
@@ -71,7 +88,7 @@ export const DecisionsRequest = Schema.Struct({
   model: Schema.String,
   state: Schema.Union([Schema.String, Schema.Record(Schema.String, Schema.Json), Schema.Array(Schema.Json)]),
   questions: Schema.Record(Schema.String, DecisionsQuestion),
-  provider: Schema.optional(Schema.Record(Schema.String, Schema.Json)),
+  provider: Schema.optional(Generated.ProviderPreferences),
   session_id: Schema.optional(Schema.String),
   user: Schema.optional(Schema.String),
   trace: Schema.optional(Schema.Record(Schema.String, Schema.Json))

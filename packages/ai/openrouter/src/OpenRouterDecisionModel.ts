@@ -107,8 +107,9 @@ export const make = Effect.fnUntraced(function*(options: {
           const probabilities: Record<string, number> = {}
           if (decision?._tag === "Rate") {
             for (const [index, label] of decision.criteria.entries()) {
-              if (Object.hasOwn(answer.probabilities, String(index))) {
-                probabilities[label] = answer.probabilities[String(index)]
+              const probability = answer.probabilities[String(index)]
+              if (probability !== undefined) {
+                probabilities[label] = probability
               }
             }
           }
