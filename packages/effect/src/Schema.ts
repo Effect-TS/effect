@@ -6784,6 +6784,52 @@ export function isULID(annotations?: Annotations.Filter) {
     }
   )
 }
+
+// oxlint-disable-next-line no-control-regex
+const ASCII_REGEXP = /^[\x00-\x7F]*$/
+/**
+ * Validates that a string contains only ASCII characters.
+ *
+ * **When to use**
+ *
+ * Use when a value must be restricted to the 7-bit ASCII range, for example
+ * identifiers, protocol tokens, or data destined for systems that do not
+ * accept non-ASCII input.
+ *
+ * **Details**
+ *
+ * This check accepts strings whose every character has a code point in the
+ * range `U+0000` to `U+007F`, including control characters. The empty string
+ * is accepted.
+ *
+ * JSON Schema:
+ *
+ * This check corresponds to a `pattern` constraint in JSON Schema that matches
+ * ASCII-only strings.
+ *
+ * Arbitrary:
+ *
+ * During arbitrary generation, this applies a `patterns`
+ * constraint to ensure generated strings match the ASCII pattern.
+ *
+ * @category validation
+ * @since 4.0.0
+ */
+export function isAscii(annotations?: Annotations.Filter) {
+  return isPattern(
+    ASCII_REGEXP,
+    {
+      expected: "an ASCII string",
+      representation: {
+        id: "effect/schema/isAscii",
+        payload: null
+      },
+      toJsonSchema: () => ({ pattern: ASCII_REGEXP.source }),
+      toCode: () => ({ runtime: "Schema.isAscii()" }),
+      ...annotations
+    }
+  )
+}
 /**
  * Validates that a string is valid Base64 encoded data.
  *

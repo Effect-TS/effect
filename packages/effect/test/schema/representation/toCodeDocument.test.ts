@@ -430,6 +430,15 @@ describe("toCodeDocument", () => {
           }
         )
       })
+
+      it("isAscii", () => {
+        assertSchema(
+          { schema: Schema.String.check(Schema.isAscii()) },
+          {
+            codes: makeCode(`Schema.String.check(Schema.isAscii())`, "string")
+          }
+        )
+      })
     })
   })
 
