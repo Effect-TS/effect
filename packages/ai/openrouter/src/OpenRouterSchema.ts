@@ -1,0 +1,96 @@
+/**
+ * Handwritten schemas for OpenRouter's alpha Decisions API.
+ *
+ * @since 4.0.0
+ */
+import * as Schema from "effect/Schema"
+
+/**
+ * A probability question with optional true and false descriptions.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const NoulQuestion = Schema.Struct({
+  type: Schema.Literal("noul"),
+  instructions: Schema.String,
+  criteria: Schema.optional(Schema.Struct({ true: Schema.String, false: Schema.String }))
+})
+
+/**
+ * A choice, ordered score, or probability question.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DecisionsQuestion = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("choice"),
+    instructions: Schema.String,
+    criteria: Schema.Record(Schema.String, Schema.String)
+  }),
+  Schema.Struct({
+    type: Schema.Literal("score"),
+    instructions: Schema.String,
+    criteria: Schema.Array(Schema.String)
+  }),
+  NoulQuestion
+])
+
+/**
+ * An upstream answer. Distributions and confidence may be absent upstream.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Answer = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("choice"),
+    choice: Schema.String,
+    confidence: Schema.optional(Schema.Finite),
+    probabilities: Schema.optional(Schema.Record(Schema.String, Schema.Finite))
+  }),
+  Schema.Struct({
+    type: Schema.Literal("score"),
+    score: Schema.Finite,
+    confidence: Schema.optional(Schema.Finite),
+    probabilities: Schema.optional(Schema.Record(Schema.String, Schema.Finite)),
+    legend: Schema.optional(Schema.Record(Schema.String, Schema.String))
+  }),
+  Schema.Struct({ type: Schema.Literal("noul"), noul: Schema.Finite })
+])
+
+/**
+ * Request body for the alpha Decisions endpoint. Trace is an observability
+ * metadata object, not a boolean flag.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DecisionsRequest = Schema.Struct({
+  model: Schema.String,
+  state: Schema.Union([Schema.String, Schema.Record(Schema.String, Schema.Json), Schema.Array(Schema.Json)]),
+  questions: Schema.Record(Schema.String, DecisionsQuestion),
+  provider: Schema.optional(Schema.Record(Schema.String, Schema.Json)),
+  session_id: Schema.optional(Schema.String),
+  user: Schema.optional(Schema.String),
+  trace: Schema.optional(Schema.Record(Schema.String, Schema.Json))
+})
+
+/**
+ * Response body for the alpha Decisions endpoint.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DecisionsResponse = Schema.Struct({
+  model: Schema.String,
+  answers: Schema.Record(Schema.String, Answer),
+  usage: Schema.Struct({
+    input_tokens: Schema.Int,
+    output_tokens: Schema.Int,
+    cost: Schema.optional(Schema.Finite)
+  }),
+  id: Schema.optional(Schema.String),
+  provider: Schema.optional(Schema.String)
+})
