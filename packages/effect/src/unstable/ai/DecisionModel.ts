@@ -189,14 +189,14 @@ const validateDistribution = (
   if (!Predicate.isObject(raw)) {
     return invalidOutput(`Provider returned no probabilities for decision "${key}"`)
   }
-  const probabilities: Record<string, number> = Object.create(null)
+  const probabilities: Record<string, number> = {}
   let total = 0
   for (const label of labels) {
     const value = raw[label]
     if (!isUnitInterval(value)) {
       return invalidOutput(`Provider returned no probability for label "${label}" of decision "${key}"`)
     }
-    probabilities[label] = value
+    Object.defineProperty(probabilities, label, { value, enumerable: true, writable: true, configurable: true })
     total += value
   }
   if (Math.abs(total - 1) > 1e-6) {
@@ -280,13 +280,13 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
   decisions: Decisions,
   answers: Readonly<Record<string, ProviderAnswer>>
 ): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
-  const validated: Record<string, Decision.Answer<Decision.Any>> = Object.create(null)
+  const validated: Record<string, Decision.Answer<Decision.Any>> = {}
   for (const key of Object.keys(decisions)) {
     const answer = validateAnswer(key, decisions[key], answers[key])
     if (AiError.isAiError(answer)) {
       return Effect.fail(answer)
     }
-    validated[key] = answer
+    Object.defineProperty(validated, key, { value: answer, enumerable: true, writable: true, configurable: true })
   }
   return Effect.succeed(validated as Decision.Answers<Decisions>)
 }
