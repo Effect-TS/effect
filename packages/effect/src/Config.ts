@@ -1193,7 +1193,8 @@ export function Array<V extends Schema.ConstraintCodec<unknown, unknown>>(
   const arrayString = Schema.String.pipe(
     Schema.decodeTo(Schema.toCodecStringTree(array), {
       decode: SchemaGetter.split(resolvedOptions),
-      encode: SchemaGetter.passthrough<ReadonlyArray<string>, Schema.StringTree>({ strict: false }).compose(
+      encode: SchemaGetter.compose(
+        SchemaGetter.passthrough<ReadonlyArray<string>, Schema.StringTree>({ strict: false }),
         SchemaGetter.transform((input) => input.join(separator))
       )
     })
@@ -1270,7 +1271,8 @@ export function Record<
   const recordString = Schema.String.pipe(
     Schema.decodeTo(Schema.toCodecStringTree(record), {
       decode: split.decode,
-      encode: SchemaGetter.passthrough<Record<string, string>, Schema.StringTree>({ strict: false }).compose(
+      encode: SchemaGetter.compose(
+        SchemaGetter.passthrough<Record<string, string>, Schema.StringTree>({ strict: false }),
         split.encode
       )
     })

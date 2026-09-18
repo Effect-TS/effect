@@ -132,6 +132,7 @@ describe("Generated", () => {
         }))
         const client = OpenRouterClient.OpenRouterClient.of({
           client: Generated.make(HttpClient.make(() => Effect.die("Unexpected HTTP request"))),
+          createDecisions: () => Effect.die("Unexpected decisions request"),
           createChatCompletion: () => Effect.succeed([body, response]),
           createChatCompletionStream: () => Effect.succeed([response, Stream.fromIterable(chunks)])
         })

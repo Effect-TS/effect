@@ -33,6 +33,8 @@
       "@effect/ai-openai-compat/*": ["./packages/ai/openai-compat/src/*.ts"],
       "@effect/ai-openai": ["./packages/ai/openai/src/index.ts"],
       "@effect/ai-openai/*": ["./packages/ai/openai/src/*.ts"],
+      "@effect/ai-typesafe": ["./packages/ai/typesafe/src/index.ts"],
+      "@effect/ai-typesafe/*": ["./packages/ai/typesafe/src/*.ts"],
       "@effect/ai-openrouter": ["./packages/ai/openrouter/src/index.ts"],
       "@effect/ai-openrouter/*": ["./packages/ai/openrouter/src/*.ts"],
       "@effect/atom-react": ["./packages/atom/react/src/index.ts"],

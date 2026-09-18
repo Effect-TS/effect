@@ -35,7 +35,7 @@ Use Schema to:
 11. **Middlewares** — intercept decoding/encoding to provide fallbacks or inject services.
 12. **Advanced topics** — internal type model and type hierarchy (for library authors).
 13. **Integrations** — working examples for TanStack Form and Elysia.
-14. **Migration from v3** — API mapping from Schema v3 to v4.
+14. **[Migration from v3](../../migration/schema.md)** — API mapping from Schema v3 to v4.
 
 ## Runtime Performance
 
@@ -51,24 +51,151 @@ Values are microseconds per operation and lower is better. Results vary between
 machines, so they are most useful for understanding relative costs. A dash
 means that the library does not provide that benchmark.
 
-| Scenario                              | Effect Schema |    Valibot |      Zod 4 |
-| ------------------------------------- | ------------: | ---------: | ---------: |
-| Create a schema                       |        118.23 |  **40.24** |     318.56 |
-| Create a schema and parser            |    **130.50** |          — |          — |
-| Validate valid data                   |     **5.415** |       5.63 |          — |
-| Validate invalid data                 |         1.348 | **0.2431** |          — |
-| Parse valid data and collect errors   |         5.366 |   **5.22** |       7.16 |
-| Parse invalid data and collect errors |     **9.100** |      15.70 |      41.58 |
-| Parse valid data and stop early       |     **5.294** |       5.37 |          — |
-| Parse invalid data and stop early     |         1.352 | **0.2572** |          — |
-| Standard Schema, valid data           |         5.935 |       5.35 |   **3.83** |
-| Standard Schema, invalid data         |    **15.203** |      16.51 |      32.85 |
-| Standard Schema, valid, stop early    |     **5.843** |          — |          — |
-| Standard Schema, invalid, stop early  |     **2.244** |          — |          — |
-| Encode with a typed codec             |        0.3420 |          — | **0.0405** |
-| Decode with a typed codec             |        0.3762 |          — | **0.0463** |
-| Encode unknown input                  |    **0.3472** |          — |          — |
-| Decode unknown input                  |    **0.3637** |          — |          — |
+| Scenario                              | Effect Schema | Valibot 1.5.0 | Zod 4.6.2 |
+| ------------------------------------- | ------------: | ------------: | --------: |
+| Create a schema                       |       60.1297 |        1.0926 |   83.7496 |
+| Validate valid data                   |        4.1473 |        3.5389 |         — |
+| Validate invalid data                 |        0.2571 |        0.1823 |         — |
+| Parse valid data and collect errors   |        5.0261 |        3.5393 |    7.0073 |
+| Parse invalid data and collect errors |        7.4838 |        5.7206 |   19.3064 |
+| Parse valid data and stop early       |        4.1559 |        3.5941 |         — |
+| Parse invalid data and stop early     |        0.2525 |        0.1917 |         — |
+| Standard Schema, valid data           |    **5.3408** |        3.5565 |    3.5755 |
+| Standard Schema, invalid data         |       11.7723 |        5.4422 |   15.9974 |
+| Encode with a typed codec             |        0.0827 |             — |    0.0441 |
+| Decode with a typed codec             |        0.1063 |             — |    0.0427 |
+
+## Experimental schema compilers
+
+Enable JIT compilation at application startup with a side-effect import:
+
+```ts
+import "effect/unstable/schema/SchemaJITCompiler/enable"
+```
+
+Alternatively, `SchemaJITCompiler.enable(schema.ast)` enables one AST and the
+dependencies reached while parsing it. Importing `SchemaJITCompiler` or the
+`unstable/schema` barrel alone does not enable compilation. Operations are
+prepared on first use. If dynamic function construction is blocked or compilation
+fails, the interpreter remains available. Exceptions from executing a parser are
+not treated as compilation failures and do not trigger a retry.
+
+JIT and AOT use the same source generator. To generate an AOT module at build
+time, call `SchemaAOTCompiler.compile(targets)` with an ordered array of ASTs
+and the operations to prepare:
+
+```ts
+SchemaAOTCompiler.compile([
+  { ast: User.ast, operations: ["decode"] },
+  { ast: SchemaAST.toType(User.ast), operations: ["is", "make"] }
+])
+```
+
+The module exports `install(asts)`. Call it with the target ASTs in the same
+order before using normal `SchemaParser` functions. Generated modules contain
+only the requested operation families and their dependencies. Operations that
+were not requested use the interpreter if they are called. Generated modules
+do not import the generator and work where `new Function` is forbidden.
+
+The low-level installation trusts the supplied root order and AST definitions.
+Target `SchemaAST.toType(schema.ast)` with `is` or `make` for guards and
+construction. Target `SchemaAST.flip(schema.ast)` with `decode` for encoding.
+
+`effect/unstable/schema/SchemaAOTCompiler/Build` provides the higher-level
+workflow. Its `build` function loads direct Schema exports, writes a
+self-installing module through `FileSystem`, and prepares decoding by default:
+
+```ts
+import * as SchemaAOTCompilerBuild from "effect/unstable/schema/SchemaAOTCompiler/Build"
+
+SchemaAOTCompilerBuild.build({
+  modules: {
+    "./schemas/User.js": () => import("./schemas/User.js"),
+    "./schemas/Order.js": () => import("./schemas/Order.js")
+  },
+  baseUrl: import.meta.url,
+  outFile: "./generated/schema-aot.js"
+})
+```
+
+Import the generated file at application startup. Module keys identify imports
+relative to `baseUrl`; each loader must return that same module during the
+build. The lazy record produced by `import.meta.glob` can be passed directly.
+Request `encode`, `is`, or `make` explicitly when those directions also need
+AOT roots. Loading executes the selected application modules during the build.
+Run the returned Effect with the platform's `FileSystem` and `Path` services,
+and ensure the bundler retains the generated side-effect import.
+
+Regenerate AOT modules when schema definitions or the Effect version change.
+Callbacks and symbols are read from runtime ASTs, not serialized.
+
+### One registry for all implementations
+
+A single `WeakMap` associates each exact AST with its decoder entry. The cache
+stores functions, never parsing results. The interpreter, JIT, AOT and
+`SchemaCompiler.set(ast, decoder)` all use it.
+
+| Operation      | Result                                      | Purpose                                                                                         |
+| -------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `decodeEffect` | `Effect` with output or detailed issues     | Required complete decoding, including asynchronous work and transformations.                    |
+| `decode`       | Output or `SchemaCompiler.invalid`          | Optional synchronous decoding fast path without detailed diagnostics.                           |
+| `is`           | Boolean                                     | Optional validation without constructing output.                                                |
+| `make`         | Output or `SchemaCompiler.invalid`          | Optional synchronous construction fast path without detailed diagnostics.                       |
+| `makeEffect`   | `Effect` with a constructed value or issues | Optional specialized construction. The registry caches the interpreted constructor when absent. |
+
+Decoding tries `decode` when available. Success provides the output directly;
+failure calls `decodeEffect` for diagnostics. The diagnostic traversal uses child
+decoders directly, without restarting their validation fast paths. A boolean
+guard prefers `is`, otherwise it uses ordinary decoding (including `decode`
+when available). An `invalid` result needs that diagnostic fallback because the
+marker is also a possible input value. Composite checks
+can require stripped, reconstructed values, so `is` is omitted when it cannot
+avoid constructing those values safely.
+
+Each operation initializes independently. Synchronous construction tries `make`
+when available and falls back to `makeEffect` for detailed issues. Compilers omit
+`make` whenever replay could repeat defaults, Class constructors,
+transformations, middleware, or other effects. `makeEffect` itself never uses
+validation replay. Field defaults belong to the parent occurrence, not to
+construction of the root. Runtime parse options, including product concurrency,
+retain the interpreter's semantics.
+
+Installing a decoder replaces the entry for that AST. Existing consumers that
+already captured an entry retain it. Late installation is allowed, but startup
+installation is needed to optimize every consumer. Custom decoders supplied to
+`set` are trusted to implement the AST's semantics.
+
+An AOT module installs entries for explicitly requested roots and their static
+dependencies. Each generated operation initializes on first use. All entries
+live in the same `WeakMap`: there is no separate AOT cache, and a later
+`SchemaCompiler.set` for the same AST replaces any compiled entry in the same way.
+
+### What is specialized
+
+Encoding-free graphs of supported primitives, Objects, Arrays, tuples, Unions
+and template literals can use generated validators. Struct and homogeneous Array
+decoding and construction also have generated loops. Pure fixed Struct and
+homogeneous Array constructors can additionally use the synchronous `make` fast
+path; composite children are resolved through the same registry. These loops
+share the interpreter's diagnostic and asynchronous continuation helpers.
+Other detailed traversals and constructors use the existing interpreter with
+registry-resolved children; there is no separate diagnostic interpreter in the
+compiler.
+
+Transformations and middleware never participate in validation replay. A single
+synchronous transformation between supported leaf types can use generated
+orchestration directly. Other transformations and middleware use the interpreted
+orchestration, while pure child checkpoints can still use generated validators.
+Suspend is resolved lazily by JIT. AOT does not evaluate Suspend thunks at build
+time, so dynamically reached schemas fall back to the interpreter unless installed
+separately. Declaration callbacks remain runtime code; their type parameters can
+be compiled.
+
+Checks and property getters in replayable validation must be deterministic and
+free of side effects. Proxy inputs and modifications to built-in object behavior
+are not supported by the optimization contract. Large or unsupported graphs
+retain interpreted paths. AOT removes dynamic source generation, not all parser
+initialization or the need for runtime schema objects.
 
 # Defining Elementary Schemas
 
@@ -3080,57 +3207,65 @@ Transformation<T, E, RD, RE>
 - `RD`: the context used while decoding
 - `RE`: the context used while encoding
 
-A `Transformation` consists of two `Getter` functions:
+A `Transformation` consists of two `Getter` values:
 
 - `decode: Getter<T, E, RD>` — transforms a value during decoding
 - `encode: Getter<E, T, RE>` — transforms a value during encoding
 
-Each `Getter` receives an input and an optional context and returns either a value or an error. Getters can be composed to build more complex logic.
+Each `Getter` is a tagged description of one operation:
+
+- `Transform` transforms a present value synchronously.
+- `TransformOptional` transforms an `Option` synchronously and can handle a missing value.
+- `TransformEffect` and `TransformOptionalEffect` are the corresponding effectful forms.
+- `Passthrough` returns its input unchanged.
+
+Getter values expose `pipe`. Use the dual standalone functions `SchemaGetter.map` and `SchemaGetter.compose` to build
+larger transformations. `SchemaGetter.run` executes a getter directly and always returns an `Effect`; schemas execute
+their getters through `SchemaParser` instead.
 
 **Example** (Implementation of `Transformation.trim`)
 
 ```ts
+import { SchemaGetter, SchemaTransformation } from "effect"
+
 /**
  * @category String transformations
  * @since 4.0.0
  */
-export function trim(): Transformation<string, string> {
-  return new Transformation(Getter.trim(), Getter.passthrough())
+export function trim(): SchemaTransformation.Transformation<string, string> {
+  return new SchemaTransformation.Transformation(SchemaGetter.trim(), SchemaGetter.passthrough())
 }
 ```
 
 In this case:
 
-- The `decode` process uses `Getter.trim()` to remove leading and trailing whitespace.
-- The `encode` process uses `Getter.passthrough()`, which returns the input as is.
+- The `decode` process uses `SchemaGetter.trim()` to remove leading and trailing whitespace.
+- The `encode` process uses `SchemaGetter.passthrough()`, which returns the input as is.
 
 ## Composing Transformations
 
-You can combine transformations using the `.compose` method. The resulting transformation applies the `decode` and `encode` logic of both transformations in sequence.
+You can combine transformations using `SchemaTransformation.composeTransformation`. The resulting transformation applies the `decode` and `encode` logic of both transformations in sequence.
 
 **Example** (Trim and lowercase a string)
 
 ```ts
-import { Option, SchemaTransformation } from "effect"
+import { Schema, SchemaTransformation } from "effect"
 
 // Compose two transformations: trim followed by toLowerCase
-const trimToLowerCase = SchemaTransformation.trim().compose(SchemaTransformation.toLowerCase())
+const trimToLowerCase = SchemaTransformation.composeTransformation(
+  SchemaTransformation.trim(),
+  SchemaTransformation.toLowerCase()
+)
+const schema = Schema.String.pipe(Schema.decode(trimToLowerCase))
 
-// Run the decode logic manually to inspect the result
-console.log(trimToLowerCase.decode.run(Option.some("  Abc"), {}))
-/*
-{
-  _id: 'Exit',
-  _tag: 'Success',
-  value: { _id: 'Option', _tag: 'Some', value: 'abc' }
-}
-*/
+Schema.decodeUnknownSync(schema)("  Abc")
+// "abc"
 ```
 
 In this example:
 
-- The `decode` logic applies `Getter.trim()` followed by `Getter.toLowerCase()`, producing a string that is trimmed and lowercased.
-- The `encode` logic is `Getter.passthrough()`, which simply returns the input as-is.
+- The `decode` logic applies `SchemaGetter.trim()` followed by `SchemaGetter.toLowerCase()`, producing a string that is trimmed and lowercased.
+- The `encode` logic is `SchemaGetter.passthrough()`, which returns the input unchanged.
 
 ## Transforming One Schema into Another
 
