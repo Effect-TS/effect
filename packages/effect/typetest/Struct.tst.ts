@@ -197,6 +197,40 @@ describe("Struct", () => {
       )
     })
 
+    it("errors when providing a key that does not exist on the struct", () => {
+      expect(Struct.evolve).type.not.toBeCallableWith(
+        { a: "a", b: 1 },
+        { a: (s: string) => s.length, c: (n: number) => n }
+      )
+      pipe(
+        { a: "a", b: 1 },
+        // @ts-expect-error Type '(n: number) => number' is not assignable to type 'never'
+        Struct.evolve({ a: (s) => s.length, c: (n: number) => n })
+      )
+    })
+
+    it("nested evolve infers the inner struct from the outer key", () => {
+      expect(Struct.evolve({ a: { b: "c" }, d: 1 }, {
+        a: Struct.evolve({
+          b: (s) => {
+            expect(s).type.toBe<string>()
+            return s.length
+          }
+        })
+      })).type.toBe<{ a: { b: number }; d: number }>()
+      expect(pipe(
+        { a: { b: "c" }, d: 1 },
+        Struct.evolve({
+          a: Struct.evolve({
+            b: (s) => {
+              expect(s).type.toBe<string>()
+              return s.length
+            }
+          })
+        })
+      )).type.toBe<{ a: { b: number }; d: number }>()
+    })
+
     it("partial required fields", () => {
       expect(Struct.evolve(stringKeys, {
         a: (s) => {
