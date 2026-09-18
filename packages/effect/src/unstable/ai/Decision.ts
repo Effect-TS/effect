@@ -37,8 +37,9 @@ export const TypeId: TypeId = "~effect/ai/Decision"
  * **Details**
  *
  * `criteria` maps each label to a description of when that label applies. The
- * answer carries the winning label together with a full probability
- * distribution over every label.
+ * answer carries the label chosen by the provider together with a full
+ * probability distribution over every label. The chosen label need not have
+ * the highest probability.
  *
  * @see {@link classify} for the constructor
  * @see {@link ClassifyAnswer} for the answer produced by this decision
@@ -106,6 +107,11 @@ export type Any = Classify<string> | Rate<string> | Probability
 
 /**
  * Answer to a {@link Classify} decision.
+ *
+ * **Details**
+ *
+ * `label` is the label chosen by the provider, preserved without recomputing
+ * it from `probabilities`. It need not be the highest-probability label.
  *
  * @category models
  * @since 4.0.0
