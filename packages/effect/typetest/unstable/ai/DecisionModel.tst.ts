@@ -107,25 +107,29 @@ describe("Decision", () => {
   })
 
   it("probability requires both false and true criteria", () => {
-    expect(Decision.probability({
+    Decision.probability({
       instructions: "Needs action now",
+      // @ts-expect-error is missing in type
       criteria: { false: "No" }
-    })).type.toRaiseError()
-    expect(Decision.probability({
+    })
+    Decision.probability({
       instructions: "Needs action now",
+      // @ts-expect-error is missing in type
       criteria: { true: "Yes" }
-    })).type.toRaiseError()
+    })
   })
 
   it("instructions must be a string", () => {
-    expect(Decision.classify({
+    Decision.classify({
+      // @ts-expect-error is not assignable to type
       instructions: ["Which team"],
       criteria: { billing: "payments" }
-    })).type.toRaiseError()
+    })
   })
 
   it("make rejects a non-schema input", () => {
-    expect(Decision.make({
+    Decision.make({
+      // @ts-expect-error is not assignable to type
       input: "Ticket",
       decisions: {
         urgent: Decision.probability({
@@ -133,11 +137,27 @@ describe("Decision", () => {
           criteria: { false: "No", true: "Yes" }
         })
       }
-    })).type.toRaiseError()
+    })
   })
 })
 
 describe("DecisionModel", () => {
+  it("provider rate answers do not require a label", () => {
+    expect<{
+      readonly rating: number
+      readonly probabilities: Readonly<Record<string, number>>
+      readonly confidence: number
+    }>().type.toBeAssignableTo<DecisionModel.ProviderRateAnswer>()
+  })
+
+  it("provider classify answers require a label", () => {
+    expect<DecisionModel.ProviderClassifyAnswer["label"]>().type.toBe<string>()
+    expect<{
+      readonly probabilities: Readonly<Record<string, number>>
+      readonly confidence: number
+    }>().type.not.toBeAssignableTo<DecisionModel.ProviderClassifyAnswer>()
+  })
+
   it("decide keys answers by the decisions map", () => {
     expect<keyof Answers>().type.toBe<"department" | "frustration" | "urgent">()
     expect<Success["usage"]>().type.toBe<DecisionModel.DecisionUsage>()
@@ -164,12 +184,14 @@ describe("DecisionModel", () => {
   })
 
   it("decide takes the schema Type as input", () => {
-    expect(DecisionModel.decide(TicketTriage, {
+    DecisionModel.decide(TicketTriage, {
+      // @ts-expect-error is not assignable to type
       input: { subject: "Card was charged twice", priority: "3" }
-    })).type.toRaiseError()
-    expect(DecisionModel.decide(TicketTriage, {
+    })
+    DecisionModel.decide(TicketTriage, {
+      // @ts-expect-error is missing in type
       input: { subject: "Card was charged twice" }
-    })).type.toRaiseError()
+    })
   })
 
   it("the service decide matches the module decide without the service requirement", () => {

@@ -367,3 +367,160 @@ describe("DecisionModel", () => {
       Effect.provide(Model.make("fake", "fake-decisions", succeedWith(triageAnswers)))
     ))
 })
+
+describe("Decision validation contracts", () => {
+  for (const criteria of [{}, { only: "Only label" }] as Array<Record<string, string>>) {
+    it(`classify rejects ${Object.keys(criteria).length} labels`, () => {
+      assert.throws(() => Decision.classify({ instructions: "Choose", criteria }))
+    })
+  }
+
+  it("rate rejects duplicate levels", () => {
+    assert.throws(() => Decision.rate({ instructions: "Rate", criteria: ["low", "high", "low"] }))
+  })
+
+  it.effect("rate derives the argmax label without a provider label", () =>
+    Effect.gen(function*() {
+      // Exercise untrusted provider output; the positive typetest pins the provider type separately.
+      const { label: _, ...frustration } = triageAnswers.frustration
+      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+        Effect.provide(
+          succeedWith({ ...triageAnswers, frustration } as unknown as DecisionModel.ProviderResponse["answers"])
+        )
+      )
+      assert.strictEqual(answers.frustration.label, "frustrated")
+    }))
+
+  for (
+    const [name, probabilities, expected] of [
+      ["ignores a conflicting provider label", { calm: 0.1, frustrated: 0.5, angry: 0.4 }, "frustrated"],
+      // Deliberately reverse insertion order: ties follow criteria, not provider key order.
+      ["breaks ties in criteria order", { angry: 0.5, frustrated: 0.5, calm: 0 }, "frustrated"]
+    ] as const
+  ) {
+    it.effect(`rate ${name}`, () =>
+      Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+        assert.strictEqual(answers.frustration.label, expected)
+      }).pipe(Effect.provide(succeedWith({
+        ...triageAnswers,
+        frustration: { ...triageAnswers.frustration, label: "angry", probabilities }
+      }))))
+  }
+
+  it.effect("classify retains the provider label even when it is not the argmax", () =>
+    Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+      assert.strictEqual(answers.department.label, "sales")
+    }).pipe(Effect.provide(succeedWith({
+      ...triageAnswers,
+      department: { ...triageAnswers.department, label: "sales" }
+    }))))
+
+  for (const key of ["department", "frustration"] as const) {
+    for (const confidence of [-Number.EPSILON, 1 + Number.EPSILON, NaN, Infinity, -Infinity]) {
+      it.effect(`${key} rejects confidence ${confidence}`, () =>
+        Effect.gen(function*() {
+          const error = yield* failureOf(DecisionModel.decide(TicketTriage, { input: ticket }))
+          assert.strictEqual(error?.reason._tag, "InvalidOutputError")
+        }).pipe(Effect.provide(succeedWith({
+          ...triageAnswers,
+          [key]: { ...triageAnswers[key], confidence }
+        }))))
+    }
+    for (const confidence of [0, 1]) {
+      it.effect(`${key} accepts confidence boundary ${confidence}`, () =>
+        Effect.gen(function*() {
+          const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+          assert.strictEqual(answers[key].confidence, confidence)
+        }).pipe(Effect.provide(succeedWith({
+          ...triageAnswers,
+          [key]: { ...triageAnswers[key], confidence }
+        }))))
+    }
+
+    for (
+      const [total, accepted] of [
+        [1, true],
+        [1 - 0.5e-6, true],
+        [1 + 0.5e-6, true],
+        [1 + 1e-6, true],
+        // Adjacent representable totals straddle the lower tolerance boundary.
+        [0.9999990000000001, true],
+        [0.9999989999999999, false],
+        [1 + 1e-6 + Number.EPSILON, false],
+        [0.99, false],
+        [1.01, false],
+        [0, false]
+      ] as const
+    ) {
+      it.effect(`${key} ${accepted ? "accepts" : "rejects"} distribution total ${total}`, () => {
+        const probabilities = key === "department"
+          ? { billing: total / 2, technical: total / 2, sales: 0 }
+          : { calm: total / 2, frustrated: total / 2, angry: 0 }
+        return Effect.gen(function*() {
+          const result = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+            Effect.match({ onFailure: (error) => error, onSuccess: (response) => response })
+          )
+          if (accepted) {
+            assert.isFalse(AiError.isAiError(result))
+            if (!AiError.isAiError(result)) {
+              assert.deepStrictEqual(result.answers[key].probabilities, probabilities)
+            }
+          } else {
+            assert.isTrue(AiError.isAiError(result))
+            if (AiError.isAiError(result)) {
+              assert.strictEqual(result.reason._tag, "InvalidOutputError")
+            }
+          }
+        }).pipe(Effect.provide(succeedWith({
+          ...triageAnswers,
+          [key]: { ...triageAnswers[key], probabilities }
+        })))
+      })
+    }
+  }
+
+  for (const rating of [-Number.EPSILON, 2 + 2 * Number.EPSILON, NaN, Infinity, -Infinity]) {
+    it.effect(`rate rejects rating ${rating}`, () =>
+      Effect.gen(function*() {
+        const error = yield* failureOf(DecisionModel.decide(TicketTriage, { input: ticket }))
+        assert.strictEqual(error?.reason._tag, "InvalidOutputError")
+      }).pipe(Effect.provide(succeedWith({
+        ...triageAnswers,
+        frustration: { ...triageAnswers.frustration, rating }
+      }))))
+  }
+  for (const rating of [0, 1.4, 2]) {
+    it.effect(`rate accepts rating ${rating}`, () =>
+      Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+        assert.strictEqual(answers.frustration.rating, rating)
+      }).pipe(Effect.provide(succeedWith({
+        ...triageAnswers,
+        frustration: { ...triageAnswers.frustration, rating }
+      }))))
+  }
+
+  it.effect("extra provider keys never leak into answers", () => {
+    const raw = {
+      ...triageAnswers,
+      extraDecision: { probability: 0.5 },
+      department: {
+        ...triageAnswers.department,
+        extra: "discard",
+        probabilities: { ...triageAnswers.department.probabilities, extra: 1 }
+      },
+      frustration: {
+        ...triageAnswers.frustration,
+        extra: "discard",
+        probabilities: { ...triageAnswers.frustration.probabilities, extra: 1 }
+      },
+      urgent: { ...triageAnswers.urgent, confidence: 1, probabilities: { false: 0.1, true: 0.9 }, extra: "discard" }
+    }
+    return Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+      assert.deepStrictEqual(answers, triageAnswers)
+    }).pipe(Effect.provide(succeedWith(raw)))
+  })
+})
