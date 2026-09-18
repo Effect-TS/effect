@@ -1,6 +1,5 @@
 /**
  * Defines the provider-neutral service for structured decisions.
- *
  * `decide` encodes one input as JSON, sends its named decisions in one provider
  * call, and validates the answers. Failures are reported as `AiError` values.
  *
@@ -82,9 +81,6 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 
 /**
  * Provider input options for a decision request.
- *
- * **Details**
- *
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
  *
@@ -111,9 +107,6 @@ export interface ProviderClassifyAnswer {
 
 /**
  * Provider answer for a rate decision.
- *
- * **Details**
- *
  * The core derives the label from the highest probability, choosing the
  * first criteria entry on ties.
  *
@@ -148,9 +141,6 @@ export type ProviderAnswer = ProviderClassifyAnswer | ProviderRateAnswer | Provi
 
 /**
  * Provider response for a decision request.
- *
- * **Details**
- *
  * `answers` is keyed like the requested decisions. Each answer is validated
  * against its decision before it is returned to the caller.
  *
@@ -303,11 +293,8 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
 
 /**
  * Creates a `DecisionModel` that encodes inputs as JSON and validates provider answers.
- *
- * **Gotchas**
- *
  * Answers must cover every decision and use its labels. Distributions must
- * sum to 1 within `1e-6`, confidence must be in `[0, 1]`, and ratings must be
+ * sum to 1 within `1e-6`, optional confidence must be in `[0, 1]`, and ratings must be
  * in `[0, criteria.length - 1]`. Invalid answers fail with
  * `AiError.InvalidOutputError`; encoding failures use `AiError.InvalidUserInputError`.
  *
@@ -356,16 +343,9 @@ export const make = (params: {
 
 /**
  * Answers a decision definition using the current `DecisionModel` service.
- *
- * **Details**
- *
- * The input is encoded through `Schema.toCodecJson` of the definition's input
- * schema, so any encoding services the schema needs are part of the requirements.
- *
- * **Gotchas**
- *
- * Explicit `undefined` fields become `null`, indistinguishable from explicit
- * `null` values. Absent fields stay absent.
+ * Encodes the input with `Schema.toCodecJson`, requiring the schema's encoding services.
+ * Explicit `undefined` fields become `null`; absent fields stay absent.
+ * Custom declarations need a JSON codec annotation or encoding fails.
  *
  * **Example** (Triaging a ticket)
  *

@@ -1,6 +1,5 @@
 /**
  * Defines decisions that a `DecisionModel` answers over a single input.
- *
  * Pair an input schema with named classification, rating, or probability
  * decisions using `make`, then answer them with `DecisionModel.decide`.
  *
@@ -28,11 +27,7 @@ export const TypeId: TypeId = "~effect/ai/Decision"
 
 /**
  * Decision that assigns the input one label out of a set of criteria.
- *
- * **Details**
- *
- * `criteria` maps labels to descriptions. See {@link ClassifyAnswer} for
- * the provider's label and probability distribution.
+ * `criteria` maps labels to descriptions.
  *
  * @see {@link classify} for the constructor
  * @see {@link ClassifyAnswer} for the answer produced by this decision
@@ -48,11 +43,7 @@ export interface Classify<Label extends string> {
 
 /**
  * Decision that places the input on an ordered scale of criteria.
- *
- * **Details**
- *
- * `criteria` lists levels from lowest to highest. See {@link RateAnswer}
- * for the rating and probability distribution.
+ * `criteria` lists levels from lowest to highest.
  *
  * @see {@link rate} for the constructor
  * @see {@link RateAnswer} for the answer produced by this decision
@@ -68,9 +59,6 @@ export interface Rate<Level extends string> {
 
 /**
  * Decision that estimates how likely a statement about the input is to hold.
- *
- * **Details**
- *
  * `criteria` describes both outcomes. The answer is the probability of `true`.
  *
  * @see {@link probability} for the constructor
@@ -98,12 +86,8 @@ export type Any = Classify<string> | Rate<string> | Probability
 
 /**
  * Answer to a {@link Classify} decision.
- *
- * **Details**
- *
  * `label` is chosen by the provider and need not have the highest probability.
- * `confidence` is a provider-reported measure of how concentrated the
- * distribution is, absent when the provider does not report one.
+ * `confidence` is an optional, provider-defined measure in `[0, 1]`.
  *
  * @category models
  * @since 4.0.0
@@ -116,14 +100,10 @@ export interface ClassifyAnswer<Label extends string> {
 
 /**
  * Answer to a {@link Rate} decision.
- *
- * **Details**
- *
  * `rating` is the probability-weighted position on the scale and may fall
  * between two levels, within `[0, criteria.length - 1]`. `label` is the level
  * with the highest probability, choosing the first criteria entry on ties.
- * `confidence` is a provider-reported measure of how concentrated the
- * distribution is, absent when the provider does not report one.
+ * `confidence` is an optional, provider-defined measure in `[0, 1]`.
  *
  * @category models
  * @since 4.0.0
@@ -157,7 +137,7 @@ export type Answer<D extends Any> = D extends Classify<infer Label> ? ClassifyAn
   : never
 
 /**
- * Answer record for a map of decisions, keyed like the decisions.
+ * Answers keyed by decision name.
  *
  * @category utility types
  * @since 4.0.0
@@ -182,9 +162,6 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
 
 /**
  * Creates a classification decision from labelled criteria.
- *
- * **Gotchas**
- *
  * Throws if fewer than two labels are supplied.
  *
  * **Example** (Choosing a department)
@@ -224,9 +201,6 @@ export const classify = <Label extends string>(options: {
 
 /**
  * Creates a rating decision from an ordered list of criteria.
- *
- * **Gotchas**
- *
  * Throws if fewer than two levels or duplicate levels are supplied.
  *
  * **Example** (Rating frustration)
@@ -298,15 +272,9 @@ export const probability = (options: {
 
 /**
  * Creates a decision definition from an input schema and named decisions.
- *
- * **Details**
- *
  * `DecisionModel.decide` encodes the input with `Schema.toCodecJson` before
  * calling the provider. Answer keys and types are inferred from the decisions.
- *
- * **Gotchas**
- *
- * An empty `decisions` map throws at construction time.
+ * Throws if `decisions` is empty.
  *
  * **Example** (Defining ticket triage)
  *
