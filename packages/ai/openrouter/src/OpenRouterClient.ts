@@ -15,7 +15,7 @@ import * as Predicate from "effect/Predicate"
 import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import type * as AiError from "effect/unstable/ai/AiError"
+import * as AiError from "effect/unstable/ai/AiError"
 import * as Sse from "effect/unstable/encoding/Sse"
 import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpClient from "effect/unstable/http/HttpClient"
@@ -207,9 +207,16 @@ export const make = Effect.fnUntraced(
         const client = HttpClient.filterStatusOk(
           config?.transformClient ? config.transformClient(decisionsClient) : decisionsClient
         )
-        const response = yield* client.execute(HttpClientRequest.post("/alpha/decisions", {
-          body: HttpBody.jsonUnsafe(payload)
-        }))
+        const request = yield* HttpClientRequest.bodyJson(HttpClientRequest.post("/alpha/decisions"), payload).pipe(
+          Effect.mapError((error) =>
+            AiError.make({
+              module: "OpenRouterClient",
+              method: "createDecisions",
+              reason: new AiError.InvalidRequestError({ description: String(error) })
+            })
+          )
+        )
+        const response = yield* client.execute(request)
         const body = yield* HttpClientResponse.schemaBodyJson(OpenRouterSchema.DecisionsResponse)(response)
         return [body, response] as [
           typeof OpenRouterSchema.DecisionsResponse.Type,
