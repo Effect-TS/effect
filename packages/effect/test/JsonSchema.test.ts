@@ -809,6 +809,29 @@ describe("JsonSchema", () => {
       })
     })
 
+    it("preserves boolean schemas", () => {
+      deepStrictEqual(JsonSchema.fromSchemaDraft2020_12(false as unknown as JsonSchema.JsonSchema), {
+        dialect: "draft-2020-12",
+        schema: false as unknown as JsonSchema.JsonSchema,
+        definitions: {}
+      })
+      deepStrictEqual(JsonSchema.fromSchemaDraft2020_12(true as unknown as JsonSchema.JsonSchema), {
+        dialect: "draft-2020-12",
+        schema: true as unknown as JsonSchema.JsonSchema,
+        definitions: {}
+      })
+      deepStrictEqual(JsonSchema.fromSchemaDraft07(false as unknown as JsonSchema.JsonSchema), {
+        dialect: "draft-2020-12",
+        schema: false as unknown as JsonSchema.JsonSchema,
+        definitions: {}
+      })
+      deepStrictEqual(JsonSchema.fromSchemaOpenApi3_1(false as unknown as JsonSchema.JsonSchema), {
+        dialect: "draft-2020-12",
+        schema: false as unknown as JsonSchema.JsonSchema,
+        definitions: {}
+      })
+    })
+
     it("extracts root $defs without rewriting Draft-2020-12 refs", () => {
       const input: JsonSchema.JsonSchema = {
         type: "object",

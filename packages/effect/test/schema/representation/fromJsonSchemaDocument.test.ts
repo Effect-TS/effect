@@ -30,6 +30,12 @@ describe("fromJsonSchemaDocument", () => {
     })
   })
 
+  it("imports boolean false schema as Never", () => {
+    assertFromJsonSchema({ schema: false as unknown as JsonSchema.JsonSchema }, {
+      codes: makeCode(`Schema.Never`, `never`)
+    })
+  })
+
   it("imports not-empty schemas at the root and through references", () => {
     assertFromJsonSchema({ schema: { not: {}, description: "impossible" } }, {
       codes: makeCode(`Schema.Never.annotate({ "description": "impossible" })`, `never`)
