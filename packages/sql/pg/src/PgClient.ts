@@ -237,6 +237,7 @@ const makeImpl = Effect.fnUntraced(function*(
       // Postgres prepares transaction control like anything else, and a client
       // with preparation turned off falls back to the unnamed path anyway.
       prepareTransactionControls: true,
+      releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer: options.transactionAcquirer,
       compiler,
       spanAttributes: [

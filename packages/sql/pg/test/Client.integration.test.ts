@@ -303,6 +303,32 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       ])
     }))
 
+  it.effect("releases completed nested transaction locks", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`CREATE TEMP TABLE savepoint_locks (value INTEGER) ON COMMIT DROP`
+        yield* sql`INSERT INTO savepoint_locks VALUES (0)`
+        const locks = sql`SELECT count(*)::integer AS count FROM pg_locks
+          WHERE pid = pg_backend_pid() AND locktype = 'transactionid'`
+        const before = yield* locks
+
+        for (let value = 1; value <= 10; value++) {
+          yield* sql.withTransaction(sql`INSERT INTO savepoint_locks VALUES (${value})`)
+        }
+        yield* sql.withTransaction(
+          sql`INSERT INTO savepoint_locks VALUES (-1)`.pipe(Effect.andThen(Effect.fail("rollback")))
+        ).pipe(Effect.catch(() => Effect.void))
+
+        assert.deepStrictEqual(yield* locks, before)
+        assert.deepStrictEqual(
+          yield* sql`SELECT count(*)::integer AS count FROM savepoint_locks WHERE value >= 0`,
+          [{ count: 11 }]
+        )
+        assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_locks WHERE value = -1`, [])
+      }))
+    }))
+
   it.effect("preserves successful concurrent nested transactions", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
