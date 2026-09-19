@@ -117,6 +117,7 @@ const elementSamples: Record<number, unknown> = {
   [PgTypes.OID.int4]: 70000,
   [PgTypes.OID.text]: "héllo ☃",
   [PgTypes.OID.oid]: 4294967295,
+  [PgTypes.OID.regclass]: 4294967295,
   [PgTypes.OID.json]: { a: [1, 2] },
   [PgTypes.OID.jsonb]: { a: [1, 2] },
   [PgTypes.OID.cidr]: "10.0.0.0/8",
@@ -165,6 +166,14 @@ const binary = (oids: ReadonlyArray<number>): Array<PgTypesResult.Column> =>
   oids.map((dataTypeOid) => ({ dataTypeOid, format: 1 }))
 
 describe("PgTypes", () => {
+  it("encodes and decodes regclass as an unsigned OID", () => {
+    for (const value of [0, 1259, 4294967295]) {
+      const encoded = PgTypes.encode(value, PgTypes.OID.oid)
+      assert.strictEqual(PgTypes.decode(encoded, PgTypes.OID.regclass, 1), value)
+      assert.deepStrictEqual(PgTypes.encode(value, PgTypes.OID.regclass), encoded)
+    }
+  })
+
   it("returns codec failures as Result values", () => {
     for (
       const result of [

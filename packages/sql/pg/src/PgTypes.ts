@@ -313,6 +313,7 @@ export const OID = {
   timestamptz: 1184,
   timetz: 1266,
   numeric: 1700,
+  regclass: 2205,
   uuid: 2950,
   jsonb: 3802,
   boolArray: 1000,
@@ -336,6 +337,7 @@ export const OID = {
   timestamptzArray: 1185,
   timetzArray: 1270,
   numericArray: 1231,
+  regclassArray: 2210,
   uuidArray: 2951,
   jsonbArray: 3807
 } as const
@@ -362,6 +364,7 @@ const arrayToElement = new Map<number, number>([
   [OID.timestamptzArray, OID.timestamptz],
   [OID.timetzArray, OID.timetz],
   [OID.numericArray, OID.numeric],
+  [OID.regclassArray, OID.regclass],
   [OID.uuidArray, OID.uuid],
   [OID.jsonbArray, OID.jsonb]
 ])
@@ -1160,6 +1163,23 @@ const jsonbCodec: UnsafeCodec<any> = codecOf(
   }
 )
 
+const oidCodec: UnsafeCodec<any> = codecOf(
+  (bytes, offset, size) => {
+    requireSize(size, 4, "oid")
+    return readUint32(bytes, offset)
+  },
+  (value) => {
+    const num = requireInteger(value, "oid", 0, 4294967295)
+    const bytes = new Uint8Array(4)
+    bytes[0] = num >>> 24
+    bytes[1] = num >>> 16
+    bytes[2] = num >>> 8
+    bytes[3] = num
+    return bytes
+  },
+  (sink, value) => sink.int32(requireInteger(value, "oid", 0, 4294967295))
+)
+
 const builtinScalars = new Map<number, UnsafeCodec<any>>([
   [
     OID.bool,
@@ -1224,25 +1244,8 @@ const builtinScalars = new Map<number, UnsafeCodec<any>>([
       (sink, value) => sink.int32(requireInteger(value, "int4", INT32_MIN, INT32_MAX))
     )
   ],
-  [
-    OID.oid,
-    codecOf(
-      (bytes, offset, size) => {
-        requireSize(size, 4, "oid")
-        return readUint32(bytes, offset)
-      },
-      (value) => {
-        const num = requireInteger(value, "oid", 0, 4294967295)
-        const bytes = new Uint8Array(4)
-        bytes[0] = num >>> 24
-        bytes[1] = num >>> 16
-        bytes[2] = num >>> 8
-        bytes[3] = num
-        return bytes
-      },
-      (sink, value) => sink.int32(requireInteger(value, "oid", 0, 4294967295))
-    )
-  ],
+  [OID.oid, oidCodec],
+  [OID.regclass, oidCodec],
   [
     OID.int8,
     codecOf(
