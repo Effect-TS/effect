@@ -316,6 +316,9 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
+      if (redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")) {
+        return safeToString(redacted)
+      }
       while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
         ancestors.pop()
       }
