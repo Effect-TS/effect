@@ -20,7 +20,7 @@ import { constant, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import * as Iterable from "./Iterable.ts"
-import * as MutableList from "./MutableList.ts"
+import * as Latch from "./Latch.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
@@ -675,14 +675,41 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   })
 
 // Usage-TTL queue ownership ends when an item leaves pool state.
-const usageTTLQueues = new WeakMap<PoolItem<unknown, unknown>, Queue.Dequeue<PoolItem<unknown, unknown>>>()
+interface UsageTTLQueue<A, E> {
+  head: UsageTTLNode<A, E> | undefined
+  tail: UsageTTLNode<A, E> | undefined
+}
+
+interface UsageTTLNode<A, E> {
+  readonly item: PoolItem<A, E>
+  readonly queue: UsageTTLQueue<A, E>
+  previous: UsageTTLNode<A, E> | undefined
+  next: UsageTTLNode<A, E> | undefined
+}
+
+const usageTTLNodes = new WeakMap<PoolItem<unknown, unknown>, UsageTTLNode<unknown, unknown>>()
+
+const removeUsageTTLItem = <A, E>(item: PoolItem<A, E>): void => {
+  const node = usageTTLNodes.get(item)
+  if (node === undefined) return
+  if (node.previous === undefined) {
+    node.queue.head = node.next
+  } else {
+    node.previous.next = node.next
+  }
+  if (node.next === undefined) {
+    node.queue.tail = node.previous
+  } else {
+    node.next.previous = node.previous
+  }
+  node.previous = undefined
+  node.next = undefined
+  usageTTLNodes.delete(item)
+}
+
 const removePoolItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
   self.state.items.delete(item)
-  const queue = usageTTLQueues.get(item)
-  if (queue !== undefined) {
-    MutableList.remove(queue.messages, item)
-    usageTTLQueues.delete(item)
-  }
+  removeUsageTTLItem(item)
 }
 
 // Reservations prevent reuse without extending the lifetime of borrowed items.
@@ -993,27 +1020,40 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
 })
 
 const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
-  const queue = yield* Queue.unbounded<PoolItem<A, E>>()
+  const queue: UsageTTLQueue<A, E> = { head: undefined, tail: undefined }
+  const available = yield* Latch.make()
+  const enqueue = (item: PoolItem<A, E>): Effect.Effect<void> =>
+    Effect.sync(() => {
+      removeUsageTTLItem(item)
+      const node: UsageTTLNode<A, E> = { item, queue, previous: queue.tail, next: undefined }
+      if (queue.tail === undefined) {
+        queue.head = node
+      } else {
+        queue.tail.next = node
+      }
+      queue.tail = node
+      usageTTLNodes.set(item, node)
+      available.openUnsafe()
+    })
   return identity<Strategy<A, E>>({
     run: (pool) => {
       const process: Effect.Effect<void> = Effect.suspend(() => {
         const excess = activeSize(pool) - targetSize(pool)
         if (excess <= 0) return Effect.void
-        return Queue.take(queue).pipe(
-          Effect.tap((item) => invalidatePoolItem(pool, item)),
-          Effect.flatMap(() => process)
-        )
+        if (queue.head === undefined) {
+          available.closeUnsafe()
+          return Effect.flatMap(available.await, () => process)
+        }
+        const item = queue.head.item
+        removeUsageTTLItem(item)
+        return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
       })
       return process.pipe(
         Effect.delay(ttl),
         Effect.forever({ disableYield: true })
       )
     },
-    onAcquire: (item) =>
-      Effect.suspend(() => {
-        usageTTLQueues.set(item, queue)
-        return Queue.offer(queue, item)
-      }),
+    onAcquire: enqueue,
     reclaim(pool) {
       return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
         if (pool.state.invalidated.size === 0) {
@@ -1029,7 +1069,7 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
         if (item.value.refCount < pool.config.concurrency) {
           addAvailable(pool, item.value)
         }
-        return Effect.as(Queue.offer(queue, item.value), item.value)
+        return Effect.as(enqueue(item.value), item.value)
       })
     }
   })
