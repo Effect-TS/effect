@@ -25,9 +25,12 @@ let harnessIdCounter = 0
  * when no transaction or savepoint is active, which is what a real database
  * reports when a rollback is issued after a failed `BEGIN`.
  */
-const makeHarness = (failures: {
+const makeHarness = (options: {
   readonly begin?: SqlError.SqlError | undefined
   readonly savepoint?: SqlError.SqlError | undefined
+  readonly rollbackSavepoint?: SqlError.SqlError | undefined
+  readonly releaseSavepoint?: SqlError.SqlError | undefined
+  readonly releaseSavepoints?: boolean | undefined
 } = {}) => {
   const calls: Array<string> = []
   const conn: StubConnection = { id: "stub" }
@@ -54,16 +57,16 @@ const makeHarness = (failures: {
       )),
     begin: () =>
       Effect.flatMap(record("begin"), () => {
-        if (failures.begin !== undefined) {
-          return Effect.fail(failures.begin)
+        if (options.begin !== undefined) {
+          return Effect.fail(options.begin)
         }
         transactionActive = true
         return Effect.void
       }),
     savepoint: (_conn, id) =>
       Effect.flatMap(record(`savepoint(${id})`), () => {
-        if (failures.savepoint !== undefined) {
-          return Effect.fail(failures.savepoint)
+        if (options.savepoint !== undefined) {
+          return Effect.fail(options.savepoint)
         }
         savepoints.push(id)
         return Effect.void
@@ -83,12 +86,27 @@ const makeHarness = (failures: {
           })
           : Effect.fail(sqlError("cannot rollback - no transaction is active"))),
     rollbackSavepoint: (_conn, id) =>
-      Effect.flatMap(record(`rollbackSavepoint(${id})`), () =>
-        savepoints.includes(id)
-          ? Effect.sync(() => {
-            savepoints.splice(savepoints.indexOf(id), 1)
-          })
-          : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`)))
+      Effect.flatMap(record(`rollbackSavepoint(${id})`), () => {
+        if (options.rollbackSavepoint !== undefined) {
+          return Effect.fail(options.rollbackSavepoint)
+        }
+        return savepoints.includes(id)
+          ? Effect.void
+          : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
+      }),
+    releaseSavepoint: options.releaseSavepoints
+      ? (_conn, id) =>
+        Effect.flatMap(record(`releaseSavepoint(${id})`), () => {
+          if (options.releaseSavepoint !== undefined) {
+            return Effect.fail(options.releaseSavepoint)
+          }
+          return savepoints.includes(id)
+            ? Effect.sync(() => {
+              savepoints.splice(savepoints.indexOf(id), 1)
+            })
+            : Effect.fail(sqlError(`cannot release savepoint ${id} - it does not exist`))
+        })
+      : undefined
   })
 
   return { calls, withTransaction } as const
@@ -155,6 +173,77 @@ describe("SqlClient", () => {
           "closeConnection"
         ])
       }))
+
+    it.effect("releases a rolled-back savepoint before the outer transaction commits", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoints: true })
+
+        const exit = yield* harness.withTransaction(
+          Effect.exit(harness.withTransaction(Effect.fail("boom" as const)))
+        )
+
+        assertTypedFailure(exit, "boom" as const)
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "rollbackSavepoint(1)",
+          "releaseSavepoint(1)",
+          "commit",
+          "closeConnection"
+        ])
+      }))
+
+    it.effect("skips savepoint release when rollback fails", () =>
+      Effect.gen(function*() {
+        const rollbackError = sqlError("cannot roll back savepoint")
+        const harness = makeHarness({ releaseSavepoints: true, rollbackSavepoint: rollbackError })
+
+        const exit = yield* Effect.exit(harness.withTransaction(
+          harness.withTransaction(Effect.fail("boom"))
+        ))
+
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("boom"), Cause.die(rollbackError))))
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "rollbackSavepoint(1)",
+          "rollback",
+          "closeConnection"
+        ])
+      }))
+
+    for (const fails of [false, true]) {
+      it.effect(
+        `rolls back the outer transaction when release fails after nested ${fails ? "failure" : "success"}`,
+        () =>
+          Effect.gen(function*() {
+            const releaseError = sqlError("cannot release savepoint")
+            const harness = makeHarness({ releaseSavepoints: true, releaseSavepoint: releaseError })
+
+            const exit = yield* Effect.exit(harness.withTransaction(
+              harness.withTransaction(fails ? Effect.fail("boom") : Effect.void)
+            ))
+
+            assert.deepStrictEqual(
+              exit,
+              fails
+                ? Exit.failCause(Cause.combine(Cause.fail("boom"), Cause.die(releaseError)))
+                : Exit.die(releaseError)
+            )
+            assert.deepStrictEqual(harness.calls, [
+              "acquireConnection",
+              "begin",
+              "savepoint(1)",
+              ...(fails ? ["rollbackSavepoint(1)"] : []),
+              "releaseSavepoint(1)",
+              "rollback",
+              "closeConnection"
+            ])
+          })
+      )
+    }
 
     it.effect("closes the connection scope when begin fails", () =>
       Effect.gen(function*() {
