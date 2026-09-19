@@ -29,7 +29,7 @@ import * as Os from "node:os"
  * @since 4.0.0
  */
 export const bind = (options: Datagram.BindOptions): Effect.Effect<
-  Datagram.DatagramSocket,
+  Datagram.UnconnectedSocket,
   Datagram.DatagramSocketError,
   Scope.Scope
 > => Datagram.fromTransport(options, (handlers) => open(options.localAddress, handlers))
@@ -47,7 +47,7 @@ export const bind = (options: Datagram.BindOptions): Effect.Effect<
  * @since 4.0.0
  */
 export const connect = (options: Datagram.ConnectOptions): Effect.Effect<
-  Datagram.ConnectedDatagramSocket,
+  Datagram.ConnectedSocket,
   Datagram.DatagramSocketError,
   Scope.Scope
 > => Datagram.fromConnectedTransport(options, (handlers) => open(options.localAddress, handlers, options.remote))
@@ -118,9 +118,9 @@ const open = Effect.fnUntraced(function*(
   })
 
   const send = Effect.effectify(
-    (packet: Datagram.OutgoingPacket, callback: (cause: Error | null, bytes: number) => void) => {
+    (packet: Datagram.Packet, callback: (cause: Error | null, bytes: number) => void) => {
       if (remote === undefined) {
-        socket.send(packet.data, packet.destination.port, NetAddress.formatHost(packet.destination), callback)
+        socket.send(packet.data, packet.peer.port, NetAddress.formatHost(packet.peer), callback)
       } else {
         socket.send(packet.data, callback)
       }
@@ -166,7 +166,7 @@ const openError = (cause: unknown) =>
     reason: new Datagram.DatagramSocketOpenError({ cause })
   })
 
-const writeError = (cause: unknown, [packet]: [Datagram.OutgoingPacket]) =>
+const writeError = (cause: unknown, [packet]: [Datagram.Packet]) =>
   new Datagram.DatagramSocketError({
-    reason: new Datagram.DatagramSocketWriteError({ cause, destination: packet.destination })
+    reason: new Datagram.DatagramSocketWriteError({ cause, destination: packet.peer })
   })

@@ -1,8 +1,8 @@
 /**
- * Scoped datagram endpoints with packet-preserving readers, writers, and streaming adapters.
+ * Scoped datagram endpoints with packet-preserving reads, writes, and streaming adapters.
  *
- * Binding acquires a ready-to-use endpoint owned by its scope. Readers and
- * writers share that endpoint; stopping a consumer leaves it open. Local
+ * Binding acquires a ready-to-use endpoint owned by its scope. Read and write
+ * operations share that endpoint; stopping a consumer leaves it open. Local
  * buffering cannot provide remote backpressure, and successful writes do not
  * acknowledge delivery.
  *
@@ -32,90 +32,58 @@ import * as NetAddress from "../net/NetAddress.ts"
 export const TypeId = "~effect/socket/DatagramSocket"
 
 /**
- * A received datagram and its sender, with independently owned payload storage.
- *
- * @category models
- * @since 4.0.0
- */
-export interface IncomingPacket<out A = Uint8Array> {
-  readonly data: A
-  readonly source: NetAddress.InetAddress
-}
-
-/**
- * A single outgoing datagram and its destination.
- *
- * @category models
- * @since 4.0.0
- */
-export interface OutgoingPacket<out A = Uint8Array> {
-  readonly data: A
-  readonly destination: NetAddress.InetAddress
-}
-
-/**
- * The read side of a bound datagram endpoint.
+ * A datagram payload and its peer address.
  *
  * **Details**
  *
- * `pull` yields non-empty batches of complete packets, including empty payloads.
- * Concurrent pulls consume distinct batches. Interrupting a pull leaves the
- * endpoint open; closing the socket acquisition scope closes the binding and
- * fails pending and future pulls.
- * `In` is the complete incoming value; it defaults to a byte packet with its source.
+ * `peer` is the sender for a received packet and the destination for an outgoing
+ * packet. Received payloads have independently owned storage.
  *
  * @category models
  * @since 4.0.0
  */
-export interface Reader<out In = IncomingPacket> {
-  readonly pull: Effect.Effect<NonEmptyReadonlyArray<In>, DatagramSocketError>
+export interface Packet {
+  readonly data: Uint8Array
+  readonly peer: NetAddress.InetAddress
 }
 
 /**
- * The write side of a bound datagram endpoint.
+ * A bound datagram socket whose writes specify a destination for each packet.
  *
- * **Details**
- *
- * `write` submits one datagram. Callers must not mutate payloads until the write
- * settles. Interruption cannot retract submitted datagrams.
- *
+ * @see {@link ConnectedSocket} for a fixed remote address
  * @category models
  * @since 4.0.0
  */
-export interface Writer<in Out = OutgoingPacket> {
-  readonly write: (packet: Out) => Effect.Effect<void, DatagramSocketError>
-}
-
-/**
- * A bound datagram socket whose acquisition scope owns its endpoint.
- *
- * **Details**
- *
- * The socket is ready to send and receive when acquisition succeeds. `address`
- * is its actual local address, including the assigned port when binding to zero.
- * Readers and writers share the endpoint. Concurrent pulls consume distinct
- * batches, and interrupting an operation leaves the endpoint open.
- *
- * Closing the acquisition scope discards buffered packets and fails pending and
- * future operations with `DatagramSocketClosedError`. Writes are never replayed
- * on another endpoint. A terminal receive error fails pulls; the acquisition
- * scope continues to own the endpoint. Retry scoped binding and consumption to
- * create another socket after failure.
- * `Out` is the written value and `In` is the received value; both default to
- * byte packets with destination or source addresses, respectively.
- *
- * @category models
- * @since 4.0.0
- */
-export interface DatagramSocket<in Out = OutgoingPacket, out In = IncomingPacket> {
+export interface UnconnectedSocket {
   readonly [TypeId]: typeof TypeId
+  readonly _tag: "UnconnectedSocket"
   readonly address: NetAddress.InetAddress
-  readonly reader: Reader<In>
-  readonly writer: Writer<Out>
+  /**
+   * Reads the next non-empty batch of complete packets. Concurrent pulls consume
+   * distinct packets. Interrupting a pull leaves the endpoint open.
+   */
+  readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet>, DatagramSocketError>
+  /**
+   * Writes a packet to its peer, waiting for local acceptance.
+   */
+  readonly write: (packet: Packet) => Effect.Effect<void, DatagramSocketError>
+  /**
+   * Writes a group, using native batching when available and sequential sends otherwise.
+   *
+   * **Details**
+   *
+   * Keep inputs unchanged until settlement; copies are made lazily as sending
+   * advances. Native backpressure
+   * is handled internally. Other writes may interleave. Cancellation stops future
+   * submissions but cannot retract packets. Errors may follow partial transmission;
+   * retrying the group can duplicate packets. Native validation may reject a whole
+   * window before submitting any of it. Application queues and retries remain caller concerns.
+   */
+  readonly writeMany: (packets: ReadonlyArray<Packet>) => Effect.Effect<void, DatagramSocketError>
 }
 
 /**
- * A bound socket associated with a single peer and a byte-oriented writer.
+ * A bound datagram socket with a fixed remote address and payload-only writes.
  *
  * **Details**
  *
@@ -125,12 +93,58 @@ export interface DatagramSocket<in Out = OutgoingPacket, out In = IncomingPacket
  * @category models
  * @since 4.0.0
  */
-export interface ConnectedDatagramSocket<out In = IncomingPacket> extends DatagramSocket<Uint8Array, In> {
+export interface ConnectedSocket {
+  readonly [TypeId]: typeof TypeId
+  readonly _tag: "ConnectedSocket"
+  readonly address: NetAddress.InetAddress
+  /**
+   * Reads the next non-empty batch of complete packets. Concurrent pulls consume
+   * distinct packets. Interrupting a pull leaves the endpoint open.
+   */
+  readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet>, DatagramSocketError>
   readonly remote: NetAddress.InetAddress
+  /**
+   * Writes a payload to the fixed remote address, waiting for local acceptance.
+   */
+  readonly write: (data: Uint8Array) => Effect.Effect<void, DatagramSocketError>
+  /**
+   * Writes a group, using native batching when available and sequential sends otherwise.
+   *
+   * **Details**
+   *
+   * Keep inputs unchanged until settlement; copies are made lazily as sending
+   * advances. Native backpressure
+   * is handled internally. Other writes may interleave. Cancellation stops future
+   * submissions but cannot retract packets. Errors may follow partial transmission;
+   * retrying the group can duplicate packets. Native validation may reject a whole
+   * window before submitting any of it. Application queues and retries remain caller concerns.
+   */
+  readonly writeMany: (payloads: ReadonlyArray<Uint8Array>) => Effect.Effect<void, DatagramSocketError>
 }
 
 /**
- * Service identifying an unconnected datagram socket.
+ * An unconnected or connected datagram socket, distinguished by its `_tag`.
+ *
+ * **Details**
+ *
+ * The socket is ready to send and receive when acquisition succeeds. `address`
+ * is its actual local address, including the assigned port when binding to zero.
+ * Read and write operations share the endpoint. Concurrent pulls consume distinct
+ * batches, and interrupting an operation leaves the endpoint open.
+ *
+ * Closing the acquisition scope discards buffered packets and fails pending and
+ * future operations with `DatagramSocketClosedError`. Writes are never replayed
+ * on another endpoint. A terminal receive error fails pulls; the acquisition
+ * scope continues to own the endpoint. Retry scoped binding and consumption to
+ * create another socket after failure.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type DatagramSocket = UnconnectedSocket | ConnectedSocket
+
+/**
+ * Service identifying an unconnected or connected datagram socket.
  *
  * @category services
  * @since 4.0.0
@@ -142,16 +156,10 @@ export const DatagramSocket: Context.Service<DatagramSocket, DatagramSocket> = C
 /**
  * Returns whether a value is a datagram socket.
  *
- * **Details**
- *
- * The socket brand does not establish its incoming or outgoing value types.
- * The narrowed socket therefore reads `unknown` values and accepts no writes.
- *
  * @category guards
  * @since 4.0.0
  */
-export const isDatagramSocket = (value: unknown): value is DatagramSocket<never, unknown> =>
-  Predicate.hasProperty(value, TypeId)
+export const isDatagramSocket = (value: unknown): value is DatagramSocket => Predicate.hasProperty(value, TypeId)
 
 /**
  * Binding address and finite receive limits for a datagram socket.
@@ -198,10 +206,10 @@ export interface ConnectOptions extends BindOptions {
  * @since 4.0.0
  */
 export class DatagramSocketFactory extends Context.Service<DatagramSocketFactory, {
-  readonly bind: (options: BindOptions) => Effect.Effect<DatagramSocket, DatagramSocketError, Scope.Scope>
+  readonly bind: (options: BindOptions) => Effect.Effect<UnconnectedSocket, DatagramSocketError, Scope.Scope>
   readonly connect: (
     options: ConnectOptions
-  ) => Effect.Effect<ConnectedDatagramSocket, DatagramSocketError, Scope.Scope>
+  ) => Effect.Effect<ConnectedSocket, DatagramSocketError, Scope.Scope>
 }>()("effect/socket/DatagramSocketFactory") {}
 
 /**
@@ -211,7 +219,7 @@ export class DatagramSocketFactory extends Context.Service<DatagramSocketFactory
  * @since 4.0.0
  */
 export const bind = (options: BindOptions): Effect.Effect<
-  DatagramSocket,
+  UnconnectedSocket,
   DatagramSocketError,
   DatagramSocketFactory | Scope.Scope
 > => DatagramSocketFactory.use((factory) => factory.bind(options))
@@ -223,28 +231,114 @@ export const bind = (options: BindOptions): Effect.Effect<
  * @since 4.0.0
  */
 export const connect = (options: ConnectOptions): Effect.Effect<
-  ConnectedDatagramSocket,
+  ConnectedSocket,
   DatagramSocketError,
   DatagramSocketFactory | Scope.Scope
 > => DatagramSocketFactory.use((factory) => factory.connect(options))
 
 /**
- * Constructs a bound datagram socket from its address, reader, and writer.
+ * Operations for constructing an unconnected socket with optional batch submission.
  *
  * **Details**
  *
- * Implementations own native cleanup and must settle pending operations when
- * the socket acquisition scope closes. Operations must support caller interruption.
+ * `pull` supplies complete incoming packets. `write` and optional `writeMany`
+ * complete after local acceptance. Omit `writeMany` to select sequential writes
+ * during construction. Implementations own resource cleanup and must settle
+ * operations when their acquisition scope closes.
  *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MakeUnconnectedOptions {
+  readonly address: NetAddress.InetAddress
+  readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet>, DatagramSocketError>
+  readonly write: (packet: Packet) => Effect.Effect<void, DatagramSocketError>
+  readonly writeMany?: ((packets: ReadonlyArray<Packet>) => Effect.Effect<void, DatagramSocketError>) | undefined
+}
+
+/**
+ * Constructs an unconnected datagram socket from read and write operations.
+ *
+ * **Details**
+ *
+ * Operations must support caller interruption. If `writeMany` is omitted, a
+ * sequential implementation is selected here. The returned socket exposes
+ * `pull`, `write`, and `writeMany` directly.
+ *
+ * @see {@link makeConnected} for a fixed remote address
  * @see {@link fromTransport} to adapt packet callbacks with scoped cleanup and buffering
  * @category constructors
  * @since 4.0.0
  */
-export const make = <Out = OutgoingPacket, In = IncomingPacket>(options: {
+export const makeUnconnected = (options: MakeUnconnectedOptions): UnconnectedSocket =>
+  makeSocket(options) as UnconnectedSocket
+
+/**
+ * Operations for constructing a socket associated with a fixed remote address.
+ *
+ * **Details**
+ *
+ * The supplied operations must implement the fixed-peer behavior and own resource
+ * cleanup. `write` and optional `writeMany` complete after local acceptance.
+ * Omit `writeMany` to select sequential writes during construction.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MakeConnectedOptions {
   readonly address: NetAddress.InetAddress
-  readonly reader: Reader<In>
-  readonly writer: Writer<Out>
-}): DatagramSocket<Out, In> => ({ [TypeId]: TypeId, ...options })
+  readonly remote: NetAddress.InetAddress
+  readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet>, DatagramSocketError>
+  readonly write: (data: Uint8Array) => Effect.Effect<void, DatagramSocketError>
+  readonly writeMany?: ((payloads: ReadonlyArray<Uint8Array>) => Effect.Effect<void, DatagramSocketError>) | undefined
+}
+
+/**
+ * Constructs a connected datagram socket from read and write operations.
+ *
+ * **Details**
+ *
+ * Operations must support caller interruption and implement the fixed-peer
+ * behavior. This constructor does not open or connect a native socket. If
+ * `writeMany` is omitted, a sequential implementation is selected here.
+ *
+ * @see {@link makeUnconnected} for writes with per-packet destinations
+ * @see {@link fromConnectedTransport} to adapt a scoped native transport
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeConnected = (options: MakeConnectedOptions): ConnectedSocket =>
+  makeSocket(options, options.remote) as ConnectedSocket
+
+const UnconnectedProto = {
+  [TypeId]: TypeId,
+  _tag: "UnconnectedSocket"
+}
+
+const ConnectedProto = {
+  [TypeId]: TypeId,
+  _tag: "ConnectedSocket"
+}
+
+const makeSocket = (
+  options: MakeUnconnectedOptions | MakeConnectedOptions,
+  remote?: NetAddress.InetAddress
+): DatagramSocket => {
+  // Each constructor fixes the input shape before normalizing batch submission.
+  const write = options.write as (value: Packet | Uint8Array) => Effect.Effect<void, DatagramSocketError>
+  const writeMany = (options.writeMany ??
+    ((packets: ReadonlyArray<Packet | Uint8Array>) => Effect.forEach(packets, write, { discard: true }))) as (
+      packets: ReadonlyArray<Packet | Uint8Array>
+    ) => Effect.Effect<void, DatagramSocketError>
+
+  const socket = Object.create(remote === undefined ? UnconnectedProto : ConnectedProto)
+  socket.address = options.address
+  socket.pull = options.pull
+  socket.write = write
+  socket.writeMany = writeMany
+  if (remote !== undefined) socket.remote = remote
+  return socket
+}
 
 /**
  * Callbacks through which a transport supplies incoming datagrams and
@@ -261,7 +355,7 @@ export const make = <Out = OutgoingPacket, In = IncomingPacket>(options: {
  * @since 4.0.0
  */
 export interface Handlers {
-  readonly onMessage: (data: Uint8Array, source: NetAddress.InetAddress) => void
+  readonly onMessage: (data: Uint8Array, peer: NetAddress.InetAddress) => void
   readonly onError: (cause: unknown) => void
 }
 
@@ -271,19 +365,23 @@ export interface Handlers {
  * **Details**
  *
  * `send` completes when the runtime accepts the packet, including any wait for
- * native backpressure. The adapter reports `DatagramSocketWriteError` with the
+ * native backpressure. Optional `sendMany` completes when every supplied packet
+ * is accepted; it never returns partial progress. Without it, the constructor
+ * sends packets sequentially. The adapter reports `DatagramSocketWriteError` with the
  * native cause and destination. The constructor interrupts pending sends and
  * reports `DatagramSocketClosedError` when the binding scope closes. The adapter
  * must support interruption and remove operation listeners on completion or
  * interruption. Its payload is already copied and may be retained by the runtime
  * after interruption. Resource cleanup belongs to the acquisition scope.
+ * Batch failures with unknown progress use `DatagramSocketBatchWriteError`.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Binding {
   readonly address: NetAddress.InetAddress
-  readonly send: Writer["write"]
+  readonly send: (packet: Packet) => Effect.Effect<void, DatagramSocketError>
+  readonly sendMany?: ((packets: ReadonlyArray<Packet>) => Effect.Effect<void, DatagramSocketError>) | undefined
 }
 
 /**
@@ -316,15 +414,15 @@ export interface Binding {
  *       send: (packet) => Effect.sync(() => handlers.onMessage(packet.data, localAddress))
  *     })
  *   )
- *   yield* socket.writer.write({ data: new Uint8Array([1, 2]), destination: localAddress })
- *   const [packet] = yield* socket.reader.pull
+ *   yield* socket.write({ data: new Uint8Array([1, 2]), peer: localAddress })
+ *   const [packet] = yield* socket.pull
  *   return Array.from(packet.data)
  * })
  *
  * await Effect.runPromise(Effect.scoped(program)) // => [1, 2]
  * ```
  *
- * @see {@link make} to supply a reader and writer directly
+ * @see {@link makeUnconnected} to supply read and write operations directly
  * @see {@link fromConnectedTransport} for peer-associated sockets
  * @category constructors
  * @since 4.0.0
@@ -332,10 +430,25 @@ export interface Binding {
 export const fromTransport = (
   options: BindOptions,
   acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>
-): Effect.Effect<DatagramSocket, DatagramSocketError, Scope.Scope> =>
+): Effect.Effect<UnconnectedSocket, DatagramSocketError, Scope.Scope> =>
+  fromTransportWith(options, acquire) as Effect.Effect<UnconnectedSocket, DatagramSocketError, Scope.Scope>
+
+const fromTransportWith = (
+  options: BindOptions,
+  acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>,
+  remote?: NetAddress.InetAddress
+): Effect.Effect<
+  DatagramSocket,
+  DatagramSocketError,
+  Scope.Scope
+> =>
   Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
     const parentScope = yield* Effect.scope
     const socketScope = Scope.forkUnsafe(parentScope)
+    // The public constructor fixes the input shape for the lifetime of this socket.
+    const toPacket = remote === undefined
+      ? (value: Packet | Uint8Array) => value as Packet
+      : (value: Packet | Uint8Array): Packet => ({ data: value as Uint8Array, peer: remote })
 
     return yield* Effect.gen(function*() {
       const transportScope = Scope.makeUnsafe()
@@ -368,24 +481,54 @@ export const fromTransport = (
       if (Deferred.isDoneUnsafe(closed)) return yield* error(new DatagramSocketClosedError({}))
 
       const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
-      const write = Effect.fnUntraced(function*(packet: OutgoingPacket) {
-        if (packet.data.byteLength > maxPacketBytes) {
-          return yield* error(
-            new DatagramSocketMessageTooLargeError({
-              size: packet.data.byteLength,
-              maxPacketBytes
-            })
-          )
-        }
 
+      const write = Effect.fnUntraced(function*(value: Packet | Uint8Array) {
+        const packet = toPacket(value)
+        if (packet.data.byteLength > maxPacketBytes) return yield* error(new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes }))
         return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
       }, guard)
 
-      return make({
+      // Select preparation and submission once for this binding.
+      const writeBatch = binding.sendMany === undefined
+        ? Effect.fnUntraced(function*(packets: ReadonlyArray<Packet | Uint8Array>) {
+          for (let offset = 0; offset < packets.length; offset++) {
+            const packet = toPacket(packets[offset])
+            if (packet.data.byteLength > maxPacketBytes) return yield* error(new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes }))
+            yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) })
+            if (offset + 1 < packets.length && (offset + 1) % writeWindowPackets === 0) {
+              yield* Effect.yieldNow
+            }
+          }
+        }, guard)
+        : Effect.fnUntraced(function*(packets: ReadonlyArray<Packet | Uint8Array>) {
+          let offset = 0
+          while (offset < packets.length) {
+            const window: Array<Packet> = []
+            let bytes = 0
+            let invalidSize: number | undefined
+            while (offset < packets.length && window.length < writeWindowPackets && bytes < writeWindowBytes) {
+              const packet = toPacket(packets[offset])
+              if (packet.data.byteLength > maxPacketBytes) {
+                invalidSize = packet.data.byteLength
+                break
+              }
+              window.push({ ...packet, data: Uint8Array.from(packet.data) })
+              bytes += packet.data.byteLength
+              offset++
+            }
+            if (window.length > 0) yield* binding.sendMany!(window)
+            if (invalidSize !== undefined) return yield* error(new DatagramSocketMessageTooLargeError({ size: invalidSize, maxPacketBytes }))
+            // Bound synchronous work and allow cancellation between native windows.
+            if (offset < packets.length) yield* Effect.yieldNow
+          }
+        }, guard)
+
+      return makeSocket({
         address: binding.address,
-        reader: { pull: receiver.pull },
-        writer: { write }
-      })
+        pull: receiver.pull,
+        write,
+        writeMany: writeBatch
+      }, remote)
     }).pipe(Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause))))
   }))
 
@@ -405,7 +548,7 @@ export const fromTransport = (
 export const fromConnectedTransport = Effect.fnUntraced(function*(
   options: ConnectOptions,
   acquire: (handlers: Handlers) => Effect.Effect<Binding, DatagramSocketError, Scope.Scope>
-): Effect.fn.Return<ConnectedDatagramSocket, DatagramSocketError, Scope.Scope> {
+): Effect.fn.Return<ConnectedSocket, DatagramSocketError, Scope.Scope> {
   const peer = canonicalPeer(options.remote)
   if (peer.port === 0 || NetAddress.isUnspecified(peer.address)) {
     return yield* error(
@@ -415,20 +558,14 @@ export const fromConnectedTransport = Effect.fnUntraced(function*(
     )
   }
 
-  const socket = yield* fromTransport(options, (handlers) =>
+  const socket = yield* fromTransportWith(options, (handlers) =>
     acquire({
       ...handlers,
       onMessage(data, source) {
         if (Equal.equals(canonicalPeer(source), peer)) handlers.onMessage(data, source)
       }
-    }))
-  return {
-    ...socket,
-    remote: options.remote,
-    writer: {
-      write: (data: Uint8Array) => socket.writer.write({ data, destination: options.remote })
-    }
-  }
+    }), options.remote)
+  return socket as ConnectedSocket
 })
 
 /**
@@ -474,6 +611,25 @@ export class DatagramSocketWriteError extends Schema.TaggedError<DatagramSocketW
   override get message(): string {
     return `An error occurred while sending a datagram to ${this.destination}`
   }
+}
+
+/**
+ * A native batch failure whose failing destination and transmission progress are unknown.
+ *
+ * **Details**
+ *
+ * Earlier packets, including some within the failing native call, may already
+ * have been accepted. This error does not provide a safe retry offset.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketBatchWriteError extends Schema.TaggedError<DatagramSocketBatchWriteError>(
+  "effect/socket/DatagramSocket/DatagramSocketBatchWriteError"
+)("DatagramSocketBatchWriteError", {
+  cause: Schema.Defect()
+}) {
+  override readonly message = "An error occurred while sending a datagram batch; transmission progress is unknown"
 }
 
 /**
@@ -527,6 +683,7 @@ export type DatagramSocketErrorReason =
   | DatagramSocketOpenError
   | DatagramSocketReadError
   | DatagramSocketWriteError
+  | DatagramSocketBatchWriteError
   | DatagramSocketClosedError
   | DatagramSocketInvalidOptionsError
   | DatagramSocketMessageTooLargeError
@@ -541,6 +698,7 @@ export const DatagramSocketErrorReason = Schema.Union([
   DatagramSocketOpenError,
   DatagramSocketReadError,
   DatagramSocketWriteError,
+  DatagramSocketBatchWriteError,
   DatagramSocketClosedError,
   DatagramSocketInvalidOptionsError,
   DatagramSocketMessageTooLargeError
@@ -581,9 +739,8 @@ export class DatagramSocketError extends Schema.TaggedError<DatagramSocketError>
  * @category combinators
  * @since 4.0.0
  */
-export const toStream = <Out, In = IncomingPacket>(
-  self: DatagramSocket<Out, In>
-): Stream.Stream<In, DatagramSocketError> => Stream.fromPull(Effect.succeed(self.reader.pull))
+export const toStream = (self: DatagramSocket): Stream.Stream<Packet, DatagramSocketError> =>
+  Stream.fromPull(Effect.succeed(self.pull))
 
 /**
  * Converts a bound socket into a duplex channel of packet batches.
@@ -595,23 +752,69 @@ export const toStream = <Out, In = IncomingPacket>(
  * interrupts sending. Downstream termination interrupts both directions without
  * closing the socket; its acquisition scope continues to own the endpoint.
  * A finite outgoing stream does not imply a finite number of responses.
- * Outgoing batches are sent sequentially, stopping at the first failure and
- * propagating the original write error. Other writes may interleave.
+ * Each outgoing group is submitted with `writeMany` before pulling the next.
+ * Application queue policies apply before a group is pulled; the active write
+ * owns its unsent remainder. Other writes may interleave.
+ *
+ * **Example** (Sending from a caller-owned queue)
+ *
+ * Queue admission and socket submission are separate: offering a packet can
+ * complete before it is sent. A bounded queue controls pending application work;
+ * the channel waits for each pulled group to finish sending.
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Queue, Stream } from "effect"
+ * import { NetAddress } from "effect/unstable/net"
+ * import { DatagramSocket } from "effect/unstable/socket"
+ *
+ * const address = NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", 12345)
+ * const program = Effect.gen(function*() {
+ *   const socket = yield* DatagramSocket.fromTransport({ localAddress: address }, (handlers) =>
+ *     Effect.succeed({
+ *       address,
+ *       send: (packet) => Effect.sync(() => handlers.onMessage(packet.data, address))
+ *     })
+ *   )
+ *   const outgoing = yield* Queue.bounded<DatagramSocket.Packet>(64)
+ *   yield* Queue.offer(outgoing, { data: new Uint8Array([1]), peer: address })
+ *   return yield* Stream.fromQueue(outgoing).pipe(
+ *     Stream.pipeThroughChannel(DatagramSocket.toChannel(socket)),
+ *     Stream.take(1),
+ *     Stream.runCollect
+ *   )
+ * })
+ *
+ * Array.from((await Effect.runPromise(Effect.scoped(program)))[0].data) // => [1]
+ * ```
  *
  * @see {@link toStream} for read-only consumption
+ * @see {@link UnconnectedSocket} for batch completion and failure semantics
  * @category combinators
  * @since 4.0.0
  */
-export const toChannel = <Out, IE = never, In = IncomingPacket>(self: DatagramSocket<Out, In>): Channel.Channel<
-  NonEmptyReadonlyArray<In>,
-  DatagramSocketError | IE,
-  void,
-  NonEmptyReadonlyArray<Out>,
-  IE
-> => {
-  const pull = Channel.fromPull(Effect.succeed(self.reader.pull))
-  const identity = Channel.identity<NonEmptyReadonlyArray<Out>, IE, unknown>().pipe(
-    Channel.mapEffect((packets) => Effect.forEach(packets, self.writer.write, { discard: true })),
+export const toChannel: {
+  <IE = never>(self: UnconnectedSocket): Channel.Channel<
+    NonEmptyReadonlyArray<Packet>,
+    DatagramSocketError | IE,
+    void,
+    NonEmptyReadonlyArray<Packet>,
+    IE
+  >
+  <IE = never>(self: ConnectedSocket): Channel.Channel<
+    NonEmptyReadonlyArray<Packet>,
+    DatagramSocketError | IE,
+    void,
+    NonEmptyReadonlyArray<Uint8Array>,
+    IE
+  >
+} = <IE>(self: DatagramSocket) => {
+  const pull = Channel.fromPull(Effect.succeed(self.pull))
+  // Each overload restricts channel input to the corresponding socket's write shape.
+  const writeBatch = self.writeMany.bind(self) as (
+    packets: ReadonlyArray<Packet | Uint8Array>
+  ) => Effect.Effect<void, DatagramSocketError>
+  const identity = Channel.identity<NonEmptyReadonlyArray<Packet | Uint8Array>, IE, unknown>().pipe(
+    Channel.mapEffect(writeBatch),
     Channel.drain,
     Channel.mapDone(() => undefined)
   )
@@ -625,15 +828,18 @@ export const toChannel = <Out, IE = never, In = IncomingPacket>(self: DatagramSo
  * @category combinators
  * @since 4.0.0
  */
-export const toChannelWith = <IE = never>() => <Out, In = IncomingPacket>(self: DatagramSocket<Out, In>) =>
-  toChannel<Out, IE, In>(self)
+export const toChannelWith = <IE = never>() => toChannel<IE>
+
+// Bound owned storage and native suffix formatting, including repeated tiny progress.
+const writeWindowPackets = 64
+const writeWindowBytes = 256 * 1024
 
 const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
   const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
   const receiveCapacity = options.receiveCapacity ?? 256
   const receiveCapacityBytes = options.receiveCapacityBytes ?? 4 * 1024 * 1024
   const readBatchSize = options.readBatchSize ?? 16
-  const incoming = yield* Queue.dropping<IncomingPacket, DatagramSocketError>(receiveCapacity)
+  const incoming = yield* Queue.dropping<Packet, DatagramSocketError>(receiveCapacity)
 
   // The endpoint owns the buffer, independently of the fibers receiving packets.
   let queuedBytes = 0
@@ -651,7 +857,7 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
     fail(error(new DatagramSocketReadError({ cause })))
   }
 
-  const onMessage = (data: Uint8Array, source: NetAddress.InetAddress) => {
+  const onMessage = (data: Uint8Array, peer: NetAddress.InetAddress) => {
     const size = data.byteLength
     if (
       readError !== undefined || size > maxPacketBytes ||
@@ -659,17 +865,17 @@ const makeReceiver = Effect.fnUntraced(function*(options: BindOptions) {
       queuedBytes + size > receiveCapacityBytes
     ) return
 
-    if (Queue.offerUnsafe(incoming, { data, source })) {
+    if (Queue.offerUnsafe(incoming, { data, peer })) {
       queuedBytes += size
     }
   }
 
-  const pull: Reader["pull"] = Effect.gen(function*() {
+  const pull: DatagramSocket["pull"] = Effect.gen(function*() {
     while (true) {
       if (readError !== undefined) return yield* readError
 
       // Dequeue and byte accounting cannot be separated by a fiber interruption.
-      const packets: Array<IncomingPacket> = []
+      const packets: Array<Packet> = []
       while (packets.length < readBatchSize) {
         const next = Queue.takeUnsafe(incoming)
         if (next === undefined) break
