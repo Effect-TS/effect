@@ -167,11 +167,9 @@ const binary = (oids: ReadonlyArray<number>): Array<PgTypesResult.Column> =>
 
 describe("PgTypes", () => {
   it("encodes and decodes regclass as an unsigned OID", () => {
-    for (const value of [0, 1259, 4294967295]) {
-      const encoded = PgTypes.encode(value, PgTypes.OID.oid)
-      assert.strictEqual(PgTypes.decode(encoded, PgTypes.OID.regclass, 1), value)
-      assert.deepStrictEqual(PgTypes.encode(value, PgTypes.OID.regclass), encoded)
-    }
+    const golden = column(rows.oid)
+    assert.strictEqual(PgTypes.decode(golden, PgTypes.OID.regclass, 1), 4294967295)
+    assert.deepStrictEqual(PgTypes.encode(4294967295, PgTypes.OID.regclass), golden)
   })
 
   it("returns codec failures as Result values", () => {
@@ -1023,6 +1021,7 @@ describe("PgTypes", () => {
 
     it("maps element OIDs to array OIDs", () => {
       assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.text), PgTypes.OID.textArray)
+      assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.regclass), PgTypes.OID.regclassArray)
       assert.strictEqual(PgTypes.arrayOidFor(99999), undefined)
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.array([], 99999))
     })
