@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix a memory leak in `Pool.makeWithTTL` where the usage strategy retained retired resources after invalidation, acquisition failure, or shutdown.
+Fix memory leaks in `Pool.makeWithTTL` with the usage strategy by releasing retired resources and consumed acquisition errors from the TTL queue.

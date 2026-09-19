@@ -673,7 +673,6 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     return internal.void
   })
 
-// Usage-TTL queue ownership ends when an item leaves pool state.
 interface UsageTTLQueue<A, E> {
   head: UsageTTLNode<A, E> | undefined
   tail: UsageTTLNode<A, E> | undefined
@@ -946,12 +945,13 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           exit._tag === "Success"
             ? self.config.strategy.onAcquire(item)
             : Effect.flatMap(item.finalizer, () => {
-              // A borrower may consume a failed item while its finalizer is suspended.
+              // A borrower may consume the failure during finalization.
               return self.state.items.has(item)
                 ? Effect.flatMap(
                   self.config.strategy.onAcquire(item),
                   () =>
                     Effect.sync(() => {
+                      // Consumption can also occur between the membership check and enqueue.
                       if (!self.state.items.has(item)) removeUsageTTLItem(item)
                     })
                 )
