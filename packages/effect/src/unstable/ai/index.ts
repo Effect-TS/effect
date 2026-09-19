@@ -22,6 +22,16 @@ export * as Chat from "./Chat.ts"
 /**
  * @since 4.0.0
  */
+export * as Decision from "./Decision.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as DecisionModel from "./DecisionModel.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as EmbeddingModel from "./EmbeddingModel.ts"
 
 /**

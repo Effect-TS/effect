@@ -394,6 +394,173 @@ describe("Arbitrary", () => {
         }
       }))
 
+    it.effect("covers independent BigDecimal precision and exponent ranges", () =>
+      Effect.gen(function*() {
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.BigDecimal), {
+          count: 1_000,
+          maxDiscards: 0,
+          seed: "big-decimal-precision-and-exponent",
+          size: 1
+        })
+
+        assert.isTrue(values.some((value) => Math.abs(value.scale) > 20))
+        assert.isTrue(values.some((value) => {
+          const magnitude = value.value < 0n ? -value.value : value.value
+          return magnitude.toString().length > 20
+        }))
+      }))
+
+    it.effect("constructs BigDecimals in narrow and extreme-scale intervals", () =>
+      Effect.gen(function*() {
+        const narrow = Schema.BigDecimal.check(Schema.isBetweenBigDecimal({
+          minimum: BigDecimal.make(123_456_789n, 1_000),
+          maximum: BigDecimal.make(123_456_799n, 1_000),
+          exclusiveMinimum: true,
+          exclusiveMaximum: true
+        }))
+        const narrowValues = yield* Arbitrary.sampleEffect(Arbitrary.schema(narrow), {
+          count: 200,
+          maxDiscards: 0,
+          seed: "big-decimal-narrow-extreme"
+        })
+        assert.isTrue(narrowValues.every(Schema.is(narrow)))
+
+        const maximumScale = Schema.BigDecimal.check(Schema.isBetweenBigDecimal({
+          minimum: BigDecimal.make(0n, Number.MAX_SAFE_INTEGER),
+          maximum: BigDecimal.make(1n, Number.MAX_SAFE_INTEGER)
+        }))
+        const maximumScaleValues = yield* Arbitrary.sampleEffect(Arbitrary.schema(maximumScale), {
+          count: 50,
+          maxDiscards: 0,
+          seed: "big-decimal-maximum-scale"
+        })
+        assert.isTrue(maximumScaleValues.every(Schema.is(maximumScale)))
+      }))
+
+    it.effect("recognizes equivalent BigDecimal singleton bounds", () =>
+      Effect.gen(function*() {
+        for (
+          const [minimum, maximum] of [
+            [BigDecimal.make(1n, 0), BigDecimal.make(10n, 1)],
+            [BigDecimal.make(10n ** 4097n, 0), BigDecimal.make(1n, -4097)],
+            [BigDecimal.make(-1n, -4097), BigDecimal.make(-(10n ** 4097n), 0)],
+            [BigDecimal.make(0n, Number.MIN_SAFE_INTEGER), BigDecimal.make(0n, Number.MAX_SAFE_INTEGER)]
+          ]
+        ) {
+          const schema = Schema.BigDecimal.check(Schema.isBetweenBigDecimal({ minimum, maximum }))
+          const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+            count: 20,
+            maxDiscards: 0,
+            seed: "big-decimal-singleton"
+          })
+
+          assert.isTrue(values.every((value) => BigDecimal.Equivalence(value, minimum)))
+        }
+      }))
+
+    it.effect("preserves both BigDecimal bounds across large scale differences", () =>
+      Effect.gen(function*() {
+        const near = BigDecimal.make(10n ** 4097n - 1n, 0)
+        const far = BigDecimal.make(1n, -4097)
+        for (const [minimum, maximum] of [[near, far], [BigDecimal.negate(far), BigDecimal.negate(near)]]) {
+          for (const exclusive of [false, true]) {
+            const schema = Schema.BigDecimal.check(Schema.isBetweenBigDecimal({
+              minimum,
+              maximum,
+              exclusiveMinimum: exclusive,
+              exclusiveMaximum: exclusive
+            }))
+            const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+              count: 100,
+              maxDiscards: 0,
+              seed: "big-decimal-large-scale-difference"
+            })
+
+            assert.isTrue(values.every(Schema.is(schema)))
+            assert.isTrue(
+              values.some((value) => BigDecimal.Order(value, minimum) > 0 && BigDecimal.Order(value, maximum) < 0)
+            )
+          }
+        }
+      }))
+
+    it("rejects empty BigDecimal intervals at the maximum scale", () => {
+      const schema = Schema.BigDecimal.check(Schema.isBetweenBigDecimal({
+        minimum: BigDecimal.make(0n, Number.MAX_SAFE_INTEGER),
+        maximum: BigDecimal.make(1n, Number.MAX_SAFE_INTEGER),
+        exclusiveMinimum: true,
+        exclusiveMaximum: true
+      }))
+
+      assert.throws(() => Arbitrary.schema(schema), /Unable to derive an arbitrary for BigDecimal constraints/)
+    })
+
+    it.effect("shrinks BigDecimals by numeric value across representations", () =>
+      Effect.gen(function*() {
+        const one = BigDecimal.make(1n, 0)
+        const onePointOne = BigDecimal.make(11n, 1)
+        const schema = Schema.BigDecimal.check(Schema.isGreaterThanOrEqualToBigDecimal(BigDecimal.make(1n, 1)))
+        const arbitrary = Arbitrary.schema(schema)
+        const result = yield* Arbitrary.checkEffect(arbitrary, (value) => BigDecimal.Order(value, one) <= 0, {
+          runs: 100,
+          maxDiscards: 0,
+          maxShrinks: 100,
+          seed: "big-decimal-numeric-shrink"
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.isTrue(BigDecimal.Order(result.shrunkInput, one) > 0)
+          assert.isTrue(BigDecimal.Order(result.shrunkInput, onePointOne) <= 0)
+          const replayed = yield* Arbitrary.checkEffect(arbitrary, (value) => BigDecimal.Order(value, one) <= 0, {
+            replay: result.replay
+          })
+          assert.strictEqual(replayed._tag, "Falsified")
+          if (replayed._tag === "Falsified") {
+            assert.isTrue(BigDecimal.Equivalence(replayed.initialInput, result.initialInput))
+            assert.isTrue(BigDecimal.Equivalence(replayed.shrunkInput, result.shrunkInput))
+            assert.strictEqual(replayed.shrinks, result.shrinks)
+          }
+        }
+      }))
+
+    it.effect("shrinks BigDecimals toward ordinary thresholds between simple candidates", () =>
+      Effect.gen(function*() {
+        for (const [low, high, boundary] of [[1, 10, 7], [100, 101, 100.5], [0.1, 10, 1]]) {
+          for (const sign of [1, -1]) {
+            const minimum = BigDecimal.fromNumberUnsafe(sign > 0 ? low : -high)
+            const maximum = BigDecimal.fromNumberUnsafe(sign > 0 ? high : -low)
+            const threshold = BigDecimal.fromNumberUnsafe(sign * boundary)
+            const tolerance = BigDecimal.fromNumberUnsafe(sign * (boundary + 0.01))
+            const schema = Schema.BigDecimal.check(Schema.isBetweenBigDecimal({ minimum, maximum }))
+            const arbitrary = Arbitrary.schema(schema)
+            const property = (value: BigDecimal.BigDecimal) => sign * BigDecimal.Order(value, threshold) <= 0
+            const result = yield* Arbitrary.checkEffect(arbitrary, property, {
+              seed: "b",
+              runs: 100,
+              maxShrinks: 100,
+              maxDiscards: 0
+            })
+
+            assert.strictEqual(result._tag, "Falsified")
+            if (result._tag === "Falsified") {
+              assert.isTrue(sign * BigDecimal.Order(result.initialInput, tolerance) > 0)
+              assert.isTrue(sign * BigDecimal.Order(result.shrunkInput, threshold) > 0)
+              assert.isTrue(sign * BigDecimal.Order(result.shrunkInput, tolerance) <= 0)
+              assert.isTrue(Schema.is(schema)(result.shrunkInput))
+              const replayed = yield* Arbitrary.checkEffect(arbitrary, property, { replay: result.replay })
+              assert.strictEqual(replayed._tag, "Falsified")
+              if (replayed._tag === "Falsified") {
+                assert.isTrue(BigDecimal.Equivalence(replayed.initialInput, result.initialInput))
+                assert.isTrue(BigDecimal.Equivalence(replayed.shrunkInput, result.shrunkInput))
+                assert.strictEqual(replayed.shrinks, result.shrinks)
+                assert.strictEqual(replayed.replay, result.replay)
+              }
+            }
+          }
+        }
+      }))
+
     it.effect("generates and shrinks DateTime.Utc declarations constructively", () =>
       Effect.gen(function*() {
         const arbitrary = Arbitrary.schema(Schema.DateTimeUtc)
@@ -902,6 +1069,62 @@ describe("Arbitrary", () => {
           assert.strictEqual(result._tag, "Passed")
         }))
 
+      it.effect("does not generate omitted fixed property names from indexes", () =>
+        Effect.gen(function*() {
+          const cases = [
+            ["a", Schema.Struct({ a: Schema.optionalKey(Schema.Never) })],
+            [0, Schema.Record(Schema.Literal(0), Schema.optionalKey(Schema.Never))]
+          ] as const
+          for (const [key, fields] of cases) {
+            const schema = Schema.StructWithRest(fields, [
+              Schema.Record(Schema.String.check(Schema.isPattern(new RegExp(`^${key}$`))), Schema.Boolean)
+            ])
+            const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+              count: 20,
+              maxDiscards: 100,
+              seed: "indexed-optional-never",
+              size: 1
+            })
+
+            assert.isTrue(values.every(Schema.is(schema)))
+            assert.isTrue(values.every((value) => !(key in value)))
+
+            const shrinkingSchema = Schema.StructWithRest(fields, [
+              Schema.Record(Schema.String.check(Schema.isPattern(new RegExp(`^${key}+$`))), Schema.Boolean)
+            ]).check(Schema.isPropertiesLengthBetween(1, 1))
+            const result = yield* Arbitrary.checkEffect(Arbitrary.schema(shrinkingSchema), () => false, {
+              runs: 1,
+              maxDiscards: 100,
+              maxShrinks: 100,
+              seed: 0,
+              size: 4
+            })
+
+            assert.strictEqual(result._tag, "Falsified")
+            if (result._tag === "Falsified") {
+              assert.deepStrictEqual(result.shrunkInput, { [`${key}${key}`]: false })
+              assert.isTrue(Schema.is(shrinkingSchema)(result.shrunkInput))
+            }
+          }
+        }))
+
+      it.effect("uses indexes when optional properties cannot satisfy the minimum", () =>
+        Effect.gen(function*() {
+          const schema = Schema.StructWithRest(
+            Schema.Struct({ a: Schema.optionalKey(Schema.Never) }),
+            [Schema.Record(Schema.String.check(Schema.isPattern(/^b$/)), Schema.Boolean)]
+          ).check(Schema.isPropertiesLengthBetween(1, 1))
+          const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+            count: 20,
+            maxDiscards: 0,
+            seed: "indexed-optional-never-minimum",
+            size: 0
+          })
+
+          assert.isTrue(values.every(Schema.is(schema)))
+          assert.isTrue(values.every((value) => "b" in value && !("a" in value)))
+        }))
+
       it.effect("shrinks and replays fixed fields within the combined constraints", () =>
         Effect.gen(function*() {
           const schema = Schema.StructWithRest(
@@ -1293,6 +1516,91 @@ describe("Arbitrary", () => {
         assert.isTrue(values.some((value) => value > BigInt(Number.MAX_SAFE_INTEGER)))
       }))
 
+    it.effect("generates unbounded BigInts across intermediate bit lengths", () =>
+      Effect.gen(function*() {
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.BigInt), {
+          count: 1_000,
+          maxDiscards: 0,
+          seed: "unbounded-bigint-bit-lengths",
+          size: 1
+        })
+        const bitLengths = values.map((value) => {
+          const magnitude = value < 0n ? -value : value
+          return magnitude === 0n ? 0 : magnitude.toString(2).length
+        })
+
+        assert.isTrue(values.some((value) => value < 0n))
+        assert.isTrue(values.some((value) => value > 0n))
+        assert.isTrue(bitLengths.some((length) => length > 512))
+        assert.isAtLeast(new Set(bitLengths).size, 100)
+      }))
+
+    it.effect("constructs one-sided BigInts beyond a large finite bound", () =>
+      Effect.gen(function*() {
+        const minimum = 1n << 4_096n
+        const schema = Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(minimum))
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+          count: 100,
+          maxDiscards: 0,
+          seed: "one-sided-large-bigint"
+        })
+
+        assert.isTrue(values.every((value) => value >= minimum))
+        assert.isTrue(values.some((value) => value > minimum))
+      }))
+
+    it.effect("covers intermediate BigInt magnitudes on the finite side of one-sided bounds", () =>
+      Effect.gen(function*() {
+        const bound = 1n << 4096n
+        for (const sign of [1n, -1n]) {
+          const schema = Schema.BigInt.check(
+            sign > 0n
+              ? Schema.isLessThanBigInt(bound)
+              : Schema.isGreaterThanBigInt(-bound)
+          )
+          for (const seed of ["one-sided-intermediate", "one-sided-intermediate-2"]) {
+            const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+              count: 1_000,
+              maxDiscards: 0,
+              seed,
+              size: 1
+            })
+
+            assert.isTrue(values.every(Schema.is(schema)))
+            assert.isTrue(values.some((value) => sign * value > (1n << 2500n) && sign * value < (1n << 3500n)))
+            assert.isTrue(values.some((value) => value < 0n))
+            assert.isTrue(values.some((value) => value > 0n))
+            assert.isTrue(values.some((value) => value !== 0n && value > -100n && value < 100n))
+          }
+        }
+      }))
+
+    it.effect("shrinks BigInts to a common semantic boundary", () =>
+      Effect.gen(function*() {
+        const boundary = BigInt(Number.MAX_SAFE_INTEGER)
+        const arbitrary = Arbitrary.schema(Schema.BigInt)
+        const result = yield* Arbitrary.checkEffect(arbitrary, (value) => value <= boundary, {
+          runs: 200,
+          maxDiscards: 0,
+          maxShrinks: 100,
+          seed: "bigint-semantic-boundary"
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.shrunkInput, boundary + 1n)
+          const replayed = yield* Arbitrary.checkEffect(arbitrary, (value) => value <= boundary, {
+            replay: result.replay
+          })
+          assert.strictEqual(replayed._tag, "Falsified")
+          if (replayed._tag === "Falsified") {
+            assert.strictEqual(replayed.initialInput, result.initialInput)
+            assert.strictEqual(replayed.shrunkInput, result.shrunkInput)
+            assert.strictEqual(replayed.shrinks, result.shrinks)
+          }
+        }
+      }))
+
     it.effect("generates the sole Number between adjacent exclusive IEEE-754 bounds", () =>
       Effect.gen(function*() {
         const minimum = 2 ** 100
@@ -1466,6 +1774,34 @@ describe("Arbitrary", () => {
         })
 
         assert.isTrue(values.every(Schema.is(schema)))
+      }))
+
+    it.effect("omits optional Never properties", () =>
+      Effect.gen(function*() {
+        const schema = Schema.Struct({ value: Schema.optionalKey(Schema.Never) })
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+          count: 1,
+          maxDiscards: 0,
+          seed: "optional-never"
+        })
+
+        assert.deepStrictEqual(values, [{}])
+      }))
+
+    it.effect("uses inhabited branches around Never", () =>
+      Effect.gen(function*() {
+        const union = yield* Arbitrary.sampleEffect(
+          Arbitrary.schema(Schema.Union([Schema.Never, Schema.Literal("value")])),
+          { count: 1, maxDiscards: 0, seed: "never-union" }
+        )
+        const array = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.Array(Schema.Never)), {
+          count: 1,
+          maxDiscards: 0,
+          seed: "never-array"
+        })
+
+        assert.deepStrictEqual(union, ["value"])
+        assert.deepStrictEqual(array, [[]])
       }))
 
     it.effect("constructively selects optional properties affordable by the recursion budget", () =>
@@ -2085,7 +2421,14 @@ describe("Arbitrary", () => {
         ]))
 
       it("rejects uninhabited structural schemas", () => {
-        assert.throws(() => Arbitrary.schema(Schema.Never), /Unable to derive an arbitrary for Never/)
+        assert.throws(
+          () => Arbitrary.schema(Schema.Never),
+          /Unable to derive an arbitrary for a schema without a finite generation path/
+        )
+        assert.throws(
+          () => Arbitrary.schema(Schema.Struct({ value: Schema.Never })),
+          /Unable to derive an arbitrary for a schema without a finite generation path/
+        )
         assert.throws(
           () => Arbitrary.schema(Schema.Array(Schema.String).check(Schema.isMinLength(2), Schema.isMaxLength(1))),
           /Unable to derive an arbitrary for array constraints/
@@ -2321,7 +2664,7 @@ describe("Arbitrary", () => {
 
       assert.throws(
         () => Arbitrary.schema(schema),
-        /Unable to derive an arbitrary for a recursive schema without a finite generation path/
+        /Unable to derive an arbitrary for a schema without a finite generation path/
       )
     })
 

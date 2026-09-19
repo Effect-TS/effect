@@ -1,3 +1,4 @@
+import * as BigDecimal from "../../BigDecimal.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import { identity } from "../../Function.ts"
@@ -14,6 +15,8 @@ import { effectIsExit } from "../effect.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import { sample as arraySample } from "./array.ts"
+import * as BigDecimalArbitrary from "./bigDecimal.ts"
+import * as BigIntArbitrary from "./bigInt.ts"
 import * as Model from "./model.ts"
 import * as Regexp from "./regexp.ts"
 
@@ -379,6 +382,8 @@ function constant<A>(value: A): Model.Compiled<A> {
   return Model.makeCompiled([], () => 0, () => sample)
 }
 
+const uninhabited: Model.Compiled<never> = Model.makeCompiled([], () => infinity, () => Model.discarded)
+
 interface ObjectEntry {
   readonly key: PropertyKey
   readonly keySample?: Model.Sample<PropertyKey> | undefined
@@ -402,6 +407,7 @@ function objectSample(
   entries: ReadonlyArray<ObjectEntry>,
   minimum: number,
   nullPrototype: boolean,
+  reservedKeys: ReadonlySet<PropertyKey>,
   shrinks = true
 ): Model.Sample<Record<PropertyKey, any>> {
   const make = (entries: ReadonlyArray<ObjectEntry | RetainedObjectEntry>) => {
@@ -443,7 +449,9 @@ function objectSample(
       if (entry.keySample === undefined || entry.keySample.shrinks === undefined) continue
       const filtered = Model.filterSample(
         Model.fromRetained(entry.keySample),
-        (key) => !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
+        (key) =>
+          !reservedKeys.has(key) &&
+          !entries.some((other, otherIndex) => otherIndex !== index && other.key === key)
       )
       if (filtered?.shrinks === undefined) continue
       pulls.push(Effect.map(
@@ -929,64 +937,6 @@ function numberSample(
   )
 }
 
-interface BigIntShrink {
-  readonly value: bigint
-  readonly context: bigint | undefined
-}
-
-function shrinkBigInt(current: bigint, target: bigint, tryTargetAsap: boolean): ReadonlyArray<BigIntShrink> {
-  const out: Array<BigIntShrink> = []
-  const realGap = current - target
-  let previous = tryTargetAsap ? undefined : target
-  for (
-    let toRemove = tryTargetAsap ? realGap : realGap / BigInt(2);
-    toRemove !== BigInt(0);
-    toRemove /= BigInt(2)
-  ) {
-    const value = current - toRemove
-    out.push({ value, context: previous })
-    previous = value
-  }
-  return out
-}
-
-function bigIntSample(
-  value: bigint,
-  minimum: bigint | undefined,
-  maximum: bigint | undefined,
-  context?: bigint
-): Model.Sample<bigint> {
-  // The passing-value context and gap-halving sequence are adapted from fast-check v4.9.0's BigIntArbitrary and
-  // ShrinkBigInt (MIT). Retaining the closest passing candidate lets the runner converge on a local failure boundary.
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/BigIntArbitrary.ts
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/_internals/helpers/ShrinkBigInt.ts
-  let candidates: ReadonlyArray<BigIntShrink>
-  if (context === undefined) {
-    const target = minimum !== undefined && minimum > BigInt(0)
-      ? minimum
-      : maximum !== undefined && maximum < BigInt(0)
-      ? maximum
-      : BigInt(0)
-    candidates = shrinkBigInt(value, target, true)
-  } else if (
-    value > BigInt(0) && value === context + BigInt(1) && (minimum === undefined || value > minimum) ||
-    value < BigInt(0) && value === context - BigInt(1) && (maximum === undefined || value < maximum)
-  ) {
-    candidates = [{ value: context, context: undefined }]
-  } else {
-    candidates = shrinkBigInt(value, context, false)
-  }
-  return Model.makeSample(
-    value,
-    candidates.length === 0
-      ? undefined
-      : Effect.map(
-        Model.pullFromArray(candidates),
-        (candidate) => bigIntSample(candidate.value, minimum, maximum, candidate.context)
-      )
-  )
-}
-
 /** @internal */
 export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<S["Type"]> {
   const rootAst = SchemaAST.toType(schema.ast)
@@ -1046,7 +996,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   ): Model.Compiled<any> => {
     switch (ast._tag) {
       case "Never":
-        throw arbitraryError("Never", path)
+        return uninhabited
       case "Null":
         return constant(null)
       case "Undefined":
@@ -1162,32 +1112,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         if (minimum !== undefined && maximum !== undefined && minimum > maximum) {
           throw arbitraryError("bigint constraints", path)
         }
-        let previousLow: bigint | undefined
-        let previousHigh: bigint | undefined
-        let randomBigInt: ((state: Model.GenerationState) => bigint) | undefined
-        return Model.makeCompiled(
-          [],
-          () => 0,
-          (state) => {
-            const magnitude = BigInt(Math.max(1, state.size * state.size))
-            const center = minimum !== undefined && minimum > BigInt(0)
-              ? minimum
-              : maximum !== undefined && maximum < BigInt(0)
-              ? maximum
-              : BigInt(0)
-            const low = minimum ?? center - magnitude
-            const high = maximum ?? center + magnitude
-            if (randomBigInt === undefined || low !== previousLow || high !== previousHigh) {
-              previousLow = low
-              previousHigh = high
-              randomBigInt = Model.makeRandomNumericBigInt(low, high)
-            }
-            const value = randomBigInt(state)
-            return state.shrinks
-              ? bigIntSample(value, minimum, maximum)
-              : Model.makeSample(value)
-          }
-        )
+        return BigIntArbitrary.make(minimum, maximum)
       }
       case "Symbol": {
         const strings = recur(SchemaAST.string, path, constraint)
@@ -1502,6 +1427,11 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       optional: SchemaAST.isOptional(property.type),
       compiled: compileIndexedValue(property.type, [...path, property.name]).forKey(property.name)
     }))
+    const propertyNames = new Set<PropertyKey>(
+      properties.map(({ property }) =>
+        typeof property.name === "symbol" ? property.name : globalThis.String(property.name)
+      )
+    )
     const indexes = ast.indexSignatures.map((index, position) => {
       const value = compileIndexedValue(index.type, [...path, `index-${position}-value`])
       return {
@@ -1523,21 +1453,28 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     }
     const needed = Math.max(0, minimum - required.length)
     const minOptional = indexes.length === 0 ? needed : 0
-    const fallbackOptionalCount = Math.min(optional.length, needed)
+    const minimumPropertyPlan = () => {
+      const indexCost = Math.min(...indexes.map((index) => index.parameter.minCost + index.value.minCost))
+      const selected = optional
+        .filter((property) => property.compiled.minCost <= indexCost)
+        .sort((a, b) => a.compiled.minCost - b.compiled.minCost)
+        .slice(0, needed)
+      const indexCount = needed - selected.length
+      return {
+        optional: selected,
+        indexCount,
+        indexCost,
+        cost: sumCosts(selected.map((property) => property.compiled.minCost)) +
+          (indexCount === 0 ? 0 : indexCount * indexCost)
+      }
+    }
     const dependencies = [
       ...properties.map((property) => property.compiled),
       ...indexes.flatMap((index) => [index.parameter, index.value])
     ]
     return Model.makeCompiled(
       dependencies,
-      () => {
-        const requiredCost = sumCosts(required.map((property) => property.compiled.minCost))
-        const optionalCosts = optional.map((property) => property.compiled.minCost).sort((a, b) => a - b)
-        if (needed <= optionalCosts.length) return requiredCost + sumCosts(optionalCosts.slice(0, needed))
-        if (indexes.length === 0) return infinity
-        const indexCost = Math.min(...indexes.map((index) => index.parameter.minCost + index.value.minCost))
-        return requiredCost + sumCosts(optionalCosts) + (needed - optionalCosts.length) * indexCost
-      },
+      () => sumCosts(required.map((property) => property.compiled.minCost)) + minimumPropertyPlan().cost,
       (state) => {
         if (!state.shrinks && optional.length === 0 && indexes.length === 0) {
           return generateRequiredObjectValues(required, state, state.nullPrototype)
@@ -1545,21 +1482,17 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         const currentMaximum = Math.max(minimum, required.length, state.size)
         const upper = maximum === undefined ? currentMaximum : Math.min(maximum, currentMaximum)
         const maxOptional = Math.min(optional.length, upper - required.length)
-        const minimumIndexCost = indexes.length === 0
-          ? infinity
-          : Math.min(...indexes.map((index) => index.parameter.minCost + index.value.minCost))
+        const minimumPlan = minimumPropertyPlan()
+        const minimumIndexCost = minimumPlan.indexCost
         const optionalCount = Model.randomInt(state, minOptional, maxOptional)
-        const shuffledOptional = optionalCount === 0 ? undefined : Model.shuffle(state, optional)
-        let selectedOptional = optionalCount === 0 ? [] : shuffledOptional!.slice(0, optionalCount)
-        let named = [...required, ...selectedOptional]
+        let named = optionalCount === 0
+          ? required
+          : [...required, ...Model.shuffle(state, optional).slice(0, optionalCount)]
         let minimumIndexes = Math.max(0, minimum - named.length)
         let namedCost = sumCosts(named.map((property) => property.compiled.minCost))
         if (namedCost + (minimumIndexes === 0 ? 0 : minimumIndexes * minimumIndexCost) > state.budget.remaining) {
-          selectedOptional = (shuffledOptional ?? Model.shuffle(state, optional))
-            .sort((a, b) => a.compiled.minCost - b.compiled.minCost)
-            .slice(0, fallbackOptionalCount)
-          named = [...required, ...selectedOptional]
-          minimumIndexes = Math.max(0, minimum - named.length)
+          named = [...required, ...minimumPlan.optional]
+          minimumIndexes = minimumPlan.indexCount
           namedCost = sumCosts(named.map((property) => property.compiled.minCost))
         }
         const maximumIndexes = indexes.length === 0
@@ -1583,7 +1516,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
               removable: named[index].optional
             }))
             if (indexCount === 0) {
-              return objectSample(entries, minimum, state.nullPrototype, state.shrinks)
+              return objectSample(entries, minimum, state.nullPrototype, propertyNames, state.shrinks)
             }
             return Effect.gen(function*() {
               for (let position = 0; position < indexCount; position++) {
@@ -1607,7 +1540,10 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
                   const normalized = normalizePropertyKeySample(keyAttempt)
                   if (normalized === undefined) return Model.discarded
                   keySample = normalized
-                  if (!entries.some((entry) => entry.key === keySample.value)) break
+                  if (
+                    !propertyNames.has(keySample.value) &&
+                    !entries.some((entry) => entry.key === keySample.value)
+                  ) break
                   if (retries++ >= 10) return Model.discarded
                   state.budget.remaining = budget
                   keyAttempt = yield* Model.toEffectGeneration(
@@ -1620,7 +1556,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
                 if (value._tag === "Discarded") return Model.discarded
                 entries.push({ key: keySample.value, keySample, sample: value, removable: true })
               }
-              return objectSample(entries, minimum, state.nullPrototype, state.shrinks)
+              return objectSample(entries, minimum, state.nullPrototype, propertyNames, state.shrinks)
             })
           }
         )
@@ -1637,6 +1573,18 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     const typeParameters = ast.typeParameters.map((parameter, index) => recur(parameter, [...path, index]))
     const parameters = ast.typeParameters.map((parameter) => Schema.make(SchemaAST.toType(parameter)))
     const getArbitrary = ast.annotations?.toCodecArbitrary
+    const representation = (ast.annotations as Schema.Annotations.Declaration<any> | undefined)?.representation
+    if (typeof getArbitrary !== "function" && representation?.id === "effect/schema/BigDecimal") {
+      const ordered = constraint?.order === BigDecimal.Order ? constraint : undefined
+      const compiled: Model.Compiled<unknown> | undefined = BigDecimalArbitrary.make({
+        minimum: ordered?.minimum as BigDecimal.BigDecimal | undefined,
+        exclusiveMinimum: ordered?.exclusiveMinimum,
+        maximum: ordered?.maximum as BigDecimal.BigDecimal | undefined,
+        exclusiveMaximum: ordered?.exclusiveMaximum
+      })
+      if (compiled === undefined) throw arbitraryError("BigDecimal constraints", path)
+      return compiled
+    }
     let link: SchemaAST.Link
     if (typeof getArbitrary === "function") {
       link = getArbitrary({
@@ -1664,7 +1612,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     const decodeDeclaration = SchemaParser.run<unknown, never>(ast)
     const decode = (value: unknown): Model.Computation<Option.Option<unknown>> => {
       const transformed = link.transformation._tag === "Transformation"
-        ? link.transformation.decode.run(Option.some(value), SchemaAST.defaultParseOptions)
+        ? SchemaGetter.run(link.transformation.decode, Option.some(value), SchemaAST.defaultParseOptions)
         : link.transformation.decode(Effect.succeed(Option.some(value)), SchemaAST.defaultParseOptions)
       return Model.flatMapComputation(optionComputation(transformed), (outer) => {
         if (Option.isNone(outer) || Option.isNone(outer.value)) return Option.none()
@@ -1704,7 +1652,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     }
   }
   if (root.minCost === infinity) {
-    throw arbitraryError("a recursive schema without a finite generation path", [])
+    throw arbitraryError("a schema without a finite generation path", [])
   }
   return root
 }

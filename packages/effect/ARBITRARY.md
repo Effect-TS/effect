@@ -18,9 +18,6 @@ The API used here is currently available from `effect/unstable/arbitrary`. The `
 the ideas are stable, but names, result types, generation policies, and replay format may still change before this
 module is promoted.
 
-If you are upgrading from the earlier Schema arbitrary integration available in `effect@4.0.0-rc.109`, see the
-[migration guide](ARBITRARY-MIGRATION.md).
-
 ## Writing a First Property
 
 Consider the rule “adding zero does not change an integer.” With `@effect/vitest`, we can write it directly:
@@ -1248,10 +1245,14 @@ can alter generated values, simplification, replay, performance, or bundle size 
   to `Schema.Struct`, `Schema.Record`, `Schema.Json`, and record-shaped `all`, but not to arrays, tuples, declarations, or
   collection classes.
 - Integer and BigInt generation avoids favoring some values accidentally. It tries boundary values more often on some
-  runs. Number generation includes signed zero, very small values, infinities, and `NaN` when the Schema permits them.
-  Finite and integer checks exclude the values they promise to exclude.
-- The magnitude of unbounded integers grows with `size`. Ordinary strings combine printable ASCII with a fixed set of
-  JavaScript edge cases. Regular-expression length is measured in UTF-16 code units, matching JavaScript strings.
+  runs. Unbounded BigInts select their bit length separately from their value, mixing ordinary magnitudes with much
+  wider values even at a small `size`. Number generation includes signed zero, very small values, infinities, and `NaN`
+  when the Schema permits them. Finite and integer checks exclude the values they promise to exclude.
+- BigDecimal generation selects precision and decimal exponent independently, while ordered constraints are projected
+  to the selected scale. Its simplifications operate on the represented numeric value, so a fixed generated scale does
+  not dictate the final counterexample. Local simplification continues between passing and failing values with a finite
+  limit on added precision. Ordinary strings combine printable ASCII with a fixed set of JavaScript edge cases.
+  Regular-expression length is measured in UTF-16 code units, matching JavaScript strings.
 - Exact probabilities, the value produced by a particular seed, and the order of simplifications may change. Source
   code comments credit algorithms adapted from other property-testing and random-number implementations.
 

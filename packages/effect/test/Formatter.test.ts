@@ -598,13 +598,14 @@ describe("Formatter", () => {
     it.effect("distinguishes present undefined from absent input in forbidden", () =>
       Effect.gen(function*() {
         const getter = SchemaGetter.forbidden<never, undefined>(() => "not allowed")
-        const present = yield* getter.run(Option.some(undefined), { reportInput: true }).pipe(Effect.flip)
+        assertTrue(getter._tag === "TransformOptionalEffect")
+        const present = yield* getter.transform(Option.some(undefined), { reportInput: true }).pipe(Effect.flip)
         assertTrue(present._tag === "Forbidden")
         assertTrue(SchemaIssue.hasInput(present))
         strictEqual(present.input, undefined)
         strictEqual(formatIssue(present), "not allowed")
 
-        const absent = yield* getter.run(Option.none(), { reportInput: true }).pipe(Effect.flip)
+        const absent = yield* getter.transform(Option.none(), { reportInput: true }).pipe(Effect.flip)
         assertTrue(absent._tag === "Forbidden")
         assertFalse(SchemaIssue.hasInput(absent))
       }))

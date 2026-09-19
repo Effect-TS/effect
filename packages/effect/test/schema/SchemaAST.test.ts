@@ -1,9 +1,15 @@
-import { Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
+import { Effect, Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
 import { runInNewContext } from "node:vm"
 import { describe, it } from "vitest"
 import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaAST", () => {
+  it("stores constructor defaults directly in the context", () => {
+    const defaultValue = Effect.succeed("default")
+    const ast = SchemaAST.withConstructorDefault(SchemaAST.string, defaultValue)
+    strictEqual(ast.context?.constructorDefault, defaultValue)
+  })
+
   describe("Suspend", () => {
     it("memoizes the thunk", () => {
       let calls = 0
