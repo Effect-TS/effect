@@ -106,7 +106,26 @@ describe("Decision", () => {
     expect<Answers["urgent"]>().type.not.toHaveProperty("probabilities")
   })
 
-  it("probability requires both false and true criteria", () => {
+  it("probability accepts omitted criteria and preserves answer inference", () => {
+    const urgent = Decision.probability({ instructions: "Needs action now" })
+    const definition = Decision.make({
+      input: Schema.String,
+      decisions: { urgent }
+    })
+    const result = DecisionModel.decide(definition, { input: "Help now" })
+
+    type Result = typeof result extends Effect.Effect<infer A, any, any> ? A : never
+
+    expect(urgent).type.toBe<Decision.Probability>()
+    expect<Result["answers"]>().type.toBe<{ readonly urgent: Decision.ProbabilityAnswer }>()
+  })
+
+  it("probability accepts explicitly undefined criteria", () => {
+    expect(Decision.probability({ instructions: "Needs action now", criteria: undefined }))
+      .type.toBe<Decision.Probability>()
+  })
+
+  it("probability requires both false and true when criteria are supplied", () => {
     Decision.probability({
       instructions: "Needs action now",
       // @ts-expect-error is missing in type
