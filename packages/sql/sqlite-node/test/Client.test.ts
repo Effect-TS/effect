@@ -39,6 +39,13 @@ describe("Client", () => {
         }
       }))
       assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_release`, [{ value: 1 }])
+      const error = yield* sql.withTransaction(
+        sql.withTransaction(sql`INSERT INTO savepoint_release VALUES (2)`).pipe(
+          Effect.andThen(Effect.fail("outer rollback"))
+        )
+      ).pipe(Effect.flip)
+      assert.strictEqual(error, "outer rollback")
+      assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_release`, [{ value: 1 }])
     }))
 
   it.effect("should work", () =>
