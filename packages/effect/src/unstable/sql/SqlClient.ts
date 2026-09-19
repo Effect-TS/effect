@@ -138,6 +138,7 @@ export declare namespace SqlClient {
     readonly rollback?: string | undefined
     readonly commit?: string | undefined
     readonly savepoint?: ((name: string) => string) | undefined
+    readonly releaseSavepoint?: ((name: string) => string) | undefined
     readonly rollbackSavepoint?: ((name: string) => string) | undefined
     readonly transformRows?: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
     readonly reactiveQueue?: <A, E, R>(
@@ -171,6 +172,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const beginTransaction = options.beginTransaction ?? "BEGIN"
   const commit = options.commit ?? "COMMIT"
   const savepoint = options.savepoint ?? ((name: string) => `SAVEPOINT ${name}`)
+  const releaseSavepoint = options.releaseSavepoint
   const rollback = options.rollback ?? "ROLLBACK"
   const rollbackSavepoint = options.rollbackSavepoint ?? ((name: string) => `ROLLBACK TO SAVEPOINT ${name}`)
   const transactionAcquirer = options.transactionAcquirer ?? options.acquirer
@@ -186,6 +188,9 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     ),
     begin: (conn) => control(conn, beginTransaction),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
+    releaseSavepoint: releaseSavepoint
+      ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
+      : undefined,
     commit: (conn) => control(conn, commit),
     rollback: (conn) => control(conn, rollback),
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
@@ -262,6 +267,7 @@ export const makeWithTransaction = <I, S>(options: {
   readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
   readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
+  readonly releaseSavepoint?: ((conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>) | undefined
   readonly commit: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly rollback: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly rollbackSavepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
@@ -319,6 +325,9 @@ export const makeWithTransaction = <I, S>(options: {
                               ? options.rollbackSavepoint(conn, id)
                               : options.rollback(conn)
                           )
+                        }
+                        if (id > 0 && options.releaseSavepoint) {
+                          effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)))
                         }
                         return Effect.flatMap(effect, () => exit)
                       },
