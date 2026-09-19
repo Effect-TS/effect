@@ -286,7 +286,14 @@ export const assign: {
   }
 )
 
-type Evolver<S> = { readonly [K in keyof S]?: (a: S[K]) => unknown }
+/**
+ * Keys of `S` accept a transform; keys of `E` that are not in `S` resolve to
+ * `never`, which rejects unknown keys. This is kept as a single mapped type on
+ * purpose: TypeScript can only derive a contextual type for nested calls (for
+ * example `evolve(s, { a: evolve({ ... }) })`) from a plain generic mapped
+ * type, not from an intersection.
+ */
+type Evolver<S, E> = { readonly [K in keyof S | keyof E]?: K extends keyof S ? (a: S[K]) => unknown : never }
 
 type Evolved<S, E> = Simplify<
   { [K in keyof S]: K extends keyof E ? (E[K] extends (...a: any) => infer R ? R : S[K]) : S[K] }
@@ -304,6 +311,11 @@ type Evolved<S, E> = Simplify<
  *
  * Each transform function receives the current value and returns the new value;
  * the return type can differ from the input type.
+ *
+ * **Gotchas**
+ *
+ * Keys that do not exist on the struct are rejected at compile time, so a
+ * misspelled key is caught instead of being silently ignored.
  *
  * **Example** (Transforming selected values)
  *
@@ -327,11 +339,11 @@ type Evolved<S, E> = Simplify<
  * @since 2.0.0
  */
 export const evolve: {
-  <S extends object, E extends Evolver<S>>(e: E): (self: S) => Evolved<S, E>
-  <S extends object, E extends Evolver<S>>(self: S, e: E): Evolved<S, E>
+  <S extends object, E extends Evolver<S, E>>(e: E): (self: S) => Evolved<S, E>
+  <S extends object, E extends Evolver<S, E>>(self: S, e: E): Evolved<S, E>
 } = dual(
   2,
-  <S extends object, E extends Evolver<S>>(self: S, e: E): Evolved<S, E> => {
+  <S extends object, E extends Evolver<S, E>>(self: S, e: E): Evolved<S, E> => {
     return buildStruct(self, (k, v) => [k, Object.hasOwn(e, k) ? (e as any)[k](v) : v])
   }
 )
