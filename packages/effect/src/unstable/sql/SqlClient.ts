@@ -138,6 +138,11 @@ export declare namespace SqlClient {
     readonly rollback?: string | undefined
     readonly commit?: string | undefined
     readonly savepoint?: ((name: string) => string) | undefined
+    /**
+     * SQL to release a nested savepoint after success or a successful rollback.
+     * Omit to leave savepoints unreleased, including for dialects such as MSSQL
+     * that do not support releasing savepoints.
+     */
     readonly releaseSavepoint?: ((name: string) => string) | undefined
     readonly rollbackSavepoint?: ((name: string) => string) | undefined
     readonly transformRows?: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
@@ -256,7 +261,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
- * failure or interruption.
+ * failure or interruption. Releases nested savepoints when `releaseSavepoint`
+ * is provided.
  *
  * @category transactions
  * @since 4.0.0
@@ -267,6 +273,11 @@ export const makeWithTransaction = <I, S>(options: {
   readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
   readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
+  /**
+   * Releases a nested savepoint after success or a successful rollback.
+   * Omit to leave savepoints unreleased, including for dialects such as MSSQL
+   * that do not support releasing savepoints.
+   */
   readonly releaseSavepoint?: ((conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>) | undefined
   readonly commit: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly rollback: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
