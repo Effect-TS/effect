@@ -3,67 +3,25 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as Statement from "effect/unstable/sql/Statement"
-import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
 const state = vi.hoisted(() => ({ cancelCalls: 0, completeRequests: true, type: {} }))
 
-vi.mock("tedious", async (importOriginal) => {
-  const original = await importOriginal<typeof Tedious>()
-
-  class MockRequest {
-    readonly listeners: Record<string, (...args: Array<any>) => void> = {}
-
-    constructor(
-      readonly sql: string,
-      readonly callback: (cause: unknown, rowCount: number, rows: ReadonlyArray<any>) => void
-    ) {}
-
-    addParameter() {}
-    addOutputParameter() {}
-    on(event: string, listener: (...args: Array<any>) => void) {
-      this.listeners[event] = listener
-    }
-  }
-
-  class MockConnection {
-    connect(callback: (cause: unknown) => void) {
-      callback(null)
-    }
-    close() {}
-    on() {}
-    cancel() {
-      state.cancelCalls++
-    }
-    execSql(request: MockRequest) {
-      if (state.completeRequests) {
-        request.callback(null, 0, [])
-      }
-    }
-    callProcedure(request: MockRequest) {
-      request.listeners.returnValue("answer", 42)
-      request.callback(null, 0, [])
-    }
-    beginTransaction(callback: (cause: unknown) => void) {
-      callback(null)
-    }
-    commitTransaction(callback: (cause: unknown) => void) {
-      callback(null)
-    }
-    saveTransaction(callback: (cause: unknown) => void) {
-      callback(null)
-    }
-    rollbackTransaction(callback: (cause: unknown) => void) {
-      callback(null)
-    }
-  }
-
-  return {
-    ...original,
-    Connection: MockConnection,
-    Request: MockRequest
-  }
-})
+vi.mock("#tds/tdsConnection", () => ({
+  make: () =>
+    Effect.succeed({
+      query: () =>
+        Effect.callback((resume) => {
+          if (state.completeRequests) resume(Effect.succeed({ rows: [], output: {} }))
+          return Effect.sync(() => {
+            state.cancelCalls++
+          })
+        }),
+      batch: () => Effect.succeed({ rows: [], output: {} }),
+      call: () => Effect.succeed({ rows: [], output: { answer: 42 } }),
+      onClose: () => () => {}
+    })
+}))
 
 const sql = Statement.make(Effect.void as any, MssqlClient.makeCompiler(), [], undefined)
 
@@ -212,7 +170,7 @@ describe("mssql", () => {
       Effect.provide(Reactivity.layer)
     ))
 
-  it.effect("cancels an in-flight Tedious request when interrupted", () =>
+  it.effect("cancels an in-flight native request when interrupted", () =>
     Effect.gen(function*() {
       state.cancelCalls = 0
       state.completeRequests = true

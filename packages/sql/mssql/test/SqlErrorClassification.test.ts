@@ -12,84 +12,24 @@ const state: {
   requestCauses: []
 }
 
-class MockRequest {
-  callback: (cause: unknown, rowCount: number, rows: ReadonlyArray<any>) => void
-
-  constructor(
-    _sql: string,
-    callback: (cause: unknown, rowCount: number, rows: ReadonlyArray<any>) => void
-  ) {
-    this.callback = callback
+vi.mock("#tds/tdsConnection", async () => {
+  const { SqlError, UnknownError, ConnectionError } = await import("effect/unstable/sql/SqlError")
+  const query = () =>
+    Effect.suspend(() => {
+      const cause = state.requestCauses.shift()
+      return cause ?
+        Effect.fail(new SqlError({ reason: new UnknownError({ cause }) })) :
+        Effect.succeed({ rows: [], output: {} })
+    })
+  return {
+    make: () =>
+      Effect.suspend(() =>
+        state.connectCause ?
+          Effect.fail(new SqlError({ reason: new ConnectionError({ cause: state.connectCause }) })) :
+          Effect.succeed({ query, call: query, batch: query, onClose: () => () => {} })
+      )
   }
-
-  addParameter() {
-    return
-  }
-
-  addOutputParameter() {
-    return
-  }
-
-  on() {
-    return
-  }
-}
-
-class MockConnection {
-  connect(callback: (cause: unknown) => void) {
-    callback(state.connectCause)
-  }
-
-  close() {
-    return
-  }
-
-  on() {
-    return
-  }
-
-  beginTransaction(callback: (cause: unknown) => void) {
-    callback(null)
-  }
-
-  commitTransaction(callback: (cause: unknown) => void) {
-    callback(null)
-  }
-
-  saveTransaction(callback: (cause: unknown) => void) {
-    callback(null)
-  }
-
-  rollbackTransaction(callback: (cause: unknown) => void) {
-    callback(null)
-  }
-
-  cancel() {
-    return
-  }
-
-  execSql(request: MockRequest) {
-    const cause = state.requestCauses.length > 0 ? state.requestCauses.shift() : null
-    request.callback(cause, 0, [])
-  }
-
-  callProcedure(request: MockRequest) {
-    this.execSql(request)
-  }
-}
-
-vi.mock("tedious", () => ({
-  Connection: MockConnection,
-  Request: MockRequest,
-  TYPES: {
-    VarChar: {},
-    Int: {},
-    BigInt: {},
-    Bit: {},
-    DateTime: {},
-    VarBinary: {}
-  }
-}))
+})
 
 const queryFailureReason = (cause: unknown) =>
   Effect.gen(function*() {
