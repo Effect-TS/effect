@@ -1,5 +1,13 @@
 # @effect/docgen
 
+## 4.0.0-rc.117
+
+### Patch Changes
+
+- Updated dependencies [[`3d59ae6`](https://github.com/Effect-TS/effect/commit/3d59ae6d5f9ff3e52cb6ed4a9f325320580218d5)]:
+  - effect@4.0.0-rc.117
+  - @effect/platform-node@4.0.0-rc.117
+
 ## 4.0.0-rc.116
 
 ### Patch Changes
