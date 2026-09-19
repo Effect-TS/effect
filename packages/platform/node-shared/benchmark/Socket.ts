@@ -234,7 +234,10 @@ const netSocketClient = (port: number) =>
 const webSocketSocketClient = (url: string) =>
   runScoped(
     Effect.flatMap(Socket.makeWebSocket(url), socketClient).pipe(
-      Effect.provideService(Socket.WebSocketConstructor, (url, options) => new WebSocket(url, options as any))
+      Effect.provideService(
+        Socket.WebSocketConstructor,
+        (url, options) => Effect.sync(() => new WebSocket(url, options as any))
+      )
     )
   )
 

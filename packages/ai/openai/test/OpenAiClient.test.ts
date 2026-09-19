@@ -552,7 +552,7 @@ describe("OpenAiClient", () => {
           })
         ).pipe(
           Effect.provide(makeTestLayer()),
-          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => Effect.sync(() => new globalThis.WebSocket(url))),
           Effect.timeoutOption("1 second")
         )
 

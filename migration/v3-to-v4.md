@@ -7510,7 +7510,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Socket.WebSocket` -> `Socket.WebSocket`: The opaque service moved to effect/unstable/socket/Socket and is now a Context.Service class for globalThis.WebSocket.
 
-- `Socket.WebSocketConstructor` -> `Socket.WebSocketConstructor`: The service moved to effect/unstable/socket/Socket and is now a Context.Service class.
+- `Socket.WebSocketConstructor` -> `Socket.WebSocketConstructor`: The service moved to effect/unstable/socket/Socket and is now a Context.Service class. The constructor now returns an Effect and is invoked afresh per connection attempt, enabling effectful per-connection setup (auth tokens, signed subprotocols) and middleware over a base constructor; failures surface as a SocketError at reader acquisition, like any failed dial.
 
 - `Socket.currentSendQueueCapacity` -> `none`: The send queue was removed. The v4 Socket is pull-based: acquire socket.reader in a scope and pull frame batches; writes apply the transport's native backpressure.
 
