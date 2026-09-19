@@ -25,7 +25,6 @@ import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
 import { encodeName } from "./internal/clusterName.ts"
 import {
   CurrentExecutionHandle,
-  deferredState,
   registerWorkflow,
   unregisterWorkflow,
   type WorkflowRegistration,
@@ -142,9 +141,7 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     }),
 
     deferredResult: Effect.fnUntraced(function*(deferred) {
-      const { handle, instance } = yield* localHandle("DurableDeferred reads")
-      const pending = deferredState.pendingResult(instance.executionId, deferred.name)
-      if (pending !== undefined) return Option.some(pending)
+      const { handle } = yield* localHandle("DurableDeferred reads")
       const stored = handle.loadDeferred(deferred.name)
       if (stored === undefined) return Option.none()
       return Option.some(yield* decodeExit(stored, Context.empty()))
