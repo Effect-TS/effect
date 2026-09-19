@@ -29,7 +29,7 @@ import {
   type WorkflowStub
 } from "./workflowRegistry.ts"
 import * as WorkflowStorage from "./workflowStorage.ts"
-import { decodeExit, decodePayload, encodeExit, encodeResult } from "./workflowWire.ts"
+import { decodePayload, encodeExit, encodeResult } from "./workflowWire.ts"
 
 /** @internal */
 export const InterruptSignalName = "Workflow/InterruptSignal"
@@ -219,8 +219,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     if (inflight !== undefined) resumeRequested = true
     return Effect.runPromise(
       armAlarm(options.alarm, options.now() + resumeGuardMillis).pipe(
-        Effect.andThen(decodeExit(exitText, Context.empty())),
-        Effect.flatMap((exit) => deferredState.deferredDone(executionId, deferredName, exit))
+        Effect.andThen(deferredState.deferredDone(executionId, deferredName))
       )
     ).then(() => resume())
   }
@@ -259,7 +258,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       }
       return Effect.runPromise(Effect.forEach(
         completed,
-        (clock) => deferredState.deferredDone(executionId, clock.deferredName, Exit.void),
+        (clock) => deferredState.deferredDone(executionId, clock.deferredName),
         { discard: true }
       )).then(() => {
         const row = WorkflowStorage.loadExecution(sql)
