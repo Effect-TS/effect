@@ -817,6 +817,24 @@ export const isULIDReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
+ * Reviver for persisted `isAscii` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isAscii}.
+ *
+ * @see {@link Schema.isAscii} for creating the corresponding check
+ *
+ * @category validation
+ * @since 4.0.0
+ */
+export const isAsciiReviver: FilterReviver<null> = makeReviverFilter(
+  "effect/schema/isAscii",
+  Schema.Null,
+  ({ annotations }) => Schema.isAscii(annotations)
+)
+
+/**
  * Reviver for persisted `isBase64` checks.
  *
  * **When to use**
