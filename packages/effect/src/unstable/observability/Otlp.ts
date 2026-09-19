@@ -28,6 +28,8 @@ import * as OtlpTracer from "./OtlpTracer.ts"
  *
  * The layer sends data to `/v1/logs`, `/v1/metrics`, and `/v1/traces` below
  * `baseUrl` and requires an `OtlpSerialization` implementation.
+ * `tracerSpanFilter` filters completed sampled spans using the same contract as
+ * {@link OtlpTracer.make}.
  *
  * @category layers
  * @since 4.0.0
@@ -42,6 +44,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+  readonly tracerSpanFilter?: ((span: Tracer.Span) => boolean) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
@@ -78,6 +81,7 @@ export const layer = (options: {
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
       context: options.tracerContext,
+      spanFilter: options.tracerSpanFilter,
       shutdownTimeout: options.shutdownTimeout
     })
   )
@@ -98,6 +102,7 @@ export const layerFromConfig = (options?: {
   } | undefined
   readonly headers?: Headers.Input | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+  readonly tracerSpanFilter?: ((span: Tracer.Span) => boolean) | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> =>
@@ -115,7 +120,8 @@ export const layerFromConfig = (options?: {
     OtlpTracer.layerFromConfig({
       resource: options?.resource,
       headers: options?.headers,
-      context: options?.tracerContext
+      context: options?.tracerContext,
+      spanFilter: options?.tracerSpanFilter
     })
   )
 
@@ -136,6 +142,7 @@ export const layerJson: (options: {
   readonly headers?: Headers.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+  readonly tracerSpanFilter?: ((span: Tracer.Span) => boolean) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
@@ -162,6 +169,7 @@ export const layerProtobuf: (options: {
   readonly headers?: Headers.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+  readonly tracerSpanFilter?: ((span: Tracer.Span) => boolean) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
