@@ -20,7 +20,6 @@ import { constant, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import * as Iterable from "./Iterable.ts"
-import * as Latch from "./Latch.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
@@ -948,7 +947,15 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
             ? self.config.strategy.onAcquire(item)
             : Effect.flatMap(item.finalizer, () => {
               // A borrower may consume a failed item while its finalizer is suspended.
-              return self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
+              return self.state.items.has(item)
+                ? Effect.flatMap(
+                  self.config.strategy.onAcquire(item),
+                  () =>
+                    Effect.sync(() => {
+                      if (!self.state.items.has(item)) removeUsageTTLItem(item)
+                    })
+                )
+                : Effect.void
             }),
           item
         )
@@ -1021,7 +1028,6 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
 
 const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
   const queue: UsageTTLQueue<A, E> = { head: undefined, tail: undefined }
-  const available = yield* Latch.make()
   const enqueue = (item: PoolItem<A, E>): Effect.Effect<void> =>
     Effect.sync(() => {
       removeUsageTTLItem(item)
@@ -1033,20 +1039,20 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
       }
       queue.tail = node
       usageTTLNodes.set(item, node)
-      available.openUnsafe()
     })
   return identity<Strategy<A, E>>({
     run: (pool) => {
       const process: Effect.Effect<void> = Effect.suspend(() => {
         const excess = activeSize(pool) - targetSize(pool)
         if (excess <= 0) return Effect.void
-        if (queue.head === undefined) {
-          available.closeUnsafe()
-          return Effect.flatMap(available.await, () => process)
-        }
-        const item = queue.head.item
-        removeUsageTTLItem(item)
-        return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
+        const node = queue.head
+        if (node === undefined) return Effect.void
+        queue.head = node.next
+        if (queue.head === undefined) queue.tail = undefined
+        else queue.head.previous = undefined
+        node.next = undefined
+        usageTTLNodes.delete(node.item)
+        return Effect.flatMap(invalidatePoolItem(pool, node.item), () => process)
       })
       return process.pipe(
         Effect.delay(ttl),
