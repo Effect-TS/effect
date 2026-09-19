@@ -251,6 +251,20 @@ export const rate = <const Level extends string>(options: {
  * })
  * ```
  *
+ * **Example** (Providing outcome descriptions)
+ *
+ * ```ts
+ * import { Decision } from "effect/unstable/ai"
+ *
+ * const urgent = Decision.probability({
+ *   instructions: "The message is time-sensitive",
+ *   criteria: {
+ *     false: "The message can wait",
+ *     true: "The message needs immediate attention"
+ *   }
+ * })
+ * ```
+ *
  * @see {@link classify} for more than two outcomes
  *
  * @category constructors
