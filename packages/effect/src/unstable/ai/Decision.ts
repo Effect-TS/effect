@@ -59,7 +59,8 @@ export interface Rate<Level extends string> {
 
 /**
  * Decision that estimates how likely a statement about the input is to hold.
- * `criteria` describes both outcomes. The answer is the probability of `true`.
+ * Optional `criteria` describes both outcomes when supplied.
+ * The answer is the probability of `true`.
  *
  * @see {@link probability} for the constructor
  * @see {@link ProbabilityAnswer} for the answer produced by this decision
@@ -70,10 +71,10 @@ export interface Rate<Level extends string> {
 export interface Probability {
   readonly _tag: "Probability"
   readonly instructions: string
-  readonly criteria: {
+  readonly criteria?: {
     readonly false: string
     readonly true: string
-  }
+  } | undefined
 }
 
 /**
@@ -237,7 +238,8 @@ export const rate = <const Level extends string>(options: {
 }
 
 /**
- * Creates a probability decision from descriptions of both outcomes.
+ * Creates a probability decision from instructions and optional outcome descriptions.
+ * When `criteria` is supplied, descriptions for both `false` and `true` are required.
  *
  * **Example** (Estimating urgency)
  *
@@ -245,10 +247,20 @@ export const rate = <const Level extends string>(options: {
  * import { Decision } from "effect/unstable/ai"
  *
  * const urgent = Decision.probability({
+ *   instructions: "The message is time-sensitive"
+ * })
+ * ```
+ *
+ * **Example** (Providing outcome descriptions)
+ *
+ * ```ts
+ * import { Decision } from "effect/unstable/ai"
+ *
+ * const urgent = Decision.probability({
  *   instructions: "The message is time-sensitive",
  *   criteria: {
- *     false: "No time pressure",
- *     true: "Needs action now"
+ *     false: "The message can wait",
+ *     true: "The message needs immediate attention"
  *   }
  * })
  * ```
@@ -260,10 +272,10 @@ export const rate = <const Level extends string>(options: {
  */
 export const probability = (options: {
   readonly instructions: string
-  readonly criteria: {
+  readonly criteria?: {
     readonly false: string
     readonly true: string
-  }
+  } | undefined
 }): Probability => ({
   _tag: "Probability",
   instructions: options.instructions,

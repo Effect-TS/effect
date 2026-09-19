@@ -68,6 +68,36 @@ const systemOneResponse = {
 }
 
 describe("TypeSafeDecisionModel", () => {
+  it.effect("omits absent probability criteria from the encoded question", () =>
+    Effect.gen(function*() {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: {
+          urgent: Decision.probability({ instructions: "Needs action now" })
+        }
+      })
+      const { answers } = yield* DecisionModel.decide(definition, { input: "Help ASAP" }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.gen(function*() {
+            const { questions } = yield* getRequestBody(request)
+            assert.deepStrictEqual(questions.urgent, {
+              type: "noul",
+              instructions: "Needs action now"
+            })
+
+            return jsonResponse(request, {
+              model: "jev-latest",
+              answers: { urgent: { type: "noul", noul: 0.75 } },
+              usage: { input_tokens: 20, output_tokens: 4 }
+            })
+          })
+        ))
+      )
+
+      assert.deepStrictEqual(answers.urgent, { probability: 0.75 })
+    }))
+
   for (const key of ["__proto__", "constructor", "toString"]) {
     it.effect("round trips a classification label named " + key, () =>
       Effect.gen(function*() {
