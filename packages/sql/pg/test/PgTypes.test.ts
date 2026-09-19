@@ -60,6 +60,7 @@ const roundTrips: Array<{
   { name: "int8Max", oid: PgTypes.OID.int8, value: BigInt("9223372036854775807") },
   { name: "int8Min", oid: PgTypes.OID.int8, value: BigInt("-9223372036854775808") },
   { name: "oid", oid: PgTypes.OID.oid, value: 4294967295 },
+  { name: "regclass", oid: PgTypes.OID.regclass, value: 4294967295 },
   { name: "float4", oid: PgTypes.OID.float4, value: 1.5 },
   { name: "float8", oid: PgTypes.OID.float8, value: -3.0625 },
   { name: "numeric", oid: PgTypes.OID.numeric, value: "12345.6789" },
@@ -166,12 +167,6 @@ const binary = (oids: ReadonlyArray<number>): Array<PgTypesResult.Column> =>
   oids.map((dataTypeOid) => ({ dataTypeOid, format: 1 }))
 
 describe("PgTypes", () => {
-  it("encodes and decodes regclass as an unsigned OID", () => {
-    const golden = column(rows.oid)
-    assert.strictEqual(PgTypes.decode(golden, PgTypes.OID.regclass, 1), 4294967295)
-    assert.deepStrictEqual(PgTypes.encode(4294967295, PgTypes.OID.regclass), golden)
-  })
-
   it("returns codec failures as Result values", () => {
     for (
       const result of [
