@@ -20,6 +20,7 @@ import { constant, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import * as Iterable from "./Iterable.ts"
+import * as MutableList from "./MutableList.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
@@ -406,7 +407,7 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       self.state.invalidated.add(item)
       yield* semaphore.take(1)
     } else {
-      self.state.items.delete(item)
+      removePoolItem(self, item)
       removeAvailable(self, item)
       self.state.invalidated.delete(item)
       yield* item.finalizer
@@ -581,7 +582,7 @@ const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boo
   const state = self.state
   if (item.exit._tag === "Failure") {
     state.usage--
-    state.items.delete(item)
+    removePoolItem(self, item)
     state.invalidated.delete(item)
     removeAvailable(self, item)
     return false
@@ -672,6 +673,17 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     wakeWaiters(self, fiber, Number.POSITIVE_INFINITY)
     return internal.void
   })
+
+// Usage-TTL queue ownership ends when an item leaves pool state.
+const usageTTLQueues = new WeakMap<PoolItem<unknown, unknown>, Queue.Dequeue<PoolItem<unknown, unknown>>>()
+const removePoolItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
+  self.state.items.delete(item)
+  const queue = usageTTLQueues.get(item)
+  if (queue !== undefined) {
+    MutableList.remove(queue.messages, item)
+    usageTTLQueues.delete(item)
+  }
+}
 
 // Reservations prevent reuse without extending the lifetime of borrowed items.
 const reservations = new WeakMap<PoolItem<unknown, unknown>, number>()
@@ -826,7 +838,7 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
     if (!self.state.items.has(poolItem)) {
       return Effect.void
     } else if (poolItem.refCount === 0) {
-      self.state.items.delete(poolItem)
+      removePoolItem(self, poolItem)
       removeAvailable(self, poolItem)
       self.state.invalidated.delete(poolItem)
       return Effect.asVoid(Effect.flatMap(
@@ -907,7 +919,10 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         return Effect.as(
           exit._tag === "Success"
             ? self.config.strategy.onAcquire(item)
-            : Effect.flatMap(item.finalizer, () => self.config.strategy.onAcquire(item)),
+            : Effect.flatMap(item.finalizer, () => {
+              // A borrower may consume a failed item while its finalizer is suspended.
+              return self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
+            }),
           item
         )
       })
@@ -994,7 +1009,11 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
         Effect.forever({ disableYield: true })
       )
     },
-    onAcquire: (item) => Queue.offer(queue, item),
+    onAcquire: (item) =>
+      Effect.suspend(() => {
+        usageTTLQueues.set(item, queue)
+        return Queue.offer(queue, item)
+      }),
     reclaim(pool) {
       return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
         if (pool.state.invalidated.size === 0) {
