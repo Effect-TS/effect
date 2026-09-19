@@ -313,19 +313,20 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
           WHERE pid = pg_backend_pid() AND locktype = 'transactionid'`
         const before = yield* locks
 
-        for (let value = 1; value <= 10; value++) {
+        for (const value of [1, 2]) {
           yield* sql.withTransaction(sql`INSERT INTO savepoint_locks VALUES (${value})`)
+          assert.deepStrictEqual(yield* locks, before)
         }
-        yield* sql.withTransaction(
+        const error = yield* sql.withTransaction(
           sql`INSERT INTO savepoint_locks VALUES (-1)`.pipe(Effect.andThen(Effect.fail("rollback")))
-        ).pipe(Effect.catch(() => Effect.void))
+        ).pipe(Effect.flip)
 
+        assert.strictEqual(error, "rollback")
         assert.deepStrictEqual(yield* locks, before)
         assert.deepStrictEqual(
-          yield* sql`SELECT count(*)::integer AS count FROM savepoint_locks WHERE value >= 0`,
-          [{ count: 11 }]
+          yield* sql`SELECT value FROM savepoint_locks ORDER BY value`,
+          [{ value: 0 }, { value: 1 }, { value: 2 }]
         )
-        assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_locks WHERE value = -1`, [])
       }))
     }))
 
