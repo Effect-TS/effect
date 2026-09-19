@@ -927,12 +927,15 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         if (self.config.strategy === strategyNoop) {
           return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
         }
-        const onAcquire = Effect.flatMap(self.config.strategy.onAcquire(item), () =>
-          Effect.sync(() => {
-            // A borrower can consume a failed item while its finalizer and
-            // `onAcquire` run, so remove it again in case the strategy queued it.
-            if (!self.state.items.has(item)) removePoolItem(self, item)
-          }))
+        const onAcquire = Effect.suspend(() =>
+          self.state.items.has(item)
+            ? Effect.flatMap(self.config.strategy.onAcquire(item), () =>
+              Effect.sync(() => {
+                // Remove any usage-TTL entry queued after a borrower removed the item.
+                if (!self.state.items.has(item)) removePoolItem(self, item)
+              }))
+            : Effect.void
+        )
         return Effect.as(
           exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
           item
