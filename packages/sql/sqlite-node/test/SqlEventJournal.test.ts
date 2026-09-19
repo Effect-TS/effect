@@ -27,6 +27,43 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(actual, error)
     }))
 
+  it.effect("preserves writeFromRemote effect error identity", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const error = new Error("callback failed")
+      const entry = new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array([1])
+      }, { disableChecks: true })
+      const actual = yield* Effect.flip(journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+        effect: () => Effect.fail(error)
+      }))
+      assert.strictEqual(actual, error)
+    }))
+
+  it.effect("preserves writeFromRemote compact error identity", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const error = new Error("callback failed")
+      const entry = new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array([1])
+      }, { disableChecks: true })
+      const actual = yield* Effect.flip(journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+        compact: () => Effect.fail(error),
+        effect: () => Effect.void
+      }))
+      assert.strictEqual(actual, error)
+    }))
+
   it.effect("preserves remote callback error identity", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal

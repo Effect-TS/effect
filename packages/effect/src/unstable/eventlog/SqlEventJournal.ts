@@ -157,6 +157,9 @@ export const make = (options?: {
       }))
 
       const existingIds = new Set<string>()
+      const toWriteFromRemoteError = (cause: unknown) =>
+        new EventJournal.EventJournalError({ cause, method: "writeFromRemote" })
+
       if (entries.length > 0) {
         yield* sql`SELECT id FROM ${entryTableSql} WHERE ${
           sql.in(
@@ -171,14 +174,19 @@ export const make = (options?: {
                 existingIds.add(Uuid.stringify(row.id))
               }
             })
-          )
+          ),
+          Effect.mapError(toWriteFromRemoteError)
         )
       }
       if (entries.length > 0) {
-        yield* insertEntries(entries.map(toEntryRow))
+        yield* insertEntries(entries.map(toEntryRow)).pipe(
+          Effect.mapError(toWriteFromRemoteError)
+        )
       }
       if (remoteRows.length > 0) {
-        yield* insertRemotes(remoteRows)
+        yield* insertRemotes(remoteRows).pipe(
+          Effect.mapError(toWriteFromRemoteError)
+        )
       }
 
       const uncommitted = options.entries.filter((entry) => !existingIds.has(entry.entry.idString))
@@ -199,7 +207,8 @@ export const make = (options?: {
             ORDER BY timestamp ASC
           `.pipe(
           Effect.flatMap(decodeEntryRows),
-          Effect.map(toEntries)
+          Effect.map(toEntries),
+          Effect.mapError(toWriteFromRemoteError)
         )
         yield* options.effect({ entry, conflicts })
       }
@@ -237,14 +246,7 @@ export const make = (options?: {
         },
         withTracerDisabled
       ),
-      writeFromRemote: (options) =>
-        writeFromRemote(options).pipe(
-          withTracerDisabled,
-          Effect.catchIf(
-            (e) => e._tag !== "EventJournalError",
-            (cause) => Effect.fail(new EventJournal.EventJournalError({ cause, method: "writeFromRemote" }))
-          )
-        ),
+      writeFromRemote: (options) => writeFromRemote(options).pipe(withTracerDisabled),
       withRemoteUncommited: Effect.fnUntraced(
         function*(remoteId, f) {
           const entries = yield* sql`
