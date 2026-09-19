@@ -317,6 +317,13 @@ export function fromSchemaDraft07(js: JsonSchema): Document<"draft-2020-12"> {
  * @since 4.0.0
  */
 export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"> {
+  if (typeof js === "boolean") {
+    return {
+      dialect: "draft-2020-12",
+      schema: js,
+      definitions: {}
+    }
+  }
   const { $defs, ...schema } = js
   return {
     dialect: "draft-2020-12",
