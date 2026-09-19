@@ -12,4 +12,9 @@ export * as Socket from "./Socket.ts"
 /**
  * @since 4.0.0
  */
+export * as SocketProtocols from "./SocketProtocols.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as SocketServer from "./SocketServer.ts"
