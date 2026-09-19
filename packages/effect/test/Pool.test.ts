@@ -730,6 +730,47 @@ describe("Pool", () => {
       strictEqual(yield* Ref.get(allocations), 10)
       strictEqual(yield* Ref.get(released), 10)
     }))
+  it.effect("skips strategy callbacks for failures consumed during finalization", () =>
+    Effect.gen(function*() {
+      const cleanupStarted = yield* Deferred.make<void>()
+      const resumeCleanup = yield* Deferred.make<void>()
+      const replacementAcquired = yield* Deferred.make<void>()
+      let acquired = 0
+      let callbacks = 0
+      const pool = yield* Pool.makeWithStrategy({
+        acquire: Effect.gen(function*() {
+          if (++acquired > 1) return "replacement"
+          yield* Effect.addFinalizer(() =>
+            Effect.andThen(
+              Deferred.succeed(cleanupStarted, undefined),
+              Deferred.await(resumeCleanup)
+            )
+          )
+          return yield* Effect.fail("boom")
+        }),
+        min: 1,
+        max: 2,
+        strategy: {
+          run: () => Effect.void,
+          reclaim: () => Effect.undefined,
+          onAcquire: (item) =>
+            Effect.gen(function*() {
+              callbacks++
+              if (Exit.isSuccess(item.exit)) yield* Deferred.succeed(replacementAcquired, undefined)
+            })
+        }
+      })
+      yield* Effect.addFinalizer(() => Deferred.succeed(resumeCleanup, undefined))
+      yield* Deferred.await(cleanupStarted)
+      strictEqual(yield* Effect.flip(Effect.scoped(Pool.get(pool))), "boom")
+      strictEqual(callbacks, 0)
+      yield* Deferred.succeed(resumeCleanup, undefined)
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
+      yield* Deferred.await(replacementAcquired)
+      strictEqual(acquired, 2)
+      strictEqual(callbacks, 1)
+    }))
+
   it.effect("admits one waiter per released lease", () =>
     Effect.gen(function*() {
       const acquired = yield* Ref.make(0)
