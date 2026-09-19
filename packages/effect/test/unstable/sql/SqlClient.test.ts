@@ -24,14 +24,15 @@ let harnessIdCounter = 0
  * The stubs mirror the driver contract: `rollback` and `rollbackSavepoint` fail
  * when no transaction or savepoint is active, which is what a real database
  * reports when a rollback is issued after a failed `BEGIN`.
+ * Savepoint release is opt-in: pass `true` to enable it or a `SqlError` to make it fail.
  */
 const makeHarness = (options: {
   readonly begin?: SqlError.SqlError | undefined
   readonly savepoint?: SqlError.SqlError | undefined
   readonly rollbackSavepoint?: SqlError.SqlError | undefined
-  readonly releaseSavepoint?: SqlError.SqlError | undefined
-  readonly releaseSavepoints?: boolean | undefined
+  readonly releaseSavepoint?: boolean | SqlError.SqlError | undefined
 } = {}) => {
+  const releaseFailure = typeof options.releaseSavepoint === "object" ? options.releaseSavepoint : undefined
   const calls: Array<string> = []
   const conn: StubConnection = { id: "stub" }
   const transactionService = Context.Service<
@@ -94,11 +95,11 @@ const makeHarness = (options: {
           ? Effect.void
           : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
       }),
-    releaseSavepoint: options.releaseSavepoints
+    releaseSavepoint: options.releaseSavepoint
       ? (_conn, id) =>
         Effect.flatMap(record(`releaseSavepoint(${id})`), () => {
-          if (options.releaseSavepoint !== undefined) {
-            return Effect.fail(options.releaseSavepoint)
+          if (releaseFailure !== undefined) {
+            return Effect.fail(releaseFailure)
           }
           return savepoints.includes(id)
             ? Effect.sync(() => {
@@ -174,9 +175,42 @@ describe("SqlClient", () => {
         ])
       }))
 
+    it.effect("releases the savepoint after a successful nested transaction", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoint: true })
+
+        const result = yield* harness.withTransaction(harness.withTransaction(Effect.succeed(1)))
+
+        assert.strictEqual(result, 1)
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "releaseSavepoint(1)",
+          "commit",
+          "closeConnection"
+        ])
+      }))
+
+    it.effect("does not release savepoints when the driver does not opt in", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+
+        const result = yield* harness.withTransaction(harness.withTransaction(Effect.succeed(1)))
+
+        assert.strictEqual(result, 1)
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "commit",
+          "closeConnection"
+        ])
+      }))
+
     it.effect("releases a rolled-back savepoint before the outer transaction commits", () =>
       Effect.gen(function*() {
-        const harness = makeHarness({ releaseSavepoints: true })
+        const harness = makeHarness({ releaseSavepoint: true })
 
         const exit = yield* harness.withTransaction(
           Effect.exit(harness.withTransaction(Effect.fail("boom" as const)))
@@ -197,7 +231,7 @@ describe("SqlClient", () => {
     it.effect("skips savepoint release when rollback fails", () =>
       Effect.gen(function*() {
         const rollbackError = sqlError("cannot roll back savepoint")
-        const harness = makeHarness({ releaseSavepoints: true, rollbackSavepoint: rollbackError })
+        const harness = makeHarness({ releaseSavepoint: true, rollbackSavepoint: rollbackError })
 
         const exit = yield* Effect.exit(harness.withTransaction(
           harness.withTransaction(Effect.fail("boom"))
@@ -220,7 +254,7 @@ describe("SqlClient", () => {
         () =>
           Effect.gen(function*() {
             const releaseError = sqlError("cannot release savepoint")
-            const harness = makeHarness({ releaseSavepoints: true, releaseSavepoint: releaseError })
+            const harness = makeHarness({ releaseSavepoint: releaseError })
 
             const exit = yield* Effect.exit(harness.withTransaction(
               harness.withTransaction(fails ? Effect.fail("boom") : Effect.void)
