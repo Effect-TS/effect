@@ -2,19 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scope } from "effect"
 import { TestClock } from "effect/testing"
-
-const collectGarbage = Effect.promise(async () => {
-  const { setFlagsFromString } = await import("node:v8")
-  const { runInNewContext } = await import("node:vm")
-  setFlagsFromString("--expose_gc")
-  const collect = runInNewContext("gc") as () => void
-  setFlagsFromString("--no-expose_gc")
-  // WeakRef targets remain alive until the current job ends, so collect across jobs.
-  for (let i = 0; i < 8; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    collect()
-  }
-})
+import { collectGarbage } from "./utils/gc.ts"
 
 describe("Pool", () => {
   it.effect("preallocates pool items", () =>
@@ -938,30 +926,52 @@ describe("Pool", () => {
       deepStrictEqual(finalized, [1, 2])
     }))
 
-  it.effect("usage TTL retires items in FIFO order down to minimum size", () =>
-    Effect.gen(function*() {
-      let acquired = 0
-      const finalized: Array<number> = []
-      const pool = yield* Pool.makeWithTTL({
-        acquire: Effect.acquireRelease(
-          Effect.sync(() => ++acquired),
-          (value) =>
-            Effect.sync(() => {
-              finalized.push(value)
-            })
-        ),
-        min: 1,
-        max: 3,
-        timeToLive: "1 second"
-      })
-      yield* Effect.scoped(Effect.gen(function*() {
-        for (let i = 0; i < 3; i++) yield* Pool.get(pool)
-        strictEqual(acquired, 3)
+  for (const [removal, removed] of [["no", undefined], ["middle", 2], ["tail", 3]] as const) {
+    it.effect(`usage TTL preserves FIFO retirement and minimum size after ${removal} removal`, () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const finalized: Array<number> = []
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.acquireRelease(
+            Effect.sync(() => ++acquired),
+            (value) =>
+              Effect.sync(() => {
+                finalized.push(value)
+              })
+          ),
+          min: 1,
+          max: 3,
+          timeToLive: "1 second"
+        })
+        yield* Effect.scoped(Effect.gen(function*() {
+          for (let i = 0; i < 3; i++) yield* Pool.get(pool)
+          strictEqual(acquired, 3)
+        }))
+        if (removed !== undefined) {
+          yield* Pool.invalidate(pool, removed)
+          deepStrictEqual(finalized, [removed])
+          yield* Effect.scoped(Effect.gen(function*() {
+            for (let i = 0; i < 3; i++) yield* Pool.get(pool)
+            strictEqual(acquired, 4)
+          }))
+        }
+        const expected = removed === undefined ? [1, 2] : [removed, ...[1, 2, 3].filter((n) => n !== removed)]
+        yield* TestClock.adjust("1 second")
+        deepStrictEqual(finalized, expected)
+        yield* TestClock.adjust("5 seconds")
+        deepStrictEqual(finalized, expected)
+        strictEqual(pool.state.items.size, 1)
+        strictEqual(yield* Effect.scoped(Pool.get(pool)), removed === undefined ? 3 : 4)
+        if (removed !== undefined) {
+          yield* Effect.scoped(Effect.gen(function*() {
+            for (let i = 0; i < 3; i++) yield* Pool.get(pool)
+            strictEqual(acquired, 6)
+          }))
+          yield* TestClock.adjust("1 second")
+          deepStrictEqual(finalized, [...expected, 4, 5])
+          strictEqual(pool.state.items.size, 1)
+          strictEqual(yield* Effect.scoped(Pool.get(pool)), 6)
+        }
       }))
-      yield* TestClock.adjust("1 second")
-      deepStrictEqual(finalized, [1, 2])
-      yield* TestClock.adjust("5 seconds")
-      deepStrictEqual(finalized, [1, 2])
-      strictEqual(yield* Effect.scoped(Pool.get(pool)), 3)
-    }))
+  }
 })
