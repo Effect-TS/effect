@@ -322,6 +322,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),

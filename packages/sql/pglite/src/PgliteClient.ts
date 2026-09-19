@@ -229,6 +229,7 @@ export const fromClient = (
       acquirer,
       compiler,
       transactionAcquirer,
+      releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       spanAttributes,
       transformRows
     })
