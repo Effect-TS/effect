@@ -675,7 +675,7 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   })
 
 // Usage-TTL queue ownership ends when an item leaves pool state.
-const usageTTLQueues = new WeakMap<PoolItem<any, any>, Queue.Queue<any>>()
+const usageTTLQueues = new WeakMap<PoolItem<unknown, unknown>, Queue.Dequeue<PoolItem<unknown, unknown>>>()
 const removePoolItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
   self.state.items.delete(item)
   const queue = usageTTLQueues.get(item)
