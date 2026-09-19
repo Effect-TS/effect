@@ -70,6 +70,47 @@ const makeSecurityApi = (
   )
 
 describe("OpenApi", () => {
+  it("uses OpenAPI 3.2 for QUERY operations with a body and separate URL parameters", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("search").add(
+        HttpApiEndpoint.get("list", "/search"),
+        HttpApiEndpoint.query("query", "/search", {
+          query: { limit: Schema.Finite },
+          payload: Schema.Array(Schema.String),
+          success: Schema.Array(Schema.String)
+        })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+    assert.strictEqual(spec.openapi, "3.2.0")
+    assert.ok(spec.paths["/search"]?.get)
+    const operation = spec.paths["/search"]?.query
+    assert.strictEqual(operation?.operationId, "search.query")
+    assert.deepStrictEqual(operation?.requestBody, {
+      required: true,
+      content: { "application/json": { schema: { type: "array", items: { type: "string" } } } }
+    })
+    assert.strictEqual(operation?.parameters.length, 1)
+    assert.strictEqual(operation?.parameters[0]?.name, "limit")
+    assert.strictEqual(operation?.parameters[0]?.in, "query")
+    assert.deepStrictEqual(OpenApi.fromApi(Api), spec)
+  })
+
+  it("keeps OpenAPI 3.1 when QUERY endpoints or groups are excluded", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("visible").add(
+        HttpApiEndpoint.get("list", "/list"),
+        HttpApiEndpoint.query("hidden", "/hidden").annotate(OpenApi.Exclude, true)
+      ),
+      HttpApiGroup.make("hidden").add(
+        HttpApiEndpoint.query("search", "/hidden-group")
+      ).annotate(OpenApi.Exclude, true)
+    )
+    const spec = OpenApi.fromApi(Api)
+    assert.strictEqual(spec.openapi, "3.1.0")
+    assert.deepStrictEqual(Object.keys(spec.paths), ["/list"])
+  })
+
   it("preserves literal action suffixes in path templates", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("operations").add(
@@ -219,10 +260,10 @@ describe("OpenApi", () => {
 
     const spec = OpenApi.fromApi(Api)
     const pathItem = spec.paths["/search"]
-    const query = pathItem["x-oai-additionalOperations"]?.QUERY
+    const query = pathItem.query
 
-    assert.strictEqual(spec.openapi, "3.1.0")
-    assert.deepStrictEqual(Object.keys(pathItem), ["get", "x-oai-additionalOperations"])
+    assert.strictEqual(spec.openapi, "3.2.0")
+    assert.deepStrictEqual(Object.keys(pathItem), ["get", "query"])
     assert.strictEqual(query?.summary, "Search")
     assert.deepStrictEqual(pathItem.get?.responses[200]?.content?.["application/json"]?.schema, { type: "number" })
     assert.deepStrictEqual(query?.responses[200]?.content?.["application/json"]?.schema, { type: "boolean" })
