@@ -307,6 +307,55 @@ function translateJsonSchemaMultiDocument(
     return representation
   }
 
+  // Pointers below a definition are translated in place at each use site. The
+  // set guards against a pointer that leads back to itself.
+  const pointersInProgress = new Set<string>()
+
+  function translatePointerReference($ref: string, path: Path): ImportedJsonSchemaRepresentation {
+    const pointer = JsonSchema.getReferencePath($ref)
+    if (pointer === undefined) {
+      throw errorWithPath(
+        `Unsupported $ref ${JSON.stringify($ref)}. Use "#/$defs/Name".`,
+        [...path, "$ref"]
+      )
+    }
+    const [, key, ...tokens] = pointer
+    if (!Object.hasOwn(document.definitions, key)) {
+      throw errorWithPath(
+        `Missing definition ${JSON.stringify(key)} for $ref ${JSON.stringify($ref)}.`,
+        [...path, "$ref"]
+      )
+    }
+    let node: unknown = document.definitions[key]
+    for (const token of tokens) {
+      if (Array.isArray(node)) {
+        node = /^(0|[1-9][0-9]*)$/.test(token) ? node[Number(token)] : undefined
+      } else if (isObject(node) && Object.hasOwn(node, token)) {
+        node = node[token]
+      } else {
+        node = undefined
+      }
+      if (node === undefined) {
+        throw errorWithPath(
+          `Unresolvable $ref ${JSON.stringify($ref)}. Nothing exists at that location.`,
+          [...path, "$ref"]
+        )
+      }
+    }
+    if (pointersInProgress.has($ref)) {
+      throw errorWithPath(
+        `Recursive $ref ${JSON.stringify($ref)} cannot be inlined. Use "#/$defs/Name".`,
+        [...path, "$ref"]
+      )
+    }
+    pointersInProgress.add($ref)
+    try {
+      return translateSchema(node, ["definitions", key, ...tokens])
+    } finally {
+      pointersInProgress.delete($ref)
+    }
+  }
+
   function mergeAnnotations(
     left: Schema.Annotations.Annotations | undefined,
     right: Schema.Annotations.Annotations | undefined
@@ -924,32 +973,35 @@ function translateJsonSchemaMultiDocument(
       }
       const $ref = JsonSchema.getReferenceKey(schema.$ref)
       if ($ref === undefined) {
-        throw errorWithPath(
-          `Unsupported $ref ${JSON.stringify(schema.$ref)}. Use "#/$defs/Name".`,
-          [...path, "$ref"]
-        )
+        const pointed = translatePointerReference(schema.$ref, path)
+        representation = representation._tag === "Unknown"
+          ? pointed
+          : representation._tag === "Never"
+          ? never
+          : intersect(pointed, representation, path)
+      } else {
+        if (!Object.hasOwn(document.definitions, $ref)) {
+          throw errorWithPath(
+            `Missing definition ${JSON.stringify($ref)} for $ref ${JSON.stringify(schema.$ref)}.`,
+            [...path, "$ref"]
+          )
+        }
+        if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
+        const reference: SchemaRepresentation.Reference = { _tag: "Reference", $ref }
+        representation = representation._tag === "Unknown"
+          ? reference
+          : representation._tag === "Never"
+          ? never
+          : intersect(
+            resolveReference(
+              reference,
+              path,
+              `Recursive $ref ${JSON.stringify(reference.$ref)} cannot have sibling constraints.`
+            ),
+            representation,
+            path
+          )
       }
-      if (!Object.hasOwn(document.definitions, $ref)) {
-        throw errorWithPath(
-          `Missing definition ${JSON.stringify($ref)} for $ref ${JSON.stringify(schema.$ref)}.`,
-          [...path, "$ref"]
-        )
-      }
-      if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
-      const reference: SchemaRepresentation.Reference = { _tag: "Reference", $ref }
-      representation = representation._tag === "Unknown"
-        ? reference
-        : representation._tag === "Never"
-        ? never
-        : intersect(
-          resolveReference(
-            reference,
-            path,
-            `Recursive $ref ${JSON.stringify(reference.$ref)} cannot have sibling constraints.`
-          ),
-          representation,
-          path
-        )
     }
     const annotations = jsonSchemaAnnotations(schema)
     if (annotations !== undefined && representation._tag === "Reference") {
