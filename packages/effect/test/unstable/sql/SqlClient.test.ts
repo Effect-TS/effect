@@ -31,6 +31,7 @@ let harnessIdCounter = 0
 const makeHarness = (options: {
   readonly begin?: SqlError.SqlError | undefined
   readonly savepoint?: SqlError.SqlError | undefined
+  readonly rollbackSavepoint?: SqlError.SqlError | undefined
   readonly releaseSavepoint?: true | SqlError.SqlError | undefined
 } = {}) => {
   const release = options.releaseSavepoint
@@ -88,10 +89,14 @@ const makeHarness = (options: {
           })
           : Effect.fail(sqlError("cannot rollback - no transaction is active"))),
     rollbackSavepoint: (_conn, id) =>
-      Effect.flatMap(record(`rollbackSavepoint(${id})`), () =>
-        savepoints.includes(id)
+      Effect.flatMap(record(`rollbackSavepoint(${id})`), () => {
+        if (options.rollbackSavepoint !== undefined) {
+          return Effect.fail(options.rollbackSavepoint)
+        }
+        return savepoints.includes(id)
           ? Effect.void
-          : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))),
+          : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
+      }),
     releaseSavepoint: release === undefined ?
       undefined :
       (_conn, id) =>
@@ -198,6 +203,24 @@ describe("SqlClient", () => {
           "begin",
           "savepoint(1)",
           "commit",
+          "closeConnection"
+        ])
+      }))
+
+    it.effect("skips savepoint release when rollback fails", () =>
+      Effect.gen(function*() {
+        const rollbackError = sqlError("cannot roll back savepoint")
+        const harness = makeHarness({ releaseSavepoint: true, rollbackSavepoint: rollbackError })
+
+        const exit = yield* Effect.exit(harness.withTransaction(harness.withTransaction(Effect.fail("boom"))))
+
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("boom"), Cause.die(rollbackError))))
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "rollbackSavepoint(1)",
+          "rollback",
           "closeConnection"
         ])
       }))
