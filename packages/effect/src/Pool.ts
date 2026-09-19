@@ -673,41 +673,27 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     return internal.void
   })
 
-interface UsageTTLQueue<A, E> {
-  head: UsageTTLNode<A, E> | undefined
-  tail: UsageTTLNode<A, E> | undefined
-}
-
+// The usage TTL strategy keeps its retirement order in a circular doubly
+// linked list, indexed by item so that an item can be unlinked from any
+// removal path in constant time without retaining it.
 interface UsageTTLNode<A, E> {
   readonly item: PoolItem<A, E>
-  readonly queue: UsageTTLQueue<A, E>
-  previous: UsageTTLNode<A, E> | undefined
-  next: UsageTTLNode<A, E> | undefined
+  previous: UsageTTLNode<A, E>
+  next: UsageTTLNode<A, E>
 }
 
 const usageTTLNodes = new WeakMap<PoolItem<unknown, unknown>, UsageTTLNode<unknown, unknown>>()
 
-const removeUsageTTLItem = <A, E>(item: PoolItem<A, E>): void => {
-  const node = usageTTLNodes.get(item)
-  if (node === undefined) return
-  if (node.previous === undefined) {
-    node.queue.head = node.next
-  } else {
-    node.previous.next = node.next
-  }
-  if (node.next === undefined) {
-    node.queue.tail = node.previous
-  } else {
-    node.next.previous = node.previous
-  }
-  node.previous = undefined
-  node.next = undefined
-  usageTTLNodes.delete(item)
+const unlinkUsageTTLNode = (node: UsageTTLNode<unknown, unknown>): void => {
+  node.previous.next = node.next
+  node.next.previous = node.previous
+  usageTTLNodes.delete(node.item)
 }
 
 const removePoolItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
   self.state.items.delete(item)
-  removeUsageTTLItem(item)
+  const node = usageTTLNodes.get(item)
+  if (node !== undefined) unlinkUsageTTLNode(node)
 }
 
 // Reservations prevent reuse without extending the lifetime of borrowed items.
@@ -941,22 +927,14 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         if (self.config.strategy === strategyNoop) {
           return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
         }
+        const onAcquire = Effect.flatMap(self.config.strategy.onAcquire(item), () =>
+          Effect.sync(() => {
+            // A borrower can consume a failed item while its finalizer and
+            // `onAcquire` run, so remove it again in case the strategy queued it.
+            if (!self.state.items.has(item)) removePoolItem(self, item)
+          }))
         return Effect.as(
-          exit._tag === "Success"
-            ? self.config.strategy.onAcquire(item)
-            : Effect.flatMap(item.finalizer, () => {
-              // A borrower may consume the failure during finalization.
-              return self.state.items.has(item)
-                ? Effect.flatMap(
-                  self.config.strategy.onAcquire(item),
-                  () =>
-                    Effect.sync(() => {
-                      // Consumption can also occur between the membership check and enqueue.
-                      if (!self.state.items.has(item)) removeUsageTTLItem(item)
-                    })
-                )
-                : Effect.void
-            }),
+          exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
           item
         )
       })
@@ -1027,31 +1005,25 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
 })
 
 const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
-  const queue: UsageTTLQueue<A, E> = { head: undefined, tail: undefined }
+  // Sentinel of the retirement list; `sentinel.next` is the oldest entry.
+  const sentinel = { item: undefined, previous: undefined, next: undefined } as unknown as UsageTTLNode<A, E>
+  sentinel.previous = sentinel.next = sentinel
   const enqueue = (item: PoolItem<A, E>): Effect.Effect<void> =>
     Effect.sync(() => {
-      removeUsageTTLItem(item)
-      const node: UsageTTLNode<A, E> = { item, queue, previous: queue.tail, next: undefined }
-      if (queue.tail === undefined) {
-        queue.head = node
-      } else {
-        queue.tail.next = node
-      }
-      queue.tail = node
+      // A reclaimed item may still be queued; move it to the back.
+      const existing = usageTTLNodes.get(item)
+      if (existing !== undefined) unlinkUsageTTLNode(existing)
+      const node: UsageTTLNode<A, E> = { item, previous: sentinel.previous, next: sentinel }
+      sentinel.previous.next = node
+      sentinel.previous = node
       usageTTLNodes.set(item, node)
     })
   return identity<Strategy<A, E>>({
     run: (pool) => {
       const process: Effect.Effect<void> = Effect.suspend(() => {
-        const excess = activeSize(pool) - targetSize(pool)
-        if (excess <= 0) return Effect.void
-        const node = queue.head
-        if (node === undefined) return Effect.void
-        queue.head = node.next
-        if (queue.head === undefined) queue.tail = undefined
-        else queue.head.previous = undefined
-        node.next = undefined
-        usageTTLNodes.delete(node.item)
+        const node = sentinel.next
+        if (node === sentinel || activeSize(pool) <= targetSize(pool)) return Effect.void
+        unlinkUsageTTLNode(node)
         return Effect.flatMap(invalidatePoolItem(pool, node.item), () => process)
       })
       return process.pipe(
