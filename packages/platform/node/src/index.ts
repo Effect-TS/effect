@@ -27,6 +27,11 @@ export * as NodeCrypto from "./NodeCrypto.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodeFileSystem from "./NodeFileSystem.ts"
 
 /**
