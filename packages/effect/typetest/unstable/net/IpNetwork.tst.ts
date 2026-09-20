@@ -4,28 +4,24 @@ import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { describe, expect, it } from "tstyche"
 
-// Widen the branded constants to retain coverage of base-family inference.
-const ipv4Unspecified: NetAddress.Ipv4Address = NetAddress.ipv4Unspecified
-const ipv6Unspecified: NetAddress.Ipv6Address = NetAddress.ipv6Unspecified
-
 describe("IpNetwork", () => {
   it("preserves address families in checked constructors", () => {
-    expect(IpNetwork.make(ipv4Unspecified, 0)).type.toBe<
+    expect(IpNetwork.make(NetAddress.ipv4Unspecified, 0)).type.toBe<
       Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
     >()
-    expect(IpNetwork.make(ipv6Unspecified, 0)).type.toBe<
+    expect(IpNetwork.make(NetAddress.ipv6Unspecified, 0)).type.toBe<
       Result.Result<IpNetwork.Ipv6Network, NetAddress.NetAddressError>
     >()
-    expect(IpNetwork.fromAddress(ipv4Unspecified, 0)).type.toBe<
+    expect(IpNetwork.fromAddress(NetAddress.ipv4Unspecified, 0)).type.toBe<
       Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
     >()
-    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(ipv4Unspecified, 0))).type.toBe<
+    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(NetAddress.ipv4Unspecified, 0))).type.toBe<
       IpNetwork.Ipv4Network
     >()
-    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(ipv6Unspecified, 0))).type.toBe<
+    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(NetAddress.ipv6Unspecified, 0))).type.toBe<
       IpNetwork.Ipv6Network
     >()
-    const ipv4Network = IpNetwork.makeUnsafe(ipv4Unspecified, 0)
+    const ipv4Network = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
     expect(IpNetwork.firstAddress(ipv4Network)).type.toBe<NetAddress.Ipv4Address>()
     expect(IpNetwork.lastAddress(ipv4Network)).type.toBe<NetAddress.Ipv4Address>()
     const address = null as unknown as NetAddress.IpAddress
@@ -43,16 +39,17 @@ describe("IpNetwork", () => {
       Result.Result<IpNetwork.Ipv6Network, NetAddress.NetAddressError>
     >()
     expect(IpNetwork.fromString("::/0")).type.toBe<Result.Result<IpNetwork.IpNetwork, NetAddress.NetAddressError>>()
-    expect(IpNetwork.makeUnsafe(ipv4Unspecified, 0)).type.toBe<IpNetwork.Ipv4Network>()
-    expect(IpNetwork.fromAddressUnsafe(ipv6Unspecified, 0)).type.toBe<IpNetwork.Ipv6Network>()
+    expect(IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)).type.toBe<IpNetwork.Ipv4Network>()
+    expect(IpNetwork.fromAddressUnsafe(NetAddress.ipv6Unspecified, 0)).type.toBe<IpNetwork.Ipv6Network>()
     expect(IpNetwork.fromStringUnsafe("::/0")).type.toBe<IpNetwork.IpNetwork>()
   })
 
-  it("preserves refinements only when address bits are unchanged", () => {
-    const precise = IpNetwork.make(NetAddress.ipv4Unspecified, 0)
+  it("preserves on-demand refinements only when address bits are unchanged", () => {
+    const unspecified = NetAddress.unspecifiedAddressUnsafe(NetAddress.ipv4Unspecified)
+    const precise = IpNetwork.make(unspecified, 0)
     expect(precise).type.toBe<
       Result.Result<
-        IpNetwork.IpNetwork<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>,
+        IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>,
         NetAddress.NetAddressError
       >
     >()
@@ -61,18 +58,19 @@ describe("IpNetwork", () => {
       typeof precise
     >()
 
-    const network = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
+    const network = IpNetwork.makeUnsafe(unspecified, 0)
     expect(network).type.toBe<
-      IpNetwork.IpNetwork<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>
+      IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>
     >()
-    expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>()
+    expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
     expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
     expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.UnspecifiedAddress>()
 
-    expect(IpNetwork.fromAddress(NetAddress.ipv6Loopback, 64)).type.toBe<
+    const loopback = NetAddress.loopbackAddressUnsafe(NetAddress.ipv6Loopback)
+    expect(IpNetwork.fromAddress(loopback, 64)).type.toBe<
       Result.Result<IpNetwork.Ipv6Network, NetAddress.NetAddressError>
     >()
-    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(NetAddress.ipv6Loopback, 64))).type.toBe<
+    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(loopback, 64))).type.toBe<
       IpNetwork.Ipv6Network
     >()
   })

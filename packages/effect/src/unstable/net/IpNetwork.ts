@@ -15,7 +15,10 @@ import * as NetAddress from "./NetAddress.ts"
 const TypeId = "~effect/net/IpNetwork" as const
 
 /**
- * An immutable canonical IP network prefix.
+ * An immutable canonical IP network prefix. Constructors that retain the exact
+ * input address also retain its verified refinements. Operations that derive a
+ * different address return only its IPv4 or IPv6 family; revalidate the result
+ * before treating it as refined.
  *
  * @category models
  * @since 4.0.0
