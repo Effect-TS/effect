@@ -256,6 +256,7 @@ export const make = Effect.fnUntraced(function*<
                   (isShuttingDown || isUninterruptibleForServer(request.message.annotations))
                 ) {
                   if (!isShuttingDown) {
+                    request.sentExit = false
                     return server.write(
                       0,
                       {
