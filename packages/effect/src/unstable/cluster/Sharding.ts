@@ -243,6 +243,24 @@ const make = Effect.gen(function*() {
   const entityManagers = new Map<string, EntityManagerState>()
   let entityRegistrationStartMillis: number | undefined
   let entityRegistrationFallbackStartMillis: number | undefined
+  const entityRegistrationStartedLatch = Latch.makeUnsafe()
+  const entityRegistrationTimeoutMillis = Duration.toMillis(
+    Duration.fromInputUnsafe(config.entityRegistrationTimeout)
+  )
+  const entityRegistrationTimeRemaining = () => {
+    const now = clock.currentTimeMillisUnsafe()
+    const registrationStarted = entityRegistrationStartMillis !== undefined
+    const timeoutStartMillis = entityRegistrationStartMillis ??
+      (entityRegistrationFallbackStartMillis ??= now)
+    // If registration never starts, allow two intervals from the first missing
+    // entity before failing.
+    const timeoutMillis = registrationStarted
+      ? entityRegistrationTimeoutMillis
+      : entityRegistrationTimeoutMillis * 2
+    return Math.max(0, timeoutMillis - (now - timeoutStartMillis))
+  }
+  const entityNotRegistered = (entityType: string) =>
+    Effect.die(new Error(`Entity type '${entityType}' not registered`))
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -624,9 +642,6 @@ const make = Effect.gen(function*() {
 
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
-    const entityRegistrationTimeoutMillis = Duration.toMillis(
-      Duration.fromInputUnsafe(config.entityRegistrationTimeout)
-    )
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -678,21 +693,13 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            const now = clock.currentTimeMillisUnsafe()
-            const registrationStarted = entityRegistrationStartMillis !== undefined
-            const timeoutStartMillis = entityRegistrationStartMillis ??
-              (entityRegistrationFallbackStartMillis ??= now)
-            // If registration never starts, allow two intervals from the first missing read before failing.
-            const timeoutMillis = registrationStarted
-              ? entityRegistrationTimeoutMillis
-              : entityRegistrationTimeoutMillis * 2
-            if (now - timeoutStartMillis < timeoutMillis) {
+            if (entityRegistrationTimeRemaining() > 0) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
             }
             // if the entity did not register in time, we save a defect reply
-            return Effect.die(new Error(`Entity type '${address.entityType}' not registered`))
+            return entityNotRegistered(address.entityType)
           } else if (state.status === "closed") {
             return Effect.void
           }
@@ -1627,7 +1634,10 @@ const make = Effect.gen(function*() {
   // --- Entities ---
 
   const reaper = yield* EntityReaper
-  const entityManagerLatches = new Map<string, Latch.Latch>()
+  const entityManagerLatches = new Map<string, {
+    readonly latch: Latch.Latch
+    waiters: number
+  }>()
 
   const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
@@ -1677,10 +1687,14 @@ const make = Effect.gen(function*() {
       // register entities while storage is idle
       // this ensures message order is preserved
       yield* withStorageReadLock(Effect.sync(() => {
-        entityRegistrationStartMillis ??= clock.currentTimeMillisUnsafe()
+        if (entityRegistrationStartMillis === undefined) {
+          entityRegistrationStartMillis = clock.currentTimeMillisUnsafe()
+          entityRegistrationStartedLatch.openUnsafe()
+        }
         entityManagers.set(entity.type, state)
-        if (entityManagerLatches.has(entity.type)) {
-          entityManagerLatches.get(entity.type)!.openUnsafe()
+        const entry = entityManagerLatches.get(entity.type)
+        if (entry) {
+          entry.latch.openUnsafe()
           entityManagerLatches.delete(entity.type)
         }
       }))
@@ -1689,13 +1703,40 @@ const make = Effect.gen(function*() {
     }
   )
 
+  const waitForEntityRegistrationTimeout = (entityType: string): Effect.Effect<never> =>
+    Effect.suspend(() => {
+      const registrationStarted = entityRegistrationStartMillis !== undefined
+      const timeout = Effect.sleep(entityRegistrationTimeRemaining()).pipe(
+        Effect.andThen(entityNotRegistered(entityType))
+      )
+      return registrationStarted
+        ? timeout
+        : Effect.raceFirst(
+          timeout,
+          entityRegistrationStartedLatch.await.pipe(
+            Effect.andThen(waitForEntityRegistrationTimeout(entityType))
+          )
+        )
+    })
+
   const waitForEntityManager = (entityType: string) => {
-    let latch = entityManagerLatches.get(entityType)
-    if (!latch) {
-      latch = Latch.makeUnsafe()
-      entityManagerLatches.set(entityType, latch)
+    let entry = entityManagerLatches.get(entityType)
+    if (!entry) {
+      entry = { latch: Latch.makeUnsafe(), waiters: 0 }
+      entityManagerLatches.set(entityType, entry)
     }
-    return latch.await
+    entry.waiters++
+    return Effect.raceFirst(
+      entry.latch.await,
+      waitForEntityRegistrationTimeout(entityType)
+    ).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        entry.waiters--
+        if (entry.waiters === 0 && entityManagerLatches.get(entityType) === entry) {
+          entityManagerLatches.delete(entityType)
+        }
+      }))
+    )
   }
 
   // --- Runner health checks ---
