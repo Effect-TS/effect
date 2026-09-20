@@ -28,12 +28,12 @@ const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
 
 const cancelRequestCode = 80877102
 
-/** Closes a `CancelRequest` connection before forwarding it after a delay. */
+/** Closes a `CancelRequest` connection and holds the request at a test-controlled gate. */
 class LateCancelProxy extends Duplex {
   private readonly backend: Net.Socket
   private cancelDeferred = false
 
-  constructor(host: string, port: number, private readonly delayMillis: number) {
+  constructor(host: string, port: number, private readonly gate: CancelRequestGate) {
     super()
     this.backend = Net.connect({ host, port, noDelay: true })
     this.backend.on("data", (chunk: Buffer) => {
@@ -42,7 +42,8 @@ class LateCancelProxy extends Duplex {
     this.backend.on("end", () => this.push(null))
     this.backend.on("error", (error) => this.destroy(error))
     this.backend.on("close", () => {
-      if (!this.cancelDeferred) this.destroy()
+      if (this.cancelDeferred) this.gate.markDelivered()
+      else this.destroy()
     })
   }
 
@@ -54,7 +55,7 @@ class LateCancelProxy extends Duplex {
     if (chunk.length === 16 && chunk.readInt32BE(0) === 16 && chunk.readInt32BE(4) === cancelRequestCode) {
       this.cancelDeferred = true
       const backend = this.backend
-      setTimeout(() => backend.end(chunk), this.delayMillis)
+      this.gate.intercept(() => backend.end(chunk))
       callback()
       this.destroy()
       return
@@ -72,7 +73,50 @@ class LateCancelProxy extends Duplex {
   }
 }
 
-const lateCancelPoolConfig = (delayMillis: number) =>
+class CancelRequestGate {
+  private readonly interceptedPromise: Promise<void>
+  private readonly deliveredPromise: Promise<void>
+  private resolveIntercepted!: () => void
+  private resolveDelivered!: () => void
+  private forward: (() => void) | undefined
+  private released = false
+
+  constructor() {
+    this.interceptedPromise = new Promise((resolve) => {
+      this.resolveIntercepted = resolve
+    })
+    this.deliveredPromise = new Promise((resolve) => {
+      this.resolveDelivered = resolve
+    })
+  }
+
+  get intercepted() {
+    return Effect.promise(() => this.interceptedPromise).pipe(Effect.timeout("5 seconds"))
+  }
+
+  get delivered() {
+    return Effect.promise(() => this.deliveredPromise).pipe(Effect.timeout("5 seconds"))
+  }
+
+  intercept(forward: () => void): void {
+    this.forward = forward
+    this.resolveIntercepted()
+    if (this.released) this.release()
+  }
+
+  release(): void {
+    this.released = true
+    const forward = this.forward
+    this.forward = undefined
+    forward?.()
+  }
+
+  markDelivered(): void {
+    this.resolveDelivered()
+  }
+}
+
+const lateCancelPoolConfig = (gate: CancelRequestGate) =>
   Effect.gen(function*() {
     const container = yield* PgContainer
     const host = container.getHost()
@@ -80,9 +124,16 @@ const lateCancelPoolConfig = (delayMillis: number) =>
     return {
       ...(yield* poolConfig),
       maxConnections: 1,
-      stream: () => new LateCancelProxy(host, port, delayMillis)
+      stream: () => new LateCancelProxy(host, port, gate)
     }
   })
+
+const blockedStream = `
+  SELECT n FROM generate_series(1, 1000) AS g(n)
+  UNION ALL
+  SELECT 1001::int4 AS n
+  FROM (SELECT pg_advisory_xact_lock($1::int4)) AS blocked
+`
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
   it.effect("reuses checked out connections", () =>
@@ -190,56 +241,140 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
 
   it.effect("interrupt cancels an in-flight query", () =>
     Effect.gen(function*() {
-      const pool = yield* PgPool.make(yield* poolConfig)
-      const connection = yield* pool.get
-      const other = yield* pool.get
-      const fiber = yield* Effect.forkScoped(connection.query("SELECT pg_sleep(10)"))
-      yield* waitUntilActive(other, connection.processId)
-      yield* connection.interrupt
-      const error = yield* Effect.flip(Fiber.join(fiber))
-      assert.strictEqual(error._tag, "SqlError")
-      assert.strictEqual(error.reason._tag, "StatementTimeoutError")
-
-      // The connection survives the cancelled statement.
-      const result = yield* connection.query("SELECT $1::int4 AS after", [2])
-      assert.deepStrictEqual(result.rows, [{ after: 2 }])
-    }))
-
-  it.effect("retires a session whose CancelRequest may still be in flight after an interrupted query", () =>
-    Effect.gen(function*() {
-      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(250))
-      const observer = yield* PgConnection.make(yield* poolConfig)
-
-      yield* Effect.scoped(Effect.gen(function*() {
+      const config = yield* poolConfig
+      const pool = yield* PgPool.make({ ...config, maxConnections: 1 })
+      const blocker = yield* PgConnection.make(config)
+      const first = yield* Effect.scoped(Effect.gen(function*() {
         const connection = yield* pool.get
-        const fiber = yield* Effect.forkScoped(connection.query("SELECT pg_sleep(0.05)"))
-        yield* waitUntilActive(observer, connection.processId)
-        yield* Fiber.interrupt(fiber)
-      }))
-
-      // A delayed cancel would interrupt this query if the session were reused.
-      const result = yield* Effect.scoped(
-        Effect.flatMap(pool.get, (connection) => connection.query("SELECT 1 AS after FROM pg_sleep(1)"))
-      )
-      assert.deepStrictEqual(result.rows, [{ after: 1 }])
-    }))
-
-  it.effect("retires a session whose CancelRequest may still be in flight after an aborted stream", () =>
-    Effect.gen(function*() {
-      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(250))
-
-      yield* Effect.scoped(Effect.gen(function*() {
-        const connection = yield* pool.get
-        const rows = yield* Stream.runCollect(
-          connection.stream("SELECT n FROM generate_series(1, 100000) AS g(n)").pipe(Stream.take(1))
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        const fiber = yield* Effect.forkScoped(
+          connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
         )
-        assert.deepStrictEqual(rows, [{ n: 1 }])
+        yield* waitUntilActive(blocker, connection.processId)
+        yield* connection.interrupt
+        const error = yield* Effect.flip(Fiber.join(fiber))
+        assert.strictEqual(error._tag, "SqlError")
+        assert.strictEqual(error.reason._tag, "StatementTimeoutError")
+        yield* blocker.query("ROLLBACK")
+        return connection.processId
       }))
 
-      const result = yield* Effect.scoped(
-        Effect.flatMap(pool.get, (connection) => connection.query("SELECT 1 AS after FROM pg_sleep(1)"))
+      const second = yield* Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
+      assert.strictEqual(second, first)
+    }))
+
+  it.effect("replaces a pooled session after an unconfirmed query cancel", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const gate = new CancelRequestGate()
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
+      const blocker = yield* PgConnection.make(config)
+
+      yield* Effect.gen(function*() {
+        const first = yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* pool.get
+          yield* blocker.query("BEGIN")
+          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          const query = yield* Effect.forkScoped(
+            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          )
+          yield* waitUntilActive(blocker, connection.processId)
+          const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+          yield* gate.intercepted
+          yield* blocker.query("COMMIT")
+          yield* Fiber.join(interruption)
+          return connection.processId
+        }))
+
+        const second = yield* Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
+        assert.notStrictEqual(second, first)
+        gate.release()
+        yield* gate.delivered
+      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+    }))
+
+  it.effect("replaces a pooled session after an unconfirmed stream cancel", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const gate = new CancelRequestGate()
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
+      const blocker = yield* PgConnection.make(config)
+
+      yield* Effect.gen(function*() {
+        const first = yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* pool.get
+          yield* blocker.query("BEGIN")
+          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          const stream = yield* Effect.forkScoped(
+            connection.stream(blockedStream, [connection.processId]).pipe(Stream.take(1), Stream.runCollect)
+          )
+          yield* gate.intercepted
+          yield* blocker.query("COMMIT")
+          const rows = yield* Fiber.join(stream)
+          assert.deepStrictEqual(rows, [{ n: 1 }])
+          return connection.processId
+        }))
+
+        yield* Effect.scoped(Effect.gen(function*() {
+          const replacement = yield* pool.get
+          assert.notStrictEqual(replacement.processId, first)
+          const query = yield* Effect.forkScoped(replacement.query("SELECT 1 AS after FROM pg_sleep(1)"))
+          yield* waitUntilActive(blocker, replacement.processId)
+          gate.release()
+          yield* gate.delivered
+          const result = yield* Fiber.join(query)
+          assert.deepStrictEqual(result.rows, [{ after: 1 }])
+        }))
+      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+    }))
+
+  it.effect("keeps a session after a confirmed stream cancel", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const pool = yield* PgPool.make({ ...config, maxConnections: 1 })
+      const blocker = yield* PgConnection.make(config)
+      const connection = yield* pool.get
+      yield* blocker.query("BEGIN")
+      yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+      const rows = yield* connection.stream(blockedStream, [connection.processId]).pipe(
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.timeout("5 seconds")
       )
-      assert.deepStrictEqual(result.rows, [{ after: 1 }])
+      assert.deepStrictEqual(rows, [{ n: 1 }])
+      const result = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid")
+      assert.deepStrictEqual(result.rows, [{ pid: connection.processId }])
+      yield* blocker.query("ROLLBACK")
+    }))
+
+  it.effect("keeps a held session after an unconfirmed query cancel", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const gate = new CancelRequestGate()
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
+      const blocker = yield* PgConnection.make(config)
+
+      yield* Effect.gen(function*() {
+        const connection = yield* pool.get
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        const query = yield* Effect.forkScoped(
+          connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        )
+        yield* waitUntilActive(blocker, connection.processId)
+        const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+        yield* gate.intercepted
+        yield* blocker.query("COMMIT")
+        yield* Fiber.join(interruption)
+
+        const beforeDelivery = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid")
+        assert.deepStrictEqual(beforeDelivery.rows, [{ pid: connection.processId }])
+        gate.release()
+        yield* gate.delivered
+        const afterDelivery = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid")
+        assert.deepStrictEqual(afterDelivery.rows, [{ pid: connection.processId }])
+      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
     }))
 
   it.effect("replaces connections that die", () =>
