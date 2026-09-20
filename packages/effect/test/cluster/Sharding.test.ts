@@ -1357,7 +1357,7 @@ describe.concurrent("Sharding", () => {
       const client = (yield* MissingRegistrationEntity.client)(entityId)
       const fiber = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
       yield* Effect.yieldNow
-      expect(fiber.pollUnsafe()).toBeUndefined()
+      assert.isUndefined(fiber.pollUnsafe())
 
       yield* TestClock.adjust(1500)
       yield* sharding.registerEntity(
@@ -1368,15 +1368,13 @@ describe.concurrent("Sharding", () => {
       // The registration-start deadline is 1 second from now. The original
       // fallback deadline has elapsed, but must no longer win the race.
       yield* TestClock.adjust(600)
-      expect(fiber.pollUnsafe()).toBeUndefined()
+      assert.isUndefined(fiber.pollUnsafe())
 
       yield* TestClock.adjust(400)
       const exit = fiber.pollUnsafe()
       assert(exit !== undefined, "the registration-start deadline must be bounded")
-      assert(Exit.isFailure(exit))
-      const defect = Cause.findDefect(exit.cause)
-      assert(Result.isSuccess(defect))
-      assert(defect.success instanceof Error)
+      const defect = Exit.findDefect(exit)
+      assert(Result.isSuccess(defect) && defect.success instanceof Error)
       assert.strictEqual(defect.success.message, "Entity type 'MissingRegistrationEntity' not registered")
     }).pipe(Effect.provide(UnregisteredSharding({ entityRegistrationTimeout: 1000 }))))
 
@@ -1391,8 +1389,8 @@ describe.concurrent("Sharding", () => {
       const interrupted = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
       const remaining = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
       yield* Effect.yieldNow
-      expect(interrupted.pollUnsafe()).toBeUndefined()
-      expect(remaining.pollUnsafe()).toBeUndefined()
+      assert.isUndefined(interrupted.pollUnsafe())
+      assert.isUndefined(remaining.pollUnsafe())
 
       interrupted.interruptUnsafe()
       yield* Effect.yieldNow
@@ -1404,6 +1402,31 @@ describe.concurrent("Sharding", () => {
       assert.isTrue(Exit.isFailure(interruptedExit) && Cause.hasInterruptsOnly(interruptedExit.cause))
       yield* Fiber.join(remaining)
     }).pipe(Effect.provide(UnregisteredSharding({ entityRegistrationTimeout: 1000 }))))
+
+  it.effect("bounds client interruption while entity registration is missing", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const entityId = EntityId.make("one")
+      yield* TestClock.adjust(1)
+      assert.isTrue(sharding.hasShardId(sharding.getShardId(entityId, "default")))
+
+      const client = (yield* MissingRegistrationEntity.client)(entityId)
+      const fiber = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
+      yield* Effect.yieldNow
+
+      // Interrupting a client sends an interrupt message through the same local
+      // registration wait. Fork it so TestClock can reach the shared deadline.
+      const interruptFiber = yield* Fiber.interrupt(fiber).pipe(
+        Effect.forkDetach({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(interruptFiber.pollUnsafe())
+
+      yield* TestClock.adjust(1000)
+      yield* Fiber.join(interruptFiber)
+      const interruptedExit = yield* Fiber.await(fiber)
+      assert.isTrue(Exit.isFailure(interruptedExit) && Cause.hasInterruptsOnly(interruptedExit.cause))
+    }).pipe(Effect.provide(CappedSharding({ entityRegistrationTimeout: 1000 }))))
 
   it.effect("durable streams are resumed on restart", () =>
     Effect.gen(function*() {

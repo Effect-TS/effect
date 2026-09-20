@@ -962,6 +962,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const shared = yield* Layer.build(
         MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
       )
+      const driver = Context.get(shared, MessageStorage.MemoryDriver)
       const storageLayer = Layer.succeed(
         MessageStorage.MessageStorage,
         Context.get(shared, MessageStorage.MessageStorage)
@@ -978,6 +979,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           DurableClock.sleep({ name: "wait", duration: clockDuration, inMemoryThreshold: Duration.zero })
         ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer, config })))
       ))
+      const clockRequest = driver.journal.find((message) =>
+        message._tag === "Request" && message.address.entityType === "Workflow/-/DurableClock"
+      )
+      assert(clockRequest !== undefined && clockRequest._tag === "Request")
 
       yield* Effect.gen(function*() {
         // Fire the persisted timer before the registration-start deadline.
