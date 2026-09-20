@@ -119,6 +119,7 @@ export interface State<A, E> {
   isShuttingDown: boolean
   usage: number
   readonly resizeSemaphore: Semaphore.Semaphore
+  // Insertion order determines usage-TTL retirement order; reclaimed items move to the back.
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
   availableTail: PoolItem<A, E> | undefined
@@ -904,10 +905,12 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         if (self.config.strategy === strategyNoop) {
           return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
         }
+        const onAcquire = Effect.suspend(() =>
+          // A borrower may have removed the item before the callback runs.
+          self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
+        )
         return Effect.as(
-          exit._tag === "Success"
-            ? self.config.strategy.onAcquire(item)
-            : Effect.flatMap(item.finalizer, () => self.config.strategy.onAcquire(item)),
+          exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
           item
         )
       })
@@ -977,24 +980,26 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
-  const queue = yield* Queue.unbounded<PoolItem<A, E>>()
-  return identity<Strategy<A, E>>({
+const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, E>> =>
+  Effect.succeed<Strategy<A, E>>({
     run: (pool) => {
+      // `state.items` iterates in insertion order, so its oldest live entry is
+      // the next to retire. Using it directly means an item stops being
+      // referenced by this strategy as soon as it leaves the pool.
       const process: Effect.Effect<void> = Effect.suspend(() => {
-        const excess = activeSize(pool) - targetSize(pool)
-        if (excess <= 0) return Effect.void
-        return Queue.take(queue).pipe(
-          Effect.tap((item) => invalidatePoolItem(pool, item)),
-          Effect.flatMap(() => process)
-        )
+        if (activeSize(pool) <= targetSize(pool)) return Effect.void
+        for (const item of pool.state.items) {
+          if (pool.state.invalidated.has(item)) continue
+          return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
+        }
+        return Effect.void
       })
       return process.pipe(
         Effect.delay(ttl),
         Effect.forever({ disableYield: true })
       )
     },
-    onAcquire: (item) => Queue.offer(queue, item),
+    onAcquire: (_) => Effect.void,
     reclaim(pool) {
       return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
         if (pool.state.invalidated.size === 0) {
@@ -1007,14 +1012,16 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
           return Effect.undefined
         }
         pool.state.invalidated.delete(item.value)
+        // Re-adding moves the reclaimed item to the back of the retirement order.
+        pool.state.items.delete(item.value)
+        pool.state.items.add(item.value)
         if (item.value.refCount < pool.config.concurrency) {
           addAvailable(pool, item.value)
         }
-        return Effect.as(Queue.offer(queue, item.value), item.value)
+        return Effect.succeed(item.value)
       })
     }
   })
-})
 
 const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
   Effect.withFiber<void>((fiber) => {
