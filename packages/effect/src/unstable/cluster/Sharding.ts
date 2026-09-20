@@ -243,7 +243,6 @@ const make = Effect.gen(function*() {
   const entityManagers = new Map<string, EntityManagerState>()
   let entityRegistrationStartMillis: number | undefined
   let entityRegistrationFallbackStartMillis: number | undefined
-  const entityRegistrationStartedLatch = Latch.makeUnsafe()
   const entityRegistrationTimeoutMillis = Duration.toMillis(
     Duration.fromInputUnsafe(config.entityRegistrationTimeout)
   )
@@ -1634,10 +1633,7 @@ const make = Effect.gen(function*() {
   // --- Entities ---
 
   const reaper = yield* EntityReaper
-  const entityManagerLatches = new Map<string, {
-    readonly latch: Latch.Latch
-    waiters: number
-  }>()
+  const entityManagerLatches = new Map<string, Latch.Latch>()
 
   const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
@@ -1687,14 +1683,10 @@ const make = Effect.gen(function*() {
       // register entities while storage is idle
       // this ensures message order is preserved
       yield* withStorageReadLock(Effect.sync(() => {
-        if (entityRegistrationStartMillis === undefined) {
-          entityRegistrationStartMillis = clock.currentTimeMillisUnsafe()
-          entityRegistrationStartedLatch.openUnsafe()
-        }
+        entityRegistrationStartMillis ??= clock.currentTimeMillisUnsafe()
         entityManagers.set(entity.type, state)
-        const entry = entityManagerLatches.get(entity.type)
-        if (entry) {
-          entry.latch.openUnsafe()
+        if (entityManagerLatches.has(entity.type)) {
+          entityManagerLatches.get(entity.type)!.openUnsafe()
           entityManagerLatches.delete(entity.type)
         }
       }))
@@ -1703,40 +1695,23 @@ const make = Effect.gen(function*() {
     }
   )
 
-  const waitForEntityRegistrationTimeout = (entityType: string): Effect.Effect<never> =>
+  // Sleeps until the registration deadline shared with the storage read loop,
+  // re-checking once in case registration started and moved the deadline.
+  const entityRegistrationTimeout = (entityType: string): Effect.Effect<never> =>
     Effect.suspend(() => {
-      const registrationStarted = entityRegistrationStartMillis !== undefined
-      const timeout = Effect.sleep(entityRegistrationTimeRemaining()).pipe(
-        Effect.andThen(entityNotRegistered(entityType))
-      )
-      return registrationStarted
-        ? timeout
-        : Effect.raceFirst(
-          timeout,
-          entityRegistrationStartedLatch.await.pipe(
-            Effect.andThen(waitForEntityRegistrationTimeout(entityType))
-          )
-        )
+      const remaining = entityRegistrationTimeRemaining()
+      return remaining > 0
+        ? Effect.flatMap(Effect.sleep(remaining), () => entityRegistrationTimeout(entityType))
+        : entityNotRegistered(entityType)
     })
 
   const waitForEntityManager = (entityType: string) => {
-    let entry = entityManagerLatches.get(entityType)
-    if (!entry) {
-      entry = { latch: Latch.makeUnsafe(), waiters: 0 }
-      entityManagerLatches.set(entityType, entry)
+    let latch = entityManagerLatches.get(entityType)
+    if (!latch) {
+      latch = Latch.makeUnsafe()
+      entityManagerLatches.set(entityType, latch)
     }
-    entry.waiters++
-    return Effect.raceFirst(
-      entry.latch.await,
-      waitForEntityRegistrationTimeout(entityType)
-    ).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        entry.waiters--
-        if (entry.waiters === 0 && entityManagerLatches.get(entityType) === entry) {
-          entityManagerLatches.delete(entityType)
-        }
-      }))
-    )
+    return Effect.raceFirst(latch.await, entityRegistrationTimeout(entityType))
   }
 
   // --- Runner health checks ---

@@ -1337,15 +1337,13 @@ describe.concurrent("Sharding", () => {
       const client = (yield* MissingRegistrationEntity.client)(entityId)
       const fiber = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
       yield* Effect.yieldNow
-      expect(fiber.pollUnsafe()).toBeUndefined()
+      assert.isUndefined(fiber.pollUnsafe())
 
       yield* TestClock.adjust(1000)
       const exit = fiber.pollUnsafe()
       assert(exit !== undefined, "the sendLocal registration wait must be bounded")
-      assert(Exit.isFailure(exit))
-      const defect = Cause.findDefect(exit.cause)
-      assert(Result.isSuccess(defect))
-      assert(defect.success instanceof Error)
+      const defect = Exit.findDefect(exit)
+      assert(Result.isSuccess(defect) && defect.success instanceof Error)
       assert.strictEqual(defect.success.message, "Entity type 'MissingRegistrationEntity' not registered")
     }).pipe(Effect.provide(CappedSharding({ entityRegistrationTimeout: 1000 }))))
 
