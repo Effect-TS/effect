@@ -48,8 +48,12 @@ describe("IpNetwork", () => {
     const unspecified = NetAddress.ipv4Unspecified
     if (NetAddress.isUnspecified(unspecified)) {
       const network = IpNetwork.makeUnsafe(unspecified, 0)
-      expect(network).type.toBe<IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>>()
-      expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
+      expect(network).type.toBe<
+        IpNetwork.IpNetwork<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>
+      >()
+      expect(IpNetwork.firstAddress(network)).type.toBe<
+        NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>
+      >()
       expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
       expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.UnspecifiedAddress>()
     }

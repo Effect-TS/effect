@@ -101,7 +101,9 @@ describe("NetAddress", () => {
 
     if (NetAddress.isMulticast(ip)) {
       expect(ip).type.toBe<NetAddress.MulticastAddress<NetAddress.IpAddress>>()
-      if (NetAddress.isIpv4Address(ip)) expect(ip).type.toBe<NetAddress.Ipv4MulticastAddress>()
+      if (NetAddress.isIpv4Address(ip)) {
+        expect(ip).type.toBe<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>()
+      }
     } else {
       expect(ip).type.toBe<NetAddress.IpAddress>()
     }
@@ -145,13 +147,17 @@ describe("NetAddress", () => {
     const mac = null as unknown as NetAddress.MacAddress
 
     if (NetAddress.isMacLocallyAdministered(mac) && NetAddress.isMulticast(mac)) {
-      expect(mac).type.toBe<NetAddress.MulticastAddress<NetAddress.MacLocallyAdministeredAddress>>()
+      expect(mac).type.toBe<
+        NetAddress.MulticastAddress<NetAddress.LocallyAdministeredAddress<NetAddress.MacAddress>>
+      >()
     }
     if (NetAddress.isUnicast(ipv4) && NetAddress.isPrivate(ipv4)) {
-      expect(ipv4).type.toBe<NetAddress.PrivateAddress<NetAddress.Ipv4UnicastAddress>>()
+      expect(ipv4).type.toBe<
+        NetAddress.PrivateAddress<NetAddress.UnicastAddress<NetAddress.Ipv4Address>>
+      >()
     }
     if (NetAddress.isMacBroadcast(mac)) {
-      expect(mac).type.toBeAssignableTo<NetAddress.MacMulticastAddress>()
+      expect(mac).type.toBeAssignableTo<NetAddress.MulticastAddress<NetAddress.MacAddress>>()
     }
     expect(NetAddress.ipv4Broadcast).type.not.toBeAssignableTo<NetAddress.MulticastAddress>()
     expect(
@@ -169,19 +175,19 @@ describe("NetAddress", () => {
     ).type.toBe<readonly [NetAddress.Ipv6Address, NetAddress.Ipv6Address]>()
   })
 
-  it("narrows singleton constants to named classifications on demand", () => {
+  it("narrows singleton constants to generic classifications on demand", () => {
     const ipv4Loopback = NetAddress.ipv4Loopback
     const ipv6Unspecified = NetAddress.ipv6Unspecified
     const ipv4Broadcast = NetAddress.ipv4Broadcast
 
     if (NetAddress.isLoopback(ipv4Loopback)) {
-      expect(ipv4Loopback).type.toBe<NetAddress.Ipv4LoopbackAddress>()
+      expect(ipv4Loopback).type.toBe<NetAddress.LoopbackAddress<NetAddress.Ipv4Address>>()
     }
     if (NetAddress.isUnspecified(ipv6Unspecified)) {
-      expect(ipv6Unspecified).type.toBe<NetAddress.Ipv6UnspecifiedAddress>()
+      expect(ipv6Unspecified).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.Ipv6Address>>()
     }
     if (NetAddress.isBroadcast(ipv4Broadcast)) {
-      expect(ipv4Broadcast).type.toBe<NetAddress.Ipv4BroadcastAddress>()
+      expect(ipv4Broadcast).type.toBe<NetAddress.BroadcastAddress<NetAddress.Ipv4Address>>()
     }
   })
 
@@ -231,20 +237,22 @@ describe("NetAddress", () => {
       Schema.Codec<NetAddress.UnixPathAddress, string>
     >()
     expect(Schema.IpMulticastAddressFromString).type.toBeAssignableTo<
-      Schema.Codec<NetAddress.IpMulticastAddress, string>
+      Schema.Codec<NetAddress.MulticastAddress<NetAddress.IpAddress>, string>
     >()
     expect(Schema.MacBroadcastAddressFromString).type.toBeAssignableTo<
-      Schema.Codec<NetAddress.MacBroadcastAddress, string>
+      Schema.Codec<NetAddress.BroadcastAddress<NetAddress.MacAddress>, string>
     >()
   })
 
   it("exposes representative named classification schema outputs", () => {
     expect<Schema.Schema.Type<typeof Schema.IpMulticastAddressFromString>>().type.toBe<
-      NetAddress.IpMulticastAddress
+      NetAddress.MulticastAddress<NetAddress.IpAddress>
     >()
     expect<Schema.Schema.Type<typeof Schema.MacBroadcastAddressFromString>>().type.toBe<
-      NetAddress.MacBroadcastAddress
+      NetAddress.BroadcastAddress<NetAddress.MacAddress>
     >()
-    expect<Schema.Schema.Type<typeof Schema.Ipv4PrivateAddress>>().type.toBe<NetAddress.Ipv4PrivateAddress>()
+    expect<Schema.Schema.Type<typeof Schema.Ipv4PrivateAddress>>().type.toBe<
+      NetAddress.PrivateAddress<NetAddress.Ipv4Address>
+    >()
   })
 })

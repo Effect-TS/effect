@@ -11518,7 +11518,7 @@ const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
  * @category models
  * @since 4.0.0
  */
-export interface IpMulticastAddress extends refine<NetAddress_.IpMulticastAddress, IpAddress> {
+export interface IpMulticastAddress extends refine<NetAddress_.MulticastAddress<NetAddress_.IpAddress>, IpAddress> {
   readonly "Rebuild": IpMulticastAddress
 }
 
@@ -11543,7 +11543,9 @@ export const IpMulticastAddress: IpMulticastAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface IpMulticastAddressFromString extends refine<NetAddress_.IpMulticastAddress, IpAddressFromString> {
+export interface IpMulticastAddressFromString
+  extends refine<NetAddress_.MulticastAddress<NetAddress_.IpAddress>, IpAddressFromString>
+{
   readonly "Rebuild": IpMulticastAddressFromString
 }
 
@@ -11579,7 +11581,7 @@ export const IpMulticastAddressFromString: IpMulticastAddressFromString = netAdd
  * @category models
  * @since 4.0.0
  */
-export interface MacMulticastAddress extends refine<NetAddress_.MacMulticastAddress, MacAddress> {
+export interface MacMulticastAddress extends refine<NetAddress_.MulticastAddress<NetAddress_.MacAddress>, MacAddress> {
   readonly "Rebuild": MacMulticastAddress
 }
 
@@ -11604,7 +11606,9 @@ export const MacMulticastAddress: MacMulticastAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface MacMulticastAddressFromString extends refine<NetAddress_.MacMulticastAddress, MacAddressFromString> {
+export interface MacMulticastAddressFromString
+  extends refine<NetAddress_.MulticastAddress<NetAddress_.MacAddress>, MacAddressFromString>
+{
   readonly "Rebuild": MacMulticastAddressFromString
 }
 
@@ -11629,7 +11633,7 @@ export const MacMulticastAddressFromString: MacMulticastAddressFromString = netA
  * @category models
  * @since 4.0.0
  */
-export interface IpUnicastAddress extends refine<NetAddress_.IpUnicastAddress, IpAddress> {
+export interface IpUnicastAddress extends refine<NetAddress_.UnicastAddress<NetAddress_.IpAddress>, IpAddress> {
   readonly "Rebuild": IpUnicastAddress
 }
 
@@ -11654,7 +11658,9 @@ export const IpUnicastAddress: IpUnicastAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface IpUnicastAddressFromString extends refine<NetAddress_.IpUnicastAddress, IpAddressFromString> {
+export interface IpUnicastAddressFromString
+  extends refine<NetAddress_.UnicastAddress<NetAddress_.IpAddress>, IpAddressFromString>
+{
   readonly "Rebuild": IpUnicastAddressFromString
 }
 
@@ -11679,7 +11685,7 @@ export const IpUnicastAddressFromString: IpUnicastAddressFromString = netAddress
  * @category models
  * @since 4.0.0
  */
-export interface MacUnicastAddress extends refine<NetAddress_.MacUnicastAddress, MacAddress> {
+export interface MacUnicastAddress extends refine<NetAddress_.UnicastAddress<NetAddress_.MacAddress>, MacAddress> {
   readonly "Rebuild": MacUnicastAddress
 }
 
@@ -11704,7 +11710,9 @@ export const MacUnicastAddress: MacUnicastAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface MacUnicastAddressFromString extends refine<NetAddress_.MacUnicastAddress, MacAddressFromString> {
+export interface MacUnicastAddressFromString
+  extends refine<NetAddress_.UnicastAddress<NetAddress_.MacAddress>, MacAddressFromString>
+{
   readonly "Rebuild": MacUnicastAddressFromString
 }
 
@@ -11729,7 +11737,9 @@ export const MacUnicastAddressFromString: MacUnicastAddressFromString = netAddre
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4BroadcastAddress extends refine<NetAddress_.Ipv4BroadcastAddress, Ipv4Address> {
+export interface Ipv4BroadcastAddress
+  extends refine<NetAddress_.BroadcastAddress<NetAddress_.Ipv4Address>, Ipv4Address>
+{
   readonly "Rebuild": Ipv4BroadcastAddress
 }
 
@@ -11755,7 +11765,7 @@ export const Ipv4BroadcastAddress: Ipv4BroadcastAddress = netAddressRefinement(
  * @since 4.0.0
  */
 export interface Ipv4BroadcastAddressFromString
-  extends refine<NetAddress_.Ipv4BroadcastAddress, Ipv4AddressFromString>
+  extends refine<NetAddress_.BroadcastAddress<NetAddress_.Ipv4Address>, Ipv4AddressFromString>
 {
   readonly "Rebuild": Ipv4BroadcastAddressFromString
 }
@@ -11781,7 +11791,7 @@ export const Ipv4BroadcastAddressFromString: Ipv4BroadcastAddressFromString = ne
  * @category models
  * @since 4.0.0
  */
-export interface MacBroadcastAddress extends refine<NetAddress_.MacBroadcastAddress, MacAddress> {
+export interface MacBroadcastAddress extends refine<NetAddress_.BroadcastAddress<NetAddress_.MacAddress>, MacAddress> {
   readonly "Rebuild": MacBroadcastAddress
 }
 
@@ -11806,7 +11816,9 @@ export const MacBroadcastAddress: MacBroadcastAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface MacBroadcastAddressFromString extends refine<NetAddress_.MacBroadcastAddress, MacAddressFromString> {
+export interface MacBroadcastAddressFromString
+  extends refine<NetAddress_.BroadcastAddress<NetAddress_.MacAddress>, MacAddressFromString>
+{
   readonly "Rebuild": MacBroadcastAddressFromString
 }
 
@@ -11831,7 +11843,7 @@ export const MacBroadcastAddressFromString: MacBroadcastAddressFromString = netA
  * @category models
  * @since 4.0.0
  */
-export interface IpLoopbackAddress extends refine<NetAddress_.IpLoopbackAddress, IpAddress> {
+export interface IpLoopbackAddress extends refine<NetAddress_.LoopbackAddress<NetAddress_.IpAddress>, IpAddress> {
   readonly "Rebuild": IpLoopbackAddress
 }
 
@@ -11856,7 +11868,9 @@ export const IpLoopbackAddress: IpLoopbackAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface IpLoopbackAddressFromString extends refine<NetAddress_.IpLoopbackAddress, IpAddressFromString> {
+export interface IpLoopbackAddressFromString
+  extends refine<NetAddress_.LoopbackAddress<NetAddress_.IpAddress>, IpAddressFromString>
+{
   readonly "Rebuild": IpLoopbackAddressFromString
 }
 
@@ -11881,7 +11895,7 @@ export const IpLoopbackAddressFromString: IpLoopbackAddressFromString = netAddre
  * @category models
  * @since 4.0.0
  */
-export interface IpLinkLocalAddress extends refine<NetAddress_.IpLinkLocalAddress, IpAddress> {
+export interface IpLinkLocalAddress extends refine<NetAddress_.LinkLocalAddress<NetAddress_.IpAddress>, IpAddress> {
   readonly "Rebuild": IpLinkLocalAddress
 }
 
@@ -11906,7 +11920,9 @@ export const IpLinkLocalAddress: IpLinkLocalAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface IpLinkLocalAddressFromString extends refine<NetAddress_.IpLinkLocalAddress, IpAddressFromString> {
+export interface IpLinkLocalAddressFromString
+  extends refine<NetAddress_.LinkLocalAddress<NetAddress_.IpAddress>, IpAddressFromString>
+{
   readonly "Rebuild": IpLinkLocalAddressFromString
 }
 
@@ -11931,7 +11947,7 @@ export const IpLinkLocalAddressFromString: IpLinkLocalAddressFromString = netAdd
  * @category models
  * @since 4.0.0
  */
-export interface IpUnspecifiedAddress extends refine<NetAddress_.IpUnspecifiedAddress, IpAddress> {
+export interface IpUnspecifiedAddress extends refine<NetAddress_.UnspecifiedAddress<NetAddress_.IpAddress>, IpAddress> {
   readonly "Rebuild": IpUnspecifiedAddress
 }
 
@@ -11956,7 +11972,9 @@ export const IpUnspecifiedAddress: IpUnspecifiedAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface IpUnspecifiedAddressFromString extends refine<NetAddress_.IpUnspecifiedAddress, IpAddressFromString> {
+export interface IpUnspecifiedAddressFromString
+  extends refine<NetAddress_.UnspecifiedAddress<NetAddress_.IpAddress>, IpAddressFromString>
+{
   readonly "Rebuild": IpUnspecifiedAddressFromString
 }
 
@@ -11981,7 +11999,7 @@ export const IpUnspecifiedAddressFromString: IpUnspecifiedAddressFromString = ne
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4PrivateAddress extends refine<NetAddress_.Ipv4PrivateAddress, Ipv4Address> {
+export interface Ipv4PrivateAddress extends refine<NetAddress_.PrivateAddress<NetAddress_.Ipv4Address>, Ipv4Address> {
   readonly "Rebuild": Ipv4PrivateAddress
 }
 
@@ -12006,7 +12024,9 @@ export const Ipv4PrivateAddress: Ipv4PrivateAddress = netAddressRefinement(
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4PrivateAddressFromString extends refine<NetAddress_.Ipv4PrivateAddress, Ipv4AddressFromString> {
+export interface Ipv4PrivateAddressFromString
+  extends refine<NetAddress_.PrivateAddress<NetAddress_.Ipv4Address>, Ipv4AddressFromString>
+{
   readonly "Rebuild": Ipv4PrivateAddressFromString
 }
 
@@ -12031,7 +12051,9 @@ export const Ipv4PrivateAddressFromString: Ipv4PrivateAddressFromString = netAdd
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6UniqueLocalAddress extends refine<NetAddress_.Ipv6UniqueLocalAddress, Ipv6Address> {
+export interface Ipv6UniqueLocalAddress
+  extends refine<NetAddress_.UniqueLocalAddress<NetAddress_.Ipv6Address>, Ipv6Address>
+{
   readonly "Rebuild": Ipv6UniqueLocalAddress
 }
 
@@ -12057,7 +12079,7 @@ export const Ipv6UniqueLocalAddress: Ipv6UniqueLocalAddress = netAddressRefineme
  * @since 4.0.0
  */
 export interface Ipv6UniqueLocalAddressFromString
-  extends refine<NetAddress_.Ipv6UniqueLocalAddress, Ipv6AddressFromString>
+  extends refine<NetAddress_.UniqueLocalAddress<NetAddress_.Ipv6Address>, Ipv6AddressFromString>
 {
   readonly "Rebuild": Ipv6UniqueLocalAddressFromString
 }
@@ -12083,7 +12105,9 @@ export const Ipv6UniqueLocalAddressFromString: Ipv6UniqueLocalAddressFromString 
  * @category models
  * @since 4.0.0
  */
-export interface MacLocallyAdministeredAddress extends refine<NetAddress_.MacLocallyAdministeredAddress, MacAddress> {
+export interface MacLocallyAdministeredAddress
+  extends refine<NetAddress_.LocallyAdministeredAddress<NetAddress_.MacAddress>, MacAddress>
+{
   readonly "Rebuild": MacLocallyAdministeredAddress
 }
 
@@ -12109,7 +12133,7 @@ export const MacLocallyAdministeredAddress: MacLocallyAdministeredAddress = netA
  * @since 4.0.0
  */
 export interface MacLocallyAdministeredAddressFromString
-  extends refine<NetAddress_.MacLocallyAdministeredAddress, MacAddressFromString>
+  extends refine<NetAddress_.LocallyAdministeredAddress<NetAddress_.MacAddress>, MacAddressFromString>
 {
   readonly "Rebuild": MacLocallyAdministeredAddressFromString
 }
@@ -12136,7 +12160,7 @@ export const MacLocallyAdministeredAddressFromString: MacLocallyAdministeredAddr
  * @since 4.0.0
  */
 export interface MacUniversallyAdministeredAddress
-  extends refine<NetAddress_.MacUniversallyAdministeredAddress, MacAddress>
+  extends refine<NetAddress_.UniversallyAdministeredAddress<NetAddress_.MacAddress>, MacAddress>
 {
   readonly "Rebuild": MacUniversallyAdministeredAddress
 }
@@ -12163,7 +12187,7 @@ export const MacUniversallyAdministeredAddress: MacUniversallyAdministeredAddres
  * @since 4.0.0
  */
 export interface MacUniversallyAdministeredAddressFromString
-  extends refine<NetAddress_.MacUniversallyAdministeredAddress, MacAddressFromString>
+  extends refine<NetAddress_.UniversallyAdministeredAddress<NetAddress_.MacAddress>, MacAddressFromString>
 {
   readonly "Rebuild": MacUniversallyAdministeredAddressFromString
 }

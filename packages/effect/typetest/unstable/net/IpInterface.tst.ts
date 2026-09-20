@@ -25,7 +25,7 @@ describe("IpInterface", () => {
       const precise = IpInterface.make(unspecified, 0)
       expect(precise).type.toBe<
         Result.Result<
-          IpInterface.IpInterface<NetAddress.Ipv4UnspecifiedAddress>,
+          IpInterface.IpInterface<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>,
           NetAddress.NetAddressError
         >
       >()
