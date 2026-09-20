@@ -274,6 +274,7 @@ export const makeMemory = (
         acquirer,
         compiler,
         transactionAcquirer,
+        releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
@@ -447,6 +448,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]

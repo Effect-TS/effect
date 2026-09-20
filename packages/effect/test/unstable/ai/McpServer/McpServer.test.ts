@@ -37,6 +37,7 @@ import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
+import { collectGarbage } from "../../../utils/gc.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
@@ -240,19 +241,6 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
   assertTrue(content?.type === "text", "Expected text tool-result content")
   return content.text
 }
-
-const collectGarbage = Effect.promise(async () => {
-  const { setFlagsFromString } = await import("node:v8")
-  const { runInNewContext } = await import("node:vm")
-  setFlagsFromString("--expose_gc")
-  const collect = runInNewContext("gc") as () => void
-  setFlagsFromString("--no-expose_gc")
-  // WeakRef targets remain alive until the current job ends, so collect across jobs.
-  for (let i = 0; i < 8; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    collect()
-  }
-})
 
 describe("McpServer", () => {
   // Effect delivery contract: an unavailable destination must not leave the caller waiting.

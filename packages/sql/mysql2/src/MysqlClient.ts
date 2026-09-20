@@ -408,6 +408,7 @@ export const make = (
       yield* Client.make({
         acquirer: Effect.succeed(poolConnection),
         transactionAcquirer,
+        releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         compiler,
         spanAttributes,
         transformRows
