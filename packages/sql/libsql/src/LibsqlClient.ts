@@ -320,6 +320,7 @@ export const make = (
       })),
       begin: () => Effect.void, // already begun in acquireConnection
       savepoint: (conn, id) => conn.executeRaw(`SAVEPOINT effect_sql_${id};`, []),
+      releaseSavepoint: (conn, id) => conn.executeRaw(`RELEASE SAVEPOINT effect_sql_${id};`, []),
       commit: (conn) => conn.commit,
       rollback: (conn) => conn.rollback,
       rollbackSavepoint: (conn, id) => conn.executeRaw(`ROLLBACK TO SAVEPOINT effect_sql_${id};`, [])
