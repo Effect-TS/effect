@@ -143,6 +143,7 @@ describe("NetAddress", () => {
     if (NetAddress.isMacUniversallyAdministered(mac)) {
       expect(mac).type.toBe<NetAddress.UniversallyAdministeredAddress>()
     }
+    expect(NetAddress.isLoopback).type.toBeAssignableTo<(self: NetAddress.IpAddress) => boolean>()
   })
 
   it("stacks brands and models MAC broadcast as multicast", () => {

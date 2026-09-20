@@ -61,6 +61,14 @@ describe("IpNetwork", () => {
       Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
     >()
     expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(multicast, 0))).type.toBe<IpNetwork.Ipv4Network>()
+
+    const input = null as unknown as NetAddress.IpAddress
+    if (NetAddress.isMulticast(input)) {
+      expect(IpNetwork.fromAddress(input, 0)).type.toBe<
+        Result.Result<IpNetwork.IpNetwork, NetAddress.NetAddressError>
+      >()
+      expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(input, 0))).type.toBe<IpNetwork.IpNetwork>()
+    }
   })
 
   it("narrows generic networks", () => {
