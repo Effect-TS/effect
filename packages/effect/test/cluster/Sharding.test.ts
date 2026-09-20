@@ -1347,6 +1347,64 @@ describe.concurrent("Sharding", () => {
       assert.strictEqual(defect.success.message, "Entity type 'MissingRegistrationEntity' not registered")
     }).pipe(Effect.provide(CappedSharding({ entityRegistrationTimeout: 1000 }))))
 
+  it.effect("recomputes the missing entity deadline when registration starts", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const entityId = EntityId.make("one")
+      yield* TestClock.adjust(1)
+      assert.isTrue(sharding.hasShardId(sharding.getShardId(entityId, "default")))
+
+      const client = (yield* MissingRegistrationEntity.client)(entityId)
+      const fiber = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
+      yield* Effect.yieldNow
+      expect(fiber.pollUnsafe()).toBeUndefined()
+
+      yield* TestClock.adjust(1500)
+      yield* sharding.registerEntity(
+        FirstRegistrationEntity,
+        Effect.succeed(FirstRegistrationEntity.of({ Call: () => Effect.void }))
+      )
+
+      // The registration-start deadline is 1 second from now. The original
+      // fallback deadline has elapsed, but must no longer win the race.
+      yield* TestClock.adjust(600)
+      expect(fiber.pollUnsafe()).toBeUndefined()
+
+      yield* TestClock.adjust(400)
+      const exit = fiber.pollUnsafe()
+      assert(exit !== undefined, "the registration-start deadline must be bounded")
+      assert(Exit.isFailure(exit))
+      const defect = Cause.findDefect(exit.cause)
+      assert(Result.isSuccess(defect))
+      assert(defect.success instanceof Error)
+      assert.strictEqual(defect.success.message, "Entity type 'MissingRegistrationEntity' not registered")
+    }).pipe(Effect.provide(UnregisteredSharding({ entityRegistrationTimeout: 1000 }))))
+
+  it.effect("keeps a shared registration latch when one waiter is interrupted", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const entityId = EntityId.make("one")
+      yield* TestClock.adjust(1)
+      assert.isTrue(sharding.hasShardId(sharding.getShardId(entityId, "default")))
+
+      const client = (yield* MissingRegistrationEntity.client)(entityId)
+      const interrupted = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
+      const remaining = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
+      yield* Effect.yieldNow
+      expect(interrupted.pollUnsafe()).toBeUndefined()
+      expect(remaining.pollUnsafe()).toBeUndefined()
+
+      interrupted.interruptUnsafe()
+      yield* Effect.yieldNow
+      yield* sharding.registerEntity(
+        MissingRegistrationEntity,
+        Effect.succeed(MissingRegistrationEntity.of({ Call: () => Effect.void }))
+      )
+      const interruptedExit = yield* Fiber.await(interrupted)
+      assert.isTrue(Exit.isFailure(interruptedExit) && Cause.hasInterruptsOnly(interruptedExit.cause))
+      yield* Fiber.join(remaining)
+    }).pipe(Effect.provide(UnregisteredSharding({ entityRegistrationTimeout: 1000 }))))
+
   it.effect("durable streams are resumed on restart", () =>
     Effect.gen(function*() {
       const EnvLayer = TestShardingWithoutState.pipe(
@@ -2485,6 +2543,10 @@ const MissingRegistrationEntity = Entity.make("MissingRegistrationEntity", [
   Rpc.make("Call").annotate(ClusterSchema.Persisted, false)
 ])
 
+const FirstRegistrationEntity = Entity.make("FirstRegistrationEntity", [
+  Rpc.make("Call").annotate(ClusterSchema.Persisted, false)
+])
+
 const RegistrationContextHandlers = Effect.map(
   RegistrationContext,
   (value) => RegistrationContextEntity.of({ Read: () => Effect.succeed(value) })
@@ -2537,6 +2599,19 @@ const CappedSharding = (
     layer = layer.pipe(Layer.updateService(MessageStorage.MessageStorage, transformStorage))
   }
   return layer.pipe(
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(configLayer)
+  )
+}
+
+const UnregisteredSharding = (
+  config: Partial<ShardingConfig.ShardingConfig["Service"]>
+) => {
+  const configLayer = ShardingConfig.layer({ ...testConfigDefaults, ...config })
+  return Sharding.layer.pipe(
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(Runners.layerNoop),
     Layer.provideMerge(MessageStorage.layerMemory),
     Layer.provide(configLayer)
   )
