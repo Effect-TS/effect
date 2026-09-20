@@ -3,6 +3,7 @@
  *
  * @since 4.0.0
  */
+import type * as Brand from "../../Brand.ts"
 import * as Data from "../../Data.ts"
 import * as Equal from "../../Equal.ts"
 import { dual } from "../../Function.ts"
@@ -47,6 +48,47 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  * @since 4.0.0
  */
 export type IpAddress = Ipv4Address | Ipv6Address
+
+const MulticastTypeId = "~effect/net/NetAddress/MulticastAddress" as const
+
+/**
+ * An IP or MAC address proven to be multicast (IPv4 `224.0.0.0/4`, IPv6
+ * `ff00::/8`, or a MAC address with the IEEE group bit set).
+ *
+ * **Details**
+ *
+ * This is a branded refinement of the underlying address. Construction returns
+ * the same runtime value, preserving identity, equality, hashing, and formatting.
+ * The MAC all-ones broadcast address has the group bit set and is therefore
+ * multicast; use {@link isMacBroadcast} to distinguish it. The IPv4 limited
+ * broadcast address `255.255.255.255` is not multicast.
+ *
+ * The default type argument remains `IpAddress`; specify `MacAddress` or an
+ * explicit IP/MAC union when accepting those wider address families.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MulticastAddress<A extends IpAddress | MacAddress = IpAddress> = Brand.Branded<
+  A,
+  typeof MulticastTypeId
+>
+
+/**
+ * An IPv4 address proven to be multicast.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv4MulticastAddress = MulticastAddress<Ipv4Address>
+
+/**
+ * An IPv6 address proven to be multicast.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6MulticastAddress = MulticastAddress<Ipv6Address>
 
 /**
  * An immutable 48-bit IEEE 802 MAC address.
@@ -762,15 +804,66 @@ export const isLoopback = (self: IpAddress): boolean => {
 }
 
 /**
- * Returns `true` for IPv4 `224.0.0.0/4` or IPv6 `ff00::/8`.
+ * Returns `true` for IPv4 `224.0.0.0/4`, IPv6 `ff00::/8`, or a MAC address with
+ * the IEEE group bit set, refining the value while preserving its address type.
+ *
+ * **Details**
+ *
+ * The MAC all-ones broadcast address has the group bit set and is multicast;
+ * the IPv4 limited broadcast address `255.255.255.255` is not. Use
+ * {@link isMacBroadcast} or {@link isBroadcast} to distinguish broadcast.
  *
  * @category predicates
  * @since 4.0.0
  */
-export const isMulticast = (self: IpAddress): boolean => {
+export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is MulticastAddress<A> => {
+  if (isMacAddress(self)) return isMacMulticast(self)
   if (isIpv4Address(self)) return (getBytes(self)[0] >> 4) === 0xe
   return getBytes(self)[0] === 0xff
 }
+
+/**
+ * Refines an IP or MAC address to a multicast address without copying it.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const multicastAddress = <A extends IpAddress | MacAddress>(
+  self: A
+): Result.Result<MulticastAddress<A>, NetAddressError> =>
+  isMulticast(self)
+    ? Result.succeed(self)
+    : addressError(self, "address must be a multicast address")
+
+/**
+ * Refines a trusted multicast IP or MAC address, throwing a `NetAddressError`
+ * when it is not multicast.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const multicastAddressUnsafe = <A extends IpAddress | MacAddress>(self: A): MulticastAddress<A> =>
+  Result.getOrThrow(multicastAddress(self))
+
+/**
+ * Parses a bare numeric IP address and verifies that it is multicast.
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export const multicastAddressFromString = (
+  input: string
+): Result.Result<MulticastAddress<IpAddress>, NetAddressError> => Result.flatMap(ipFromString(input), multicastAddress)
+
+/**
+ * Parses a trusted bare multicast IP address, throwing a `NetAddressError` on
+ * invalid or non-multicast input.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const multicastAddressFromStringUnsafe = (input: string): MulticastAddress<IpAddress> =>
+  Result.getOrThrow(multicastAddressFromString(input))
 
 /**
  * Returns `true` for the IPv4 broadcast address `255.255.255.255`.

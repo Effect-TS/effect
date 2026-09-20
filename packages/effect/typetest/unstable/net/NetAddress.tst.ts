@@ -87,6 +87,38 @@ describe("NetAddress", () => {
     }
   })
 
+  it("preserves multicast families and the IP-only default", () => {
+    const ip = null as unknown as NetAddress.IpAddress
+    const mac = null as unknown as NetAddress.MacAddress
+    const inet = null as unknown as NetAddress.InetAddress
+    const group = null as unknown as NetAddress.MulticastAddress
+    const macGroup = null as unknown as NetAddress.MulticastAddress<NetAddress.MacAddress>
+    const wideGroup = null as unknown as NetAddress.MulticastAddress<NetAddress.IpAddress | NetAddress.MacAddress>
+    const addMembership = null as unknown as <A extends NetAddress.IpAddress>(
+      group: NetAddress.MulticastAddress<A>
+    ) => void
+
+    if (NetAddress.isMulticast(ip)) {
+      expect(ip).type.toBe<NetAddress.MulticastAddress<NetAddress.IpAddress>>()
+      if (NetAddress.isIpv4Address(ip)) expect(ip).type.toBe<NetAddress.Ipv4MulticastAddress>()
+    } else {
+      expect(ip).type.toBe<NetAddress.IpAddress>()
+    }
+    if (NetAddress.isMulticast(mac)) {
+      expect(mac).type.toBe<NetAddress.MulticastAddress<NetAddress.MacAddress>>()
+    }
+    expect(NetAddress.multicastAddress(mac)).type.toBe<
+      Result.Result<NetAddress.MulticastAddress<NetAddress.MacAddress>, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.multicastAddressFromString("239.0.0.1")).type.toBe<
+      Result.Result<NetAddress.MulticastAddress<NetAddress.IpAddress>, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.isMulticast).type.not.toBeCallableWith(inet)
+    addMembership(group)
+    expect(addMembership).type.not.toBeCallableWith(macGroup)
+    expect(addMembership).type.not.toBeCallableWith(wideGroup)
+  })
+
   it("preserves named schema types when annotating codecs", () => {
     expect(Schema.MacAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.MacAddressFromString>()
     expect(Schema.Ipv4AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4AddressFromString>()

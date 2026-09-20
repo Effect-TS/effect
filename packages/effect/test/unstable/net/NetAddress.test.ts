@@ -233,6 +233,56 @@ describe("NetAddress", () => {
     assert.isTrue(Equal.equals(NetAddress.ipv6Unspecified, ip("::")))
   })
 
+  describe("MulticastAddress", () => {
+    it("refines multicast values without changing identity, equality, hashing, or formatting", () => {
+      for (const text of ["224.0.0.0", "239.255.0.1", "ff00::", "ffff::1"]) {
+        const address = NetAddress.ipFromStringUnsafe(text)
+        const multicast = success(NetAddress.multicastAddress(address))
+        assert.strictEqual(multicast, address)
+        assert.isTrue(Equal.equals(multicast, address))
+        assert.strictEqual(Hash.hash(multicast), Hash.hash(address))
+        assert.strictEqual(NetAddress.formatIp(multicast), NetAddress.formatIp(address))
+        assert.isTrue(NetAddress.isMulticast(address))
+      }
+    })
+
+    it("rejects non-multicast values and retains the offending address", () => {
+      for (const text of ["0.0.0.0", "127.0.0.1", "223.255.255.255", "255.255.255.255", "::", "::1"]) {
+        const address = NetAddress.ipFromStringUnsafe(text)
+        const error = failure(NetAddress.multicastAddress(address))
+        assert.strictEqual(error.input, address)
+        assert.strictEqual(error.message, "address must be a multicast address")
+        assert.isFalse(NetAddress.isMulticast(address))
+      }
+    })
+
+    it("classifies MAC group addresses, including broadcast, and preserves identity", () => {
+      for (const text of ["01:00:5e:00:00:01", "33:33:00:00:00:01", "ff:ff:ff:ff:ff:ff"]) {
+        const address = NetAddress.macAddressFromStringUnsafe(text)
+        assert.isTrue(NetAddress.isMulticast(address))
+        assert.strictEqual(NetAddress.isMulticast(address), NetAddress.isMacMulticast(address))
+        assert.strictEqual(success(NetAddress.multicastAddress(address)), address)
+      }
+      assert.isTrue(NetAddress.isMacBroadcast(NetAddress.macAddressFromStringUnsafe("ff:ff:ff:ff:ff:ff")))
+      for (const text of ["00:00:5e:00:53:01", "02:00:00:00:00:01", "fe:ff:ff:ff:ff:ff"]) {
+        const address = NetAddress.macAddressFromStringUnsafe(text)
+        assert.isFalse(NetAddress.isMulticast(address))
+        const error = failure(NetAddress.multicastAddress(address))
+        assert.strictEqual(error.input, address)
+        assert.strictEqual(error.message, "address must be a multicast address")
+      }
+    })
+
+    it("decodes multicast strings and rejects invalid or unicast strings", () => {
+      for (const text of ["239.255.0.1", "ff02::114"]) {
+        assert.strictEqual(NetAddress.formatIp(success(NetAddress.multicastAddressFromString(text))), text)
+        assert.strictEqual(NetAddress.formatIp(NetAddress.multicastAddressFromStringUnsafe(text)), text)
+      }
+      assert.strictEqual(String(failure(NetAddress.multicastAddressFromString("127.0.0.1")).input), "127.0.0.1")
+      assert.strictEqual(failure(NetAddress.multicastAddressFromString("localhost")).input, "localhost")
+    })
+  })
+
   it("serializes and inspects canonical strings without private bytes", () => {
     const cases = [
       [NetAddress.ipv4Loopback, "127.0.0.1"],
