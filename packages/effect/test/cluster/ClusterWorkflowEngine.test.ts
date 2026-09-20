@@ -9,6 +9,7 @@ import {
   Fiber,
   Latch,
   Layer,
+  Logger,
   Option,
   Result,
   Schema,
@@ -1445,6 +1446,63 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
     }).pipe(Effect.provide(TestWorkflowEngine)))
+
+  it.effect("warns when duplicate workflow tags have different payload definitions", () => {
+    const first = Workflow.make("DuplicatePayloadWorkflow", {
+      payload: { organizationId: Schema.String },
+      idempotencyKey: ({ organizationId }) => organizationId
+    })
+    const second = Workflow.make("DuplicatePayloadWorkflow", {
+      payload: { deploymentId: Schema.Number },
+      idempotencyKey: ({ deploymentId }) => String(deploymentId)
+    })
+    const warnings: Array<unknown> = []
+    const logger = Logger.make<unknown, void>((options) => {
+      if (options.logLevel === "Warn") {
+        warnings.push(options.message)
+      }
+    })
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine
+      yield* engine.register(first, () => Effect.void)
+      yield* engine.register(second, () => Effect.void)
+
+      const warning = warnings
+        .map((message) => globalThis.Array.isArray(message) ? message.join(" ") : String(message))
+        .find((message) => message.includes("DuplicatePayloadWorkflow"))
+      assert(warning, "duplicate workflow registration must emit a warning containing its tag")
+      const normalized = warning.toLowerCase()
+      for (const fragment of ["organizationid", "string", "deploymentid", "number"]) {
+        assert.include(normalized, fragment, `warning must identify both payload shapes: ${warning}`)
+      }
+    }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
+  })
+
+  it.effect("does not warn when the same workflow definition is registered twice", () => {
+    const workflow = Workflow.make("RepeatedWorkflowDefinition", {
+      payload: { id: Schema.String },
+      idempotencyKey: ({ id }) => id
+    })
+    const warnings: Array<unknown> = []
+    const logger = Logger.make<unknown, void>((options) => {
+      if (options.logLevel === "Warn") {
+        warnings.push(options.message)
+      }
+    })
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine
+      yield* engine.register(workflow, () => Effect.void)
+      yield* engine.register(workflow, () => Effect.void)
+
+      const duplicateWarnings = warnings.filter((message) => {
+        const text = globalThis.Array.isArray(message) ? message.join(" ") : String(message)
+        return text.includes("RepeatedWorkflowDefinition")
+      })
+      assert.deepStrictEqual(duplicateWarnings, [])
+    }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
+  })
 
   it.effect("propagates trace context to persisted workflow requests", () => {
     let callerSpan: Tracer.NativeSpan | undefined
