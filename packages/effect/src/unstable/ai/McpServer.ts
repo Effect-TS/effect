@@ -2449,7 +2449,7 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   const request = yield* Schema.decodeUnknownEffect(McpSchema.ElicitRequestFormParams)({
     mode: "form",
     message: options.message,
-    requestedSchema: Tool.getJsonSchemaFromSchema(schema)
+    requestedSchema: toolJsonSchema(schema, false)
   }).pipe(Effect.orDie)
   const res = yield* client.elicit(request).pipe(
     Effect.catchCause((cause) => Effect.fail(new ElicitationDeclined({ cause: Cause.squash(cause), request })))
