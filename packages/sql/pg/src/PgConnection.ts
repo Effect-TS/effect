@@ -201,12 +201,14 @@ export interface PgConnection {
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
    * Runs a query and returns rows keyed by column name. Pass `false` to skip
-   * the prepared statement cache. On interruption, the connection gets a
-   * short chance to drain before the statement is cancelled. After sending a
-   * cancel, the session is retired unless the backend reports `57014`, which
-   * is also used for `statement_timeout`. A caller still holding a retired
-   * connection sees a `ConnectionError`; a later pool checkout gets a
-   * replacement.
+   * the prepared statement cache.
+   *
+   * Interrupting the effect drains the connection back to `ReadyForQuery`,
+   * sending a `CancelRequest` when the statement does not finish promptly.
+   * Nothing confirms a cancel's delivery, so the session is then retired
+   * unless the backend reports the statement cancelled (`57014`, which
+   * `statement_timeout` also raises): later statements on it fail with a
+   * `ConnectionError`, and a pool replaces it on the next checkout.
    */
   readonly query: (
     sql: string,
@@ -224,11 +226,8 @@ export interface PgConnection {
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
    * Streams rows without collecting the full result. The session is pinned for
-   * the lifetime of the stream. On early abort, the connection gets a short
-   * chance to drain before the statement is cancelled. After sending a cancel,
-   * the session is retired unless the backend reports `57014`, which is also
-   * used for `statement_timeout`. A caller still holding a retired connection
-   * sees a `ConnectionError`; a later pool checkout gets a replacement.
+   * the lifetime of the stream. Aborting the stream early behaves like
+   * interrupting `query`.
    */
   readonly stream: (
     sql: string,
@@ -330,9 +329,9 @@ interface PipelineEntry {
 }
 
 const abortDrainTimeoutMillis = 5000
+/** How long an aborted statement may drain before a `CancelRequest` is sent. */
 const abortDrainGraceMillis = 10
-// `statement_timeout` also reports this code, so it does not prove that a
-// `CancelRequest` arrived.
+/** SQLSTATE `query_canceled`, raised for a `CancelRequest` and for `statement_timeout` alike. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
@@ -359,6 +358,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
+  /** Set when a `CancelRequest` is sent, cleared when the backend reports `57014`. */
   cancelPending = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
@@ -719,15 +719,6 @@ class PgConnectionImpl implements PgConnection {
     this.cancelPending = true
     return sendCancelRequest(this.resolved, this.session)
   })
-
-  retireUnlessCancelled(): void {
-    if (this.cancelPending) {
-      this.fatal(connectionQueryError(
-        new Error("CancelRequest may still be in flight"),
-        "PgConnection: Session retired after an interrupted statement completed without being cancelled"
-      ))
-    }
-  }
 
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.suspend(() => {
     const reserve = this[internalsKey].reserve
@@ -1489,31 +1480,48 @@ class QueryMachine implements Consumer {
 const emptyRows: ReadonlyArray<Row> = []
 const emptyValues: ReadonlyArray<ReadonlyArray<unknown>> = []
 
-/** Lets an interrupted statement drain briefly before sending a cancel. */
-const cancelAfterDrainGrace = (
+/**
+ * Drains an aborted statement back to `ReadyForQuery`, destroying the
+ * connection when that stalls. `abort` receives the callback that marks the
+ * drain complete. A `CancelRequest` is only sent once the drain outlasts a
+ * short grace period, so a result already on the wire keeps its session. Once
+ * sent, the session is retired unless the backend reports the statement
+ * cancelled: nothing confirms a cancel's delivery, and a pooler or proxy may
+ * forward it late enough to land on the next statement.
+ */
+const drainAborted = (
   conn: PgConnectionImpl,
-  drained: Deferred.Deferred<void>
-): Effect.Effect<void> =>
-  Effect.flatMap(
-    Effect.raceFirst(
-      Effect.as(Deferred.await(drained), true),
-      Effect.callback<boolean>((resume) => {
-        const timer = setTimeout(() => resume(Effect.succeed(false)), abortDrainGraceMillis)
-        return Effect.sync(() => clearTimeout(timer))
-      })
-    ),
-    (drainedBeforeCancel) =>
-      drainedBeforeCancel
-        ? Effect.void
-        : Effect.suspend(() =>
-          Deferred.isDoneUnsafe(drained)
-            ? Effect.void
-            : conn.cancel.pipe(
-              Effect.andThen(Deferred.await(drained)),
-              Effect.andThen(Effect.sync(() => conn.retireUnlessCancelled()))
-            )
-        )
+  timeoutMessage: string,
+  abort: (onDrained: () => void) => void
+): Effect.Effect<void> => {
+  const drained = Deferred.makeUnsafe<void>()
+  const timeout = setTimeout(
+    () => conn.fatal(connectionQueryError(new Error(timeoutMessage), `PgConnection: ${timeoutMessage}`)),
+    abortDrainTimeoutMillis
   )
+  abort(() => {
+    clearTimeout(timeout)
+    Deferred.doneUnsafe(drained, Effect.void)
+  })
+  const grace = Effect.callback<void>((resume) => {
+    const timer = setTimeout(() => resume(Effect.void), abortDrainGraceMillis)
+    return Effect.sync(() => clearTimeout(timer))
+  })
+  const cancelAndRetire = conn.cancel.pipe(
+    Effect.andThen(Deferred.await(drained)),
+    Effect.andThen(Effect.sync(() => {
+      if (!conn.cancelPending) return
+      conn.fatal(connectionQueryError(
+        new Error("CancelRequest may still be in flight"),
+        "PgConnection: Session retired after an interrupted statement completed without being cancelled"
+      ))
+    }))
+  )
+  return Effect.andThen(
+    Effect.raceFirst(Deferred.await(drained), grace),
+    Effect.suspend(() => Deferred.isDoneUnsafe(drained) ? Effect.void : cancelAndRetire)
+  )
+}
 
 /** One cycle on a connection that carries a single statement at a time. */
 const runQuery = (
@@ -1540,24 +1548,13 @@ const runQuery = (
       conn.fatal(connectionQueryError(cause, "PgConnection: Failed to write query"))
     }
 
-    // Drain on interruption, cancelling only when it does not finish promptly.
     return Effect.suspend(() => {
       if (machine.isDone()) return Effect.void
-      const drained = Deferred.makeUnsafe<void>()
-      const timer = setTimeout(
-        () =>
-          conn.fatal(connectionQueryError(
-            new Error("Query cancellation timed out"),
-            "PgConnection: Query cancellation timed out"
-          )),
-        abortDrainTimeoutMillis
-      )
-      machine.abort(() => {
-        clearTimeout(timer)
-        conn.consumer = undefined
-        Deferred.doneUnsafe(drained, Effect.void)
-      })
-      return cancelAfterDrainGrace(conn, drained)
+      return drainAborted(conn, "Query cancellation timed out", (onDrained) =>
+        machine.abort(() => {
+          conn.consumer = undefined
+          onDrained()
+        }))
     })
   })
 
@@ -1802,27 +1799,16 @@ const streamRows = (
       else if (buffer.length >= streamPauseThreshold) setPaused(true)
     }
 
-    // Drain on early abort, cancelling only when it does not finish promptly.
     yield* Scope.addFinalizer(
       scope,
       Effect.suspend(() => {
         if (done) return Effect.void
         aborted = true
-        const drained = Deferred.makeUnsafe<void>()
-        const timer = setTimeout(
-          () =>
-            conn.fatal(connectionQueryError(
-              new Error("Stream cancellation timed out"),
-              "PgConnection: Stream cancellation timed out"
-            )),
-          abortDrainTimeoutMillis
-        )
-        drainDone = () => {
-          clearTimeout(timer)
-          Deferred.doneUnsafe(drained, Effect.void)
-        }
+        const drain = drainAborted(conn, "Stream cancellation timed out", (onDrained) => {
+          drainDone = onDrained
+        })
         setPaused(false)
-        return cancelAfterDrainGrace(conn, drained)
+        return drain
       })
     )
 
