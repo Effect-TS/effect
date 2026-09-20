@@ -118,6 +118,108 @@ describe.concurrent("Sharding", () => {
       }))))
     }))
 
+  for (const pauseReply of [false, true]) {
+    it.effect(
+      pauseReply
+        ? "redelivers a remote reset published before active-request cleanup"
+        : "redelivers a remote reset during a pending storage read",
+      () =>
+        Effect.gen(function*() {
+          const readStarted = yield* Deferred.make<void>()
+          const releaseRead = yield* Deferred.make<void>()
+          const replyPublished = yield* Deferred.make<void>()
+          const releaseReply = yield* Deferred.make<void>()
+          let pauseNextRead = false
+          let pauseNextReply = pauseReply
+          const released: Array<Snowflake.Snowflake> = []
+
+          yield* Effect.gen(function*() {
+            yield* TestClock.adjust(1)
+            const sharding = yield* Sharding.Sharding
+            const driver = yield* MessageStorage.MemoryDriver
+            // A separate adapter shares persistence, but has no access to the
+            // receiving runner's reply handlers or entity-manager state.
+            const remoteStorage = yield* MessageStorage.makeEncoded(driver.encoded).pipe(
+              Effect.provide(Snowflake.layerGenerator.pipe(Layer.provide(ShardingConfig.layerDefaults)))
+            )
+            const state = yield* TestEntityState
+            const client = (yield* TestEntity.client)("remote-reset-race")
+            const firstRun = yield* client.RequestWithKey({ key: "run" }).pipe(
+              Effect.forkChild({ startImmediately: true })
+            )
+            const request = yield* Queue.take(state.envelopes)
+
+            // Reclaim a genuinely active request: it must neither be delivered
+            // twice nor have its claim released by completed-request recovery.
+            yield* remoteStorage.resetRequests([request.requestId])
+            yield* sharding.pollStorage
+            yield* TestClock.adjust(1)
+            expect(Queue.sizeUnsafe(state.envelopes)).toEqual(0)
+            expect(released).toEqual([])
+
+            pauseNextRead = true
+            yield* sharding.pollStorage
+            yield* Deferred.await(readStarted)
+            yield* Queue.offer(state.messages, void 0)
+            yield* Fiber.join(firstRun)
+            if (pauseReply) yield* Deferred.await(replyPublished)
+            yield* TestClock.adjust(1)
+
+            // This is the persistence operation performed by Sharding.reset on
+            // another runner. Do not call the receiving runner's reset method.
+            yield* remoteStorage.clearReplies(request.requestId)
+            yield* Deferred.succeed(releaseRead, void 0)
+            yield* TestClock.adjust(1)
+            expect(released).toContain(request.requestId)
+            if (pauseReply) {
+              expect(Queue.sizeUnsafe(state.envelopes)).toEqual(0)
+              yield* Deferred.succeed(releaseReply, void 0)
+              yield* TestClock.adjust(1)
+            }
+            yield* sharding.pollStorage
+            yield* TestClock.adjust(5000)
+            expect(Queue.sizeUnsafe(state.envelopes)).toEqual(1)
+            expect((yield* Queue.take(state.envelopes)).requestId).toEqual(request.requestId)
+            yield* sharding.pollStorage
+            yield* TestClock.adjust(5000)
+            expect(Queue.sizeUnsafe(state.envelopes)).toEqual(0)
+          }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
+            ...storage,
+            resetRequests: (ids) =>
+              Effect.gen(function*() {
+                released.push(...ids)
+                yield* storage.resetRequests(ids)
+              }),
+            unprocessedMessages: (shards, options) =>
+              Effect.gen(function*() {
+                if (pauseNextRead) {
+                  pauseNextRead = false
+                  yield* Deferred.succeed(readStarted, void 0)
+                  yield* Deferred.await(releaseRead)
+                }
+                const messages = yield* storage.unprocessedMessages(shards, options)
+                return messages.map((message) =>
+                  message._tag !== "IncomingRequest" ?
+                    message :
+                    new Message.IncomingRequest({
+                      ...message,
+                      respond: (reply) =>
+                        Effect.gen(function*() {
+                          yield* message.respond(reply)
+                          if (pauseNextReply) {
+                            pauseNextReply = false
+                            yield* Deferred.succeed(replyPublished, void 0)
+                            yield* Deferred.await(releaseReply)
+                          }
+                        })
+                    })
+                )
+              })
+          }))))
+        })
+    )
+  }
+
   it.effect("delivers volatile requests directly to the entity", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
