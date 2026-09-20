@@ -601,6 +601,53 @@ describe("NetAddress", () => {
       }
     })
 
+    it("formats native hosts using the supplied platform and interface names", () => {
+      const scopeIds = NetAddress.scopeIdsFromInterfaces([
+        ["en0", [{ family: "IPv6", scopeid: 7 }]],
+        ["en1", [{ family: "IPv6", scopeid: 7 }]]
+      ])
+      for (const platform of ["win32", "linux", "darwin"]) {
+        for (
+          const [input, expected] of [
+            ["127.0.0.1:8080", "127.0.0.1"],
+            ["[0:0:0:0:0:0:0:1]:8080", "::1"],
+            ["[fe80::1%0]:4567", "fe80::1"],
+            ["[fe80::1%7]:4567", platform === "win32" ? "fe80::1%7" : "fe80::1%en0"],
+            ["[fe80::1%9]:4567", "fe80::1%9"]
+          ]
+        ) {
+          const address = NetAddress.inetAddressFromStringUnsafe(input)
+          const host = NetAddress.formatNativeHost(address, platform, scopeIds)
+          assert.strictEqual(host, expected)
+          assert.deepStrictEqual(success(NetAddress.inetAddressFromHostString(host, address.port, scopeIds)), address)
+        }
+      }
+      const address = NetAddress.inetAddressFromStringUnsafe("[fe80::1%7]:4567")
+      assert.strictEqual(NetAddress.formatNativeHost(address, "linux", new Map()), "fe80::1%7")
+      assert.strictEqual(NetAddress.formatNativeHost(address, "linux", new Map([["eth0", 7]])), "fe80::1%eth0")
+    })
+
+    it("formats multicast interfaces using the supplied platform and scope map", () => {
+      const scopeIds = NetAddress.scopeIdsFromInterfaces([
+        ["en0", [{ family: "IPv6", scopeid: 7 }]],
+        ["en1", [{ family: "IPv6", scopeid: 7 }]]
+      ])
+      for (const platform of ["win32", "linux", "darwin"]) {
+        assert.strictEqual(
+          NetAddress.formatMulticastInterface(NetAddress.ipv4Loopback, platform, scopeIds),
+          "127.0.0.1"
+        )
+        assert.strictEqual(NetAddress.formatMulticastInterface(0, platform, scopeIds), "::")
+        assert.strictEqual(
+          NetAddress.formatMulticastInterface(7, platform, scopeIds),
+          platform === "win32" ? "::%7" : "::%en0"
+        )
+        assert.strictEqual(NetAddress.formatMulticastInterface(9, platform, scopeIds), "::%9")
+      }
+      assert.strictEqual(NetAddress.formatMulticastInterface(7, "linux", new Map()), "::%7")
+      assert.strictEqual(NetAddress.formatMulticastInterface(7, "linux", new Map([["eth0", 7]])), "::%eth0")
+    })
+
     it("resolves named IPv6 zones only through the supplied scope map", () => {
       for (const scopeId of [7, 9]) {
         const scopeIds = new Map([["en0", scopeId]])

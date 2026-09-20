@@ -1357,6 +1357,67 @@ export const formatHost = (self: InetAddress): string =>
   formatIp(self.address) + (isInetAddressV6(self) && self.scopeId !== 0 ? `%${self.scopeId}` : "")
 
 /**
+ * Formats an internet address's host for a native socket API, without brackets
+ * or a port.
+ *
+ * **Details**
+ *
+ * On `"win32"`, IPv6 zones remain numeric. On other platforms, the first
+ * interface name matching the scope ID is used, falling back to the numeric ID
+ * when no name matches. Unscoped IPv6 and IPv4 hosts are unchanged.
+ *
+ * Supply the platform and a scope map from {@link scopeIdsFromInterfaces}; this
+ * function performs no operating-system lookups.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatNativeHost = (
+  self: InetAddress,
+  platform: string,
+  scopeIds: ReadonlyMap<string, number>
+): string => {
+  if (platform !== "win32" && isInetAddressV6(self) && self.scopeId !== 0) {
+    return `${formatIp(self.address)}%${resolveScopeName(self.scopeId, scopeIds)}`
+  }
+  return formatHost(self)
+}
+
+/**
+ * Formats an IPv4 address or IPv6 interface index for a native multicast API.
+ *
+ * **Details**
+ *
+ * IPv4 addresses are formatted as numeric IPs. An IPv6 index of zero produces
+ * `"::"`. Other indices produce `"::%index"` on `"win32"`, or `"::%name"` on
+ * other platforms using the first matching interface name, falling back to the
+ * numeric index when no name matches.
+ *
+ * Supply the platform and a scope map from {@link scopeIdsFromInterfaces}; this
+ * function performs no operating-system lookups.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatMulticastInterface = (
+  networkInterface: Ipv4Address | number,
+  platform: string,
+  scopeIds: ReadonlyMap<string, number>
+): string =>
+  typeof networkInterface !== "number"
+    ? formatIp(networkInterface)
+    : networkInterface === 0
+    ? "::"
+    : `::%${platform === "win32" ? networkInterface : resolveScopeName(networkInterface, scopeIds)}`
+
+const resolveScopeName = (index: number, scopeIds: ReadonlyMap<string, number>): string => {
+  for (const [name, scopeId] of scopeIds) {
+    if (scopeId === index) return name
+  }
+  return String(index)
+}
+
+/**
  * Formats a resolved internet address, bracketing IPv6 around its port.
  *
  * @category encoding
