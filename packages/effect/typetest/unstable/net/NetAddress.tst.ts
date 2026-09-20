@@ -208,7 +208,7 @@ describe("NetAddress", () => {
     }
   })
 
-  it("keeps named classification interfaces compatible with generic aliases", () => {
+  it("keeps named classification aliases identical to generic forms", () => {
     expect<NetAddress.Ipv4MulticastAddress>().type.toBe<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>()
     expect<NetAddress.Ipv6MulticastAddress>().type.toBe<NetAddress.MulticastAddress<NetAddress.Ipv6Address>>()
     expect<NetAddress.MacMulticastAddress>().type.toBe<NetAddress.MulticastAddress<NetAddress.MacAddress>>()

@@ -199,7 +199,7 @@ export type UniversallyAdministeredAddress<A extends MacAddress = MacAddress> = 
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4MulticastAddress extends Ipv4Address, Brand.Brand<typeof MulticastTypeId> {}
+export type Ipv4MulticastAddress = MulticastAddress<Ipv4Address>
 
 /**
  * An IPv6 address proven to be multicast.
@@ -207,7 +207,7 @@ export interface Ipv4MulticastAddress extends Ipv4Address, Brand.Brand<typeof Mu
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6MulticastAddress extends Ipv6Address, Brand.Brand<typeof MulticastTypeId> {}
+export type Ipv6MulticastAddress = MulticastAddress<Ipv6Address>
 
 /**
  * An IP address proven to be multicast.
@@ -223,9 +223,7 @@ export type IpMulticastAddress = Ipv4MulticastAddress | Ipv6MulticastAddress
  * @category models
  * @since 4.0.0
  */
-export interface MacMulticastAddress extends MacAddress, Brand.Brand<typeof MulticastTypeId> {}
-
-type MulticastBroadcastBrands = Brand.Brand<typeof MulticastTypeId> & Brand.Brand<typeof BroadcastTypeId>
+export type MacMulticastAddress = MulticastAddress<MacAddress>
 
 /**
  * An IPv4 address proven to be syntactically unicast.
@@ -233,7 +231,7 @@ type MulticastBroadcastBrands = Brand.Brand<typeof MulticastTypeId> & Brand.Bran
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4UnicastAddress extends Ipv4Address, Brand.Brand<typeof UnicastTypeId> {}
+export type Ipv4UnicastAddress = UnicastAddress<Ipv4Address>
 
 /**
  * An IPv6 address proven to be syntactically unicast.
@@ -241,7 +239,7 @@ export interface Ipv4UnicastAddress extends Ipv4Address, Brand.Brand<typeof Unic
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6UnicastAddress extends Ipv6Address, Brand.Brand<typeof UnicastTypeId> {}
+export type Ipv6UnicastAddress = UnicastAddress<Ipv6Address>
 
 /**
  * An IP address proven to be syntactically unicast.
@@ -257,7 +255,7 @@ export type IpUnicastAddress = Ipv4UnicastAddress | Ipv6UnicastAddress
  * @category models
  * @since 4.0.0
  */
-export interface MacUnicastAddress extends MacAddress, Brand.Brand<typeof UnicastTypeId> {}
+export type MacUnicastAddress = UnicastAddress<MacAddress>
 
 /**
  * An IPv4 limited-broadcast address.
@@ -265,7 +263,7 @@ export interface MacUnicastAddress extends MacAddress, Brand.Brand<typeof Unicas
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4BroadcastAddress extends Ipv4Address, Brand.Brand<typeof BroadcastTypeId> {}
+export type Ipv4BroadcastAddress = BroadcastAddress<Ipv4Address>
 
 /**
  * A MAC all-ones broadcast address.
@@ -273,7 +271,7 @@ export interface Ipv4BroadcastAddress extends Ipv4Address, Brand.Brand<typeof Br
  * @category models
  * @since 4.0.0
  */
-export interface MacBroadcastAddress extends MacAddress, MulticastBroadcastBrands {}
+export type MacBroadcastAddress = BroadcastAddress<MacAddress>
 
 /**
  * An IPv4 address proven to be loopback.
@@ -281,7 +279,7 @@ export interface MacBroadcastAddress extends MacAddress, MulticastBroadcastBrand
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4LoopbackAddress extends Ipv4Address, Brand.Brand<typeof LoopbackTypeId> {}
+export type Ipv4LoopbackAddress = LoopbackAddress<Ipv4Address>
 
 /**
  * An IPv6 address proven to be loopback.
@@ -289,7 +287,7 @@ export interface Ipv4LoopbackAddress extends Ipv4Address, Brand.Brand<typeof Loo
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6LoopbackAddress extends Ipv6Address, Brand.Brand<typeof LoopbackTypeId> {}
+export type Ipv6LoopbackAddress = LoopbackAddress<Ipv6Address>
 
 /**
  * An IP address proven to be loopback.
@@ -305,7 +303,7 @@ export type IpLoopbackAddress = Ipv4LoopbackAddress | Ipv6LoopbackAddress
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4LinkLocalAddress extends Ipv4Address, Brand.Brand<typeof LinkLocalTypeId> {}
+export type Ipv4LinkLocalAddress = LinkLocalAddress<Ipv4Address>
 
 /**
  * An IPv6 address proven to be link-local.
@@ -313,7 +311,7 @@ export interface Ipv4LinkLocalAddress extends Ipv4Address, Brand.Brand<typeof Li
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6LinkLocalAddress extends Ipv6Address, Brand.Brand<typeof LinkLocalTypeId> {}
+export type Ipv6LinkLocalAddress = LinkLocalAddress<Ipv6Address>
 
 /**
  * An IP address proven to be link-local.
@@ -329,7 +327,7 @@ export type IpLinkLocalAddress = Ipv4LinkLocalAddress | Ipv6LinkLocalAddress
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4UnspecifiedAddress extends Ipv4Address, Brand.Brand<typeof UnspecifiedTypeId> {}
+export type Ipv4UnspecifiedAddress = UnspecifiedAddress<Ipv4Address>
 
 /**
  * An all-zero IPv6 address.
@@ -337,7 +335,7 @@ export interface Ipv4UnspecifiedAddress extends Ipv4Address, Brand.Brand<typeof 
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6UnspecifiedAddress extends Ipv6Address, Brand.Brand<typeof UnspecifiedTypeId> {}
+export type Ipv6UnspecifiedAddress = UnspecifiedAddress<Ipv6Address>
 
 /**
  * An all-zero IP address.
@@ -353,7 +351,7 @@ export type IpUnspecifiedAddress = Ipv4UnspecifiedAddress | Ipv6UnspecifiedAddre
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4PrivateAddress extends Ipv4Address, Brand.Brand<typeof PrivateTypeId> {}
+export type Ipv4PrivateAddress = PrivateAddress<Ipv4Address>
 
 /**
  * An IPv6 unique-local address in `fc00::/7`.
@@ -361,7 +359,7 @@ export interface Ipv4PrivateAddress extends Ipv4Address, Brand.Brand<typeof Priv
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6UniqueLocalAddress extends Ipv6Address, Brand.Brand<typeof UniqueLocalTypeId> {}
+export type Ipv6UniqueLocalAddress = UniqueLocalAddress<Ipv6Address>
 
 /**
  * A MAC address proven to be locally administered.
@@ -369,7 +367,7 @@ export interface Ipv6UniqueLocalAddress extends Ipv6Address, Brand.Brand<typeof 
  * @category models
  * @since 4.0.0
  */
-export interface MacLocallyAdministeredAddress extends MacAddress, Brand.Brand<typeof LocallyAdministeredTypeId> {}
+export type MacLocallyAdministeredAddress = LocallyAdministeredAddress<MacAddress>
 
 /**
  * A MAC address proven to be universally administered.
@@ -377,9 +375,7 @@ export interface MacLocallyAdministeredAddress extends MacAddress, Brand.Brand<t
  * @category models
  * @since 4.0.0
  */
-export interface MacUniversallyAdministeredAddress
-  extends MacAddress, Brand.Brand<typeof UniversallyAdministeredTypeId>
-{}
+export type MacUniversallyAdministeredAddress = UniversallyAdministeredAddress<MacAddress>
 
 const getBytes = (self: IpAddress | MacAddress): Uint8Array => (self as any).bytes
 
