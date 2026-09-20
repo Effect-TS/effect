@@ -1077,6 +1077,7 @@ const encodeQuery = (
 class PreparedCache {
   readonly max: number
   private readonly statements = new Map<string, Prepared>()
+  private readonly namespace = randomBytes(8).toString("hex")
   private closes: Array<Uint8Array> | undefined
   private counter = 0
 
@@ -1096,7 +1097,7 @@ class PreparedCache {
       return found
     }
     const prepared: Prepared = {
-      name: `effect${++this.counter}`,
+      name: `effect_${this.namespace}_${++this.counter}`,
       key,
       ready: false,
       parsing: false,

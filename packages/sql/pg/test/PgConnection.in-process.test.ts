@@ -395,8 +395,9 @@ describe("PgConnection in-process server", () => {
       yield* connection.query("SELECT 1")
 
       assert.strictEqual(writes.length, 2)
-      const nameEnd = writes[1].indexOf(0, 5)
-      assert.strictEqual(writes[1].subarray(5, nameEnd).toString(), "effect1")
+      const names = frontendPreparedNames(writes[1])
+      assert.strictEqual(names.length, 1)
+      assert.match(names[0], /^effect_[0-9a-f]{16}_1$/)
     }))
 
   it.effect("ends a custom stream after writing Terminate", () =>
