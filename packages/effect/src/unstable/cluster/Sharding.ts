@@ -249,6 +249,8 @@ const make = Effect.gen(function*() {
   const entityRegistrationTimeRemaining = () => {
     const now = clock.currentTimeMillisUnsafe()
     const registrationStarted = entityRegistrationStartMillis !== undefined
+    // The first missing entity observed by either the storage read loop or a
+    // local send starts the shared fallback registration window.
     const timeoutStartMillis = entityRegistrationStartMillis ??
       (entityRegistrationFallbackStartMillis ??= now)
     // If registration never starts, allow two intervals from the first missing
@@ -1697,11 +1699,11 @@ const make = Effect.gen(function*() {
 
   // Sleeps until the registration deadline shared with the storage read loop,
   // re-checking once in case registration started and moved the deadline.
-  const entityRegistrationTimeout = (entityType: string): Effect.Effect<never> =>
+  const awaitRegistrationDeadline = (entityType: string): Effect.Effect<never> =>
     Effect.suspend(() => {
       const remaining = entityRegistrationTimeRemaining()
       return remaining > 0
-        ? Effect.flatMap(Effect.sleep(remaining), () => entityRegistrationTimeout(entityType))
+        ? Effect.flatMap(Effect.sleep(remaining), () => awaitRegistrationDeadline(entityType))
         : entityNotRegistered(entityType)
     })
 
@@ -1711,7 +1713,7 @@ const make = Effect.gen(function*() {
       latch = Latch.makeUnsafe()
       entityManagerLatches.set(entityType, latch)
     }
-    return Effect.raceFirst(latch.await, entityRegistrationTimeout(entityType))
+    return Effect.raceFirst(latch.await, awaitRegistrationDeadline(entityType))
   }
 
   // --- Runner health checks ---
