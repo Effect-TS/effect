@@ -31,10 +31,6 @@ patchedDependencies:
 
 overrides:
   # jsdom 30.1.0 fails under Bun when Vitest installs its window error handler.
+  # Remove after a later jsdom release passes the Atom React and Solid suites under Bun.
+  # Upstream changes: https://github.com/jsdom/jsdom/compare/v30.0.1...v30.1.0
   jsdom: ~30.0.1
-
-minimumReleaseAgeExclude:
-  - '@cloudflare/workers-types@5.20260920.1'
-  - '@op-engineering/op-sqlite@18.2.5'
-  - react-error-boundary@6.1.6
-  - tsx@4.23.15

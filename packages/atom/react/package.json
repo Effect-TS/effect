@@ -75,7 +75,7 @@
     "jsdom": "~30.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-error-boundary": "^6.1.6",
+    "react-error-boundary": "^6.1.5",
     "scheduler": "^0.28.0"
   }
 }
