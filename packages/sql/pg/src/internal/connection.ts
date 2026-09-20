@@ -10,6 +10,7 @@ export interface ConnectionInternals {
   /** The pool item identity: the unpinned base connection. */
   readonly base: object
   readonly deadError: () => SqlError | undefined
+  readonly cancelPending: () => boolean
   /** Fired once when the connection dies outside its own scope release. */
   readonly fatalHooks: Set<() => void>
   /**

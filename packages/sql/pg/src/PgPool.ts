@@ -165,7 +165,8 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   })
 
   const expired = (connection: PgConnection.PgConnection): boolean => {
-    if (connectionInternals(connection).deadError() !== undefined) return true
+    const internals = connectionInternals(connection)
+    if (internals.deadError() !== undefined || internals.cancelPending()) return true
     if (connectionTTL === undefined) return false
     if (!checkedOut.has(connection)) {
       checkedOut.add(connection)

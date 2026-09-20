@@ -205,10 +205,10 @@ export interface PgConnection {
    *
    * Interrupting the effect drains the connection back to `ReadyForQuery`,
    * sending a `CancelRequest` when the statement does not finish promptly.
-   * Nothing confirms a cancel's delivery, so the session is then retired
-   * unless the backend reports the statement cancelled (`57014`, which
-   * `statement_timeout` also raises): later statements on it fail with a
-   * `ConnectionError`, and a pool replaces it on the next checkout.
+   * A pool discards the session at its next checkout unless the backend reports
+   * `57014`. A caller that keeps the same checkout may receive a late cancel
+   * on a following statement. Because `statement_timeout` also raises `57014`,
+   * it can be mistaken for confirmation that the cancel arrived.
    */
   readonly query: (
     sql: string,
@@ -358,7 +358,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  /** Set when a `CancelRequest` is sent, cleared when the backend reports `57014`. */
+  /** Set when a `CancelRequest` is sent, cleared by any backend `57014`. */
   cancelPending = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
@@ -385,6 +385,7 @@ class PgConnectionImpl implements PgConnection {
     this[internalsKey] = {
       base: this,
       deadError: () => this.deadWith,
+      cancelPending: () => this.cancelPending,
       fatalHooks: this.fatalHooks
     }
     this.pinnedView = new PinnedPgConnection(this)
@@ -1484,10 +1485,9 @@ const emptyValues: ReadonlyArray<ReadonlyArray<unknown>> = []
  * Drains an aborted statement back to `ReadyForQuery`, destroying the
  * connection when that stalls. `abort` receives the callback that marks the
  * drain complete. A `CancelRequest` is only sent once the drain outlasts a
- * short grace period, so a result already on the wire keeps its session. Once
- * sent, the session is retired unless the backend reports the statement
- * cancelled: nothing confirms a cancel's delivery, and a pooler or proxy may
- * forward it late enough to land on the next statement.
+ * short grace period, so a result already on the wire keeps its session. An
+ * unconfirmed cancel remains marked so a pool can discard the session before
+ * its next checkout.
  */
 const drainAborted = (
   conn: PgConnectionImpl,
@@ -1507,19 +1507,10 @@ const drainAborted = (
     const timer = setTimeout(() => resume(Effect.void), abortDrainGraceMillis)
     return Effect.sync(() => clearTimeout(timer))
   })
-  const cancelAndRetire = conn.cancel.pipe(
-    Effect.andThen(Deferred.await(drained)),
-    Effect.andThen(Effect.sync(() => {
-      if (!conn.cancelPending) return
-      conn.fatal(connectionQueryError(
-        new Error("CancelRequest may still be in flight"),
-        "PgConnection: Session retired after an interrupted statement completed without being cancelled"
-      ))
-    }))
-  )
+  const cancelAndDrain = Effect.andThen(conn.cancel, Deferred.await(drained))
   return Effect.andThen(
     Effect.raceFirst(Deferred.await(drained), grace),
-    Effect.suspend(() => Deferred.isDoneUnsafe(drained) ? Effect.void : cancelAndRetire)
+    Effect.suspend(() => Deferred.isDoneUnsafe(drained) ? Effect.void : cancelAndDrain)
   )
 }
 
