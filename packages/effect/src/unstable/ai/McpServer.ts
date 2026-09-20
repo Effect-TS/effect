@@ -1859,10 +1859,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       return internalToolError(cause)
     }
     const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
-      Tool.getJsonSchemaFromSchema(tool.successSchema)
+      toolJsonSchema(tool.successSchema, false)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      rawJsonSchema ?? toolInputJsonSchema(tool.parametersSchema, strict)
+      rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({
       name: tool.name,
@@ -1921,7 +1921,7 @@ const isParameterValidationError = (
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
 // MCP requires an object root, so a top-level `$ref` is inlined.
-const toolInputJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
+const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
   const document = InternalStructuredOutput.resolveTopLevelReference(
     Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
   )
@@ -2449,7 +2449,7 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   const request = yield* Schema.decodeUnknownEffect(McpSchema.ElicitRequestFormParams)({
     mode: "form",
     message: options.message,
-    requestedSchema: Tool.getJsonSchemaFromSchema(schema)
+    requestedSchema: toolJsonSchema(schema, false)
   }).pipe(Effect.orDie)
   const res = yield* client.elicit(request).pipe(
     Effect.catchCause((cause) => Effect.fail(new ElicitationDeclined({ cause: Cause.squash(cause), request })))
