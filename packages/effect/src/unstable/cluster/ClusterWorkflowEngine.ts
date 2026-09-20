@@ -385,8 +385,9 @@ export const make = Effect.gen(function*() {
 
   const engine = WorkflowEngine.makeUnsafe({
     register: (workflow, execute) =>
-      Effect.suspend(() =>
-        sharding.registerEntity(
+      Effect.suspend(() => {
+        const existing = workflows.get(workflow._tag)
+        const registration = sharding.registerEntity(
           ensureEntity(workflow),
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
@@ -537,7 +538,15 @@ export const make = Effect.gen(function*() {
           // fork their wake and return an asynchronous reply.
           { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
-      ),
+        if (existing === undefined || existing === workflow) return registration
+        return Effect.logWarning(
+          `Workflow "${workflow._tag}" is already registered with payload shape ${
+            JSON.stringify(Schema.toJsonSchemaDocument(existing.payloadSchema).schema)
+          }; ignoring duplicate definition with payload shape ${
+            JSON.stringify(Schema.toJsonSchemaDocument(workflow.payloadSchema).schema)
+          }`
+        ).pipe(Effect.andThen(registration))
+      }),
 
     execute: (workflow, { discard, executionId, parent, payload }) => {
       ensureEntity(workflow)
