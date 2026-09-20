@@ -362,7 +362,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  /** Set when a `CancelRequest` is sent, cleared by any backend `57014`. */
+  /** Set while a `CancelRequest` may be in flight; cleared by `57014`, or by `ReadyForQuery` before retirement hooks run. */
   cancelPending = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly retireHooks = new Set<() => void>()
@@ -1499,8 +1499,7 @@ const emptyValues: ReadonlyArray<ReadonlyArray<unknown>> = []
  * connection when that stalls. `abort` receives the callback that marks the
  * drain complete. A `CancelRequest` is only sent once the drain outlasts a
  * short grace period, so a result already on the wire keeps its session. An
- * unconfirmed cancel remains marked so a pool can discard the session before
- * its next checkout.
+ * unconfirmed cancel runs the connection's retirement hooks at `ReadyForQuery`.
  */
 const drainAborted = (
   conn: PgConnectionImpl,
