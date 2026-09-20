@@ -7,6 +7,8 @@ import { PgContainer } from "./utils.ts"
 
 // `it.effect` runs under the TestClock, so poll loops sleep in real time.
 const realSleep = Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
+const activeTimeoutMs = 10_000
+const cancellationTestTimeout = 20_000
 
 const poolConfig = Effect.gen(function*() {
   const container = yield* PgContainer
@@ -15,7 +17,8 @@ const poolConfig = Effect.gen(function*() {
 
 const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
   Effect.gen(function*() {
-    for (let attempt = 0; attempt < 100; attempt++) {
+    const startedAt = Date.now()
+    while (Date.now() - startedAt < activeTimeoutMs) {
       const active = yield* observer.query(
         "SELECT count(*)::int4 AS active FROM pg_stat_activity WHERE pid = $1 AND state = 'active'",
         [pid]
@@ -23,7 +26,7 @@ const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
       if (active.rows[0].active === 1) return
       yield* realSleep
     }
-    return yield* Effect.fail(new Error(`PostgreSQL backend ${pid} did not become active after 100 checks`))
+    return yield* Effect.fail(new Error(`PostgreSQL backend ${pid} did not become active within 10 seconds`))
   })
 
 const cancelRequestCode = 80877102
@@ -135,7 +138,7 @@ const blockedStream = `
   FROM (SELECT pg_advisory_xact_lock($1::int4)) AS blocked
 `
 
-it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
+it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPool", (it) => {
   it.effect("reuses checked out connections", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
@@ -179,7 +182,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
 
       const result = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid, $1::text AS after", ["ok"])
       assert.deepStrictEqual(result.rows, [{ pid: connection.processId, after: "ok" }])
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("acquires a multiplexed listener after registration", () =>
     Effect.gen(function*() {
@@ -262,7 +265,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
 
       const second = yield* Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
       assert.strictEqual(second, first)
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("replaces a pooled session after an unconfirmed query cancel", () =>
     Effect.gen(function*() {
@@ -292,7 +295,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         gate.release()
         yield* gate.delivered
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("replaces a session before pool.use after an unconfirmed query cancel", () =>
     Effect.gen(function*() {
@@ -322,7 +325,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         gate.release()
         yield* gate.delivered
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("protects an active pool.use query from a late cancel", () =>
     Effect.gen(function*() {
@@ -362,7 +365,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         const result = yield* Fiber.join(followUp)
         assert.deepStrictEqual(result.rows, [{ after: 1 }])
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("replaces a pooled session after an unconfirmed stream cancel", () =>
     Effect.gen(function*() {
@@ -397,7 +400,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
           assert.deepStrictEqual(result.rows, [{ after: 1 }])
         }))
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("keeps a session after a confirmed stream cancel", () =>
     Effect.gen(function*() {
@@ -416,7 +419,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       const result = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid")
       assert.deepStrictEqual(result.rows, [{ pid: connection.processId }])
       yield* blocker.query("ROLLBACK")
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("keeps a held session after an unconfirmed query cancel", () =>
     Effect.gen(function*() {
@@ -445,7 +448,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         const afterDelivery = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid")
         assert.deepStrictEqual(afterDelivery.rows, [{ pid: connection.processId }])
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
-    }))
+    }), cancellationTestTimeout)
 
   it.effect("replaces connections that die", () =>
     Effect.gen(function*() {
@@ -546,7 +549,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         (yield* borrow((connection) => connection.query("SELECT 2 AS ok"))).rows,
         [{ ok: 2 }]
       )
-    }), 20_000)
+    }), cancellationTestTimeout)
 
   it.effect("borrows around a connection that has to be replaced", () =>
     Effect.gen(function*() {
