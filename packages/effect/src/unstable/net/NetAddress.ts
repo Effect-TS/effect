@@ -1366,16 +1366,17 @@ export const formatHost = (self: InetAddress): string =>
  * interface name matching the scope ID is used, falling back to the numeric ID
  * when no name matches. Unscoped IPv6 and IPv4 hosts are unchanged.
  *
- * Supply the platform and a scope map from {@link scopeIdsFromInterfaces}; this
- * function performs no operating-system lookups.
+ * Supply a scope map from {@link scopeIdsFromInterfaces} and optionally a platform
+ * string. Omitting the platform uses non-Windows behavior. This function performs
+ * no operating-system lookups.
  *
  * @category encoding
  * @since 4.0.0
  */
 export const formatNativeHost = (
   self: InetAddress,
-  platform: string,
-  scopeIds: ReadonlyMap<string, number>
+  scopeIds: ReadonlyMap<string, number>,
+  platform?: string
 ): string => {
   if (platform !== "win32" && isInetAddressV6(self) && self.scopeId !== 0) {
     for (const [name, scopeId] of scopeIds) {
@@ -1395,16 +1396,17 @@ export const formatNativeHost = (
  * other platforms using the first matching interface name, falling back to the
  * numeric index when no name matches.
  *
- * Supply the platform and a scope map from {@link scopeIdsFromInterfaces}; this
- * function performs no operating-system lookups.
+ * Supply a scope map from {@link scopeIdsFromInterfaces} and optionally a platform
+ * string. Omitting the platform uses non-Windows behavior. This function performs
+ * no operating-system lookups.
  *
  * @category encoding
  * @since 4.0.0
  */
 export const formatMulticastInterface = (
   networkInterface: Ipv4Address | number,
-  platform: string,
-  scopeIds: ReadonlyMap<string, number>
+  scopeIds: ReadonlyMap<string, number>,
+  platform?: string
 ): string => {
   if (typeof networkInterface !== "number") return formatIp(networkInterface)
   if (networkInterface === 0) return "::"
