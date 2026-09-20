@@ -415,6 +415,19 @@ describe("Queue", () => {
       assert.deepStrictEqual(offerer.pollUnsafe(), Exit.succeed(false))
     }))
 
+  it.effect("shutdownUnsafe resumes batch offers with their unaccepted suffix", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(1)
+      const producer = yield* Queue.offerAll(queue, [1, 2, 3]).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.strictEqual(yield* Queue.take(queue), 1)
+
+      Queue.shutdownUnsafe(queue)
+
+      assert.deepStrictEqual(producer.pollUnsafe(), Exit.succeed([3]))
+    }))
+
   it.effect("shutdownUnsafe preserves an existing failure", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
@@ -428,10 +441,12 @@ describe("Queue", () => {
 
   it.effect("shutdownUnsafe is idempotent", () =>
     Effect.gen(function*() {
-      const queue = yield* Queue.unbounded<number>()
+      const queue = yield* Queue.unbounded<number, string>()
+      Queue.failCauseUnsafe(queue, Cause.fail("boom"))
 
       assert.isTrue(Queue.shutdownUnsafe(queue))
       assert.isTrue(Queue.shutdownUnsafe(queue))
+      assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), "boom")
     }))
 
   it.effect("fail doesnt drop items", () =>
