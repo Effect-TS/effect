@@ -382,27 +382,6 @@ export interface MacUniversallyAdministeredAddress
   extends MacAddress, Brand.Brand<typeof UniversallyAdministeredTypeId>
 {}
 
-type Of<A, V4, V6, Mac> = A extends Ipv4Address ? Ipv4Address extends A ? V4 : A & V4
-  : A extends Ipv6Address ? Ipv6Address extends A ? V6 : A & V6
-  : A extends MacAddress ? MacAddress extends A ? Mac : A & Mac
-  : never
-
-type MulticastOf<A extends IpAddress | MacAddress> = Of<
-  A,
-  Ipv4MulticastAddress,
-  Ipv6MulticastAddress,
-  MacMulticastAddress
->
-type UnicastOf<A extends IpAddress | MacAddress> = Of<A, Ipv4UnicastAddress, Ipv6UnicastAddress, MacUnicastAddress>
-type BroadcastOf<A extends Ipv4Address | MacAddress> = Of<A, Ipv4BroadcastAddress, never, MacBroadcastAddress>
-type LoopbackOf<A extends IpAddress> = Of<A, Ipv4LoopbackAddress, Ipv6LoopbackAddress, never>
-type LinkLocalOf<A extends IpAddress> = Of<A, Ipv4LinkLocalAddress, Ipv6LinkLocalAddress, never>
-type UnspecifiedOf<A extends IpAddress> = Of<A, Ipv4UnspecifiedAddress, Ipv6UnspecifiedAddress, never>
-type PrivateOf<A extends Ipv4Address> = Of<A, Ipv4PrivateAddress, never, never>
-type UniqueLocalOf<A extends Ipv6Address> = Of<A, never, Ipv6UniqueLocalAddress, never>
-type LocallyAdministeredOf<A extends MacAddress> = Of<A, never, never, MacLocallyAdministeredAddress>
-type UniversallyAdministeredOf<A extends MacAddress> = Of<A, never, never, MacUniversallyAdministeredAddress>
-
 const getBytes = (self: IpAddress | MacAddress): Uint8Array => (self as any).bytes
 
 /**
@@ -1004,7 +983,7 @@ export const formatMacAddress = (self: MacAddress): string =>
  * @category predicates
  * @since 4.0.0
  */
-export const isMacBroadcast = <A extends MacAddress>(self: A): self is Extract<BroadcastOf<A>, A> =>
+export const isMacBroadcast = <A extends MacAddress>(self: A): self is BroadcastAddress<A> =>
   getBytes(self).every((byte) => byte === 0xff)
 
 /**
@@ -1013,7 +992,7 @@ export const isMacBroadcast = <A extends MacAddress>(self: A): self is Extract<B
  * @category predicates
  * @since 4.0.0
  */
-export const isMacMulticast = <A extends MacAddress>(self: A): self is Extract<MulticastOf<A>, A> =>
+export const isMacMulticast = <A extends MacAddress>(self: A): self is MulticastAddress<A> =>
   (getBytes(self)[0] & 1) !== 0
 
 /**
@@ -1022,8 +1001,7 @@ export const isMacMulticast = <A extends MacAddress>(self: A): self is Extract<M
  * @category predicates
  * @since 4.0.0
  */
-export const isMacUnicast = <A extends MacAddress>(self: A): self is Extract<UnicastOf<A>, A> =>
-  (getBytes(self)[0] & 1) === 0
+export const isMacUnicast = <A extends MacAddress>(self: A): self is UnicastAddress<A> => (getBytes(self)[0] & 1) === 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit set.
@@ -1033,7 +1011,7 @@ export const isMacUnicast = <A extends MacAddress>(self: A): self is Extract<Uni
  */
 export const isMacLocallyAdministered = <A extends MacAddress>(
   self: A
-): self is Extract<LocallyAdministeredOf<A>, A> => (getBytes(self)[0] & 2) !== 0
+): self is LocallyAdministeredAddress<A> => (getBytes(self)[0] & 2) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit clear.
@@ -1043,7 +1021,7 @@ export const isMacLocallyAdministered = <A extends MacAddress>(
  */
 export const isMacUniversallyAdministered = <A extends MacAddress>(
   self: A
-): self is Extract<UniversallyAdministeredOf<A>, A> => (getBytes(self)[0] & 2) === 0
+): self is UniversallyAdministeredAddress<A> => (getBytes(self)[0] & 2) === 0
 
 /**
  * Folds an IP address by its numeric version.
@@ -1103,7 +1081,7 @@ export const formatIp = (self: IpAddress): string => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUnspecified = <A extends IpAddress>(self: A): self is Extract<UnspecifiedOf<A>, A> =>
+export const isUnspecified = <A extends IpAddress>(self: A): self is UnspecifiedAddress<A> =>
   getBytes(self).every((byte) => byte === 0)
 
 /**
@@ -1112,7 +1090,7 @@ export const isUnspecified = <A extends IpAddress>(self: A): self is Extract<Uns
  * @category predicates
  * @since 4.0.0
  */
-export const isLoopback = <A extends IpAddress>(self: A): self is Extract<LoopbackOf<A>, A> => {
+export const isLoopback = <A extends IpAddress>(self: A): self is LoopbackAddress<A> => {
   if (isIpv4Address(self)) return getBytes(self)[0] === 127
   const bytes = getBytes(self)
   for (let index = 0; index < 15; index++) {
@@ -1149,7 +1127,7 @@ export const isLoopback = <A extends IpAddress>(self: A): self is Extract<Loopba
  * @category predicates
  * @since 4.0.0
  */
-export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is Extract<MulticastOf<A>, A> => {
+export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is MulticastAddress<A> => {
   if (isMacAddress(self)) return isMacMulticast(self)
   if (isIpv4Address(self)) return (getBytes(self)[0] >> 4) === 0xe
   return getBytes(self)[0] === 0xff
@@ -1163,7 +1141,7 @@ export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is 
  */
 export const multicastAddress = <A extends IpAddress | MacAddress>(
   self: A
-): Result.Result<MulticastOf<A>, NetAddressError> =>
+): Result.Result<MulticastAddress<A>, NetAddressError> =>
   isMulticast(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a multicast address")
@@ -1175,7 +1153,7 @@ export const multicastAddress = <A extends IpAddress | MacAddress>(
  * @category unsafe
  * @since 4.0.0
  */
-export const multicastAddressUnsafe = <A extends IpAddress | MacAddress>(self: A): MulticastOf<A> =>
+export const multicastAddressUnsafe = <A extends IpAddress | MacAddress>(self: A): MulticastAddress<A> =>
   Result.getOrThrow(multicastAddress(self))
 
 /**
@@ -1211,7 +1189,7 @@ export const multicastAddressFromStringUnsafe = (input: string): IpMulticastAddr
  * @category predicates
  * @since 4.0.0
  */
-export const isBroadcast = <A extends Ipv4Address | MacAddress>(self: A): self is Extract<BroadcastOf<A>, A> =>
+export const isBroadcast = <A extends Ipv4Address | MacAddress>(self: A): self is BroadcastAddress<A> =>
   isMacAddress(self) ? isMacBroadcast(self) : getBytes(self).every((byte) => byte === 0xff)
 
 /**
@@ -1227,7 +1205,7 @@ export const isBroadcast = <A extends Ipv4Address | MacAddress>(self: A): self i
  * @category predicates
  * @since 4.0.0
  */
-export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is Extract<UnicastOf<A>, A> => {
+export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is UnicastAddress<A> => {
   if (isMacAddress(self)) return isMacUnicast(self)
   return !isMulticast(self) && !isUnspecified(self) && (!isIpv4Address(self) || !isBroadcast(self))
 }
@@ -1238,7 +1216,7 @@ export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is Ex
  * @category predicates
  * @since 4.0.0
  */
-export const isLinkLocal = <A extends IpAddress>(self: A): self is Extract<LinkLocalOf<A>, A> => {
+export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddress<A> => {
   if (isIpv4Address(self)) {
     const bytes = getBytes(self)
     return bytes[0] === 0xa9 && bytes[1] === 0xfe
@@ -1253,7 +1231,7 @@ export const isLinkLocal = <A extends IpAddress>(self: A): self is Extract<LinkL
  * @category predicates
  * @since 4.0.0
  */
-export const isPrivate = <A extends Ipv4Address>(self: A): self is Extract<PrivateOf<A>, A> => {
+export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddress<A> => {
   const bytes = getBytes(self)
   return bytes[0] === 10 || (bytes[0] === 172 && (bytes[1] & 0xf0) === 16) ||
     (bytes[0] === 192 && bytes[1] === 168)
@@ -1265,7 +1243,7 @@ export const isPrivate = <A extends Ipv4Address>(self: A): self is Extract<Priva
  * @category predicates
  * @since 4.0.0
  */
-export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is Extract<UniqueLocalOf<A>, A> =>
+export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is UniqueLocalAddress<A> =>
   (getBytes(self)[0] & 0xfe) === 0xfc
 
 /**
@@ -1277,7 +1255,7 @@ export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is Extract<U
  */
 export const unicastAddress = <A extends IpAddress | MacAddress>(
   self: A
-): Result.Result<UnicastOf<A>, NetAddressError> =>
+): Result.Result<UnicastAddress<A>, NetAddressError> =>
   isUnicast(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a unicast address")
@@ -1289,7 +1267,7 @@ export const unicastAddress = <A extends IpAddress | MacAddress>(
  * @category unsafe
  * @since 4.0.0
  */
-export const unicastAddressUnsafe = <A extends IpAddress | MacAddress>(self: A): UnicastOf<A> =>
+export const unicastAddressUnsafe = <A extends IpAddress | MacAddress>(self: A): UnicastAddress<A> =>
   Result.getOrThrow(unicastAddress(self))
 
 /**
@@ -1300,7 +1278,7 @@ export const unicastAddressUnsafe = <A extends IpAddress | MacAddress>(self: A):
  */
 export const broadcastAddress = <A extends Ipv4Address | MacAddress>(
   self: A
-): Result.Result<BroadcastOf<A>, NetAddressError> =>
+): Result.Result<BroadcastAddress<A>, NetAddressError> =>
   isBroadcast(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a broadcast address")
@@ -1311,7 +1289,7 @@ export const broadcastAddress = <A extends Ipv4Address | MacAddress>(
  * @category unsafe
  * @since 4.0.0
  */
-export const broadcastAddressUnsafe = <A extends Ipv4Address | MacAddress>(self: A): BroadcastOf<A> =>
+export const broadcastAddressUnsafe = <A extends Ipv4Address | MacAddress>(self: A): BroadcastAddress<A> =>
   Result.getOrThrow(broadcastAddress(self))
 
 /**
@@ -1322,7 +1300,7 @@ export const broadcastAddressUnsafe = <A extends Ipv4Address | MacAddress>(self:
  */
 export const loopbackAddress = <A extends IpAddress>(
   self: A
-): Result.Result<LoopbackOf<A>, NetAddressError> =>
+): Result.Result<LoopbackAddress<A>, NetAddressError> =>
   isLoopback(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a loopback address")
@@ -1333,7 +1311,7 @@ export const loopbackAddress = <A extends IpAddress>(
  * @category unsafe
  * @since 4.0.0
  */
-export const loopbackAddressUnsafe = <A extends IpAddress>(self: A): LoopbackOf<A> =>
+export const loopbackAddressUnsafe = <A extends IpAddress>(self: A): LoopbackAddress<A> =>
   Result.getOrThrow(loopbackAddress(self))
 
 /**
@@ -1344,7 +1322,7 @@ export const loopbackAddressUnsafe = <A extends IpAddress>(self: A): LoopbackOf<
  */
 export const linkLocalAddress = <A extends IpAddress>(
   self: A
-): Result.Result<LinkLocalOf<A>, NetAddressError> =>
+): Result.Result<LinkLocalAddress<A>, NetAddressError> =>
   isLinkLocal(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a link-local address")
@@ -1355,7 +1333,7 @@ export const linkLocalAddress = <A extends IpAddress>(
  * @category unsafe
  * @since 4.0.0
  */
-export const linkLocalAddressUnsafe = <A extends IpAddress>(self: A): LinkLocalOf<A> =>
+export const linkLocalAddressUnsafe = <A extends IpAddress>(self: A): LinkLocalAddress<A> =>
   Result.getOrThrow(linkLocalAddress(self))
 
 /**
@@ -1366,7 +1344,7 @@ export const linkLocalAddressUnsafe = <A extends IpAddress>(self: A): LinkLocalO
  */
 export const unspecifiedAddress = <A extends IpAddress>(
   self: A
-): Result.Result<UnspecifiedOf<A>, NetAddressError> =>
+): Result.Result<UnspecifiedAddress<A>, NetAddressError> =>
   isUnspecified(self)
     ? Result.succeed(self)
     : addressError(self, "address must be an unspecified address")
@@ -1377,7 +1355,7 @@ export const unspecifiedAddress = <A extends IpAddress>(
  * @category unsafe
  * @since 4.0.0
  */
-export const unspecifiedAddressUnsafe = <A extends IpAddress>(self: A): UnspecifiedOf<A> =>
+export const unspecifiedAddressUnsafe = <A extends IpAddress>(self: A): UnspecifiedAddress<A> =>
   Result.getOrThrow(unspecifiedAddress(self))
 
 /**
@@ -1388,7 +1366,7 @@ export const unspecifiedAddressUnsafe = <A extends IpAddress>(self: A): Unspecif
  */
 export const privateAddress = <A extends Ipv4Address>(
   self: A
-): Result.Result<PrivateOf<A>, NetAddressError> =>
+): Result.Result<PrivateAddress<A>, NetAddressError> =>
   isPrivate(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a private address")
@@ -1399,7 +1377,7 @@ export const privateAddress = <A extends Ipv4Address>(
  * @category unsafe
  * @since 4.0.0
  */
-export const privateAddressUnsafe = <A extends Ipv4Address>(self: A): PrivateOf<A> =>
+export const privateAddressUnsafe = <A extends Ipv4Address>(self: A): PrivateAddress<A> =>
   Result.getOrThrow(privateAddress(self))
 
 /**
@@ -1410,7 +1388,7 @@ export const privateAddressUnsafe = <A extends Ipv4Address>(self: A): PrivateOf<
  */
 export const uniqueLocalAddress = <A extends Ipv6Address>(
   self: A
-): Result.Result<UniqueLocalOf<A>, NetAddressError> =>
+): Result.Result<UniqueLocalAddress<A>, NetAddressError> =>
   isUniqueLocal(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a unique-local address")
@@ -1421,7 +1399,7 @@ export const uniqueLocalAddress = <A extends Ipv6Address>(
  * @category unsafe
  * @since 4.0.0
  */
-export const uniqueLocalAddressUnsafe = <A extends Ipv6Address>(self: A): UniqueLocalOf<A> =>
+export const uniqueLocalAddressUnsafe = <A extends Ipv6Address>(self: A): UniqueLocalAddress<A> =>
   Result.getOrThrow(uniqueLocalAddress(self))
 
 /**
@@ -1432,7 +1410,7 @@ export const uniqueLocalAddressUnsafe = <A extends Ipv6Address>(self: A): Unique
  */
 export const locallyAdministeredAddress = <A extends MacAddress>(
   self: A
-): Result.Result<LocallyAdministeredOf<A>, NetAddressError> =>
+): Result.Result<LocallyAdministeredAddress<A>, NetAddressError> =>
   isMacLocallyAdministered(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a locally administered address")
@@ -1445,7 +1423,7 @@ export const locallyAdministeredAddress = <A extends MacAddress>(
  */
 export const locallyAdministeredAddressUnsafe = <A extends MacAddress>(
   self: A
-): LocallyAdministeredOf<A> => Result.getOrThrow(locallyAdministeredAddress(self))
+): LocallyAdministeredAddress<A> => Result.getOrThrow(locallyAdministeredAddress(self))
 
 /**
  * Refines a MAC address to a universally administered address without copying it.
@@ -1455,7 +1433,7 @@ export const locallyAdministeredAddressUnsafe = <A extends MacAddress>(
  */
 export const universallyAdministeredAddress = <A extends MacAddress>(
   self: A
-): Result.Result<UniversallyAdministeredOf<A>, NetAddressError> =>
+): Result.Result<UniversallyAdministeredAddress<A>, NetAddressError> =>
   isMacUniversallyAdministered(self)
     ? Result.succeed(self)
     : addressError(self, "address must be a universally administered address")
@@ -1468,7 +1446,7 @@ export const universallyAdministeredAddress = <A extends MacAddress>(
  */
 export const universallyAdministeredAddressUnsafe = <A extends MacAddress>(
   self: A
-): UniversallyAdministeredOf<A> => Result.getOrThrow(universallyAdministeredAddress(self))
+): UniversallyAdministeredAddress<A> => Result.getOrThrow(universallyAdministeredAddress(self))
 
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.

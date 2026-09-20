@@ -100,16 +100,16 @@ describe("NetAddress", () => {
     ) => void
 
     if (NetAddress.isMulticast(ip)) {
-      expect(ip).type.toBe<NetAddress.IpMulticastAddress>()
+      expect(ip).type.toBe<NetAddress.MulticastAddress<NetAddress.IpAddress>>()
       if (NetAddress.isIpv4Address(ip)) expect(ip).type.toBe<NetAddress.Ipv4MulticastAddress>()
     } else {
       expect(ip).type.toBe<NetAddress.IpAddress>()
     }
     if (NetAddress.isMulticast(mac)) {
-      expect(mac).type.toBe<NetAddress.MacMulticastAddress>()
+      expect(mac).type.toBe<NetAddress.MulticastAddress<NetAddress.MacAddress>>()
     }
     expect(NetAddress.multicastAddress(mac)).type.toBe<
-      Result.Result<NetAddress.MacMulticastAddress, NetAddress.NetAddressError>
+      Result.Result<NetAddress.MulticastAddress<NetAddress.MacAddress>, NetAddress.NetAddressError>
     >()
     expect(NetAddress.multicastAddressFromString("239.0.0.1")).type.toBe<
       Result.Result<NetAddress.IpMulticastAddress, NetAddress.NetAddressError>
@@ -126,22 +126,22 @@ describe("NetAddress", () => {
     const ipv6 = null as unknown as NetAddress.Ipv6Address
     const mac = null as unknown as NetAddress.MacAddress
 
-    if (NetAddress.isUnicast(ip)) expect(ip).type.toBe<NetAddress.IpUnicastAddress>()
+    if (NetAddress.isUnicast(ip)) expect(ip).type.toBe<NetAddress.UnicastAddress<NetAddress.IpAddress>>()
     if (NetAddress.isBroadcast(ipv4)) {
-      expect(ipv4).type.toBe<NetAddress.Ipv4BroadcastAddress>()
+      expect(ipv4).type.toBe<NetAddress.BroadcastAddress<NetAddress.Ipv4Address>>()
     }
-    if (NetAddress.isLoopback(ip)) expect(ip).type.toBe<NetAddress.IpLoopbackAddress>()
-    if (NetAddress.isLinkLocal(ip)) expect(ip).type.toBe<NetAddress.IpLinkLocalAddress>()
+    if (NetAddress.isLoopback(ip)) expect(ip).type.toBe<NetAddress.LoopbackAddress<NetAddress.IpAddress>>()
+    if (NetAddress.isLinkLocal(ip)) expect(ip).type.toBe<NetAddress.LinkLocalAddress<NetAddress.IpAddress>>()
     if (NetAddress.isUnspecified(ip)) {
-      expect(ip).type.toBe<NetAddress.IpUnspecifiedAddress>()
+      expect(ip).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.IpAddress>>()
     }
-    if (NetAddress.isPrivate(ipv4)) expect(ipv4).type.toBe<NetAddress.Ipv4PrivateAddress>()
-    if (NetAddress.isUniqueLocal(ipv6)) expect(ipv6).type.toBe<NetAddress.Ipv6UniqueLocalAddress>()
+    if (NetAddress.isPrivate(ipv4)) expect(ipv4).type.toBe<NetAddress.PrivateAddress>()
+    if (NetAddress.isUniqueLocal(ipv6)) expect(ipv6).type.toBe<NetAddress.UniqueLocalAddress>()
     if (NetAddress.isMacLocallyAdministered(mac)) {
-      expect(mac).type.toBe<NetAddress.MacLocallyAdministeredAddress>()
+      expect(mac).type.toBe<NetAddress.LocallyAdministeredAddress>()
     }
     if (NetAddress.isMacUniversallyAdministered(mac)) {
-      expect(mac).type.toBe<NetAddress.MacUniversallyAdministeredAddress>()
+      expect(mac).type.toBe<NetAddress.UniversallyAdministeredAddress>()
     }
   })
 
@@ -153,13 +153,10 @@ describe("NetAddress", () => {
     const macBroadcast = NetAddress.broadcastAddressUnsafe(mac)
 
     expect(NetAddress.multicastAddress(local)).type.toBe<
-      Result.Result<
-        NetAddress.MacLocallyAdministeredAddress & NetAddress.MacMulticastAddress,
-        NetAddress.NetAddressError
-      >
+      Result.Result<NetAddress.MulticastAddress<typeof local>, NetAddress.NetAddressError>
     >()
     expect(NetAddress.privateAddress(unicast)).type.toBe<
-      Result.Result<NetAddress.Ipv4UnicastAddress & NetAddress.Ipv4PrivateAddress, NetAddress.NetAddressError>
+      Result.Result<NetAddress.PrivateAddress<typeof unicast>, NetAddress.NetAddressError>
     >()
     expect(macBroadcast).type.toBeAssignableTo<NetAddress.MacMulticastAddress>()
     expect(NetAddress.ipv4Broadcast).type.not.toBeAssignableTo<NetAddress.MulticastAddress>()
@@ -170,18 +167,20 @@ describe("NetAddress", () => {
     expect(NetAddress.ipv4Broadcast).type.toBe<NetAddress.Ipv4BroadcastAddress>()
   })
 
-  it("uses named families in higher-order inference while preserving prior brands", () => {
+  it("preserves families and prior brands in higher-order inference", () => {
     type CustomIpv4Address = NetAddress.Ipv4Address & Brand.Brand<"CustomIpv4Address">
     const ips = null as unknown as Array<NetAddress.IpAddress>
     const custom = null as unknown as CustomIpv4Address
     const multicastSchema = Schema.IpAddress.pipe(Schema.refine(NetAddress.isMulticast))
 
-    expect(ips.filter(NetAddress.isMulticast)).type.toBe<Array<NetAddress.IpMulticastAddress>>()
+    expect(ips.filter(NetAddress.isMulticast)).type.toBe<
+      Array<NetAddress.MulticastAddress<NetAddress.IpAddress>>
+    >()
     expect(Schema.revealCodec(multicastSchema)).type.toBe<
-      Schema.Codec<NetAddress.IpMulticastAddress, NetAddress.IpAddress, never, never>
+      Schema.Codec<NetAddress.MulticastAddress<NetAddress.IpAddress>, NetAddress.IpAddress, never, never>
     >()
     if (NetAddress.isMulticast(custom)) {
-      expect(custom).type.toBe<CustomIpv4Address & NetAddress.Ipv4MulticastAddress>()
+      expect(custom).type.toBe<NetAddress.MulticastAddress<CustomIpv4Address>>()
     }
   })
 
@@ -196,30 +195,38 @@ describe("NetAddress", () => {
     expect<NetAddress.MacBroadcastAddress>().type.toBe<NetAddress.BroadcastAddress<NetAddress.MacAddress>>()
   })
 
-  it("returns concrete interfaces from classification constructors", () => {
+  it("returns generic aliases from classification constructors", () => {
     const ipv4 = null as unknown as NetAddress.Ipv4Address
     const ipv6 = null as unknown as NetAddress.Ipv6Address
     const mac = null as unknown as NetAddress.MacAddress
 
-    expect(NetAddress.multicastAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4MulticastAddress>()
-    expect(NetAddress.multicastAddressUnsafe(ipv6)).type.toBe<NetAddress.Ipv6MulticastAddress>()
-    expect(NetAddress.multicastAddressUnsafe(mac)).type.toBe<NetAddress.MacMulticastAddress>()
-    expect(NetAddress.unicastAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4UnicastAddress>()
-    expect(NetAddress.unicastAddressUnsafe(ipv6)).type.toBe<NetAddress.Ipv6UnicastAddress>()
-    expect(NetAddress.unicastAddressUnsafe(mac)).type.toBe<NetAddress.MacUnicastAddress>()
-    expect(NetAddress.broadcastAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4BroadcastAddress>()
-    expect(NetAddress.broadcastAddressUnsafe(mac)).type.toBe<NetAddress.MacBroadcastAddress>()
-    expect(NetAddress.loopbackAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4LoopbackAddress>()
-    expect(NetAddress.loopbackAddressUnsafe(ipv6)).type.toBe<NetAddress.Ipv6LoopbackAddress>()
-    expect(NetAddress.linkLocalAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4LinkLocalAddress>()
-    expect(NetAddress.linkLocalAddressUnsafe(ipv6)).type.toBe<NetAddress.Ipv6LinkLocalAddress>()
-    expect(NetAddress.unspecifiedAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
-    expect(NetAddress.unspecifiedAddressUnsafe(ipv6)).type.toBe<NetAddress.Ipv6UnspecifiedAddress>()
-    expect(NetAddress.privateAddressUnsafe(ipv4)).type.toBe<NetAddress.Ipv4PrivateAddress>()
-    expect(NetAddress.uniqueLocalAddressUnsafe(ipv6)).type.toBe<NetAddress.Ipv6UniqueLocalAddress>()
-    expect(NetAddress.locallyAdministeredAddressUnsafe(mac)).type.toBe<NetAddress.MacLocallyAdministeredAddress>()
+    expect(NetAddress.multicastAddressUnsafe(ipv4)).type.toBe<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.multicastAddressUnsafe(ipv6)).type.toBe<NetAddress.MulticastAddress<NetAddress.Ipv6Address>>()
+    expect(NetAddress.multicastAddressUnsafe(mac)).type.toBe<NetAddress.MulticastAddress<NetAddress.MacAddress>>()
+    expect(NetAddress.unicastAddressUnsafe(ipv4)).type.toBe<NetAddress.UnicastAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.unicastAddressUnsafe(ipv6)).type.toBe<NetAddress.UnicastAddress<NetAddress.Ipv6Address>>()
+    expect(NetAddress.unicastAddressUnsafe(mac)).type.toBe<NetAddress.UnicastAddress<NetAddress.MacAddress>>()
+    expect(NetAddress.broadcastAddressUnsafe(ipv4)).type.toBe<NetAddress.BroadcastAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.broadcastAddressUnsafe(mac)).type.toBe<NetAddress.BroadcastAddress<NetAddress.MacAddress>>()
+    expect(NetAddress.loopbackAddressUnsafe(ipv4)).type.toBe<NetAddress.LoopbackAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.loopbackAddressUnsafe(ipv6)).type.toBe<NetAddress.LoopbackAddress<NetAddress.Ipv6Address>>()
+    expect(NetAddress.linkLocalAddressUnsafe(ipv4)).type.toBe<NetAddress.LinkLocalAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.linkLocalAddressUnsafe(ipv6)).type.toBe<NetAddress.LinkLocalAddress<NetAddress.Ipv6Address>>()
+    expect(NetAddress.unspecifiedAddressUnsafe(ipv4)).type.toBe<
+      NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>
+    >()
+    expect(NetAddress.unspecifiedAddressUnsafe(ipv6)).type.toBe<
+      NetAddress.UnspecifiedAddress<NetAddress.Ipv6Address>
+    >()
+    expect(NetAddress.privateAddressUnsafe(ipv4)).type.toBe<NetAddress.PrivateAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.uniqueLocalAddressUnsafe(ipv6)).type.toBe<
+      NetAddress.UniqueLocalAddress<NetAddress.Ipv6Address>
+    >()
+    expect(NetAddress.locallyAdministeredAddressUnsafe(mac)).type.toBe<
+      NetAddress.LocallyAdministeredAddress<NetAddress.MacAddress>
+    >()
     expect(NetAddress.universallyAdministeredAddressUnsafe(mac)).type.toBe<
-      NetAddress.MacUniversallyAdministeredAddress
+      NetAddress.UniversallyAdministeredAddress<NetAddress.MacAddress>
     >()
   })
 
