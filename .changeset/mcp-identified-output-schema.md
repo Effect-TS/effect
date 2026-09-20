@@ -2,4 +2,5 @@
 "effect": patch
 ---
 
-Publish object-rooted MCP output schemas for identified Toolkit result types in the 2025 protocols.
+Normalize identified MCP output schemas to object roots across protocol versions.
+Support identified object schemas in MCP elicitation requests.

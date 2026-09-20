@@ -1920,7 +1920,6 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// Inline a top-level `$ref` so object schemas have the root required by older MCP revisions.
 const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
   const document = InternalStructuredOutput.resolveTopLevelReference(
     Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
