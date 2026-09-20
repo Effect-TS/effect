@@ -96,9 +96,8 @@ describe("IpNetwork", () => {
   })
 
   it("requires derived addresses to revalidate refinements", () => {
-    const multicast = NetAddress.multicastAddressUnsafe(
-      NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1]))
-    )
+    const multicast = NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1]))
+    if (!NetAddress.isMulticast(multicast)) throw new Error("expected multicast test address")
     const direct = IpNetwork.fromAddressUnsafe(multicast, 0)
     const viaInterface = IpNetwork.fromInterface(IpInterface.makeUnsafe(multicast, 0))
     for (const derived of [direct, viaInterface]) {

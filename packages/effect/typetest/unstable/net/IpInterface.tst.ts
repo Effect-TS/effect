@@ -20,20 +20,22 @@ describe("IpInterface", () => {
   })
 
   it("preserves refinements obtained on demand when the address is unchanged", () => {
-    const unspecified = NetAddress.unspecifiedAddressUnsafe(NetAddress.ipv4Unspecified)
-    const precise = IpInterface.make(unspecified, 0)
-    expect(precise).type.toBe<
-      Result.Result<
-        IpInterface.IpInterface<NetAddress.Ipv4UnspecifiedAddress>,
-        NetAddress.NetAddressError
-      >
-    >()
-    expect(precise).type.toBeAssignableTo<
-      Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>
-    >()
-    expect<Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>>().type.not.toBeAssignableTo<
-      typeof precise
-    >()
+    const unspecified = NetAddress.ipv4Unspecified
+    if (NetAddress.isUnspecified(unspecified)) {
+      const precise = IpInterface.make(unspecified, 0)
+      expect(precise).type.toBe<
+        Result.Result<
+          IpInterface.IpInterface<NetAddress.Ipv4UnspecifiedAddress>,
+          NetAddress.NetAddressError
+        >
+      >()
+      expect(precise).type.toBeAssignableTo<
+        Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>
+      >()
+      expect<Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>>().type.not.toBeAssignableTo<
+        typeof precise
+      >()
+    }
   })
 
   it("narrows generic interface addresses", () => {

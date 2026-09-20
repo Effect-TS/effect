@@ -108,12 +108,6 @@ describe("NetAddress", () => {
     if (NetAddress.isMulticast(mac)) {
       expect(mac).type.toBe<NetAddress.MulticastAddress<NetAddress.MacAddress>>()
     }
-    expect(NetAddress.multicastAddress(mac)).type.toBe<
-      Result.Result<NetAddress.MulticastAddress<NetAddress.MacAddress>, NetAddress.NetAddressError>
-    >()
-    expect(NetAddress.multicastAddressFromString("239.0.0.1")).type.toBe<
-      Result.Result<NetAddress.IpMulticastAddress, NetAddress.NetAddressError>
-    >()
     expect(NetAddress.isMulticast).type.not.toBeCallableWith(inet)
     addMembership(group)
     expect(addMembership).type.not.toBeCallableWith(macGroup)
@@ -149,17 +143,16 @@ describe("NetAddress", () => {
   it("stacks brands and models MAC broadcast as multicast", () => {
     const ipv4 = null as unknown as NetAddress.Ipv4Address
     const mac = null as unknown as NetAddress.MacAddress
-    const local = NetAddress.locallyAdministeredAddressUnsafe(mac)
-    const unicast = NetAddress.unicastAddressUnsafe(ipv4)
-    const macBroadcast = NetAddress.broadcastAddressUnsafe(mac)
 
-    expect(NetAddress.multicastAddress(local)).type.toBe<
-      Result.Result<NetAddress.MulticastAddress<typeof local>, NetAddress.NetAddressError>
-    >()
-    expect(NetAddress.privateAddress(unicast)).type.toBe<
-      Result.Result<NetAddress.PrivateAddress<typeof unicast>, NetAddress.NetAddressError>
-    >()
-    expect(macBroadcast).type.toBeAssignableTo<NetAddress.MacMulticastAddress>()
+    if (NetAddress.isMacLocallyAdministered(mac) && NetAddress.isMulticast(mac)) {
+      expect(mac).type.toBe<NetAddress.MulticastAddress<NetAddress.MacLocallyAdministeredAddress>>()
+    }
+    if (NetAddress.isUnicast(ipv4) && NetAddress.isPrivate(ipv4)) {
+      expect(ipv4).type.toBe<NetAddress.PrivateAddress<NetAddress.Ipv4UnicastAddress>>()
+    }
+    if (NetAddress.isMacBroadcast(mac)) {
+      expect(mac).type.toBeAssignableTo<NetAddress.MacMulticastAddress>()
+    }
     expect(NetAddress.ipv4Broadcast).type.not.toBeAssignableTo<NetAddress.MulticastAddress>()
     expect(
       [

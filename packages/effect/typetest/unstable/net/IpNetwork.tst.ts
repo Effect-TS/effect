@@ -45,22 +45,24 @@ describe("IpNetwork", () => {
   })
 
   it("preserves on-demand refinements only when address bits are unchanged", () => {
-    const unspecified = NetAddress.unspecifiedAddressUnsafe(NetAddress.ipv4Unspecified)
-    const network = IpNetwork.makeUnsafe(unspecified, 0)
-    expect(network).type.toBe<IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>>()
-    expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
-    expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
-    expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.UnspecifiedAddress>()
+    const unspecified = NetAddress.ipv4Unspecified
+    if (NetAddress.isUnspecified(unspecified)) {
+      const network = IpNetwork.makeUnsafe(unspecified, 0)
+      expect(network).type.toBe<IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>>()
+      expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
+      expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
+      expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.UnspecifiedAddress>()
+    }
   })
 
   it("drops refinements from derived addresses", () => {
-    const multicast = NetAddress.multicastAddressUnsafe(
-      NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1]))
-    )
-    expect(IpNetwork.fromAddress(multicast, 0)).type.toBe<
-      Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
-    >()
-    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(multicast, 0))).type.toBe<IpNetwork.Ipv4Network>()
+    const multicast = NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1]))
+    if (NetAddress.isMulticast(multicast)) {
+      expect(IpNetwork.fromAddress(multicast, 0)).type.toBe<
+        Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
+      >()
+      expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(multicast, 0))).type.toBe<IpNetwork.Ipv4Network>()
+    }
 
     const input = null as unknown as NetAddress.IpAddress
     if (NetAddress.isMulticast(input)) {
