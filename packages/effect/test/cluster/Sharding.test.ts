@@ -55,6 +55,95 @@ import {
 
 // Keep the long-lived stream separate from concurrent suites that assert global shard metrics.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
+  it.effect("keeps the claim of an active uninterruptible request after restarting", () =>
+    Effect.gen(function*() {
+      const started = yield* Queue.make<number>()
+      let starts = 0
+      let active = 0
+      const released: Array<Snowflake.Snowflake> = []
+      const claimed: Array<Snowflake.Snowflake> = []
+      const Restarting = Entity.make("ClaimRestart", [
+        Rpc.make("Run")
+          .annotate(ClusterSchema.Persisted, true)
+          .annotate(ClusterSchema.Uninterruptible, true)
+      ])
+      const layer = Restarting.toLayer({
+        Run: () =>
+          Effect.gen(function*() {
+            starts++
+            active++
+            yield* Queue.offer(started, starts)
+            return yield* Effect.never
+          }).pipe(Effect.ensuring(Effect.sync(() => active--)))
+      }).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+        ...storage,
+        resetRequests: (ids) =>
+          Effect.gen(function*() {
+            released.push(...ids)
+            yield* storage.resetRequests(ids)
+          }),
+        unprocessedMessages: (shards, options) =>
+          storage.unprocessedMessages(shards, options).pipe(
+            Effect.tap((messages) =>
+              Effect.sync(() => {
+                for (const message of messages) {
+                  if (message._tag === "IncomingRequest") claimed.push(message.envelope.requestId)
+                }
+              })
+            )
+          )
+      }))))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const client = (yield* Restarting.client)("restart")
+        const running = yield* client.Run().pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(yield* Queue.take(started), 1)
+        const request = driver.journal[0]
+        assert.strictEqual(request._tag, "Request")
+
+        // Deliver a persisted interrupt, not a local caller cancellation. The
+        // uninterruptible annotation makes the manager restart this same entry.
+        yield* driver.encoded.saveEnvelope({
+          envelope: {
+            _tag: "Interrupt",
+            id: String(yield* sharding.getSnowflake),
+            requestId: request.requestId,
+            address: request.address
+          },
+          primaryKey: null,
+          deliverAt: null
+        })
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* Queue.take(started), 2, "handler must restart after the stored interrupt")
+        assert.strictEqual(active, 1)
+        expect(running.pollUnsafe()).toBeUndefined()
+        claimed.length = 0
+        released.length = 0
+
+        // Make the running request eligible for storage selection, then check
+        // that repeated polls deduplicate it without repeatedly releasing it.
+        yield* TestClock.adjust("10 minutes")
+        for (let i = 0; i < 3; i++) {
+          yield* sharding.pollStorage
+          yield* TestClock.adjust(1)
+        }
+        expect(claimed).toContain(Snowflake.Snowflake(request.requestId))
+        assert.strictEqual(starts, 2, "polling must not deliver the restarted request again")
+        assert.strictEqual(active, 1, "restarted handler must remain active")
+        expect(running.pollUnsafe()).toBeUndefined()
+        assert.strictEqual(released.length, 0, "restarted active request claim must not be released")
+        assert.deepStrictEqual(
+          claimed,
+          [Snowflake.Snowflake(request.requestId)],
+          "restarted request must not be reclaimed on every poll"
+        )
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("keeps the claim of an active stream after an acknowledged chunk", () =>
     Effect.gen(function*() {
       const acked = yield* Deferred.make<void>()
