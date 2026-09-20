@@ -49,8 +49,6 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  */
 export type IpAddress = Ipv4Address | Ipv6Address
 
-const MulticastTypeId = "~effect/net/NetAddress/MulticastAddress" as const
-
 /**
  * An IP or MAC address proven to be multicast (IPv4 `224.0.0.0/4`, IPv6
  * `ff00::/8`, or a MAC address with the IEEE group bit set).
@@ -103,6 +101,7 @@ export interface MacAddress extends Equal.Equal, Hash.Hash {
   toJSON(): string
 }
 
+const MulticastTypeId = "~effect/net/NetAddress/MulticastAddress" as const
 const UnicastTypeId = "~effect/net/NetAddress/UnicastAddress" as const
 const BroadcastTypeId = "~effect/net/NetAddress/BroadcastAddress" as const
 const LoopbackTypeId = "~effect/net/NetAddress/LoopbackAddress" as const
