@@ -247,6 +247,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const config = yield* poolConfig
       const pool = yield* PgPool.make({ ...config, maxConnections: 1 })
       const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
       const first = yield* Effect.scoped(Effect.gen(function*() {
         const connection = yield* pool.get
         yield* blocker.query("BEGIN")
@@ -254,7 +255,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         const fiber = yield* Effect.forkScoped(
           connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
         )
-        yield* waitUntilActive(blocker, connection.processId)
+        yield* waitUntilActive(observer, connection.processId)
         yield* connection.interrupt
         const error = yield* Effect.flip(Fiber.join(fiber))
         assert.strictEqual(error._tag, "SqlError")
@@ -273,6 +274,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const gate = new CancelRequestGate()
       const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
       const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
 
       yield* Effect.gen(function*() {
         const first = yield* Effect.scoped(Effect.gen(function*() {
@@ -282,7 +284,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
           const query = yield* Effect.forkScoped(
             connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
           )
-          yield* waitUntilActive(blocker, connection.processId)
+          yield* waitUntilActive(observer, connection.processId)
           const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
           yield* gate.intercepted
           yield* blocker.query("COMMIT")
@@ -303,6 +305,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const gate = new CancelRequestGate()
       const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
       const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
 
       yield* Effect.gen(function*() {
         const first = yield* Effect.scoped(Effect.gen(function*() {
@@ -312,7 +315,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
           const query = yield* Effect.forkScoped(
             connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
           )
-          yield* waitUntilActive(blocker, connection.processId)
+          yield* waitUntilActive(observer, connection.processId)
           const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
           yield* gate.intercepted
           yield* blocker.query("COMMIT")
@@ -333,6 +336,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const gate = new CancelRequestGate()
       const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
       const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
       const started = yield* Queue.unbounded<number>()
       const lockAcquired = yield* Queue.unbounded<void>()
 
@@ -344,7 +348,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
           const query = yield* Effect.forkScoped(
             connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
           )
-          yield* waitUntilActive(blocker, connection.processId)
+          yield* waitUntilActive(observer, connection.processId)
           const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
           yield* gate.intercepted
           yield* blocker.query("COMMIT")
@@ -367,7 +371,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         yield* blocker.query("BEGIN")
         yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [followUpPid])
         yield* Queue.offer(lockAcquired, undefined)
-        yield* waitUntilActive(blocker, followUpPid)
+        yield* waitUntilActive(observer, followUpPid)
         gate.release()
         yield* gate.delivered
         yield* blocker.query("COMMIT")
@@ -477,6 +481,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const gate = new CancelRequestGate()
       const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
       const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
 
       yield* Effect.gen(function*() {
         const connection = yield* pool.get
@@ -485,7 +490,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         const query = yield* Effect.forkScoped(
           connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
         )
-        yield* waitUntilActive(blocker, connection.processId)
+        yield* waitUntilActive(observer, connection.processId)
         const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
         yield* gate.intercepted
         yield* blocker.query("COMMIT")
