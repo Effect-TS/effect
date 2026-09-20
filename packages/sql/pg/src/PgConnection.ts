@@ -1078,6 +1078,8 @@ class PreparedCache {
   readonly max: number
   private readonly statements = new Map<string, Prepared>()
   private closes: Array<Uint8Array> | undefined
+  // Per-connection so a transaction-mode pooler cannot Bind `effectN` to another session's plan.
+  private readonly nonce = randomBytes(4).toString("hex")
   private counter = 0
 
   constructor(max: number) {
@@ -1096,7 +1098,7 @@ class PreparedCache {
       return found
     }
     const prepared: Prepared = {
-      name: `effect${++this.counter}`,
+      name: `effect_${this.nonce}_${++this.counter}`,
       key,
       ready: false,
       parsing: false,

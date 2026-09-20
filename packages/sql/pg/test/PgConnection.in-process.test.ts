@@ -96,6 +96,21 @@ const frontendTags = (message: Buffer): ReadonlyArray<string> => {
   return tags
 }
 
+const parseStatementName = (message: Buffer): string => {
+  let offset = 0
+  while (offset < message.length) {
+    const tag = String.fromCharCode(message[offset])
+    const length = message.readInt32BE(offset + 1)
+    if (tag === "P") {
+      const nameStart = offset + 5
+      const nameEnd = message.indexOf(0, nameStart)
+      return message.subarray(nameStart, nameEnd).toString()
+    }
+    offset += 1 + length
+  }
+  throw new Error("expected a Parse message")
+}
+
 const consumeFrontend = (
   socket: Net.Socket,
   onMessage: (tag: string | undefined, message: Buffer) => void
@@ -344,8 +359,41 @@ describe("PgConnection in-process server", () => {
       yield* connection.query("SELECT 1")
 
       assert.strictEqual(writes.length, 2)
-      const nameEnd = writes[1].indexOf(0, 5)
-      assert.strictEqual(writes[1].subarray(5, nameEnd).toString(), "effect1")
+      assert.match(parseStatementName(writes[1]), /^effect_[0-9a-f]{8}_1$/)
+    }))
+
+  it.effect("mints distinct prepared names across connections for the same sql", () =>
+    Effect.gen(function*() {
+      const connect = () => {
+        const writes: Array<Buffer> = []
+        const socket: Duplex = new Duplex({
+          read() {},
+          write(chunk: Buffer, _encoding, callback) {
+            const message = Buffer.from(chunk)
+            writes.push(message)
+            if (writes.length === 1) {
+              queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+            } else {
+              queueMicrotask(() => socket.push(emptyQueryResult))
+            }
+            callback()
+          }
+        })
+        return { socket, writes }
+      }
+      const first = connect()
+      const second = connect()
+      const left = yield* PgConnection.make({ username: "test", stream: () => first.socket })
+      const right = yield* PgConnection.make({ username: "test", stream: () => second.socket })
+      yield* left.query("SELECT 1")
+      yield* right.query("SELECT 1")
+      assert.ok(first.writes.length >= 2)
+      assert.ok(second.writes.length >= 2)
+      const leftName = parseStatementName(first.writes[1])
+      const rightName = parseStatementName(second.writes[1])
+      assert.match(leftName, /^effect_[0-9a-f]{8}_1$/)
+      assert.match(rightName, /^effect_[0-9a-f]{8}_1$/)
+      assert.notStrictEqual(leftName, rightName)
     }))
 
   it.effect("ends a custom stream after writing Terminate", () =>
