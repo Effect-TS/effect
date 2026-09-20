@@ -644,6 +644,18 @@ const make = Effect.gen(function*() {
         deliveredThisRead = true
       })
 
+      // A request is deduplicated while it is running, but also while its
+      // reply is being published and, until the next read, after it has
+      // completed. A reset (possibly from another runner) can race with that
+      // window, so release the claim this read just took on a completed
+      // request. Otherwise the reset is only delivered once the claim expires.
+      const releaseCompletedClaim = (message: Message.Incoming<any>) => {
+        const state = entityManagers.get(message.envelope.address.entityType)
+        if (!state?.manager.isProcessingFor(message, { excludeReplies: true })) {
+          resetRequestIds.push(message.envelope.requestId)
+        }
+      }
+
       const processMessages = Effect.whileLoop({
         while: () => index < messages.length,
         step: () => index++,
@@ -695,19 +707,9 @@ const make = Effect.gen(function*() {
             // send it to the entity manager to be processed.
             return Effect.tap(state.manager.send(message), markDelivered)
           } else if (isProcessing || state.status === "closing") {
-            if (
-              isProcessing && message._tag === "IncomingRequest" &&
-              !state.manager.isProcessingFor(message, { excludeReplies: true })
-            ) {
-              // A reset (possibly on another runner) can race with this read
-              // and reply publication. Keep deduplicating the request, but do
-              // not leave its new claim stranded until the claim timeout.
-              // This also covers replies published before the active request
-              // has been moved to the processed-ID cache.
-              resetRequestIds.push(message.envelope.requestId)
-            }
             // If the request is already processing, we skip it.
             // Or if the entity is closing, we skip all incoming messages.
+            if (isProcessing) releaseCompletedClaim(message)
             return Effect.void
           } else if (message._tag === "IncomingRequest" && pendingNotifications.has(message.envelope.requestId)) {
             const entry = pendingNotifications.get(message.envelope.requestId)!
@@ -750,12 +752,9 @@ const make = Effect.gen(function*() {
               defect: Cause.squash(cause)
             }))
           }
-          if (error.success._tag === "AlreadyProcessingMessage" && message._tag === "IncomingRequest") {
-            // Decoding or entity acquisition can yield after isProcessingFor.
-            const state = entityManagers.get(message.envelope.address.entityType)
-            if (!state?.manager.isProcessingFor(message, { excludeReplies: true })) {
-              resetRequestIds.push(message.envelope.requestId)
-            }
+          if (error.success._tag === "AlreadyProcessingMessage") {
+            // The request completed while this message was being decoded.
+            releaseCompletedClaim(message)
             return Effect.void
           }
           if (error.success._tag === "MailboxFull") {
