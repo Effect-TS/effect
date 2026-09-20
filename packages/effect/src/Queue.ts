@@ -1166,15 +1166,12 @@ export const shutdownUnsafe = <A, E>(self: Enqueue<A, E>): boolean => {
   MutableList.clear(self.messages)
   const offers = self.state.offers
   finalize(self, self.state._tag === "Open" ? exitInterrupt : self.state.exit)
-  if (offers.size > 0) {
-    for (const entry of offers) {
-      if (entry._tag === "Single") {
-        entry.resume(exitFalse)
-      } else {
-        entry.resume(core.exitSucceed(entry.remaining.slice(entry.offset)))
-      }
+  for (const entry of offers) {
+    if (entry._tag === "Single") {
+      entry.resume(exitFalse)
+    } else {
+      entry.resume(core.exitSucceed(entry.remaining.slice(entry.offset)))
     }
-    offers.clear()
   }
   return true
 }
