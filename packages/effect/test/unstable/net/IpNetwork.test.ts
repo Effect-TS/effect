@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue } from "@effect/vitest/utils"
 import { Equal, Hash, Result, Schema } from "effect"
+import * as IpInterface from "effect/unstable/net/IpInterface"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as fc from "fast-check"
@@ -92,6 +93,37 @@ describe("IpNetwork", () => {
       IpNetwork.format(success(IpNetwork.fromAddress(ip("2001:db8:0:1:ffff::1"), 65))),
       "2001:db8:0:1:8000::/65"
     )
+  })
+
+  it("requires derived addresses to revalidate refinements", () => {
+    const multicast = NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1]))
+    if (!NetAddress.isMulticast(multicast)) throw new Error("expected multicast test address")
+    const direct = IpNetwork.fromAddressUnsafe(multicast, 0)
+    const viaInterface = IpNetwork.fromInterface(IpInterface.makeUnsafe(multicast, 0))
+    for (const derived of [direct, viaInterface]) {
+      assert.strictEqual(NetAddress.formatIp(derived.address), "0.0.0.0")
+      assert.isFalse(NetAddress.isMulticast(derived.address))
+      const last = IpNetwork.lastAddress(derived)
+      assert.strictEqual(NetAddress.formatIp(last), "255.255.255.255")
+      assert.isFalse(NetAddress.isMulticast(last))
+    }
+
+    const unspecifiedNetwork = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
+    const broadcast = IpNetwork.lastAddress(unspecifiedNetwork)
+    assert.isFalse(NetAddress.isUnspecified(broadcast))
+    assert.isTrue(NetAddress.isBroadcast(broadcast))
+
+    const loopback = ip("::1")
+    assert.isTrue(NetAddress.isLoopback(loopback))
+    if (NetAddress.isLoopback(loopback)) {
+      const directLoopback = IpNetwork.fromAddressUnsafe(loopback, 64)
+      const interfaceLoopback = IpNetwork.fromInterface(IpInterface.makeUnsafe(loopback, 64))
+      for (const derived of [directLoopback, interfaceLoopback]) {
+        assert.strictEqual(NetAddress.formatIp(derived.address), "::")
+        assert.isFalse(NetAddress.isLoopback(derived.address))
+        assert.isTrue(NetAddress.isUnspecified(derived.address))
+      }
+    }
   })
 
   it("parses strict CIDR and formats canonical address text", () => {
