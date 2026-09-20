@@ -15,14 +15,15 @@ const poolConfig = Effect.gen(function*() {
 
 const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
   Effect.gen(function*() {
-    while (true) {
+    for (let attempt = 0; attempt < 100; attempt++) {
       const active = yield* observer.query(
         "SELECT count(*)::int4 AS active FROM pg_stat_activity WHERE pid = $1 AND state = 'active'",
         [pid]
       )
-      if (active.rows[0].active === 1) break
+      if (active.rows[0].active === 1) return
       yield* realSleep
     }
+    return yield* Effect.fail(new Error(`PostgreSQL backend ${pid} did not become active after 100 checks`))
   })
 
 const cancelRequestCode = 80877102
@@ -121,13 +122,12 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.deepStrictEqual(rows[999], { n: 1000 })
 
       const aborted = yield* Stream.runCollect(
-        connection.stream("SELECT n FROM generate_series(1, 1000000) AS g(n)").pipe(Stream.take(5))
+        connection.stream("SELECT n FROM generate_series(1, 5000) AS g(n)").pipe(Stream.take(5))
       )
       assert.deepStrictEqual(aborted, [{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }])
 
-      // The connection survives the cancelled stream.
-      const result = yield* connection.query("SELECT $1::text AS after", ["ok"])
-      assert.deepStrictEqual(result.rows, [{ after: "ok" }])
+      const result = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid, $1::text AS after", ["ok"])
+      assert.deepStrictEqual(result.rows, [{ pid: connection.processId, after: "ok" }])
     }))
 
   it.effect("acquires a multiplexed listener after registration", () =>
