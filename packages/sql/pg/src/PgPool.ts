@@ -87,13 +87,9 @@ export interface PgPool {
    * errors invalidate sessions automatically.
    */
   /**
-   * Lends a session for the duration of one effect and takes it back on any
-   * exit, without opening a scope for it.
-   *
-   * **Details**
-   *
-   * For work that finishes with the effect that runs it. A lease that has to
-   * outlive its effect - a stream, a transaction - takes `get` or `reserve`.
+   * Runs an effect with a checked-out session and returns it when the effect
+   * exits. Use `get` or `reserve` when the lease must outlive the effect, such
+   * as for a stream or transaction.
    */
   readonly use: <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
