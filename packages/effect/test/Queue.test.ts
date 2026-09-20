@@ -428,24 +428,32 @@ describe("Queue", () => {
       assert.deepStrictEqual(producer.pollUnsafe(), Exit.succeed([3]))
     }))
 
-  it.effect("shutdownUnsafe preserves an existing failure", () =>
+  it.effect("shutdownUnsafe returns true and preserves an existing failure", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
       Queue.offerUnsafe(queue, 1)
       Queue.failCauseUnsafe(queue, Cause.fail("boom"))
 
-      Queue.shutdownUnsafe(queue)
+      assert.isTrue(Queue.shutdownUnsafe(queue))
 
       assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), "boom")
     }))
 
-  it.effect("shutdownUnsafe is idempotent", () =>
+  it.effect("shutdownUnsafe returns false when already shut down", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+      assert.isFalse(Queue.shutdownUnsafe(queue))
+      assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Queue.await(queue))))
+    }))
+
+  it.effect("shutdown returns false and preserves a completed queue's failure", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
       Queue.failCauseUnsafe(queue, Cause.fail("boom"))
 
-      assert.isTrue(Queue.shutdownUnsafe(queue))
-      assert.isTrue(Queue.shutdownUnsafe(queue))
+      assert.isFalse(yield* Queue.shutdown(queue))
       assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), "boom")
     }))
 
