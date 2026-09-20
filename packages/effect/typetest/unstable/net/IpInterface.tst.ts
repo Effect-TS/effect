@@ -4,30 +4,27 @@ import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { describe, expect, it } from "tstyche"
 
-// Widen the branded constants to retain coverage of base-family inference.
-const ipv4Unspecified: NetAddress.Ipv4Address = NetAddress.ipv4Unspecified
-const ipv6Unspecified: NetAddress.Ipv6Address = NetAddress.ipv6Unspecified
-
 describe("IpInterface", () => {
   it("preserves address families", () => {
-    expect(IpInterface.make(ipv4Unspecified, 0)).type.toBe<
+    expect(IpInterface.make(NetAddress.ipv4Unspecified, 0)).type.toBe<
       Result.Result<IpInterface.IpInterface<NetAddress.Ipv4Address>, NetAddress.NetAddressError>
     >()
-    expect(IpInterface.make(ipv6Unspecified, 0)).type.toBe<
+    expect(IpInterface.make(NetAddress.ipv6Unspecified, 0)).type.toBe<
       Result.Result<IpInterface.IpInterface<NetAddress.Ipv6Address>, NetAddress.NetAddressError>
     >()
     expect(IpInterface.ipv4FromString("127.0.0.1/8")).type.toBe<
       Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>
     >()
-    const ipv4 = IpInterface.makeUnsafe(ipv4Unspecified, 0)
+    const ipv4 = IpInterface.makeUnsafe(NetAddress.ipv4Unspecified, 0)
     expect(IpNetwork.fromInterface(ipv4)).type.toBe<IpNetwork.Ipv4Network>()
   })
 
-  it("preserves refinements when the address is unchanged", () => {
-    const precise = IpInterface.make(NetAddress.ipv4Unspecified, 0)
+  it("preserves refinements obtained on demand when the address is unchanged", () => {
+    const unspecified = NetAddress.unspecifiedAddressUnsafe(NetAddress.ipv4Unspecified)
+    const precise = IpInterface.make(unspecified, 0)
     expect(precise).type.toBe<
       Result.Result<
-        IpInterface.IpInterface<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>,
+        IpInterface.IpInterface<NetAddress.Ipv4UnspecifiedAddress>,
         NetAddress.NetAddressError
       >
     >()

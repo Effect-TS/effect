@@ -880,7 +880,8 @@ describe("NetAddress", () => {
     )
 
     const loopback = NetAddress.ipv4Loopback
-    assert.strictEqual(Schema.decodeUnknownSync(Schema.IpLoopbackAddress)(loopback), loopback)
+    const decodedLoopback: NetAddress.IpAddress = Schema.decodeUnknownSync(Schema.IpLoopbackAddress)(loopback)
+    assert.strictEqual(decodedLoopback, loopback)
     assert.isTrue(Schema.is(Schema.IpLoopbackAddress)(loopback))
     assert.isFalse(Schema.is(Schema.IpMulticastAddress)(loopback))
     assert.throws(

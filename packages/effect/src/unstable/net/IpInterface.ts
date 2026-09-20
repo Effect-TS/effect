@@ -13,7 +13,10 @@ import * as NetAddress from "./NetAddress.ts"
 const TypeId = "~effect/net/IpInterface" as const
 
 /**
- * An IP host address and prefix length. Host bits are preserved.
+ * An IP host address and prefix length. Host bits and any verified address
+ * refinements are preserved because the address is retained unchanged. Code
+ * that computes different address bits must widen to the IPv4 or IPv6 family,
+ * or validate the resulting address before treating it as refined.
  *
  * @category models
  * @since 4.0.0

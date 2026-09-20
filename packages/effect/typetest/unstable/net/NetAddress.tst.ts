@@ -163,11 +163,35 @@ describe("NetAddress", () => {
     >()
     expect(macBroadcast).type.toBeAssignableTo<NetAddress.MacMulticastAddress>()
     expect(NetAddress.ipv4Broadcast).type.not.toBeAssignableTo<NetAddress.MulticastAddress>()
-    expect(NetAddress.ipv4Loopback).type.toBe<NetAddress.Ipv4LoopbackAddress>()
-    expect(NetAddress.ipv6Loopback).type.toBe<NetAddress.Ipv6LoopbackAddress>()
-    expect(NetAddress.ipv4Unspecified).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
-    expect(NetAddress.ipv6Unspecified).type.toBe<NetAddress.Ipv6UnspecifiedAddress>()
-    expect(NetAddress.ipv4Broadcast).type.toBe<NetAddress.Ipv4BroadcastAddress>()
+    expect(NetAddress.ipv4Loopback).type.toBe<NetAddress.Ipv4Address>()
+    expect(NetAddress.ipv6Loopback).type.toBe<NetAddress.Ipv6Address>()
+    expect(NetAddress.ipv4Unspecified).type.toBe<NetAddress.Ipv4Address>()
+    expect(NetAddress.ipv6Unspecified).type.toBe<NetAddress.Ipv6Address>()
+    expect(NetAddress.ipv4Broadcast).type.toBe<NetAddress.Ipv4Address>()
+  })
+
+  it("narrows singleton constants to named classifications on demand", () => {
+    const ipv4Loopback = NetAddress.ipv4Loopback
+    const ipv6Loopback = NetAddress.ipv6Loopback
+    const ipv4Unspecified = NetAddress.ipv4Unspecified
+    const ipv6Unspecified = NetAddress.ipv6Unspecified
+    const ipv4Broadcast = NetAddress.ipv4Broadcast
+
+    if (NetAddress.isLoopback(ipv4Loopback)) {
+      expect(ipv4Loopback).type.toBe<NetAddress.Ipv4LoopbackAddress>()
+    }
+    if (NetAddress.isLoopback(ipv6Loopback)) {
+      expect(ipv6Loopback).type.toBe<NetAddress.Ipv6LoopbackAddress>()
+    }
+    if (NetAddress.isUnspecified(ipv4Unspecified)) {
+      expect(ipv4Unspecified).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
+    }
+    if (NetAddress.isUnspecified(ipv6Unspecified)) {
+      expect(ipv6Unspecified).type.toBe<NetAddress.Ipv6UnspecifiedAddress>()
+    }
+    if (NetAddress.isBroadcast(ipv4Broadcast)) {
+      expect(ipv4Broadcast).type.toBe<NetAddress.Ipv4BroadcastAddress>()
+    }
   })
 
   it("uses named families in higher-order inference while preserving prior brands", () => {

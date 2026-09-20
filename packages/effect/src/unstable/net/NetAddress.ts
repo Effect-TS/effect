@@ -701,9 +701,7 @@ export const ipv6FromBytesUnsafe = (bytes: Uint8Array): Ipv6Address => makeIpv6(
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Loopback: Ipv4LoopbackAddress = makeIpv4(
-  new Uint8Array([127, 0, 0, 1])
-) as Ipv4LoopbackAddress
+export const ipv4Loopback: Ipv4Address = makeIpv4(new Uint8Array([127, 0, 0, 1]))
 
 /**
  * The IPv6 loopback address `::1`.
@@ -711,9 +709,9 @@ export const ipv4Loopback: Ipv4LoopbackAddress = makeIpv4(
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Loopback: Ipv6LoopbackAddress = makeIpv6(
+export const ipv6Loopback: Ipv6Address = makeIpv6(
   new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
-) as Ipv6LoopbackAddress
+)
 
 /**
  * The unspecified IPv4 address `0.0.0.0`.
@@ -721,9 +719,7 @@ export const ipv6Loopback: Ipv6LoopbackAddress = makeIpv6(
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Unspecified: Ipv4UnspecifiedAddress = makeIpv4(
-  new Uint8Array(4)
-) as Ipv4UnspecifiedAddress
+export const ipv4Unspecified: Ipv4Address = makeIpv4(new Uint8Array(4))
 
 /**
  * The unspecified IPv6 address `::`.
@@ -731,9 +727,7 @@ export const ipv4Unspecified: Ipv4UnspecifiedAddress = makeIpv4(
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Unspecified: Ipv6UnspecifiedAddress = makeIpv6(
-  new Uint8Array(16)
-) as Ipv6UnspecifiedAddress
+export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
 
 /**
  * The IPv4 broadcast address `255.255.255.255`.
@@ -741,9 +735,7 @@ export const ipv6Unspecified: Ipv6UnspecifiedAddress = makeIpv6(
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Broadcast: Ipv4BroadcastAddress = makeIpv4(
-  new Uint8Array([255, 255, 255, 255])
-) as Ipv4BroadcastAddress
+export const ipv4Broadcast: Ipv4Address = makeIpv4(new Uint8Array([255, 255, 255, 255]))
 
 const addressError = (input: unknown, message: string): Result.Result<never, NetAddressError> =>
   Result.fail(new NetAddressError({ input, message }))
