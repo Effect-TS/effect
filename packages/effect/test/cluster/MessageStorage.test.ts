@@ -104,6 +104,52 @@ describe("MessageStorage", () => {
         expect(messages).toHaveLength(0)
       }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
+    it.effect("resetRequests with no IDs leaves existing claims untouched", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+        yield* storage.resetRequests([])
+        const driver = yield* MessageStorage.MemoryDriver
+        yield* driver.encoded.resetRequests([])
+        expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(0)
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("resetRequests releases only the selected request at a shared address", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const selected = yield* makeRequest()
+        const unrelated = yield* makeRequest()
+        yield* storage.saveRequest(selected)
+        yield* storage.saveRequest(unrelated)
+        const shards = [selected.envelope.address.shardId]
+        expect(yield* storage.unprocessedMessages(shards)).toHaveLength(2)
+        yield* storage.resetRequests([selected.envelope.requestId])
+        const messages = yield* storage.unprocessedMessages(shards)
+        expect(messages.map((message) => message.envelope.requestId)).toEqual([selected.envelope.requestId])
+        expect(yield* storage.unprocessedMessages(shards)).toHaveLength(0)
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("resetRequests preserves chunk replies, exit replies, and completed state", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const streaming = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 123 }) })
+        const completed = yield* makeRequest()
+        yield* storage.saveRequest(streaming)
+        yield* storage.saveRequest(completed)
+        yield* storage.saveReply(yield* makeChunkReply(streaming))
+        yield* storage.saveReply(yield* makeReply(completed))
+        const replies = yield* storage.repliesFor([streaming, completed])
+        expect(replies).toHaveLength(2)
+        const shards = [streaming.envelope.address.shardId]
+        expect(yield* storage.unprocessedMessages(shards)).toHaveLength(1)
+        yield* storage.resetRequests([streaming.envelope.requestId, completed.envelope.requestId])
+        const messages = yield* storage.unprocessedMessages(shards)
+        expect(messages.map((message) => message.envelope.requestId)).toEqual([streaming.envelope.requestId])
+        expect(yield* storage.repliesFor([streaming, completed])).toEqual(replies)
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("saves a request", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
