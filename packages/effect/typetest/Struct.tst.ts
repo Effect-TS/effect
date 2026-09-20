@@ -332,6 +332,161 @@ describe("Struct", () => {
     })
   })
 
+  describe("modifyFields", () => {
+    it("errors when not providing a well-typed transformation function for a key", () => {
+      expect(Struct.modifyFields).type.not.toBeCallableWith(
+        { a: "a", b: 1 },
+        { a: (n: number) => n }
+      )
+      pipe(
+        { a: "a", b: 1 },
+        // @ts-expect-error Type '(n: number) => number' is not assignable to type '(a: string) => string'
+        Struct.modifyFields({ a: (n: number) => n })
+      )
+    })
+
+    it("errors when a transformation returns a different type than the field", () => {
+      expect(Struct.modifyFields).type.not.toBeCallableWith(
+        { a: "b" },
+        { a: () => 1 }
+      )
+      expect(Struct.modifyFields).type.not.toBeCallableWith(
+        { a: "a", b: 1 },
+        { a: (s: string) => s.length }
+      )
+      pipe(
+        { a: "a", b: 1 },
+        // @ts-expect-error Type 'number' is not assignable to type 'string'
+        Struct.modifyFields({ a: (s) => s.length })
+      )
+      pipe(
+        { a: "a", b: 1 },
+        // @ts-expect-error Type 'string' is not assignable to type 'number'
+        Struct.modifyFields({ a: (s) => s, b: (n) => String(n) })
+      )
+    })
+
+    it("accepts a transformation that returns a subtype of the field", () => {
+      expect(Struct.modifyFields(hole<{ a: string | number }>(), { a: () => "x" })).type.toBe<
+        { a: string | number }
+      >()
+      expect(Struct.modifyFields(hole<{ a: string | undefined }>(), { a: (s) => s ?? "" })).type.toBe<
+        { a: string | undefined }
+      >()
+    })
+
+    it("errors when providing a key that does not exist on the struct", () => {
+      expect(Struct.modifyFields).type.not.toBeCallableWith(
+        { a: "a", b: 1 },
+        { a: (s: string) => s.toUpperCase(), c: (n: number) => n }
+      )
+      pipe(
+        { a: "a", b: 1 },
+        // @ts-expect-error Type '(n: number) => number' is not assignable to type 'never'
+        Struct.modifyFields({ a: (s) => s.toUpperCase(), c: (n: number) => n })
+      )
+    })
+
+    it("nested modifyFields infers the inner struct from the outer key", () => {
+      expect(Struct.modifyFields({ a: { b: "c" }, d: 1 }, {
+        a: Struct.modifyFields({
+          b: (s) => {
+            expect(s).type.toBe<string>()
+            return s.toUpperCase()
+          }
+        })
+      })).type.toBe<{ a: { b: string }; d: number }>()
+      expect(pipe(
+        { a: { b: "c" }, d: 1 },
+        Struct.modifyFields({
+          a: Struct.modifyFields({
+            b: (s) => {
+              expect(s).type.toBe<string>()
+              return s.toUpperCase()
+            }
+          })
+        })
+      )).type.toBe<{ a: { b: string }; d: number }>()
+    })
+
+    it("partial required fields", () => {
+      expect(Struct.modifyFields(stringKeys, {
+        a: (s) => {
+          expect(s).type.toBe<string>()
+          return s.toUpperCase()
+        }
+      })).type.toBe<{ a: string; b: number; c: boolean }>()
+      expect(pipe(
+        stringKeys,
+        Struct.modifyFields({
+          a: (s) => {
+            expect(s).type.toBe<string>()
+            return s.toUpperCase()
+          }
+        })
+      )).type.toBe<{ a: string; b: number; c: boolean }>()
+
+      expect(Struct.modifyFields(symbolKeys, {
+        [aSym]: (s) => {
+          expect(s).type.toBe<string>()
+          return s.toUpperCase()
+        }
+      })).type.toBe<{ [aSym]: string; [bSym]: number; [cSym]: boolean }>()
+      expect(pipe(
+        symbolKeys,
+        Struct.modifyFields({
+          [aSym]: (s) => {
+            expect(s).type.toBe<string>()
+            return s.toUpperCase()
+          }
+        })
+      )).type.toBe<{ [aSym]: string; [bSym]: number; [cSym]: boolean }>()
+    })
+
+    it("all required fields", () => {
+      expect(Struct.modifyFields(stringKeys, {
+        a: (s) => {
+          expect(s).type.toBe<string>()
+          return s.toUpperCase()
+        },
+        b: (n) => {
+          expect(n).type.toBe<number>()
+          return n * 2
+        },
+        c: (b) => {
+          expect(b).type.toBe<boolean>()
+          return !b
+        }
+      })).type.toBe<{ a: string; b: number; c: boolean }>()
+      expect(pipe(
+        stringKeys,
+        Struct.modifyFields({
+          a: (s) => {
+            expect(s).type.toBe<string>()
+            return s.toUpperCase()
+          },
+          b: (n) => {
+            expect(n).type.toBe<number>()
+            return n * 2
+          },
+          c: (b) => {
+            expect(b).type.toBe<boolean>()
+            return !b
+          }
+        })
+      )).type.toBe<{ a: string; b: number; c: boolean }>()
+    })
+
+    it("optional properties", () => {
+      expect(Struct.modifyFields(stringOptionalKeys, {
+        a: (s) => {
+          expect(s).type.toBe<string | undefined>()
+          return s?.toUpperCase()
+        }
+      })).type.toBe<{ a?: string; b?: number; c?: boolean }>()
+    })
+  })
+
   it("evolveKeys", () => {
     expect(Struct.evolveKeys(stringKeys, {
       a: (k) => Str.toUpperCase(k)
