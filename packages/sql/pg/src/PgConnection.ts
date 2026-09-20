@@ -207,11 +207,12 @@ export interface PgConnection {
    *
    * Interrupting the effect drains the connection back to `ReadyForQuery`,
    * sending a `CancelRequest` when the statement does not finish promptly.
-   * A pool discards the session at its next checkout unless the backend reports
-   * `57014`. A caller that keeps the same checkout may receive a late cancel
-   * on a following statement. An unpooled session cannot be replaced and
-   * remains exposed to the late cancel. Because `statement_timeout` also raises
-   * `57014`, it can be mistaken for confirmation that the cancel arrived.
+   * Unless the backend reports `57014`, a pool retires the session before it
+   * can be checked out again. A caller that keeps the same checkout may receive
+   * a late cancel on a following statement. An unpooled session cannot be
+   * replaced and remains exposed to the late cancel. Because
+   * `statement_timeout` also raises `57014`, it can be mistaken for
+   * confirmation that the cancel arrived.
    */
   readonly query: (
     sql: string,
@@ -364,7 +365,7 @@ class PgConnectionImpl implements PgConnection {
   /** Set when a `CancelRequest` is sent, cleared by any backend `57014`. */
   cancelPending = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
-  readonly fatalHooks = new Set<() => void>()
+  readonly retireHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
   readonly pipelinePending: Array<PipelineEntry> = []
   /** Written and awaiting their `ReadyForQuery`, oldest first. */
@@ -388,8 +389,7 @@ class PgConnectionImpl implements PgConnection {
     this[internalsKey] = {
       base: this,
       deadError: () => this.deadWith,
-      cancelPending: () => this.cancelPending,
-      fatalHooks: this.fatalHooks
+      retireHooks: this.retireHooks
     }
     this.pinnedView = new PinnedPgConnection(this)
     session.socket.on("data", this.onData)
@@ -423,6 +423,12 @@ class PgConnectionImpl implements PgConnection {
     switch (message._tag) {
       case "ErrorResponse":
         if (message.fields.code === queryCanceledCode) this.cancelPending = false
+        break
+      case "ReadyForQuery":
+        if (this.cancelPending) {
+          this.cancelPending = false
+          this.retire()
+        }
         break
       case "NotificationResponse": {
         const queues = this.channels.get(message.channel)
@@ -472,9 +478,12 @@ class PgConnectionImpl implements PgConnection {
     for (const set of sets) {
       for (const queue of set) Queue.failCauseUnsafe(queue, cause)
     }
-    if (!this.closed) {
-      for (const hook of this.fatalHooks) hook()
-    }
+    this.retire()
+  }
+
+  private retire(): void {
+    if (this.closed) return
+    for (const hook of this.retireHooks) hook()
   }
 
   closeUnsafe(): void {
@@ -721,6 +730,7 @@ class PgConnectionImpl implements PgConnection {
   readonly cancel: Effect.Effect<void> = Effect.suspend(() => {
     if (this.deadWith !== undefined) return Effect.void
     this.cancelPending = true
+    if (this.consumer === undefined) this.retire()
     return sendCancelRequest(this.resolved, this.session)
   })
 

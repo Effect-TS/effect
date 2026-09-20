@@ -87,9 +87,13 @@ export interface PgPool {
    * errors invalidate sessions automatically.
    */
   /**
-   * Runs an effect with a checked-out session and returns it when the effect
-   * exits. Use `get` or `reserve` when the lease must outlive the effect, such
-   * as for a stream or transaction.
+   * Lends a session for the duration of one effect and takes it back on any
+   * exit, without opening a scope for it.
+   *
+   * **Details**
+   *
+   * For work that finishes with the effect that runs it. A lease that has to
+   * outlive its effect - a stream, a transaction - takes `get` or `reserve`.
    */
   readonly use: <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
@@ -136,7 +140,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     Effect.sync(() => {
       createdAt.set(connection, clock.currentTimeMillisUnsafe())
       const internals = connectionInternals(connection)
-      internals.fatalHooks.add(() => {
+      internals.retireHooks.add(() => {
         deadConnections.add(connection)
         // `deadConnections` is only read by the next checkout, and a checkout
         // already waiting for this connection would never get that far. Tell
@@ -161,8 +165,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   })
 
   const expired = (connection: PgConnection.PgConnection): boolean => {
-    const internals = connectionInternals(connection)
-    if (internals.deadError() !== undefined || internals.cancelPending()) return true
+    if (connectionInternals(connection).deadError() !== undefined) return true
     if (connectionTTL === undefined) return false
     if (!checkedOut.has(connection)) {
       checkedOut.add(connection)
@@ -202,12 +205,19 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const reserve = Effect.flatMap(get, (connection) => connection.pin)
 
   // `Pool.use` cannot check the session it hands over before running the
-  // effect. Checking inside its callback would hold one lease while acquiring
-  // a replacement, which deadlocks a pool of one. Use the scoped checkout so
-  // dead, expired, and pending-cancel sessions are replaced first.
+  // effect, so it is only taken when there is nothing to check: no session is
+  // known dead or has an unconfirmed cancel, and no lifetime can have run out.
+  // Otherwise the scoped checkout does its replacement pass first. Checking
+  // inside the callback instead would hold one lease while acquiring another,
+  // which deadlocks a pool of one.
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E | SqlError, R> => Effect.scoped(Effect.flatMap(get, f))
+  ): Effect.Effect<A, E | SqlError, R> =>
+    Effect.suspend(() =>
+      connectionTTL === undefined && deadConnections.size === 0
+        ? Pool.use(pool, f)
+        : Effect.scoped(Effect.flatMap(get, f))
+    )
 
   const pgPool: PgPool = {
     [TypeId]: TypeId,
