@@ -1,6 +1,8 @@
 import { PgConnection, PgPool } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Effect, Fiber, Queue, Redacted, Stream } from "effect"
+import * as Net from "node:net"
+import { Duplex } from "node:stream"
 import { PgContainer } from "./utils.ts"
 
 // `it.effect` runs under the TestClock, so poll loops sleep in real time.
@@ -10,6 +12,82 @@ const poolConfig = Effect.gen(function*() {
   const container = yield* PgContainer
   return { url: Redacted.make(container.getConnectionUri()) }
 })
+
+/** Polls `pg_stat_activity` until the backend `pid` is running a statement. */
+const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
+  Effect.gen(function*() {
+    while (true) {
+      const active = yield* observer.query(
+        "SELECT count(*)::int4 AS active FROM pg_stat_activity WHERE pid = $1 AND state = 'active'",
+        [pid]
+      )
+      if (active.rows[0].active === 1) break
+      yield* realSleep
+    }
+  })
+
+const cancelRequestCode = 80877102
+
+/**
+ * Stands between the client and the backend like a connection pooler or a
+ * hosted proxy: a `CancelRequest` is acknowledged at once by closing the side
+ * connection, and forwarded to the backend `delayMillis` later. Every other
+ * byte passes through untouched.
+ */
+class LateCancelProxy extends Duplex {
+  private readonly backend: Net.Socket
+  private cancelDeferred = false
+
+  constructor(host: string, port: number, private readonly delayMillis: number) {
+    super()
+    this.backend = Net.connect({ host, port, noDelay: true })
+    this.backend.on("data", (chunk: Buffer) => {
+      if (!this.push(chunk)) this.backend.pause()
+    })
+    this.backend.on("end", () => this.push(null))
+    this.backend.on("error", (error) => this.destroy(error))
+    this.backend.on("close", () => {
+      if (!this.cancelDeferred) this.destroy()
+    })
+  }
+
+  override _read(): void {
+    this.backend.resume()
+  }
+
+  override _write(chunk: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+    if (chunk.length === 16 && chunk.readInt32BE(0) === 16 && chunk.readInt32BE(4) === cancelRequestCode) {
+      this.cancelDeferred = true
+      const backend = this.backend
+      setTimeout(() => backend.end(chunk), this.delayMillis)
+      callback()
+      this.destroy()
+      return
+    }
+    this.backend.write(chunk, callback)
+  }
+
+  override _final(callback: (error?: Error | null) => void): void {
+    this.backend.end(callback)
+  }
+
+  override _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
+    if (!this.cancelDeferred) this.backend.destroy()
+    callback(error)
+  }
+}
+
+const lateCancelPoolConfig = (delayMillis: number) =>
+  Effect.gen(function*() {
+    const container = yield* PgContainer
+    const host = container.getHost()
+    const port = container.getMappedPort(5432)
+    return {
+      ...(yield* poolConfig),
+      maxConnections: 1,
+      stream: () => new LateCancelProxy(host, port, delayMillis)
+    }
+  })
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
   it.effect("reuses checked out connections", () =>
@@ -122,15 +200,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       const connection = yield* pool.get
       const other = yield* pool.get
       const fiber = yield* Effect.forkScoped(connection.query("SELECT pg_sleep(10)"))
-      // Wait until the statement is running server side.
-      while (true) {
-        const active = yield* other.query(
-          "SELECT count(*)::int4 AS active FROM pg_stat_activity WHERE pid = $1 AND state = 'active'",
-          [connection.processId]
-        )
-        if (active.rows[0].active === 1) break
-        yield* realSleep
-      }
+      yield* waitUntilActive(other, connection.processId)
       yield* connection.interrupt
       const error = yield* Effect.flip(Fiber.join(fiber))
       assert.strictEqual(error._tag, "SqlError")
@@ -139,6 +209,44 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       // The connection survives the cancelled statement.
       const result = yield* connection.query("SELECT $1::int4 AS after", [2])
       assert.deepStrictEqual(result.rows, [{ after: 2 }])
+    }))
+
+  it.effect("retires a session whose CancelRequest may still be in flight after an interrupted query", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(250))
+      const observer = yield* PgConnection.make(yield* poolConfig)
+
+      yield* Effect.scoped(Effect.gen(function*() {
+        const connection = yield* pool.get
+        const fiber = yield* Effect.forkScoped(connection.query("SELECT pg_sleep(0.05)"))
+        yield* waitUntilActive(observer, connection.processId)
+        yield* Fiber.interrupt(fiber)
+      }))
+
+      // The statement above finished on its own before its cancel reached the
+      // backend. Without a fresh session the cancel lands on this statement.
+      const result = yield* Effect.scoped(
+        Effect.flatMap(pool.get, (connection) => connection.query("SELECT 1 AS after FROM pg_sleep(1)"))
+      )
+      assert.deepStrictEqual(result.rows, [{ after: 1 }])
+    }))
+
+  it.effect("retires a session whose CancelRequest may still be in flight after an aborted stream", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(250))
+
+      yield* Effect.scoped(Effect.gen(function*() {
+        const connection = yield* pool.get
+        const rows = yield* Stream.runCollect(
+          connection.stream("SELECT n FROM generate_series(1, 100000) AS g(n)").pipe(Stream.take(1))
+        )
+        assert.deepStrictEqual(rows, [{ n: 1 }])
+      }))
+
+      const result = yield* Effect.scoped(
+        Effect.flatMap(pool.get, (connection) => connection.query("SELECT 1 AS after FROM pg_sleep(1)"))
+      )
+      assert.deepStrictEqual(result.rows, [{ after: 1 }])
     }))
 
   it.effect("replaces connections that die", () =>

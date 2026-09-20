@@ -199,7 +199,14 @@ export interface PgConnection {
    * ownership queue, while calls through the original connection wait.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
-  /** Runs a query and returns rows keyed by column name. Pass `false` to skip the prepared statement cache. */
+  /**
+   * Runs a query and returns rows keyed by column name. Pass `false` to skip
+   * the prepared statement cache. Interrupting the effect before the result
+   * completes cancels the statement with a `CancelRequest` and drains the
+   * connection back to `ReadyForQuery`. The session stays usable when the
+   * backend reports the statement cancelled; otherwise the request may still
+   * be in flight and the session is retired, so a pool replaces it.
+   */
   readonly query: (
     sql: string,
     params?: ReadonlyArray<unknown>,
@@ -213,9 +220,10 @@ export interface PgConnection {
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
    * Streams rows without collecting the full result. The session is pinned for
-   * the lifetime of the stream. Aborting the stream
-   * before the result completes cancels the statement with a `CancelRequest`
-   * and drains the connection back to `ReadyForQuery`.
+   * the lifetime of the stream. Aborting the stream before the result
+   * completes cancels the statement with a `CancelRequest` and drains the
+   * connection back to `ReadyForQuery`. As with `query`, the session is
+   * retired unless the backend reports the statement cancelled.
    */
   readonly stream: (
     sql: string,
@@ -317,6 +325,8 @@ interface PipelineEntry {
 }
 
 const abortDrainTimeoutMillis = 5000
+/** SQLSTATE `query_canceled`: the backend acted on a `CancelRequest`. */
+const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
@@ -342,6 +352,12 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
+  /**
+   * A `CancelRequest` was sent and the backend has not reported
+   * `query_canceled` since. Nothing on the wire confirms delivery, so until
+   * that error arrives the request may still be in flight.
+   */
+  cancelPending = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly fatalHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
@@ -399,6 +415,9 @@ class PgConnectionImpl implements PgConnection {
   private readonly dispatch = (message: PgProtocol.BackendMessage<unknown>): void => {
     if (this.deadWith !== undefined) return
     switch (message._tag) {
+      case "ErrorResponse":
+        if (message.fields.code === queryCanceledCode) this.cancelPending = false
+        break
       case "NotificationResponse": {
         const queues = this.channels.get(message.channel)
         if (queues !== undefined) {
@@ -695,8 +714,25 @@ class PgConnectionImpl implements PgConnection {
   /** Sends a `CancelRequest` for this session on a side connection. */
   readonly cancel: Effect.Effect<void> = Effect.suspend(() => {
     if (this.deadWith !== undefined) return Effect.void
+    this.cancelPending = true
     return sendCancelRequest(this.resolved, this.session)
   })
+
+  /**
+   * Retires the session after a cancelled statement drained to
+   * `ReadyForQuery` unless the backend reported it cancelled: a pooler or
+   * proxy may close the cancel side connection before forwarding the request,
+   * and a statement that completed on its own leaves that request in flight
+   * to land on the next statement.
+   */
+  retireUnlessCancelled(): void {
+    if (this.cancelPending) {
+      this.fatal(connectionQueryError(
+        new Error("CancelRequest may still be in flight"),
+        "PgConnection: Session retired after an interrupted statement completed without being cancelled"
+      ))
+    }
+  }
 
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.suspend(() => {
     const reserve = this[internalsKey].reserve
@@ -1484,7 +1520,8 @@ const runQuery = (
     }
 
     // On interruption: cancel the statement and drain the connection back to
-    // ReadyForQuery so it stays usable, destroying it when the drain stalls.
+    // ReadyForQuery, destroying it when the drain stalls. The session is only
+    // kept when the backend reported the statement cancelled.
     return Effect.suspend(() => {
       if (machine.isDone()) return Effect.void
       const wait = Effect.callback<void>((resumeWait) => {
@@ -1502,7 +1539,7 @@ const runQuery = (
           resumeWait(Effect.void)
         })
       })
-      return Effect.andThen(conn.cancel, wait)
+      return Effect.andThen(conn.cancel, Effect.andThen(wait, Effect.sync(() => conn.retireUnlessCancelled())))
     })
   })
 
@@ -1747,8 +1784,9 @@ const streamRows = (
       else if (buffer.length >= streamPauseThreshold) setPaused(true)
     }
 
-    // On early abort: cancel the statement and drain back to ReadyForQuery so
-    // the pinned connection stays usable, destroying it when the drain stalls.
+    // On early abort: cancel the statement and drain back to ReadyForQuery,
+    // destroying the connection when the drain stalls. The session is only
+    // kept when the backend reported the statement cancelled.
     yield* Scope.addFinalizer(
       scope,
       Effect.suspend(() => {
@@ -1770,7 +1808,7 @@ const streamRows = (
             resumeWait(Effect.void)
           }
         })
-        return Effect.andThen(conn.cancel, wait)
+        return Effect.andThen(conn.cancel, Effect.andThen(wait, Effect.sync(() => conn.retireUnlessCancelled())))
       })
     )
 
