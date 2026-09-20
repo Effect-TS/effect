@@ -54,7 +54,7 @@ import {
   User
 } from "./TestEntity.ts"
 
-// Keep the long-lived stream separate from concurrent suites that assert global shard metrics.
+// Isolate the long-lived stream from concurrent shard-metric tests.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
   it.effect("keeps the claim of an active request replayed after an entity defect", () =>
     Effect.gen(function*() {
@@ -120,8 +120,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         const request = driver.journal[0]
         assert.strictEqual(request._tag, "Request")
 
-        // A different handler defects, interrupting Run and rebuilding the
-        // entity. Run must be replayed using the same active-request entry.
+        // Defecting another handler rebuilds the entity and replays Run.
         yield* client.Defect()
         assert.strictEqual(yield* Queue.take(started), 2, "in-flight handler must replay after the defect")
         assert.strictEqual(layerBuilds, 2)
@@ -131,8 +130,6 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         claimed.length = 0
         released.length = 0
 
-        // Expire the original claim so storage selects the still-running
-        // request. Later polls must neither release it nor deliver it again.
         yield* TestClock.adjust("10 minutes")
         for (let i = 0; i < 3; i++) {
           yield* sharding.pollStorage
@@ -201,8 +198,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         const request = driver.journal[0]
         assert.strictEqual(request._tag, "Request")
 
-        // Deliver a persisted interrupt, not a local caller cancellation. The
-        // uninterruptible annotation makes the manager restart this same entry.
+        // A persisted interrupt restarts the uninterruptible request.
         yield* driver.encoded.saveEnvelope({
           envelope: {
             _tag: "Interrupt",
@@ -221,8 +217,6 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         claimed.length = 0
         released.length = 0
 
-        // Make the running request eligible for storage selection, then check
-        // that repeated polls deduplicate it without repeatedly releasing it.
         yield* TestClock.adjust("10 minutes")
         for (let i = 0; i < 3; i++) {
           yield* sharding.pollStorage
@@ -264,9 +258,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         claimed.length = 0
         released.length = 0
 
-        // An acked, still-open stream is eligible for SQL selection once its
-        // original claim expires. Memory storage models the claim timeout,
-        // but not SQL's unacked-reply exclusion; await the ack explicitly.
+        // Await the ack because memory storage does not model SQL reply filtering.
         yield* TestClock.adjust("10 minutes")
         for (let i = 0; i < 3; i++) {
           yield* sharding.pollStorage
@@ -327,9 +319,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         yield* sharding.reset(request.requestId)
         yield* saveGetUserRequest("capped", 42)
 
-        // The unrestricted query started below capacity. Fill the second
-        // resident slot while it is paused, so its batch contains both a
-        // completed request to release and a newly capped address.
+        // Fill capacity during the read so its batch also contains a capped address.
         yield* client("resident").NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
         yield* Queue.take(state.envelopes)
         expect(yield* sharding.activeEntityCount).toEqual(2)
@@ -388,14 +378,12 @@ describe.concurrent("Sharding", () => {
         )
         const request = yield* Queue.take(state.envelopes)
 
-        // The read loop has cleared processedRequestIds, but the asynchronous
-        // storage query has not selected or claimed any rows yet.
+        // Pause after clearing processed IDs but before storage claims rows.
         pauseNextRead = true
         yield* sharding.pollStorage
         yield* Deferred.await(readStarted)
 
-        // Finish the first attempt during the pending read. Waiting for all
-        // fibers to settle also lets the manager record the processed ID.
+        // Complete the request while the read is paused.
         yield* Queue.offer(state.messages, void 0)
         yield* Fiber.join(firstRun)
         yield* TestClock.adjust(1)
@@ -403,15 +391,12 @@ describe.concurrent("Sharding", () => {
         yield* sharding.pollStorage
         claimed.length = 0
 
-        // The pending query now claims the reset request. The next poll must
-        // not lose it to the completed attempt's in-memory deduplication.
+        // The reset must be redelivered before its new claim expires.
         yield* Deferred.succeed(releaseRead, void 0)
         yield* TestClock.adjust(5000)
         assert.include(claimed, request.requestId)
         const deliveriesBeforeClaimExpiry = Queue.sizeUnsafe(state.envelopes)
 
-        // The memory driver uses the same ten-minute claim expiry as SQL.
-        // Prove the request is still recoverable, rather than a dead handler.
         yield* TestClock.adjust("10 minutes")
         assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
         assert.strictEqual(
@@ -454,8 +439,7 @@ describe.concurrent("Sharding", () => {
             yield* TestClock.adjust(1)
             const sharding = yield* Sharding.Sharding
             const driver = yield* MessageStorage.MemoryDriver
-            // A separate adapter shares persistence, but has no access to the
-            // receiving runner's reply handlers or entity-manager state.
+            // Share persistence without sharing runner state.
             const remoteStorage = yield* MessageStorage.makeEncoded(driver.encoded).pipe(
               Effect.provide(Snowflake.layerGenerator.pipe(Layer.provide(ShardingConfig.layerDefaults)))
             )
@@ -466,8 +450,7 @@ describe.concurrent("Sharding", () => {
             )
             const request = yield* Queue.take(state.envelopes)
 
-            // Reclaim a genuinely active request: it must neither be delivered
-            // twice nor have its claim released by completed-request recovery.
+            // Reclaiming an active request must not redeliver it or release its claim.
             yield* remoteStorage.resetRequests([request.requestId])
             yield* sharding.pollStorage
             yield* TestClock.adjust(1)
@@ -482,8 +465,7 @@ describe.concurrent("Sharding", () => {
             if (pauseReply) yield* Deferred.await(replyPublished)
             yield* TestClock.adjust(1)
 
-            // This is the persistence operation performed by Sharding.reset on
-            // another runner. Do not call the receiving runner's reset method.
+            // Simulate Sharding.reset on another runner.
             yield* remoteStorage.clearReplies(request.requestId)
             yield* Deferred.succeed(releaseRead, void 0)
             yield* TestClock.adjust(1)

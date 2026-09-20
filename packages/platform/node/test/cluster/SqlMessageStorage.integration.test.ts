@@ -121,8 +121,7 @@ describe("SqlMessageStorage", () => {
           const processed = yield* sql`SELECT processed FROM cluster_messages ORDER BY rowid`
           yield* storage.resetRequests([streaming.envelope.requestId, completed.envelope.requestId])
           const messages = yield* storage.unprocessedMessages(shards)
-          // SQL keeps unacknowledged chunks out of the read loop too. Claim
-          // release must not erase either kind of reply to force redelivery.
+          // Replies keep both requests out of the SQL read loop.
           expect(messages).toHaveLength(0)
           expect(yield* storage.repliesFor([streaming, completed])).toEqual(replies)
           expect(yield* sql`SELECT processed FROM cluster_messages ORDER BY rowid`).toEqual(processed)

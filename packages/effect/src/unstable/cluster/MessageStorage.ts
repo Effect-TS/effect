@@ -178,10 +178,7 @@ export class MessageStorage extends Context.Service<MessageStorage, {
     address: EntityAddress
   ) => Effect.Effect<void, PersistenceError>
 
-  /**
-   * Release claims for the provided requests without changing their replies or
-   * processed state.
-   */
+  /** Release request claims without changing replies or processed state. */
   readonly resetRequests: (
     requestIds: ReadonlyArray<Snowflake.Snowflake>
   ) => Effect.Effect<void, PersistenceError>
@@ -420,10 +417,7 @@ export type Encoded = {
     PersistenceError
   >
 
-  /**
-   * Release claims for the provided requests without changing their replies or
-   * processed state.
-   */
+  /** Release request claims without changing replies or processed state. */
   readonly resetRequests: (
     requestIds: ReadonlyArray<Snowflake.Snowflake>
   ) => Effect.Effect<void, PersistenceError>
@@ -1085,9 +1079,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
                 continue
               }
-              // Unlike SQL storage, the memory driver does not exclude requests
-              // with unacknowledged chunk replies. It models claim expiry, not
-              // the SQL reply-exclusion predicate or concurrent transactions.
+              // Memory storage models claim expiry, but not SQL reply filtering or transactions.
               messages.push({
                 envelope,
                 lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
