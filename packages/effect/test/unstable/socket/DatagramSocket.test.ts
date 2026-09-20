@@ -552,6 +552,23 @@ describe("DatagramSocket.writeMany", () => {
       })
   )
 
+  it.effect("preserves size, numeric destination and family error precedence for both writers", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      const socket = yield* sendTransport(() => Effect.sync(() => calls++), { maxPacketBytes: 1 })
+      const peer = forgedInetAddress(addressV6, { port: 0 })
+      for (const batch of [false, true]) {
+        const write = (packet: Datagram.Packet) => batch ? socket.writeMany([outgoing, packet]) : socket.write(packet)
+        const oversized = yield* write({ data: new Uint8Array(2), peer }).pipe(Effect.flip)
+        assert.strictEqual(oversized.reason._tag, "DatagramSocketMessageTooLargeError")
+        const numeric = yield* write({ data: new Uint8Array(1), peer }).pipe(Effect.flip)
+        assert.strictEqual(numeric.message, "A datagram peer port must be an integer between 1 and 65535")
+        const family = yield* write({ data: new Uint8Array(1), peer: addressV6 }).pipe(Effect.flip)
+        assert.strictEqual(family.message, "Datagram destination must use the socket's address family")
+      }
+      assert.strictEqual(calls, 0)
+    }))
+
   it.effect("rejects every cross-family peer before any batch submission", () =>
     Effect.gen(function*() {
       let calls = 0

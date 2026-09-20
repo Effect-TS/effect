@@ -297,36 +297,92 @@ describe("NodeDatagramSocket native multicast selectors", { concurrent: false },
       })
   )
 
-  it.effect("forwards the formatted selector to membership and treats index zero as omitted", () =>
-    Effect.gen(function*() {
-      const calls: Array<readonly [string, string | undefined]> = []
-      yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          const interfaces = vi.mocked(Os.networkInterfaces).mockReturnValue(interfaceSnapshot("effect0", 42))
-          const membership = vi.spyOn(Dgram.Socket.prototype, "addMembership").mockImplementation(
-            (group, networkInterface) => {
-              calls.push([group, networkInterface])
-            }
-          )
-          return { interfaces, membership }
-        }),
-        ({ interfaces, membership }) =>
+  it.effect.each(["addMembership", "dropMembership"] as const)(
+    "%s forwards formatted selectors and omits the default index",
+    (operation) =>
+      Effect.gen(function*() {
+        const calls: Array<readonly [string, string | undefined]> = []
+        yield* Effect.acquireRelease(
           Effect.sync(() => {
-            interfaces.mockRestore()
-            membership.mockRestore()
-          })
-      )
-      const socket = yield* NodeDatagramSocket.bind({ localAddress: localAddressV6 })
-      const group = ipv6MulticastFixture("ff02::114")
-      yield* socket.addMembership(group, { interface: 0 })
-      yield* socket.addMembership(group, { interface: 42 })
-      assert.deepStrictEqual(
-        calls,
-        Process.platform === "win32"
-          ? [["ff02::114", undefined], ["ff02::114", "::%42"]]
-          : [["ff02::114", undefined], ["ff02::114", "::%effect0"]]
-      )
-    }))
+            const interfaces = vi.mocked(Os.networkInterfaces).mockReturnValue(interfaceSnapshot("effect0", 42))
+            const membership = vi.spyOn(Dgram.Socket.prototype, operation).mockImplementation(
+              (group, networkInterface) => {
+                calls.push([group, networkInterface])
+              }
+            )
+            return { interfaces, membership }
+          }),
+          ({ interfaces, membership }) =>
+            Effect.sync(() => {
+              interfaces.mockRestore()
+              membership.mockRestore()
+            })
+        )
+        const socket = yield* NodeDatagramSocket.bind({ localAddress: localAddressV6 })
+        const group = ipv6MulticastFixture("ff02::114")
+        yield* socket[operation](group, { interface: 0 })
+        yield* socket[operation](group, { interface: 42 })
+        assert.deepStrictEqual(
+          calls,
+          Process.platform === "win32"
+            ? [["ff02::114", undefined], ["ff02::114", "::%42"]]
+            : [["ff02::114", undefined], ["ff02::114", "::%effect0"]]
+        )
+      })
+  )
+
+  it.effect.each(["addMembership", "dropMembership"] as const)(
+    "%s preserves source-specific argument order and configuration failures",
+    (operation) =>
+      Effect.gen(function*() {
+        const calls: Array<ReadonlyArray<string | undefined>> = []
+        const cause = new Error("native membership failed")
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            const interfaces = vi.mocked(Os.networkInterfaces).mockReturnValue(interfaceSnapshot("effect0", 42))
+            const method = operation === "addMembership"
+              ? "addSourceSpecificMembership"
+              : "dropSourceSpecificMembership"
+            const membership = vi.spyOn(Dgram.Socket.prototype, method).mockImplementation(
+              (source, group, networkInterface) => {
+                calls.push([source, group, networkInterface])
+                if (calls.length === 3) throw cause
+              }
+            )
+            return { interfaces, membership }
+          }),
+          ({ interfaces, membership }) =>
+            Effect.sync(() => {
+              interfaces.mockRestore()
+              membership.mockRestore()
+            })
+        )
+        const socket = yield* NodeDatagramSocket.bind({ localAddress: localAddressV6 })
+        const group = ipv6MulticastFixture("ff02::114")
+        const source = NetAddress.ipv6Loopback
+        yield* socket[operation](group, { source })
+        yield* socket[operation](group, { source, interface: 42 })
+        const failure = yield* socket[operation](group, { source, interface: 0 }).pipe(Effect.flip)
+        assert.deepStrictEqual(calls, [
+          ["::1", "ff02::114", undefined],
+          ["::1", "ff02::114", Process.platform === "win32" ? "::%42" : "::%effect0"],
+          ["::1", "ff02::114", undefined]
+        ])
+        assert.strictEqual(failure.reason._tag, "DatagramSocketConfigurationError")
+        if (failure.reason._tag === "DatagramSocketConfigurationError") {
+          assert.strictEqual(failure.reason.operation, operation)
+          assert.strictEqual(failure.reason.cause, cause)
+        }
+        if (Process.platform !== "win32") {
+          const unresolved = yield* socket[operation](group, { source, interface: 43 }).pipe(Effect.flip)
+          assert.strictEqual(unresolved.reason._tag, "DatagramSocketConfigurationError")
+          if (unresolved.reason._tag === "DatagramSocketConfigurationError") {
+            assert.strictEqual(unresolved.reason.operation, operation)
+          }
+          assert.strictEqual(calls.length, 3)
+        }
+      })
+  )
 })
 
 describe("NodeDatagramSocket receive event fixture", { concurrent: false }, () => {

@@ -702,54 +702,45 @@ function fromTransportWith<L extends NetAddress.InetAddress>(
           ))
         }
 
-      const write = Effect.fnUntraced(function*(value: Packet<A> | Uint8Array) {
-        const packet = toPacket(value)
+      const validatePacket = (packet: Packet<A>): DatagramSocketError | undefined => {
         if (packet.data.byteLength > maxPacketBytes) {
-          return yield* error(new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes }))
+          return error(new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes }))
         }
         const invalidDestination = invalidInetAddress(packet.peer, false)
         if (invalidDestination !== undefined) {
-          return yield* error(new DatagramSocketInvalidOptionsError({ message: invalidDestination }))
+          return error(new DatagramSocketInvalidOptionsError({ message: invalidDestination }))
         }
         if (packet.peer._tag !== options.localAddress._tag) {
-          return yield* error(
+          return error(
             new DatagramSocketInvalidOptionsError({
               message: "Datagram destination must use the socket's address family"
             })
           )
         }
-        return yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) }).pipe(
-          Effect.catch(rebaseWriteFailure(0))
+      }
+
+      // Called during execution, immediately before each sequential submission.
+      const sendPacket = (packet: Packet<A>, accepted: number) =>
+        binding.send({ ...packet, data: Uint8Array.from(packet.data) }).pipe(
+          Effect.catch(rebaseWriteFailure(accepted))
         )
+
+      const write = Effect.fnUntraced(function*(value: Packet<A> | Uint8Array) {
+        const packet = toPacket(value)
+        const failure = validatePacket(packet)
+        if (failure !== undefined) return yield* failure
+        return yield* sendPacket(packet, 0)
       }, guard)
 
       const writeBatch = Effect.fnUntraced(function*(packets: ReadonlyArray<Packet<A> | Uint8Array>) {
-        // Validate the whole logical group before copying or submitting any member.
+        // Validate the whole logical group without yielding, copying or submitting any member.
         for (let index = 0; index < packets.length; index++) {
-          const packet = toPacket(packets[index])
-          if (packet.data.byteLength > maxPacketBytes) {
-            return yield* error(
-              new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes })
-            )
-          }
-          const invalidDestination = invalidInetAddress(packet.peer, false)
-          if (invalidDestination !== undefined) {
-            return yield* error(new DatagramSocketInvalidOptionsError({ message: invalidDestination }))
-          }
-          if (packet.peer._tag !== options.localAddress._tag) {
-            return yield* error(
-              new DatagramSocketInvalidOptionsError({
-                message: "Datagram destination must use the socket's address family"
-              })
-            )
-          }
+          const failure = validatePacket(toPacket(packets[index]))
+          if (failure !== undefined) return yield* failure
         }
 
         for (let index = 0; index < packets.length; index++) {
-          const packet = toPacket(packets[index])
-          yield* binding.send({ ...packet, data: Uint8Array.from(packet.data) }).pipe(
-            Effect.catch(rebaseWriteFailure(index))
-          )
+          yield* sendPacket(toPacket(packets[index]), index)
         }
       }, guard)
 

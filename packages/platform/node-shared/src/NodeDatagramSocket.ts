@@ -103,6 +103,14 @@ const open = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(
     if (typeof networkInterface === "number") ensureScopeId(networkInterface)
     return NetAddress.formatMulticastInterface(networkInterface, scopeIds, platform)
   }
+  const membershipArgs = (group: NetAddress.MulticastAddress, options: Datagram.MembershipOptions) => ({
+    address: NetAddress.formatIp(group),
+    // Membership omits the default index; the outgoing interface setter formats it as "::".
+    networkInterface: options.interface === undefined || options.interface === 0
+      ? undefined
+      : formatMulticastInterface(options.interface),
+    source: options.source === undefined ? undefined : NetAddress.formatIp(options.source)
+  })
   // This is a point-in-time interface snapshot, not a stable OS identity. On
   // Unix, a missing positive index is refreshed once and then rejected: libuv
   // silently treats an unresolved numeric zone as the default interface.
@@ -184,7 +192,6 @@ const open = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(
   const send = Effect.effectify(
     (
       packet: Datagram.Packet<Datagram.FamilyOf<L>>,
-      _accepted: number,
       callback: (cause: Error | null, bytes: number) => void
     ) => {
       if (remote === undefined) {
@@ -199,7 +206,7 @@ const open = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(
 
   return {
     address,
-    send: (packet) => Effect.asVoid(send(packet, 0)),
+    send: (packet) => Effect.asVoid(send(packet)),
     setBroadcast: (enabled) =>
       Effect.try({
         try: () => {
@@ -215,24 +222,18 @@ const open = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(
     addMembership: (group, options) =>
       Effect.try({
         try: () => {
-          const address = NetAddress.formatIp(group)
-          const networkInterface = options.interface === undefined || options.interface === 0
-            ? undefined
-            : formatMulticastInterface(options.interface)
-          if (options.source === undefined) socket.addMembership(address, networkInterface)
-          else socket.addSourceSpecificMembership(NetAddress.formatIp(options.source), address, networkInterface)
+          const { address, networkInterface, source } = membershipArgs(group, options)
+          if (source === undefined) socket.addMembership(address, networkInterface)
+          else socket.addSourceSpecificMembership(source, address, networkInterface)
         },
         catch: (cause) => configurationError("addMembership", cause)
       }),
     dropMembership: (group, options) =>
       Effect.try({
         try: () => {
-          const address = NetAddress.formatIp(group)
-          const networkInterface = options.interface === undefined || options.interface === 0
-            ? undefined
-            : formatMulticastInterface(options.interface)
-          if (options.source === undefined) socket.dropMembership(address, networkInterface)
-          else socket.dropSourceSpecificMembership(NetAddress.formatIp(options.source), address, networkInterface)
+          const { address, networkInterface, source } = membershipArgs(group, options)
+          if (source === undefined) socket.dropMembership(address, networkInterface)
+          else socket.dropSourceSpecificMembership(source, address, networkInterface)
         },
         catch: (cause) => configurationError("dropMembership", cause)
       })
@@ -270,9 +271,9 @@ const openError = (cause: unknown) =>
     reason: new Datagram.DatagramSocketOpenError({ cause })
   })
 
-const writeError = (cause: unknown, [packet, accepted]: [Datagram.Packet, number]) =>
+const writeError = (cause: unknown, [packet]: [Datagram.Packet]) =>
   new Datagram.DatagramSocketError({
-    reason: new Datagram.DatagramSocketWriteError({ cause, destination: packet.peer, accepted })
+    reason: new Datagram.DatagramSocketWriteError({ cause, destination: packet.peer, accepted: 0 })
   })
 
 const configurationError = (
