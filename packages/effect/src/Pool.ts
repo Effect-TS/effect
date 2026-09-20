@@ -406,7 +406,7 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       self.state.invalidated.add(item)
       yield* semaphore.take(1)
     } else {
-      removePoolItem(self, item)
+      self.state.items.delete(item)
       removeAvailable(self, item)
       self.state.invalidated.delete(item)
       yield* item.finalizer
@@ -581,7 +581,7 @@ const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boo
   const state = self.state
   if (item.exit._tag === "Failure") {
     state.usage--
-    removePoolItem(self, item)
+    state.items.delete(item)
     state.invalidated.delete(item)
     removeAvailable(self, item)
     return false
@@ -672,29 +672,6 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     wakeWaiters(self, fiber, Number.POSITIVE_INFINITY)
     return internal.void
   })
-
-// The usage TTL strategy keeps its retirement order in a circular doubly
-// linked list, indexed by item so that an item can be unlinked from any
-// removal path in constant time without retaining it.
-interface UsageTTLNode<A, E> {
-  readonly item: PoolItem<A, E>
-  previous: UsageTTLNode<A, E>
-  next: UsageTTLNode<A, E>
-}
-
-const usageTTLNodes = new WeakMap<PoolItem<unknown, unknown>, UsageTTLNode<unknown, unknown>>()
-
-const unlinkUsageTTLNode = (node: UsageTTLNode<unknown, unknown>): void => {
-  node.previous.next = node.next
-  node.next.previous = node.previous
-  usageTTLNodes.delete(node.item)
-}
-
-const removePoolItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
-  self.state.items.delete(item)
-  const node = usageTTLNodes.get(item)
-  if (node !== undefined) unlinkUsageTTLNode(node)
-}
 
 // Reservations prevent reuse without extending the lifetime of borrowed items.
 const reservations = new WeakMap<PoolItem<unknown, unknown>, number>()
@@ -849,7 +826,7 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
     if (!self.state.items.has(poolItem)) {
       return Effect.void
     } else if (poolItem.refCount === 0) {
-      removePoolItem(self, poolItem)
+      self.state.items.delete(poolItem)
       removeAvailable(self, poolItem)
       self.state.invalidated.delete(poolItem)
       return Effect.asVoid(Effect.flatMap(
@@ -927,17 +904,12 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         if (self.config.strategy === strategyNoop) {
           return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
         }
-        const onAcquire = Effect.suspend(() =>
-          self.state.items.has(item)
-            ? Effect.flatMap(self.config.strategy.onAcquire(item), () =>
-              Effect.sync(() => {
-                // Remove any usage-TTL entry queued after a borrower removed the item.
-                if (!self.state.items.has(item)) removePoolItem(self, item)
-              }))
-            : Effect.void
-        )
         return Effect.as(
-          exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
+          exit._tag === "Success"
+            ? self.config.strategy.onAcquire(item)
+            : Effect.flatMap(item.finalizer, () =>
+              // A borrower may have consumed the failure while it was finalizing.
+              self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void),
           item
         )
       })
@@ -1007,34 +979,26 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
-  // Sentinel of the retirement list; `sentinel.next` is the oldest entry.
-  const sentinel = { item: undefined, previous: undefined, next: undefined } as unknown as UsageTTLNode<A, E>
-  sentinel.previous = sentinel.next = sentinel
-  const enqueue = (item: PoolItem<A, E>): Effect.Effect<void> =>
-    Effect.sync(() => {
-      // A reclaimed item may still be queued; move it to the back.
-      const existing = usageTTLNodes.get(item)
-      if (existing !== undefined) unlinkUsageTTLNode(existing)
-      const node: UsageTTLNode<A, E> = { item, previous: sentinel.previous, next: sentinel }
-      sentinel.previous.next = node
-      sentinel.previous = node
-      usageTTLNodes.set(item, node)
-    })
-  return identity<Strategy<A, E>>({
+const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, E>> =>
+  Effect.succeed<Strategy<A, E>>({
     run: (pool) => {
+      // `state.items` iterates in insertion order, so its oldest live entry is
+      // the next to retire. Using it directly means an item stops being
+      // referenced by this strategy as soon as it leaves the pool.
       const process: Effect.Effect<void> = Effect.suspend(() => {
-        const node = sentinel.next
-        if (node === sentinel || activeSize(pool) <= targetSize(pool)) return Effect.void
-        unlinkUsageTTLNode(node)
-        return Effect.flatMap(invalidatePoolItem(pool, node.item), () => process)
+        if (activeSize(pool) <= targetSize(pool)) return Effect.void
+        for (const item of pool.state.items) {
+          if (pool.state.invalidated.has(item)) continue
+          return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
+        }
+        return Effect.void
       })
       return process.pipe(
         Effect.delay(ttl),
         Effect.forever({ disableYield: true })
       )
     },
-    onAcquire: enqueue,
+    onAcquire: (_) => Effect.void,
     reclaim(pool) {
       return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
         if (pool.state.invalidated.size === 0) {
@@ -1047,14 +1011,16 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
           return Effect.undefined
         }
         pool.state.invalidated.delete(item.value)
+        // Re-adding moves the reclaimed item to the back of the retirement order.
+        pool.state.items.delete(item.value)
+        pool.state.items.add(item.value)
         if (item.value.refCount < pool.config.concurrency) {
           addAvailable(pool, item.value)
         }
-        return Effect.as(enqueue(item.value), item.value)
+        return Effect.succeed(item.value)
       })
     }
   })
-})
 
 const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
   Effect.withFiber<void>((fiber) => {
