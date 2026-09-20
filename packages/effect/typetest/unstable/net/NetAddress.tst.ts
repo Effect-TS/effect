@@ -119,11 +119,81 @@ describe("NetAddress", () => {
     expect(addMembership).type.not.toBeCallableWith(wideGroup)
   })
 
+  it("narrows classifications while preserving address families", () => {
+    const ip = null as unknown as NetAddress.IpAddress
+    const ipv4 = null as unknown as NetAddress.Ipv4Address
+    const ipv6 = null as unknown as NetAddress.Ipv6Address
+    const mac = null as unknown as NetAddress.MacAddress
+
+    if (NetAddress.isUnicast(ip)) expect(ip).type.toBe<NetAddress.UnicastAddress<NetAddress.IpAddress>>()
+    if (NetAddress.isBroadcast(ipv4)) {
+      expect(ipv4).type.toBe<NetAddress.BroadcastAddress<NetAddress.Ipv4Address>>()
+    }
+    if (NetAddress.isLoopback(ip)) expect(ip).type.toBe<NetAddress.LoopbackAddress<NetAddress.IpAddress>>()
+    if (NetAddress.isLinkLocal(ip)) expect(ip).type.toBe<NetAddress.LinkLocalAddress<NetAddress.IpAddress>>()
+    if (NetAddress.isUnspecified(ip)) {
+      expect(ip).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.IpAddress>>()
+    }
+    if (NetAddress.isPrivate(ipv4)) expect(ipv4).type.toBe<NetAddress.PrivateAddress>()
+    if (NetAddress.isUniqueLocal(ipv6)) expect(ipv6).type.toBe<NetAddress.UniqueLocalAddress>()
+    if (NetAddress.isMacLocallyAdministered(mac)) {
+      expect(mac).type.toBe<NetAddress.LocallyAdministeredAddress>()
+    }
+    if (NetAddress.isMacUniversallyAdministered(mac)) {
+      expect(mac).type.toBe<NetAddress.UniversallyAdministeredAddress>()
+    }
+  })
+
+  it("stacks brands and models MAC broadcast as multicast", () => {
+    const ipv4 = null as unknown as NetAddress.Ipv4Address
+    const mac = null as unknown as NetAddress.MacAddress
+    const local = NetAddress.locallyAdministeredAddressUnsafe(mac)
+    const unicast = NetAddress.unicastAddressUnsafe(ipv4)
+    const macBroadcast = NetAddress.broadcastAddressUnsafe(mac)
+
+    expect(NetAddress.multicastAddress(local)).type.toBe<
+      Result.Result<NetAddress.MulticastAddress<typeof local>, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.privateAddress(unicast)).type.toBe<
+      Result.Result<NetAddress.PrivateAddress<typeof unicast>, NetAddress.NetAddressError>
+    >()
+    expect(macBroadcast).type.toBeAssignableTo<NetAddress.MacMulticastAddress>()
+    expect(NetAddress.ipv4Broadcast).type.not.toBeAssignableTo<NetAddress.MulticastAddress>()
+    expect(NetAddress.ipv4Loopback).type.toBe<NetAddress.LoopbackAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.ipv6Loopback).type.toBe<NetAddress.LoopbackAddress<NetAddress.Ipv6Address>>()
+    expect(NetAddress.ipv4Unspecified).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>()
+    expect(NetAddress.ipv6Unspecified).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.Ipv6Address>>()
+    expect(NetAddress.ipv4Broadcast).type.toBe<NetAddress.BroadcastAddress<NetAddress.Ipv4Address>>()
+  })
+
+  it("keeps converted guards compatible with boolean callers", () => {
+    expect(NetAddress.isMulticast).type.toBeAssignableTo<(self: NetAddress.IpAddress) => boolean>()
+    expect(NetAddress.isUnicast).type.toBeAssignableTo<(self: NetAddress.IpAddress) => boolean>()
+    expect(NetAddress.isBroadcast).type.toBeAssignableTo<(self: NetAddress.Ipv4Address) => boolean>()
+    expect(NetAddress.isLoopback).type.toBeAssignableTo<(self: NetAddress.IpAddress) => boolean>()
+    expect(NetAddress.isLinkLocal).type.toBeAssignableTo<(self: NetAddress.IpAddress) => boolean>()
+    expect(NetAddress.isUnspecified).type.toBeAssignableTo<(self: NetAddress.IpAddress) => boolean>()
+    expect(NetAddress.isPrivate).type.toBeAssignableTo<(self: NetAddress.Ipv4Address) => boolean>()
+    expect(NetAddress.isUniqueLocal).type.toBeAssignableTo<(self: NetAddress.Ipv6Address) => boolean>()
+    expect(NetAddress.isMacMulticast).type.toBeAssignableTo<(self: NetAddress.MacAddress) => boolean>()
+    expect(NetAddress.isMacUnicast).type.toBeAssignableTo<(self: NetAddress.MacAddress) => boolean>()
+  })
+
   it("preserves named schema types when annotating codecs", () => {
     expect(Schema.MacAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.MacAddressFromString>()
     expect(Schema.Ipv4AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4AddressFromString>()
     expect(Schema.Ipv6AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv6AddressFromString>()
     expect(Schema.IpAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.IpAddressFromString>()
+    expect(Schema.IpMulticastAddressFromString.annotate({ identifier: "custom" })).type.toBe<
+      Schema.IpMulticastAddressFromString
+    >()
+    expect(Schema.MacBroadcastAddressFromString.annotate({ identifier: "custom" })).type.toBe<
+      Schema.MacBroadcastAddressFromString
+    >()
+    expect(Schema.Ipv4PrivateAddress.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4PrivateAddress>()
+    expect(Schema.MacLocallyAdministeredAddress.annotate({ identifier: "custom" })).type.toBe<
+      Schema.MacLocallyAdministeredAddress
+    >()
     expect(Schema.Ipv4InterfaceFromString.annotate({ identifier: "custom" })).type.toBe<
       Schema.Ipv4InterfaceFromString
     >()
@@ -146,6 +216,21 @@ describe("NetAddress", () => {
     expect(Schema.InetAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.InetAddress, string>>()
     expect(Schema.UnixPathAddressFromString).type.toBeAssignableTo<
       Schema.Codec<NetAddress.UnixPathAddress, string>
+    >()
+    expect(Schema.IpMulticastAddressFromString).type.toBeAssignableTo<
+      Schema.Codec<NetAddress.MulticastAddress<NetAddress.IpAddress>, string>
+    >()
+    expect(Schema.MacMulticastAddressFromString).type.toBeAssignableTo<
+      Schema.Codec<NetAddress.MacMulticastAddress, string>
+    >()
+    expect(Schema.MacBroadcastAddressFromString).type.toBeAssignableTo<
+      Schema.Codec<NetAddress.BroadcastAddress<NetAddress.MacAddress>, string>
+    >()
+    expect(Schema.Ipv4PrivateAddressFromString).type.toBeAssignableTo<
+      Schema.Codec<NetAddress.PrivateAddress, string>
+    >()
+    expect(Schema.Ipv6UniqueLocalAddressFromString).type.toBeAssignableTo<
+      Schema.Codec<NetAddress.UniqueLocalAddress, string>
     >()
   })
 })
