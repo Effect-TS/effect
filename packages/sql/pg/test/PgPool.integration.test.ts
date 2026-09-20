@@ -334,6 +334,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
       const blocker = yield* PgConnection.make(config)
       const started = yield* Queue.unbounded<number>()
+      const lockAcquired = yield* Queue.unbounded<void>()
 
       yield* Effect.gen(function*() {
         yield* Effect.scoped(Effect.gen(function*() {
@@ -354,17 +355,32 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
           pool.use((connection) =>
             Effect.gen(function*() {
               yield* Queue.offer(started, connection.processId)
-              return yield* connection.query("SELECT 1 AS after FROM pg_sleep(1)")
+              yield* Queue.take(lockAcquired)
+              return yield* connection.query(
+                "SELECT 1 AS after FROM pg_advisory_xact_lock($1::int4)",
+                [connection.processId]
+              )
             })
           )
         )
         const followUpPid = yield* Queue.take(started)
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [followUpPid])
+        yield* Queue.offer(lockAcquired, undefined)
         yield* waitUntilActive(blocker, followUpPid)
         gate.release()
         yield* gate.delivered
+        yield* blocker.query("COMMIT")
         const result = yield* Fiber.join(followUp)
         assert.deepStrictEqual(result.rows, [{ after: 1 }])
-      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => gate.release()).pipe(
+            Effect.andThen(blocker.query("ROLLBACK")),
+            Effect.ignore
+          )
+        )
+      )
     }), cancellationTestTimeout)
 
   it.effect("retires an idle interrupted session before pool.use", () =>
