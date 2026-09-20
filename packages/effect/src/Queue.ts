@@ -1132,29 +1132,52 @@ export const interrupt = <A, E>(self: Enqueue<A, E>): Effect<boolean> =>
  * await Effect.runPromise(program) // => { wasShutdown: true, size: 0 }
  * ```
  *
+ * @see {@link shutdownUnsafe} for synchronous shutdown
  * @category completion
  * @since 2.0.0
  */
-export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> =>
-  internalEffect.sync(() => {
-    if (self.state._tag === "Done") {
-      return true
-    }
-    MutableList.clear(self.messages)
-    const offers = self.state.offers
-    finalize(self, self.state._tag === "Open" ? exitInterrupt : self.state.exit)
-    if (offers.size > 0) {
-      for (const entry of offers) {
-        if (entry._tag === "Single") {
-          entry.resume(exitFalse)
-        } else {
-          entry.resume(core.exitSucceed(entry.remaining.slice(entry.offset)))
-        }
-      }
-      offers.clear()
-    }
+export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> => internalEffect.sync(() => shutdownUnsafe(self))
+
+/**
+ * Shuts down the queue synchronously, discarding buffered messages and resuming
+ * pending operations.
+ *
+ * **When to use**
+ *
+ * Use when a synchronous callback must discard buffered messages and settle
+ * pending queue operations before returning.
+ *
+ * **Details**
+ *
+ * An open queue completes with an interruption. A queue already closing retains
+ * its completion cause. Call `failCauseUnsafe` first to shut down with a specific
+ * failure. This operation is idempotent and returns `true`, including when the
+ * queue has already completed.
+ *
+ * @see {@link shutdown} for the effectful variant
+ * @see {@link failCauseUnsafe} to set a failure before discarding buffered messages
+ * @category completion
+ * @since 4.0.0
+ */
+export const shutdownUnsafe = <A, E>(self: Enqueue<A, E>): boolean => {
+  if (self.state._tag === "Done") {
     return true
-  })
+  }
+  MutableList.clear(self.messages)
+  const offers = self.state.offers
+  finalize(self, self.state._tag === "Open" ? exitInterrupt : self.state.exit)
+  if (offers.size > 0) {
+    for (const entry of offers) {
+      if (entry._tag === "Single") {
+        entry.resume(exitFalse)
+      } else {
+        entry.resume(core.exitSucceed(entry.remaining.slice(entry.offset)))
+      }
+    }
+    offers.clear()
+  }
+  return true
+}
 
 /**
  * Takes and returns all currently buffered messages without waiting for more.

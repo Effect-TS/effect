@@ -393,6 +393,41 @@ describe("Queue", () => {
       assert.strictEqual(yield* Queue.offer(queue, 10), false)
     }))
 
+  it.effect("shutdownUnsafe immediately interrupts waiting readers and is idempotent", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(2)
+      const taker = yield* Queue.take(queue).pipe(Effect.forkChild({ startImmediately: true }))
+      const awaiter = yield* Queue.await(queue).pipe(Effect.forkChild({ startImmediately: true }))
+
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+      assert.isTrue(Exit.hasInterrupts(taker.pollUnsafe()!))
+      assert.isTrue(Exit.hasInterrupts(awaiter.pollUnsafe()!))
+      assert.isFalse(Queue.offerUnsafe(queue, 1))
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+    }))
+
+  it.effect("shutdownUnsafe discards buffered messages, preserves failure, and releases blocked producers", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, string>(2)
+      const batch = yield* Queue.offerAll(queue, [1, 2, 3, 4]).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      const single = yield* Queue.offer(queue, 5).pipe(Effect.forkChild({ startImmediately: true }))
+      const awaiter = yield* Queue.await(queue).pipe(Effect.forkChild({ startImmediately: true }))
+
+      Queue.failCauseUnsafe(queue, Cause.fail("boom"))
+      assert.isUndefined(awaiter.pollUnsafe())
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+      // Check storage directly: a completed queue reports size zero even if it retains messages.
+      assert.strictEqual(queue.messages.length, 0)
+      assert.deepStrictEqual(batch.pollUnsafe(), Exit.succeed([3, 4]))
+      assert.deepStrictEqual(single.pollUnsafe(), Exit.succeed(false))
+      assert.deepStrictEqual(awaiter.pollUnsafe(), Exit.fail("boom"))
+      assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), "boom")
+      assert.isFalse(Queue.offerUnsafe(queue, 6))
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+    }))
+
   it.effect("fail doesnt drop items", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number, string>(2)
