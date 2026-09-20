@@ -53,6 +53,137 @@ import {
   User
 } from "./TestEntity.ts"
 
+// Keep the long-lived stream separate from concurrent suites that assert global shard metrics.
+describe("Sharding claim release regressions", { concurrent: false }, () => {
+  it.effect("keeps the claim of an active stream after an acknowledged chunk", () =>
+    Effect.gen(function*() {
+      const acked = yield* Deferred.make<void>()
+      const released: Array<Snowflake.Snowflake> = []
+      const claimed: Array<Snowflake.Snowflake> = []
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const state = yield* TestEntityState
+        const client = (yield* TestEntity.client)("active-stream")
+        const values: Array<number> = []
+        const stream = yield* client.StreamWithKey({ key: "run" }).pipe(
+          Stream.runForEach((value) => Effect.sync(() => values.push(value))),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Queue.offer(state.streamMessages, void 0)
+        yield* TestClock.adjust(1000)
+        yield* Deferred.await(acked)
+        expect(values).toEqual([0])
+        expect(stream.pollUnsafe()).toBeUndefined()
+        claimed.length = 0
+        released.length = 0
+
+        // An acked, still-open stream is eligible for SQL selection once its
+        // original claim expires. Memory storage models the claim timeout,
+        // but not SQL's unacked-reply exclusion; await the ack explicitly.
+        yield* TestClock.adjust("10 minutes")
+        for (let i = 0; i < 3; i++) {
+          yield* sharding.pollStorage
+          yield* TestClock.adjust(1)
+        }
+        expect(claimed.length).toBeGreaterThan(0)
+        expect(stream.pollUnsafe()).toBeUndefined()
+        expect(values).toEqual([0])
+        assert.strictEqual(released.length, 0, "active stream claim must not be released after a chunk")
+        assert.strictEqual(claimed.length, 1, "active stream must not be reclaimed on every poll")
+      }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
+        ...storage,
+        saveEnvelope: (message) =>
+          storage.saveEnvelope(message).pipe(
+            Effect.tap(() => message.envelope._tag === "AckChunk" ? Deferred.succeed(acked, void 0) : Effect.void)
+          ),
+        resetRequests: (ids) =>
+          Effect.gen(function*() {
+            released.push(...ids)
+            yield* storage.resetRequests(ids)
+          }),
+        unprocessedMessages: (shards, options) =>
+          storage.unprocessedMessages(shards, options).pipe(
+            Effect.tap((messages) =>
+              Effect.sync(() => {
+                for (const message of messages) {
+                  if (message._tag === "IncomingRequest") claimed.push(message.envelope.requestId)
+                }
+              })
+            )
+          )
+      }))))
+    }))
+
+  it.effect("releases capped addresses even when targeted claim release fails", () =>
+    Effect.gen(function*() {
+      const readStarted = yield* Deferred.make<void>()
+      const releaseRead = yield* Deferred.make<void>()
+      let pauseNextRead = false
+      const failedReleases: Array<Snowflake.Snowflake> = []
+      const cappedReleases: Array<EntityAddress.EntityAddress> = []
+      const claimed: Array<string> = []
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const state = yield* TestEntityState
+        const client = yield* TestEntity.client
+        const firstRun = yield* client("completed").RequestWithKey({ key: "run" }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const request = yield* Queue.take(state.envelopes)
+        pauseNextRead = true
+        yield* sharding.pollStorage
+        yield* Deferred.await(readStarted)
+        yield* Queue.offer(state.messages, void 0)
+        yield* Fiber.join(firstRun)
+        yield* TestClock.adjust(1)
+        yield* sharding.reset(request.requestId)
+        yield* saveGetUserRequest("capped", 42)
+
+        // The unrestricted query started below capacity. Fill the second
+        // resident slot while it is paused, so its batch contains both a
+        // completed request to release and a newly capped address.
+        yield* client("resident").NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Queue.take(state.envelopes)
+        expect(yield* sharding.activeEntityCount).toEqual(2)
+        yield* Deferred.succeed(releaseRead, void 0)
+        yield* TestClock.adjust(1)
+        expect(claimed).toContain("completed")
+        expect(claimed).toContain("capped")
+        expect(failedReleases).toEqual([request.requestId])
+        assert.deepStrictEqual(
+          cappedReleases.map((address) => address.entityId),
+          ["capped"],
+          "failed targeted release must not skip capped-address release from the same batch"
+        )
+      }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: 2 }, (storage) => ({
+        ...storage,
+        resetRequests: (ids) =>
+          Effect.suspend(() => {
+            failedReleases.push(...ids)
+            return Effect.fail(new ClusterError.PersistenceError({ cause: "injected targeted release failure" }))
+          }),
+        resetAddresses: (addresses) =>
+          Effect.gen(function*() {
+            cappedReleases.push(...addresses)
+            yield* storage.resetAddresses(addresses)
+          }),
+        unprocessedMessages: (shards, options) =>
+          Effect.gen(function*() {
+            if (pauseNextRead) {
+              pauseNextRead = false
+              yield* Deferred.succeed(readStarted, void 0)
+              yield* Deferred.await(releaseRead)
+            }
+            const messages = yield* storage.unprocessedMessages(shards, options)
+            for (const message of messages) claimed.push(message.envelope.address.entityId)
+            return messages
+          })
+      }))))
+    }))
+})
+
 describe.concurrent("Sharding", () => {
   it.effect("redelivers a request reset while an asynchronous storage read is pending", () =>
     Effect.gen(function*() {
