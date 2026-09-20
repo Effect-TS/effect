@@ -294,6 +294,76 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
     }))
 
+  it.effect("replaces a session before pool.use after an unconfirmed query cancel", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const gate = new CancelRequestGate()
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
+      const blocker = yield* PgConnection.make(config)
+
+      yield* Effect.gen(function*() {
+        const first = yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* pool.get
+          yield* blocker.query("BEGIN")
+          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          const query = yield* Effect.forkScoped(
+            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          )
+          yield* waitUntilActive(blocker, connection.processId)
+          const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+          yield* gate.intercepted
+          yield* blocker.query("COMMIT")
+          yield* Fiber.join(interruption)
+          return connection.processId
+        }))
+
+        const second = yield* pool.use((connection) => Effect.succeed(connection.processId))
+        assert.notStrictEqual(second, first)
+        gate.release()
+        yield* gate.delivered
+      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+    }))
+
+  it.effect("protects an active pool.use query from a late cancel", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const gate = new CancelRequestGate()
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
+      const blocker = yield* PgConnection.make(config)
+      const started = yield* Queue.unbounded<number>()
+
+      yield* Effect.gen(function*() {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* pool.get
+          yield* blocker.query("BEGIN")
+          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          const query = yield* Effect.forkScoped(
+            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          )
+          yield* waitUntilActive(blocker, connection.processId)
+          const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+          yield* gate.intercepted
+          yield* blocker.query("COMMIT")
+          yield* Fiber.join(interruption)
+        }))
+
+        const followUp = yield* Effect.forkScoped(
+          pool.use((connection) =>
+            Effect.gen(function*() {
+              yield* Queue.offer(started, connection.processId)
+              return yield* connection.query("SELECT 1 AS after FROM pg_sleep(1)")
+            })
+          )
+        )
+        const followUpPid = yield* Queue.take(started)
+        yield* waitUntilActive(blocker, followUpPid)
+        gate.release()
+        yield* gate.delivered
+        const result = yield* Fiber.join(followUp)
+        assert.deepStrictEqual(result.rows, [{ after: 1 }])
+      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+    }))
+
   it.effect("replaces a pooled session after an unconfirmed stream cancel", () =>
     Effect.gen(function*() {
       const config = yield* poolConfig
