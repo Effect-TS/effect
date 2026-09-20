@@ -13,7 +13,6 @@ const poolConfig = Effect.gen(function*() {
   return { url: Redacted.make(container.getConnectionUri()) }
 })
 
-/** Polls `pg_stat_activity` until the backend `pid` is running a statement. */
 const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
   Effect.gen(function*() {
     while (true) {
@@ -28,12 +27,7 @@ const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
 
 const cancelRequestCode = 80877102
 
-/**
- * Stands between the client and the backend like a connection pooler or a
- * hosted proxy: a `CancelRequest` is acknowledged at once by closing the side
- * connection, and forwarded to the backend `delayMillis` later. Every other
- * byte passes through untouched.
- */
+/** Closes a `CancelRequest` connection before forwarding it after a delay. */
 class LateCancelProxy extends Duplex {
   private readonly backend: Net.Socket
   private cancelDeferred = false
@@ -223,8 +217,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         yield* Fiber.interrupt(fiber)
       }))
 
-      // The statement above finished on its own before its cancel reached the
-      // backend. Without a fresh session the cancel lands on this statement.
+      // A delayed cancel would interrupt this query if the session were reused.
       const result = yield* Effect.scoped(
         Effect.flatMap(pool.get, (connection) => connection.query("SELECT 1 AS after FROM pg_sleep(1)"))
       )
