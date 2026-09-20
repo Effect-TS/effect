@@ -46,11 +46,6 @@ const StructuredOnlyTool = Tool.make("structured-only", {
   (client) => client.protocolVersion === "2025-06-18"
 )
 
-const IdentifiedResultTool = Tool.make("identified-result", {
-  parameters: Tool.EmptyParams,
-  success: Schema.Struct({ value: Schema.String }).annotate({ identifier: "IdentifiedResult" })
-})
-
 const UnionResultTool = Tool.make("union-result", {
   parameters: Tool.EmptyParams,
   success: Schema.Union([
@@ -98,7 +93,6 @@ const TestToolkit = Toolkit.make(
   SharedTool,
   JsonArrayTool,
   StructuredOnlyTool,
-  IdentifiedResultTool,
   UnionResultTool,
   ValidatedTool,
   CapabilityTool,
@@ -198,7 +192,6 @@ const makeFixture = Effect.fnUntraced(function*() {
           state.structuredInvocations++
           return { value: "structured-result" }
         }),
-      "identified-result": () => Effect.succeed({ value: "identified-result" }),
       "union-result": () => Effect.succeed({ _tag: "a" as const, a: 1 }),
       validated: ({ value }) => Effect.succeed(value),
       capability: () =>
@@ -1508,23 +1501,6 @@ describe("McpServer protocol adapters", () => {
       assert.notProperty(oldSchemaOutput, "outputSchema")
       assert.notProperty(oldSchemaOutput, "_meta")
     }))
-
-  for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
-    it.effect(`should publish an identified object result schema for ${protocolVersion} clients`, () =>
-      Effect.gen(function*() {
-        const fixture = yield* makeFixture()
-        const client = yield* initialize(fixture.post, protocolVersion)
-        const tools = listedTools(yield* client.request("tools/list"))
-        const outputSchema = tools.find((tool) => tool.name === "identified-result")?.outputSchema
-
-        assert.isDefined(outputSchema)
-        assert.deepInclude(outputSchema, {
-          type: "object",
-          properties: { value: { type: "string" } },
-          required: ["value"]
-        })
-      }))
-  }
 
   it.effect("should project non-object JSON Toolkit outputs only for the July protocol", () =>
     Effect.gen(function*() {

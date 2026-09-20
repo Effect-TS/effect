@@ -1431,6 +1431,36 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
       }))
 
+    it.effect("registers tools with identified output schemas", () =>
+      Effect.gen(function*() {
+        const IdentifiedResultTool = Tool.make("IdentifiedResultTool", {
+          success: Schema.Struct({ value: Schema.String }).annotate({ identifier: "IdentifiedResult" })
+        })
+        const toolkit = Toolkit.make(IdentifiedResultTool)
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            IdentifiedResultTool: () => Effect.succeed({ value: "ok" })
+          }))
+        )
+
+        assert.deepStrictEqual(server.tools[0].tool.outputSchema, {
+          type: "object",
+          properties: { value: { type: "string" } },
+          required: ["value"],
+          additionalProperties: true,
+          $defs: {
+            IdentifiedResult: {
+              type: "object",
+              properties: { value: { type: "string" } },
+              required: ["value"],
+              additionalProperties: true
+            }
+          }
+        })
+      }))
+
     it.effect("advertises closed strict input schemas with escaped identifiers", () =>
       Effect.gen(function*() {
         const { client } = yield* makeToolkitTestClient()
