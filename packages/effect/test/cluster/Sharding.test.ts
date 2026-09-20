@@ -14,6 +14,7 @@ import {
   MutableRef,
   Option,
   Queue,
+  Schedule,
   Schema,
   Stream
 } from "effect"
@@ -55,6 +56,102 @@ import {
 
 // Keep the long-lived stream separate from concurrent suites that assert global shard metrics.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
+  it.effect("keeps the claim of an active request replayed after an entity defect", () =>
+    Effect.gen(function*() {
+      const started = yield* Queue.make<number>()
+      let starts = 0
+      let active = 0
+      let layerBuilds = 0
+      let defectAttempts = 0
+      const released: Array<Snowflake.Snowflake> = []
+      const claimed: Array<Snowflake.Snowflake> = []
+      const Replaying = Entity.make("ClaimDefectReplay", [
+        Rpc.make("Run"),
+        Rpc.make("Defect")
+      ]).annotateRpcs(ClusterSchema.Persisted, true)
+      const layer = Replaying.toLayer(
+        Effect.sync(() => {
+          layerBuilds++
+          return Replaying.of({
+            Run: () =>
+              Rpc.fork(
+                Effect.gen(function*() {
+                  starts++
+                  active++
+                  yield* Queue.offer(started, starts)
+                  return yield* Effect.never
+                }).pipe(Effect.ensuring(Effect.sync(() => active--)))
+              ),
+            Defect: () =>
+              Effect.suspend(() => {
+                defectAttempts++
+                return defectAttempts === 1 ? Effect.die("restart entity") : Effect.void
+              })
+          })
+        }),
+        { defectRetryPolicy: Schedule.forever }
+      ).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+        ...storage,
+        resetRequests: (ids) =>
+          Effect.gen(function*() {
+            released.push(...ids)
+            yield* storage.resetRequests(ids)
+          }),
+        unprocessedMessages: (shards, options) =>
+          storage.unprocessedMessages(shards, options).pipe(
+            Effect.tap((messages) =>
+              Effect.sync(() => {
+                for (const message of messages) {
+                  if (message._tag === "IncomingRequest") claimed.push(message.envelope.requestId)
+                }
+              })
+            )
+          )
+      }))))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const client = (yield* Replaying.client)("replay")
+        const running = yield* client.Run().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* Queue.take(started), 1)
+        const request = driver.journal[0]
+        assert.strictEqual(request._tag, "Request")
+
+        // A different handler defects, interrupting Run and rebuilding the
+        // entity. Run must be replayed using the same active-request entry.
+        yield* client.Defect()
+        assert.strictEqual(yield* Queue.take(started), 2, "in-flight handler must replay after the defect")
+        assert.strictEqual(layerBuilds, 2)
+        assert.strictEqual(defectAttempts, 2)
+        assert.strictEqual(active, 1)
+        expect(running.pollUnsafe()).toBeUndefined()
+        claimed.length = 0
+        released.length = 0
+
+        // Expire the original claim so storage selects the still-running
+        // request. Later polls must neither release it nor deliver it again.
+        yield* TestClock.adjust("10 minutes")
+        for (let i = 0; i < 3; i++) {
+          yield* sharding.pollStorage
+          yield* TestClock.adjust(1)
+        }
+        expect(claimed).toContain(Snowflake.Snowflake(request.requestId))
+        assert.strictEqual(starts, 2, "polling must not deliver the replayed request again")
+        assert.strictEqual(layerBuilds, 2, "polling must not restart the entity again")
+        assert.strictEqual(active, 1, "replayed handler must remain active")
+        expect(running.pollUnsafe()).toBeUndefined()
+        assert.strictEqual(released.length, 0, "replayed active request claim must not be released")
+        assert.deepStrictEqual(
+          claimed,
+          [Snowflake.Snowflake(request.requestId)],
+          "replayed request must not be reclaimed on every poll"
+        )
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("keeps the claim of an active uninterruptible request after restarting", () =>
     Effect.gen(function*() {
       const started = yield* Queue.make<number>()
