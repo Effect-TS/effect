@@ -1488,6 +1488,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }
     }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
   })
+
   it.effect("does not fail when duplicate workflow payload shapes cannot be rendered", () => {
     const payloadKey = Symbol("payload")
     const first = Workflow.make("UnavailablePayloadShapeWorkflow", {
