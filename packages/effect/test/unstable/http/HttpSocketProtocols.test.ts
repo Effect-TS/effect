@@ -15,7 +15,7 @@ describe("HttpSocketProtocols", () => {
       Effect.provide(HttpSocketProtocols.layer),
       Effect.provideService(
         HttpServerRequest.HttpServerRequest,
-        request({ [HttpSocketProtocols.SOCKET_PROTOCOLS_KEY]: "graphql-ws, json" })
+        request({ [HttpSocketProtocols.HEADER_NAME]: "graphql-ws, json" })
       )
     ))
 
@@ -39,7 +39,7 @@ describe("HttpSocketProtocols", () => {
       Effect.provide(HttpSocketProtocols.layer),
       Effect.provideService(
         HttpServerRequest.HttpServerRequest,
-        request({ [HttpSocketProtocols.SOCKET_PROTOCOLS_KEY]: "a,,b" })
+        request({ [HttpSocketProtocols.HEADER_NAME]: "a,,b" })
       )
     ))
 

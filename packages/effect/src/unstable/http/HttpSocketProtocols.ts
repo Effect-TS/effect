@@ -15,7 +15,7 @@ import { flow } from "../../Function.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as S from "../../Schema.ts"
-import * as SocketProtocolsSchema from "../socket/SocketProtocols.ts"
+import { Schema as SocketProtocolsSchema } from "../socket/SocketProtocols.ts"
 import * as Headers from "./Headers.ts"
 import * as HttpServerRequest from "./HttpServerRequest.ts"
 
@@ -25,7 +25,7 @@ import * as HttpServerRequest from "./HttpServerRequest.ts"
  * @category constants
  * @since 4.0.0
  */
-export const SOCKET_PROTOCOLS_KEY = "Sec-WebSocket-Protocol" as const
+export const HEADER_NAME = "Sec-WebSocket-Protocol" as const
 
 /**
  * Service exposing the WebSocket sub-protocols requested by the client.
@@ -60,9 +60,9 @@ export const layer: Layer.Layer<HttpSocketProtocols, S.SchemaError, HttpServerRe
     Effect.flatMap(
       flow(
         (request) => request.headers,
-        Headers.get(SOCKET_PROTOCOLS_KEY),
+        Headers.get(HEADER_NAME),
         Option.match({
-          onSome: S.decodeEffect(SocketProtocolsSchema.Schema),
+          onSome: S.decodeEffect(SocketProtocolsSchema),
           onNone: () => Effect.undefined
         })
       )
