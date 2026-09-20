@@ -645,13 +645,13 @@ const make = Effect.gen(function*() {
       })
 
       // A request is deduplicated while it is running, but also while its
-      // reply is being published and, until the next read, after it has
+      // exit reply is being published and, until the next read, after it has
       // completed. A reset (possibly from another runner) can race with that
       // window, so release the claim this read just took on a completed
       // request. Otherwise the reset is only delivered once the claim expires.
       const releaseCompletedClaim = (message: Message.Incoming<any>) => {
         const state = entityManagers.get(message.envelope.address.entityType)
-        if (!state?.manager.isProcessingFor(message, { excludeReplies: true })) {
+        if (!state?.manager.isProcessingFor(message, { excludeCompleted: true })) {
           resetRequestIds.push(message.envelope.requestId)
         }
       }
@@ -870,7 +870,7 @@ const make = Effect.gen(function*() {
         yield* storageReadLock.release(1)
 
         if (resetRequestIds.length > 0) {
-          yield* storage.resetRequests(resetRequestIds)
+          yield* Effect.ignore(storage.resetRequests(resetRequestIds))
           resetRequestIds.length = 0
         }
 

@@ -1085,6 +1085,9 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
                 continue
               }
+              // Unlike SQL storage, the memory driver does not exclude requests
+              // with unacknowledged chunk replies. It models claim expiry, not
+              // the SQL reply-exclusion predicate or concurrent transactions.
               messages.push({
                 envelope,
                 lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
