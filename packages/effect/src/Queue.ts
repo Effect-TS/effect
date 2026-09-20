@@ -1106,8 +1106,8 @@ export const interrupt = <A, E>(self: Enqueue<A, E>): Effect<boolean> =>
  *
  * **Details**
  *
- * The operation is idempotent and returns `true`, including when the queue has
- * already been shut down or completed.
+ * Returns `true` when the queue is shut down by this call, or `false` when it
+ * has already been shut down or completed.
  *
  * **Example** (Shutting down queues)
  *
@@ -1151,8 +1151,8 @@ export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> => internal
  *
  * An open queue completes with an interruption. A queue already closing retains
  * its completion cause. Call `failCauseUnsafe` first to shut down with a specific
- * failure. This operation is idempotent and returns `true`, including when the
- * queue has already completed.
+ * failure. Returns `true` when the queue is shut down by this call, or `false`
+ * when it has already completed.
  *
  * @see {@link shutdown} for the effectful variant
  * @see {@link failCauseUnsafe} to set a failure before discarding buffered messages
@@ -1161,7 +1161,7 @@ export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> => internal
  */
 export const shutdownUnsafe = <A, E>(self: Enqueue<A, E>): boolean => {
   if (self.state._tag === "Done") {
-    return true
+    return false
   }
   MutableList.clear(self.messages)
   const offers = self.state.offers
