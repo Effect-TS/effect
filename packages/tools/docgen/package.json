@@ -77,7 +77,7 @@
     "@types/babel__code-frame": "^7.27.0",
     "@types/doctrine": "^0.0.9",
     "@types/node": "^26.6.2",
-    "tsx": "^4.23.13",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.1"
   }
