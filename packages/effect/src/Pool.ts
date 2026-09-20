@@ -119,6 +119,7 @@ export interface State<A, E> {
   isShuttingDown: boolean
   usage: number
   readonly resizeSemaphore: Semaphore.Semaphore
+  // Insertion order determines usage-TTL retirement order; reclaimed items move to the back.
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
   availableTail: PoolItem<A, E> | undefined
@@ -904,12 +905,12 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         if (self.config.strategy === strategyNoop) {
           return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
         }
+        const onAcquire = Effect.suspend(() =>
+          // A borrower may have removed the item before the callback runs.
+          self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
+        )
         return Effect.as(
-          exit._tag === "Success"
-            ? self.config.strategy.onAcquire(item)
-            : Effect.flatMap(item.finalizer, () =>
-              // A borrower may have consumed the failure while it was finalizing.
-              self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void),
+          exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
           item
         )
       })
