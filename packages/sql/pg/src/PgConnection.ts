@@ -203,12 +203,15 @@ export interface PgConnection {
    * Runs a query and returns rows keyed by column name. Pass `false` to skip
    * the prepared statement cache.
    *
+   * **Details**
+   *
    * Interrupting the effect drains the connection back to `ReadyForQuery`,
    * sending a `CancelRequest` when the statement does not finish promptly.
    * A pool discards the session at its next checkout unless the backend reports
    * `57014`. A caller that keeps the same checkout may receive a late cancel
-   * on a following statement. Because `statement_timeout` also raises `57014`,
-   * it can be mistaken for confirmation that the cancel arrived.
+   * on a following statement. An unpooled session cannot be replaced and
+   * remains exposed to the late cancel. Because `statement_timeout` also raises
+   * `57014`, it can be mistaken for confirmation that the cancel arrived.
    */
   readonly query: (
     sql: string,

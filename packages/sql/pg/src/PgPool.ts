@@ -206,19 +206,12 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const reserve = Effect.flatMap(get, (connection) => connection.pin)
 
   // `Pool.use` cannot check the session it hands over before running the
-  // effect, so it is only taken when there is nothing to check: no session is
-  // known dead, and no lifetime can have run out. Otherwise the scoped
-  // checkout does its replacement pass first. Checking inside the callback
-  // instead would hold one lease while acquiring another, which deadlocks a
-  // pool of one.
+  // effect. Checking inside its callback would hold one lease while acquiring
+  // a replacement, which deadlocks a pool of one. Use the scoped checkout so
+  // dead, expired, and pending-cancel sessions are replaced first.
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E | SqlError, R> =>
-    Effect.suspend(() =>
-      connectionTTL === undefined && deadConnections.size === 0
-        ? Pool.use(pool, f)
-        : Effect.scoped(Effect.flatMap(get, f))
-    )
+  ): Effect.Effect<A, E | SqlError, R> => Effect.scoped(Effect.flatMap(get, f))
 
   const pgPool: PgPool = {
     [TypeId]: TypeId,
