@@ -31,7 +31,7 @@ const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
 
 const cancelRequestCode = 80877102
 
-/** Closes a `CancelRequest` connection and holds the request at a test-controlled gate. */
+/** Holds `CancelRequest` messages until the test releases them. */
 class LateCancelProxy extends Duplex {
   private readonly backend: Net.Socket
   private cancelDeferred = false

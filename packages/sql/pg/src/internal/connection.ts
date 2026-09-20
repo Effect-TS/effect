@@ -10,7 +10,7 @@ export interface ConnectionInternals {
   /** The pool item identity: the unpinned base connection. */
   readonly base: object
   readonly deadError: () => SqlError | undefined
-  /** Fired when the connection should no longer be reused by a pool. */
+  /** Fired when a pool must stop reusing the connection. */
   readonly retireHooks: Set<() => void>
   /**
    * Installed by a multiplexed pool so that pinning the session also takes it

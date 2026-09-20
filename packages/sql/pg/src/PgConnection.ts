@@ -203,16 +203,12 @@ export interface PgConnection {
    * Runs a query and returns rows keyed by column name. Pass `false` to skip
    * the prepared statement cache.
    *
-   * **Details**
-   *
-   * Interrupting the effect drains the connection back to `ReadyForQuery`,
-   * sending a `CancelRequest` when the statement does not finish promptly.
-   * Unless the backend reports `57014`, a pool retires the session before it
-   * can be checked out again. A caller that keeps the same checkout may receive
-   * a late cancel on a following statement. An unpooled session cannot be
-   * replaced and remains exposed to the late cancel. Because
-   * `statement_timeout` also raises `57014`, it can be mistaken for
-   * confirmation that the cancel arrived.
+   * On interruption, the connection drains to `ReadyForQuery` and sends a
+   * `CancelRequest` if needed. Unless the backend confirms cancellation with
+   * `57014`, a pool retires the session before its next checkout. A retained
+   * checkout and an unpooled session remain exposed to a late cancel.
+   * `statement_timeout` also reports `57014` and can be mistaken for
+   * confirmation.
    */
   readonly query: (
     sql: string,
@@ -230,8 +226,8 @@ export interface PgConnection {
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
    * Streams rows without collecting the full result. The session is pinned for
-   * the lifetime of the stream. Aborting the stream early behaves like
-   * interrupting `query`.
+   * the lifetime of the stream. An early abort behaves like an interrupted
+   * `query`.
    */
   readonly stream: (
     sql: string,
@@ -333,9 +329,8 @@ interface PipelineEntry {
 }
 
 const abortDrainTimeoutMillis = 5000
-/** How long an aborted statement may drain before a `CancelRequest` is sent. */
 const abortDrainGraceMillis = 10
-/** SQLSTATE `query_canceled`, raised for a `CancelRequest` and for `statement_timeout` alike. */
+/** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
@@ -362,7 +357,6 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  /** Set while a `CancelRequest` may be in flight; cleared by `57014`, or by `ReadyForQuery` before retirement hooks run. */
   cancelPending = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly retireHooks = new Set<() => void>()
@@ -1494,13 +1488,7 @@ class QueryMachine implements Consumer {
 const emptyRows: ReadonlyArray<Row> = []
 const emptyValues: ReadonlyArray<ReadonlyArray<unknown>> = []
 
-/**
- * Drains an aborted statement back to `ReadyForQuery`, destroying the
- * connection when that stalls. `abort` receives the callback that marks the
- * drain complete. A `CancelRequest` is only sent once the drain outlasts a
- * short grace period, so a result already on the wire keeps its session. An
- * unconfirmed cancel runs the connection's retirement hooks at `ReadyForQuery`.
- */
+/** Drains an aborted statement, sending a cancel after a short grace period and failing if it stalls. */
 const drainAborted = (
   conn: PgConnectionImpl,
   timeoutMessage: string,
