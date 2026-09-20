@@ -54,6 +54,11 @@ const UnionResultTool = Tool.make("union-result", {
   ])
 })
 
+const IdentifiedResultTool = Tool.make("identified-result", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Struct({ value: Schema.String }).annotate({ identifier: "IdentifiedResult" })
+})
+
 const ValidatedTool = Tool.make("validated", {
   parameters: Schema.Struct({
     value: Schema.String
@@ -94,6 +99,7 @@ const TestToolkit = Toolkit.make(
   JsonArrayTool,
   StructuredOnlyTool,
   UnionResultTool,
+  IdentifiedResultTool,
   ValidatedTool,
   CapabilityTool,
   InitializeMetadataTool,
@@ -193,6 +199,7 @@ const makeFixture = Effect.fnUntraced(function*() {
           return { value: "structured-result" }
         }),
       "union-result": () => Effect.succeed({ _tag: "a" as const, a: 1 }),
+      "identified-result": () => Effect.succeed({ value: "identified" }),
       validated: ({ value }) => Effect.succeed(value),
       capability: () =>
         McpServer.clientCapabilities.pipe(
@@ -1502,6 +1509,32 @@ describe("McpServer protocol adapters", () => {
       assert.notProperty(oldSchemaOutput, "_meta")
     }))
 
+  it.effect("should inline identified output schemas on the 2025 wire", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+
+      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const tools = listedTools(yield* client.request("tools/list"))
+        const tool = tools.find((tool) => tool.name === "identified-result")
+        assert.isDefined(tool)
+        assert.deepStrictEqual(tool.outputSchema, {
+          type: "object",
+          properties: { value: { type: "string" } },
+          required: ["value"],
+          additionalProperties: true,
+          $defs: {
+            IdentifiedResult: {
+              type: "object",
+              properties: { value: { type: "string" } },
+              required: ["value"],
+              additionalProperties: true
+            }
+          }
+        })
+      }
+    }))
+
   it.effect("should project non-object JSON Toolkit outputs only for the July protocol", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
@@ -1537,9 +1570,33 @@ describe("McpServer protocol adapters", () => {
         minItems: 2,
         maxItems: 2
       })
-      const unionOutput = listResult.find((tool) => tool.name === "union-result")?.outputSchema
-      assert.isDefined(unionOutput)
-      assert.property(unionOutput, "anyOf")
+      assert.deepStrictEqual(listResult.find((tool) => tool.name === "union-result")?.outputSchema, {
+        anyOf: [
+          {
+            type: "object",
+            properties: {
+              _tag: { type: "string", enum: ["a"] },
+              a: {
+                anyOf: [
+                  { type: "number" },
+                  { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+                ]
+              }
+            },
+            required: ["_tag", "a"],
+            additionalProperties: true
+          },
+          {
+            type: "object",
+            properties: {
+              _tag: { type: "string", enum: ["b"] },
+              b: { type: "string" }
+            },
+            required: ["_tag", "b"],
+            additionalProperties: true
+          }
+        ]
+      })
 
       const callResponse = yield* fixture.post(
         modernRequest(43, "tools/call", { name: "shared", arguments: {} }),
