@@ -350,6 +350,7 @@ export const make = Effect.fnUntraced(function*<
             const request = activeRequests.get(id)
             if (!request) continue
             const { lastSentChunk, message } = request
+            request.sentExit = false
             yield* server.write(
               0,
               {
