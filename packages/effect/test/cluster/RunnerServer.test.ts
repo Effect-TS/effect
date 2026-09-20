@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Layer, Option, PubSub, Queue, Schema, Scope, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Layer, Option, PubSub, Queue, Schema, Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
@@ -190,6 +190,47 @@ it.effect("releases a non-persisted Effect handler when the runner caller discon
     )))
   }))
 
+it.effect("caller disconnect releases admission without waiting for handler cleanup", () =>
+  Effect.gen(function*() {
+    const started = yield* Deferred.make<void>()
+    const cleanupStarted = yield* Deferred.make<void>()
+    const releaseCleanup = yield* Deferred.make<void>()
+    const cleanupFinished = yield* Deferred.make<void>()
+    yield* Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const callerScope = yield* Scope.fork(yield* Effect.scope)
+      const request = yield* makeRequest(ReproEntity, "blocked-handler-cleanup")
+      yield* sharding.send(incomingRequest(request, callerScope))
+      yield* Deferred.await(started)
+      yield* Effect.gen(function*() {
+        yield* Scope.close(callerScope, Exit.void).pipe(Effect.timeout("1 second"), TestClock.withLive)
+        yield* Deferred.await(cleanupStarted)
+        assert.isFalse(yield* Deferred.isDone(cleanupFinished))
+
+        // The departed request no longer occupies the only mailbox slot.
+        const next = yield* makeRequest(ReproEntity, "blocked-handler-cleanup", { payload: { id: 2 } })
+        const accepted = yield* Effect.exit(sharding.send(incomingRequest(next)))
+        assert.strictEqual(accepted._tag, "Success")
+      }).pipe(Effect.ensuring(Deferred.succeed(releaseCleanup, undefined)))
+      yield* Deferred.await(cleanupFinished)
+    }).pipe(Effect.provide(makeHandlers(
+      ReproEntity.toLayer({
+        ReproStream: ({ payload }) =>
+          Rpc.fork(
+            payload.id === 2 ? Stream.never : Stream.fromEffect(
+              Effect.andThen(Deferred.succeed(started, undefined), Effect.never)
+            ).pipe(Stream.ensuring(
+              Deferred.succeed(cleanupStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(releaseCleanup)),
+                Effect.andThen(Deferred.succeed(cleanupFinished, undefined))
+              )
+            ))
+          )
+      }, { mailboxCapacity: 1 })
+    )))
+  }))
+
 it.effect("forgets departed callers during rebuild without replaying or retaining mailbox slots", () =>
   Effect.gen(function*() {
     const rebuilding = yield* Deferred.make<void>()
@@ -301,33 +342,98 @@ it.effect("releases a replayed handler when its caller disconnects during acquis
     }).pipe(Effect.provide(makeHandlers(entityLayer)))
   }))
 
-it.effect("does not admit a request with an already-closed caller scope", () =>
+it.effect("does not replay a request while caller finalization is blocked", () =>
   Effect.gen(function*() {
+    const rebuilding = yield* Deferred.make<void>()
+    const releaseBuild = yield* Deferred.make<void>()
+    const finalizerStarted = yield* Deferred.make<void>()
+    const releaseFinalizer = yield* Deferred.make<void>()
+    let builds = 0
     let starts = 0
+    const entityLayer = ReproEntity.toLayer(Effect.gen(function*() {
+      if (++builds === 2) {
+        yield* Deferred.succeed(rebuilding, undefined)
+        yield* Deferred.await(releaseBuild)
+      }
+      return {
+        ReproStream: () =>
+          Rpc.fork(Stream.suspend(() => {
+            starts++
+            return starts === 1 ? Stream.die("trigger entity rebuild") : Stream.never
+          }))
+      }
+    }))
     yield* Effect.gen(function*() {
       yield* TestClock.adjust(1)
       const sharding = yield* Sharding.Sharding
-      const callerScope = yield* Scope.make()
-      yield* Scope.close(callerScope, Exit.void)
-      const closed = incomingRequest(yield* makeRequest(ReproEntity, "closed-scope"), callerScope)
-      yield* Effect.exit(sharding.send(closed))
-      yield* TestClock.adjust(1)
-      assert.strictEqual(starts, 0)
-      // A live request must still fit in the only mailbox slot.
-      const live = incomingRequest(yield* makeRequest(ReproEntity, "closed-scope"))
-      const admitted = yield* Effect.exit(sharding.send(live))
-      assert.strictEqual(admitted._tag, "Success")
-      yield* TestClock.adjust(1)
+      const callerScope = yield* Scope.fork(yield* Effect.scope)
+      const request = yield* makeRequest(ReproEntity, "closing-caller-replay")
+      yield* sharding.send(incomingRequest(request, callerScope))
+      yield* TestClock.adjust("5 seconds")
+      assert.isTrue(yield* Deferred.isDone(rebuilding))
       assert.strictEqual(starts, 1)
-    }).pipe(Effect.provide(makeHandlers(
-      ReproEntity.toLayer({
-        ReproStream: () => {
-          starts++
-          return Rpc.fork(Stream.never)
-        }
-      }, { mailboxCapacity: 1 })
-    )))
+
+      // This later finalizer blocks the caller's existing request cleanup.
+      yield* Scope.addFinalizer(
+        callerScope,
+        Effect.andThen(Deferred.succeed(finalizerStarted, undefined), Deferred.await(releaseFinalizer))
+      )
+      const closing = yield* Effect.forkChild(Scope.close(callerScope, Exit.void))
+      yield* Effect.gen(function*() {
+        yield* Deferred.await(finalizerStarted)
+        yield* Deferred.succeed(releaseBuild, undefined)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(starts, 1)
+      }).pipe(Effect.ensuring(Deferred.succeed(releaseFinalizer, undefined)))
+      yield* Fiber.join(closing)
+    }).pipe(Effect.provide(makeHandlers(entityLayer)))
   }))
+
+for (const finalizing of [false, true]) {
+  it.effect(`does not admit a request when caller finalization is ${finalizing ? "pending" : "complete"}`, () =>
+    Effect.gen(function*() {
+      let starts = 0
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const callerScope = yield* Scope.make()
+        const finalizerStarted = yield* Deferred.make<void>()
+        const releaseFinalizer = yield* Deferred.make<void>()
+        if (finalizing) {
+          yield* Scope.addFinalizer(
+            callerScope,
+            Effect.andThen(Deferred.succeed(finalizerStarted, undefined), Deferred.await(releaseFinalizer))
+          )
+        }
+        const closing = yield* Effect.forkChild(Scope.close(callerScope, Exit.void))
+        if (finalizing) {
+          yield* Deferred.await(finalizerStarted)
+        } else {
+          yield* Fiber.join(closing)
+        }
+        yield* Effect.gen(function*() {
+          const closed = incomingRequest(yield* makeRequest(ReproEntity, "closed-scope"), callerScope)
+          yield* Effect.exit(sharding.send(closed))
+          yield* TestClock.adjust(1)
+          assert.strictEqual(starts, 0)
+          // A live request must still fit in the only mailbox slot.
+          const live = incomingRequest(yield* makeRequest(ReproEntity, "closed-scope"))
+          const admitted = yield* Effect.exit(sharding.send(live))
+          assert.strictEqual(admitted._tag, "Success")
+          yield* TestClock.adjust(1)
+          assert.strictEqual(starts, 1)
+        }).pipe(Effect.ensuring(Deferred.succeed(releaseFinalizer, undefined)))
+        yield* Fiber.join(closing)
+      }).pipe(Effect.provide(makeHandlers(
+        ReproEntity.toLayer({
+          ReproStream: () => {
+            starts++
+            return Rpc.fork(Stream.never)
+          }
+        }, { mailboxCapacity: 1 })
+      )))
+    }))
+}
 
 for (const persisted of [false, true]) {
   it.effect(`caller disconnect preserves ${persisted ? "persisted" : "Uninterruptible"} streams`, () =>
