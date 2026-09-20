@@ -637,6 +637,7 @@ const make = Effect.gen(function*() {
       let deliveredThisRead = false
       const removableNotifications = new Set<PendingNotification>()
       const resetAddresses = MutableHashSet.empty<EntityAddress>()
+      const resetRequestIds: Array<Snowflake.Snowflake> = []
       const cappedAddresses = MutableHashSet.empty<EntityAddress>()
 
       const markDelivered = Effect.sync(() => {
@@ -694,6 +695,17 @@ const make = Effect.gen(function*() {
             // send it to the entity manager to be processed.
             return Effect.tap(state.manager.send(message), markDelivered)
           } else if (isProcessing || state.status === "closing") {
+            if (
+              isProcessing && message._tag === "IncomingRequest" &&
+              !state.manager.isProcessingFor(message, { excludeReplies: true })
+            ) {
+              // A reset (possibly on another runner) can race with this read
+              // and reply publication. Keep deduplicating the request, but do
+              // not leave its new claim stranded until the claim timeout.
+              // This also covers replies published before the active request
+              // has been moved to the processed-ID cache.
+              resetRequestIds.push(message.envelope.requestId)
+            }
             // If the request is already processing, we skip it.
             // Or if the entity is closing, we skip all incoming messages.
             return Effect.void
@@ -737,6 +749,14 @@ const make = Effect.gen(function*() {
               requestId: message.envelope.requestId,
               defect: Cause.squash(cause)
             }))
+          }
+          if (error.success._tag === "AlreadyProcessingMessage" && message._tag === "IncomingRequest") {
+            // Decoding or entity acquisition can yield after isProcessingFor.
+            const state = entityManagers.get(message.envelope.address.entityType)
+            if (!state?.manager.isProcessingFor(message, { excludeReplies: true })) {
+              resetRequestIds.push(message.envelope.requestId)
+            }
+            return Effect.void
           }
           if (error.success._tag === "MailboxFull") {
             const address = message.envelope.address
@@ -849,6 +869,11 @@ const make = Effect.gen(function*() {
 
         // let the resuming entities check if they are done
         yield* storageReadLock.release(1)
+
+        if (resetRequestIds.length > 0) {
+          yield* storage.resetRequests(resetRequestIds)
+          resetRequestIds.length = 0
+        }
 
         if (cappedAddressesToReset !== undefined) {
           yield* Effect.ignore(storage.resetAddresses(cappedAddressesToReset))
