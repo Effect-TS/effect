@@ -113,6 +113,13 @@ export const make = Effect.gen(function*() {
       entity = makeWorkflowEntity(workflow) as any
       workflows.set(workflow._tag, workflow)
       entities.set(workflow._tag, entity as any)
+      return entity!
+    }
+    const existing = workflows.get(workflow._tag)
+    if (existing !== undefined && existing !== workflow) {
+      Effect.runFork(
+        Effect.logWarning(duplicateWorkflowRegistrationWarning(workflow._tag, workflowsDiffer(existing, workflow)))
+      )
     }
     return entity!
   }
@@ -801,6 +808,21 @@ const ResumeRpc = Rpc.make("resume", {
   .annotate(ClusterSchema.Uninterruptible, "server")
 
 const payloadParentKey = "~effect/cluster/ClusterWorkflowEngine/payloadParentKey"
+
+/**
+ * @internal
+ */
+export const duplicateWorkflowRegistrationWarning = (
+  tag: string,
+  differentShape: boolean
+): string =>
+  differentShape
+    ? `Workflow "${tag}" is already registered with a different payload schema or annotations; keeping the first definition`
+    : `Workflow "${tag}" is already registered; keeping the first definition`
+
+const workflowsDiffer = (left: Workflow.Any, right: Workflow.Any): boolean =>
+  left.payloadSchema !== right.payloadSchema || left.annotations !== right.annotations
+
 
 // Workflow state is durable, so an idle entity (completed or suspended) can
 // be released quickly and is rebuilt from storage when the next message
