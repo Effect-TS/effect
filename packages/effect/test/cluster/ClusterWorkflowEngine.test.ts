@@ -952,7 +952,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
   it.effect("bounds a durable clock notification when its workflow is absent after restart", () =>
     Effect.gen(function*() {
-      const registrationTimeout = 1000
+      const clockDuration = 3000
+      const registrationTimeout = 5000
       const RemovedWorkflow = Workflow.make("RemovedWorkflow", {
         payload: {},
         success: Schema.Void,
@@ -965,14 +966,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const driver = Context.get(shared, MessageStorage.MemoryDriver)
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, storage)
       const config = { entityRegistrationTimeout: registrationTimeout }
-      const clock = DurableClock.make({ name: "wait", duration: "3 seconds" })
+      const clock = DurableClock.make({ name: "wait", duration: clockDuration })
 
       const executionId = yield* Effect.scoped(Effect.gen(function*() {
         const context = yield* Layer.build(
           RemovedWorkflow.toLayer(() =>
             DurableClock.sleep({
               name: "wait",
-              duration: "3 seconds",
+              duration: clockDuration,
               inMemoryThreshold: Duration.zero
             })
           ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer, config })))
@@ -994,7 +995,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           config
         }))
         yield* Effect.gen(function*() {
-          yield* TestClock.adjust("3 seconds")
+          // Fire the persisted timer before the registration-start deadline.
+          yield* TestClock.adjust(clockDuration)
           // This is the completion emitted by ClockEntity when the persisted timer fires.
           // Calling it directly isolates the notifyLocal registration wait from storage claims.
           const fiber = yield* DurableDeferred.done(clock.deferred, {
@@ -1006,7 +1008,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           }).pipe(Effect.forkDetach({ startImmediately: true }))
           yield* Effect.yieldNow
           expect(fiber.pollUnsafe()).toBeUndefined()
-          yield* TestClock.adjust(registrationTimeout)
+          yield* TestClock.adjust(registrationTimeout - clockDuration)
 
           const exit = fiber.pollUnsafe()
           assert(exit !== undefined, "the notifyLocal registration wait must be bounded")
