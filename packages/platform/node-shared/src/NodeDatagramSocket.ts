@@ -80,6 +80,9 @@ const open = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(
 ): Effect.fn.Return<Datagram.Binding<Datagram.FamilyOf<L>>, Datagram.DatagramSocketError, Scope.Scope> {
   const { localAddress } = options
   const platform = currentPlatform()
+  // This is a point-in-time interface snapshot, not a stable OS identity. On
+  // Unix, a missing positive index is refreshed once and then rejected: libuv
+  // silently treats an unresolved numeric zone as the default interface.
   let scopeIds = yield* Effect.try({
     try: readScopeIds,
     catch: openError
@@ -111,9 +114,6 @@ const open = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(
       : formatMulticastInterface(options.interface),
     source: options.source === undefined ? undefined : NetAddress.formatIp(options.source)
   })
-  // This is a point-in-time interface snapshot, not a stable OS identity. On
-  // Unix, a missing positive index is refreshed once and then rejected: libuv
-  // silently treats an unresolved numeric zone as the default interface.
   let nativeClosed = false
   const create = Effect.try({
     catch: openError,

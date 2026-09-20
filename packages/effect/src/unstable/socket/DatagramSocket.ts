@@ -687,21 +687,6 @@ function fromTransportWith<L extends NetAddress.InetAddress>(
       if (Deferred.isDoneUnsafe(closed)) return yield* error(new DatagramSocketClosedError({}))
 
       const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
-      const rebaseWriteFailure =
-        (accepted: number) => (failure: DatagramSocketError): Effect.Effect<never, DatagramSocketError> => {
-          if (failure.reason._tag !== "DatagramSocketWriteError") return Effect.fail(failure)
-          if (failure.reason.accepted !== 0) {
-            return Effect.die(new Error("Datagram socket binding reported nonzero progress for a failed send"))
-          }
-          return Effect.fail(error(
-            new DatagramSocketWriteError({
-              cause: failure.reason.cause,
-              destination: failure.reason.destination,
-              accepted
-            })
-          ))
-        }
-
       const validatePacket = (packet: Packet<A>): DatagramSocketError | undefined => {
         if (packet.data.byteLength > maxPacketBytes) {
           return error(new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes }))
@@ -821,14 +806,13 @@ export const fromAssociatedTransport = <L extends NetAddress.InetAddress>(
       )
     }
 
-    const socket = yield* fromTransportWith(options, (handlers) =>
+    return yield* fromTransportWith(options, (handlers) =>
       acquire({
         ...handlers,
         onMessage(data, source) {
           if (Equal.equals(NetAddress.toCanonical(source), peer)) handlers.onMessage(data, source)
         }
       }), options.remote)
-    return socket
   })
 
 /**
@@ -1171,6 +1155,22 @@ const makeReceiver = Effect.fnUntraced(function*<L extends NetAddress.InetAddres
 const error = (reason: DatagramSocketErrorReason) => new DatagramSocketError({ reason })
 
 const defaultMaxPacketBytes = 65507
+
+// A binding reports zero progress for a failed send; the core owns the accepted prefix of each batch.
+const rebaseWriteFailure =
+  (accepted: number) => (failure: DatagramSocketError): Effect.Effect<never, DatagramSocketError> => {
+    if (failure.reason._tag !== "DatagramSocketWriteError") return Effect.fail(failure)
+    if (failure.reason.accepted !== 0) {
+      return Effect.die(new Error("Datagram socket binding reported nonzero progress for a failed send"))
+    }
+    return Effect.fail(error(
+      new DatagramSocketWriteError({
+        cause: failure.reason.cause,
+        destination: failure.reason.destination,
+        accepted
+      })
+    ))
+  }
 
 const invalidBufferingOption = (options: BindOptions): keyof BindOptions | undefined => {
   for (
