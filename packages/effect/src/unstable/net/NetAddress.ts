@@ -1378,7 +1378,9 @@ export const formatNativeHost = (
   scopeIds: ReadonlyMap<string, number>
 ): string => {
   if (platform !== "win32" && isInetAddressV6(self) && self.scopeId !== 0) {
-    return `${formatIp(self.address)}%${resolveScopeName(self.scopeId, scopeIds)}`
+    for (const [name, scopeId] of scopeIds) {
+      if (scopeId === self.scopeId) return `${formatIp(self.address)}%${name}`
+    }
   }
   return formatHost(self)
 }
@@ -1403,18 +1405,15 @@ export const formatMulticastInterface = (
   networkInterface: Ipv4Address | number,
   platform: string,
   scopeIds: ReadonlyMap<string, number>
-): string =>
-  typeof networkInterface !== "number"
-    ? formatIp(networkInterface)
-    : networkInterface === 0
-    ? "::"
-    : `::%${platform === "win32" ? networkInterface : resolveScopeName(networkInterface, scopeIds)}`
-
-const resolveScopeName = (index: number, scopeIds: ReadonlyMap<string, number>): string => {
-  for (const [name, scopeId] of scopeIds) {
-    if (scopeId === index) return name
+): string => {
+  if (typeof networkInterface !== "number") return formatIp(networkInterface)
+  if (networkInterface === 0) return "::"
+  if (platform !== "win32") {
+    for (const [name, scopeId] of scopeIds) {
+      if (scopeId === networkInterface) return `::%${name}`
+    }
   }
-  return String(index)
+  return `::%${networkInterface}`
 }
 
 /**
