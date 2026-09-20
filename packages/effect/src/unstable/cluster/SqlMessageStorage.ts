@@ -686,6 +686,20 @@ export const makeEncoded: (options?: {
       )
     },
 
+    resetRequests: (requestIds) =>
+      requestIds.length === 0
+        ? Effect.void
+        : sql`
+        UPDATE ${messagesTableSql}
+        SET last_read = NULL
+        WHERE processed = ${sqlFalse}
+        AND ${sql.in("id", requestIds.map(String))}
+        `.pipe(
+          Effect.asVoid,
+          PersistenceError.refail,
+          withTracerDisabled
+        ),
+
     resetAddresses: (addresses) =>
       addresses.length === 0
         ? Effect.void

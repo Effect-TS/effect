@@ -55,6 +55,7 @@ export interface EntityManager {
 
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
     readonly excludeReplies?: boolean
+    readonly excludeCompleted?: boolean
   }) => boolean
   readonly clearProcessed: () => void
 
@@ -90,6 +91,7 @@ export type EntityState = {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
     sentReply: boolean
+    sentExit: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
     /** Set when the request should not outlive its caller. */
@@ -233,6 +235,7 @@ export const make = Effect.fnUntraced(function*<
                 if (!request) return Effect.void
 
                 request.sentReply = true
+                request.sentExit = true
 
                 if (
                   isShuttingDown &&
@@ -253,6 +256,7 @@ export const make = Effect.fnUntraced(function*<
                   (isShuttingDown || isUninterruptibleForServer(request.message.annotations))
                 ) {
                   if (!isShuttingDown) {
+                    request.sentExit = false
                     return server.write(
                       0,
                       {
@@ -346,6 +350,7 @@ export const make = Effect.fnUntraced(function*<
             const request = activeRequests.get(id)
             if (!request) continue
             const { lastSentChunk, message } = request
+            request.sentExit = false
             yield* server.write(
               0,
               {
@@ -530,6 +535,7 @@ export const make = Effect.fnUntraced(function*<
                 rpc,
                 message,
                 sentReply: false,
+                sentExit: false,
                 lastSentChunk: Option.filter(
                   message.lastSentReply,
                   (reply): reply is Reply.Chunk<Rpc.Any> => reply._tag === "Chunk"
@@ -645,7 +651,10 @@ export const make = Effect.fnUntraced(function*<
         return Effect.flatMap(Fiber.joinAll(fibers), loop)
       }),
     isProcessingFor(message, options) {
-      if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {
+      if (
+        options?.excludeReplies !== true && options?.excludeCompleted !== true &&
+        processedRequestIds.has(message.envelope.requestId)
+      ) {
         return true
       }
       const state = activeServers.get(message.envelope.address.entityId)
@@ -654,6 +663,8 @@ export const make = Effect.fnUntraced(function*<
       if (request === undefined) {
         return false
       } else if (options?.excludeReplies && request.sentReply) {
+        return false
+      } else if (options?.excludeCompleted && request.sentExit) {
         return false
       }
       return true

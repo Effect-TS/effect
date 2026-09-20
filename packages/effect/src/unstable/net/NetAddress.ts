@@ -853,13 +853,26 @@ export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
   isIpv4Mapped(self) ? Option.some(makeIpv4(getBytes(self).slice(12))) : Option.none()
 
 /**
- * Converts an IPv4-mapped IPv6 address to IPv4, leaving all other addresses unchanged.
+ * Converts IPv4-mapped IPv6 addresses to IPv4, including the IP component of internet addresses.
+ *
+ * **Details**
+ *
+ * Internet addresses retain their port. Addresses that need no conversion are
+ * returned unchanged, preserving their identity and any IPv6 scope identifier.
+ * Converted internet addresses are IPv4 values without IPv6 scope metadata.
  *
  * @category converting
  * @since 4.0.0
  */
-export const toCanonical = (self: IpAddress): IpAddress =>
-  isIpv6Address(self) ? Option.getOrElse(fromIpv4Mapped(self), () => self) : self
+export function toCanonical(self: IpAddress): IpAddress
+export function toCanonical(self: InetAddress): InetAddress
+export function toCanonical(self: IpAddress | InetAddress): IpAddress | InetAddress {
+  if (isInetAddress(self)) {
+    const address = toCanonical(self.address)
+    return address === self.address ? self : inetAddressUnsafe(address, self.port)
+  }
+  return isIpv6Address(self) ? Option.getOrElse(fromIpv4Mapped(self), () => self) : self
+}
 
 const InetV4Proto = {
   _tag: "InetAddressV4",

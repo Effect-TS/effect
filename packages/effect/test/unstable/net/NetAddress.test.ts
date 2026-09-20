@@ -384,6 +384,29 @@ describe("NetAddress", () => {
     }
   })
 
+  it("canonicalizes mapped internet addresses while retaining their port", () => {
+    const ipv4 = success(NetAddress.ipv4FromString("192.0.2.128"))
+    const expected = success(NetAddress.inetAddressV4(ipv4, 4567))
+    for (const scopeId of [0, 7]) {
+      const mapped = success(NetAddress.inetAddressV6(NetAddress.toIpv4Mapped(ipv4), 4567, { scopeId }))
+      const canonical: NetAddress.InetAddress = NetAddress.toCanonical(mapped)
+      assert.isTrue(NetAddress.isInetAddressV4(canonical))
+      assert.isTrue(Equal.equals(canonical, expected))
+      assert.strictEqual(Hash.hash(canonical), Hash.hash(expected))
+      assert.strictEqual(NetAddress.toCanonical(canonical), canonical)
+    }
+  })
+
+  it("retains identity and scope for internet addresses that need no canonicalization", () => {
+    const scoped = success(
+      NetAddress.inetAddressV6(success(NetAddress.ipv6FromString("fe80::1")), 1234, { scopeId: 3 })
+    )
+    for (const address of [success(NetAddress.inetAddressV4(NetAddress.ipv4Loopback, 1234)), scoped]) {
+      assert.strictEqual(NetAddress.toCanonical(address), address)
+    }
+    assert.strictEqual(NetAddress.toCanonical(scoped.address), scoped.address)
+  })
+
   it("constructs immutable address values", () => {
     const ipv4 = success(NetAddress.ipv4FromString("127.0.0.1"))
     const ipv6 = success(NetAddress.ipv6FromString("::1"))
