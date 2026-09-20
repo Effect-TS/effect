@@ -47,6 +47,15 @@ import * as Reply from "./Reply.ts"
 import * as Sharding from "./Sharding.ts"
 import * as Snowflake from "./Snowflake.ts"
 
+const payloadShape = (workflow: Workflow.Any): string => {
+  try {
+    const { definitions, schema } = Schema.toJsonSchemaDocument(workflow.payloadSchema)
+    return JSON.stringify(Object.keys(definitions).length === 0 ? schema : { ...schema, $defs: definitions })
+  } catch {
+    return "<unavailable>"
+  }
+}
+
 /**
  * Creates a `WorkflowEngine` implementation backed by cluster sharding and
  * message storage.
@@ -541,10 +550,10 @@ export const make = Effect.gen(function*() {
         if (existing === undefined || existing === workflow) return registration
         return Effect.logWarning(
           `Workflow "${workflow._tag}" is already registered with payload shape ${
-            JSON.stringify(Schema.toJsonSchemaDocument(existing.payloadSchema).schema)
-          }; ignoring duplicate definition with payload shape ${
-            JSON.stringify(Schema.toJsonSchemaDocument(workflow.payloadSchema).schema)
-          }`
+            payloadShape(
+              existing
+            )
+          }; ignoring duplicate definition with payload shape ${payloadShape(workflow)}`
         ).pipe(Effect.andThen(registration))
       }),
 
