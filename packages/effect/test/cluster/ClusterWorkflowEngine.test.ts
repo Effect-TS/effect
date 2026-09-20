@@ -9,6 +9,7 @@ import {
   Fiber,
   Latch,
   Layer,
+  Logger,
   Option,
   Result,
   Schema,
@@ -1445,6 +1446,77 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
     }).pipe(Effect.provide(TestWorkflowEngine)))
+
+  it.effect("warns for conflicting definitions and stays silent for the same definition", () => {
+    class FirstPayload extends Schema.Class<FirstPayload>("DuplicateClassPayload")({
+      organizationId: Schema.String
+    }) {}
+    class SecondPayload extends Schema.Class<SecondPayload>("DuplicateClassPayload")({
+      deploymentId: Schema.Number
+    }) {}
+    const first = Workflow.make("DuplicateClassPayloadWorkflow", {
+      payload: FirstPayload,
+      idempotencyKey: ({ organizationId }) => organizationId
+    })
+    const second = Workflow.make("DuplicateClassPayloadWorkflow", {
+      payload: SecondPayload,
+      idempotencyKey: ({ deploymentId }) => String(deploymentId)
+    })
+    const warnings: Array<unknown> = []
+    const logger = Logger.make<unknown, void>((options) => {
+      if (options.logLevel === "Warn") {
+        warnings.push(options.message)
+      }
+    })
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine
+      yield* engine.register(first, () => Effect.void)
+      yield* engine.register(first, () => Effect.void)
+
+      assert.deepStrictEqual(warnings, [])
+
+      yield* engine.register(second, () => Effect.void)
+
+      const warning = warnings
+        .map((message) => globalThis.Array.isArray(message) ? message.join(" ") : String(message))
+        .find((message) => message.includes("DuplicateClassPayloadWorkflow"))
+      assert(warning, "duplicate workflow registration must emit a warning containing its tag")
+      const normalized = warning.toLowerCase()
+      for (const fragment of ["organizationid", "string", "deploymentid", "number"]) {
+        assert.include(normalized, fragment, `warning must identify both class payload shapes: ${warning}`)
+      }
+    }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
+  })
+
+  it.effect("does not fail when duplicate workflow payload shapes cannot be rendered", () => {
+    const payloadKey = Symbol("payload")
+    const first = Workflow.make("UnavailablePayloadShapeWorkflow", {
+      payload: Schema.Struct({ [payloadKey]: Schema.String }),
+      idempotencyKey: () => "first"
+    })
+    const second = Workflow.make("UnavailablePayloadShapeWorkflow", {
+      payload: Schema.Struct({ [payloadKey]: Schema.Number }),
+      idempotencyKey: () => "second"
+    })
+    const warnings: Array<unknown> = []
+    const logger = Logger.make<unknown, void>((options) => {
+      if (options.logLevel === "Warn") {
+        warnings.push(options.message)
+      }
+    })
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine
+      yield* engine.register(first, () => Effect.void)
+      yield* engine.register(second, () => Effect.void)
+
+      const warning = warnings
+        .map((message) => globalThis.Array.isArray(message) ? message.join(" ") : String(message))
+        .find((message) => message.includes("UnavailablePayloadShapeWorkflow"))
+      assert(warning, "duplicate workflow registration must still warn when rendering a payload shape fails")
+    }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
+  })
 
   it.effect("propagates trace context to persisted workflow requests", () => {
     let callerSpan: Tracer.NativeSpan | undefined
