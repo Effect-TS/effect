@@ -63,21 +63,25 @@ export class EventJournal extends Context.Service<EventJournal, {
    *
    * Effects run sequentially in compaction bracket order.
    */
-  readonly writeFromRemote: (
+  readonly writeFromRemote: <E, R>(
     options: {
       readonly remoteId: RemoteId
       readonly entries: ReadonlyArray<RemoteEntry>
       readonly compact?:
-        | ((uncommitted: ReadonlyArray<RemoteEntry>) => Effect.Effect<ReadonlyArray<Entry>, EventJournalError>)
+        | ((uncommitted: ReadonlyArray<RemoteEntry>) => Effect.Effect<ReadonlyArray<Entry>, E, R>)
         | undefined
       readonly effect: (options: {
         readonly entry: Entry
         readonly conflicts: ReadonlyArray<Entry>
-      }) => Effect.Effect<void, EventJournalError>
+      }) => Effect.Effect<void, E, R>
     }
-  ) => Effect.Effect<{
-    readonly duplicateEntries: ReadonlyArray<Entry>
-  }, EventJournalError>
+  ) => Effect.Effect<
+    {
+      readonly duplicateEntries: ReadonlyArray<Entry>
+    },
+    EventJournalError | E,
+    R
+  >
 
   /**
    * Run an effect with the uncommitted entries for a remote source.

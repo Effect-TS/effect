@@ -20,8 +20,6 @@ import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
 
-type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
-
 /**
  * Creates an `EventJournal` backed by a SQL database.
  *
@@ -143,81 +141,6 @@ export const make = (options?: {
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
 
-    const writeFromRemote = Effect.fnUntraced(function*(options: WriteFromRemoteOptions): Effect.fn.Return<
-      {
-        readonly duplicateEntries: ReadonlyArray<EventJournal.Entry>
-      },
-      EventJournal.EventJournalError | Schema.SchemaError | SqlError.SqlError
-    > {
-      const entries = options.entries.map((remoteEntry) => remoteEntry.entry)
-      const remoteRows = options.entries.map((remoteEntry) => ({
-        remote_id: options.remoteId,
-        entry_id: remoteEntry.entry.id,
-        sequence: remoteEntry.remoteSequence
-      }))
-
-      const existingIds = new Set<string>()
-      const toWriteFromRemoteError = (cause: unknown) =>
-        new EventJournal.EventJournalError({ cause, method: "writeFromRemote" })
-
-      if (entries.length > 0) {
-        yield* sql`SELECT id FROM ${entryTableSql} WHERE ${
-          sql.in(
-            "id",
-            entries.map((entry) => entry.id)
-          )
-        }`.pipe(
-          Effect.flatMap(decodeEntryIdRows),
-          Effect.tap((rows) =>
-            Effect.sync(() => {
-              for (const row of rows) {
-                existingIds.add(Uuid.stringify(row.id))
-              }
-            })
-          ),
-          Effect.mapError(toWriteFromRemoteError)
-        )
-      }
-      if (entries.length > 0) {
-        yield* insertEntries(entries.map(toEntryRow)).pipe(
-          Effect.mapError(toWriteFromRemoteError)
-        )
-      }
-      if (remoteRows.length > 0) {
-        yield* insertRemotes(remoteRows).pipe(
-          Effect.mapError(toWriteFromRemoteError)
-        )
-      }
-
-      const uncommitted = options.entries.filter((entry) => !existingIds.has(entry.entry.idString))
-      const duplicateEntries = options.entries
-        .filter((entry) => existingIds.has(entry.entry.idString))
-        .map((entry) => entry.entry)
-      const compacted = options.compact
-        ? yield* options.compact(uncommitted)
-        : uncommitted.map((remoteEntry) => remoteEntry.entry)
-
-      for (const entry of compacted) {
-        const conflicts = yield* sql`
-            SELECT *
-            FROM ${entryTableSql}
-            WHERE event = ${entry.event} AND
-                  primary_key = ${entry.primaryKey} AND
-                  timestamp >= ${entry.createdAtMillis}
-            ORDER BY timestamp ASC
-          `.pipe(
-          Effect.flatMap(decodeEntryRows),
-          Effect.map(toEntries),
-          Effect.mapError(toWriteFromRemoteError)
-        )
-        yield* options.effect({ entry, conflicts })
-      }
-
-      return {
-        duplicateEntries
-      }
-    })
-
     return EventJournal.EventJournal.of({
       entries: sql`SELECT * FROM ${entryTableSql} ORDER BY timestamp ASC`.pipe(
         withTracerDisabled,
@@ -246,7 +169,75 @@ export const make = (options?: {
         },
         withTracerDisabled
       ),
-      writeFromRemote: (options) => writeFromRemote(options).pipe(withTracerDisabled),
+      writeFromRemote: Effect.fnUntraced(function*(options) {
+        const entries = options.entries.map((remoteEntry) => remoteEntry.entry)
+        const remoteRows = options.entries.map((remoteEntry) => ({
+          remote_id: options.remoteId,
+          entry_id: remoteEntry.entry.id,
+          sequence: remoteEntry.remoteSequence
+        }))
+
+        const existingIds = new Set<string>()
+        const toWriteFromRemoteError = (cause: unknown) =>
+          new EventJournal.EventJournalError({ cause, method: "writeFromRemote" })
+
+        if (entries.length > 0) {
+          yield* sql`SELECT id FROM ${entryTableSql} WHERE ${
+            sql.in(
+              "id",
+              entries.map((entry) => entry.id)
+            )
+          }`.pipe(
+            Effect.flatMap(decodeEntryIdRows),
+            Effect.tap((rows) =>
+              Effect.sync(() => {
+                for (const row of rows) {
+                  existingIds.add(Uuid.stringify(row.id))
+                }
+              })
+            ),
+            Effect.mapError(toWriteFromRemoteError)
+          )
+        }
+        if (entries.length > 0) {
+          yield* insertEntries(entries.map(toEntryRow)).pipe(
+            Effect.mapError(toWriteFromRemoteError)
+          )
+        }
+        if (remoteRows.length > 0) {
+          yield* insertRemotes(remoteRows).pipe(
+            Effect.mapError(toWriteFromRemoteError)
+          )
+        }
+
+        const uncommitted = options.entries.filter((entry) => !existingIds.has(entry.entry.idString))
+        const duplicateEntries = options.entries
+          .filter((entry) => existingIds.has(entry.entry.idString))
+          .map((entry) => entry.entry)
+        const compacted = options.compact
+          ? yield* options.compact(uncommitted)
+          : uncommitted.map((remoteEntry) => remoteEntry.entry)
+
+        for (const entry of compacted) {
+          const conflicts = yield* sql`
+            SELECT *
+            FROM ${entryTableSql}
+            WHERE event = ${entry.event} AND
+                  primary_key = ${entry.primaryKey} AND
+                  timestamp >= ${entry.createdAtMillis}
+            ORDER BY timestamp ASC
+          `.pipe(
+            Effect.flatMap(decodeEntryRows),
+            Effect.map(toEntries),
+            Effect.mapError(toWriteFromRemoteError)
+          )
+          yield* options.effect({ entry, conflicts })
+        }
+
+        return {
+          duplicateEntries
+        }
+      }, withTracerDisabled),
       withRemoteUncommited: Effect.fnUntraced(
         function*(remoteId, f) {
           const entries = yield* sql`
