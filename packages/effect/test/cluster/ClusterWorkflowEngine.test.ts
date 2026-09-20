@@ -950,6 +950,75 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("bounds a durable clock notification when its workflow is absent after restart", () =>
+    Effect.gen(function*() {
+      const registrationTimeout = 1000
+      const RemovedWorkflow = Workflow.make("RemovedWorkflow", {
+        payload: {},
+        success: Schema.Void,
+        idempotencyKey: () => "one"
+      })
+      const shared = yield* Layer.build(
+        MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
+      )
+      const storage = Context.get(shared, MessageStorage.MessageStorage)
+      const driver = Context.get(shared, MessageStorage.MemoryDriver)
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, storage)
+      const config = { entityRegistrationTimeout: registrationTimeout }
+      const clock = DurableClock.make({ name: "wait", duration: "3 seconds" })
+
+      const executionId = yield* Effect.scoped(Effect.gen(function*() {
+        const context = yield* Layer.build(
+          RemovedWorkflow.toLayer(() =>
+            DurableClock.sleep({
+              name: "wait",
+              duration: "3 seconds",
+              inMemoryThreshold: Duration.zero
+            })
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer, config })))
+        )
+        return yield* Effect.gen(function*() {
+          const executionId = yield* RemovedWorkflow.execute({}, { discard: true })
+          yield* pollUntil(RemovedWorkflow, executionId, "Suspended")
+          return executionId
+        }).pipe(Effect.provide(context))
+      }))
+      const clockRequest = driver.journal.find((message) =>
+        message._tag === "Request" && message.address.entityType === "Workflow/-/DurableClock"
+      )
+      assert(clockRequest !== undefined && clockRequest._tag === "Request")
+
+      yield* Effect.scoped(Effect.gen(function*() {
+        const context = yield* Layer.build(makeTestWorkflowEngine({
+          storageLayer,
+          config
+        }))
+        yield* Effect.gen(function*() {
+          yield* TestClock.adjust("3 seconds")
+          // This is the completion emitted by ClockEntity when the persisted timer fires.
+          // Calling it directly isolates the notifyLocal registration wait from storage claims.
+          const fiber = yield* DurableDeferred.done(clock.deferred, {
+            token: DurableDeferred.tokenFromExecutionId(clock.deferred, {
+              workflow: RemovedWorkflow,
+              executionId
+            }),
+            exit: Exit.void
+          }).pipe(Effect.forkDetach({ startImmediately: true }))
+          yield* Effect.yieldNow
+          expect(fiber.pollUnsafe()).toBeUndefined()
+          yield* TestClock.adjust(registrationTimeout)
+
+          const exit = fiber.pollUnsafe()
+          assert(exit !== undefined, "the notifyLocal registration wait must be bounded")
+          assert(Exit.isFailure(exit))
+          const defect = Cause.findDefect(exit.cause)
+          assert(Result.isSuccess(defect))
+          assert(defect.success instanceof Error)
+          assert.strictEqual(defect.success.message, `Entity type 'Workflow/${RemovedWorkflow._tag}' not registered`)
+        }).pipe(Effect.provide(context))
+      }))
+    }))
+
   for (const [id, threshold] of [["number", 0], ["bigint", 0n]] as const) {
     it.effect(`DurableClock.sleep preserves an explicit ${id} zero threshold`, () => verifyZeroThreshold(id, threshold))
   }

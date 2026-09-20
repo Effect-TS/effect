@@ -14,6 +14,7 @@ import {
   MutableRef,
   Option,
   Queue,
+  Result,
   Schedule,
   Schema,
   Stream
@@ -1326,6 +1327,28 @@ describe.concurrent("Sharding", () => {
       Layer.merge(TestEntityState.layer)
     ))))
 
+  it.effect("bounds local sends while entity registration is missing", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const entityId = EntityId.make("one")
+      yield* TestClock.adjust(1)
+      assert.isTrue(sharding.hasShardId(sharding.getShardId(entityId, "default")))
+
+      const client = (yield* MissingRegistrationEntity.client)(entityId)
+      const fiber = yield* client.Call().pipe(Effect.forkDetach({ startImmediately: true }))
+      yield* Effect.yieldNow
+      expect(fiber.pollUnsafe()).toBeUndefined()
+
+      yield* TestClock.adjust(1000)
+      const exit = fiber.pollUnsafe()
+      assert(exit !== undefined, "the sendLocal registration wait must be bounded")
+      assert(Exit.isFailure(exit))
+      const defect = Cause.findDefect(exit.cause)
+      assert(Result.isSuccess(defect))
+      assert(defect.success instanceof Error)
+      assert.strictEqual(defect.success.message, "Entity type 'MissingRegistrationEntity' not registered")
+    }).pipe(Effect.provide(CappedSharding({ entityRegistrationTimeout: 1000 }))))
+
   it.effect("durable streams are resumed on restart", () =>
     Effect.gen(function*() {
       const EnvLayer = TestShardingWithoutState.pipe(
@@ -2458,6 +2481,10 @@ class RegistrationContext extends Context.Service<RegistrationContext, string>()
 
 const RegistrationContextEntity = Entity.make("RegistrationContextEntity", [
   Rpc.make("Read", { success: Schema.String }).annotate(ClusterSchema.Persisted, false)
+])
+
+const MissingRegistrationEntity = Entity.make("MissingRegistrationEntity", [
+  Rpc.make("Call").annotate(ClusterSchema.Persisted, false)
 ])
 
 const RegistrationContextHandlers = Effect.map(
