@@ -1859,10 +1859,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       return internalToolError(cause)
     }
     const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
-      Tool.getJsonSchemaFromSchema(tool.successSchema)
+      toolJsonSchema(tool.successSchema, false)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      rawJsonSchema ?? toolInputJsonSchema(tool.parametersSchema, strict)
+      rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({
       name: tool.name,
@@ -1920,8 +1920,8 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// MCP requires an object root, so a top-level `$ref` is inlined.
-const toolInputJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
+// Inline a top-level `$ref` so object schemas have the root required by older MCP revisions.
+const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
   const document = InternalStructuredOutput.resolveTopLevelReference(
     Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
   )
