@@ -225,7 +225,6 @@ export type IpMulticastAddress = Ipv4MulticastAddress | Ipv6MulticastAddress
  */
 export interface MacMulticastAddress extends MacAddress, Brand.Brand<typeof MulticastTypeId> {}
 
-/** @internal */
 type MulticastBroadcastBrands = Brand.Brand<typeof MulticastTypeId> & Brand.Brand<typeof BroadcastTypeId>
 
 /**
