@@ -47,15 +47,6 @@ import * as Reply from "./Reply.ts"
 import * as Sharding from "./Sharding.ts"
 import * as Snowflake from "./Snowflake.ts"
 
-const payloadShape = (workflow: Workflow.Any): string => {
-  try {
-    const { definitions, schema } = Schema.toJsonSchemaDocument(workflow.payloadSchema)
-    return JSON.stringify(Object.keys(definitions).length === 0 ? schema : { ...schema, $defs: definitions })
-  } catch {
-    return "<unavailable>"
-  }
-}
-
 /**
  * Creates a `WorkflowEngine` implementation backed by cluster sharding and
  * message storage.
@@ -921,3 +912,12 @@ export const layer: Layer.Layer<
 > = ClockEntityLayer.pipe(
   Layer.provideMerge(Layer.effect(WorkflowEngine.WorkflowEngine)(make))
 )
+
+const payloadShape = (workflow: Workflow.Any): string => {
+  try {
+    const { definitions, schema } = Schema.toJsonSchemaDocument(workflow.payloadSchema)
+    return JSON.stringify(Object.keys(definitions).length === 0 ? schema : { ...schema, $defs: definitions })
+  } catch {
+    return "<unavailable>"
+  }
+}
