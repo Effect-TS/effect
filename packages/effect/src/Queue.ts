@@ -1152,7 +1152,7 @@ export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> => internal
  * An open queue completes with an interruption. A queue already closing retains
  * its completion cause. Call `failCauseUnsafe` first to shut down with a specific
  * failure. Returns `true` when the queue is shut down by this call, or `false`
- * when the queue is already in the `Done` state.
+ * when it has already been shut down or completed.
  *
  * @see {@link shutdown} for the effectful variant
  * @see {@link failCauseUnsafe} to set a failure before discarding buffered messages
