@@ -61,7 +61,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@op-engineering/op-sqlite": "^18.2.1",
+    "@op-engineering/op-sqlite": "^18.2.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {

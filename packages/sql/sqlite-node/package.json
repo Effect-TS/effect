@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@effect/platform-node": "workspace:^",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {
