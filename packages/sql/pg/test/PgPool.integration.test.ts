@@ -367,6 +367,40 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
     }), cancellationTestTimeout)
 
+  it.effect("retires an idle interrupted session before pool.use", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const gate = new CancelRequestGate()
+      const pool = yield* PgPool.make(yield* lateCancelPoolConfig(gate))
+      const observer = yield* PgConnection.make(config)
+      const started = yield* Queue.unbounded<number>()
+
+      yield* Effect.gen(function*() {
+        const first = yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* pool.get
+          yield* connection.interrupt
+          yield* gate.intercepted
+          return connection.processId
+        }))
+
+        const followUp = yield* Effect.forkScoped(
+          pool.use((connection) =>
+            Effect.gen(function*() {
+              yield* Queue.offer(started, connection.processId)
+              return yield* connection.query("SELECT 1 AS after FROM pg_sleep(1)")
+            })
+          )
+        )
+        const followUpPid = yield* Queue.take(started)
+        assert.notStrictEqual(followUpPid, first)
+        yield* waitUntilActive(observer, followUpPid)
+        gate.release()
+        yield* gate.delivered
+        const result = yield* Fiber.join(followUp)
+        assert.deepStrictEqual(result.rows, [{ after: 1 }])
+      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+    }), cancellationTestTimeout)
+
   it.effect("replaces a pooled session after an unconfirmed stream cancel", () =>
     Effect.gen(function*() {
       const config = yield* poolConfig
