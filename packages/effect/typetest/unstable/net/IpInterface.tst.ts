@@ -4,6 +4,7 @@ import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { describe, expect, it } from "tstyche"
 
+// Widen the branded constants to retain coverage of base-family inference.
 const ipv4Unspecified: NetAddress.Ipv4Address = NetAddress.ipv4Unspecified
 const ipv6Unspecified: NetAddress.Ipv6Address = NetAddress.ipv6Unspecified
 
@@ -20,6 +21,22 @@ describe("IpInterface", () => {
     >()
     const ipv4 = IpInterface.makeUnsafe(ipv4Unspecified, 0)
     expect(IpNetwork.fromInterface(ipv4)).type.toBe<IpNetwork.Ipv4Network>()
+  })
+
+  it("preserves refinements when the address is unchanged", () => {
+    const precise = IpInterface.make(NetAddress.ipv4Unspecified, 0)
+    expect(precise).type.toBe<
+      Result.Result<
+        IpInterface.IpInterface<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>,
+        NetAddress.NetAddressError
+      >
+    >()
+    expect(precise).type.toBeAssignableTo<
+      Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>
+    >()
+    expect<Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>>().type.not.toBeAssignableTo<
+      typeof precise
+    >()
   })
 
   it("narrows generic interface addresses", () => {

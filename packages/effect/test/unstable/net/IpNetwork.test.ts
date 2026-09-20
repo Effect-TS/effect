@@ -108,6 +108,23 @@ describe("IpNetwork", () => {
       assert.strictEqual(NetAddress.formatIp(last), "255.255.255.255")
       assert.isFalse(NetAddress.isMulticast(last))
     }
+
+    const unspecifiedNetwork = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
+    const broadcast = IpNetwork.lastAddress(unspecifiedNetwork)
+    assert.isFalse(NetAddress.isUnspecified(broadcast))
+    assert.isTrue(NetAddress.isBroadcast(broadcast))
+
+    const loopback = ip("::1")
+    assert.isTrue(NetAddress.isLoopback(loopback))
+    if (NetAddress.isLoopback(loopback)) {
+      const directLoopback = IpNetwork.fromAddressUnsafe(loopback, 64)
+      const interfaceLoopback = IpNetwork.fromInterface(IpInterface.makeUnsafe(loopback, 64))
+      for (const derived of [directLoopback, interfaceLoopback]) {
+        assert.strictEqual(NetAddress.formatIp(derived.address), "::")
+        assert.isFalse(NetAddress.isLoopback(derived.address))
+        assert.isTrue(NetAddress.isUnspecified(derived.address))
+      }
+    }
   })
 
   it("parses strict CIDR and formats canonical address text", () => {

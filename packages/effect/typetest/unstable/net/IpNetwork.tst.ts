@@ -4,6 +4,7 @@ import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { describe, expect, it } from "tstyche"
 
+// Widen the branded constants to retain coverage of base-family inference.
 const ipv4Unspecified: NetAddress.Ipv4Address = NetAddress.ipv4Unspecified
 const ipv6Unspecified: NetAddress.Ipv6Address = NetAddress.ipv6Unspecified
 
@@ -45,6 +46,35 @@ describe("IpNetwork", () => {
     expect(IpNetwork.makeUnsafe(ipv4Unspecified, 0)).type.toBe<IpNetwork.Ipv4Network>()
     expect(IpNetwork.fromAddressUnsafe(ipv6Unspecified, 0)).type.toBe<IpNetwork.Ipv6Network>()
     expect(IpNetwork.fromStringUnsafe("::/0")).type.toBe<IpNetwork.IpNetwork>()
+  })
+
+  it("preserves refinements only when address bits are unchanged", () => {
+    const precise = IpNetwork.make(NetAddress.ipv4Unspecified, 0)
+    expect(precise).type.toBe<
+      Result.Result<
+        IpNetwork.IpNetwork<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>,
+        NetAddress.NetAddressError
+      >
+    >()
+    expect(precise).type.toBeAssignableTo<Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>>()
+    expect<Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>>().type.not.toBeAssignableTo<
+      typeof precise
+    >()
+
+    const network = IpNetwork.makeUnsafe(NetAddress.ipv4Unspecified, 0)
+    expect(network).type.toBe<
+      IpNetwork.IpNetwork<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>
+    >()
+    expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>()
+    expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
+    expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.UnspecifiedAddress>()
+
+    expect(IpNetwork.fromAddress(NetAddress.ipv6Loopback, 64)).type.toBe<
+      Result.Result<IpNetwork.Ipv6Network, NetAddress.NetAddressError>
+    >()
+    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(NetAddress.ipv6Loopback, 64))).type.toBe<
+      IpNetwork.Ipv6Network
+    >()
   })
 
   it("drops refinements from derived addresses", () => {
