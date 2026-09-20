@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `SocketProtocols` service to `effect/unstable/socket` for reading the `Sec-WebSocket-Protocol` request header as a list of sub-protocol names.
+Add a `SocketProtocols` schema to `effect/unstable/socket` for the `Sec-WebSocket-Protocol` header, and an `HttpSocketProtocols` service to `effect/unstable/http` that reads the negotiated sub-protocol list from the current request.
