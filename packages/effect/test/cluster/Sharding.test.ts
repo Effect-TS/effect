@@ -54,6 +54,70 @@ import {
 } from "./TestEntity.ts"
 
 describe.concurrent("Sharding", () => {
+  it.effect("redelivers a request reset while an asynchronous storage read is pending", () =>
+    Effect.gen(function*() {
+      const readStarted = yield* Deferred.make<void>()
+      const releaseRead = yield* Deferred.make<void>()
+      let pauseNextRead = false
+      const claimed: Array<Snowflake.Snowflake> = []
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const state = yield* TestEntityState
+        const client = (yield* TestEntity.client)("reset-race")
+        const firstRun = yield* client.RequestWithKey({ key: "run" }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const request = yield* Queue.take(state.envelopes)
+
+        // The read loop has cleared processedRequestIds, but the asynchronous
+        // storage query has not selected or claimed any rows yet.
+        pauseNextRead = true
+        yield* sharding.pollStorage
+        yield* Deferred.await(readStarted)
+
+        // Finish the first attempt during the pending read. Waiting for all
+        // fibers to settle also lets the manager record the processed ID.
+        yield* Queue.offer(state.messages, void 0)
+        yield* Fiber.join(firstRun)
+        yield* TestClock.adjust(1)
+        assert.isTrue(yield* sharding.reset(request.requestId))
+        yield* sharding.pollStorage
+        claimed.length = 0
+
+        // The pending query now claims the reset request. The next poll must
+        // not lose it to the completed attempt's in-memory deduplication.
+        yield* Deferred.succeed(releaseRead, void 0)
+        yield* TestClock.adjust(5000)
+        assert.include(claimed, request.requestId)
+        const deliveriesBeforeClaimExpiry = Queue.sizeUnsafe(state.envelopes)
+
+        // The memory driver uses the same ten-minute claim expiry as SQL.
+        // Prove the request is still recoverable, rather than a dead handler.
+        yield* TestClock.adjust("10 minutes")
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        assert.strictEqual(
+          deliveriesBeforeClaimExpiry,
+          1,
+          "reset request was claimed but not redelivered before claim expiry"
+        )
+      }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
+        ...storage,
+        unprocessedMessages: (shardIds, options) =>
+          Effect.gen(function*() {
+            if (pauseNextRead) {
+              pauseNextRead = false
+              yield* Deferred.succeed(readStarted, void 0)
+              yield* Deferred.await(releaseRead)
+            }
+            const messages = yield* storage.unprocessedMessages(shardIds, options)
+            for (const message of messages) claimed.push(message.envelope.requestId)
+            return messages
+          })
+      }))))
+    }))
+
   it.effect("delivers volatile requests directly to the entity", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
