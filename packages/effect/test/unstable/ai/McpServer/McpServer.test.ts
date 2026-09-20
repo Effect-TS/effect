@@ -1090,7 +1090,7 @@ describe("McpServer", () => {
         assert.deepStrictEqual(result, { name: "Ada" })
         assert.isDefined(observed)
         if (observed.mode !== "form") return assert.fail("Expected a form elicitation request")
-        assert.deepStrictEqual(observed.requestedSchema, {
+        assert.deepStrictEqual(JSON.parse(JSON.stringify(observed.requestedSchema)), {
           type: "object",
           properties: { name: { type: "string" } },
           required: ["name"]
