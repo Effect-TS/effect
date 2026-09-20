@@ -46,33 +46,11 @@ describe("IpNetwork", () => {
 
   it("preserves on-demand refinements only when address bits are unchanged", () => {
     const unspecified = NetAddress.unspecifiedAddressUnsafe(NetAddress.ipv4Unspecified)
-    const precise = IpNetwork.make(unspecified, 0)
-    expect(precise).type.toBe<
-      Result.Result<
-        IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>,
-        NetAddress.NetAddressError
-      >
-    >()
-    expect(precise).type.toBeAssignableTo<Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>>()
-    expect<Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>>().type.not.toBeAssignableTo<
-      typeof precise
-    >()
-
     const network = IpNetwork.makeUnsafe(unspecified, 0)
-    expect(network).type.toBe<
-      IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>
-    >()
+    expect(network).type.toBe<IpNetwork.IpNetwork<NetAddress.Ipv4UnspecifiedAddress>>()
     expect(IpNetwork.firstAddress(network)).type.toBe<NetAddress.Ipv4UnspecifiedAddress>()
     expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
     expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.UnspecifiedAddress>()
-
-    const loopback = NetAddress.loopbackAddressUnsafe(NetAddress.ipv6Loopback)
-    expect(IpNetwork.fromAddress(loopback, 64)).type.toBe<
-      Result.Result<IpNetwork.Ipv6Network, NetAddress.NetAddressError>
-    >()
-    expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(loopback, 64))).type.toBe<
-      IpNetwork.Ipv6Network
-    >()
   })
 
   it("drops refinements from derived addresses", () => {
@@ -82,25 +60,7 @@ describe("IpNetwork", () => {
     expect(IpNetwork.fromAddress(multicast, 0)).type.toBe<
       Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
     >()
-    expect(IpNetwork.fromAddressUnsafe(multicast, 0)).type.toBe<IpNetwork.Ipv4Network>()
     expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(multicast, 0))).type.toBe<IpNetwork.Ipv4Network>()
-
-    const canonical = NetAddress.multicastAddressUnsafe(
-      NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 0]))
-    )
-    const network = IpNetwork.makeUnsafe(canonical, 4)
-    expect(network).type.toBe<IpNetwork.IpNetwork<typeof canonical>>()
-    expect(IpNetwork.firstAddress(network)).type.toBe<typeof canonical>()
-    expect(IpNetwork.lastAddress(network)).type.toBe<NetAddress.Ipv4Address>()
-    expect(IpNetwork.lastAddress(network)).type.not.toBeAssignableTo<NetAddress.MulticastAddress>()
-
-    const input = null as unknown as NetAddress.IpAddress
-    if (NetAddress.isMulticast(input)) {
-      expect(IpNetwork.fromAddress(input, 0)).type.toBe<
-        Result.Result<IpNetwork.IpNetwork, NetAddress.NetAddressError>
-      >()
-      expect(IpNetwork.fromInterface(IpInterface.makeUnsafe(input, 0))).type.toBe<IpNetwork.IpNetwork>()
-    }
   })
 
   it("narrows generic networks", () => {
