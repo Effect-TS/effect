@@ -180,6 +180,54 @@ describe("Socket", () => {
       }))
   })
 
+  describe("makeWebSocket", () => {
+    it.effect("invokes the constructor effect afresh for every connection", () =>
+      Effect.gen(function*() {
+        let token = "token-1"
+        const seen: Array<string> = []
+        const socket = yield* Socket.makeWebSocket("ws://localhost").pipe(
+          Effect.provideService(Socket.WebSocketConstructor, () =>
+            Effect.sync(() => {
+              seen.push(token)
+              const ws = new TestWebSocket(Latch.makeUnsafe(false))
+              ws.readyState = 1
+              return ws
+            }))
+        )
+
+        yield* Effect.scoped(Effect.asVoid(socket.reader))
+        token = "token-2"
+        yield* Effect.scoped(Effect.asVoid(socket.reader))
+
+        assert.deepStrictEqual(seen, ["token-1", "token-2"])
+      }))
+
+    it.effect("fails reader acquisition with the constructor's SocketError", () =>
+      Effect.gen(function*() {
+        let attempts = 0
+        const error = new Socket.SocketError({
+          reason: new Socket.SocketOpenError({ kind: "Unknown", cause: new Error("signing failed") })
+        })
+        const socket = yield* Socket.makeWebSocket("ws://localhost").pipe(
+          Effect.provideService(Socket.WebSocketConstructor, () =>
+            Effect.suspend(() => {
+              attempts++
+              return Effect.fail(error)
+            }))
+        )
+
+        const exit = yield* Effect.exit(Effect.scoped(Effect.asVoid(socket.reader)))
+        assert.deepStrictEqual(exit, Exit.fail(error))
+
+        // a retry around the scoped consume loop re-invokes the constructor
+        yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(
+          Effect.retry({ times: 2 }),
+          Effect.exit
+        )
+        assert.strictEqual(attempts, 4)
+      }))
+  })
+
   describe("toChannel", () => {
     it.effect("reports a write failure while a pull is suspended", () =>
       Effect.gen(function*() {

@@ -775,12 +775,42 @@ export class WebSocket extends Context.Service<WebSocket, WebSocketLike>()(
  * Context service for constructing `WebSocket` instances from a URL and
  * optional protocols or platform-specific options.
  *
+ * **Details**
+ *
+ * The constructor returns an `Effect`, and is invoked afresh for every
+ * connection attempt (each reader acquisition, including reconnects). This
+ * allows per-connection setup — such as reading credentials and signing a
+ * protocol token — to run with fresh state on every dial. A failure surfaces
+ * as a `SocketError` at reader acquisition, exactly like a failed dial or
+ * open timeout, so existing retry policies treat it as a failed connection
+ * attempt. Wrap custom failures as
+ * `new SocketError({ reason: new SocketOpenError({ kind: "Unknown", cause }) })`.
+ *
+ * Services required for per-connection setup are closed over when building
+ * the constructor, which also enables middleware over a base constructor:
+ *
+ * ```ts
+ * import { Effect, Layer } from "effect"
+ * import { Socket } from "effect/unstable/socket"
+ *
+ * declare const freshSignedToken: Effect.Effect<string, Socket.SocketError>
+ *
+ * const layerSignedProtocols = Layer.effect(Socket.WebSocketConstructor)(
+ *   Effect.gen(function*() {
+ *     const base = yield* Socket.WebSocketConstructor
+ *     const withToken: Socket.WebSocketConstructor["Service"] = (url) =>
+ *       Effect.flatMap(freshSignedToken, (token) => base(url, token))
+ *     return withToken
+ *   })
+ * ).pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal))
+ * ```
+ *
  * @category services
  * @since 4.0.0
  */
 export class WebSocketConstructor extends Context.Service<
   WebSocketConstructor,
-  (url: string, options?: WebSocketConstructorOptions | undefined) => WebSocketLike
+  (url: string, options?: WebSocketConstructorOptions | undefined) => Effect.Effect<WebSocketLike, SocketError>
 >()("@effect/platform/Socket/WebSocketConstructor") {}
 
 /**
@@ -790,12 +820,13 @@ export class WebSocketConstructor extends Context.Service<
  * @since 4.0.0
  */
 export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> = Layer.succeed(WebSocketConstructor)(
-  (url, options) => {
-    if (options !== undefined && typeof options !== "string" && !Array.isArray(options)) {
-      throw new TypeError("WebSocket client options are not supported by the global WebSocket constructor")
-    }
-    return new globalThis.WebSocket(url, options)
-  }
+  (url, options) =>
+    Effect.sync(() => {
+      if (options !== undefined && typeof options !== "string" && !Array.isArray(options)) {
+        throw new TypeError("WebSocket client options are not supported by the global WebSocket constructor")
+      }
+      return new globalThis.WebSocket(url, options)
+    })
 )
 
 /**
@@ -814,7 +845,7 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
     fromWebSocket(
       Effect.acquireRelease(
         (typeof url === "string" ? Effect.succeed(url) : url).pipe(
-          Effect.map((url) => makeWs(url, options?.protocols))
+          Effect.flatMap((url) => makeWs(url, options?.protocols))
         ),
         (ws) => Effect.sync(() => ws.close(1000))
       ),

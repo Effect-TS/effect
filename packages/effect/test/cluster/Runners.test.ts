@@ -121,16 +121,17 @@ describe.concurrent("HttpRunner", () => {
     Effect.gen(function*() {
       const connected = yield* Deferred.make<void>()
       let socketUrl: string | undefined
-      const constructor: Socket.WebSocketConstructor["Service"] = (url) => {
-        socketUrl = url
-        return {
-          readyState: 1,
-          addEventListener() {},
-          removeEventListener() {},
-          close() {},
-          send() {}
-        }
-      }
+      const constructor: Socket.WebSocketConstructor["Service"] = (url) =>
+        Effect.sync(() => {
+          socketUrl = url
+          return {
+            readyState: 1,
+            addEventListener() {},
+            removeEventListener() {},
+            close() {},
+            send() {}
+          }
+        })
 
       yield* Effect.gen(function*() {
         const runnerProtocol = yield* Runners.RpcClientProtocol
