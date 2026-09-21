@@ -57,6 +57,11 @@ export * as Param from "./Param.ts"
 /**
  * @since 4.0.0
  */
+export * as PlatformDirectories from "./PlatformDirectories.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Primitive from "./Primitive.ts"
 
 /**
