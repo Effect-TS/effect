@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual } from "@effect/vitest/utils"
 import { Schema } from "effect"
 import { UrlParams } from "effect/http"
-import { assertSuccess } from "../../utils/assert.ts"
+import { assertSuccess } from "../utils/assert.ts"
 
 describe("UrlParams", () => {
   describe("fromInput", () => {

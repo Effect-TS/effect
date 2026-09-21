@@ -9,7 +9,7 @@ import { TestClock } from "effect/testing"
 import * as Worker from "effect/workers/Worker"
 import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import { vi } from "vitest"
-import type * as RpcClientErrorModule from "../../src/unstable/rpc/RpcClientError.ts"
+import type * as RpcClientErrorModule from "../../src/rpc/RpcClientError.ts"
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -157,7 +157,7 @@ describe("RpcClient", () => {
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
-      "../../src/unstable/rpc/RpcClientError.ts"
+      "../../src/rpc/RpcClientError.ts"
     )
     const rpcClientError = new ForeignRpcClientError.RpcClientError({
       reason: new ForeignRpcClientError.RpcClientDefect({ message: "boom", cause: undefined })

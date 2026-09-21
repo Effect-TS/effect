@@ -1,7 +1,7 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
-import * as SqlEventLogServerUnencryptedStorageTest from "effect-test/unstable/eventlog/SqlEventLogServerUnencryptedStorageTest"
+import * as SqlEventLogServerUnencryptedStorageTest from "effect-test/eventlog/SqlEventLogServerUnencryptedStorageTest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"

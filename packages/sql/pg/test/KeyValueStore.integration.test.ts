@@ -1,5 +1,5 @@
 import { Layer } from "effect"
-import * as KeyValueStoreTest from "effect-test/unstable/persistence/KeyValueStoreTest"
+import * as KeyValueStoreTest from "effect-test/persistence/KeyValueStoreTest"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import { PgContainer } from "./utils.ts"
 

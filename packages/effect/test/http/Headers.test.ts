@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, assertTrue, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
 import { Redacted, Schema } from "effect"
 import { Headers } from "effect/http"
-import { assertSuccess } from "../../utils/assert.ts"
+import { assertSuccess } from "../utils/assert.ts"
 
 describe("Headers", () => {
   describe("Schema.Headers", () => {

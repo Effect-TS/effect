@@ -9,7 +9,7 @@ import {
   assertTrue,
   deepStrictEqual,
   strictEqual
-} from "../../utils/assert.ts"
+} from "../utils/assert.ts"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")

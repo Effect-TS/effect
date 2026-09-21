@@ -4,7 +4,7 @@ import { Result, Schema } from "effect"
 import { Cookies } from "effect/http"
 import * as Option from "effect/Option"
 import { TestSchema } from "effect/testing"
-import { assertFailure, assertSuccess } from "../../utils/assert.ts"
+import { assertFailure, assertSuccess } from "../utils/assert.ts"
 
 describe("Cookies", () => {
   describe("makeCookie", () => {
