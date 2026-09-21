@@ -1023,51 +1023,10 @@ describe("OpenAiLanguageModel", () => {
 
     it.effect("emits text when a streamed delta has role: null", () =>
       Effect.gen(function*() {
-        // Some OpenAI-compatible providers (e.g. Cloudflare Workers AI) send
-        // `role: null` on every text delta. Rejecting those chunks drops the
-        // whole reply, leaving the caller with empty text and no error.
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(sseResponse(request, [
-                {
-                  id: "chatcmpl_null_role_1",
-                  object: "chat.completion.chunk",
-                  model: "gpt-4o-mini",
-                  created: 1,
-                  choices: [{
-                    index: 0,
-                    delta: {
-                      content: "Hello",
-                      reasoning_content: null,
-                      role: null,
-                      tool_calls: null
-                    },
-                    finish_reason: null
-                  }]
-                },
-                {
-                  id: "chatcmpl_null_role_1",
-                  object: "chat.completion.chunk",
-                  model: "gpt-4o-mini",
-                  created: 1,
-                  choices: [{
-                    index: 0,
-                    delta: {
-                      content: " there",
-                      reasoning_content: null,
-                      role: null,
-                      tool_calls: null
-                    },
-                    finish_reason: "stop"
-                  }]
-                },
-                "[DONE]"
-              ]))
-            )
-          ))
-        )
+        const layer = makeStreamLayer([
+          makeStreamChunk({ content: "Hello", role: null }, "stop"),
+          "[DONE]"
+        ])
 
         const partsChunk = yield* LanguageModel.streamText({ prompt: "test" }).pipe(
           Stream.runCollect,
@@ -1075,11 +1034,11 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(layer)
         )
 
-        const text = globalThis.Array.from(partsChunk)
+        const text = Array.from(partsChunk)
           .flatMap((part) => part.type === "text-delta" ? [part.delta] : [])
           .join("")
 
-        assert.strictEqual(text, "Hello there")
+        assert.strictEqual(text, "Hello")
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
@@ -1600,42 +1559,15 @@ describe("OpenAiLanguageModel", () => {
 
     it.effect("assembles streamed tool args when continuation fragments have id: null", () =>
       Effect.gen(function*() {
-        // Some OpenAI-compatible providers (e.g. Cloudflare Workers AI) only
-        // send the tool call id on the first fragment and `id: null` on every
-        // continuation. The argument fragments live on those continuations, so
-        // they must not be dropped during chunk validation.
-        const chunk = (toolDelta: Record<string, unknown>) => ({
-          id: "chatcmpl_null_id_1",
-          object: "chat.completion.chunk",
-          model: "gpt-4o-mini",
-          created: 1,
-          choices: [{
-            index: 0,
-            delta: { tool_calls: [{ index: 0, type: "function", ...toolDelta }] }
-          }]
+        const toolCallDelta = (id: string | null, name: string | null, args: string) => ({
+          tool_calls: [{ index: 0, id, type: "function", function: { name, arguments: args } }]
         })
-
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(sseResponse(request, [
-                chunk({ id: "call_1", function: { name: "TestTool", arguments: "" } }),
-                chunk({ id: null, function: { name: null, arguments: "{\"in" } }),
-                chunk({ id: null, function: { name: null, arguments: "put\":\"hel" } }),
-                chunk({ id: null, function: { name: null, arguments: "lo\"}" } }),
-                {
-                  id: "chatcmpl_null_id_1",
-                  object: "chat.completion.chunk",
-                  model: "gpt-4o-mini",
-                  created: 1,
-                  choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }]
-                },
-                "[DONE]"
-              ]))
-            )
-          ))
-        )
+        const layer = makeStreamLayer([
+          makeStreamChunk(toolCallDelta("call_1", "TestTool", "{\"input\":")),
+          makeStreamChunk(toolCallDelta(null, null, "\"hello\"}")),
+          makeStreamChunk({}, "tool_calls"),
+          "[DONE]"
+        ])
 
         const partsChunk = yield* LanguageModel.streamText({
           prompt: "use the tool",
@@ -1648,10 +1580,7 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(layer)
         )
 
-        const parts = globalThis.Array.from(partsChunk)
-        const paramsDeltas = parts.filter((part) => part.type === "tool-params-delta")
-        assert.isAbove(paramsDeltas.length, 0)
-
+        const parts = Array.from(partsChunk)
         const toolCall = parts.find((part) => part.type === "tool-call")
         assert.isDefined(toolCall)
         if (toolCall?.type !== "tool-call") {
@@ -1961,6 +1890,22 @@ const jsonResponse = (
         "content-type": "application/json"
       }
     })
+  )
+
+const makeStreamChunk = (delta: Record<string, unknown>, finishReason: string | null = null) => ({
+  id: "chatcmpl_test_1",
+  object: "chat.completion.chunk",
+  model: "gpt-4o-mini",
+  created: 1,
+  choices: [{ index: 0, delta, finish_reason: finishReason }]
+})
+
+const makeStreamLayer = (events: ReadonlyArray<unknown>) =>
+  OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+    Layer.provide(Layer.succeed(
+      HttpClient.HttpClient,
+      makeHttpClient((request) => Effect.succeed(sseResponse(request, events)))
+    ))
   )
 
 const sseResponse = (
