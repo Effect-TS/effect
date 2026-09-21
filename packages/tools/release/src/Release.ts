@@ -1,7 +1,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import type { ReleaseError } from "./Errors.ts"
+import { ReleaseError } from "./Errors.ts"
 import { Git } from "./Git.ts"
 import { GitHub } from "./GitHub.ts"
 import { Pnpm, type StagedPackage } from "./Pnpm.ts"
@@ -16,12 +16,15 @@ import { Workspace } from "./Workspace.ts"
 export interface RunOptions {
   /** dist-tag for staged versions (`rc` while the fixed group is on the rc lane). */
   readonly tag: string
-  /** Pass `--dry-run` to pnpm when staging; the PR path is unaffected. */
+  /** Preview the selected route without mutating git, GitHub or npm. */
   readonly dryRun?: boolean | undefined
+  /** Fail before mutations unless routing selects this route. */
+  readonly expectedRoute?: "Version" | "Stage" | undefined
 }
 
 export type RunResult =
   | { readonly _tag: "VersionPullRequest"; readonly result: SyncResult }
+  | { readonly _tag: "VersionPullRequestDryRun"; readonly title: string; readonly body: string }
   | {
     readonly _tag: "Staged"
     readonly staged: ReadonlyArray<StagedPackage>
@@ -84,8 +87,20 @@ export class Release extends Context.Service<Release, {
 
       const run = Effect.fn("Release.run")(function*(options: RunOptions) {
         const decision = yield* route
+        if (options.expectedRoute !== undefined && decision._tag !== options.expectedRoute) {
+          return yield* new ReleaseError({
+            message: `Expected ${options.expectedRoute} route, but routing selected ${decision._tag}`
+          })
+        }
         switch (decision._tag) {
           case "Version": {
+            if (options.dryRun === true) {
+              return {
+                _tag: "VersionPullRequestDryRun",
+                title: VersionPullRequest.title(decision.plan),
+                body: VersionPullRequest.body(decision.plan)
+              } as const
+            }
             const result = yield* VersionPullRequest.sync(decision.plan).pipe(
               Effect.provideService(Git, git),
               Effect.provideService(Pnpm, pnpm),

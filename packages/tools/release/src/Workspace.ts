@@ -55,16 +55,20 @@ export class Workspace extends Context.Service<Workspace, {
               )
             )
           ),
-          Effect.map((entries) =>
-            entries.flatMap((entry): ReadonlyArray<WorkspacePackage> =>
-              entry.name !== undefined && entry.version !== undefined
-                ? [{
-                  name: entry.name,
-                  version: entry.version,
-                  dir: path.relative(root, entry.path),
-                  private: entry.private === true
-                }]
-                : []
+          Effect.flatMap((entries) =>
+            Effect.forEach(entries, (entry) => {
+              if (entry.name === undefined) return Effect.succeed(undefined)
+              if (entry.version === undefined) {
+                return new ReleaseError({ message: `Workspace package ${entry.name} has no version` })
+              }
+              return Effect.succeed({
+                name: entry.name,
+                version: entry.version,
+                dir: path.relative(root, entry.path),
+                private: entry.private === true
+              })
+            }).pipe(
+              Effect.map((packages) => packages.filter((pkg): pkg is WorkspacePackage => pkg !== undefined))
             )
           )
         )

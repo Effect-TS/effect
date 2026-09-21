@@ -110,9 +110,16 @@ export class Registry extends Context.Service<Registry, {
               status: Option.fromUndefinedOr(item.status)
             })
           }
-          if (items.length >= decoded.total || decoded.items.length < PER_PAGE) break
+          if (items.length >= decoded.total) return items
+          if (decoded.items.length < PER_PAGE) {
+            return yield* new ReleaseError({
+              message: `Stage queue ended after ${items.length} of ${decoded.total} reported items`
+            })
+          }
         }
-        return items
+        return yield* new ReleaseError({
+          message: `Stage queue exceeded ${MAX_PAGES} pages with more than ${items.length} reported items`
+        })
       })
 
       return Registry.of({ isPublished, listStaged })

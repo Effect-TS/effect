@@ -1,5 +1,6 @@
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Command from "effect/unstable/cli/Command"
 import * as Flag from "effect/unstable/cli/Flag"
 import { Release } from "./Release.ts"
@@ -9,8 +10,13 @@ const tagFlag = Flag.String("tag").pipe(
 )
 
 const dryRunFlag = Flag.Boolean("dry-run").pipe(
-  Flag.withDescription("When the route is Stage, pack without uploading"),
+  Flag.withDescription("Preview the selected route without mutating git, GitHub or npm"),
   Flag.withDefault(false)
+)
+
+const expectFlag = Flag.Literals("expect", ["Version", "Stage"] as const).pipe(
+  Flag.withDescription("Fail unless routing selects the expected mutating route"),
+  Flag.optional
 )
 
 const plan = Command.make("plan", {}, () =>
@@ -27,16 +33,24 @@ const route = Command.make("route", {}, () =>
     yield* Console.log(JSON.stringify(result, null, 2))
   })).pipe(Command.withDescription("Print what a push to main would do: Version, Stage or Idle"))
 
-const run = Command.make("run", { tag: tagFlag, dryRun: dryRunFlag }, ({ dryRun, tag }) =>
-  Effect.gen(function*() {
-    const release = yield* Release
-    const result = yield* release.run({ tag, dryRun })
-    yield* Console.log(JSON.stringify(result, null, 2))
-  })).pipe(
-    Command.withDescription(
-      "Create or update the version PR when intents are pending; otherwise stage every unpublished version"
-    )
+const run = Command.make(
+  "run",
+  { tag: tagFlag, dryRun: dryRunFlag, expect: expectFlag },
+  ({ dryRun, expect, tag }) =>
+    Effect.gen(function*() {
+      const release = yield* Release
+      const result = yield* release.run({
+        tag,
+        dryRun,
+        expectedRoute: Option.getOrUndefined(expect)
+      })
+      yield* Console.log(JSON.stringify(result, null, 2))
+    })
+).pipe(
+  Command.withDescription(
+    "Create or update the version PR when intents are pending; otherwise stage every unpublished version"
   )
+)
 
 export const cli = Command.make("release").pipe(
   Command.withDescription("Release automation for the Effect monorepo (version PRs and staged publishing)"),

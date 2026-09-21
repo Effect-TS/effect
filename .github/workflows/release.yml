@@ -9,66 +9,85 @@ concurrency:
 
 permissions: {}
 
-# On every push to main, `pnpm release route` decides between:
-#   Version: pending change intents -> create or update the "Version Packages"
-#            pull request from `pnpm version -r` (bumps, changelogs, ledger).
-#   Stage:   the version PR merged -> build and `pnpm stage publish` every
-#            unpublished version. Nothing is published directly; a maintainer
-#            approves the staged versions afterwards (approval flow and the
-#            website deployment that follows it are pending a decision, see
-#            EFF-1455).
-#   Idle:    nothing to do.
+# On every push to main, route first decides whether to update the version PR,
+# stage built packages, or do nothing. Publishing approval and the website
+# deployment that follows it remain pending in EFF-1455.
 jobs:
-  release:
+  route:
     if: github.repository_owner == 'Effect-Ts'
-    name: Release
+    name: Decide release route
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
+      contents: read
+    outputs:
+      tag: ${{ steps.route.outputs.tag }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          # A personal access token, not the workflow token, so that checks run
-          # on the version branch this job pushes.
-          token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Decide route
+        id: route
+        run: |
+          set -euo pipefail
+          route="$(pnpm --silent release route)"
+          echo "$route"
+          echo "tag=$(echo "$route" | jq -r '._tag')" >> "$GITHUB_OUTPUT"
+
+  version:
+    needs: route
+    if: needs.route.outputs.tag == 'Version'
+    name: Update version pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - name: Install dependencies
         uses: ./.github/actions/setup
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Decide route
-        id: route
-        env:
-          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
-        run: |
-          set -euo pipefail
-          route="$(pnpm --silent release route)"
-          echo "$route"
-          echo "tag=$(echo "$route" | jq -r '._tag')" >> "$GITHUB_OUTPUT"
       - name: Create or update the version pull request
-        if: steps.route.outputs.tag == 'Version'
         env:
           GH_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
-        run: pnpm --silent release run --tag rc
+        run: |
+          gh auth setup-git
+          pnpm --silent release run --tag rc --expect Version
+
+  stage:
+    needs: route
+    if: needs.route.outputs.tag == 'Stage'
+    name: Stage packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
       - name: Set strip internals config
-        if: steps.route.outputs.tag == 'Stage'
         run: node scripts/set-strip-internal.mjs
       - name: Run codemods
-        if: steps.route.outputs.tag == 'Stage'
         run: pnpm codemod
       - name: Build packages
-        if: steps.route.outputs.tag == 'Stage'
         env:
           # Leave memory for the runner and package builds on the 8 GB runner.
           # The native TypeScript compiler uses Go's soft memory limit.
           GOMEMLIMIT: 4GiB
         run: pnpm build
       - name: Stage packages on npm
-        if: steps.route.outputs.tag == 'Stage'
         env:
           NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
-        run: pnpm --silent release run --tag rc
+        run: pnpm --silent release run --tag rc --expect Stage

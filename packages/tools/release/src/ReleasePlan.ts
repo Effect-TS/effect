@@ -130,15 +130,17 @@ const decodeAppliedVersions = Schema.decodeUnknownEffect(AppliedVersions)
 
 /** Parses the JSON array printed by `pnpm version -r --json`. */
 export const parseApplied = (json: string): Effect.Effect<ReadonlyArray<AppliedVersion>, ReleaseError> =>
-  decodeAppliedVersions(json).pipe(
-    Effect.map((entries) =>
-      entries.map((entry): AppliedVersion => ({
-        name: entry.name,
-        currentVersion: entry.currentVersion,
-        newVersion: entry.newVersion
-      }))
-    ),
-    Effect.mapError((cause) =>
-      new ReleaseError({ message: `Unexpected output from pnpm version -r --json: ${json.trim()}`, cause })
+  json.split(/\r?\n/).some((line) => line.trim() === NO_PENDING_CHANGES)
+    ? Effect.succeed([])
+    : decodeAppliedVersions(json).pipe(
+      Effect.map((entries) =>
+        entries.map((entry): AppliedVersion => ({
+          name: entry.name,
+          currentVersion: entry.currentVersion,
+          newVersion: entry.newVersion
+        }))
+      ),
+      Effect.mapError((cause) =>
+        new ReleaseError({ message: `Unexpected output from pnpm version -r --json: ${json.trim()}`, cause })
+      )
     )
-  )

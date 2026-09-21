@@ -31,7 +31,7 @@ directly. The replacement keeps the shape and changes two things:
 | `Routing`            | `decide`: Version, Stage or Idle                                                                                                                          | pure                                          |
 | `VersionPullRequest` | `title`, `body`, `sync`                                                                                                                                   | `Git`, `Pnpm`, `GitHub`                       |
 | `Release`            | `plan`, `route`, `run` orchestration                                                                                                                      | all of the above                              |
-| `Cli`                | `release plan`, `release route`, `release run --tag <tag> [--dry-run]`                                                                                    | `Release`                                     |
+| `Cli`                | `release plan`, `release route`, `release run --tag <tag> [--expect Version\|Stage] [--dry-run]`                                                          | `Release`                                     |
 | `Process`            | Detached-stdin command runner and workspace-root discovery shared by the layers                                                                           | `ChildProcessSpawner`, `FileSystem`, `Path`   |
 
 Every command-backed layer anchors its commands at the directory holding
@@ -73,30 +73,56 @@ empty; it always checks the original SHA back out, also on failure.
 
 **Run.** `Version` calls `VersionPullRequest.sync` and never
 `Pnpm.stagePublish`. `Stage` calls `Pnpm.stagePublish` with the requested tag
-and exactly the `toStage` names, and never touches git or GitHub. `--dry-run`
-reaches only the staging call. `--tag` is required.
+and exactly the `toStage` names, and never touches git or GitHub. `--expect`
+recomputes the route and fails before mutation when it differs from the route
+selected by the workflow. On the Version route, `--dry-run` prints the proposed
+pull request title and body without touching git or GitHub; on Stage it passes
+`--dry-run` to pnpm. `--tag` is required.
 
 ## Workflow integration
 
 `.github/workflows/release.yml` keeps its filename (npm trusted-publisher
 configuration is keyed to it) and its trigger (push to `main`, no
-cancel-in-progress). Its single job:
+cancel-in-progress). It splits work into three jobs:
 
-1. checks out with the PAT in `CHANGESET_GITHUB_TOKEN` (so checks run on the
-   version branch), runs `./.github/actions/setup`, sets the bot git identity;
-2. runs `pnpm --silent release route` and exports `_tag` as a step output;
-3. on `Version`: `pnpm --silent release run --tag rc` with `GH_TOKEN` (only
-   git and GitHub are touched);
-4. on `Stage`: `set-strip-internal`, `codemod`, `build`, then
-   `pnpm --silent release run --tag rc`; the job's `id-token: write` lets pnpm
-   use trusted publishing;
-5. no website deployment: it followed publication before and now belongs
-   with the approval step, which is pending a decision (EFF-1455).
+1. `route` has read-only contents permission and no secrets. It exports the
+   result of `pnpm --silent release route`.
+2. `version` has contents and pull-request write permission, but no OIDC
+   permission. Checkout and installation are credential-free. Only the final
+   step receives `CHANGESET_GITHUB_TOKEN`; it runs `gh auth setup-git` and
+   `release run --expect Version` so the PAT is available only while git and
+   GitHub operations run.
+3. `stage` has read-only contents and `id-token: write`, but no PAT. It runs
+   `set-strip-internal`, `codemod`, `build`, then `release run --expect
+   Stage` with `NPM_STAGE_TOKEN`.
+
+Every checkout uses `persist-credentials: false`. GitHub Actions sets CI, so
+pnpm's install is frozen by default and lockfile drift fails before either
+mutating route runs.
+
+There is no website deployment. It previously followed publication, so merging
+this change stops release-time website deployments until the approval flow and
+its website dispatch are designed. The existing `deploy-website` workflow and
+`WEBSITE_DISPATCH_TOKEN` remain available for that follow-up (EFF-1455).
 
 The `rc` tag is a workflow constant until the fixed group leaves the `rc`
-lane. `NPM_STAGE_TOKEN` (a stage-only granular token) is optional: without it
-the stage queue is treated as empty with a warning, so the only loss is the
-"already staged" skip.
+lane.
+
+## Before the first Stage run
+
+These npm-side prerequisites do not block merging the migration, but the first
+release will fail after its build unless they are in place:
+
+- every published package's trusted-publisher configuration must permit
+  `pnpm stage publish` from `.github/workflows/release.yml`;
+- every package's npm publishing-access setting must permit that staged upload;
+- `NPM_STAGE_TOKEN` should be configured as a stage-only granular token that
+  can read the stage queue, so a partially completed staging run can skip
+  versions already uploaded when it is retried.
+
+Without `NPM_STAGE_TOKEN`, the queue is treated as empty with a warning. A
+clean first run can still proceed, but retrying a partial run will fail closed
+when pnpm rejects a duplicate staged version.
 
 ## Migration landed with the implementation
 
