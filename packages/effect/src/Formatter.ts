@@ -316,17 +316,21 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
-      if (redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")) {
-        return safeToString(redacted)
+      let current = redacted
+      if (current instanceof Error && !Predicate.hasProperty(current, "toJSON")) {
+        current = { ...current, name: current.name, message: current.message }
       }
       while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
         ancestors.pop()
       }
-      if (ancestors.includes(redacted)) {
+      if (ancestors.includes(redacted) || (current !== redacted && ancestors.includes(current))) {
         return undefined // circular reference
       }
-      ancestors.push(redacted)
-      return redacted
+      if (current !== redacted) {
+        ancestors.push(redacted)
+      }
+      ancestors.push(current)
+      return current
     },
     options?.space
   ) ?? "null"

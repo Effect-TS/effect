@@ -129,7 +129,7 @@ describe("Logger", () => {
       )
 
       assert.strictEqual(json.length, 1)
-      assert.strictEqual(json[0].message, "Error: boom")
+      assert.deepStrictEqual(json[0].message, { name: "Error", message: "boom" })
       assert.strictEqual(json[0].level, "ERROR")
     }))
 

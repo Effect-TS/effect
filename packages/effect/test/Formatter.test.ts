@@ -344,9 +344,24 @@ describe("Formatter", () => {
       strictEqual(formatJson([1n, 2n]), `["1n","2n"]`)
     })
 
-    it("should stringify Error messages", () => {
-      strictEqual(formatJson(new Error("boom")), `"Error: boom"`)
-      strictEqual(formatJson({ error: new Error("boom") }), `{"error":"Error: boom"}`)
+    it("should serialize Error objects with name, message, and enumerable fields", () => {
+      strictEqual(formatJson(new Error("boom")), `{"name":"Error","message":"boom"}`)
+      strictEqual(formatJson({ error: new Error("boom") }), `{"error":{"name":"Error","message":"boom"}}`)
+
+      const nodeErr = Object.assign(new Error("ENOENT: no such file or directory"), {
+        errno: -2,
+        code: "ENOENT",
+        syscall: "open",
+        path: "/tmp/foo"
+      })
+      strictEqual(
+        formatJson(nodeErr),
+        `{"errno":-2,"code":"ENOENT","syscall":"open","path":"/tmp/foo","name":"Error","message":"ENOENT: no such file or directory"}`
+      )
+
+      const circularErr = new Error("boom")
+      ;(circularErr as any).self = circularErr
+      strictEqual(formatJson(circularErr), `{"name":"Error","message":"boom"}`)
     })
 
     it("should keep structured serialization for Errors that define toJSON", () => {
