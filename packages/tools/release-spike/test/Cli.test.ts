@@ -18,6 +18,7 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
+import { vi } from "vitest"
 
 type RecordEntry = { readonly kind: string; readonly data: unknown }
 type SpawnState = { count: number; readonly args: Array<ReadonlyArray<string>> }
@@ -147,7 +148,7 @@ describe("release-spike CLI regressions", () => {
     const spawns: SpawnState = { count: 0, args: [] }
     const HttpLayer = httpLayer(() => ({
       status: 200,
-      body: { id: "stage-id", packageName: FIXTURE_NAME, version: "0.0.1", status: "validating" }
+      body: { id: "stage-id", packageName: FIXTURE_NAME, version: "0.0.1", status: "awaiting_approval" }
     }))
 
     return Effect.gen(function*() {
@@ -162,9 +163,43 @@ describe("release-spike CLI regressions", () => {
         finalStatus: string
         timedOut: boolean
       }
-      assert.strictEqual(summary.finalStatus, "validating")
+      assert.strictEqual(summary.finalStatus, "awaiting_approval")
       assert.isTrue(summary.timedOut)
     }).pipe(Effect.provide(Layer.mergeAll(baseLayer(spawns), findingsLayer(records), HttpLayer)))
+  })
+
+  it.effect("starts approval batch timing after every preflight", () => {
+    const records: Array<RecordEntry> = []
+    const spawns: SpawnState = { count: 0, args: [] }
+    let now = 0
+    const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now)
+    const HttpLayer = httpLayer((requestNumber) => {
+      now += 10_000
+      return {
+        status: 200,
+        body: {
+          id: "fixture-id-" + requestNumber,
+          packageName: FIXTURE_NAME,
+          version: "0.0.1",
+          status: "staged"
+        }
+      }
+    })
+
+    return Effect.gen(function*() {
+      yield* run(["approve", "fixture-id-0", "fixture-id-1", "--otp", "123456"])
+
+      assert.strictEqual(spawns.count, 2)
+      const summary = records.find((entry) => entry.kind === "stage-approve")?.data as {
+        totalMs: number
+        results: ReadonlyArray<{ sinceFirstMs: number }>
+      }
+      assert.strictEqual(summary.totalMs, 0)
+      assert.deepStrictEqual(summary.results.map((result) => result.sinceFirstMs), [0, 0])
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => dateNow.mockRestore())),
+      Effect.provide(Layer.mergeAll(baseLayer(spawns), findingsLayer(records), HttpLayer))
+    )
   })
 
   for (const verb of ["approve", "reject"] as const) {
