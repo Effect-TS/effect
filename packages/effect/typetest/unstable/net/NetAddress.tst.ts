@@ -216,13 +216,20 @@ describe("NetAddress", () => {
       NetAddress.Ipv4Address
     >()
     expect<NetAddress.Family<CustomIpv4Address>>().type.toBe<NetAddress.Ipv4Address>()
+    expect<NetAddress.Family<NetAddress.Ipv6Address>>().type.toBe<NetAddress.Ipv6Address>()
+    expect<NetAddress.Family<NetAddress.IpAddress>>().type.toBe<NetAddress.IpAddress>()
     expect<NetAddress.Family<NetAddress.InetAddress>>().type.toBe<NetAddress.IpAddress>()
     expect<NetAddress.Family<never>>().type.toBe<never>()
 
     expect<NetAddress.Inet<NetAddress.Ipv4Address>>().type.toBe<NetAddress.InetAddressV4>()
+    expect<NetAddress.Inet<NetAddress.Ipv6Address>>().type.toBe<NetAddress.InetAddressV6>()
+    expect<NetAddress.Inet<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>>().type.toBe<
+      NetAddress.InetAddressV4
+    >()
     expect<NetAddress.Inet>().type.toBe<NetAddress.InetAddress>()
     expect<NetAddress.Inet<never>>().type.toBe<never>()
 
+    expect<NetAddress.MulticastInterface<NetAddress.Ipv4Address>>().type.toBe<NetAddress.Ipv4Address>()
     expect<NetAddress.MulticastInterface<NetAddress.Ipv6Address>>().type.toBe<number>()
     expect<NetAddress.MulticastInterface>().type.toBe<NetAddress.Ipv4Address | number>()
     expect<Parameters<typeof NetAddress.formatMulticastInterface>[0]>().type.toBe<NetAddress.MulticastInterface>()

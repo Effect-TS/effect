@@ -316,10 +316,12 @@ export type Family<A extends IpAddress | InetAddress> = A extends Ipv4Address | 
  * **Example** (Selecting the internet address for a family)
  *
  * ```ts import.meta.vitest
+ * import { Result } from "effect"
  * import { NetAddress } from "effect/unstable/net"
  *
- * const endpoint: NetAddress.Inet<NetAddress.Ipv4Address> =
- *   NetAddress.inetAddressUnsafe(NetAddress.ipv4Loopback, 8080)
+ * const endpoint: NetAddress.Inet<NetAddress.Ipv4Address> = Result.getOrThrow(
+ *   NetAddress.inetAddressV4(NetAddress.ipv4Loopback, 8080)
+ * )
  * ```
  *
  * @category models
