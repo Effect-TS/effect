@@ -85,8 +85,10 @@ pull request title and body without touching git or GitHub; on Stage it passes
 configuration is keyed to it) and its trigger (push to `main`, no
 cancel-in-progress). It splits work into three jobs:
 
-1. `route` has read-only contents permission and no secrets. It exports the
-   result of `pnpm --silent release route`.
+1. `route` has read-only contents permission. Only its `Decide route` step
+   receives `NPM_STAGE_TOKEN`, which lets the route account for versions
+   already in the stage queue. It exports the result of
+   `pnpm --silent release route`.
 2. `version` has contents and pull-request write permission, but no OIDC
    permission. Checkout and installation are credential-free. Only the final
    step receives `CHANGESET_GITHUB_TOKEN`; it runs `gh auth setup-git` and
@@ -110,19 +112,26 @@ lane.
 
 ## Before the first Stage run
 
-These npm-side prerequisites do not block merging the migration, but the first
-release will fail after its build unless they are in place:
+These npm-side prerequisites do not block merging the migration. Complete this
+setup before the first Stage run. Missing trusted-publisher or access
+configuration makes that run fail after its build:
 
 - every published package's trusted-publisher configuration must permit
   `pnpm stage publish` from `.github/workflows/release.yml`;
 - every package's npm publishing-access setting must permit that staged upload;
-- `NPM_STAGE_TOKEN` should be configured as a stage-only granular token that
-  can read the stage queue, so a partially completed staging run can skip
-  versions already uploaded when it is retried.
+- `NPM_STAGE_TOKEN` must be configured as a stage-only granular token that can
+  read the stage queue. The workflow exposes it only to the route decision and
+  Stage execution steps. This keeps a fully staged release on the `Idle` route
+  while it awaits approval, and lets a partial staging retry skip versions
+  already uploaded.
 
 Without `NPM_STAGE_TOKEN`, the queue is treated as empty with a warning. A
-clean first run can still proceed, but retrying a partial run will fail closed
-when pnpm rejects a duplicate staged version.
+clean first run can still proceed. Once any current versions are staged, the
+route will incorrectly select `Stage` because it cannot see them. If the Stage
+execution step has the token, its `--expect Stage` guard recomputes the route
+and fails before mutation when everything is already staged. If the token is
+absent there too, a partial retry reaches pnpm and fails when pnpm rejects a
+duplicate staged version.
 
 ## Migration landed with the implementation
 
