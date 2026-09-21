@@ -1,0 +1,28 @@
+import * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
+import type * as Path from "effect/Path"
+import type { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+import { notImplementedEffect, type ReleaseError } from "./Errors.ts"
+
+export interface WorkspacePackage {
+  readonly name: string
+  /** The version currently written in the package manifest. */
+  readonly version: string
+  /** Workspace-relative directory, e.g. `packages/effect`. */
+  readonly dir: string
+  readonly private: boolean
+}
+
+/**
+ * The pnpm workspace as seen from the repository root. The implementation
+ * reads `pnpm -r ls --depth -1 --json` (or the manifests the workspace globs
+ * select) and never touches the registry.
+ */
+export class Workspace extends Context.Service<Workspace, {
+  readonly packages: Effect.Effect<ReadonlyArray<WorkspacePackage>, ReleaseError>
+}>()("@effect/release/Workspace") {
+  static readonly layer: Layer.Layer<Workspace, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner> = Layer
+    .effect(Workspace, notImplementedEffect("Workspace.layer"))
+}

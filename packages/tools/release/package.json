@@ -1,0 +1,29 @@
+{
+  "name": "@effect/release",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Release automation for the Effect monorepo: version pull requests from pnpm change intents, and staged publishing",
+  "homepage": "https://effect.website",
+  "type": "module",
+  "exports": {
+    ".": "./src/Cli.ts",
+    "./*": "./src/*.ts",
+    "./bin": null
+  },
+  "bin": {
+    "effect-release": "./src/bin.ts"
+  },
+  "scripts": {
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/vitest": "workspace:^",
+    "@types/node": "^26.6.2",
+    "typescript": "^6.0.3",
+    "vitest": "5.0.1"
+  }
+}
