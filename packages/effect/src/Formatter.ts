@@ -258,8 +258,10 @@ function safeGet(input: object, key: PropertyKey): unknown {
  * object ancestry. Circular references are replaced with `undefined`, which
  * omits them from object output. `Redactable` values are automatically redacted
  * before serialization. `BigInt` values are stringified with an `n` suffix.
- * Values not supported by JSON otherwise follow standard `JSON.stringify`
- * behavior. The `space` parameter controls indentation and defaults to `0`.
+ * `Error` instances without a `toJSON` property include their enumerable
+ * properties plus `name` and `message`. Errors with `toJSON` keep their custom
+ * representation. Other values follow standard `JSON.stringify` behavior. The
+ * `space` parameter controls indentation and defaults to `0`.
  *
  * **Gotchas**
  *
