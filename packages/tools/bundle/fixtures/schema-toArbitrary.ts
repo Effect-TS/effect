@@ -1,5 +1,5 @@
+import * as Arbitrary from "effect/arbitrary/Arbitrary"
 import * as Schema from "effect/Schema"
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
 
 const schema = Schema.Struct({
   a: Schema.String,

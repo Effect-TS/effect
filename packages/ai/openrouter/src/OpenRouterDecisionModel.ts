@@ -3,12 +3,12 @@
  *
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
+import * as DecisionModel from "effect/ai/DecisionModel"
+import * as Model from "effect/ai/Model"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as DecisionModel from "effect/unstable/ai/DecisionModel"
-import * as Model from "effect/unstable/ai/Model"
 import { OpenRouterClient } from "./OpenRouterClient.ts"
 import type * as OpenRouterSchema from "./OpenRouterSchema.ts"
 

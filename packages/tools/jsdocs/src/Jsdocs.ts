@@ -125,6 +125,7 @@ export interface ParsedModuleJSDoc {
 
 interface ParsedModuleTags {
   readonly since: string
+  readonly unstable: boolean
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -138,6 +139,7 @@ interface ParsedModuleTags {
 export interface ParsedDeclarationTags {
   readonly category: string
   readonly since: string
+  readonly unstable: boolean
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -151,6 +153,7 @@ export interface ParsedDeclarationTags {
 export interface ParsedNamespaceTags {
   readonly category: string | null
   readonly since: string
+  readonly unstable: boolean
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -163,6 +166,7 @@ export interface ParsedNamespaceTags {
  */
 export interface ParsedMemberTags {
   readonly since: string | null
+  readonly unstable: boolean
   readonly default: string | null
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
@@ -354,6 +358,7 @@ export interface JSDocApiSeeTag {
 export interface JSDocApiTags {
   readonly category: string | null
   readonly since: string | null
+  readonly unstable: boolean
   readonly deprecated: string | null
   readonly default: string | null
 }
@@ -1463,10 +1468,10 @@ function buildTags(
   const allowed = scope === "declaration"
     ? new Set(["deprecated", "see", "unstable", "category", "since"])
     : scope === "member"
-    ? new Set(["deprecated", "default", "see", "since"])
+    ? new Set(["deprecated", "default", "see", "unstable", "since"])
     : scope === "module"
-    ? new Set(["deprecated", "see", "since"])
-    : new Set(["deprecated", "see", "category", "since"])
+    ? new Set(["deprecated", "see", "unstable", "since"])
+    : new Set(["deprecated", "see", "unstable", "category", "since"])
   let previousOrder = -1
   const values = new Map<string, Array<string>>()
 
@@ -1511,6 +1516,7 @@ function buildTags(
     }
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
+  const unstable = values.has("unstable")
   if (deprecated === "") diagnostics.push(diagnostic("empty-tag", "@deprecated must include a message"))
   const since = values.get("since")?.[0] ?? null
   if ((scope === "declaration" || scope === "namespace" || scope === "namespace-declaration") && since === null) {
@@ -1535,25 +1541,25 @@ function buildTags(
     if (diagnostics.length > 0 || category === null || since === null) {
       return { _tag: "Failure", error: { diagnostics } }
     }
-    return { _tag: "Success", value: { category, since, deprecated, see: see.map(parseSeeTag) } }
+    return { _tag: "Success", value: { category, since, unstable, deprecated, see: see.map(parseSeeTag) } }
   }
 
   if (scope === "member") {
     const defaultValue = values.get("default")?.[0] ?? null
     if (defaultValue === "") diagnostics.push(diagnostic("empty-tag", "@default must include a value"))
     if (diagnostics.length > 0) return { _tag: "Failure", error: { diagnostics } }
-    return { _tag: "Success", value: { since, default: defaultValue, deprecated, see: see.map(parseSeeTag) } }
+    return { _tag: "Success", value: { since, unstable, default: defaultValue, deprecated, see: see.map(parseSeeTag) } }
   }
 
   if (scope === "module") {
     if (diagnostics.length > 0 || since === null) return { _tag: "Failure", error: { diagnostics } }
-    return { _tag: "Success", value: { since, deprecated, see: see.map(parseSeeTag) } }
+    return { _tag: "Success", value: { since, unstable, deprecated, see: see.map(parseSeeTag) } }
   }
 
   const category = values.get("category")?.[0] ?? null
   if (category === "") diagnostics.push(diagnostic("empty-tag", "@category must include a value"))
   if (diagnostics.length > 0 || since === null) return { _tag: "Failure", error: { diagnostics } }
-  return { _tag: "Success", value: { category, since, deprecated, see: see.map(parseSeeTag) } }
+  return { _tag: "Success", value: { category, since, unstable, deprecated, see: see.map(parseSeeTag) } }
 }
 
 function formatDiagnostic(diagnostic: ts.Diagnostic): string {
@@ -1970,6 +1976,7 @@ function apiTags(
   return {
     category: "category" in tags ? tags.category : null,
     since: tags.since,
+    unstable: tags.unstable,
     deprecated: tags.deprecated,
     default: "default" in tags ? tags.default : null
   }
@@ -2394,6 +2401,7 @@ function moduleSeeTags(
     ? tags.value as ParsedModuleTags
     : {
       since: "0.0.0",
+      unstable: false,
       deprecated: null,
       see: block.tags.filter((tag) => tag.name === "see" && tag.value.trim() !== "").map((tag) =>
         parseSeeTag(tag.value.trim())

@@ -8,8 +8,8 @@
  */
 "use client"
 
-import type * as Atom from "effect/unstable/reactivity/Atom"
-import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
+import type * as Atom from "effect/reactivity/Atom"
+import * as AtomRegistry from "effect/reactivity/AtomRegistry"
 import * as React from "react"
 import * as Scheduler from "scheduler"
 

@@ -1,5 +1,39 @@
 import type { ApiChange, ApiDiff } from "./Model.ts"
 
+const unstableDomains = new Set([
+  "ai",
+  "arbitrary",
+  "cli",
+  "cluster",
+  "devtools",
+  "encoding",
+  "eventlog",
+  "http",
+  "httpapi",
+  "net",
+  "observability",
+  "persistence",
+  "process",
+  "reactivity",
+  "rpc",
+  "schema",
+  "socket",
+  "sql",
+  "workers",
+  "workflow"
+])
+
+const unstableDomain = (module: string): string | undefined => {
+  const segments = module.split("/")
+  const domain = segments[1] === "unstable" ? segments[2] : segments[1]
+  return domain !== undefined && segments[0] === "effect" && unstableDomains.has(domain) ? domain : undefined
+}
+
+const isUnstableChange = (change: ApiChange): boolean => {
+  const labels = [change.baseApiId, change.headApiId].filter((label): label is string => label !== undefined)
+  return labels.some((label) => unstableDomain(label.split("#")[0]) !== undefined)
+}
+
 const escapeCell = (value: string): string => value.replaceAll("|", "\\|").replaceAll("\n", " ")
 
 const changeLabel = (change: ApiChange): string =>
@@ -91,12 +125,12 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
     "| Domain | Module | Count |",
     "| --- | --- | ---: |",
     ...[...moduleCounts].sort(([left], [right]) => left.localeCompare(right)).map(([module, count]) => {
-      const unstable = module.match(/^effect\/unstable\/([^/]+)/)
-      const domain = unstable?.[1] === undefined
+      const unstable = unstableDomain(module)
+      const domain = unstable === undefined
         ? module.startsWith("@effect/")
           ? module.split("/").slice(0, 2).join("/")
           : "stable"
-        : `unstable/${unstable[1]}`
+        : `unstable/${unstable}`
       return `| ${escapeCell(domain)} | ${escapeCell(module)} | ${count} |`
     }),
     ""
@@ -104,15 +138,11 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
   const sections = [
     [
       "Stable API changes",
-      authoritative.filter((change) =>
-        !(change.baseApiId ?? change.headApiId ?? JSON.stringify(change.delta)).includes("/unstable/")
-      )
+      authoritative.filter((change) => !isUnstableChange(change))
     ],
     [
       "Unstable API changes",
-      authoritative.filter((change) =>
-        (change.baseApiId ?? change.headApiId ?? JSON.stringify(change.delta)).includes("/unstable/")
-      )
+      authoritative.filter(isUnstableChange)
     ]
   ] as const
   for (const [section, sectionChanges] of sections) {

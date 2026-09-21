@@ -9,7 +9,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Pool from "effect/Pool"
 import type * as Scope from "effect/Scope"
-import type { SqlError } from "effect/unstable/sql/SqlError"
+import type { SqlError } from "effect/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 

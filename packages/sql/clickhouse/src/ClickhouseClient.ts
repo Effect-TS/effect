@@ -20,11 +20,10 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
 import {
   AuthenticationError,
   AuthorizationError,
@@ -33,8 +32,9 @@ import {
   SqlSyntaxError,
   StatementTimeoutError,
   UnknownError
-} from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
+} from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
+import * as Stream from "effect/Stream"
 import * as Crypto from "node:crypto"
 import type { Readable } from "node:stream"
 

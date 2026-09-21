@@ -8,11 +8,20 @@
  *
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
+import * as LanguageModel from "effect/ai/LanguageModel"
+import * as AiModel from "effect/ai/Model"
+import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
+import type * as Prompt from "effect/ai/Prompt"
+import type * as Response from "effect/ai/Response"
+import * as Tool from "effect/ai/Tool"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
+import type * as HttpClientRequest from "effect/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -23,15 +32,6 @@ import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Simplify } from "effect/Types"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as LanguageModel from "effect/unstable/ai/LanguageModel"
-import * as AiModel from "effect/unstable/ai/Model"
-import { toCodecOpenAI } from "effect/unstable/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/unstable/ai/Prompt"
-import type * as Response from "effect/unstable/ai/Response"
-import * as Tool from "effect/unstable/ai/Tool"
-import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as InternalUtilities from "./internal/utilities.ts"
 import {
   type Annotation,
@@ -123,7 +123,7 @@ export class Config extends Context.Service<
 // Provider Options / Metadata
 // =============================================================================
 
-declare module "effect/unstable/ai/Prompt" {
+declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for file prompt parts.
    *
@@ -237,7 +237,7 @@ declare module "effect/unstable/ai/Prompt" {
   }
 }
 
-declare module "effect/unstable/ai/Response" {
+declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to a complete text response part.
    *

@@ -1139,7 +1139,7 @@ effect/Schema#TaggedErrorClass:
   replacement: Schema.TaggedError
   note: The exported helper interface was removed; use the class returned by Schema.TaggedError and infer its types.
 effect/Schema#TaggedRequest:
-  replacement: effect/unstable/rpc/Rpc.make
+  replacement: effect/rpc/Rpc.make
   note: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
 effect/Schema#TaggedRequest.All:
   replacement: none
@@ -1148,7 +1148,7 @@ effect/Schema#TaggedRequest.Any:
   replacement: none
   note: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 effect/Schema#TaggedRequestClass:
-  replacement: effect/unstable/rpc/Rpc.make
+  replacement: effect/rpc/Rpc.make
   note: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
 effect/Schema#TaggedStruct:
   replacement: Schema.TaggedStruct

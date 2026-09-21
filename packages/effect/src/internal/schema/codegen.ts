@@ -1,6 +1,6 @@
+import type { CompiledDecoder } from "../../schema/SchemaCompiler.ts"
+import type { runtime } from "../../schema/SchemaCompiler/runtime.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
-import type { CompiledDecoder } from "../../unstable/schema/SchemaCompiler.ts"
-import type { runtime } from "../../unstable/schema/SchemaCompiler/runtime.ts"
 
 const getEncodingChecks = (ast: SchemaAST.AST): SchemaAST.Checks | undefined =>
   "encodingChecks" in ast ? ast.encodingChecks : undefined

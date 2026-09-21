@@ -2,6 +2,7 @@
  * @since 4.0.0
  */
 
+import * as Arbitrary from "effect/arbitrary/Arbitrary"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -13,7 +14,6 @@ import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
 import * as V from "vitest"
 import type * as Vitest from "../index.ts"
 

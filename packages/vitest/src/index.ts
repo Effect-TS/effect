@@ -1,12 +1,12 @@
 /**
  * @since 4.0.0
  */
+import type * as Arbitrary from "effect/arbitrary/Arbitrary"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import type * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
 import * as V from "vitest"
 import * as internal from "./internal/internal.ts"
 

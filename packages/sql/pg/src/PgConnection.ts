@@ -1,6 +1,8 @@
 /**
  * Native PostgreSQL sessions built on the `PgProtocol` wire codec.
  *
+ * **Details**
+ *
  * Sessions support queries, streaming, `LISTEN`/`NOTIFY`, cancellation, and
  * exclusive ownership for transactions.
  *
@@ -19,14 +21,8 @@ import * as Redacted from "effect/Redacted"
 import * as EffectResult from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
+import { AuthenticationError, ConnectionError, SqlError, type SqlErrorReason, UnknownError } from "effect/sql/SqlError"
 import * as Stream from "effect/Stream"
-import {
-  AuthenticationError,
-  ConnectionError,
-  SqlError,
-  type SqlErrorReason,
-  UnknownError
-} from "effect/unstable/sql/SqlError"
 import { Buffer } from "node:buffer"
 import { randomBytes } from "node:crypto"
 import * as Net from "node:net"
@@ -202,6 +198,8 @@ export interface PgConnection {
   /**
    * Runs a query and returns rows keyed by column name. Pass `false` to skip
    * the prepared statement cache.
+   *
+   * **Details**
    *
    * On interruption, the connection drains to `ReadyForQuery` and sends a
    * `CancelRequest` if needed. Unless the backend confirms cancellation with

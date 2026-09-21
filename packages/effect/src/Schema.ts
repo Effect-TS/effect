@@ -33,6 +33,9 @@ import { identity } from "./Function.ts"
 import type * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
+import * as Cookies_ from "./http/Cookies.ts"
+import * as Headers_ from "./http/Headers.ts"
+import * as UrlParams_ from "./http/UrlParams.ts"
 import * as core from "./internal/core.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
@@ -52,6 +55,9 @@ import { isSchemaError as isSchemaErrorInternal, SchemaErrorTypeId } from "./int
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as JsonPatch from "./JsonPatch.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
+import * as IpInterface_ from "./net/IpInterface.ts"
+import * as IpNetwork_ from "./net/IpNetwork.ts"
+import * as NetAddress_ from "./net/NetAddress.ts"
 import { remainder } from "./Number.ts"
 import type * as Optic_ from "./Optic.ts"
 import * as Option_ from "./Option.ts"
@@ -73,12 +79,6 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
-import * as Cookies_ from "./unstable/http/Cookies.ts"
-import * as Headers_ from "./unstable/http/Headers.ts"
-import * as UrlParams_ from "./unstable/http/UrlParams.ts"
-import * as IpInterface_ from "./unstable/net/IpInterface.ts"
-import * as IpNetwork_ from "./unstable/net/IpNetwork.ts"
-import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
 const TypeId = InternalMake.TypeId
 /**
@@ -11557,7 +11557,7 @@ export interface IpMulticastAddressFromString
  * ```ts import.meta.vitest
  * import { assert } from "@effect/vitest"
  * import { Schema } from "effect"
- * import { NetAddress } from "effect/unstable/net"
+ * import { NetAddress } from "effect/net"
  *
  * const address = Schema.decodeUnknownSync(Schema.IpMulticastAddressFromString)("239.255.0.1")
  * assert.isTrue(NetAddress.isMulticast(address))
@@ -13653,7 +13653,7 @@ export const Cookie: Cookie = declare(
     toCode: () => ({
       runtime: "Schema.Cookie",
       Type: "Cookies.Cookie",
-      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+      importDeclarations: [`import * as Cookies from "effect/http/Cookies"`]
     }),
     expected: "Cookie"
   }
@@ -13697,7 +13697,7 @@ export const Cookies: Cookies = declare(
     toCode: () => ({
       runtime: "Schema.Cookies",
       Type: "Cookies.Cookies",
-      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+      importDeclarations: [`import * as Cookies from "effect/http/Cookies"`]
     }),
     expected: "Cookies",
     toCodecJson: () =>
@@ -13783,7 +13783,7 @@ export const Headers: Headers = declare(
     toCode: () => ({
       runtime: "Schema.Headers",
       Type: "Headers.Headers",
-      importDeclarations: [`import * as Headers from "effect/unstable/http/Headers"`]
+      importDeclarations: [`import * as Headers from "effect/http/Headers"`]
     }),
     expected: "Headers",
     toEquivalence: () => Headers_.Equivalence,
@@ -13835,7 +13835,7 @@ export const UrlParams: UrlParams = declare(
     toCode: () => ({
       runtime: "Schema.UrlParams",
       Type: "UrlParams.UrlParams",
-      importDeclarations: [`import * as UrlParams from "effect/unstable/http/UrlParams"`]
+      importDeclarations: [`import * as UrlParams from "effect/http/UrlParams"`]
     }),
     expected: "UrlParams",
     toEquivalence: () => UrlParams_.Equivalence,
@@ -13869,7 +13869,7 @@ export interface JsonFromUrlParamsField extends decodeTo<fromJsonString<Unknown>
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { UrlParams } from "effect/unstable/http"
+ * import { UrlParams } from "effect/http"
  *
  * const extractFoo = Schema.JsonFromUrlParamsField("foo").pipe(
  *   Schema.decodeTo(Schema.Struct({
@@ -13937,7 +13937,7 @@ export interface RecordFromUrlParams extends
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { UrlParams } from "effect/unstable/http"
+ * import { UrlParams } from "effect/http"
  *
  * const toStruct = Schema.RecordFromUrlParams.pipe(
  *   Schema.decodeTo(Schema.Struct({

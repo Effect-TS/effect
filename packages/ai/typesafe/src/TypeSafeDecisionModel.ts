@@ -3,10 +3,10 @@
  *
  * @since 4.0.0
  */
+import * as DecisionModel from "effect/ai/DecisionModel"
+import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as DecisionModel from "effect/unstable/ai/DecisionModel"
-import * as AiModel from "effect/unstable/ai/Model"
 import { TypeSafeClient } from "./TypeSafeClient.ts"
 import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
 
