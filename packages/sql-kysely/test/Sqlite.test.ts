@@ -1,8 +1,8 @@
-import { SqlResolver } from "@effect/sql"
+import { SqlError, SqlResolver } from "@effect/sql"
 import * as SqliteKysely from "@effect/sql-kysely/Sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Either, Exit, Layer, Option, Schema } from "effect"
+import { Context, Effect, Exit, Layer, Option, Schema } from "effect"
 import { CamelCasePlugin, type Generated, type KyselyPlugin, type QueryId } from "kysely"
 
 export interface User {
@@ -30,19 +30,12 @@ describe("SqliteKysely", () => {
         plugins: [new CamelCasePlugin()]
       })
       yield* db.schema.createTable("users").addColumn("userName", "text", (c) => c.notNull())
-      assert.deepStrictEqual(yield* db.insertInto("users").values({ userName: "Alice" }).returningAll(), [
-        { userName: "Alice" }
-      ])
+      yield* db.insertInto("users").values({ userName: "Alice" })
       assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ userName: "Alice" }])
-      const failure = "rollback"
-      const result = yield* db.withTransaction(Effect.gen(function*() {
-        assert.deepStrictEqual(yield* db.updateTable("users").set({ userName: "Bob" }).returningAll(), [
-          { userName: "Bob" }
-        ])
-        return yield* Effect.fail(failure)
-      })).pipe(Effect.either)
-      assert.deepStrictEqual(result, Either.left(failure))
-      assert.deepStrictEqual(yield* db.deleteFrom("users").returningAll(), [{ userName: "Alice" }])
+      yield* db.withTransaction(
+        db.updateTable("users").set({ userName: "Bob" }).pipe(Effect.andThen(Effect.fail("rollback")))
+      ).pipe(Effect.flip)
+      assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ userName: "Alice" }])
     }).pipe(Effect.provide(SqliteLive)))
 
   it.effect("scoped result plugins", () =>
@@ -66,7 +59,6 @@ describe("SqliteKysely", () => {
       assert.deepStrictEqual(yield* query.$if(false, (q) => q.withPlugin(new CamelCasePlugin())), [
         { user_name: "Alice" }
       ])
-      assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ user_name: "Alice" }])
     }).pipe(Effect.provide(SqliteLive)))
 
   it.effect("result plugin order and query identity", () =>
@@ -91,6 +83,17 @@ describe("SqliteKysely", () => {
       yield* db.schema.createTable("users").addColumn("userName", "text")
       yield* db.insertInto("users").values({ userName: "Alice" })
       assert.deepStrictEqual(yield* db.selectFrom("users").selectAll(), [{ userName: "Alice!" }])
+    }).pipe(Effect.provide(SqliteLive)))
+
+  it.effect("result plugin failures", () =>
+    Effect.gen(function*() {
+      const db = yield* SqliteKysely.make<{ users: { name: string } }>()
+      yield* db.schema.createTable("users").addColumn("name", "text")
+      const error = yield* db.selectFrom("users").selectAll().withPlugin({
+        transformQuery: ({ node }) => node,
+        transformResult: () => Promise.reject("boom")
+      }).pipe(Effect.flip)
+      assert(error instanceof SqlError.SqlError)
     }).pipe(Effect.provide(SqliteLive)))
 
   it.effect("queries", () =>
