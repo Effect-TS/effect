@@ -1,12 +1,18 @@
+import { ReleaseError } from "@effect/release/Errors"
 import { Git } from "@effect/release/Git"
 import { GitHub, type PullRequest } from "@effect/release/GitHub"
 import { Pnpm, type StagedPackage } from "@effect/release/Pnpm"
 import { Registry, type StagedItem } from "@effect/release/Registry"
+import type { ManifestPackage, ReleaseManifest } from "@effect/release/ReleaseManifest"
 import type { AppliedVersion, ReleasePlan } from "@effect/release/ReleasePlan"
+import { StageApproval } from "@effect/release/StageApproval"
 import { Workspace, type WorkspacePackage } from "@effect/release/Workspace"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as PlatformError from "effect/PlatformError"
+import * as Redacted from "effect/Redacted"
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -73,12 +79,54 @@ export const stagedItem = (packageName: string, version: string, status = "stage
   status: Option.some(status)
 })
 
+/** Registry stage ids are UUIDs; pnpm refuses anything else, so the fixtures use real ones. */
+export const EFFECT_STAGE_ID = "8a4f1c2e-3b6d-4e7f-9a1b-2c3d4e5f6a70"
+export const VITEST_STAGE_ID = "1f2e3d4c-5b6a-4978-8f7e-6d5c4b3a2910"
+export const LEDGER_SHA = "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00"
+
+/** A queue item with an explicit id, for manifest fixtures. */
+export const stagedWithId = (
+  id: string,
+  packageName: string,
+  version: string,
+  status = "staged",
+  tag: Option.Option<string> = Option.some("rc")
+): StagedItem => ({ id, packageName, version, tag, status: Option.some(status) })
+
+export const effectManifestPackage: ManifestPackage = {
+  name: "effect",
+  version: "4.0.0-rc.117",
+  stageId: EFFECT_STAGE_ID
+}
+
+export const vitestManifestPackage: ManifestPackage = {
+  name: "@effect/vitest",
+  version: "4.0.0-rc.117",
+  stageId: VITEST_STAGE_ID
+}
+
+/** The release of the two public fixture packages, packages sorted by name (`@` sorts before `e`). */
+export const manifest: ReleaseManifest = {
+  schema: 1,
+  tag: "rc",
+  sourceSha: LEDGER_SHA,
+  packages: [vitestManifestPackage, effectManifestPackage]
+}
+
+/** The queue as it looks once both fixture packages are staged and scanned. */
+export const manifestQueue: ReadonlyArray<StagedItem> = [
+  stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117"),
+  stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")
+]
+
+export const otp = Redacted.make("123456")
+
 // ---------------------------------------------------------------------------
 // Call recording
 // ---------------------------------------------------------------------------
 
 export interface Call {
-  readonly service: "git" | "github" | "pnpm" | "registry" | "workspace"
+  readonly service: "git" | "github" | "pnpm" | "registry" | "workspace" | "approval" | "fs"
   readonly method: string
   readonly args: ReadonlyArray<unknown>
 }
@@ -107,6 +155,8 @@ const track = (calls: Calls, service: Call["service"], method: string, ...args: 
 export const gitLayer = (calls: Calls, options?: {
   readonly headSha?: string
   readonly commitSha?: Option.Option<string>
+  readonly ledgerSha?: string
+  readonly pushFailure?: Effect.Effect<never, any> | undefined
 }) =>
   Layer.succeed(
     Git,
@@ -117,8 +167,11 @@ export const gitLayer = (calls: Calls, options?: {
         track(calls, "git", "commitAll", message).pipe(
           Effect.as(options?.commitSha ?? Option.some("fedcba9876543210"))
         ),
-      pushForce: (branch) => track(calls, "git", "pushForce", branch),
-      checkout: (ref) => track(calls, "git", "checkout", ref)
+      pushForce: (branch) =>
+        track(calls, "git", "pushForce", branch).pipe(Effect.andThen(options?.pushFailure ?? Effect.void)),
+      checkout: (ref) => track(calls, "git", "checkout", ref),
+      lastCommitTouching: (path) =>
+        track(calls, "git", "lastCommitTouching", path).pipe(Effect.as(options?.ledgerSha ?? LEDGER_SHA))
     })
   )
 
@@ -196,3 +249,63 @@ export const workspaceLayer = (calls: Calls, list: ReadonlyArray<WorkspacePackag
       packages: track(calls, "workspace", "packages").pipe(Effect.as(list))
     })
   )
+
+/**
+ * `viewStaged` answers from `items` by id; `approve` records the id and the
+ * OTP value, fails with `approveFailure` for ids in `failing`, and otherwise
+ * moves the item to `published` in `items` so a later `listStaged` from
+ * {@link registryLayer} built over the same array sees the change.
+ */
+export const stageApprovalLayer = (calls: Calls, options?: {
+  readonly items?: Array<StagedItem>
+  readonly failing?: ReadonlySet<string> | undefined
+  readonly onApproved?: (id: string) => void
+}) =>
+  Layer.succeed(
+    StageApproval,
+    StageApproval.of({
+      viewStaged: (id) =>
+        track(calls, "approval", "viewStaged", id).pipe(
+          Effect.as(Option.fromUndefinedOr(options?.items?.find((item) => item.id === id)))
+        ),
+      approve: (id, otp) =>
+        track(calls, "approval", "approve", id, Redacted.value(otp)).pipe(
+          Effect.flatMap(() =>
+            options?.failing?.has(id)
+              ? Effect.fail(new ReleaseError({ message: `Failed to approve staged package ${id} (status 403)` }))
+              : Effect.sync(() => options?.onApproved?.(id))
+          )
+        )
+    })
+  )
+
+/**
+ * A file system that serves `files` (workspace-relative path → content) and
+ * records writes; `exists` and `readFileString` work on the same map, so a
+ * write becomes visible to later reads within the test.
+ */
+export const fileSystemLayer = (calls: Calls, files: Map<string, string> = new Map()) => {
+  const relative = (path: string) => path.replace(/^.*?(?=\.release\/|\.changeset\/|pnpm-workspace\.yaml)/, "")
+  return Layer.succeed(
+    FileSystem.FileSystem,
+    FileSystem.makeNoop({
+      exists: (path) => Effect.succeed(path.endsWith("pnpm-workspace.yaml") || files.has(relative(path))),
+      readFileString: (path) =>
+        Effect.suspend(() => {
+          const content = files.get(relative(path))
+          return content === undefined
+            ? Effect.fail(
+              new PlatformError.PlatformError(
+                new PlatformError.BadArgument({ module: "FileSystem", method: "readFileString", description: path })
+              )
+            )
+            : Effect.succeed(content)
+        }),
+      makeDirectory: (path) => track(calls, "fs", "makeDirectory", relative(path)),
+      writeFileString: (path, content) =>
+        track(calls, "fs", "writeFileString", relative(path), content).pipe(
+          Effect.tap(() => Effect.sync(() => files.set(relative(path), content)))
+        )
+    })
+  )
+}

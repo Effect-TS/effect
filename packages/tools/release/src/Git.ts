@@ -6,6 +6,7 @@ import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { ReleaseError } from "./Errors.ts"
+import { notImplementedEffect } from "./NotImplemented.ts"
 import { findWorkspaceRoot, runCommand, runCommandOk } from "./Process.ts"
 
 /**
@@ -23,6 +24,13 @@ export class Git extends Context.Service<Git, {
   readonly pushForce: (branch: string) => Effect.Effect<void, ReleaseError>
   /** `git checkout <ref>`; used to return to the original commit afterwards. */
   readonly checkout: (ref: string) => Effect.Effect<void, ReleaseError>
+  /**
+   * Full SHA of the last first-parent commit that touched `path`
+   * (`git log -1 --first-parent --format=%H -- <path>`); fails when none did.
+   * The publish flow uses it on `.changeset/ledger.yaml` to find the
+   * "Version Packages" merge a staged release was built from.
+   */
+  readonly lastCommitTouching: (path: string) => Effect.Effect<string, ReleaseError>
 }>()("@effect/release/Git") {
   static readonly layer: Layer.Layer<Git, never, ChildProcessSpawner | FileSystem.FileSystem | Path.Path> = Layer
     .effect(
@@ -55,7 +63,8 @@ export class Git extends Context.Service<Git, {
           resetBranch: (branch, from) => git(["checkout", "-B", branch, from]).pipe(Effect.asVoid),
           commitAll,
           pushForce: (branch) => git(["push", "--force", "origin", branch]).pipe(Effect.asVoid),
-          checkout: (ref) => git(["checkout", ref]).pipe(Effect.asVoid)
+          checkout: (ref) => git(["checkout", ref]).pipe(Effect.asVoid),
+          lastCommitTouching: () => notImplementedEffect("Git.lastCommitTouching")
         })
       })
     )
