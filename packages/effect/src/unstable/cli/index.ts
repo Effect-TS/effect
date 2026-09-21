@@ -63,3 +63,8 @@ export * as Primitive from "./Primitive.ts"
  * @since 4.0.0
  */
 export * as Prompt from "./Prompt.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as TerminalCapabilities from "./TerminalCapabilities.ts"

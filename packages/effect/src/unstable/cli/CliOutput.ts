@@ -11,10 +11,12 @@
  */
 
 import * as Context from "../../Context.ts"
+import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as CliError from "./CliError.ts"
 import type { HelpDoc } from "./HelpDoc.ts"
+import * as TerminalCapabilities from "./TerminalCapabilities.ts"
 
 /**
  * Defines the service interface for formatting CLI output including help, errors, and version info.
@@ -197,6 +199,13 @@ export interface Formatter {
   readonly formatErrors: (errors: ReadonlyArray<CliError.CliError>) => string
 }
 
+let builtinFormatter: Formatter | undefined
+
+const builtinFormatterValue = (): Formatter => {
+  builtinFormatter ??= defaultFormatter()
+  return builtinFormatter
+}
+
 /**
  * Service reference for the CLI output formatter. Provides a default implementation
  * that can be overridden for custom formatting or testing.
@@ -226,8 +235,54 @@ export interface Formatter {
  */
 export const Formatter: Context.Reference<Formatter> = Context.Reference(
   "effect/cli/CliOutput",
-  { defaultValue: () => defaultFormatter() }
+  { defaultValue: builtinFormatterValue }
 )
+
+/**
+ * The formatter `Command` uses for help, version, and user-facing errors.
+ *
+ * **Details**
+ *
+ * An explicit formatter always wins. When the built-in formatter is still in
+ * place and {@link TerminalCapabilities.TerminalCapabilities} is installed,
+ * color follows `canColor`. Otherwise this is {@link defaultFormatter} with
+ * no options, which keeps the historical TTY and `NO_COLOR` check.
+ *
+ * **Example** (Color follows an installed capability service)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { CliOutput, TerminalCapabilities } from "effect/unstable/cli"
+ *
+ * const program = Effect.gen(function*() {
+ *   const formatter = yield* CliOutput.resolveFormatter
+ *   return formatter.formatVersion("my-cli", "1.0.0")
+ * }).pipe(
+ *   Effect.provideService(TerminalCapabilities.TerminalCapabilities, {
+ *     canColor: true,
+ *     canAnimate: false,
+ *     canPrompt: false
+ *   })
+ * )
+ *
+ * const version = await Effect.runPromise(program)
+ * version.includes("\u001b[1mmy-cli") // => true
+ * ```
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const resolveFormatter: Effect.Effect<Formatter> = Effect.gen(function*() {
+  const formatter = yield* Formatter
+  if (formatter !== builtinFormatterValue()) {
+    return formatter
+  }
+  const capabilities = yield* Effect.serviceOption(TerminalCapabilities.TerminalCapabilities)
+  if (Option.isNone(capabilities)) {
+    return formatter
+  }
+  return defaultFormatter({ colors: capabilities.value.canColor })
+})
 
 /**
  * Creates a Layer that provides a custom Formatter implementation.
@@ -277,7 +332,8 @@ const escapeControlCharacters = (text: string): string =>
  * // Create a formatter with colors forced on
  * const colorFormatter = CliOutput.defaultFormatter({ colors: true })
  *
- * // Auto-detect colors based on terminal support (default behavior)
+ * // Auto-detect colors based on terminal support (default behavior).
+ * // When TerminalCapabilities is installed, CliOutput.resolveFormatter uses canColor instead.
  * const autoFormatter = CliOutput.defaultFormatter()
  *
  * const error = new CliError.InvalidValue({
