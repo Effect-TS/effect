@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`1ce1e62367e67a04e63bdf62ce2911cfee8c716c`)
 
-Head: `origin/main` (`3d59ae6d5f9ff3e52cb6ed4a9f325320580218d5`)
+Head: `origin/main` (`5bf58f15f3e7791bd14578fcb717ed9aaceb0a46`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -6555,8 +6555,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Error.TypeId` -> `none`: The PlatformError runtime marker is internal in v4; use the PlatformError class/tag.
 
 - `Error.TypeIdError` -> `Data.TaggedError or Schema.Error`: The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly.
-
-- `Error.isPlatformError` -> `value instanceof PlatformError.PlatformError`: PlatformError is a class in v4; use an instanceof check or match its PlatformError tag.
 
 ### `@effect/platform/Etag`
 
