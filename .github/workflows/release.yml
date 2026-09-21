@@ -30,6 +30,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Decide route
         id: route
+        env:
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
         run: |
           set -euo pipefail
           route="$(pnpm --silent release route)"
