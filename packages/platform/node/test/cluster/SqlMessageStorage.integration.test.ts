@@ -2,7 +2,6 @@ import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
-import { TestClock } from "effect/testing"
 import {
   Entity,
   EntityAddress,
@@ -19,8 +18,9 @@ import {
   ShardingConfig,
   Snowflake,
   SqlMessageStorage
-} from "effect/unstable/cluster"
-import { SqlClient } from "effect/unstable/sql"
+} from "effect/cluster"
+import { SqlClient } from "effect/sql"
+import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {

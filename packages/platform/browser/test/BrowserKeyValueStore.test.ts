@@ -4,8 +4,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Layer } from "effect"
 import { testLayer } from "effect-test/unstable/persistence/KeyValueStore.test"
 import * as Effect from "effect/Effect"
+import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import * as Result from "effect/Result"
-import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
 describe("KeyValueStore / layerLocalStorage", () => testLayer(BrowserKeyValueStore.layerLocalStorage))

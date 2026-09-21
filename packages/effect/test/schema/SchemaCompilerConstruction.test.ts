@@ -2,7 +2,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Schema, SchemaAST, SchemaParser } from "effect"
 import * as Codegen from "effect/internal/schema/codegen"
 import * as Registry from "effect/internal/schema/compilerRegistry"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { constructionCases, constructionEvents, constructionOptions } from "./fixtures/construction.ts"
 
 describe("Schema compiler construction", { concurrent: false }, () => {

@@ -10,9 +10,9 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as ChildProcess from "effect/process/ChildProcess"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
 import { join } from "node:path"
 
 const NodeServices = NodeChildProcessSpawner.layer.pipe(

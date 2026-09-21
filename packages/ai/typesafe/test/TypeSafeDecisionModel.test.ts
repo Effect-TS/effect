@@ -1,8 +1,8 @@
 import { TypeSafeClient, TypeSafeDecisionModel } from "@effect/ai-typesafe"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
-import { Decision, DecisionModel, Model } from "effect/unstable/ai"
-import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { Decision, DecisionModel, Model } from "effect/ai"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const Ticket = Schema.Struct({
   message: Schema.String,

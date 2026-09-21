@@ -2,13 +2,7 @@ import { AnthropicClient } from "@effect/ai-anthropic"
 import * as Errors from "@effect/ai-anthropic/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, Redacted, type Schema } from "effect"
-import {
-  Headers,
-  HttpClient,
-  type HttpClientError,
-  type HttpClientRequest,
-  HttpClientResponse
-} from "effect/unstable/http"
+import { Headers, HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicClient", () => {
   it.effect("redacts the API key in AI error context", () =>

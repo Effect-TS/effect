@@ -5,8 +5,8 @@ import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/unstable/persistence/RateLimiterTest"
+import { PersistedQueue, Persistence, RateLimiter, Redis } from "effect/persistence"
 import { TestClock } from "effect/testing"
-import { PersistedQueue, Persistence, RateLimiter, Redis } from "effect/unstable/persistence"
 import { createServer } from "node:net"
 
 const RedisLayer = Layer.unwrap(

@@ -10,7 +10,7 @@ import {
   SchemaParser,
   SchemaTransformation
 } from "effect"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { deepStrictEqual, strictEqual } from "../utils/assert.ts"
 
 describe("compiler regression contracts", () => {

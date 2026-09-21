@@ -4,9 +4,9 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { flow, pipe } from "effect/Function"
+import { Persistable, Persistence } from "effect/persistence"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import { Persistable, Persistence } from "effect/unstable/persistence"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}

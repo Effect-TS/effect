@@ -4,10 +4,10 @@ import { assert, expect, it } from "@effect/vitest"
 import { Duration, Effect, FileSystem, Layer } from "effect"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/unstable/persistence/SqlCleanupTest"
+import { PersistedQueue, Persistence } from "effect/persistence"
+import { Reactivity } from "effect/reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
 import { TestClock } from "effect/testing"
-import { PersistedQueue, Persistence } from "effect/unstable/persistence"
-import { Reactivity } from "effect/unstable/reactivity"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 const ClientLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

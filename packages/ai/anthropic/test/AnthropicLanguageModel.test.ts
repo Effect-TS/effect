@@ -9,8 +9,8 @@ import {
   Response as AiResponse,
   Tool,
   Toolkit
-} from "effect/unstable/ai"
-import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+} from "effect/ai"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicLanguageModel", () => {
   describe("streamText", () => {

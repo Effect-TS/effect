@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Multipart } from "effect/unstable/http"
+import { Multipart } from "effect/http"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -9,7 +9,7 @@ import {
   HttpApiMiddleware,
   HttpApiSchema,
   OpenApi
-} from "effect/unstable/httpapi"
+} from "effect/httpapi"
 
 describe("OpenAPI spec", () => {
   describe("api", () => {

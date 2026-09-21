@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cache, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Latch, MutableHashMap, Option } from "effect"
+import { Persistable, PersistedCache, Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
-import { Persistable, PersistedCache, Persistence } from "effect/unstable/persistence"
 
 describe("Cache", () => {
   describe("constructors", () => {

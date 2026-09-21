@@ -1,7 +1,7 @@
 import type { DurableObjectNamespace, DurableObjectState } from "@cloudflare/workers-types"
 import * as SqliteClient from "@effect/sql-sqlite-do/SqliteClient"
 import { Effect, Exit, Fiber, Scheduler } from "effect"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
+import * as SqlClient from "effect/sql/SqlClient"
 
 export class TransactionObject {
   constructor(private readonly state: DurableObjectState) {}

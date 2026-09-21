@@ -1,9 +1,9 @@
 import { ClickhouseClient } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Statement from "effect/unstable/sql/Statement"
 import { vi } from "vitest"
 
 let closeCalls = 0

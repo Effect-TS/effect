@@ -2,7 +2,7 @@ import * as DenoRedis from "@effect/platform-deno/DenoRedis"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Deferred, Effect, Fiber, Layer, Queue, Schema } from "effect"
-import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
+import { PersistedQueue, Persistence, Redis } from "effect/persistence"
 import * as PersistedCacheTest from "../../../effect/test/unstable/persistence/PersistedCacheTest.ts"
 import * as PersistedQueueTest from "../../../effect/test/unstable/persistence/PersistedQueueTest.ts"
 

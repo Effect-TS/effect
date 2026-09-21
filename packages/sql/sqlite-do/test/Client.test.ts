@@ -2,8 +2,8 @@ import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Stream } from "effect"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
 
 class FakeCursor {
   readonly columnNames: ReadonlyArray<string>
