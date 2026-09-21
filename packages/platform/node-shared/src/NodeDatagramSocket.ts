@@ -70,6 +70,13 @@ const acquire =
       const pending = new Set<(cause: unknown) => void>()
       const closedCause = new Error("Datagram socket closed")
 
+      let scopeIds: Map<string, number>
+      try {
+        scopeIds = networkInterfaces()
+      } catch (cause) {
+        return yield* Effect.fail(openError(cause))
+      }
+
       const isReleased = () => releaseState._tag !== "Open"
 
       const settlePending = (cause: unknown) => {
@@ -145,86 +152,82 @@ const acquire =
           closeNative(socket)
         })
 
-      // Own the socket before interface discovery, listener setup, or native
-      // acquisition. Release settles Effect callbacks before awaiting `close`;
-      // a late `listening` transition retries an initially premature close.
+      // Listener installation is part of acquisition, so release can observe
+      // `close` even when acquireRelease registers into an already-closed scope
+      // and invokes the finalizer inline. Interface discovery runs first because
+      // it does not require a native resource.
       const socket = yield* Effect.acquireRelease(
         Effect.try({
-          try: () =>
-            Dgram.createSocket({
+          try: () => {
+            const socket = Dgram.createSocket({
               type: family,
               reuseAddr: options.reuseAddress ?? false,
               ipv6Only: options.ipv6Only ?? false
-            }),
+            })
+
+            function onListening() {
+              nativeState = "Running"
+              if (isReleased()) closeNative(socket)
+            }
+
+            function onClose() {
+              nativeState = "Closed"
+              settlePending(closedCause)
+              if (isReleased()) finishRelease(socket)
+              else handlers.onError(closedCause)
+            }
+
+            function onError(cause: NodeJS.ErrnoException) {
+              if (nativeState === "Binding" || nativeState === "Connecting") {
+                const wasBinding = nativeState === "Binding"
+                nativeState = wasBinding ? "Idle" : "Running"
+                if (isReleased() && wasBinding) finishRelease(socket)
+                return
+              }
+              if (isReleased() || isRecoverableReceiveError(cause)) return
+              socket.off("message", onMessage)
+              handlers.onError(cause)
+            }
+
+            function parsePeer(host: string, port: number): NetAddress.Inet<A> | undefined {
+              let parsed = NetAddress.inetAddressFromHostString(host, port, scopeIds)
+              if (Result.isFailure(parsed)) {
+                try {
+                  scopeIds = networkInterfaces()
+                  parsed = NetAddress.inetAddressFromHostString(host, port, scopeIds)
+                } catch {
+                  return undefined
+                }
+              }
+              if (Result.isFailure(parsed)) return undefined
+              let peer = parsed.success
+              if (family === "udp6" && NetAddress.isInetAddressV4(peer)) {
+                peer = Result.getOrThrow(NetAddress.inetAddressV6(NetAddress.toIpv4Mapped(peer.address), peer.port))
+              }
+              if (family === "udp4" && !NetAddress.isInetAddressV4(peer)) return undefined
+              return peer as NetAddress.Inet<A>
+            }
+
+            function onMessage(message: Buffer, info: Dgram.RemoteInfo) {
+              const peer = parsePeer(info.address, info.port)
+              if (peer === undefined) return
+              const data = message.byteLength === message.buffer.byteLength
+                ? new Uint8Array(message.buffer)
+                : new Uint8Array(message)
+              handlers.onMessage(data, peer)
+            }
+
+            socket.on("listening", onListening)
+            socket.on("message", onMessage)
+            socket.on("error", onError)
+            socket.on("close", onClose)
+            return socket
+          },
           catch: openError
         }),
         releaseSocket
       )
       if (isReleased()) return yield* Effect.fail(openError(closedCause))
-
-      let scopeIds: Map<string, number>
-      try {
-        scopeIds = networkInterfaces()
-      } catch (cause) {
-        return yield* Effect.fail(openError(cause))
-      }
-
-      function onListening() {
-        nativeState = "Running"
-        if (isReleased()) closeNative(socket)
-      }
-
-      function onClose() {
-        nativeState = "Closed"
-        settlePending(closedCause)
-        if (isReleased()) finishRelease(socket)
-        else handlers.onError(closedCause)
-      }
-
-      function onError(cause: NodeJS.ErrnoException) {
-        if (nativeState === "Binding" || nativeState === "Connecting") {
-          const wasBinding = nativeState === "Binding"
-          nativeState = wasBinding ? "Idle" : "Running"
-          if (isReleased() && wasBinding) finishRelease(socket)
-          return
-        }
-        if (isReleased() || isRecoverableReceiveError(cause)) return
-        socket.off("message", onMessage)
-        handlers.onError(cause)
-      }
-
-      function parsePeer(host: string, port: number): NetAddress.Inet<A> | undefined {
-        let parsed = NetAddress.inetAddressFromHostString(host, port, scopeIds)
-        if (Result.isFailure(parsed)) {
-          try {
-            scopeIds = networkInterfaces()
-            parsed = NetAddress.inetAddressFromHostString(host, port, scopeIds)
-          } catch {
-            return undefined
-          }
-        }
-        if (Result.isFailure(parsed)) return undefined
-        let peer = parsed.success
-        if (family === "udp6" && NetAddress.isInetAddressV4(peer)) {
-          peer = Result.getOrThrow(NetAddress.inetAddressV6(NetAddress.toIpv4Mapped(peer.address), peer.port))
-        }
-        if (family === "udp4" && !NetAddress.isInetAddressV4(peer)) return undefined
-        return peer as NetAddress.Inet<A>
-      }
-
-      function onMessage(message: Buffer, info: Dgram.RemoteInfo) {
-        const peer = parsePeer(info.address, info.port)
-        if (peer === undefined) return
-        const data = message.byteLength === message.buffer.byteLength
-          ? new Uint8Array(message.buffer)
-          : new Uint8Array(message)
-        handlers.onMessage(data, peer)
-      }
-
-      socket.on("listening", onListening)
-      socket.on("message", onMessage)
-      socket.on("error", onError)
-      socket.on("close", onClose)
 
       const ensureScope = (scopeId: number) => {
         if (process.platform === "win32" || scopeId === 0 || hasScopeId(scopeIds, scopeId)) return

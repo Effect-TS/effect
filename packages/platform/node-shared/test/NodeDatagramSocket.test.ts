@@ -1,7 +1,8 @@
 import * as NodeDatagramSocket from "@effect/platform-node-shared/NodeDatagramSocket"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Result, Scope } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Option, Result, Scheduler, Scope } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
+import type * as Datagram from "effect/unstable/socket/DatagramSocket"
 import { Buffer } from "node:buffer"
 import * as Dgram from "node:dgram"
 import * as Os from "node:os"
@@ -71,6 +72,59 @@ const withSendSpy = (impl: (original: SendImpl, sends: number, args: Array<any>,
   )
 
 describe("NodeDatagramSocket acquisition", { concurrent: false }, () => {
+  it.live("settles when interface enumeration fails during setup", () =>
+    Effect.gen(function*() {
+      const cause = new Error("interface enumeration failed")
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi.mocked(Os.networkInterfaces).mockImplementationOnce(() => {
+            throw cause
+          })
+        ),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+
+      const opening = yield* NodeDatagramSocket.bind({ localAddress }).pipe(
+        Effect.scoped,
+        Effect.exit,
+        Effect.forkDetach
+      )
+      const awaited = yield* Fiber.join(opening).pipe(Effect.timeoutOption("3 seconds"))
+      assert.isTrue(Option.isSome(awaited), "bind hung after interface enumeration failed")
+      if (Option.isNone(awaited)) return
+      assert.isTrue(Exit.isFailure(awaited.value))
+      if (Exit.isSuccess(awaited.value)) return
+      const failure = Cause.squash(awaited.value.cause) as Datagram.DatagramSocketError
+      assert.strictEqual(failure.reason._tag, "DatagramSocketOpenError")
+      assert.strictEqual(failure.cause, cause)
+    }))
+
+  it.live("settles when the parent scope closes during native setup", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const opening = yield* NodeDatagramSocket.bind({ localAddress }).pipe(
+        Scope.provide(scope),
+        // This bounded yield point lets parent finalization overtake native
+        // setup, reproducing the closed-scope acquireRelease registration path.
+        Effect.provideService(Scheduler.MaxOpsBeforeYield, 24),
+        Effect.exit,
+        Effect.forkDetach
+      )
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkDetach)
+      const closed = yield* Fiber.join(closing).pipe(
+        Effect.as(Option.some(undefined)),
+        Effect.timeoutOption("2 seconds")
+      )
+      const opened = yield* Fiber.join(opening).pipe(Effect.timeoutOption("2 seconds"))
+      assert.isTrue(Option.isSome(opened), "bind hung after its parent scope closed")
+      assert.isTrue(Option.isSome(closed), "parent scope close hung during native setup")
+      if (Option.isNone(opened)) return
+      assert.isTrue(Exit.isFailure(opened.value))
+      if (Exit.isSuccess(opened.value)) return
+      const failure = Cause.squash(opened.value.cause) as Datagram.DatagramSocketError
+      assert.strictEqual(failure.reason._tag, "DatagramSocketClosedError")
+    }))
+
   it.effect("owns a created socket before setup interruption can escape", () =>
     Effect.gen(function*() {
       const created = Deferred.makeUnsafe<Dgram.Socket>()
