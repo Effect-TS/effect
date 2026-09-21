@@ -111,7 +111,7 @@ release-time website deployments. The existing `deploy-website` action and
 The `rc` tag is a workflow constant until the fixed group leaves the `rc`
 lane.
 
-## Publish approval (EFF-1460)
+## Publish approval
 
 Merging "Version Packages (rc)" stages a release. Making it public is a
 second pull request, "Publish Packages (rc)", that the readiness workflow
@@ -123,7 +123,7 @@ The tests in `test/ReleaseManifest.test.ts`, `test/Readiness.test.ts`,
 `test/PublishWorkflow.test.ts` are the executable contract. The tool, the CLI
 and `release-readiness.yml` implement it; `publish.yml` does not exist yet
 (see "Credentials and what is still unverified" below), so its two workflow
-tests fail until the approval path is decided.
+tests fail until a secure OTP handoff is implemented.
 
 ### Modules
 
@@ -201,11 +201,10 @@ specify `publish.yml` as `workflow_dispatch` only, running only on `main`,
 with `contents: read`, no build, version or stage steps, and two inputs: the
 identity from the merged PR and a one-time password. **That workflow is not
 implemented**: it hands a TOTP to Actions through a dispatch input, which is
-visible in the run's metadata, and the merge-triggered flow agreed for this
-migration has no place for a maintainer-supplied OTP. Which approval path to
-take is the open product decision recorded in EFF-1460. The command itself
-is complete and runs the same way from a maintainer's terminal against a
-checkout of `main`. It reads the OTP from `NPM_OTP` (never a flag, so it is
+visible in the run's metadata, and a merge-triggered workflow has no place for
+a maintainer-supplied OTP. A secure approval path is still needed. The command
+itself is complete and runs the same way from a maintainer's terminal against
+a checkout of `main`. It reads the OTP from `NPM_OTP` (never a flag, so it is
 not on argv) and:
 
 1. decodes the manifest at `MANIFEST_PATH` on the checkout; its identity must
@@ -250,13 +249,13 @@ GitHub changelog:
   CI approval, which is why merging the publish PR authorises publication and
   a maintainer still supplies the OTP at dispatch time.
 
-Not verifiable without the live probe (EFF-1455 P1, P3, P5): whether
+Not verifiable without live registry probes: whether
 `NPM_STAGE_TOKEN` can read `GET /-/stage`; the exact status vocabulary; and
 whether a granular publish token from a 2FA account plus one TOTP approves
 non-interactively, and whether the registry accepts the same TOTP across 31
-consecutive approvals inside its 30-second window. If P5 fails, `release
-publish` runs unchanged from a maintainer's terminal against a checkout of
-`main` (`NPM_APPROVE_TOKEN` and `NPM_OTP` in the environment), and
+consecutive approvals inside its 30-second window. If non-interactive approval
+fails, `release publish` runs unchanged from a maintainer's terminal against a
+checkout of `main` (`NPM_APPROVE_TOKEN` and `NPM_OTP` in the environment), and
 `publish.yml` becomes the website-dispatch step only. `NPM_STAGE_TOKEN` and
 `NPM_APPROVE_TOKEN` are not configured on the repository yet (only
 `CHANGESET_GITHUB_TOKEN` and `WEBSITE_DISPATCH_TOKEN` exist).
@@ -313,7 +312,7 @@ duplicate staged version.
 
 ## Out of scope
 
-The approval gate, the approval path and the website deployment are
-specified above (EFF-1460) and implemented separately; until that lands,
-`Registry.listStaged` is used only so that routing skips versions already
+A merge-triggered approval workflow and automatic website deployment remain
+out of scope until there is a secure way to supply npm's required one-time
+password. `Registry.listStaged` also lets routing skip versions already
 awaiting approval.
