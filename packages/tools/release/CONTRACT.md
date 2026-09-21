@@ -110,6 +110,20 @@ its website dispatch are designed. The existing `deploy-website` workflow and
 The `rc` tag is a workflow constant until the fixed group leaves the `rc`
 lane.
 
+## Release tracks and the 4.0 GA handoff
+
+This migration applies only to `main`. The `v3` branch keeps its existing
+changesets workflow and must not run `@effect/release`; the tool's base and
+release branches are intentionally fixed to `main` and
+`changeset-release/main`.
+
+Until 4.0 GA, `main` stages releases under the `rc` dist-tag and `v3` owns
+`latest`. The GA change must move the `main` fixed group off its `rc` lane and
+change the workflow tag to `latest`, while changing `v3` publishing from
+`latest` to its chosen maintenance tag in the same coordinated handoff. Both
+changes must land before either track publishes again, or a later v3 patch
+could move `latest` back to 3.x.
+
 ## Before the first Stage run
 
 These npm-side prerequisites do not block merging the migration. Complete this
