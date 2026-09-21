@@ -1,4 +1,4 @@
-import { Cause, Effect, Queue } from "effect"
+import { type Cause, type Effect, Queue } from "effect"
 import { describe, expect, it } from "tstyche"
 
 interface TestError {

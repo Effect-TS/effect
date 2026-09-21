@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import type { Option } from "effect"
 import { AsyncResult } from "effect/unstable/reactivity"
 import { describe, expect, it } from "tstyche"
 

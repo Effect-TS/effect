@@ -1,4 +1,4 @@
-import { Effect, TxSemaphore } from "effect"
+import { type Effect, TxSemaphore } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const semaphore: TxSemaphore.TxSemaphore
