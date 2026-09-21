@@ -39,6 +39,11 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  *
  * Spans are batched using the configured interval and batch size, serialized
  * with `OtlpSerialization`, and flushed when the surrounding `Scope` closes.
+ * An optional `spanFilter` runs synchronously after sampled spans end, before
+ * conversion and buffering. Returning `false` skips export without changing the
+ * span's sampling flag or local lifecycle. The filter must not block or mutate
+ * the span; if it throws, the span is exported.
+ * Filtering parent spans can leave gaps in exported traces.
  *
  * @category constructors
  * @since 4.0.0
@@ -55,6 +60,7 @@ export const make: (
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
     readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+    readonly spanFilter?: ((span: Tracer.Span) => boolean) | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
   }
 ) => Effect.Effect<
@@ -91,6 +97,13 @@ export const make: (
 
   function exportFn(span: SpanImpl) {
     if (!span.sampled) return
+    if (options.spanFilter !== undefined) {
+      try {
+        if (!options.spanFilter(span)) return
+      } catch {
+        // Preserve telemetry when a user-provided filter fails.
+      }
+    }
     exporter.push(makeOtlpSpan(span))
   }
 
@@ -126,6 +139,10 @@ export const layer: (options: {
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+  /**
+   * Filters completed sampled spans using the same contract as {@link make}.
+   */
+  readonly spanFilter?: ((span: Tracer.Span) => boolean) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }) => Layer.Layer<Exporter.Flusher, never, OtlpSerialization | HttpClient.HttpClient> = flow(
   make,
@@ -147,6 +164,10 @@ export const layerFromConfig = (options?: {
   } | undefined
   readonly headers?: Headers.Input | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
+  /**
+   * Filters completed sampled spans using the same contract as {@link make}.
+   */
+  readonly spanFilter?: ((span: Tracer.Span) => boolean) | undefined
 }): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
   Effect.gen(function*() {
     const { disabled, endpoint, exporters } = yield* Config.all({
@@ -182,6 +203,7 @@ export const layerFromConfig = (options?: {
       exportInterval: Option.getOrUndefined(scheduleDelay),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
       context: options?.context,
+      spanFilter: options?.spanFilter,
       shutdownTimeout: Option.getOrUndefined(shutdownTimeout)
     })
   }).pipe(Effect.orDie, Layer.unwrap)
