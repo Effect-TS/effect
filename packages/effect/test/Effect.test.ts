@@ -2162,6 +2162,66 @@ describe("Effect", () => {
         assert.strictEqual(result, 1)
       }))
 
+    it.effect("can be interrupted while awaiting children after success", () =>
+      Effect.gen(function*() {
+        const childStarted = yield* Deferred.make<void>()
+        const releaseChild = yield* Deferred.make<void>()
+        const fiber = yield* Effect.gen(function*() {
+          yield* Effect.gen(function*() {
+            yield* Deferred.succeed(childStarted, void 0)
+            yield* Deferred.await(releaseChild)
+          }).pipe(Effect.forkChild({ startImmediately: true }))
+          return 1
+        }).pipe(
+          Effect.awaitAllChildren,
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* Deferred.await(childStarted)
+        fiber.interruptUnsafe()
+        yield* Effect.yieldNow
+        yield* Effect.yieldNow
+        const exit = fiber.pollUnsafe()
+
+        yield* Deferred.succeed(releaseChild, void 0)
+        yield* Fiber.await(fiber)
+
+        assert.isDefined(exit)
+        if (exit !== undefined) {
+          assert.isTrue(Exit.hasInterrupts(exit))
+        }
+      }))
+
+    it.effect("can be interrupted while awaiting children after failure", () =>
+      Effect.gen(function*() {
+        const childStarted = yield* Deferred.make<void>()
+        const releaseChild = yield* Deferred.make<void>()
+        const fiber = yield* Effect.gen(function*() {
+          yield* Effect.gen(function*() {
+            yield* Deferred.succeed(childStarted, void 0)
+            yield* Deferred.await(releaseChild)
+          }).pipe(Effect.forkChild({ startImmediately: true }))
+          return yield* Effect.fail("boom")
+        }).pipe(
+          Effect.awaitAllChildren,
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* Deferred.await(childStarted)
+        fiber.interruptUnsafe()
+        yield* Effect.yieldNow
+        yield* Effect.yieldNow
+        const exit = fiber.pollUnsafe()
+
+        yield* Deferred.succeed(releaseChild, void 0)
+        yield* Fiber.await(fiber)
+
+        assert.isDefined(exit)
+        if (exit !== undefined) {
+          assert.isTrue(Exit.hasInterrupts(exit))
+        }
+      }))
+
     it.effect("does not await children forked outside the wrapped effect", () =>
       Effect.gen(function*() {
         const preexisting = yield* Effect.never.pipe(Effect.forkChild({ startImmediately: true }))
