@@ -1,6 +1,8 @@
-import type * as Effect from "effect/Effect"
-import type { ReleaseError } from "./Errors.ts"
-import { notImplemented, notImplementedEffect } from "./NotImplemented.ts"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
+import { createHash } from "node:crypto"
+import { ReleaseError } from "./Errors.ts"
 import type { StagedItem } from "./Registry.ts"
 import type { WorkspacePackage } from "./Workspace.ts"
 
@@ -43,6 +45,12 @@ export const LEDGER_PATH = ".changeset/ledger.yaml"
 /** Length of {@link identity}: 16 hex characters of the SHA-256 of {@link encode}. */
 export const IDENTITY_LENGTH = 16
 
+const compareNames = (a: { readonly name: string }, b: { readonly name: string }): number =>
+  a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+
+const sortPackages = (packages: ReadonlyArray<ManifestPackage>): ReadonlyArray<ManifestPackage> =>
+  [...packages].sort(compareNames)
+
 /**
  * Builds the manifest for a staged release. `packages` is the workspace;
  * private packages are ignored. Every public package must have exactly one
@@ -53,12 +61,43 @@ export const IDENTITY_LENGTH = 16
  * Staged items for names outside the workspace are ignored. The result is
  * sorted by package name.
  */
-export const fromStaged = (_input: {
+export const fromStaged = (input: {
   readonly tag: string
   readonly sourceSha: string
   readonly packages: ReadonlyArray<WorkspacePackage>
   readonly staged: ReadonlyArray<StagedItem>
-}): Effect.Effect<ReleaseManifest, ReleaseError> => notImplementedEffect("ReleaseManifest.fromStaged")
+}): Effect.Effect<ReleaseManifest, ReleaseError> =>
+  Effect.gen(function*() {
+    const publicPackages = input.packages.filter((pkg) => !pkg.private).sort(compareNames)
+    const packages: Array<ManifestPackage> = []
+    for (const pkg of publicPackages) {
+      const items = input.staged.filter((item) => item.packageName === pkg.name)
+      const stale = items.filter((item) => item.version !== pkg.version)
+      if (stale.length > 0) {
+        return yield* new ReleaseError({
+          message: `Stale staged versions must be rejected before publishing: ${
+            stale.map((item) => `${pkg.name}: staged ${item.version} (${item.id}), manifest ${pkg.version}`).join("; ")
+          }`
+        })
+      }
+      const matching = items.filter((item) => Option.isNone(item.tag) || item.tag.value === input.tag)
+      if (matching.length === 0) {
+        const otherTags = items.flatMap((item) => Option.isSome(item.tag) ? [`${item.tag.value} (${item.id})`] : [])
+        return yield* new ReleaseError({
+          message: otherTags.length > 0
+            ? `${pkg.name}@${pkg.version} is staged under another dist-tag than ${input.tag}: ${otherTags.join(", ")}`
+            : `${pkg.name}@${pkg.version} is not staged`
+        })
+      }
+      if (matching.length > 1) {
+        return yield* new ReleaseError({
+          message: `${pkg.name}@${pkg.version} is staged more than once: ${matching.map((item) => item.id).join(", ")}`
+        })
+      }
+      packages.push({ name: pkg.name, version: pkg.version, stageId: matching[0].id })
+    }
+    return { schema: SCHEMA_VERSION, tag: input.tag, sourceSha: input.sourceSha, packages }
+  })
 
 /**
  * Canonical JSON: two-space indentation, keys in the order `schema`, `tag`,
@@ -67,15 +106,66 @@ export const fromStaged = (_input: {
  * manifest always encodes to the same bytes, which is what {@link identity}
  * hashes and what the publish PR commits.
  */
-export const encode = (_manifest: ReleaseManifest): string => notImplemented("ReleaseManifest.encode")
+export const encode = (manifest: ReleaseManifest): string =>
+  JSON.stringify(
+    {
+      schema: manifest.schema,
+      tag: manifest.tag,
+      sourceSha: manifest.sourceSha,
+      packages: sortPackages(manifest.packages).map((pkg) => ({
+        name: pkg.name,
+        version: pkg.version,
+        stageId: pkg.stageId
+      }))
+    },
+    null,
+    2
+  ) + "\n"
+
+const ManifestJson = Schema.fromJsonString(
+  Schema.Struct({
+    schema: Schema.Number,
+    tag: Schema.String,
+    sourceSha: Schema.String,
+    packages: Schema.Array(
+      Schema.Struct({
+        name: Schema.String,
+        version: Schema.String,
+        stageId: Schema.String
+      })
+    )
+  })
+)
+
+const decodeManifestJson = Schema.decodeUnknownEffect(ManifestJson)
 
 /**
  * Parses {@link encode} output. Fails with a `ReleaseError` on malformed JSON,
  * an unknown `schema`, a missing field, or a package list that is not sorted
  * by name (a hand-edited manifest must not slip through).
  */
-export const decode = (_text: string): Effect.Effect<ReleaseManifest, ReleaseError> =>
-  notImplementedEffect("ReleaseManifest.decode")
+export const decode = (text: string): Effect.Effect<ReleaseManifest, ReleaseError> =>
+  Effect.gen(function*() {
+    const json = yield* decodeManifestJson(text).pipe(
+      Effect.mapError((cause) => new ReleaseError({ message: "Unexpected release manifest shape", cause }))
+    )
+    if (json.schema !== SCHEMA_VERSION) {
+      return yield* new ReleaseError({ message: `Unsupported release manifest schema ${json.schema}` })
+    }
+    for (let index = 1; index < json.packages.length; index++) {
+      if (compareNames(json.packages[index - 1], json.packages[index]) >= 0) {
+        return yield* new ReleaseError({
+          message: `Release manifest packages are not sorted by name at ${json.packages[index].name}`
+        })
+      }
+    }
+    return {
+      schema: SCHEMA_VERSION,
+      tag: json.tag,
+      sourceSha: json.sourceSha,
+      packages: json.packages.map((pkg) => ({ name: pkg.name, version: pkg.version, stageId: pkg.stageId }))
+    }
+  })
 
 /**
  * The release identity: the first {@link IDENTITY_LENGTH} hex characters of
@@ -83,4 +173,5 @@ export const decode = (_text: string): Effect.Effect<ReleaseManifest, ReleaseErr
  * a maintainer passes to `release publish --expect-identity`, and what ties
  * the merge authorisation to one exact manifest.
  */
-export const identity = (_manifest: ReleaseManifest): string => notImplemented("ReleaseManifest.identity")
+export const identity = (manifest: ReleaseManifest): string =>
+  createHash("sha256").update(encode(manifest)).digest("hex").slice(0, IDENTITY_LENGTH)

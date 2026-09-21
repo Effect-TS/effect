@@ -1,8 +1,11 @@
+import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Command from "effect/unstable/cli/Command"
 import * as Flag from "effect/unstable/cli/Flag"
+import { ReleaseError } from "./Errors.ts"
+import { OTP, Publication } from "./Publication.ts"
 import { Release } from "./Release.ts"
 
 const tagFlag = Flag.String("tag").pipe(
@@ -52,7 +55,64 @@ const run = Command.make(
   )
 )
 
+/**
+ * `Publication` is resolved at run time rather than declared as a static
+ * requirement of `cli`, so that the version and stage commands keep requiring
+ * only `Release` (as `test/Cli.test.ts` provides). `bin.ts` always wires it;
+ * a missing service is a wiring defect, hence the die.
+ */
+const publicationService = Effect.serviceOption(Publication).pipe(
+  Effect.flatMap(Option.match({
+    onNone: () => Effect.die(new Error("Publication service is not provided to the release CLI")),
+    onSome: Effect.succeed
+  }))
+)
+
+const readiness = Command.make(
+  "readiness",
+  { tag: tagFlag, dryRun: dryRunFlag },
+  ({ dryRun, tag }) =>
+    Effect.gen(function*() {
+      const publication = yield* publicationService
+      const result = yield* publication.readiness({ tag, dryRun })
+      yield* Console.log(JSON.stringify(result, null, 2))
+    })
+).pipe(
+  Command.withDescription(
+    "Open or refresh the publish PR once every staged version has passed validation; otherwise report why not"
+  )
+)
+
+const expectIdentityFlag = Flag.String("expect-identity").pipe(
+  Flag.withDescription("Identity of the merged release manifest, as printed in the publish PR")
+)
+
+/** The OTP comes from the environment so that it never appears on argv or in the shell history. */
+const otp = Config.option(Config.Redacted(OTP)).pipe(
+  Effect.mapError((cause) => new ReleaseError({ message: `Could not read ${OTP}`, cause })),
+  Effect.flatMap((otp) =>
+    Option.isNone(otp)
+      ? new ReleaseError({ message: `${OTP} is not set; approving staged versions needs a one-time password` })
+      : Effect.succeed(otp.value)
+  )
+)
+
+const publish = Command.make(
+  "publish",
+  { expectIdentity: expectIdentityFlag, dryRun: dryRunFlag },
+  ({ dryRun, expectIdentity }) =>
+    Effect.gen(function*() {
+      const publication = yield* publicationService
+      const result = yield* publication.publish({ expectedIdentity: expectIdentity, otp: yield* otp, dryRun })
+      yield* Console.log(JSON.stringify(result, null, 2))
+    })
+).pipe(
+  Command.withDescription(
+    "Approve the staged versions pinned by the merged release manifest after rechecking the whole release"
+  )
+)
+
 export const cli = Command.make("release").pipe(
-  Command.withDescription("Release automation for the Effect monorepo (version PRs and staged publishing)"),
-  Command.withSubcommands([plan, route, run])
+  Command.withDescription("Release automation for the Effect monorepo (version PRs, staged publishing and approval)"),
+  Command.withSubcommands([plan, route, run, readiness, publish])
 )

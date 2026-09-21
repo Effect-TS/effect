@@ -1,13 +1,13 @@
-import type * as Effect from "effect/Effect"
-import type * as FileSystem from "effect/FileSystem"
-import type * as Option from "effect/Option"
-import type * as Path from "effect/Path"
-import type { ReleaseError } from "./Errors.ts"
-import type { Git } from "./Git.ts"
-import type { GitHub, PullRequest } from "./GitHub.ts"
-import { notImplemented, notImplementedEffect } from "./NotImplemented.ts"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
+import { ReleaseError } from "./Errors.ts"
+import { Git } from "./Git.ts"
+import { GitHub, type PullRequest } from "./GitHub.ts"
+import { findWorkspaceRoot } from "./Process.ts"
 import type { PackageReadiness, Readiness } from "./Readiness.ts"
-import type { ReleaseManifest } from "./ReleaseManifest.ts"
+import { encode, identity, MANIFEST_PATH, type ReleaseManifest } from "./ReleaseManifest.ts"
 
 /** Sibling of `changeset-release/main`; one branch per base, force-pushed on every change. */
 export const PUBLISH_BRANCH = "publish-release/main"
@@ -31,13 +31,19 @@ export const BODY_INTRO =
   "`.release/manifest.json`: nothing is rebuilt or re-versioned. After merging, a maintainer runs the Publish " +
   "workflow with the identity below and a one-time password; publication rechecks the whole release first."
 
+const markerLine = (id: string): string => `<!-- ${IDENTITY_MARKER}: ${id} -->`
+
+const MARKER_PATTERN = new RegExp(`<!-- ${IDENTITY_MARKER}: ([0-9a-f]+) -->`)
+
 /**
  * `Publish Packages` when `manifest.tag` is `latest`, otherwise
  * `Publish Packages (<tag>)`; with ` [not ready]` appended when `readiness`
  * is `NotReady`.
  */
-export const title = (_manifest: ReleaseManifest, _readiness: Readiness): string =>
-  notImplemented("PublishPullRequest.title")
+export const title = (manifest: ReleaseManifest, readiness: Readiness): string => {
+  const base = manifest.tag === "latest" ? TITLE : `${TITLE} (${manifest.tag})`
+  return readiness._tag === "NotReady" ? `${base} ${NOT_READY_SUFFIX}` : base
+}
 
 /**
  * Markdown body: {@link BODY_INTRO}; the identity marker line; a `## Release`
@@ -46,12 +52,40 @@ export const title = (_manifest: ReleaseManifest, _readiness: Readiness): string
  * and, when `readiness` is `NotReady`, a `## Blockers` list naming each
  * blocker with its detail. Deterministic for a given manifest and readiness.
  */
-export const body = (_manifest: ReleaseManifest, _readiness: Readiness): string =>
-  notImplemented("PublishPullRequest.body")
+export const body = (manifest: ReleaseManifest, readiness: Readiness): string => {
+  const id = identity(manifest)
+  const states = new Map(readiness.packages.map((pkg) => [pkg.name, pkg]))
+  const rows = manifest.packages.map((pkg) => {
+    const state = states.get(pkg.name)
+    return `| \`${pkg.name}\` | ${pkg.version} | \`${pkg.stageId}\` | ${state?.state ?? "unknown"} |`
+  })
+  const sections = [
+    BODY_INTRO,
+    markerLine(id),
+    "## Release",
+    [
+      `- Identity: \`${id}\``,
+      `- Dist-tag: \`${manifest.tag}\``,
+      `- Source commit: \`${manifest.sourceSha}\``,
+      `- Publish command: \`pnpm release publish --expect-identity ${id}\``
+    ].join("\n"),
+    "## Packages",
+    ["| Package | Version | Stage id | State |", "| --- | --- | --- | --- |", ...rows].join("\n")
+  ]
+  if (readiness._tag === "NotReady") {
+    sections.push(
+      "## Blockers",
+      "This release is not approvable yet. The readiness workflow refreshes this PR; do not merge it until the " +
+        "blockers below are gone and the title no longer says not ready.",
+      readiness.blockers.map((pkg) => `- \`${pkg.name}@${pkg.version}\`: ${pkg.state}, ${pkg.detail}`).join("\n")
+    )
+  }
+  return `${sections.join("\n\n")}\n`
+}
 
 /** The identity carried by a body's marker line, if present. */
-export const identityFromBody = (_body: string): Option.Option<string> =>
-  notImplemented("PublishPullRequest.identityFromBody")
+export const identityFromBody = (body: string): Option.Option<string> =>
+  Option.fromNullishOr(MARKER_PATTERN.exec(body)?.[1])
 
 export type SyncResult =
   | { readonly _tag: "Created"; readonly pullRequest: PullRequest }
@@ -81,7 +115,60 @@ export type SyncResult =
  *    failure, `Git.checkout` of the remembered SHA.
  */
 export const sync = (
-  _manifest: ReleaseManifest,
-  _readiness: Readiness
+  manifest: ReleaseManifest,
+  readiness: Readiness
 ): Effect.Effect<SyncResult, ReleaseError, Git | GitHub | FileSystem.FileSystem | Path.Path> =>
-  notImplementedEffect("PublishPullRequest.sync")
+  Effect.gen(function*() {
+    const git = yield* Git
+    const github = yield* GitHub
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const content = { title: title(manifest, readiness), body: body(manifest, readiness) }
+    const existing = yield* github.findPullRequest({ head: PUBLISH_BRANCH, base: BASE_BRANCH })
+
+    if (readiness._tag === "NotReady") {
+      if (Option.isNone(existing)) {
+        return { _tag: "Skipped", blockers: readiness.blockers } as const
+      }
+      const pullRequest = yield* github.updatePullRequest(existing.value.number, content)
+      return { _tag: "Marked", pullRequest, blockers: readiness.blockers } as const
+    }
+
+    if (
+      Option.isSome(existing) &&
+      Option.getOrUndefined(identityFromBody(existing.value.body)) === identity(manifest) &&
+      existing.value.title === content.title
+    ) {
+      return { _tag: "NoChanges", pullRequest: existing.value } as const
+    }
+
+    const root = yield* findWorkspaceRoot
+    const originalSha = yield* git.headSha
+    const work: Effect.Effect<SyncResult, ReleaseError> = Effect.gen(function*() {
+      yield* git.resetBranch(PUBLISH_BRANCH, BASE_BRANCH)
+      const file = path.join(root, MANIFEST_PATH)
+      yield* fs.makeDirectory(path.dirname(file), { recursive: true }).pipe(
+        Effect.mapError((cause) =>
+          new ReleaseError({ message: `Could not create ${path.dirname(MANIFEST_PATH)}`, cause })
+        )
+      )
+      yield* fs.writeFileString(file, encode(manifest)).pipe(
+        Effect.mapError((cause) => new ReleaseError({ message: `Could not write ${MANIFEST_PATH}`, cause }))
+      )
+      const commit = yield* git.commitAll(COMMIT_MESSAGE)
+      if (Option.isNone(commit)) {
+        return yield* new ReleaseError({
+          message: `${MANIFEST_PATH} on ${BASE_BRANCH} already pins release ${identity(manifest)}; nothing to propose`
+        })
+      }
+      yield* git.pushForce(PUBLISH_BRANCH)
+      if (Option.isSome(existing)) {
+        const pullRequest = yield* github.updatePullRequest(existing.value.number, content)
+        return { _tag: "Updated", pullRequest } as const
+      }
+      const pullRequest = yield* github.createPullRequest({ head: PUBLISH_BRANCH, base: BASE_BRANCH, ...content })
+      return { _tag: "Created", pullRequest } as const
+    })
+
+    return yield* work.pipe(Effect.ensuring(git.checkout(originalSha).pipe(Effect.orDie)))
+  })

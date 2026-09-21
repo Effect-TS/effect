@@ -1,6 +1,7 @@
-import { notImplemented } from "./NotImplemented.ts"
+import * as Option from "effect/Option"
 import type { StagedItem } from "./Registry.ts"
 import type { ManifestPackage, ReleaseManifest } from "./ReleaseManifest.ts"
+import { versionKey } from "./Routing.ts"
 
 /**
  * Registry status words, as observed on `GET /-/stage` items. The registry
@@ -52,5 +53,36 @@ export interface ReadinessInput {
   readonly published: ReadonlySet<string>
 }
 
+const assessPackage = (pkg: ManifestPackage, input: ReadinessInput): PackageReadiness => {
+  const classify = (state: PackageState, detail: string): PackageReadiness => ({ ...pkg, state, detail })
+  if (input.published.has(versionKey(pkg.name, pkg.version))) {
+    return classify("public", "published")
+  }
+  const item = input.staged.find((item) => item.id === pkg.stageId)
+  if (item === undefined) {
+    const restaged = input.staged.find((item) => item.packageName === pkg.name && item.version === pkg.version)
+    return classify(
+      "missing",
+      restaged === undefined ? "not in the stage queue" : `not in the stage queue; staged again as ${restaged.id}`
+    )
+  }
+  if (item.packageName !== pkg.name || item.version !== pkg.version) {
+    return classify("missing", `stage id now belongs to ${item.packageName}@${item.version}`)
+  }
+  if (Option.isNone(item.status)) {
+    return classify("unknown", "no status")
+  }
+  const status = item.status.value
+  const detail = `status ${status}`
+  if (APPROVABLE_STATUSES.has(status)) return classify("approvable", detail)
+  if (PENDING_STATUSES.has(status)) return classify("pending", detail)
+  if (BLOCKED_STATUSES.has(status)) return classify("blocked", detail)
+  return classify("unknown", detail)
+}
+
 /** Pure; assessed against the manifest only, never against the queue at large. */
-export const assess = (_input: ReadinessInput): Readiness => notImplemented("Readiness.assess")
+export const assess = (input: ReadinessInput): Readiness => {
+  const packages = input.manifest.packages.map((pkg) => assessPackage(pkg, input))
+  const blockers = packages.filter((pkg) => pkg.state !== "public" && pkg.state !== "approvable")
+  return blockers.length === 0 ? { _tag: "Ready", packages } : { _tag: "NotReady", packages, blockers }
+}

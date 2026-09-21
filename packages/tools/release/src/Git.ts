@@ -6,7 +6,6 @@ import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { ReleaseError } from "./Errors.ts"
-import { notImplementedEffect } from "./NotImplemented.ts"
 import { findWorkspaceRoot, runCommand, runCommandOk } from "./Process.ts"
 
 /**
@@ -64,7 +63,14 @@ export class Git extends Context.Service<Git, {
           commitAll,
           pushForce: (branch) => git(["push", "--force", "origin", branch]).pipe(Effect.asVoid),
           checkout: (ref) => git(["checkout", ref]).pipe(Effect.asVoid),
-          lastCommitTouching: () => notImplementedEffect("Git.lastCommitTouching")
+          lastCommitTouching: (path) =>
+            git(["log", "-1", "--first-parent", "--format=%H", "--", path]).pipe(
+              Effect.flatMap((stdout) =>
+                stdout.trim() === ""
+                  ? new ReleaseError({ message: `No commit on the current branch touched ${path}` })
+                  : Effect.succeed(stdout.trim())
+              )
+            )
         })
       })
     )

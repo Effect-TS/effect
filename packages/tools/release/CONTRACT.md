@@ -15,8 +15,8 @@ directly. The replacement keeps the shape and changes two things:
   `pnpm version -r` (pnpm's native versioning, which reads the same
   `.changeset/*.md` files);
 - merging the version PR leads to `pnpm stage publish`, never `pnpm publish`.
-  Making staged versions public is a separate, maintainer-driven step that is
-  out of scope here.
+  Making staged versions public is a second pull request, "Publish Packages",
+  described under "Publish approval" below.
 
 ## Modules
 
@@ -31,7 +31,7 @@ directly. The replacement keeps the shape and changes two things:
 | `Routing`            | `decide`: Version, Stage or Idle                                                                                                                          | pure                                          |
 | `VersionPullRequest` | `title`, `body`, `sync`                                                                                                                                   | `Git`, `Pnpm`, `GitHub`                       |
 | `Release`            | `plan`, `route`, `run` orchestration                                                                                                                      | all of the above                              |
-| `Cli`                | `release plan`, `release route`, `release run --tag <tag> [--expect Version\|Stage] [--dry-run]`                                                          | `Release`                                     |
+| `Cli`                | `release plan`, `release route`, `release run --tag <tag> [--expect Version\|Stage] [--dry-run]`, `release readiness`, `release publish`                  | `Release`, `Publication`                      |
 | `Process`            | Detached-stdin command runner and workspace-root discovery shared by the layers                                                                           | `ChildProcessSpawner`, `FileSystem`, `Path`   |
 
 Every command-backed layer anchors its commands at the directory holding
@@ -102,15 +102,16 @@ Every checkout uses `persist-credentials: false`. GitHub Actions sets CI, so
 pnpm's install is frozen by default and lockfile drift fails before either
 mutating route runs.
 
-There is no website deployment. It previously followed publication, so merging
-this change stops release-time website deployments until the approval flow and
-its website dispatch are designed. The existing `deploy-website` workflow and
-`WEBSITE_DISPATCH_TOKEN` remain available for that follow-up (EFF-1455).
+`release.yml` never publishes or deploys the website. Website deployment
+follows publication, which is the publish workflow's job (see "Publish
+approval" below); until that workflow lands, merging this change stops
+release-time website deployments. The existing `deploy-website` action and
+`WEBSITE_DISPATCH_TOKEN` are kept for it.
 
 The `rc` tag is a workflow constant until the fixed group leaves the `rc`
 lane.
 
-## Publish approval (EFF-1460; contract only until the implementation run)
+## Publish approval (EFF-1460)
 
 Merging "Version Packages (rc)" stages a release. Making it public is a
 second pull request, "Publish Packages (rc)", that the readiness workflow
@@ -119,9 +120,10 @@ Merging that PR authorises publication of exactly the staged tarballs it pins.
 The tests in `test/ReleaseManifest.test.ts`, `test/Readiness.test.ts`,
 `test/PublishPullRequest.test.ts`, `test/StageApproval.test.ts`,
 `test/Publication.test.ts`, `test/PublishCli.test.ts` and
-`test/PublishWorkflow.test.ts` are the executable contract; the modules they
-import exist as stubs in `src/` and fail with `not implemented` until the
-implementation run fills them in.
+`test/PublishWorkflow.test.ts` are the executable contract. The tool, the CLI
+and `release-readiness.yml` implement it; `publish.yml` does not exist yet
+(see "Credentials and what is still unverified" below), so its two workflow
+tests fail until the approval path is decided.
 
 ### Modules
 
@@ -135,7 +137,9 @@ implementation run fills them in.
 | `Cli`                | `release readiness --tag <tag> [--dry-run]`, `release publish --expect-identity <id> [--dry-run]` | `Publication`                             |
 
 `Git` gains `lastCommitTouching(path)`; nothing else in the existing modules
-changes.
+changes. `cli` resolves `Publication` at run time (`Effect.serviceOption`)
+rather than requiring it statically, so the version and stage commands keep
+requiring only `Release`; `bin.ts` always provides it.
 
 ### The manifest
 
@@ -192,10 +196,16 @@ no build.
 
 ### Publication
 
-`publish.yml` is `workflow_dispatch` only, runs only on `main`, has
-`contents: read`, no build, version or stage steps, and takes two inputs: the
-identity from the merged PR and a one-time password. `release publish
---expect-identity <id>` reads the OTP from `NPM_OTP` (never a flag, so it is
+`release publish --expect-identity <id>` is the publication step. The tests
+specify `publish.yml` as `workflow_dispatch` only, running only on `main`,
+with `contents: read`, no build, version or stage steps, and two inputs: the
+identity from the merged PR and a one-time password. **That workflow is not
+implemented**: it hands a TOTP to Actions through a dispatch input, which is
+visible in the run's metadata, and the merge-triggered flow agreed for this
+migration has no place for a maintainer-supplied OTP. Which approval path to
+take is the open product decision recorded in EFF-1460. The command itself
+is complete and runs the same way from a maintainer's terminal against a
+checkout of `main`. It reads the OTP from `NPM_OTP` (never a flag, so it is
 not on argv) and:
 
 1. decodes the manifest at `MANIFEST_PATH` on the checkout; its identity must
@@ -213,13 +223,15 @@ not on argv) and:
    `CONFIRM_INTERVAL` until all are served or `CONFIRM_TIMEOUT` elapses, and
    only then returns `Published` with `websiteRevision = sourceSha`.
 
-Packages already public are verified, never re-approved, so re-dispatching
-the workflow with the same identity and a fresh OTP finishes a partially
+Packages already public are verified, never re-approved, so running the
+command again with the same identity and a fresh OTP finishes a partially
 published release. When everything is already public it returns
 `AlreadyPublished` with the same website revision, so a failed website
-dispatch is retried by re-dispatching the workflow. The workflow writes
-`published=true` and `revision=<sourceSha>` to its outputs; the website step
-runs only on `published == 'true'` with channel `v4` and that revision.
+dispatch is retried by running it again. The specified workflow writes
+`published=true` and `revision=<sourceSha>` to its outputs and runs the
+website step only on `published == 'true'` with channel `v4` and that
+revision; until it exists, the website is dispatched by hand with the
+`websiteRevision` the command prints.
 
 ### Credentials and what is still unverified
 
