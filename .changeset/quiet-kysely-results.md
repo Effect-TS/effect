@@ -2,4 +2,4 @@
 "@effect/sql-kysely": patch
 ---
 
-Apply Kysely result plugins when executing queries through the Effect SQL client.
+Apply Kysely result plugins to rows returned through Effect SQL clients. Other `QueryResult` metadata is unavailable because Effect SQL clients expose rows only.

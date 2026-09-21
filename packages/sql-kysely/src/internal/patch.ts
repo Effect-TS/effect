@@ -26,11 +26,6 @@ export const patch = (prototype: any) => {
   }
 }
 
-/**
- * @internal
- * replace at runtime the commit method on instances that have been patched by the provided one
- * this allows multiple client db instances to have different drivers (@effect/sql or kysely)
- */
 function effectifyWith(
   obj: any,
   commit: (plugins: ReadonlyArray<KyselyPlugin>) => Effect.Effect<ReadonlyArray<unknown>, SqlError>,
@@ -42,8 +37,7 @@ function effectifyWith(
   }
   return new Proxy(obj, {
     get(target, prop, receiver) {
-      // Respect the proxy invariant: non-configurable, non-writable
-      // properties must return their actual value.
+      // Proxy invariants require returning fixed properties unchanged.
       const desc = Object.getOwnPropertyDescriptor(target, prop)
       if (desc && !desc.configurable && !desc.writable) {
         return target[prop]
@@ -57,6 +51,7 @@ function effectifyWith(
           return target[prop].bind(target)
         }
         return (...args: Array<unknown>) => {
+          // Callback helpers need the proxy to retain plugin tracking.
           if (prop === "$call" || (prop === "$if" && args[0])) {
             return target[prop].call(receiver, ...args)
           }
