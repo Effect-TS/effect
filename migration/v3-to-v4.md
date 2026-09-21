@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`1ce1e62367e67a04e63bdf62ce2911cfee8c716c`)
+Base: `origin/v3` (`04f510659ed28bf8214c12e98565c48ab0ab8d7d`)
 
-Head: `origin/main` (`5bf58f15f3e7791bd14578fcb717ed9aaceb0a46`)
+Head: `HEAD` (`0ebbd62402f15db4a9bdb64d1ff71c62e3fdf4c5`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -33,174 +33,174 @@ effect/TSemaphore -> effect/TxSemaphore (barrel: effect)
 effect/TSubscriptionRef -> effect/TxSubscriptionRef (barrel: effect)
 effect/FastCheck -> fast-check
 effect/TestClock -> effect/testing/TestClock (barrel: effect/testing)
-@effect/cli/Args -> effect/unstable/cli/Argument (barrel: effect/unstable/cli)
-@effect/cli/ValidationError -> effect/unstable/cli/CliError (barrel: effect/unstable/cli)
-@effect/cli/Command -> effect/unstable/cli/Command (barrel: effect/unstable/cli)
-@effect/cli/CommandDescriptor -> effect/unstable/cli/Completions (barrel: effect/unstable/cli)
-@effect/cli/Options -> effect/unstable/cli/Flag (barrel: effect/unstable/cli)
-@effect/cli/BuiltInOptions -> effect/unstable/cli/GlobalFlag (barrel: effect/unstable/cli)
-@effect/cli/HelpDoc -> effect/unstable/cli/HelpDoc (barrel: effect/unstable/cli)
-@effect/cli/Primitive -> effect/unstable/cli/Primitive (barrel: effect/unstable/cli)
-@effect/cli/Prompt -> effect/unstable/cli/Prompt (barrel: effect/unstable/cli)
-@effect/cluster/ClusterCron -> effect/unstable/cluster/ClusterCron (barrel: effect/unstable/cluster)
-@effect/cluster/ClusterError -> effect/unstable/cluster/ClusterError (barrel: effect/unstable/cluster)
-@effect/cluster/ClusterMetrics -> effect/unstable/cluster/ClusterMetrics (barrel: effect/unstable/cluster)
-@effect/cluster/ClusterSchema -> effect/unstable/cluster/ClusterSchema (barrel: effect/unstable/cluster)
-@effect/cluster/ClusterWorkflowEngine -> effect/unstable/cluster/ClusterWorkflowEngine (barrel: effect/unstable/cluster)
-@effect/cluster/DeliverAt -> effect/unstable/cluster/DeliverAt (barrel: effect/unstable/cluster)
-@effect/cluster/Entity -> effect/unstable/cluster/Entity (barrel: effect/unstable/cluster)
-@effect/cluster/EntityAddress -> effect/unstable/cluster/EntityAddress (barrel: effect/unstable/cluster)
-@effect/cluster/EntityId -> effect/unstable/cluster/EntityId (barrel: effect/unstable/cluster)
-@effect/cluster/EntityProxy -> effect/unstable/cluster/EntityProxy (barrel: effect/unstable/cluster)
-@effect/cluster/EntityProxyServer -> effect/unstable/cluster/EntityProxyServer (barrel: effect/unstable/cluster)
-@effect/cluster/EntityResource -> effect/unstable/cluster/EntityResource (barrel: effect/unstable/cluster)
-@effect/cluster/EntityType -> effect/unstable/cluster/EntityType (barrel: effect/unstable/cluster)
-@effect/cluster/Envelope -> effect/unstable/cluster/Envelope (barrel: effect/unstable/cluster)
-@effect/cluster/HttpRunner -> effect/unstable/cluster/HttpRunner (barrel: effect/unstable/cluster)
-@effect/cluster/K8sHttpClient -> effect/unstable/cluster/K8sHttpClient (barrel: effect/unstable/cluster)
-@effect/cluster/MachineId -> effect/unstable/cluster/MachineId (barrel: effect/unstable/cluster)
-@effect/cluster/Message -> effect/unstable/cluster/Message (barrel: effect/unstable/cluster)
-@effect/cluster/MessageStorage -> effect/unstable/cluster/MessageStorage (barrel: effect/unstable/cluster)
-@effect/cluster/Reply -> effect/unstable/cluster/Reply (barrel: effect/unstable/cluster)
-@effect/cluster/Runner -> effect/unstable/cluster/Runner (barrel: effect/unstable/cluster)
-@effect/cluster/RunnerAddress -> effect/unstable/cluster/RunnerAddress (barrel: effect/unstable/cluster)
-@effect/cluster/RunnerHealth -> effect/unstable/cluster/RunnerHealth (barrel: effect/unstable/cluster)
-@effect/cluster/RunnerServer -> effect/unstable/cluster/RunnerServer (barrel: effect/unstable/cluster)
-@effect/cluster/RunnerStorage -> effect/unstable/cluster/RunnerStorage (barrel: effect/unstable/cluster)
-@effect/cluster/Runners -> effect/unstable/cluster/Runners (barrel: effect/unstable/cluster)
-@effect/cluster/ShardId -> effect/unstable/cluster/ShardId (barrel: effect/unstable/cluster)
-@effect/cluster/Sharding -> effect/unstable/cluster/Sharding (barrel: effect/unstable/cluster)
-@effect/cluster/ShardingConfig -> effect/unstable/cluster/ShardingConfig (barrel: effect/unstable/cluster)
-@effect/cluster/ShardingRegistrationEvent -> effect/unstable/cluster/ShardingRegistrationEvent (barrel: effect/unstable/cluster)
-@effect/cluster/SingleRunner -> effect/unstable/cluster/SingleRunner (barrel: effect/unstable/cluster)
-@effect/cluster/Singleton -> effect/unstable/cluster/Singleton (barrel: effect/unstable/cluster)
-@effect/cluster/SingletonAddress -> effect/unstable/cluster/SingletonAddress (barrel: effect/unstable/cluster)
-@effect/cluster/Snowflake -> effect/unstable/cluster/Snowflake (barrel: effect/unstable/cluster)
-@effect/cluster/SocketRunner -> effect/unstable/cluster/SocketRunner (barrel: effect/unstable/cluster)
-@effect/cluster/SqlMessageStorage -> effect/unstable/cluster/SqlMessageStorage (barrel: effect/unstable/cluster)
-@effect/cluster/SqlRunnerStorage -> effect/unstable/cluster/SqlRunnerStorage (barrel: effect/unstable/cluster)
-@effect/cluster/TestRunner -> effect/unstable/cluster/TestRunner (barrel: effect/unstable/cluster)
-@effect/experimental/DevTools -> effect/unstable/devtools/DevTools (barrel: effect/unstable/devtools)
-@effect/experimental/DevTools/Client -> effect/unstable/devtools/DevToolsClient (barrel: effect/unstable/devtools)
-@effect/experimental/DevTools/Domain -> effect/unstable/devtools/DevToolsSchema (barrel: effect/unstable/devtools)
-@effect/experimental/DevTools/Server -> effect/unstable/devtools/DevToolsServer (barrel: effect/unstable/devtools)
-@effect/platform/MsgPack -> effect/unstable/encoding/SchemaBinary (barrel: effect/unstable/encoding)
-@effect/platform/Ndjson -> effect/unstable/encoding/Ndjson (barrel: effect/unstable/encoding)
-@effect/experimental/Sse -> effect/unstable/encoding/Sse (barrel: effect/unstable/encoding)
-@effect/ai/AiError -> effect/unstable/ai/AiError (barrel: effect/unstable/ai)
-@effect/ai/Chat -> effect/unstable/ai/Chat (barrel: effect/unstable/ai)
-@effect/ai/EmbeddingModel -> effect/unstable/ai/EmbeddingModel (barrel: effect/unstable/ai)
-@effect/ai/IdGenerator -> effect/unstable/ai/IdGenerator (barrel: effect/unstable/ai)
-@effect/ai/LanguageModel -> effect/unstable/ai/LanguageModel (barrel: effect/unstable/ai)
-@effect/ai/McpSchema -> effect/unstable/ai/McpSchema (barrel: effect/unstable/ai)
-@effect/ai/McpServer -> effect/unstable/ai/McpServer (barrel: effect/unstable/ai)
-@effect/ai/Model -> effect/unstable/ai/Model (barrel: effect/unstable/ai)
-@effect/ai/Prompt -> effect/unstable/ai/Prompt (barrel: effect/unstable/ai)
-@effect/ai/Response -> effect/unstable/ai/Response (barrel: effect/unstable/ai)
-@effect/ai/Telemetry -> effect/unstable/ai/Telemetry (barrel: effect/unstable/ai)
-@effect/ai/Tokenizer -> effect/unstable/ai/Tokenizer (barrel: effect/unstable/ai)
-@effect/ai/Tool -> effect/unstable/ai/Tool (barrel: effect/unstable/ai)
-@effect/ai/Toolkit -> effect/unstable/ai/Toolkit (barrel: effect/unstable/ai)
-@effect/experimental/Event -> effect/unstable/eventlog/Event (barrel: effect/unstable/eventlog)
-@effect/experimental/EventGroup -> effect/unstable/eventlog/EventGroup (barrel: effect/unstable/eventlog)
-@effect/experimental/EventJournal -> effect/unstable/eventlog/EventJournal (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLog -> effect/unstable/eventlog/EventLog (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogEncryption -> effect/unstable/eventlog/EventLogEncryption (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogRemote -> effect/unstable/eventlog/EventLogMessage (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogRemote -> effect/unstable/eventlog/EventLogRemote (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogServer -> effect/unstable/eventlog/EventLogServer (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogServer -> effect/unstable/eventlog/EventLogServerEncrypted (barrel: effect/unstable/eventlog)
-@effect/sql/SqlEventJournal -> effect/unstable/eventlog/SqlEventJournal (barrel: effect/unstable/eventlog)
-@effect/sql/SqlEventLogServer -> effect/unstable/eventlog/SqlEventLogServerEncrypted (barrel: effect/unstable/eventlog)
-@effect/platform/Cookies -> effect/unstable/http/Cookies (barrel: effect/unstable/http)
-@effect/platform/Etag -> effect/unstable/http/Etag (barrel: effect/unstable/http)
-@effect/platform/FetchHttpClient -> effect/unstable/http/FetchHttpClient (barrel: effect/unstable/http)
-@effect/platform/Headers -> effect/unstable/http/Headers (barrel: effect/unstable/http)
-@effect/platform/HttpBody -> effect/unstable/http/HttpBody (barrel: effect/unstable/http)
-@effect/platform/HttpClient -> effect/unstable/http/HttpClient (barrel: effect/unstable/http)
-@effect/platform/HttpClientError -> effect/unstable/http/HttpClientError (barrel: effect/unstable/http)
-@effect/platform/HttpClientRequest -> effect/unstable/http/HttpClientRequest (barrel: effect/unstable/http)
-@effect/platform/HttpClientResponse -> effect/unstable/http/HttpClientResponse (barrel: effect/unstable/http)
-@effect/platform/HttpApp -> effect/unstable/http/HttpEffect (barrel: effect/unstable/http)
-@effect/platform/HttpIncomingMessage -> effect/unstable/http/HttpIncomingMessage (barrel: effect/unstable/http)
-@effect/platform/HttpMethod -> effect/unstable/http/HttpMethod (barrel: effect/unstable/http)
-@effect/platform/HttpMiddleware -> effect/unstable/http/HttpMiddleware (barrel: effect/unstable/http)
-@effect/platform/HttpPlatform -> effect/unstable/http/HttpPlatform (barrel: effect/unstable/http)
-@effect/platform/HttpRouter -> effect/unstable/http/HttpRouter (barrel: effect/unstable/http)
-@effect/platform/HttpServer -> effect/unstable/http/HttpServer (barrel: effect/unstable/http)
-@effect/platform/HttpServerError -> effect/unstable/http/HttpServerError (barrel: effect/unstable/http)
-@effect/platform/HttpServerRequest -> effect/unstable/http/HttpServerRequest (barrel: effect/unstable/http)
-@effect/platform/HttpServerRespondable -> effect/unstable/http/HttpServerRespondable (barrel: effect/unstable/http)
-@effect/platform/HttpServerResponse -> effect/unstable/http/HttpServerResponse (barrel: effect/unstable/http)
-@effect/platform/HttpTraceContext -> effect/unstable/http/HttpTraceContext (barrel: effect/unstable/http)
-@effect/platform/Multipart -> effect/unstable/http/Multipart (barrel: effect/unstable/http)
-@effect/platform/Template -> effect/unstable/http/Template (barrel: effect/unstable/http)
-@effect/platform/Url -> effect/unstable/http/Url (barrel: effect/unstable/http)
-@effect/platform/UrlParams -> effect/unstable/http/UrlParams (barrel: effect/unstable/http)
-@effect/platform/HttpApi -> effect/unstable/httpapi/HttpApi (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiBuilder -> effect/unstable/httpapi/HttpApiBuilder (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiClient -> effect/unstable/httpapi/HttpApiClient (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiEndpoint -> effect/unstable/httpapi/HttpApiEndpoint (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiError -> effect/unstable/httpapi/HttpApiError (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiGroup -> effect/unstable/httpapi/HttpApiGroup (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiMiddleware -> effect/unstable/httpapi/HttpApiMiddleware (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiScalar -> effect/unstable/httpapi/HttpApiScalar (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiSchema -> effect/unstable/httpapi/HttpApiSchema (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiSecurity -> effect/unstable/httpapi/HttpApiSecurity (barrel: effect/unstable/httpapi)
-@effect/platform/HttpApiSwagger -> effect/unstable/httpapi/HttpApiSwagger (barrel: effect/unstable/httpapi)
-@effect/platform/OpenApi -> effect/unstable/httpapi/OpenApi (barrel: effect/unstable/httpapi)
-@effect/opentelemetry/Otlp -> effect/unstable/observability/Otlp (barrel: effect/unstable/observability)
-@effect/opentelemetry/internal/otlpExporter -> effect/unstable/observability/OtlpExporter (barrel: effect/unstable/observability)
-@effect/opentelemetry/OtlpLogger -> effect/unstable/observability/OtlpLogger (barrel: effect/unstable/observability)
-@effect/opentelemetry/OtlpMetrics -> effect/unstable/observability/OtlpMetrics (barrel: effect/unstable/observability)
-@effect/opentelemetry/OtlpResource -> effect/unstable/observability/OtlpResource (barrel: effect/unstable/observability)
-@effect/opentelemetry/OtlpSerialization -> effect/unstable/observability/OtlpSerialization (barrel: effect/unstable/observability)
-@effect/opentelemetry/OtlpTracer -> effect/unstable/observability/OtlpTracer (barrel: effect/unstable/observability)
-@effect/platform/KeyValueStore -> effect/unstable/persistence/KeyValueStore (barrel: effect/unstable/persistence)
-@effect/experimental/Persistence -> effect/unstable/persistence/Persistable (barrel: effect/unstable/persistence)
-@effect/experimental/PersistedCache -> effect/unstable/persistence/PersistedCache (barrel: effect/unstable/persistence)
-@effect/experimental/PersistedQueue -> effect/unstable/persistence/PersistedQueue (barrel: effect/unstable/persistence)
-@effect/experimental/Persistence -> effect/unstable/persistence/Persistence (barrel: effect/unstable/persistence)
-@effect/experimental/RateLimiter -> effect/unstable/persistence/RateLimiter (barrel: effect/unstable/persistence)
-@effect/platform/Command -> effect/unstable/process/ChildProcess (barrel: effect/unstable/process)
-@effect/platform/CommandExecutor -> effect/unstable/process/ChildProcessSpawner (barrel: effect/unstable/process)
-@effect/experimental/Reactivity -> effect/unstable/reactivity/Reactivity (barrel: effect/unstable/reactivity)
-@effect/rpc/Rpc -> effect/unstable/rpc/Rpc (barrel: effect/unstable/rpc)
-@effect/rpc/RpcClient -> effect/unstable/rpc/RpcClient (barrel: effect/unstable/rpc)
-@effect/rpc/RpcClientError -> effect/unstable/rpc/RpcClientError (barrel: effect/unstable/rpc)
-@effect/rpc/RpcGroup -> effect/unstable/rpc/RpcGroup (barrel: effect/unstable/rpc)
-@effect/rpc/RpcMessage -> effect/unstable/rpc/RpcMessage (barrel: effect/unstable/rpc)
-@effect/rpc/RpcMiddleware -> effect/unstable/rpc/RpcMiddleware (barrel: effect/unstable/rpc)
-@effect/rpc/RpcSchema -> effect/unstable/rpc/RpcSchema (barrel: effect/unstable/rpc)
-@effect/rpc/RpcSerialization -> effect/unstable/rpc/RpcSerialization (barrel: effect/unstable/rpc)
-@effect/rpc/RpcServer -> effect/unstable/rpc/RpcServer (barrel: effect/unstable/rpc)
-@effect/rpc/RpcTest -> effect/unstable/rpc/RpcTest (barrel: effect/unstable/rpc)
-@effect/rpc/RpcWorker -> effect/unstable/rpc/RpcWorker (barrel: effect/unstable/rpc)
-@effect/sql/Model -> effect/unstable/schema/Model (barrel: effect/unstable/schema)
-@effect/experimental/VariantSchema -> effect/unstable/schema/VariantSchema (barrel: effect/unstable/schema)
-@effect/platform/Socket -> effect/unstable/socket/Socket (barrel: effect/unstable/socket)
-@effect/platform/SocketServer -> effect/unstable/socket/SocketServer (barrel: effect/unstable/socket)
-@effect/sql/Migrator -> effect/unstable/sql/Migrator (barrel: effect/unstable/sql)
-@effect/sql/SqlClient -> effect/unstable/sql/SqlClient (barrel: effect/unstable/sql)
-@effect/sql/SqlConnection -> effect/unstable/sql/SqlConnection (barrel: effect/unstable/sql)
-@effect/sql/SqlError -> effect/unstable/sql/SqlError (barrel: effect/unstable/sql)
-@effect/sql/Model -> effect/unstable/sql/SqlModel (barrel: effect/unstable/sql)
-@effect/sql/SqlResolver -> effect/unstable/sql/SqlResolver (barrel: effect/unstable/sql)
-@effect/sql/SqlSchema -> effect/unstable/sql/SqlSchema (barrel: effect/unstable/sql)
-@effect/sql/SqlStream -> effect/unstable/sql/SqlStream (barrel: effect/unstable/sql)
-@effect/sql/Statement -> effect/unstable/sql/Statement (barrel: effect/unstable/sql)
-@effect/platform/Transferable -> effect/unstable/workers/Transferable (barrel: effect/unstable/workers)
-@effect/platform/Worker -> effect/unstable/workers/Worker (barrel: effect/unstable/workers)
-@effect/platform/WorkerError -> effect/unstable/workers/WorkerError (barrel: effect/unstable/workers)
-@effect/platform/WorkerRunner -> effect/unstable/workers/WorkerRunner (barrel: effect/unstable/workers)
-@effect/workflow/Activity -> effect/unstable/workflow/Activity (barrel: effect/unstable/workflow)
-@effect/workflow/DurableClock -> effect/unstable/workflow/DurableClock (barrel: effect/unstable/workflow)
-@effect/workflow/DurableDeferred -> effect/unstable/workflow/DurableDeferred (barrel: effect/unstable/workflow)
-@effect/workflow/DurableQueue -> effect/unstable/workflow/DurableQueue (barrel: effect/unstable/workflow)
-@effect/workflow/Workflow -> effect/unstable/workflow/Workflow (barrel: effect/unstable/workflow)
-@effect/workflow/WorkflowEngine -> effect/unstable/workflow/WorkflowEngine (barrel: effect/unstable/workflow)
-@effect/workflow/WorkflowProxy -> effect/unstable/workflow/WorkflowProxy (barrel: effect/unstable/workflow)
-@effect/workflow/WorkflowProxyServer -> effect/unstable/workflow/WorkflowProxyServer (barrel: effect/unstable/workflow)
+@effect/cli/Args -> effect/cli/Argument (barrel: effect/cli)
+@effect/cli/ValidationError -> effect/cli/CliError (barrel: effect/cli)
+@effect/cli/Command -> effect/cli/Command (barrel: effect/cli)
+@effect/cli/CommandDescriptor -> effect/cli/Completions (barrel: effect/cli)
+@effect/cli/Options -> effect/cli/Flag (barrel: effect/cli)
+@effect/cli/BuiltInOptions -> effect/cli/GlobalFlag (barrel: effect/cli)
+@effect/cli/HelpDoc -> effect/cli/HelpDoc (barrel: effect/cli)
+@effect/cli/Primitive -> effect/cli/Primitive (barrel: effect/cli)
+@effect/cli/Prompt -> effect/cli/Prompt (barrel: effect/cli)
+@effect/cluster/ClusterCron -> effect/cluster/ClusterCron (barrel: effect/cluster)
+@effect/cluster/ClusterError -> effect/cluster/ClusterError (barrel: effect/cluster)
+@effect/cluster/ClusterMetrics -> effect/cluster/ClusterMetrics (barrel: effect/cluster)
+@effect/cluster/ClusterSchema -> effect/cluster/ClusterSchema (barrel: effect/cluster)
+@effect/cluster/ClusterWorkflowEngine -> effect/cluster/ClusterWorkflowEngine (barrel: effect/cluster)
+@effect/cluster/DeliverAt -> effect/cluster/DeliverAt (barrel: effect/cluster)
+@effect/cluster/Entity -> effect/cluster/Entity (barrel: effect/cluster)
+@effect/cluster/EntityAddress -> effect/cluster/EntityAddress (barrel: effect/cluster)
+@effect/cluster/EntityId -> effect/cluster/EntityId (barrel: effect/cluster)
+@effect/cluster/EntityProxy -> effect/cluster/EntityProxy (barrel: effect/cluster)
+@effect/cluster/EntityProxyServer -> effect/cluster/EntityProxyServer (barrel: effect/cluster)
+@effect/cluster/EntityResource -> effect/cluster/EntityResource (barrel: effect/cluster)
+@effect/cluster/EntityType -> effect/cluster/EntityType (barrel: effect/cluster)
+@effect/cluster/Envelope -> effect/cluster/Envelope (barrel: effect/cluster)
+@effect/cluster/HttpRunner -> effect/cluster/HttpRunner (barrel: effect/cluster)
+@effect/cluster/K8sHttpClient -> effect/cluster/K8sHttpClient (barrel: effect/cluster)
+@effect/cluster/MachineId -> effect/cluster/MachineId (barrel: effect/cluster)
+@effect/cluster/Message -> effect/cluster/Message (barrel: effect/cluster)
+@effect/cluster/MessageStorage -> effect/cluster/MessageStorage (barrel: effect/cluster)
+@effect/cluster/Reply -> effect/cluster/Reply (barrel: effect/cluster)
+@effect/cluster/Runner -> effect/cluster/Runner (barrel: effect/cluster)
+@effect/cluster/RunnerAddress -> effect/cluster/RunnerAddress (barrel: effect/cluster)
+@effect/cluster/RunnerHealth -> effect/cluster/RunnerHealth (barrel: effect/cluster)
+@effect/cluster/RunnerServer -> effect/cluster/RunnerServer (barrel: effect/cluster)
+@effect/cluster/RunnerStorage -> effect/cluster/RunnerStorage (barrel: effect/cluster)
+@effect/cluster/Runners -> effect/cluster/Runners (barrel: effect/cluster)
+@effect/cluster/ShardId -> effect/cluster/ShardId (barrel: effect/cluster)
+@effect/cluster/Sharding -> effect/cluster/Sharding (barrel: effect/cluster)
+@effect/cluster/ShardingConfig -> effect/cluster/ShardingConfig (barrel: effect/cluster)
+@effect/cluster/ShardingRegistrationEvent -> effect/cluster/ShardingRegistrationEvent (barrel: effect/cluster)
+@effect/cluster/SingleRunner -> effect/cluster/SingleRunner (barrel: effect/cluster)
+@effect/cluster/Singleton -> effect/cluster/Singleton (barrel: effect/cluster)
+@effect/cluster/SingletonAddress -> effect/cluster/SingletonAddress (barrel: effect/cluster)
+@effect/cluster/Snowflake -> effect/cluster/Snowflake (barrel: effect/cluster)
+@effect/cluster/SocketRunner -> effect/cluster/SocketRunner (barrel: effect/cluster)
+@effect/cluster/SqlMessageStorage -> effect/cluster/SqlMessageStorage (barrel: effect/cluster)
+@effect/cluster/SqlRunnerStorage -> effect/cluster/SqlRunnerStorage (barrel: effect/cluster)
+@effect/cluster/TestRunner -> effect/cluster/TestRunner (barrel: effect/cluster)
+@effect/experimental/DevTools -> effect/devtools/DevTools (barrel: effect/devtools)
+@effect/experimental/DevTools/Client -> effect/devtools/DevToolsClient (barrel: effect/devtools)
+@effect/experimental/DevTools/Domain -> effect/devtools/DevToolsSchema (barrel: effect/devtools)
+@effect/experimental/DevTools/Server -> effect/devtools/DevToolsServer (barrel: effect/devtools)
+@effect/platform/MsgPack -> effect/encoding/SchemaBinary (barrel: effect/encoding)
+@effect/platform/Ndjson -> effect/encoding/Ndjson (barrel: effect/encoding)
+@effect/experimental/Sse -> effect/encoding/Sse (barrel: effect/encoding)
+@effect/ai/AiError -> effect/ai/AiError (barrel: effect/ai)
+@effect/ai/Chat -> effect/ai/Chat (barrel: effect/ai)
+@effect/ai/EmbeddingModel -> effect/ai/EmbeddingModel (barrel: effect/ai)
+@effect/ai/IdGenerator -> effect/ai/IdGenerator (barrel: effect/ai)
+@effect/ai/LanguageModel -> effect/ai/LanguageModel (barrel: effect/ai)
+@effect/ai/McpSchema -> effect/ai/McpSchema (barrel: effect/ai)
+@effect/ai/McpServer -> effect/ai/McpServer (barrel: effect/ai)
+@effect/ai/Model -> effect/ai/Model (barrel: effect/ai)
+@effect/ai/Prompt -> effect/ai/Prompt (barrel: effect/ai)
+@effect/ai/Response -> effect/ai/Response (barrel: effect/ai)
+@effect/ai/Telemetry -> effect/ai/Telemetry (barrel: effect/ai)
+@effect/ai/Tokenizer -> effect/ai/Tokenizer (barrel: effect/ai)
+@effect/ai/Tool -> effect/ai/Tool (barrel: effect/ai)
+@effect/ai/Toolkit -> effect/ai/Toolkit (barrel: effect/ai)
+@effect/experimental/Event -> effect/eventlog/Event (barrel: effect/eventlog)
+@effect/experimental/EventGroup -> effect/eventlog/EventGroup (barrel: effect/eventlog)
+@effect/experimental/EventJournal -> effect/eventlog/EventJournal (barrel: effect/eventlog)
+@effect/experimental/EventLog -> effect/eventlog/EventLog (barrel: effect/eventlog)
+@effect/experimental/EventLogEncryption -> effect/eventlog/EventLogEncryption (barrel: effect/eventlog)
+@effect/experimental/EventLogRemote -> effect/eventlog/EventLogMessage (barrel: effect/eventlog)
+@effect/experimental/EventLogRemote -> effect/eventlog/EventLogRemote (barrel: effect/eventlog)
+@effect/experimental/EventLogServer -> effect/eventlog/EventLogServer (barrel: effect/eventlog)
+@effect/experimental/EventLogServer -> effect/eventlog/EventLogServerEncrypted (barrel: effect/eventlog)
+@effect/sql/SqlEventJournal -> effect/eventlog/SqlEventJournal (barrel: effect/eventlog)
+@effect/sql/SqlEventLogServer -> effect/eventlog/SqlEventLogServerEncrypted (barrel: effect/eventlog)
+@effect/platform/Cookies -> effect/http/Cookies (barrel: effect/http)
+@effect/platform/Etag -> effect/http/Etag (barrel: effect/http)
+@effect/platform/FetchHttpClient -> effect/http/FetchHttpClient (barrel: effect/http)
+@effect/platform/Headers -> effect/http/Headers (barrel: effect/http)
+@effect/platform/HttpBody -> effect/http/HttpBody (barrel: effect/http)
+@effect/platform/HttpClient -> effect/http/HttpClient (barrel: effect/http)
+@effect/platform/HttpClientError -> effect/http/HttpClientError (barrel: effect/http)
+@effect/platform/HttpClientRequest -> effect/http/HttpClientRequest (barrel: effect/http)
+@effect/platform/HttpClientResponse -> effect/http/HttpClientResponse (barrel: effect/http)
+@effect/platform/HttpApp -> effect/http/HttpEffect (barrel: effect/http)
+@effect/platform/HttpIncomingMessage -> effect/http/HttpIncomingMessage (barrel: effect/http)
+@effect/platform/HttpMethod -> effect/http/HttpMethod (barrel: effect/http)
+@effect/platform/HttpMiddleware -> effect/http/HttpMiddleware (barrel: effect/http)
+@effect/platform/HttpPlatform -> effect/http/HttpPlatform (barrel: effect/http)
+@effect/platform/HttpRouter -> effect/http/HttpRouter (barrel: effect/http)
+@effect/platform/HttpServer -> effect/http/HttpServer (barrel: effect/http)
+@effect/platform/HttpServerError -> effect/http/HttpServerError (barrel: effect/http)
+@effect/platform/HttpServerRequest -> effect/http/HttpServerRequest (barrel: effect/http)
+@effect/platform/HttpServerRespondable -> effect/http/HttpServerRespondable (barrel: effect/http)
+@effect/platform/HttpServerResponse -> effect/http/HttpServerResponse (barrel: effect/http)
+@effect/platform/HttpTraceContext -> effect/http/HttpTraceContext (barrel: effect/http)
+@effect/platform/Multipart -> effect/http/Multipart (barrel: effect/http)
+@effect/platform/Template -> effect/http/Template (barrel: effect/http)
+@effect/platform/Url -> effect/http/Url (barrel: effect/http)
+@effect/platform/UrlParams -> effect/http/UrlParams (barrel: effect/http)
+@effect/platform/HttpApi -> effect/httpapi/HttpApi (barrel: effect/httpapi)
+@effect/platform/HttpApiBuilder -> effect/httpapi/HttpApiBuilder (barrel: effect/httpapi)
+@effect/platform/HttpApiClient -> effect/httpapi/HttpApiClient (barrel: effect/httpapi)
+@effect/platform/HttpApiEndpoint -> effect/httpapi/HttpApiEndpoint (barrel: effect/httpapi)
+@effect/platform/HttpApiError -> effect/httpapi/HttpApiError (barrel: effect/httpapi)
+@effect/platform/HttpApiGroup -> effect/httpapi/HttpApiGroup (barrel: effect/httpapi)
+@effect/platform/HttpApiMiddleware -> effect/httpapi/HttpApiMiddleware (barrel: effect/httpapi)
+@effect/platform/HttpApiScalar -> effect/httpapi/HttpApiScalar (barrel: effect/httpapi)
+@effect/platform/HttpApiSchema -> effect/httpapi/HttpApiSchema (barrel: effect/httpapi)
+@effect/platform/HttpApiSecurity -> effect/httpapi/HttpApiSecurity (barrel: effect/httpapi)
+@effect/platform/HttpApiSwagger -> effect/httpapi/HttpApiSwagger (barrel: effect/httpapi)
+@effect/platform/OpenApi -> effect/httpapi/OpenApi (barrel: effect/httpapi)
+@effect/opentelemetry/Otlp -> effect/observability/Otlp (barrel: effect/observability)
+@effect/opentelemetry/internal/otlpExporter -> effect/observability/OtlpExporter (barrel: effect/observability)
+@effect/opentelemetry/OtlpLogger -> effect/observability/OtlpLogger (barrel: effect/observability)
+@effect/opentelemetry/OtlpMetrics -> effect/observability/OtlpMetrics (barrel: effect/observability)
+@effect/opentelemetry/OtlpResource -> effect/observability/OtlpResource (barrel: effect/observability)
+@effect/opentelemetry/OtlpSerialization -> effect/observability/OtlpSerialization (barrel: effect/observability)
+@effect/opentelemetry/OtlpTracer -> effect/observability/OtlpTracer (barrel: effect/observability)
+@effect/platform/KeyValueStore -> effect/persistence/KeyValueStore (barrel: effect/persistence)
+@effect/experimental/Persistence -> effect/persistence/Persistable (barrel: effect/persistence)
+@effect/experimental/PersistedCache -> effect/persistence/PersistedCache (barrel: effect/persistence)
+@effect/experimental/PersistedQueue -> effect/persistence/PersistedQueue (barrel: effect/persistence)
+@effect/experimental/Persistence -> effect/persistence/Persistence (barrel: effect/persistence)
+@effect/experimental/RateLimiter -> effect/persistence/RateLimiter (barrel: effect/persistence)
+@effect/platform/Command -> effect/process/ChildProcess (barrel: effect/process)
+@effect/platform/CommandExecutor -> effect/process/ChildProcessSpawner (barrel: effect/process)
+@effect/experimental/Reactivity -> effect/reactivity/Reactivity (barrel: effect/reactivity)
+@effect/rpc/Rpc -> effect/rpc/Rpc (barrel: effect/rpc)
+@effect/rpc/RpcClient -> effect/rpc/RpcClient (barrel: effect/rpc)
+@effect/rpc/RpcClientError -> effect/rpc/RpcClientError (barrel: effect/rpc)
+@effect/rpc/RpcGroup -> effect/rpc/RpcGroup (barrel: effect/rpc)
+@effect/rpc/RpcMessage -> effect/rpc/RpcMessage (barrel: effect/rpc)
+@effect/rpc/RpcMiddleware -> effect/rpc/RpcMiddleware (barrel: effect/rpc)
+@effect/rpc/RpcSchema -> effect/rpc/RpcSchema (barrel: effect/rpc)
+@effect/rpc/RpcSerialization -> effect/rpc/RpcSerialization (barrel: effect/rpc)
+@effect/rpc/RpcServer -> effect/rpc/RpcServer (barrel: effect/rpc)
+@effect/rpc/RpcTest -> effect/rpc/RpcTest (barrel: effect/rpc)
+@effect/rpc/RpcWorker -> effect/rpc/RpcWorker (barrel: effect/rpc)
+@effect/sql/Model -> effect/schema/Model (barrel: effect/schema)
+@effect/experimental/VariantSchema -> effect/schema/VariantSchema (barrel: effect/schema)
+@effect/platform/Socket -> effect/socket/Socket (barrel: effect/socket)
+@effect/platform/SocketServer -> effect/socket/SocketServer (barrel: effect/socket)
+@effect/sql/Migrator -> effect/sql/Migrator (barrel: effect/sql)
+@effect/sql/SqlClient -> effect/sql/SqlClient (barrel: effect/sql)
+@effect/sql/SqlConnection -> effect/sql/SqlConnection (barrel: effect/sql)
+@effect/sql/SqlError -> effect/sql/SqlError (barrel: effect/sql)
+@effect/sql/Model -> effect/sql/SqlModel (barrel: effect/sql)
+@effect/sql/SqlResolver -> effect/sql/SqlResolver (barrel: effect/sql)
+@effect/sql/SqlSchema -> effect/sql/SqlSchema (barrel: effect/sql)
+@effect/sql/SqlStream -> effect/sql/SqlStream (barrel: effect/sql)
+@effect/sql/Statement -> effect/sql/Statement (barrel: effect/sql)
+@effect/platform/Transferable -> effect/workers/Transferable (barrel: effect/workers)
+@effect/platform/Worker -> effect/workers/Worker (barrel: effect/workers)
+@effect/platform/WorkerError -> effect/workers/WorkerError (barrel: effect/workers)
+@effect/platform/WorkerRunner -> effect/workers/WorkerRunner (barrel: effect/workers)
+@effect/workflow/Activity -> effect/workflow/Activity (barrel: effect/workflow)
+@effect/workflow/DurableClock -> effect/workflow/DurableClock (barrel: effect/workflow)
+@effect/workflow/DurableDeferred -> effect/workflow/DurableDeferred (barrel: effect/workflow)
+@effect/workflow/DurableQueue -> effect/workflow/DurableQueue (barrel: effect/workflow)
+@effect/workflow/Workflow -> effect/workflow/Workflow (barrel: effect/workflow)
+@effect/workflow/WorkflowEngine -> effect/workflow/WorkflowEngine (barrel: effect/workflow)
+@effect/workflow/WorkflowProxy -> effect/workflow/WorkflowProxy (barrel: effect/workflow)
+@effect/workflow/WorkflowProxyServer -> effect/workflow/WorkflowProxyServer (barrel: effect/workflow)
 effect/Array -> effect/Array (barrel: effect)
 effect/BigDecimal -> effect/BigDecimal (barrel: effect)
 effect/BigInt -> effect/BigInt (barrel: effect)
@@ -329,35 +329,35 @@ effect/TxChunk (barrel: effect)
 effect/UndefinedOr (barrel: effect)
 effect/testing/TestConsole (barrel: effect/testing)
 effect/testing/TestSchema (barrel: effect/testing)
-effect/unstable/ai/AnthropicStructuredOutput (barrel: effect/unstable/ai)
-effect/unstable/ai/OpenAiStructuredOutput (barrel: effect/unstable/ai)
-effect/unstable/ai/ResponseIdTracker (barrel: effect/unstable/ai)
-effect/unstable/cli/CliOutput (barrel: effect/unstable/cli)
-effect/unstable/cli/Param (barrel: effect/unstable/cli)
-effect/unstable/eventlog/EventLogServerUnencrypted (barrel: effect/unstable/eventlog)
-effect/unstable/eventlog/EventLogSessionAuth (barrel: effect/unstable/eventlog)
-effect/unstable/eventlog/SqlEventLogServerUnencrypted (barrel: effect/unstable/eventlog)
-effect/unstable/http/FindMyWay (barrel: effect/unstable/http)
-effect/unstable/http/HttpStaticServer (barrel: effect/unstable/http)
-effect/unstable/http/MultipartParser (barrel: effect/unstable/http)
-effect/unstable/http/MultipartParser/HeadersParser (barrel: effect/unstable/http)
-effect/unstable/http/MultipartParser/Search (barrel: effect/unstable/http)
-effect/unstable/httpapi/HttpApiTest (barrel: effect/unstable/httpapi)
-effect/unstable/observability/PrometheusMetrics (barrel: effect/unstable/observability)
-effect/unstable/persistence/Redis (barrel: effect/unstable/persistence)
-effect/unstable/reactivity/AsyncResult (barrel: effect/unstable/reactivity)
-effect/unstable/reactivity/Atom (barrel: effect/unstable/reactivity)
-effect/unstable/reactivity/AtomHttpApi (barrel: effect/unstable/reactivity)
-effect/unstable/reactivity/AtomRef (barrel: effect/unstable/reactivity)
-effect/unstable/reactivity/AtomRegistry (barrel: effect/unstable/reactivity)
-effect/unstable/reactivity/AtomRpc (barrel: effect/unstable/reactivity)
-effect/unstable/reactivity/Hydration (barrel: effect/unstable/reactivity)
-effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
+effect/ai/AnthropicStructuredOutput (barrel: effect/ai)
+effect/ai/OpenAiStructuredOutput (barrel: effect/ai)
+effect/ai/ResponseIdTracker (barrel: effect/ai)
+effect/cli/CliOutput (barrel: effect/cli)
+effect/cli/Param (barrel: effect/cli)
+effect/eventlog/EventLogServerUnencrypted (barrel: effect/eventlog)
+effect/eventlog/EventLogSessionAuth (barrel: effect/eventlog)
+effect/eventlog/SqlEventLogServerUnencrypted (barrel: effect/eventlog)
+effect/http/FindMyWay (barrel: effect/http)
+effect/http/HttpStaticServer (barrel: effect/http)
+effect/http/MultipartParser (barrel: effect/http)
+effect/http/MultipartParser/HeadersParser (barrel: effect/http)
+effect/http/MultipartParser/Search (barrel: effect/http)
+effect/httpapi/HttpApiTest (barrel: effect/httpapi)
+effect/observability/PrometheusMetrics (barrel: effect/observability)
+effect/persistence/Redis (barrel: effect/persistence)
+effect/reactivity/AsyncResult (barrel: effect/reactivity)
+effect/reactivity/Atom (barrel: effect/reactivity)
+effect/reactivity/AtomHttpApi (barrel: effect/reactivity)
+effect/reactivity/AtomRef (barrel: effect/reactivity)
+effect/reactivity/AtomRegistry (barrel: effect/reactivity)
+effect/reactivity/AtomRpc (barrel: effect/reactivity)
+effect/reactivity/Hydration (barrel: effect/reactivity)
+effect/rpc/Utils (barrel: effect/rpc)
 ```
 
 ## Removed Modules
 
-- `@effect/ai` -> `effect/unstable/ai`: The @effect/ai package was merged into the effect package; import the effect/unstable/ai barrel or import specific modules directly (e.g. effect/unstable/ai/\<Module\>).
+- `@effect/ai` -> `effect/ai`: The @effect/ai package was merged into the effect package; import the effect/ai barrel or import specific modules directly (e.g. effect/ai/\<Module\>).
 - `@effect/ai-amazon-bedrock` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
 - `@effect/ai-amazon-bedrock/AmazonBedrockClient` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockClient, layer, layerConfig, make, and Service have no direct replacements. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
 - `@effect/ai-amazon-bedrock/AmazonBedrockConfig` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockConfig has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
@@ -378,224 +378,224 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/ai-openai/OpenAiTokenizer`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-openai/index` -> `@effect/ai-openai`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-openai package root or import specific modules directly.
 - `@effect/ai-openrouter/index` -> `@effect/ai-openrouter`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-openrouter package root or import specific modules directly.
-- `@effect/ai/AiError` -> `effect/unstable/ai/AiError`
-- `@effect/ai/Chat` -> `effect/unstable/ai/Chat`
-- `@effect/ai/EmbeddingModel` -> `effect/unstable/ai/EmbeddingModel`
-- `@effect/ai/IdGenerator` -> `effect/unstable/ai/IdGenerator`
-- `@effect/ai/LanguageModel` -> `effect/unstable/ai/LanguageModel`
-- `@effect/ai/McpSchema` -> `effect/unstable/ai/McpSchema`
-- `@effect/ai/McpServer` -> `effect/unstable/ai/McpServer`
-- `@effect/ai/Model` -> `effect/unstable/ai/Model`
-- `@effect/ai/Prompt` -> `effect/unstable/ai/Prompt`
-- `@effect/ai/Response` -> `effect/unstable/ai/Response`
-- `@effect/ai/Telemetry` -> `effect/unstable/ai/Telemetry`
-- `@effect/ai/Tokenizer` -> `effect/unstable/ai/Tokenizer`
-- `@effect/ai/Tool` -> `effect/unstable/ai/Tool`
-- `@effect/ai/Toolkit` -> `effect/unstable/ai/Toolkit`
-- `@effect/ai/index` -> `effect/unstable/ai`: The package barrel was removed; import the same namespaces from the effect/unstable/ai barrel or import specific modules directly.
-- `@effect/cli` -> `effect/unstable/cli`: The @effect/cli package was merged into the effect package; import the effect/unstable/cli barrel or import specific modules directly (e.g. effect/unstable/cli/\<Module\>).
-- `@effect/cli/Args` -> `effect/unstable/cli/Argument`
+- `@effect/ai/AiError` -> `effect/ai/AiError`
+- `@effect/ai/Chat` -> `effect/ai/Chat`
+- `@effect/ai/EmbeddingModel` -> `effect/ai/EmbeddingModel`
+- `@effect/ai/IdGenerator` -> `effect/ai/IdGenerator`
+- `@effect/ai/LanguageModel` -> `effect/ai/LanguageModel`
+- `@effect/ai/McpSchema` -> `effect/ai/McpSchema`
+- `@effect/ai/McpServer` -> `effect/ai/McpServer`
+- `@effect/ai/Model` -> `effect/ai/Model`
+- `@effect/ai/Prompt` -> `effect/ai/Prompt`
+- `@effect/ai/Response` -> `effect/ai/Response`
+- `@effect/ai/Telemetry` -> `effect/ai/Telemetry`
+- `@effect/ai/Tokenizer` -> `effect/ai/Tokenizer`
+- `@effect/ai/Tool` -> `effect/ai/Tool`
+- `@effect/ai/Toolkit` -> `effect/ai/Toolkit`
+- `@effect/ai/index` -> `effect/ai`: The package barrel was removed; import the same namespaces from the effect/ai barrel or import specific modules directly.
+- `@effect/cli` -> `effect/cli`: The @effect/cli package was merged into the effect package; import the effect/cli barrel or import specific modules directly (e.g. effect/cli/\<Module\>).
+- `@effect/cli/Args` -> `effect/cli/Argument`
 - `@effect/cli/AutoCorrect` -> `none`: V4 suggestion distance is internal and fixed; the public configurable distance helper was removed.
-- `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`
+- `@effect/cli/BuiltInOptions` -> `effect/cli/GlobalFlag`
 - `@effect/cli/CliApp`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/CliConfig`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/cli/Command` -> `effect/unstable/cli/Command`
-- `@effect/cli/CommandDescriptor` -> `effect/unstable/cli/Completions`
+- `@effect/cli/Command` -> `effect/cli/Command`
+- `@effect/cli/CommandDescriptor` -> `effect/cli/Completions`
 - `@effect/cli/CommandDirective`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/ConfigFile`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/cli/HelpDoc` -> `effect/unstable/cli/HelpDoc`
+- `@effect/cli/HelpDoc` -> `effect/cli/HelpDoc`
 - `@effect/cli/HelpDoc/Span` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-- `@effect/cli/Options` -> `effect/unstable/cli/Flag`
-- `@effect/cli/Primitive` -> `effect/unstable/cli/Primitive`
-- `@effect/cli/Prompt` -> `effect/unstable/cli/Prompt`
+- `@effect/cli/Options` -> `effect/cli/Flag`
+- `@effect/cli/Primitive` -> `effect/cli/Primitive`
+- `@effect/cli/Prompt` -> `effect/cli/Prompt`
 - `@effect/cli/Usage` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-- `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`
-- `@effect/cli/index` -> `effect/unstable/cli`: The package barrel was removed; import the same namespaces from the effect/unstable/cli barrel or import specific modules directly.
-- `@effect/cluster` -> `effect/unstable/cluster`: The @effect/cluster package was merged into the effect package; import the effect/unstable/cluster barrel or import specific modules directly (e.g. effect/unstable/cluster/\<Module\>).
-- `@effect/cluster/ClusterCron` -> `effect/unstable/cluster/ClusterCron`
-- `@effect/cluster/ClusterError` -> `effect/unstable/cluster/ClusterError`
-- `@effect/cluster/ClusterMetrics` -> `effect/unstable/cluster/ClusterMetrics`
-- `@effect/cluster/ClusterSchema` -> `effect/unstable/cluster/ClusterSchema`
-- `@effect/cluster/ClusterWorkflowEngine` -> `effect/unstable/cluster/ClusterWorkflowEngine`
-- `@effect/cluster/DeliverAt` -> `effect/unstable/cluster/DeliverAt`
-- `@effect/cluster/Entity` -> `effect/unstable/cluster/Entity`
-- `@effect/cluster/EntityAddress` -> `effect/unstable/cluster/EntityAddress`
-- `@effect/cluster/EntityId` -> `effect/unstable/cluster/EntityId`
-- `@effect/cluster/EntityProxy` -> `effect/unstable/cluster/EntityProxy`
-- `@effect/cluster/EntityProxyServer` -> `effect/unstable/cluster/EntityProxyServer`
-- `@effect/cluster/EntityResource` -> `effect/unstable/cluster/EntityResource`
-- `@effect/cluster/EntityType` -> `effect/unstable/cluster/EntityType`
-- `@effect/cluster/Envelope` -> `effect/unstable/cluster/Envelope`
-- `@effect/cluster/HttpRunner` -> `effect/unstable/cluster/HttpRunner`
-- `@effect/cluster/K8sHttpClient` -> `effect/unstable/cluster/K8sHttpClient`
-- `@effect/cluster/MachineId` -> `effect/unstable/cluster/MachineId`
-- `@effect/cluster/Message` -> `effect/unstable/cluster/Message`
-- `@effect/cluster/MessageStorage` -> `effect/unstable/cluster/MessageStorage`
-- `@effect/cluster/Reply` -> `effect/unstable/cluster/Reply`
-- `@effect/cluster/Runner` -> `effect/unstable/cluster/Runner`
-- `@effect/cluster/RunnerAddress` -> `effect/unstable/cluster/RunnerAddress`
-- `@effect/cluster/RunnerHealth` -> `effect/unstable/cluster/RunnerHealth`
-- `@effect/cluster/RunnerServer` -> `effect/unstable/cluster/RunnerServer`
-- `@effect/cluster/RunnerStorage` -> `effect/unstable/cluster/RunnerStorage`
-- `@effect/cluster/Runners` -> `effect/unstable/cluster/Runners`
-- `@effect/cluster/ShardId` -> `effect/unstable/cluster/ShardId`
-- `@effect/cluster/Sharding` -> `effect/unstable/cluster/Sharding`
-- `@effect/cluster/ShardingConfig` -> `effect/unstable/cluster/ShardingConfig`
-- `@effect/cluster/ShardingRegistrationEvent` -> `effect/unstable/cluster/ShardingRegistrationEvent`
-- `@effect/cluster/SingleRunner` -> `effect/unstable/cluster/SingleRunner`
-- `@effect/cluster/Singleton` -> `effect/unstable/cluster/Singleton`
-- `@effect/cluster/SingletonAddress` -> `effect/unstable/cluster/SingletonAddress`
-- `@effect/cluster/Snowflake` -> `effect/unstable/cluster/Snowflake`
-- `@effect/cluster/SocketRunner` -> `effect/unstable/cluster/SocketRunner`
-- `@effect/cluster/SqlMessageStorage` -> `effect/unstable/cluster/SqlMessageStorage`
-- `@effect/cluster/SqlRunnerStorage` -> `effect/unstable/cluster/SqlRunnerStorage`
-- `@effect/cluster/TestRunner` -> `effect/unstable/cluster/TestRunner`
-- `@effect/cluster/index` -> `effect/unstable/cluster`: The package barrel was removed; import the same namespaces from the effect/unstable/cluster barrel or import specific modules directly.
-- `@effect/experimental` -> `none`: The @effect/experimental package was folded into the effect package, split across effect/unstable/\* (devtools, eventlog, persistence, reactivity, ...); follow the Import Map for each module.
-- `@effect/experimental/DevTools` -> `effect/unstable/devtools/DevTools`
-- `@effect/experimental/DevTools/Client` -> `effect/unstable/devtools/DevToolsClient`
-- `@effect/experimental/DevTools/Domain` -> `effect/unstable/devtools/DevToolsSchema`
-- `@effect/experimental/DevTools/Server` -> `effect/unstable/devtools/DevToolsServer`
-- `@effect/experimental/Event` -> `effect/unstable/eventlog/Event`
-- `@effect/experimental/EventGroup` -> `effect/unstable/eventlog/EventGroup`
-- `@effect/experimental/EventJournal` -> `effect/unstable/eventlog/EventJournal`
-- `@effect/experimental/EventLog` -> `effect/unstable/eventlog/EventLog`
-- `@effect/experimental/EventLogEncryption` -> `effect/unstable/eventlog/EventLogEncryption`
-- `@effect/experimental/EventLogRemote` -> `effect/unstable/eventlog/EventLogMessage`, `effect/unstable/eventlog/EventLogRemote`
-- `@effect/experimental/EventLogServer` -> `effect/unstable/eventlog/EventLogServer`, `effect/unstable/eventlog/EventLogServerEncrypted`
+- `@effect/cli/ValidationError` -> `effect/cli/CliError`
+- `@effect/cli/index` -> `effect/cli`: The package barrel was removed; import the same namespaces from the effect/cli barrel or import specific modules directly.
+- `@effect/cluster` -> `effect/cluster`: The @effect/cluster package was merged into the effect package; import the effect/cluster barrel or import specific modules directly (e.g. effect/cluster/\<Module\>).
+- `@effect/cluster/ClusterCron` -> `effect/cluster/ClusterCron`
+- `@effect/cluster/ClusterError` -> `effect/cluster/ClusterError`
+- `@effect/cluster/ClusterMetrics` -> `effect/cluster/ClusterMetrics`
+- `@effect/cluster/ClusterSchema` -> `effect/cluster/ClusterSchema`
+- `@effect/cluster/ClusterWorkflowEngine` -> `effect/cluster/ClusterWorkflowEngine`
+- `@effect/cluster/DeliverAt` -> `effect/cluster/DeliverAt`
+- `@effect/cluster/Entity` -> `effect/cluster/Entity`
+- `@effect/cluster/EntityAddress` -> `effect/cluster/EntityAddress`
+- `@effect/cluster/EntityId` -> `effect/cluster/EntityId`
+- `@effect/cluster/EntityProxy` -> `effect/cluster/EntityProxy`
+- `@effect/cluster/EntityProxyServer` -> `effect/cluster/EntityProxyServer`
+- `@effect/cluster/EntityResource` -> `effect/cluster/EntityResource`
+- `@effect/cluster/EntityType` -> `effect/cluster/EntityType`
+- `@effect/cluster/Envelope` -> `effect/cluster/Envelope`
+- `@effect/cluster/HttpRunner` -> `effect/cluster/HttpRunner`
+- `@effect/cluster/K8sHttpClient` -> `effect/cluster/K8sHttpClient`
+- `@effect/cluster/MachineId` -> `effect/cluster/MachineId`
+- `@effect/cluster/Message` -> `effect/cluster/Message`
+- `@effect/cluster/MessageStorage` -> `effect/cluster/MessageStorage`
+- `@effect/cluster/Reply` -> `effect/cluster/Reply`
+- `@effect/cluster/Runner` -> `effect/cluster/Runner`
+- `@effect/cluster/RunnerAddress` -> `effect/cluster/RunnerAddress`
+- `@effect/cluster/RunnerHealth` -> `effect/cluster/RunnerHealth`
+- `@effect/cluster/RunnerServer` -> `effect/cluster/RunnerServer`
+- `@effect/cluster/RunnerStorage` -> `effect/cluster/RunnerStorage`
+- `@effect/cluster/Runners` -> `effect/cluster/Runners`
+- `@effect/cluster/ShardId` -> `effect/cluster/ShardId`
+- `@effect/cluster/Sharding` -> `effect/cluster/Sharding`
+- `@effect/cluster/ShardingConfig` -> `effect/cluster/ShardingConfig`
+- `@effect/cluster/ShardingRegistrationEvent` -> `effect/cluster/ShardingRegistrationEvent`
+- `@effect/cluster/SingleRunner` -> `effect/cluster/SingleRunner`
+- `@effect/cluster/Singleton` -> `effect/cluster/Singleton`
+- `@effect/cluster/SingletonAddress` -> `effect/cluster/SingletonAddress`
+- `@effect/cluster/Snowflake` -> `effect/cluster/Snowflake`
+- `@effect/cluster/SocketRunner` -> `effect/cluster/SocketRunner`
+- `@effect/cluster/SqlMessageStorage` -> `effect/cluster/SqlMessageStorage`
+- `@effect/cluster/SqlRunnerStorage` -> `effect/cluster/SqlRunnerStorage`
+- `@effect/cluster/TestRunner` -> `effect/cluster/TestRunner`
+- `@effect/cluster/index` -> `effect/cluster`: The package barrel was removed; import the same namespaces from the effect/cluster barrel or import specific modules directly.
+- `@effect/experimental` -> `none`: The @effect/experimental package was folded into the effect package, split across effect/\* (devtools, eventlog, persistence, reactivity, ...); follow the Import Map for each module.
+- `@effect/experimental/DevTools` -> `effect/devtools/DevTools`
+- `@effect/experimental/DevTools/Client` -> `effect/devtools/DevToolsClient`
+- `@effect/experimental/DevTools/Domain` -> `effect/devtools/DevToolsSchema`
+- `@effect/experimental/DevTools/Server` -> `effect/devtools/DevToolsServer`
+- `@effect/experimental/Event` -> `effect/eventlog/Event`
+- `@effect/experimental/EventGroup` -> `effect/eventlog/EventGroup`
+- `@effect/experimental/EventJournal` -> `effect/eventlog/EventJournal`
+- `@effect/experimental/EventLog` -> `effect/eventlog/EventLog`
+- `@effect/experimental/EventLogEncryption` -> `effect/eventlog/EventLogEncryption`
+- `@effect/experimental/EventLogRemote` -> `effect/eventlog/EventLogMessage`, `effect/eventlog/EventLogRemote`
+- `@effect/experimental/EventLogServer` -> `effect/eventlog/EventLogServer`, `effect/eventlog/EventLogServerEncrypted`
 - `@effect/experimental/EventLogServer/Cloudflare` -> `none`: The Cloudflare adapter was not ported; combine EventLogServerEncrypted.layer with a custom Durable Object RpcServer.Protocol adapter.
 - `@effect/experimental/Machine` -> `none`: The experimental local Machine actor runtime, model, boot process, constructors, brands, and serializable variants were not ported to v4. Redesign request contracts with Rpc/RpcGroup and choose Cluster Entity, Workflow, or a local actor built from Queue, Ref, PubSub, and scoped fibers according to the required semantics; ClusterWorkflowEngine is a different durable Workflow abstraction. For serializable actors, define schemas with Rpc/RpcGroup and choose Cluster Entity or Workflow explicitly. Context and initialization helpers (including the serializable initialization contract), input/private/public/state extractors, and the Machine-specific handler context were also removed, so request handling and state management must be explicit. Use ordinary Effect tracing controls and Effect.retry instead of the removed Machine-specific wrappers; its defect wrapper was also removed. Snapshot restoration was not ported, so implement persistence explicitly for the replacement architecture.
 - `@effect/experimental/Machine/Procedure` -> `none`: The stateful Machine Procedure model, its serializable variant and guard, and both Procedure brands were not ported to v4. Define request contracts with Rpc (using schemas for serializable procedures) and implement state handling in an explicit actor architecture, because Rpc provides only the request contract. The handler context, context and request extractors, and no-reply sentinel were removed; use the corresponding Rpc request types after redesigning the contract. Replace the removed tagged-request base and helpers with schema-backed Rpc requests and Rpc helper types where appropriate.
 - `@effect/experimental/Machine/ProcedureList` -> `none`: The stateful Machine ProcedureList abstraction and brand were not ported to v4. RpcGroup is the closest protocol collection for its schema-backed operations, but it has no initial state or public/private visibility split. Implement state handling and initialization in the replacement actor or workflow, and enforce visibility in that architecture.
 - `@effect/experimental/Machine/SerializableProcedureList` -> `none`: The serializable stateful ProcedureList abstraction was not ported to v4. RpcGroup is the closest protocol collection for its schema-backed operations, but it has no initial state or public/private visibility split. Implement state handling and initialization in the replacement actor or workflow, and enforce visibility in that architecture.
-- `@effect/experimental/PersistedCache` -> `effect/unstable/persistence/PersistedCache`
-- `@effect/experimental/PersistedQueue` -> `effect/unstable/persistence/PersistedQueue`
+- `@effect/experimental/PersistedCache` -> `effect/persistence/PersistedCache`
+- `@effect/experimental/PersistedQueue` -> `effect/persistence/PersistedQueue`
 - `@effect/experimental/PersistedQueue/Redis`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Persistence` -> `effect/unstable/persistence/Persistable`, `effect/unstable/persistence/Persistence`
+- `@effect/experimental/Persistence` -> `effect/persistence/Persistable`, `effect/persistence/Persistence`
 - `@effect/experimental/Persistence/Lmdb` -> `none`: The LMDB backend was not ported; implement a custom BackingPersistence layer or use a supported Kvs, Redis, or SQL backend.
 - `@effect/experimental/Persistence/Redis`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/RateLimiter` -> `effect/unstable/persistence/RateLimiter`
+- `@effect/experimental/RateLimiter` -> `effect/persistence/RateLimiter`
 - `@effect/experimental/RateLimiter/Redis`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Reactivity` -> `effect/unstable/reactivity/Reactivity`
+- `@effect/experimental/Reactivity` -> `effect/reactivity/Reactivity`
 - `@effect/experimental/RequestResolver`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Sse` -> `effect/unstable/encoding/Sse`
-- `@effect/experimental/VariantSchema` -> `effect/unstable/schema/VariantSchema`
-- `@effect/experimental/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect/unstable/\* location per the Import Map.
+- `@effect/experimental/Sse` -> `effect/encoding/Sse`
+- `@effect/experimental/VariantSchema` -> `effect/schema/VariantSchema`
+- `@effect/experimental/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect/\* location per the Import Map.
 - `@effect/opentelemetry/Logger`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/Metrics`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/opentelemetry/Otlp` -> `effect/unstable/observability/Otlp`
-- `@effect/opentelemetry/OtlpLogger` -> `effect/unstable/observability/OtlpLogger`
-- `@effect/opentelemetry/OtlpMetrics` -> `effect/unstable/observability/OtlpMetrics`
-- `@effect/opentelemetry/OtlpResource` -> `effect/unstable/observability/OtlpResource`
-- `@effect/opentelemetry/OtlpSerialization` -> `effect/unstable/observability/OtlpSerialization`
-- `@effect/opentelemetry/OtlpTracer` -> `effect/unstable/observability/OtlpTracer`
+- `@effect/opentelemetry/Otlp` -> `effect/observability/Otlp`
+- `@effect/opentelemetry/OtlpLogger` -> `effect/observability/OtlpLogger`
+- `@effect/opentelemetry/OtlpMetrics` -> `effect/observability/OtlpMetrics`
+- `@effect/opentelemetry/OtlpResource` -> `effect/observability/OtlpResource`
+- `@effect/opentelemetry/OtlpSerialization` -> `effect/observability/OtlpSerialization`
+- `@effect/opentelemetry/OtlpTracer` -> `effect/observability/OtlpTracer`
 - `@effect/opentelemetry/Tracer`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/index` -> `@effect/opentelemetry`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/opentelemetry package root or import specific modules directly.
-- `@effect/platform` -> `none`: The @effect/platform package was folded into the effect package: core services live in effect root modules (e.g. effect/FileSystem, effect/Path) and HTTP in effect/unstable/http; follow the Import Map for each module.
+- `@effect/platform` -> `none`: The @effect/platform package was folded into the effect package: core services live in effect root modules (e.g. effect/FileSystem, effect/Path) and HTTP in effect/http; follow the Import Map for each module.
 - `@effect/platform-browser/index` -> `@effect/platform-browser`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-browser package root or import specific modules directly.
 - `@effect/platform-bun/BunCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-bun/BunContext`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-bun/BunFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform-bun/BunKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via BunServices.layer or BunFileSystem.layer with BunPath.layer.
+- `@effect/platform-bun/BunKeyValueStore` -> `effect/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via BunServices.layer or BunFileSystem.layer with BunPath.layer.
 - `@effect/platform-bun/index` -> `@effect/platform-bun`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-bun package root or import specific modules directly.
 - `@effect/platform-node-shared/NodeCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node-shared/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform-node-shared/NodeKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
+- `@effect/platform-node-shared/NodeKeyValueStore` -> `effect/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
 - `@effect/platform-node-shared/NodeMultipart`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeContext`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform-node/NodeKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
+- `@effect/platform-node/NodeKeyValueStore` -> `effect/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
 - `@effect/platform-node/index` -> `@effect/platform-node`: The explicit /index entrypoint was removed; import Node-prefixed namespaces from the @effect/platform-node package root or import specific modules directly. Undici is no longer in the root barrel; import it from @effect/platform-node/Undici or directly from undici.
 - `@effect/platform/ChannelSchema` -> `effect/ChannelSchema`
-- `@effect/platform/Command` -> `effect/unstable/process/ChildProcess`
-- `@effect/platform/CommandExecutor` -> `effect/unstable/process/ChildProcessSpawner`
-- `@effect/platform/Cookies` -> `effect/unstable/http/Cookies`
+- `@effect/platform/Command` -> `effect/process/ChildProcess`
+- `@effect/platform/CommandExecutor` -> `effect/process/ChildProcessSpawner`
+- `@effect/platform/Cookies` -> `effect/http/Cookies`
 - `@effect/platform/Effectify` -> `effect/Effect`: effectify moved into the Effect module as Effect.effectify; the Effectify and EffectifyError type helpers live in the Effect namespace as well.
 - `@effect/platform/Error` -> `effect/PlatformError`
-- `@effect/platform/Etag` -> `effect/unstable/http/Etag`
-- `@effect/platform/FetchHttpClient` -> `effect/unstable/http/FetchHttpClient`
+- `@effect/platform/Etag` -> `effect/http/Etag`
+- `@effect/platform/FetchHttpClient` -> `effect/http/FetchHttpClient`
 - `@effect/platform/FileSystem` -> `effect/FileSystem`
-- `@effect/platform/Headers` -> `effect/unstable/http/Headers`
-- `@effect/platform/HttpApi` -> `effect/unstable/httpapi/HttpApi`
-- `@effect/platform/HttpApiBuilder` -> `effect/unstable/httpapi/HttpApiBuilder`
-- `@effect/platform/HttpApiClient` -> `effect/unstable/httpapi/HttpApiClient`
-- `@effect/platform/HttpApiEndpoint` -> `effect/unstable/httpapi/HttpApiEndpoint`
-- `@effect/platform/HttpApiError` -> `effect/unstable/httpapi/HttpApiError`
-- `@effect/platform/HttpApiGroup` -> `effect/unstable/httpapi/HttpApiGroup`
-- `@effect/platform/HttpApiMiddleware` -> `effect/unstable/httpapi/HttpApiMiddleware`
-- `@effect/platform/HttpApiScalar` -> `effect/unstable/httpapi/HttpApiScalar`
-- `@effect/platform/HttpApiSchema` -> `effect/unstable/httpapi/HttpApiSchema`
-- `@effect/platform/HttpApiSecurity` -> `effect/unstable/httpapi/HttpApiSecurity`
-- `@effect/platform/HttpApiSwagger` -> `effect/unstable/httpapi/HttpApiSwagger`
-- `@effect/platform/HttpApp` -> `effect/unstable/http/HttpEffect`
-- `@effect/platform/HttpBody` -> `effect/unstable/http/HttpBody`
-- `@effect/platform/HttpClient` -> `effect/unstable/http/HttpClient`
-- `@effect/platform/HttpClientError` -> `effect/unstable/http/HttpClientError`
-- `@effect/platform/HttpClientRequest` -> `effect/unstable/http/HttpClientRequest`
-- `@effect/platform/HttpClientResponse` -> `effect/unstable/http/HttpClientResponse`
-- `@effect/platform/HttpIncomingMessage` -> `effect/unstable/http/HttpIncomingMessage`
+- `@effect/platform/Headers` -> `effect/http/Headers`
+- `@effect/platform/HttpApi` -> `effect/httpapi/HttpApi`
+- `@effect/platform/HttpApiBuilder` -> `effect/httpapi/HttpApiBuilder`
+- `@effect/platform/HttpApiClient` -> `effect/httpapi/HttpApiClient`
+- `@effect/platform/HttpApiEndpoint` -> `effect/httpapi/HttpApiEndpoint`
+- `@effect/platform/HttpApiError` -> `effect/httpapi/HttpApiError`
+- `@effect/platform/HttpApiGroup` -> `effect/httpapi/HttpApiGroup`
+- `@effect/platform/HttpApiMiddleware` -> `effect/httpapi/HttpApiMiddleware`
+- `@effect/platform/HttpApiScalar` -> `effect/httpapi/HttpApiScalar`
+- `@effect/platform/HttpApiSchema` -> `effect/httpapi/HttpApiSchema`
+- `@effect/platform/HttpApiSecurity` -> `effect/httpapi/HttpApiSecurity`
+- `@effect/platform/HttpApiSwagger` -> `effect/httpapi/HttpApiSwagger`
+- `@effect/platform/HttpApp` -> `effect/http/HttpEffect`
+- `@effect/platform/HttpBody` -> `effect/http/HttpBody`
+- `@effect/platform/HttpClient` -> `effect/http/HttpClient`
+- `@effect/platform/HttpClientError` -> `effect/http/HttpClientError`
+- `@effect/platform/HttpClientRequest` -> `effect/http/HttpClientRequest`
+- `@effect/platform/HttpClientResponse` -> `effect/http/HttpClientResponse`
+- `@effect/platform/HttpIncomingMessage` -> `effect/http/HttpIncomingMessage`
 - `@effect/platform/HttpLayerRouter`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform/HttpMethod` -> `effect/unstable/http/HttpMethod`
-- `@effect/platform/HttpMiddleware` -> `effect/unstable/http/HttpMiddleware`
+- `@effect/platform/HttpMethod` -> `effect/http/HttpMethod`
+- `@effect/platform/HttpMiddleware` -> `effect/http/HttpMiddleware`
 - `@effect/platform/HttpMultiplex` -> `none`: The HttpMultiplex module, value, constructor, and nominal type id were removed with no v4 counterpart. Replace them with a custom first-match Effect dispatcher requiring HttpServerRequest; initialize an empty dispatcher, then add or fold predicate/app pairs into it. Recreate header helpers with predicates over lower-cased request header values using exact equality, String.startsWith, String.endsWith, or RegExp.test; recreate host helpers with the same comparisons over request.headers.host.
-- `@effect/platform/HttpPlatform` -> `effect/unstable/http/HttpPlatform`
-- `@effect/platform/HttpRouter` -> `effect/unstable/http/HttpRouter`
-- `@effect/platform/HttpServer` -> `effect/unstable/http/HttpServer`
-- `@effect/platform/HttpServerError` -> `effect/unstable/http/HttpServerError`
-- `@effect/platform/HttpServerRequest` -> `effect/unstable/http/HttpServerRequest`
-- `@effect/platform/HttpServerRespondable` -> `effect/unstable/http/HttpServerRespondable`
-- `@effect/platform/HttpServerResponse` -> `effect/unstable/http/HttpServerResponse`
-- `@effect/platform/HttpTraceContext` -> `effect/unstable/http/HttpTraceContext`
-- `@effect/platform/KeyValueStore` -> `effect/unstable/persistence/KeyValueStore`
-- `@effect/platform/MsgPack` -> `effect/unstable/encoding/SchemaBinary`: MessagePack support was removed. Schema-aware encode, decode, and duplex now live on SchemaBinary. Untyped MessagePack of unknown values has no replacement.
-- `@effect/platform/Multipart` -> `effect/unstable/http/Multipart`
-- `@effect/platform/Ndjson` -> `effect/unstable/encoding/Ndjson`
-- `@effect/platform/OpenApi` -> `effect/unstable/httpapi/OpenApi`
+- `@effect/platform/HttpPlatform` -> `effect/http/HttpPlatform`
+- `@effect/platform/HttpRouter` -> `effect/http/HttpRouter`
+- `@effect/platform/HttpServer` -> `effect/http/HttpServer`
+- `@effect/platform/HttpServerError` -> `effect/http/HttpServerError`
+- `@effect/platform/HttpServerRequest` -> `effect/http/HttpServerRequest`
+- `@effect/platform/HttpServerRespondable` -> `effect/http/HttpServerRespondable`
+- `@effect/platform/HttpServerResponse` -> `effect/http/HttpServerResponse`
+- `@effect/platform/HttpTraceContext` -> `effect/http/HttpTraceContext`
+- `@effect/platform/KeyValueStore` -> `effect/persistence/KeyValueStore`
+- `@effect/platform/MsgPack` -> `effect/encoding/SchemaBinary`: MessagePack support was removed. Schema-aware encode, decode, and duplex now live on SchemaBinary. Untyped MessagePack of unknown values has no replacement.
+- `@effect/platform/Multipart` -> `effect/http/Multipart`
+- `@effect/platform/Ndjson` -> `effect/encoding/Ndjson`
+- `@effect/platform/OpenApi` -> `effect/httpapi/OpenApi`
 - `@effect/platform/OpenApiJsonSchema`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/Path` -> `effect/Path`
 - `@effect/platform/PlatformConfigProvider`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/PlatformLogger` -> `effect/Logger`: toFile moved to Logger.toFile; it still requires a FileSystem service (e.g. NodeFileSystem.layer) and Scope.
 - `@effect/platform/Runtime`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform/Socket` -> `effect/unstable/socket/Socket`
-- `@effect/platform/SocketServer` -> `effect/unstable/socket/SocketServer`
-- `@effect/platform/Template` -> `effect/unstable/http/Template`
+- `@effect/platform/Socket` -> `effect/socket/Socket`
+- `@effect/platform/SocketServer` -> `effect/socket/SocketServer`
+- `@effect/platform/Template` -> `effect/http/Template`
 - `@effect/platform/Terminal` -> `effect/Terminal`
-- `@effect/platform/Transferable` -> `effect/unstable/workers/Transferable`
-- `@effect/platform/Url` -> `effect/unstable/http/Url`
-- `@effect/platform/UrlParams` -> `effect/unstable/http/UrlParams`
-- `@effect/platform/Worker` -> `effect/unstable/workers/Worker`
-- `@effect/platform/WorkerError` -> `effect/unstable/workers/WorkerError`
-- `@effect/platform/WorkerRunner` -> `effect/unstable/workers/WorkerRunner`
-- `@effect/platform/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect location (e.g. effect/FileSystem, effect/unstable/http/HttpClient) per the Import Map.
+- `@effect/platform/Transferable` -> `effect/workers/Transferable`
+- `@effect/platform/Url` -> `effect/http/Url`
+- `@effect/platform/UrlParams` -> `effect/http/UrlParams`
+- `@effect/platform/Worker` -> `effect/workers/Worker`
+- `@effect/platform/WorkerError` -> `effect/workers/WorkerError`
+- `@effect/platform/WorkerRunner` -> `effect/workers/WorkerRunner`
+- `@effect/platform/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect location (e.g. effect/FileSystem, effect/http/HttpClient) per the Import Map.
 - `@effect/printer` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer-ansi` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer-ansi/Ansi` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-- `@effect/printer-ansi/AnsiDoc` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
+- `@effect/printer-ansi/AnsiDoc` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/cli.
 - `@effect/printer-ansi/Color` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
 - `@effect/printer-ansi/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer/Doc` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer/DocStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
 - `@effect/printer/DocTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
 - `@effect/printer/Flatten` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-- `@effect/printer/Layout` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
+- `@effect/printer/Layout` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/cli.
 - `@effect/printer/Optimize` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
 - `@effect/printer/PageWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
 - `@effect/printer/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-- `@effect/rpc` -> `effect/unstable/rpc`: The @effect/rpc package was merged into the effect package; import the effect/unstable/rpc barrel or import specific modules directly (e.g. effect/unstable/rpc/\<Module\>).
-- `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`
-- `@effect/rpc/RpcClient` -> `effect/unstable/rpc/RpcClient`
-- `@effect/rpc/RpcClientError` -> `effect/unstable/rpc/RpcClientError`
-- `@effect/rpc/RpcGroup` -> `effect/unstable/rpc/RpcGroup`
-- `@effect/rpc/RpcMessage` -> `effect/unstable/rpc/RpcMessage`
-- `@effect/rpc/RpcMiddleware` -> `effect/unstable/rpc/RpcMiddleware`
-- `@effect/rpc/RpcSchema` -> `effect/unstable/rpc/RpcSchema`
-- `@effect/rpc/RpcSerialization` -> `effect/unstable/rpc/RpcSerialization`
-- `@effect/rpc/RpcServer` -> `effect/unstable/rpc/RpcServer`
-- `@effect/rpc/RpcTest` -> `effect/unstable/rpc/RpcTest`
-- `@effect/rpc/RpcWorker` -> `effect/unstable/rpc/RpcWorker`
-- `@effect/rpc/index` -> `effect/unstable/rpc`: The package barrel was removed; import the same namespaces from the effect/unstable/rpc barrel or import specific modules directly.
-- `@effect/sql` -> `effect/unstable/sql`: The @effect/sql package was merged into the effect package; import the effect/unstable/sql barrel or import specific modules directly (e.g. effect/unstable/sql/\<Module\>).
+- `@effect/rpc` -> `effect/rpc`: The @effect/rpc package was merged into the effect package; import the effect/rpc barrel or import specific modules directly (e.g. effect/rpc/\<Module\>).
+- `@effect/rpc/Rpc` -> `effect/rpc/Rpc`
+- `@effect/rpc/RpcClient` -> `effect/rpc/RpcClient`
+- `@effect/rpc/RpcClientError` -> `effect/rpc/RpcClientError`
+- `@effect/rpc/RpcGroup` -> `effect/rpc/RpcGroup`
+- `@effect/rpc/RpcMessage` -> `effect/rpc/RpcMessage`
+- `@effect/rpc/RpcMiddleware` -> `effect/rpc/RpcMiddleware`
+- `@effect/rpc/RpcSchema` -> `effect/rpc/RpcSchema`
+- `@effect/rpc/RpcSerialization` -> `effect/rpc/RpcSerialization`
+- `@effect/rpc/RpcServer` -> `effect/rpc/RpcServer`
+- `@effect/rpc/RpcTest` -> `effect/rpc/RpcTest`
+- `@effect/rpc/RpcWorker` -> `effect/rpc/RpcWorker`
+- `@effect/rpc/index` -> `effect/rpc`: The package barrel was removed; import the same namespaces from the effect/rpc barrel or import specific modules directly.
+- `@effect/sql` -> `effect/sql`: The @effect/sql package was merged into the effect package; import the effect/sql barrel or import specific modules directly (e.g. effect/sql/\<Module\>).
 - `@effect/sql-clickhouse/index` -> `@effect/sql-clickhouse`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-clickhouse package root or import specific modules directly.
 - `@effect/sql-d1/index` -> `@effect/sql-d1`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-d1 package root or import specific modules directly.
 - `@effect/sql-drizzle/Mysql`: No single module replacement; follow the curated per-API guidance below.
@@ -616,20 +616,20 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql-sqlite-node/index` -> `@effect/sql-sqlite-node`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-node package root or import specific modules directly.
 - `@effect/sql-sqlite-react-native/index` -> `@effect/sql-sqlite-react-native`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-react-native package root or import specific modules directly.
 - `@effect/sql-sqlite-wasm/index` -> `@effect/sql-sqlite-wasm`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-wasm package root or import specific modules directly.
-- `@effect/sql/Migrator` -> `effect/unstable/sql/Migrator`
-- `@effect/sql/Migrator/FileSystem` -> `effect/unstable/sql/Migrator`: fromFileSystem was merged into the main Migrator module with the same (directory) signature; use Migrator.fromFileSystem as the loader.
-- `@effect/sql/Model` -> `effect/unstable/schema/Model`, `effect/unstable/sql/SqlModel`
-- `@effect/sql/SqlClient` -> `effect/unstable/sql/SqlClient`
-- `@effect/sql/SqlConnection` -> `effect/unstable/sql/SqlConnection`
-- `@effect/sql/SqlError` -> `effect/unstable/sql/SqlError`
-- `@effect/sql/SqlEventJournal` -> `effect/unstable/eventlog/SqlEventJournal`
-- `@effect/sql/SqlEventLogServer` -> `effect/unstable/eventlog/SqlEventLogServerEncrypted`
+- `@effect/sql/Migrator` -> `effect/sql/Migrator`
+- `@effect/sql/Migrator/FileSystem` -> `effect/sql/Migrator`: fromFileSystem was merged into the main Migrator module with the same (directory) signature; use Migrator.fromFileSystem as the loader.
+- `@effect/sql/Model` -> `effect/schema/Model`, `effect/sql/SqlModel`
+- `@effect/sql/SqlClient` -> `effect/sql/SqlClient`
+- `@effect/sql/SqlConnection` -> `effect/sql/SqlConnection`
+- `@effect/sql/SqlError` -> `effect/sql/SqlError`
+- `@effect/sql/SqlEventJournal` -> `effect/eventlog/SqlEventJournal`
+- `@effect/sql/SqlEventLogServer` -> `effect/eventlog/SqlEventLogServerEncrypted`
 - `@effect/sql/SqlPersistedQueue`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql/SqlResolver` -> `effect/unstable/sql/SqlResolver`
-- `@effect/sql/SqlSchema` -> `effect/unstable/sql/SqlSchema`
-- `@effect/sql/SqlStream` -> `effect/unstable/sql/SqlStream`
-- `@effect/sql/Statement` -> `effect/unstable/sql/Statement`
-- `@effect/sql/index` -> `effect/unstable/sql`: The package barrel was removed; import the same namespaces from the effect/unstable/sql barrel or import specific modules directly.
+- `@effect/sql/SqlResolver` -> `effect/sql/SqlResolver`
+- `@effect/sql/SqlSchema` -> `effect/sql/SqlSchema`
+- `@effect/sql/SqlStream` -> `effect/sql/SqlStream`
+- `@effect/sql/Statement` -> `effect/sql/Statement`
+- `@effect/sql/index` -> `effect/sql`: The package barrel was removed; import the same namespaces from the effect/sql barrel or import specific modules directly.
 - `@effect/typeclass` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Alternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Applicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
@@ -672,24 +672,24 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/typeclass/data/Tuple`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/index` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
 - `@effect/vitest/index`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/workflow` -> `effect/unstable/workflow`: The @effect/workflow package was merged into the effect package; import the effect/unstable/workflow barrel or import specific modules directly (e.g. effect/unstable/workflow/\<Module\>).
-- `@effect/workflow/Activity` -> `effect/unstable/workflow/Activity`
-- `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`
-- `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`
-- `@effect/workflow/DurableQueue` -> `effect/unstable/workflow/DurableQueue`
+- `@effect/workflow` -> `effect/workflow`: The @effect/workflow package was merged into the effect package; import the effect/workflow barrel or import specific modules directly (e.g. effect/workflow/\<Module\>).
+- `@effect/workflow/Activity` -> `effect/workflow/Activity`
+- `@effect/workflow/DurableClock` -> `effect/workflow/DurableClock`
+- `@effect/workflow/DurableDeferred` -> `effect/workflow/DurableDeferred`
+- `@effect/workflow/DurableQueue` -> `effect/workflow/DurableQueue`
 - `@effect/workflow/DurableRateLimiter` -> `none`: Not ported. Build an Activity whose execute uses persistence RateLimiter.consume with onExceeded: delay, then sleeps for the returned delay with DurableClock.
-- `@effect/workflow/Workflow` -> `effect/unstable/workflow/Workflow`
-- `@effect/workflow/WorkflowEngine` -> `effect/unstable/workflow/WorkflowEngine`
-- `@effect/workflow/WorkflowProxy` -> `effect/unstable/workflow/WorkflowProxy`
-- `@effect/workflow/WorkflowProxyServer` -> `effect/unstable/workflow/WorkflowProxyServer`
-- `effect/Arbitrary` -> `effect/unstable/arbitrary/Arbitrary`: Schema-derived generation moved to the native Arbitrary module. Effect no longer bridges to fast-check.
+- `@effect/workflow/Workflow` -> `effect/workflow/Workflow`
+- `@effect/workflow/WorkflowEngine` -> `effect/workflow/WorkflowEngine`
+- `@effect/workflow/WorkflowProxy` -> `effect/workflow/WorkflowProxy`
+- `@effect/workflow/WorkflowProxyServer` -> `effect/workflow/WorkflowProxyServer`
+- `effect/Arbitrary` -> `effect/arbitrary/Arbitrary`: Schema-derived generation moved to the native Arbitrary module. Effect no longer bridges to fast-check.
 - `effect/ChildExecutorDecision` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
 - `effect/ConfigError`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ConfigProviderPathPatch`: No single module replacement; follow the curated per-API guidance below.
 - `effect/DefaultServices`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Either` -> `effect/Result`
 - `effect/ExecutionStrategy`: No single module replacement; follow the curated per-API guidance below.
-- `effect/FastCheck` -> `fast-check`: Effect no longer re-exports fast-check. Depend on the fast-check package and import it directly. For Schema-derived generation, use Arbitrary.schema from effect/unstable/arbitrary.
+- `effect/FastCheck` -> `fast-check`: Effect no longer re-exports fast-check. Depend on the fast-check package and import it directly. For Schema-derived generation, use Arbitrary.schema from effect/arbitrary.
 - `effect/FiberId`: No single module replacement; follow the curated per-API guidance below.
 - `effect/FiberRef` -> `effect/References`
 - `effect/FiberRefs`: No single module replacement; follow the curated per-API guidance below.
@@ -719,7 +719,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `effect/MutableQueue`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ParseResult` -> `effect/SchemaIssue`, `effect/SchemaParser`
 - `effect/Pretty`: No single module replacement; follow the curated per-API guidance below.
-- `effect/RateLimiter` -> `none`: The old limit, interval, and algorithm options belonged to the removed in-process limiter; choose and configure an application limiter explicitly. The scoped in-process callable limiter was not ported to v4; effect/unstable/persistence/RateLimiter is a keyed persistence service with different semantics, not a drop-in replacement. The FiberRef-based per-effect cost annotation was removed with the core RateLimiter; pass token cost explicitly to the replacement limiter.
+- `effect/RateLimiter` -> `none`: The old limit, interval, and algorithm options belonged to the removed in-process limiter; choose and configure an application limiter explicitly. The scoped in-process callable limiter was not ported to v4; effect/persistence/RateLimiter is a keyed persistence service with different semantics, not a drop-in replacement. The FiberRef-based per-effect cost annotation was removed with the core RateLimiter; pass token cost explicitly to the replacement limiter.
 - `effect/Readable`: No single module replacement; follow the curated per-API guidance below.
 - `effect/RedBlackTree`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Reloadable`: No single module replacement; follow the curated per-API guidance below.
@@ -828,9 +828,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai-anthropic/AnthropicTokenizer`
 
-- `AnthropicTokenizer.layer` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/unstable/ai/Tokenizer service explicitly, using @anthropic-ai/tokenizer if equivalent Anthropic counting is required.
+- `AnthropicTokenizer.layer` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/ai/Tokenizer service explicitly, using @anthropic-ai/tokenizer if equivalent Anthropic counting is required.
 
-- `AnthropicTokenizer.make` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/unstable/ai/Tokenizer service explicitly, using @anthropic-ai/tokenizer if equivalent Anthropic counting is required.
+- `AnthropicTokenizer.make` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/ai/Tokenizer service explicitly, using @anthropic-ai/tokenizer if equivalent Anthropic counting is required.
 
 ### `@effect/ai-anthropic/AnthropicTool`
 
@@ -4160,9 +4160,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai-openai/OpenAiTokenizer`
 
-- `OpenAiTokenizer.layer` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/unstable/ai/Tokenizer service explicitly, using gpt-tokenizer if equivalent OpenAI counting is required.
+- `OpenAiTokenizer.layer` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/ai/Tokenizer service explicitly, using gpt-tokenizer if equivalent OpenAI counting is required.
 
-- `OpenAiTokenizer.make` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/unstable/ai/Tokenizer service explicitly, using gpt-tokenizer if equivalent OpenAI counting is required.
+- `OpenAiTokenizer.make` -> `Tokenizer.make`: The provider-specific tokenizer module was removed; build and provide an effect/ai/Tokenizer service explicitly, using gpt-tokenizer if equivalent OpenAI counting is required.
 
 ### `@effect/ai-openai/OpenAiTool`
 
@@ -4902,9 +4902,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/AiError`
 
-- `AiError.AiError` -> `AiError.AiError`: Moved to effect/unstable/ai/AiError and redesigned from a union of separately tagged errors into one AiError wrapper with a semantic reason. Construct it with AiError.make({ module, method, reason }) and match error.reason rather than the old top-level tags.
+- `AiError.AiError` -> `AiError.AiError`: Moved to effect/ai/AiError and redesigned from a union of separately tagged errors into one AiError wrapper with a semantic reason. Construct it with AiError.make({ module, method, reason }) and match error.reason rather than the old top-level tags.
 
-- `AiError.HttpRequestDetails` -> `AiError.HttpRequestDetails`: Retained in effect/unstable/ai/AiError and also re-exported as Response.HttpRequestDetails. Hash is an optional string instead of Option, headers may contain Redacted strings, and method includes TRACE.
+- `AiError.HttpRequestDetails` -> `AiError.HttpRequestDetails`: Retained in effect/ai/AiError and also re-exported as Response.HttpRequestDetails. Hash is an optional string instead of Option, headers may contain Redacted strings, and method includes TRACE.
 
 - `AiError.HttpRequestError` -> `AiError.make + AiError.NetworkError`: Replace the old top-level request error with an AiError whose reason is NetworkError. NetworkError.fromRequestError converts a v4 HttpClientError.RequestError.
 
@@ -4936,13 +4936,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/IdGenerator`
 
-- `IdGenerator.make` -> `IdGenerator.make`: Moved to effect/unstable/ai/IdGenerator with the same configurable alphabet, prefix, separator, and size behavior. Invalid configuration now fails with Cause.IllegalArgumentError.
+- `IdGenerator.make` -> `IdGenerator.make`: Moved to effect/ai/IdGenerator with the same configurable alphabet, prefix, separator, and size behavior. Invalid configuration now fails with Cause.IllegalArgumentError.
 
 ### `@effect/ai/LanguageModel`
 
 - `LanguageModel.ConstructorParams` -> `none`: V4 inlines this provider-adapter shape in LanguageModel.make. Pass generateText and streamText directly to make, with optional codecTransformer, instead of naming a constructor-parameter type.
 
-- `LanguageModel.ExtractContext` -> `LanguageModel.ExtractServices`: Renamed in effect/unstable/ai/LanguageModel. ExtractServices infers toolkit handler, result-decoding, and effectful-toolkit service requirements.
+- `LanguageModel.ExtractContext` -> `LanguageModel.ExtractServices`: Renamed in effect/ai/LanguageModel. ExtractServices infers toolkit handler, result-decoding, and effectful-toolkit service requirements.
 
 - `LanguageModel.LanguageModel` -> `LanguageModel.LanguageModel`: Use the LanguageModel interface for implementations and the Context.Service value as the service key; it is no longer a class. Prefer LanguageModel.make to construct the branded implementation.
 
@@ -4950,41 +4950,51 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/McpSchema`
 
-- `McpSchema.ContentBlock` -> `McpSchema.ContentBlock`: Moved to effect/unstable/ai/McpSchema. It remains the MCP content-block union, but v4 exports it as a const schema rather than a Schema.Union subclass. Binary image, audio, and blob data still use Uint8Array values with base64 wire encoding.
+- `McpSchema.ContentBlock` -> `McpSchema.ContentBlock`: Moved to effect/ai/McpSchema. It remains the MCP content-block union, but v4 exports it as a const schema rather than a Schema.Union subclass. Binary image, audio, and blob data still use Uint8Array values with base64 wire encoding.
 
-- `McpSchema.ElicitResult` -> `McpSchema.ElicitResult`: Moved to effect/unstable/ai/McpSchema. It remains discriminated by action, but accepted content is now optional and, when present, is a record of strings, finite numbers, booleans, or string arrays; declined and canceled responses still omit content.
+- `McpSchema.ElicitResult` -> `McpSchema.ElicitResult`: Moved to effect/ai/McpSchema. It remains discriminated by action, but accepted content is now optional and, when present, is a record of strings, finite numbers, booleans, or string arrays; declined and canceled responses still omit content.
+
+- `McpSchema.FailureEncoded` -> `McpSchema.FailureEncoded`: Moved to effect/ai/McpSchema and still derives an encoded JSON-RPC failure union from an RpcGroup.
+
+- `McpSchema.FromClientEncoded` -> `McpSchema.FromClientEncoded`: Moved to effect/ai/McpSchema and remains the union of client requests and client notifications.
+
+- `McpSchema.FromServerEncoded` -> `McpSchema.FromServerEncoded`: Moved to effect/ai/McpSchema and remains the union of server results and server notifications.
 
 - `McpSchema.McpError` -> `McpSchema.McpError`: Moved, but changed from a constructable base class to a union schema of standard tagged protocol errors plus McpErrorBase. Use McpErrorBase to construct a generic MCP error.
 
+- `McpSchema.McpServerClient` -> `McpSchema.McpRequestContext / McpSchema.McpServerClient`: Use McpRequestContext for client identity, capabilities, and request metadata in protocol-neutral handlers. McpServerClient remains available for initialized stateful protocols and reverse client requests; it is not provided by the stateless 2026-07-28 adapter. Registration helpers exclude McpRequestContext from handler requirements, not McpServerClient.
+
 - `McpSchema.ParamAnnotation` -> `McpSchema.isParam / Param.name`: The public symbol annotation was removed. Detect parameter wrappers with McpSchema.isParam and read the narrowed Param.name instead of inspecting AST annotations.
 
-- `McpSchema.param` -> `McpSchema.param`: Moved to effect/unstable/ai/McpSchema. V4 wraps the schema and exposes Param.name and Param.schema instead of attaching a public symbol annotation.
+- `McpSchema.SuccessEncoded` -> `McpSchema.SuccessEncoded`: Moved to effect/ai/McpSchema and still derives an encoded JSON-RPC success union from an RpcGroup.
+
+- `McpSchema.param` -> `McpSchema.param`: Moved to effect/ai/McpSchema. V4 wraps the schema and exposes Param.name and Param.schema instead of attaching a public symbol annotation.
 
 ### `@effect/ai/McpServer`
 
 - `McpServer.McpServer` -> `McpServer.McpServer`: The service is now a Context.Service. initializedClients and notificationsMailbox are no longer exposed. Registration callbacks use McpSchema.McpRequestContext; McpServerClient is only supplied for initialized stateful requests. Prefer registerToolkit, registerResource, and registerPrompt over implementing the registry shape directly.
 
-- `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it still runs over a caller-provided RpcServer.Protocol.
+- `McpServer.layer` -> `McpServer.layer`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it still runs over a caller-provided RpcServer.Protocol.
 
-- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/unstable/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
 
-- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
 
-- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
 
-- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/unstable/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from prompt decoding and handler requirements instead of McpServerClient.
+- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from prompt decoding and handler requirements instead of McpServerClient.
 
-- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/unstable/ai/McpServer. Prompt decoding and handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/ai/McpServer. Prompt decoding and handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
 
-- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/unstable/ai/McpServer. Resource and completion handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/ai/McpServer. Resource and completion handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
 
-- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/unstable/ai/McpServer. Handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
+- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/ai/McpServer. Handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
 
-- `McpServer.resource` -> `McpServer.resource`: Moved to effect/unstable/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from resource and completion handler requirements instead of McpServerClient.
+- `McpServer.resource` -> `McpServer.resource`: Moved to effect/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from resource and completion handler requirements instead of McpServerClient.
 
-- `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it remains the Effect-level runner over RpcServer.Protocol.
+- `McpServer.run` -> `McpServer.run`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it remains the Effect-level runner over RpcServer.Protocol.
 
-- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/unstable/ai/McpServer. The registration layer supplies McpSchema.McpRequestContext to handlers instead of excluding McpServerClient from requirements. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
+- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/ai/McpServer. The registration layer supplies McpSchema.McpRequestContext to handlers instead of excluding McpServerClient from requirements. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
 
 ### `@effect/ai/Model`
 
@@ -4992,47 +5002,69 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/Prompt`
 
-- `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/unstable/ai/Prompt with the same file-part model and schema; update the module import.
+- `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/ai/Prompt with the same file-part model and schema; update the module import.
+
+- `Prompt.FilePartEncoded` -> `Prompt.FilePartEncoded`: Moved to effect/ai/Prompt with the same encoded file-part shape; update the module import.
 
 - `Prompt.FromJson` -> `Schema.fromJsonString(Prompt.Prompt)`: The module-specific JSON schema was removed. Compose the general v4 JSON-string codec with the public Prompt codec.
 
-- `Prompt.MessageContentFromString` -> `Prompt.ContentFromString`: Renamed in effect/unstable/ai/Prompt. It still decodes a string to a non-empty array containing one TextPart and encodes the first part's text.
+- `Prompt.MessageContentFromString` -> `Prompt.ContentFromString`: Renamed in effect/ai/Prompt. It still decodes a string to a non-empty array containing one TextPart and encodes the first part's text.
 
 - `Prompt.MessageTypeId` -> `Prompt.isMessage`: The message type id is private in v4. Use the public isMessage guard for runtime refinement instead of importing or inspecting the marker.
 
-- `Prompt.Part` -> `Prompt.Part`: Moved to effect/unstable/ai/Prompt. The union now also includes tool-approval request and response parts.
+- `Prompt.Part` -> `Prompt.Part`: Moved to effect/ai/Prompt. The union now also includes tool-approval request and response parts.
 
-- `Prompt.PartEncoded` -> `Prompt.PartEncoded`: Moved to effect/unstable/ai/Prompt. The encoded union now also includes tool-approval request and response parts.
+- `Prompt.PartEncoded` -> `Prompt.PartEncoded`: Moved to effect/ai/Prompt. The encoded union now also includes tool-approval request and response parts.
 
 - `Prompt.PartTypeId` -> `Prompt.isPart`: The part type id is private in v4. Use the public isPart guard for runtime refinement instead of importing or inspecting the marker.
 
 - `Prompt.PromptFromSelf` -> `Prompt.Prompt`: The standalone declared from-self schema was removed. Use the public Prompt codec for prompt validation and encoding, or Prompt.isPrompt when only runtime refinement is needed.
 
-- `Prompt.ReasoningPart` -> `Prompt.ReasoningPart`: Moved to effect/unstable/ai/Prompt with the same reasoning-part model and schema; update the module import.
+- `Prompt.ReasoningPart` -> `Prompt.ReasoningPart`: Moved to effect/ai/Prompt with the same reasoning-part model and schema; update the module import.
 
-- `Prompt.TextPart` -> `Prompt.TextPart`: Moved to effect/unstable/ai/Prompt with the same text-part model and schema; update the module import.
+- `Prompt.ReasoningPartEncoded` -> `Prompt.ReasoningPartEncoded`: Moved to effect/ai/Prompt with the same encoded reasoning payload; update the module import.
 
-- `Prompt.ToolCallPart` -> `Prompt.ToolCallPart`: Moved to effect/unstable/ai/Prompt with the same tool-call model and schema; update the module import.
+- `Prompt.TextPart` -> `Prompt.TextPart`: Moved to effect/ai/Prompt with the same text-part model and schema; update the module import.
 
-- `Prompt.ToolResultPartEncoded` -> `Prompt.ToolResultPartEncoded`: Moved to effect/unstable/ai/Prompt, but providerExecuted was removed from the encoded prompt tool-result shape.
+- `Prompt.TextPartEncoded` -> `Prompt.TextPartEncoded`: Moved to effect/ai/Prompt with the same encoded text payload; update the module import.
+
+- `Prompt.ToolCallPart` -> `Prompt.ToolCallPart`: Moved to effect/ai/Prompt with the same tool-call model and schema; update the module import.
+
+- `Prompt.ToolCallPartEncoded` -> `Prompt.ToolCallPartEncoded`: Moved to effect/ai/Prompt with the same encoded tool-call shape; update the module import.
+
+- `Prompt.ToolResultPartEncoded` -> `Prompt.ToolResultPartEncoded`: Moved to effect/ai/Prompt, but providerExecuted was removed from the encoded prompt tool-result shape.
 
 - `Prompt.TypeId` -> `Prompt.isPrompt`: The Prompt type id is private in v4 and its internal literal changed. Use the public isPrompt guard instead of importing or inspecting the marker.
 
-- `Prompt.makePart` -> `Prompt.makePart`: Moved to effect/unstable/ai/Prompt. The generic constructor also supports the new tool-approval request and response part variants.
+- `Prompt.isPart` -> `Prompt.isPart`: Moved to effect/ai/Prompt and remains the public runtime guard for prompt parts.
+
+- `Prompt.isPrompt` -> `Prompt.isPrompt`: Moved to effect/ai/Prompt and remains the public runtime guard for Prompt values.
+
+- `Prompt.makePart` -> `Prompt.makePart`: Moved to effect/ai/Prompt. The generic constructor also supports the new tool-approval request and response part variants.
 
 - `Prompt.merge` -> `Prompt.concat`: Renamed in v4. concat preserves the old dual API and concatenates the messages from a Prompt with additional raw input.
 
+- `Prompt.toolCallPart` -> `Prompt.toolCallPart`: Moved to effect/ai/Prompt and remains the typed convenience constructor over makePart("tool-call", params).
+
+- `Prompt.toolResultPart` -> `Prompt.toolResultPart`: Moved to effect/ai/Prompt. V4 removes providerExecuted from prompt tool-result parts; provider-executed response results are handled when converting Response parts.
+
 ### `@effect/ai/Response`
 
-- `Response.Part` -> `Response.Part`: Moved to effect/unstable/ai/Response. The non-streaming union now also includes ToolApprovalRequestPart.
+- `Response.FilePartEncoded` -> `Response.FilePartEncoded`: Moved to effect/ai/Response; file data remains a base64 string in the encoded representation.
+
+- `Response.Part` -> `Response.Part`: Moved to effect/ai/Response. The non-streaming union now also includes ToolApprovalRequestPart.
 
 - `Response.PartTypeId` -> `Response.isPart`: The public PartTypeId was removed and the marker is internal in v4. Use Response.isPart for runtime refinement.
 
-- `Response.ToolCallPartEncoded` -> `Response.ToolCallPartEncoded`: Moved to effect/unstable/ai/Response; providerName was removed while providerExecuted remains optional when encoded.
+- `Response.ReasoningPartEncoded` -> `Response.ReasoningPartEncoded`: Moved to effect/ai/Response; the encoded reasoning payload remains text: string.
+
+- `Response.TextPartEncoded` -> `Response.TextPartEncoded`: Moved to effect/ai/Response; the encoded text payload remains text: string.
+
+- `Response.ToolCallPartEncoded` -> `Response.ToolCallPartEncoded`: Moved to effect/ai/Response; providerName was removed while providerExecuted remains optional when encoded.
 
 - `Response.ToolResultPart` -> `Response.ToolResultPart`: The schema selects success or failure using isFailure rather than trying both result schemas. It returns Schema.Codec; supply decoding services when decoding and encoding services when encoding.
 
-- `Response.ToolResultPartEncoded` -> `Response.ToolResultPartEncoded`: Moved to effect/unstable/ai/Response; providerName was removed and optional preliminary was added to the encoded shape.
+- `Response.ToolResultPartEncoded` -> `Response.ToolResultPartEncoded`: Moved to effect/ai/Response; providerName was removed and optional preliminary was added to the encoded shape.
 
 - `Response.documentSourcePart` -> `Response.makePart("source", { ...params, sourceType: "document" })`: The lowercase convenience constructor was removed. The DocumentSourcePart model remains, and the generic constructor now requires the document source discriminator.
 
@@ -5054,13 +5086,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Response.textStartPart` -> `Response.makePart("text-start", params)`: The lowercase convenience constructor was removed; construct the retained TextStartPart through Response.makePart.
 
+- `Response.toolCallPart` -> `Response.toolCallPart`: Moved to effect/ai/Response. The constructor remains, but providerName was removed from tool-call parts.
+
 - `Response.toolParamsDeltaPart` -> `Response.makePart("tool-params-delta", params)`: The lowercase convenience constructor was removed; construct the retained ToolParamsDeltaPart through Response.makePart.
 
 - `Response.toolParamsEndPart` -> `Response.makePart("tool-params-end", params)`: The lowercase convenience constructor was removed; construct the retained ToolParamsEndPart through Response.makePart.
 
 - `Response.toolParamsStartPart` -> `Response.makePart("tool-params-start", params)`: The lowercase convenience constructor was removed; providerName was also removed from ToolParamsStartPart in v4.
 
-- `Response.toolResultPart` -> `Response.toolResultPart`: Moved to effect/unstable/ai/Response; providerName was removed and decoded tool results now require preliminary, normally false.
+- `Response.toolResultPart` -> `Response.toolResultPart`: Moved to effect/ai/Response; providerName was removed and decoded tool results now require preliminary, normally false.
 
 - `Response.urlSourcePart` -> `Response.makePart("source", { ...params, sourceType: "url" })`: The lowercase convenience constructor was removed. The UrlSourcePart model remains, and the generic constructor now requires the URL source discriminator.
 
@@ -5070,19 +5104,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Tool.AnyTaggedRequestSchema` -> `none`: The TaggedRequest-specific Tool adapter contract was removed. Model the operation directly with Tool.make and ordinary v4 Schema.Constraint values.
 
-- `Tool.Destructive` -> `Tool.Destructive`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
+- `Tool.Destructive` -> `Tool.Destructive`: Moved to effect/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
 
-- `Tool.Failure` -> `Tool.Failure`: Moved to effect/unstable/ai/Tool and remains the utility type that extracts a tool's decoded failure type.
+- `Tool.Failure` -> `Tool.Failure`: Moved to effect/ai/Tool and remains the utility type that extracts a tool's decoded failure type.
 
 - `Tool.FromTaggedRequest` -> `Tool.Tool`: The dedicated derived alias was removed. Construct with Tool.make and let Tool.Tool infer the name, parameter, success, and failure schemas.
 
-- `Tool.Idempotent` -> `Tool.Idempotent`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
+- `Tool.Idempotent` -> `Tool.Idempotent`: Moved to effect/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
 
-- `Tool.OpenWorld` -> `Tool.OpenWorld`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
+- `Tool.OpenWorld` -> `Tool.OpenWorld`: Moved to effect/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
 
-- `Tool.ProviderDefinedTypeId` -> `Tool.ProviderDefinedTypeId`: Moved to effect/unstable/ai/Tool and remains public. Its literal changed, so use the export rather than retaining the old hard-coded string.
+- `Tool.ProviderDefinedTypeId` -> `Tool.ProviderDefinedTypeId`: Moved to effect/ai/Tool and remains public. Its literal changed, so use the export rather than retaining the old hard-coded string.
 
-- `Tool.Readonly` -> `Tool.Readonly`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
+- `Tool.Readonly` -> `Tool.Readonly`: Moved to effect/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
 
 - `Tool.Requirements` -> `Tool.HandlerServices`: Renamed and refined. HandlerServices combines parameter-decoding, result-encoding, and request-level dependencies required by a tool handler.
 
@@ -5090,7 +5124,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Tool.ResultEncoded` -> `Tool.ResultEncoded`: The encoded result includes execution-denied and execution-interrupted variants in both failure modes, plus encoded AiError in return mode.
 
-- `Tool.Success` -> `Tool.Success`: Moved to effect/unstable/ai/Tool and remains the utility type that extracts a tool's decoded success type.
+- `Tool.Success` -> `Tool.Success`: Moved to effect/ai/Tool and remains the utility type that extracts a tool's decoded success type.
+
+- `Tool.Title` -> `Tool.Title`: Moved to effect/ai/Tool. It is now a Context.Service annotation key; continue attaching the string title with tool.annotate(Tool.Title, value).
 
 - `Tool.Tool.ProviderDefinedProto` -> `Tool.ProviderDefined`: This implementation-brand interface is no longer public. Use Tool.ProviderDefined for the model type and Tool.isProviderDefined for runtime narrowing.
 
@@ -5098,7 +5134,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Tool.Tool.VarianceStruct` -> `Tool.Tool / Tool.Any`: This implementation variance payload is no longer public; the requirements marker is inline in Tool.Tool and should not be named independently.
 
-- `Tool.TypeId` -> `Tool.TypeId`: Moved to effect/unstable/ai/Tool and remains public. Its literal changed, so use the export rather than retaining the old hard-coded string.
+- `Tool.TypeId` -> `Tool.TypeId`: Moved to effect/ai/Tool and remains public. Its literal changed, so use the export rather than retaining the old hard-coded string.
 
 - `Tool.fromTaggedRequest` -> `Tool.make`: The adapter was removed. Rebuild the tool explicitly with Tool.make(name, { parameters, success, failure }); Toolkit.make no longer converts schema values automatically.
 
@@ -5108,9 +5144,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/Toolkit`
 
-- `Toolkit.HandlersFrom` -> `Toolkit.HandlersFrom`: Moved to effect/unstable/ai/Toolkit. V4 handlers receive a HandlerContext argument and may fail with the declared failure, AiError, or AiErrorReason while requiring Tool.HandlerServices.
+- `Toolkit.HandlersFrom` -> `Toolkit.HandlersFrom`: Moved to effect/ai/Toolkit. V4 handlers receive a HandlerContext argument and may fail with the declared failure, AiError, or AiErrorReason while requiring Tool.HandlerServices.
 
 - `Toolkit.TypeId` -> `Toolkit.Toolkit / Toolkit.Any`: The toolkit nominal id is private in v4. Use Toolkit.Toolkit or Toolkit.Any for typing instead of importing or inspecting the marker.
+
+- `Toolkit.make` -> `Toolkit.make`: Moved to effect/ai/Toolkit. It now accepts Tool.Any values only and no longer converts TaggedRequest schemas; create each tool explicitly with Tool.make first.
 
 ### `@effect/cli/Args`
 
@@ -5118,7 +5156,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.All.Return` -> `Command.Command.Config.Infer`: Infer the output of a command config record; standalone argument collections were removed.
 
-- `Args.Args` -> `Argument.Argument`: Args was renamed to Argument in effect/unstable/cli.
+- `Args.Args` -> `Argument.Argument`: Args was renamed to Argument in effect/cli.
 
 - `Args.Args.BaseArgsConfig` -> `name: string`: Argument constructors now take the name as a required first parameter.
 
@@ -5428,7 +5466,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.All.Return` -> `Command.Command.Config.Infer`: Infer the output of a command config record; standalone flag collections were removed.
 
-- `Options.Options` -> `Flag.Flag`: Options was renamed to Flag in effect/unstable/cli.
+- `Options.Options` -> `Flag.Flag`: Options was renamed to Flag in effect/cli.
 
 - `Options.Options.BooleanOptionsConfig` -> `Flag.Boolean + Flag.withAlias + Flag.map`: The config object was removed; aliases and value inversion are combinators, while custom negation names need application logic.
 
@@ -5560,7 +5598,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.All.Return` -> `Prompt.All.Return`: The collection result helper remains under Prompt.All.
 
-- `Prompt.Prompt` -> `Prompt.Prompt`: The model moved to effect/unstable/cli; quitting now fails with Terminal.QuitError.
+- `Prompt.Prompt` -> `Prompt.Prompt`: The model moved to effect/cli; quitting now fails with Terminal.QuitError.
 
 - `Prompt.Prompt.FloatOptions` -> `Prompt.NumberOptions`: Use the renamed public options type for Prompt.Number; it still extends the integer options type, now IntOptions.
 
@@ -5580,6 +5618,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.file` -> `Prompt.File`: Use the moved constructor; v4 also supports a default selected path.
 
+- `Prompt.flatMap` -> `Prompt.flatMap`: Use the moved combinator.
+
 - `Prompt.float` -> `Prompt.Number`: Use the moved constructor; v4 also supports a default value.
 
 - `Prompt.hidden` -> `Prompt.Hidden`: Use the renamed constructor.
@@ -5587,6 +5627,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Prompt.integer` -> `Prompt.Int`: Use the moved constructor; v4 also supports a default value.
 
 - `Prompt.list` -> `Prompt.List`: Use the renamed constructor.
+
+- `Prompt.map` -> `Prompt.map`: Use the moved combinator.
 
 - `Prompt.multiSelect` -> `Prompt.MultiSelect`: Use the renamed constructor.
 
@@ -5676,7 +5718,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/ClusterCron`
 
-- `ClusterCron.make` -> `effect/unstable/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input.
+- `ClusterCron.make` -> `effect/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input.
 
 ### `@effect/cluster/ClusterError`
 
@@ -5684,111 +5726,147 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/ClusterSchema`
 
-- `ClusterSchema.ClientTracingEnabled` -> `effect/unstable/cluster/ClusterSchema#ClientTracingEnabled`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
+- `ClusterSchema.ClientTracingEnabled` -> `effect/cluster/ClusterSchema#ClientTracingEnabled`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
 
-- `ClusterSchema.Persisted` -> `effect/unstable/cluster/ClusterSchema#Persisted`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
+- `ClusterSchema.Persisted` -> `effect/cluster/ClusterSchema#Persisted`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
 
-- `ClusterSchema.ShardGroup` -> `effect/unstable/cluster/ClusterSchema#ShardGroup`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
+- `ClusterSchema.ShardGroup` -> `effect/cluster/ClusterSchema#ShardGroup`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
 
-- `ClusterSchema.Uninterruptible` -> `effect/unstable/cluster/ClusterSchema#Uninterruptible`: Now a Context.Reference value. Replace its static methods with ClusterSchema.isUninterruptibleForServer and isUninterruptibleForClient.
+- `ClusterSchema.Uninterruptible` -> `effect/cluster/ClusterSchema#Uninterruptible`: Now a Context.Reference value. Replace its static methods with ClusterSchema.isUninterruptibleForServer and isUninterruptibleForClient.
 
 ### `@effect/cluster/ClusterWorkflowEngine`
 
-- `ClusterWorkflowEngine.layer` -> `effect/unstable/cluster/ClusterWorkflowEngine#layer`: Moved into core Effect with the same cluster-backed WorkflowEngine layer composition.
+- `ClusterWorkflowEngine.layer` -> `effect/cluster/ClusterWorkflowEngine#layer`: Moved into core Effect with the same cluster-backed WorkflowEngine layer composition.
 
-- `ClusterWorkflowEngine.make` -> `effect/unstable/cluster/ClusterWorkflowEngine#make`: Moved into core Effect; the constructor still uses Sharding and MessageStorage.
+- `ClusterWorkflowEngine.make` -> `effect/cluster/ClusterWorkflowEngine#make`: Moved into core Effect; the constructor still uses Sharding and MessageStorage.
 
 ### `@effect/cluster/DeliverAt`
 
-- `DeliverAt.symbol` -> `effect/unstable/cluster/DeliverAt#symbol`: Moved into core Effect; the protocol key is now the string literal \~effect/cluster/DeliverAt rather than a global symbol.
+- `DeliverAt.symbol` -> `effect/cluster/DeliverAt#symbol`: Moved into core Effect; the protocol key is now the string literal \~effect/cluster/DeliverAt rather than a global symbol.
 
 ### `@effect/cluster/Entity`
 
-- `Entity.HandlersFrom` -> `effect/unstable/cluster/Entity#HandlersFrom`: Moved into core Effect; handler results now use Rpc.WrapperOr, which accepts either the raw RPC result or its wrapper.
+- `Entity.Any` -> `effect/cluster/Entity#Any`: Moved into core Effect with the same erased entity type.
 
-- `Entity.Replier.Success` -> `effect/unstable/cluster/Entity#Replier.Success`: Moved into core Effect; streaming replies may use Queue.Dequeue with Cause.Done instead of the removed Mailbox type.
+- `Entity.HandlersFrom` -> `effect/cluster/Entity#HandlersFrom`: Moved into core Effect; handler results now use Rpc.WrapperOr, which accepts either the raw RPC result or its wrapper.
+
+- `Entity.Replier.Success` -> `effect/cluster/Entity#Replier.Success`: Moved into core Effect; streaming replies may use Queue.Dequeue with Cause.Done instead of the removed Mailbox type.
 
 - `Entity.TypeId` -> `none`: The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
 
+- `Entity.keepAlive`: TODO: needs guidance
+
+- `Entity.makeTestClient` -> `effect/cluster/Entity#makeTestClient`: Moved into core Effect; adapt its inputs and requirements to the v4 RPC, Layer, Scope, and Context APIs.
+
 ### `@effect/cluster/EntityAddress`
 
-- `EntityAddress.EntityAddressFromSelf` -> `effect/unstable/cluster/EntityAddress#EntityAddress`: The separate self schema was removed; the v4 Schema.Class is itself the EntityAddress schema.
+- `EntityAddress.EntityAddressFromSelf` -> `effect/cluster/EntityAddress#EntityAddress`: The separate self schema was removed; the v4 Schema.Class is itself the EntityAddress schema.
 
 - `EntityAddress.TypeId` -> `none`: The marker is private in v4. Use the exported EntityAddress class and schema.
 
+- `EntityAddress.make` -> `effect/cluster/EntityAddress#make`: Moved into core Effect with the same options-object constructor.
+
+### `@effect/cluster/EntityId`
+
+- `EntityId.make` -> `effect/cluster/EntityId#make`: Moved into core Effect; the branding helper remains and performs no validation or normalization.
+
 ### `@effect/cluster/EntityProxy`
 
-- `EntityProxy.ConvertHttpApi` -> `effect/unstable/cluster/EntityProxy#ConvertHttpApi`: Moved into core Effect and updated to the v4 HttpApiEndpoint and Schema types.
+- `EntityProxy.ConvertHttpApi` -> `effect/cluster/EntityProxy#ConvertHttpApi`: Moved into core Effect and updated to the v4 HttpApiEndpoint and Schema types.
 
-- `EntityProxy.ConvertRpcs` -> `effect/unstable/cluster/EntityProxy#ConvertRpcs`: Moved into core Effect and updated to the v4 Rpc and Schema type parameters.
+- `EntityProxy.ConvertRpcs` -> `effect/cluster/EntityProxy#ConvertRpcs`: Moved into core Effect and updated to the v4 Rpc and Schema type parameters.
 
 ### `@effect/cluster/EntityProxyServer`
 
-- `EntityProxyServer.RpcHandlers` -> `effect/unstable/cluster/EntityProxyServer#RpcHandlers`: Moved into core Effect and updated for the additional v4 Rpc requirements type parameter.
+- `EntityProxyServer.RpcHandlers` -> `effect/cluster/EntityProxyServer#RpcHandlers`: Moved into core Effect and updated for the additional v4 Rpc requirements type parameter.
 
-- `EntityProxyServer.layerHttpApi` -> `effect/unstable/cluster/EntityProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi identifiers and provide Sharding plus both Rpc.ServicesServer and Rpc.ServicesClient codec requirements.
+- `EntityProxyServer.layerHttpApi` -> `effect/cluster/EntityProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi identifiers and provide Sharding plus both Rpc.ServicesServer and Rpc.ServicesClient codec requirements.
 
-- `EntityProxyServer.layerRpcHandlers` -> `effect/unstable/cluster/EntityProxyServer#layerRpcHandlers`: Moved into core Effect; replace Rpc.Context with both Rpc.ServicesServer and Rpc.ServicesClient codec requirements, alongside Sharding.
+- `EntityProxyServer.layerRpcHandlers` -> `effect/cluster/EntityProxyServer#layerRpcHandlers`: Moved into core Effect; replace Rpc.Context with both Rpc.ServicesServer and Rpc.ServicesClient codec requirements, alongside Sharding.
 
 ### `@effect/cluster/EntityResource`
 
-- `EntityResource.TypeId` -> `effect/unstable/cluster/EntityResource#TypeId`: Moved into core Effect; its literal changed to \~effect/cluster/EntityResource.
+- `EntityResource.TypeId` -> `effect/cluster/EntityResource#TypeId`: Moved into core Effect; its literal changed to \~effect/cluster/EntityResource.
 
-- `EntityResource.make` -> `effect/unstable/cluster/EntityResource#make`: Moved into core Effect. Acquisition is lazy by default in v4; set acquireEagerly: true to preserve v3 behavior.
+- `EntityResource.make` -> `effect/cluster/EntityResource#make`: Moved into core Effect. Acquisition is lazy by default in v4; set acquireEagerly: true to preserve v3 behavior.
 
 ### `@effect/cluster/Envelope`
 
-- `Envelope.Envelope.Encoded` -> `effect/unstable/cluster/Envelope#Encoded`: The encoded envelope union moved to the module-level Encoded type.
+- `Envelope.Envelope.Any` -> `effect/cluster/Envelope#Envelope.Any`: Moved into core Effect with the same erased envelope type.
 
-- `Envelope.Envelope.PartialEncoded` -> `effect/unstable/cluster/Envelope#Partial`: The partially decoded runtime union was renamed to Partial; use PartialJson for its JSON codec.
+- `Envelope.Envelope.Encoded` -> `effect/cluster/Envelope#Encoded`: The encoded envelope union moved to the module-level Encoded type.
 
-- `Envelope.EnvelopeFromSelf` -> `effect/unstable/cluster/Envelope#Envelope`: The self schema was renamed to Envelope and declaration-merges with the envelope type and namespace.
+- `Envelope.Envelope.PartialEncoded` -> `effect/cluster/Envelope#Partial`: The partially decoded runtime union was renamed to Partial; use PartialJson for its JSON codec.
 
-- `Envelope.PartialEncoded` -> `effect/unstable/cluster/Envelope#PartialJson`: The partially decoded envelope JSON codec was renamed to PartialJson.
+- `Envelope.EnvelopeFromSelf` -> `effect/cluster/Envelope#Envelope`: The self schema was renamed to Envelope and declaration-merges with the envelope type and namespace.
 
-- `Envelope.PartialEncodedArray` -> `effect/unstable/cluster/Envelope#PartialArray`: The mutable array codec was renamed to PartialArray.
+- `Envelope.PartialEncoded` -> `effect/cluster/Envelope#PartialJson`: The partially decoded envelope JSON codec was renamed to PartialJson.
 
-- `Envelope.PartialEncodedFromSelf` -> `effect/unstable/cluster/Envelope#Partial`: The separate self schema was folded into Partial; derive JSON encoding with PartialJson.
+- `Envelope.PartialEncodedArray` -> `effect/cluster/Envelope#PartialArray`: The mutable array codec was renamed to PartialArray.
+
+- `Envelope.PartialEncodedFromSelf` -> `effect/cluster/Envelope#Partial`: The separate self schema was folded into Partial; derive JSON encoding with PartialJson.
 
 - `Envelope.PartialEncodedRequest` -> `Schema.toCodecJson(Envelope.PartialRequest)`: V4 exports the self schema as PartialRequest and derives its JSON codec with Schema.toCodecJson.
 
-- `Envelope.PartialEncodedRequestFromSelf` -> `effect/unstable/cluster/Envelope#PartialRequest`: The partially decoded request self schema was renamed to PartialRequest.
+- `Envelope.PartialEncodedRequestFromSelf` -> `effect/cluster/Envelope#PartialRequest`: The partially decoded request self schema was renamed to PartialRequest.
 
-- `Envelope.Request` -> `effect/unstable/cluster/Envelope#Request`: The request interface remains and declaration-merges with the exported Request schema.
+- `Envelope.Request` -> `effect/cluster/Envelope#Request`: The request interface remains and declaration-merges with the exported Request schema.
 
-- `Envelope.Request.Encoded` -> `effect/unstable/cluster/Envelope#PartialRequestEncoded`: The JSON request shape moved to the module-level PartialRequestEncoded interface.
+- `Envelope.Request.Any` -> `effect/cluster/Envelope#Request.Any`: Moved into core Effect with the same erased request type.
 
-- `Envelope.Request.PartialEncoded` -> `effect/unstable/cluster/Envelope#PartialRequest`: The partially decoded request shape moved to the module-level PartialRequest class and type.
+- `Envelope.Request.Encoded` -> `effect/cluster/Envelope#PartialRequestEncoded`: The JSON request shape moved to the module-level PartialRequestEncoded interface.
 
-- `Envelope.RequestFromSelf` -> `effect/unstable/cluster/Envelope#Request`: The request self schema was renamed to Request and declaration-merges with the runtime interface.
+- `Envelope.Request.PartialEncoded` -> `effect/cluster/Envelope#PartialRequest`: The partially decoded request shape moved to the module-level PartialRequest class and type.
+
+- `Envelope.RequestFromSelf` -> `effect/cluster/Envelope#Request`: The request self schema was renamed to Request and declaration-merges with the runtime interface.
 
 - `Envelope.TypeId` -> `typeof Envelope.TypeId`: The marker value remains, but the type alias was removed and the value is now a string literal; use typeof in type position.
 
+### `@effect/cluster/HttpRunner`
+
+- `HttpRunner.layerClient` -> `effect/cluster/HttpRunner#layerClient`: Moved into core Effect with the same client-side Sharding and Runners layer composition.
+
+- `HttpRunner.layerHttp` -> `effect/cluster/HttpRunner#layerHttp`: Moved into core Effect with the same HTTP runner composition.
+
+- `HttpRunner.toHttpEffect` -> `effect/cluster/HttpRunner#toHttpEffect`: Moved into core Effect with the same nested HTTP server effect and service requirements.
+
+- `HttpRunner.toHttpEffectWebsocket` -> `effect/cluster/HttpRunner#toHttpEffectWebsocket`: Moved into core Effect with the same WebSocket HTTP effect shape and requirements.
+
+### `@effect/cluster/K8sHttpClient`
+
+- `K8sHttpClient.layer` -> `effect/cluster/K8sHttpClient#layer`: Moved into core Effect with the same in-cluster Kubernetes client behavior.
+
 ### `@effect/cluster/MachineId`
 
-- `MachineId.make` -> `effect/unstable/cluster/MachineId#make`: Moved into core Effect. The v4 helper is an unchecked cast; validate external input with the MachineId schema when needed.
+- `MachineId.make` -> `effect/cluster/MachineId#make`: Moved into core Effect. The v4 helper is an unchecked cast; validate external input with the MachineId schema when needed.
 
 ### `@effect/cluster/Message`
 
-- `Message.serialize` -> `effect/unstable/cluster/Message#serialize`: Moved into core Effect. Pass the transport's codecFor as the second argument; use serializeEnvelope for the JSON Envelope.Encoded form.
+- `Message.serialize` -> `effect/cluster/Message#serialize`: Moved into core Effect. Pass the transport's codecFor as the second argument; use serializeEnvelope for the JSON Envelope.Encoded form.
 
 ### `@effect/cluster/MessageStorage`
 
-- `MessageStorage.Encoded` -> `effect/unstable/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases. Custom drivers now implement batched resetAddresses, and unprocessedMessages receives optional limit and address filters.
+- `MessageStorage.Encoded` -> `effect/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases. Custom drivers now implement batched resetAddresses, and unprocessedMessages receives optional limit and address filters.
 
-- `MessageStorage.make` -> `effect/unstable/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type. Custom service implementations must also provide resetAddresses for batched mailbox resets.
+- `MessageStorage.SaveResult.Encoded`: TODO: needs guidance
 
-- `MessageStorage.makeEncoded` -> `effect/unstable/cluster/MessageStorage#makeEncoded`: Moved into core Effect. Custom encoded drivers must replace resetAddress with resetAddresses and may use the new limit and addresses options passed to unprocessedMessages.
+- `MessageStorage.layerMemory` -> `effect/cluster/MessageStorage#layerMemory`: Moved into core Effect; it still provides MessageStorage and MemoryDriver and requires ShardingConfig.
+
+- `MessageStorage.layerNoop` -> `effect/cluster/MessageStorage#layerNoop`: Moved into core Effect with the same dependency-free no-op implementation.
+
+- `MessageStorage.make` -> `effect/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type. Custom service implementations must also provide resetAddresses for batched mailbox resets.
+
+- `MessageStorage.makeEncoded` -> `effect/cluster/MessageStorage#makeEncoded`: Moved into core Effect. Custom encoded drivers must replace resetAddress with resetAddresses and may use the new limit and addresses options passed to unprocessedMessages.
 
 ### `@effect/cluster/Reply`
 
 - `Reply.Reply` -> `Reply.Reply(rpc, codecFor)`: Pass the transport codec. Decoding replies requires Rpc.ServicesClient; encoding replies requires Rpc.ServicesServer.
 
-- `Reply.ReplyEncoded` -> `effect/unstable/cluster/Reply#Encoded`: Renamed to Encoded and no longer parameterized by an Rpc; payload fields are unknown and validated by Reply.Reply(rpc, codecFor) with the transport's codec.
+- `Reply.ReplyEncoded` -> `effect/cluster/Reply#Encoded`: Renamed to Encoded and no longer parameterized by an Rpc; payload fields are unknown and validated by Reply.Reply(rpc, codecFor) with the transport's codec.
 
 - `Reply.TypeId` -> `none`: The reply marker is private in v4. Use Reply.isReply for runtime refinement.
 
-- `Reply.serialize` -> `effect/unstable/cluster/Reply#serialize`: Moved into core Effect and now returns the non-generic Reply.Encoded wire union. Pass the transport's codecFor as the second argument.
+- `Reply.serialize` -> `effect/cluster/Reply#serialize`: Moved into core Effect and now returns the non-generic Reply.Encoded wire union. Pass the transport's codecFor as the second argument.
 
 ### `@effect/cluster/Runner`
 
@@ -5798,37 +5876,63 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RunnerAddress.TypeId` -> `none`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
 
+- `RunnerAddress.make` -> `effect/cluster/RunnerAddress#make`: Moved into core Effect with the same host and port constructor; the host schema is now Schema.String.
+
+### `@effect/cluster/RunnerHealth`
+
+- `RunnerHealth.layerNoop` -> `effect/cluster/RunnerHealth#layerNoop`: Moved into core Effect with the same dependency-free health implementation.
+
+### `@effect/cluster/RunnerServer`
+
+- `RunnerServer.layer` -> `effect/cluster/RunnerServer#layer`: Moved into core Effect; it still serves runner RPCs over a separately provided RpcServer.Protocol.
+
+- `RunnerServer.layerClientOnly` -> `effect/cluster/RunnerServer#layerClientOnly`: Moved into core Effect with the same client-only Sharding and Runners composition.
+
 ### `@effect/cluster/RunnerStorage`
 
-- `RunnerStorage.makeMemory` -> `effect/unstable/cluster/RunnerStorage#makeMemory`: Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation.
+- `RunnerStorage.layerMemory` -> `effect/cluster/RunnerStorage#layerMemory`: Moved into core Effect with the same in-memory registration and shard-lock implementation for tests and local use.
+
+- `RunnerStorage.makeMemory` -> `effect/cluster/RunnerStorage#makeMemory`: Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation.
 
 ### `@effect/cluster/Runners`
 
-- `Runners.make` -> `effect/unstable/cluster/Runners#make`: Moved into core Effect. Its options now require codecFor; pass the codec used by the remote runner transport, such as RpcSerialization.json.codecFor for JSON. Context service projections now use Service instead of Type.
+- `Runners.layerNoop` -> `effect/cluster/Runners#layerNoop`: Moved into core Effect with the same no-op runner communication layer.
 
-- `Runners.makeNoop` -> `effect/unstable/cluster/Runners#makeNoop`: Moved into core Effect; it returns the Context.Service implementation through the Service projection instead of Type.
+- `Runners.make` -> `effect/cluster/Runners#make`: Moved into core Effect. Its options now require codecFor; pass the codec used by the remote runner transport, such as RpcSerialization.json.codecFor for JSON. Context service projections now use Service instead of Type.
+
+- `Runners.makeNoop` -> `effect/cluster/Runners#makeNoop`: Moved into core Effect; it returns the Context.Service implementation through the Service projection instead of Type.
 
 ### `@effect/cluster/ShardId`
 
-- `ShardId.ShardId` -> `effect/unstable/cluster/ShardId#ShardId`: The class became a merged interface and schema value. Use ShardId.make; former static parsers and printers are module functions.
+- `ShardId.ShardId` -> `effect/cluster/ShardId#ShardId`: The class became a merged interface and schema value. Use ShardId.make; former static parsers and printers are module functions.
 
 - `ShardId.TypeId` -> `none`: The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.
 
+- `ShardId.make` -> `effect/cluster/ShardId#make`: Moved into core Effect with the same cached group and id constructor.
+
+### `@effect/cluster/Sharding`
+
+- `Sharding.layer` -> `effect/cluster/Sharding#layer`: Moved into core Effect with the same main sharding runtime composition and public service requirements.
+
 ### `@effect/cluster/ShardingConfig`
 
-- `ShardingConfig.config` -> `effect/unstable/cluster/ShardingConfig#config`: Moved into core Effect; its Context service value type now uses the Service property instead of Type.
+- `ShardingConfig.config` -> `effect/cluster/ShardingConfig#config`: Moved into core Effect; its Context service value type now uses the Service property instead of Type.
 
-- `ShardingConfig.defaults` -> `effect/unstable/cluster/ShardingConfig#defaults`: Moved into core Effect; service type projections now use Service instead of Type. V4 also defaults maxResidentEntities to 10,000 and unprocessedMessageBatchSize to 1,024.
+- `ShardingConfig.defaults` -> `effect/cluster/ShardingConfig#defaults`: Moved into core Effect; service type projections now use Service instead of Type. V4 also defaults maxResidentEntities to 10,000 and unprocessedMessageBatchSize to 1,024.
 
-- `ShardingConfig.layer` -> `effect/unstable/cluster/ShardingConfig#layer`: Moved into core Effect with the same shallow default merge; service type projections now use Service instead of Type.
+- `ShardingConfig.layer` -> `effect/cluster/ShardingConfig#layer`: Moved into core Effect with the same shallow default merge; service type projections now use Service instead of Type.
 
 ### `@effect/cluster/ShardingRegistrationEvent`
 
-- `ShardingRegistrationEvent.match` -> `effect/unstable/cluster/ShardingRegistrationEvent#match`: Moved into core Effect with the same tagged-enum matcher.
+- `ShardingRegistrationEvent.match` -> `effect/cluster/ShardingRegistrationEvent#match`: Moved into core Effect with the same tagged-enum matcher.
 
 ### `@effect/cluster/SingleRunner`
 
-- `SingleRunner.layer` -> `effect/unstable/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL message storage hashes long deduplication keys.
+- `SingleRunner.layer` -> `effect/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL message storage hashes long deduplication keys.
+
+### `@effect/cluster/Singleton`
+
+- `Singleton.make` -> `effect/cluster/Singleton#make`: Moved into core Effect with the same singleton Layer constructor.
 
 ### `@effect/cluster/SingletonAddress`
 
@@ -5836,229 +5940,277 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/Snowflake`
 
-- `Snowflake.TypeId` -> `effect/unstable/cluster/Snowflake#TypeId`: Moved into core Effect; the public marker is now the string literal \~effect/cluster/Snowflake.
+- `Snowflake.Generator` -> `effect/cluster/Snowflake#Generator`: Moved into core Effect and changed to Context.Service; its unsafeNext method was renamed to nextUnsafe.
+
+- `Snowflake.TypeId` -> `effect/cluster/Snowflake#TypeId`: Moved into core Effect; the public marker is now the string literal \~effect/cluster/Snowflake.
+
+- `Snowflake.make` -> `effect/cluster/Snowflake#make`: Moved into core Effect with the same timestamp, machine-id, and sequence packing constructor.
+
+- `Snowflake.timestamp`: TODO: needs guidance
+
+### `@effect/cluster/SocketRunner`
+
+- `SocketRunner.layer` -> `effect/cluster/SocketRunner#layer`: Moved into core Effect with the same full socket runner composition.
+
+- `SocketRunner.layerClientOnly` -> `effect/cluster/SocketRunner#layerClientOnly`: Moved into core Effect; it remains the client-only runner layer and does not start a socket server.
 
 ### `@effect/cluster/SqlMessageStorage`
 
-- `SqlMessageStorage.layer` -> `effect/unstable/cluster/SqlMessageStorage#layer`: Moved into core Effect. V4 adds a Crypto.Crypto requirement for hashing long deduplication keys.
+- `SqlMessageStorage.layer` -> `effect/cluster/SqlMessageStorage#layer`: Moved into core Effect. V4 adds a Crypto.Crypto requirement for hashing long deduplication keys.
 
-- `SqlMessageStorage.layerWith` -> `effect/unstable/cluster/SqlMessageStorage#layerWith`: Moved into core Effect with the same optional table prefix; v4 additionally requires Crypto.Crypto.
+- `SqlMessageStorage.layerWith` -> `effect/cluster/SqlMessageStorage#layerWith`: Moved into core Effect with the same optional table prefix; v4 additionally requires Crypto.Crypto.
 
-- `SqlMessageStorage.make` -> `effect/unstable/cluster/SqlMessageStorage#make`: Moved into core Effect with the same prefix option; v4 additionally requires Crypto.Crypto.
+- `SqlMessageStorage.make` -> `effect/cluster/SqlMessageStorage#make`: Moved into core Effect with the same prefix option; v4 additionally requires Crypto.Crypto.
 
 ### `@effect/cluster/SqlRunnerStorage`
 
-- `SqlRunnerStorage.make` -> `effect/unstable/cluster/SqlRunnerStorage#make`: Moved into core Effect with the same prefix option and service requirements.
+- `SqlRunnerStorage.layer` -> `effect/cluster/SqlRunnerStorage#layer`: Moved into core Effect with the same default-prefix SQL runner storage layer.
+
+- `SqlRunnerStorage.layerWith` -> `effect/cluster/SqlRunnerStorage#layerWith`: Moved into core Effect with the same optional table prefix.
+
+- `SqlRunnerStorage.make` -> `effect/cluster/SqlRunnerStorage#make`: Moved into core Effect with the same prefix option and service requirements.
+
+### `@effect/cluster/TestRunner`
+
+- `TestRunner.layer` -> `effect/cluster/TestRunner#layer`: Moved into core Effect with the same dependency-free in-memory test cluster composition.
+
+### `@effect/experimental/DevTools`
+
+- `DevTools.layer` -> `effect/devtools/DevTools#layer`: Import layer from the v4 unstable DevTools module.
+
+- `DevTools.layerWebSocket` -> `effect/devtools/DevTools#layerWebSocket`: Import layerWebSocket from the v4 unstable DevTools module.
 
 ### `@effect/experimental/DevTools/Client`
 
-- `Client.Client` -> `effect/unstable/devtools/DevToolsClient#DevToolsClient`: Client was renamed to the DevToolsClient Context.Service class.
+- `Client.Client` -> `effect/devtools/DevToolsClient#DevToolsClient`: Client was renamed to the DevToolsClient Context.Service class.
 
-- `Client.ClientImpl` -> `effect/unstable/devtools/DevToolsClient#DevToolsClient["Service"]`: Use the service shape from DevToolsClient; unsafeAddSpan was replaced by sendUnsafe.
+- `Client.ClientImpl` -> `effect/devtools/DevToolsClient#DevToolsClient["Service"]`: Use the service shape from DevToolsClient; unsafeAddSpan was replaced by sendUnsafe.
 
-- `Client.layer` -> `effect/unstable/devtools/DevToolsClient#layer`: Import layer from the v4 unstable DevToolsClient module.
+- `Client.layer` -> `effect/devtools/DevToolsClient#layer`: Import layer from the v4 unstable DevToolsClient module.
 
-- `Client.make` -> `effect/unstable/devtools/DevToolsClient#make`: Import make from the v4 unstable DevToolsClient module.
+- `Client.layerTracer` -> `effect/devtools/DevToolsClient#layerTracer`: Import layerTracer from the v4 unstable DevToolsClient module.
+
+- `Client.make` -> `effect/devtools/DevToolsClient#make`: Import make from the v4 unstable DevToolsClient module.
 
 ### `@effect/experimental/DevTools/Domain`
 
-- `Domain.ExternalSpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#ExternalSpan>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from ExternalSpan.
+- `Domain.ExternalSpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/devtools/DevToolsSchema#ExternalSpan>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from ExternalSpan.
 
-- `Domain.MetricFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#Metric>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from Metric.
+- `Domain.MetricFrom` -> `effect/Schema#Codec.Encoded<typeof effect/devtools/DevToolsSchema#Metric>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from Metric.
 
-- `Domain.MetricsSnapshotFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#MetricsSnapshot>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from MetricsSnapshot.
+- `Domain.MetricsSnapshotFrom` -> `effect/Schema#Codec.Encoded<typeof effect/devtools/DevToolsSchema#MetricsSnapshot>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from MetricsSnapshot.
 
-- `Domain.ParentSpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#ParentSpan>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from ParentSpan.
+- `Domain.ParentSpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/devtools/DevToolsSchema#ParentSpan>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from ParentSpan.
 
-- `Domain.SpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#Span>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from Span.
+- `Domain.SpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/devtools/DevToolsSchema#Span>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from Span.
 
 - `Domain.metric` -> `none`: The metric schema helper is private in v4; use the exported Counter, Frequency, Gauge, Histogram, Summary, or Metric schemas, or build a Schema.Struct.
 
 ### `@effect/experimental/DevTools/Server`
 
-- `Server.run` -> `effect/unstable/devtools/DevToolsServer#run`: Import run from the v4 unstable DevToolsServer module.
+- `Server.run` -> `effect/devtools/DevToolsServer#run`: Import run from the v4 unstable DevToolsServer module.
 
 ### `@effect/experimental/Event`
 
-- `Event.Event.AddError` -> `effect/unstable/eventlog/Event#AddError`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.AddError` -> `effect/eventlog/Event#AddError`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.Any` -> `effect/unstable/eventlog/Event#Any`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.Any` -> `effect/eventlog/Event#Any`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.Context` -> `effect/unstable/eventlog/Event#Services`: Event schema context is now represented by decoding and encoding Services.
+- `Event.Event.Context` -> `effect/eventlog/Event#Services`: Event schema context is now represented by decoding and encoding Services.
 
-- `Event.Event.ContextWithTag` -> `effect/unstable/eventlog/Event#Services<effect/unstable/eventlog/Event#WithTag<Events, Tag>>`: Filter with WithTag and derive its decoding and encoding Services.
+- `Event.Event.ContextWithTag` -> `effect/eventlog/Event#Services<effect/eventlog/Event#WithTag<Events, Tag>>`: Filter with WithTag and derive its decoding and encoding Services.
 
-- `Event.Event.Error` -> `effect/unstable/eventlog/Event#Error`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.Error` -> `effect/eventlog/Event#Error`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.ErrorSchema` -> `effect/unstable/eventlog/Event#ErrorSchema`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.ErrorSchema` -> `effect/eventlog/Event#ErrorSchema`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.Payload` -> `effect/unstable/eventlog/Event#Payload`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.Payload` -> `effect/eventlog/Event#Payload`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.PayloadSchema` -> `effect/unstable/eventlog/Event#PayloadSchema`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.PayloadSchema` -> `effect/eventlog/Event#PayloadSchema`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.Success` -> `effect/unstable/eventlog/Event#Success`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.Success` -> `effect/eventlog/Event#Success`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.SuccessSchema` -> `effect/unstable/eventlog/Event#SuccessSchema`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.SuccessSchema` -> `effect/eventlog/Event#SuccessSchema`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.Tag` -> `effect/unstable/eventlog/Event#Tag`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.Tag` -> `effect/eventlog/Event#Tag`: This type moved from the Event namespace to a top-level export.
 
-- `Event.Event.ToService` -> `effect/unstable/eventlog/Event#ToService`: This type moved from the Event namespace to a top-level export.
+- `Event.Event.ToService` -> `effect/eventlog/Event#ToService`: This type moved from the Event namespace to a top-level export.
 
-- `Event.TypeId` -> `effect/unstable/eventlog/Event#TypeId`: Import TypeId from the v4 unstable Event module; its runtime representation is now a string brand.
+- `Event.TypeId` -> `effect/eventlog/Event#TypeId`: Import TypeId from the v4 unstable Event module; its runtime representation is now a string brand.
 
-- `Event.make` -> `effect/unstable/eventlog/Event#make`: Import make from the v4 unstable Event module.
+- `Event.make` -> `effect/eventlog/Event#make`: Import make from the v4 unstable Event module.
 
 ### `@effect/experimental/EventGroup`
 
-- `EventGroup.EventGroup.Any` -> `effect/unstable/eventlog/EventGroup#Any`: This type moved from the EventGroup namespace to a top-level export.
+- `EventGroup.EventGroup.Any` -> `effect/eventlog/EventGroup#Any`: This type moved from the EventGroup namespace to a top-level export.
 
-- `EventGroup.EventGroup.AnyWithProps` -> `effect/unstable/eventlog/EventGroup#AnyWithProps`: This type moved from the EventGroup namespace to a top-level export.
+- `EventGroup.EventGroup.AnyWithProps` -> `effect/eventlog/EventGroup#AnyWithProps`: This type moved from the EventGroup namespace to a top-level export.
 
-- `EventGroup.EventGroup.Context` -> `effect/unstable/eventlog/EventGroup#ServicesClient | effect/unstable/eventlog/EventGroup#ServicesServer`: Choose the client or server schema services for the required direction.
+- `EventGroup.EventGroup.Context` -> `effect/eventlog/EventGroup#ServicesClient | effect/eventlog/EventGroup#ServicesServer`: Choose the client or server schema services for the required direction.
 
-- `EventGroup.EventGroup.ToService` -> `effect/unstable/eventlog/EventGroup#ToService`: This type moved from the EventGroup namespace to a top-level export.
+- `EventGroup.EventGroup.ToService` -> `effect/eventlog/EventGroup#ToService`: This type moved from the EventGroup namespace to a top-level export.
 
-- `EventGroup.TypeId` -> `effect/unstable/eventlog/EventGroup#TypeId`: Import TypeId from the v4 unstable EventGroup module; its runtime representation is now a string brand.
+- `EventGroup.TypeId` -> `effect/eventlog/EventGroup#TypeId`: Import TypeId from the v4 unstable EventGroup module; its runtime representation is now a string brand.
 
 ### `@effect/experimental/EventJournal`
 
-- `EventJournal.EntryIdTypeId` -> `effect/unstable/eventlog/EventJournal#EntryIdTypeId`: Import EntryIdTypeId from the v4 EventJournal module; it is now a string brand.
+- `EventJournal.EntryIdTypeId` -> `effect/eventlog/EventJournal#EntryIdTypeId`: Import EntryIdTypeId from the v4 EventJournal module; it is now a string brand.
 
 - `EventJournal.ErrorTypeId` -> `none`: The v4 error marker is private; narrow with EventJournalError instead.
 
-- `EventJournal.RemoteIdTypeId` -> `effect/unstable/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
+- `EventJournal.RemoteIdTypeId` -> `effect/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
-- `EventJournal.makeEntryId` -> `effect/unstable/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
+- `EventJournal.layerIndexedDb`: TODO: needs guidance
 
-- `EventJournal.makeMemory` -> `effect/unstable/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
+- `EventJournal.layerMemory`: TODO: needs guidance
 
-- `EventJournal.makeRemoteId` -> `effect/unstable/eventlog/EventJournal#makeRemoteIdUnsafe`: The unchecked RemoteId constructor was renamed to makeRemoteIdUnsafe.
+- `EventJournal.makeEntryId` -> `effect/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
+
+- `EventJournal.makeMemory` -> `effect/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
+
+- `EventJournal.makeRemoteId` -> `effect/eventlog/EventJournal#makeRemoteIdUnsafe`: The unchecked RemoteId constructor was renamed to makeRemoteIdUnsafe.
 
 ### `@effect/experimental/EventLog`
 
-- `EventLog.Handlers` -> `effect/unstable/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId.
+- `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId.
 
-- `EventLog.HandlersTypeId` -> `effect/unstable/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
+- `EventLog.Handlers.Error` -> `effect/eventlog/EventLog#Handlers.Error`: Import the retained Handlers.Error type from the v4 EventLog module.
 
-- `EventLog.SchemaTypeId` -> `effect/unstable/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
+- `EventLog.Handlers.ValidateReturn` -> `effect/eventlog/EventLog#Handlers.ValidateReturn`: Import the retained Handlers.ValidateReturn type from the v4 EventLog module.
 
-- `EventLog.group` -> `effect/unstable/eventlog/EventLog#group`: Import group from the v4 EventLog module; it now requires the shared Registry service.
+- `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
 
-- `EventLog.layer` -> `effect/unstable/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
+- `EventLog.SchemaTypeId` -> `effect/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
+
+- `EventLog.group` -> `effect/eventlog/EventLog#group`: Import group from the v4 EventLog module; it now requires the shared Registry service.
+
+- `EventLog.layer` -> `effect/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
 
 - `EventLog.layerIdentityKvs` -> `none`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
+
+- `EventLog.makeClient`: TODO: needs guidance
+
+- `EventLog.schema` -> `effect/eventlog/EventLog#schema`: Import schema from the v4 EventLog module.
 
 ### `@effect/experimental/EventLogRemote`
 
 - `EventLogRemote.Ack` -> `none`: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc.
 
-- `EventLogRemote.Changes` -> `effect/unstable/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC.
+- `EventLogRemote.Changes` -> `effect/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC.
 
-- `EventLogRemote.EventLogRemote` -> `effect/unstable/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options.
+- `EventLogRemote.EventLogRemote` -> `effect/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options.
 
-- `EventLogRemote.Hello` -> `effect/unstable/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
+- `EventLogRemote.Hello` -> `effect/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
 
 - `EventLogRemote.Pong` -> `none`: The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol.
 
-- `EventLogRemote.ProtocolRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol request union.
+- `EventLogRemote.ProtocolRequest` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol request union.
 
-- `EventLogRemote.ProtocolRequestMsgPack` -> `effect/unstable/rpc/RpcSerialization#layerSchemaBinary`: Use the generic SchemaBinary RPC serialization layer instead of a request-specific schema.
+- `EventLogRemote.ProtocolRequestMsgPack` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: Use the generic SchemaBinary RPC serialization layer instead of a request-specific schema.
 
-- `EventLogRemote.ProtocolResponse` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol response union.
+- `EventLogRemote.ProtocolResponse` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol response union.
 
-- `EventLogRemote.ProtocolResponseMsgPack` -> `effect/unstable/rpc/RpcSerialization#layerSchemaBinary`: Use the generic SchemaBinary RPC serialization layer instead of a response-specific schema.
+- `EventLogRemote.ProtocolResponseMsgPack` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: Use the generic SchemaBinary RPC serialization layer instead of a response-specific schema.
 
 - `EventLogRemote.RemoteAdditions` -> `none`: This unused protocol model has no v4 counterpart.
 
-- `EventLogRemote.RequestChanges` -> `effect/unstable/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request model with one streaming RPC.
+- `EventLogRemote.RequestChanges` -> `effect/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request model with one streaming RPC.
 
 - `EventLogRemote.StopChanges` -> `none`: Interrupt the ChangesRpc stream instead of sending a StopChanges message.
 
-- `EventLogRemote.decodeRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific request decoder.
+- `EventLogRemote.decodeRequest` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific request decoder.
 
-- `EventLogRemote.decodeResponse` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific response decoder.
+- `EventLogRemote.decodeResponse` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific response decoder.
 
-- `EventLogRemote.encodeRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific request encoder.
+- `EventLogRemote.encodeRequest` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific request encoder.
 
-- `EventLogRemote.encodeResponse` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific response encoder.
+- `EventLogRemote.encodeResponse` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific response encoder.
 
-- `EventLogRemote.fromSocket` -> `effect/unstable/eventlog/EventLogRemote#makeEncrypted + effect/unstable/rpc/RpcClient#makeProtocolSocket`: Construct the encrypted remote separately from its generic RPC socket protocol.
+- `EventLogRemote.fromSocket` -> `effect/eventlog/EventLogRemote#makeEncrypted + effect/rpc/RpcClient#makeProtocolSocket`: Construct the encrypted remote separately from its generic RPC socket protocol.
 
-- `EventLogRemote.layerWebSocket` -> `effect/unstable/eventlog/EventLogRemote#layerEncrypted + effect/unstable/rpc/RpcClient#layerProtocolSocket`: Compose the encrypted remote with the generic socket protocol, SchemaBinary serialization, and a Socket provider.
+- `EventLogRemote.layerWebSocket` -> `effect/eventlog/EventLogRemote#layerEncrypted + effect/rpc/RpcClient#layerProtocolSocket`: Compose the encrypted remote with the generic socket protocol, SchemaBinary serialization, and a Socket provider.
 
-- `EventLogRemote.layerWebSocketBrowser` -> `effect/unstable/eventlog/EventLogRemote#layerEncrypted + effect/unstable/rpc/RpcClient#layerProtocolSocket + @effect/platform-browser/BrowserSocket#layerWebSocket`: Compose the encrypted remote and generic RPC socket protocol with the browser WebSocket layer.
+- `EventLogRemote.layerWebSocketBrowser` -> `effect/eventlog/EventLogRemote#layerEncrypted + effect/rpc/RpcClient#layerProtocolSocket + @effect/platform-browser/BrowserSocket#layerWebSocket`: Compose the encrypted remote and generic RPC socket protocol with the browser WebSocket layer.
 
 ### `@effect/experimental/EventLogServer`
 
-- `EventLogServer.makeHandler` -> `effect/unstable/eventlog/EventLogServerEncrypted#layer + effect/unstable/rpc/RpcServer#layerProtocolSocketServer`: Compose the encrypted server layer with the generic RPC socket server; there is no per-socket handler factory.
+- `EventLogServer.Storage` -> `effect/eventlog/EventLogServerEncrypted#Storage`: Use the encrypted server Storage service, which is storeId- and session-aware.
 
-- `EventLogServer.makeHandlerHttp` -> `effect/unstable/eventlog/EventLogServerEncrypted#layer + effect/unstable/rpc/RpcServer#makeProtocolWithHttpEffectWebsocket`: Use the returned httpEffect for upgrades and provide its protocol to the encrypted server layer.
+- `EventLogServer.layerStorageMemory` -> `effect/eventlog/EventLogServerEncrypted#layerStorageMemory`: Use the encrypted server memory storage layer; storage is now storeId- and session-aware.
 
-- `EventLogServer.makeStorageMemory` -> `effect/unstable/eventlog/EventLogServerEncrypted#makeStorageMemory`: Use the encrypted server memory storage constructor.
+- `EventLogServer.makeHandler` -> `effect/eventlog/EventLogServerEncrypted#layer + effect/rpc/RpcServer#layerProtocolSocketServer`: Compose the encrypted server layer with the generic RPC socket server; there is no per-socket handler factory.
+
+- `EventLogServer.makeHandlerHttp` -> `effect/eventlog/EventLogServerEncrypted#layer + effect/rpc/RpcServer#makeProtocolWithHttpEffectWebsocket`: Use the returned httpEffect for upgrades and provide its protocol to the encrypted server layer.
+
+- `EventLogServer.makeStorageMemory` -> `effect/eventlog/EventLogServerEncrypted#makeStorageMemory`: Use the encrypted server memory storage constructor.
 
 ### `@effect/experimental/PersistedCache`
 
-- `PersistedCache.make` -> `effect/unstable/persistence/PersistedCache#make`: Pass lookup as the first argument and options second; timeToLive now receives exit before request and the service is Persistence.Persistence.
+- `PersistedCache.make` -> `effect/persistence/PersistedCache#make`: Pass lookup as the first argument and options second; timeToLive now receives exit before request and the service is Persistence.Persistence.
 
 ### `@effect/experimental/PersistedQueue`
 
-- `PersistedQueue.ErrorTypeId` -> `effect/unstable/persistence/PersistedQueue#ErrorTypeId`: Retained as a string brand; the runtime marker now uses the persistence module path.
+- `PersistedQueue.ErrorTypeId` -> `effect/persistence/PersistedQueue#ErrorTypeId`: Retained as a string brand; the runtime marker now uses the persistence module path.
 
-- `PersistedQueue.TypeId` -> `effect/unstable/persistence/PersistedQueue#TypeId`: Import TypeId from the v4 unstable PersistedQueue module; it is now a string brand.
+- `PersistedQueue.TypeId` -> `effect/persistence/PersistedQueue#TypeId`: Import TypeId from the v4 unstable PersistedQueue module; it is now a string brand.
 
-- `PersistedQueue.make` -> `effect/unstable/persistence/PersistedQueue#make`: Import make from the v4 unstable PersistedQueue module.
+- `PersistedQueue.layer` -> `effect/persistence/PersistedQueue#layer`: Import layer from the v4 unstable PersistedQueue module.
+
+- `PersistedQueue.layerStoreMemory` -> `effect/persistence/PersistedQueue#layerStoreMemory`: Import layerStoreMemory from the v4 unstable PersistedQueue module.
+
+- `PersistedQueue.make` -> `effect/persistence/PersistedQueue#make`: Import make from the v4 unstable PersistedQueue module.
 
 ### `@effect/experimental/PersistedQueue/Redis`
 
-- `Redis.layerStore` -> `effect/unstable/persistence/PersistedQueue#layerStoreRedis`: The Redis adapter was merged into PersistedQueue and now requires the generic Redis.Redis service.
+- `Redis.layerStore` -> `effect/persistence/PersistedQueue#layerStoreRedis`: The Redis adapter was merged into PersistedQueue and now requires the generic Redis.Redis service.
 
 - `Redis.layerStoreConfig` -> `none`: Configure a Redis provider such as NodeRedis.layerConfig separately, then compose it with PersistedQueue.layerStoreRedis.
 
-- `Redis.make` -> `effect/unstable/persistence/PersistedQueue#makeStoreRedis`: The Redis adapter was merged into PersistedQueue and now requires the generic Redis.Redis service.
+- `Redis.make` -> `effect/persistence/PersistedQueue#makeStoreRedis`: The Redis adapter was merged into PersistedQueue and now requires the generic Redis.Redis service.
 
 ### `@effect/experimental/Persistence`
 
-- `Persistence.BackingPersistence` -> `effect/unstable/persistence/Persistence#BackingPersistence`: Use the v4 BackingPersistence Context.Service class.
+- `Persistence.BackingPersistence` -> `effect/persistence/Persistence#BackingPersistence`: Use the v4 BackingPersistence Context.Service class.
 
 - `Persistence.BackingPersistenceTypeId` -> `none`: The BackingPersistence brand is no longer publicly exported in v4.
 
 - `Persistence.ErrorTypeId` -> `none`: The v4 persistence error identifier is private; narrow with the exported error classes.
 
-- `Persistence.PersistenceBackingError` -> `effect/unstable/persistence/Persistence#PersistenceError`: PersistenceError now represents failures from the backing persistence implementation.
+- `Persistence.PersistenceBackingError` -> `effect/persistence/Persistence#PersistenceError`: PersistenceError now represents failures from the backing persistence implementation.
 
-- `Persistence.PersistenceError` -> `effect/unstable/persistence/Persistence#PersistenceError | effect/Schema#SchemaError`: The old combined alias was split into backing PersistenceError and schema SchemaError.
+- `Persistence.PersistenceError` -> `effect/persistence/Persistence#PersistenceError | effect/Schema#SchemaError`: The old combined alias was split into backing PersistenceError and schema SchemaError.
 
 - `Persistence.PersistenceParseError` -> `effect/Schema#SchemaError`: Persistence parsing failures now use the core SchemaError type.
 
-- `Persistence.ResultPersistence` -> `effect/unstable/persistence/Persistence#Persistence`: ResultPersistence was renamed to Persistence and is now a Context.Service class.
+- `Persistence.ResultPersistence` -> `effect/persistence/Persistence#Persistence`: ResultPersistence was renamed to Persistence and is now a Context.Service class.
 
-- `Persistence.ResultPersistence.Key` -> `effect/unstable/persistence/Persistable#Persistable`: Persistable is the v4 schema-backed persistence key contract.
+- `Persistence.ResultPersistence.Key` -> `effect/persistence/Persistable#Persistable`: Persistable is the v4 schema-backed persistence key contract.
 
-- `Persistence.ResultPersistence.KeyAny` -> `effect/unstable/persistence/Persistable#Any`: Use Persistable.Any for an arbitrary v4 persistence key contract.
+- `Persistence.ResultPersistence.KeyAny` -> `effect/persistence/Persistable#Any`: Use Persistable.Any for an arbitrary v4 persistence key contract.
 
-- `Persistence.ResultPersistence.TimeToLiveArgs` -> `Parameters<effect/unstable/persistence/Persistable#TimeToLiveFn<K>>`: Derive the tuple from TimeToLiveFn; its order is now exit then request.
+- `Persistence.ResultPersistence.TimeToLiveArgs` -> `Parameters<effect/persistence/Persistable#TimeToLiveFn<K>>`: Derive the tuple from TimeToLiveFn; its order is now exit then request.
 
-- `Persistence.ResultPersistenceStore` -> `effect/unstable/persistence/Persistence#PersistenceStore`: ResultPersistenceStore was renamed to PersistenceStore.
+- `Persistence.ResultPersistenceStore` -> `effect/persistence/Persistence#PersistenceStore`: ResultPersistenceStore was renamed to PersistenceStore.
 
 - `Persistence.ResultPersistenceTypeId` -> `none`: The ResultPersistence brand is no longer publicly exported in v4.
 
-- `Persistence.layerKeyValueStore` -> `effect/unstable/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs.
+- `Persistence.layerKeyValueStore` -> `effect/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs.
 
-- `Persistence.layerMemory` -> `effect/unstable/persistence/Persistence#layerBackingMemory`: Use layerBackingMemory for the old backing service; v4 layerMemory creates the higher-level Persistence service.
+- `Persistence.layerMemory` -> `effect/persistence/Persistence#layerBackingMemory`: Use layerBackingMemory for the old backing service; v4 layerMemory creates the higher-level Persistence service.
 
-- `Persistence.layerResult` -> `effect/unstable/persistence/Persistence#layer`: The ResultPersistence service layer was renamed to layer.
+- `Persistence.layerResult` -> `effect/persistence/Persistence#layer`: The ResultPersistence service layer was renamed to layer.
 
-- `Persistence.layerResultKeyValueStore` -> `effect/unstable/persistence/Persistence#layerKvs`: The combined KeyValueStore-backed result layer was renamed to layerKvs.
+- `Persistence.layerResultKeyValueStore` -> `effect/persistence/Persistence#layerKvs`: The combined KeyValueStore-backed result layer was renamed to layerKvs.
 
-- `Persistence.layerResultMemory` -> `effect/unstable/persistence/Persistence#layerMemory`: The combined memory-backed result layer was renamed to layerMemory.
+- `Persistence.layerResultMemory` -> `effect/persistence/Persistence#layerMemory`: The combined memory-backed result layer was renamed to layerMemory.
 
 ### `@effect/experimental/Persistence/Redis`
 
-- `Redis.layer` -> `effect/unstable/persistence/Persistence#layerBackingRedis`: The Redis backing adapter was merged into Persistence and now requires the generic Redis.Redis service.
+- `Redis.layer` -> `effect/persistence/Persistence#layerBackingRedis`: The Redis backing adapter was merged into Persistence and now requires the generic Redis.Redis service.
 
 - `Redis.layerConfig` -> `none`: Compose Persistence.layerBackingRedis with a config-driven provider such as NodeRedis.layerConfig.
 
-- `Redis.layerResult` -> `effect/unstable/persistence/Persistence#layerRedis`: The combined Redis persistence layer was merged into Persistence and now requires Redis.Redis.
+- `Redis.layerResult` -> `effect/persistence/Persistence#layerRedis`: The combined Redis persistence layer was merged into Persistence and now requires Redis.Redis.
 
 - `Redis.layerResultConfig` -> `none`: Compose Persistence.layerRedis with a config-driven provider such as NodeRedis.layerConfig.
 
@@ -6066,37 +6218,49 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/experimental/RateLimiter`
 
-- `RateLimiter.ErrorTypeId` -> `effect/unstable/persistence/RateLimiter#ErrorTypeId`: Retained as a string brand; the runtime marker now uses the persistence module path.
+- `RateLimiter.ErrorTypeId` -> `effect/persistence/RateLimiter#ErrorTypeId`: Retained as a string brand; the runtime marker now uses the persistence module path.
 
-- `RateLimiter.RateLimiterError` -> `effect/unstable/persistence/RateLimiter#RateLimiterError`: The retained name is now a wrapper error class whose reason is RateLimitExceeded or RateLimitStoreError.
+- `RateLimiter.RateLimiterError` -> `effect/persistence/RateLimiter#RateLimiterError`: The retained name is now a wrapper error class whose reason is RateLimitExceeded or RateLimitStoreError.
 
-- `RateLimiter.TypeId` -> `effect/unstable/persistence/RateLimiter#TypeId`: Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
+- `RateLimiter.RateLimiterStore` -> `RateLimiter.RateLimiterStore`: Use the Context.Service class from effect/persistence/RateLimiter. Custom tokenBucket implementations must return [remaining, elapsedMillis] instead of a number, preserving fractional counts and elapsed refill time.
 
-- `RateLimiter.makeSleep` -> `effect/unstable/persistence/RateLimiter#sleep`: The accessor Effect was replaced by sleep; obtain the RateLimiter service and pass it to sleep directly or with its curried overload.
+- `RateLimiter.TypeId` -> `effect/persistence/RateLimiter#TypeId`: Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
+
+- `RateLimiter.layer` -> `effect/persistence/RateLimiter#layer`: Import layer from the v4 unstable RateLimiter module.
+
+- `RateLimiter.layerStoreMemory`: TODO: needs guidance
+
+- `RateLimiter.make` -> `effect/persistence/RateLimiter#make`: Import make from the v4 unstable RateLimiter module.
+
+- `RateLimiter.makeSleep` -> `effect/persistence/RateLimiter#sleep`: The accessor Effect was replaced by sleep; obtain the RateLimiter service and pass it to sleep directly or with its curried overload.
 
 ### `@effect/experimental/RateLimiter/Redis`
 
-- `Redis.layerStore` -> `effect/unstable/persistence/RateLimiter#layerStoreRedis`: The Redis adapter was merged into RateLimiter and now requires the generic Redis.Redis service.
+- `Redis.layerStore` -> `effect/persistence/RateLimiter#layerStoreRedis`: The Redis adapter was merged into RateLimiter and now requires the generic Redis.Redis service.
 
-- `Redis.layerStoreConfig` -> `effect/unstable/persistence/RateLimiter#layerStoreRedisConfig`: Use the merged Redis store config layer; connection configuration belongs to a separate Redis provider.
+- `Redis.layerStoreConfig` -> `effect/persistence/RateLimiter#layerStoreRedisConfig`: Use the merged Redis store config layer; connection configuration belongs to a separate Redis provider.
 
-- `Redis.make` -> `effect/unstable/persistence/RateLimiter#makeStoreRedis`: The Redis adapter was merged into RateLimiter and now requires the generic Redis.Redis service.
+- `Redis.make` -> `effect/persistence/RateLimiter#makeStoreRedis`: The Redis adapter was merged into RateLimiter and now requires the generic Redis.Redis service.
 
 ### `@effect/experimental/Reactivity`
 
-- `Reactivity.Reactivity` -> `effect/unstable/reactivity/Reactivity#Reactivity`: Use the Reactivity interface for implementations and the Reactivity Context.Service value as the service key. Implementations require the TypeId brand; prefer Reactivity.make. Unsafe methods were renamed with an Unsafe suffix.
+- `Reactivity.Reactivity` -> `effect/reactivity/Reactivity#Reactivity`: Use the Reactivity interface for implementations and the Reactivity Context.Service value as the service key. Implementations require the TypeId brand; prefer Reactivity.make. Unsafe methods were renamed with an Unsafe suffix.
 
-- `Reactivity.Reactivity.Service` -> `effect/unstable/reactivity/Reactivity#Reactivity`: The named namespace member was removed; use the branded Reactivity interface directly. Prefer Reactivity.make, or include [Reactivity.TypeId]: Reactivity.TypeId in a custom implementation.
+- `Reactivity.Reactivity.Service` -> `effect/reactivity/Reactivity#Reactivity`: The named namespace member was removed; use the branded Reactivity interface directly. Prefer Reactivity.make, or include [Reactivity.TypeId]: Reactivity.TypeId in a custom implementation.
 
-- `Reactivity.make` -> `effect/unstable/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
+- `Reactivity.layer` -> `effect/reactivity/Reactivity#layer`: Import layer from the v4 unstable Reactivity module.
+
+- `Reactivity.make` -> `effect/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
 
 - `Reactivity.query`: TODO: needs guidance
 
+- `Reactivity.stream` -> `effect/reactivity/Reactivity#stream`: Import stream from the v4 unstable Reactivity module.
+
 ### `@effect/experimental/RequestResolver`
 
-- `RequestResolver.PersistedRequest` -> `effect/Request#Request & effect/unstable/persistence/Persistable#Persistable`: Intersect a Request with Persistable or define it with Persistable.Class; there is no combined named export.
+- `RequestResolver.PersistedRequest` -> `effect/Request#Request & effect/persistence/Persistable#Persistable`: Intersect a Request with Persistable or define it with Persistable.Class; there is no combined named export.
 
-- `RequestResolver.PersistedRequest.Any` -> `effect/Request#Any & effect/unstable/persistence/Persistable#Any`: Intersect the Request and Persistable helper types for an arbitrary persisted request.
+- `RequestResolver.PersistedRequest.Any` -> `effect/Request#Any & effect/persistence/Persistable#Any`: Intersect the Request and Persistable helper types for an arbitrary persisted request.
 
 - `RequestResolver.dataLoader` -> `effect/RequestResolver#setDelay + effect/RequestResolver#batchN`: Pipe the resolver through setDelay(options.window) and batchN(options.maxBatchSize ?? Infinity); the transformation is now pure.
 
@@ -6104,31 +6268,37 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/experimental/Sse`
 
-- `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/unstable/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
+- `Sse.Parser`: TODO: needs guidance
+
+- `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
 
 ### `@effect/experimental/VariantSchema`
 
-- `VariantSchema.Extract` -> `effect/unstable/schema/VariantSchema#Extract`: Import the retained helper from the v4 module; its erased schema constraint is Schema.Top.
+- `VariantSchema.Extract` -> `effect/schema/VariantSchema#Extract`: Import the retained helper from the v4 module; its erased schema constraint is Schema.Top.
 
-- `VariantSchema.Field.Any` -> `effect/unstable/schema/VariantSchema#Field.Any`: Import the retained Field.Any helper type from the v4 unstable VariantSchema module.
+- `VariantSchema.Field.Any` -> `effect/schema/VariantSchema#Field.Any`: Import the retained Field.Any helper type from the v4 unstable VariantSchema module.
 
-- `VariantSchema.Field.Config` -> `effect/unstable/schema/VariantSchema#Field.Config`: Import the retained Field.Config helper type from the v4 unstable VariantSchema module.
+- `VariantSchema.Field.Config` -> `effect/schema/VariantSchema#Field.Config`: Import the retained Field.Config helper type from the v4 unstable VariantSchema module.
 
-- `VariantSchema.Field.Fields` -> `effect/unstable/schema/VariantSchema#Field.Fields`: Import the retained Field.Fields helper type from the v4 unstable VariantSchema module.
+- `VariantSchema.Field.Fields` -> `effect/schema/VariantSchema#Field.Fields`: Import the retained Field.Fields helper type from the v4 unstable VariantSchema module.
 
 - `VariantSchema.Field.ValueAny` -> `effect/Schema#Top`: Use the core Schema.Top constraint for an arbitrary field value schema.
 
 - `VariantSchema.FieldTypeId` -> `none`: The Field brand is private in v4; use VariantSchema.isField for narrowing.
 
-- `VariantSchema.Struct.Fields` -> `effect/unstable/schema/VariantSchema#Struct.Fields`: Import the retained Struct.Fields helper type from the v4 unstable VariantSchema module.
+- `VariantSchema.Override` -> `effect/schema/VariantSchema#Override`: Import Override from the v4 unstable VariantSchema module.
 
-- `VariantSchema.TypeId` -> `effect/unstable/schema/VariantSchema#TypeId`: Use the retained runtime value; in type position use typeof VariantSchema.TypeId.
+- `VariantSchema.Struct.Fields` -> `effect/schema/VariantSchema#Struct.Fields`: Import the retained Struct.Fields helper type from the v4 unstable VariantSchema module.
+
+- `VariantSchema.TypeId` -> `effect/schema/VariantSchema#TypeId`: Use the retained runtime value; in type position use typeof VariantSchema.TypeId.
 
 - `VariantSchema.fromKey` -> `none`: Field-level fromKey was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
 
 - `VariantSchema.fromKey.Rename` -> `none`: The fromKey rename helper was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
 
-- `VariantSchema.make` -> `effect/unstable/schema/VariantSchema#make`: Import make from the v4 module; FieldOnly and FieldExcept take one key array and Union takes one member array.
+- `VariantSchema.isField` -> `effect/schema/VariantSchema#isField`: Import isField from the v4 unstable VariantSchema module.
+
+- `VariantSchema.make` -> `effect/schema/VariantSchema#make`: Import make from the v4 module; FieldOnly and FieldExcept take one key array and Union takes one member array.
 
 ### `@effect/opentelemetry/Logger`
 
@@ -6148,29 +6318,31 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/opentelemetry/Otlp`
 
-- `Otlp.layer` -> `Otlp.layer`: Moved to effect/unstable/observability/Otlp; replaceLogger was replaced by loggerMergeWithExisting, and metricsTemporality is now configurable.
+- `Otlp.layer` -> `Otlp.layer`: Moved to effect/observability/Otlp; replaceLogger was replaced by loggerMergeWithExisting, and metricsTemporality is now configurable.
 
 ### `@effect/opentelemetry/OtlpLogger`
 
-- `OtlpLogger.layer` -> `OtlpLogger.layer`: Moved to effect/unstable/observability/OtlpLogger; use mergeWithExisting instead of passing replaceLogger.
+- `OtlpLogger.layer` -> `OtlpLogger.layer`: Moved to effect/observability/OtlpLogger; use mergeWithExisting instead of passing replaceLogger.
 
-- `OtlpLogger.make` -> `OtlpLogger.make`: The constructor remains in the module moved to effect/unstable/observability/OtlpLogger.
+- `OtlpLogger.make` -> `OtlpLogger.make`: The constructor remains in the module moved to effect/observability/OtlpLogger.
 
 ### `@effect/opentelemetry/OtlpMetrics`
 
-- `OtlpMetrics.layer` -> `OtlpMetrics.layer`: Moved to effect/unstable/observability/OtlpMetrics; the layer now also accepts optional cumulative or delta temporality.
+- `OtlpMetrics.layer` -> `OtlpMetrics.layer`: Moved to effect/observability/OtlpMetrics; the layer now also accepts optional cumulative or delta temporality.
 
-- `OtlpMetrics.make` -> `OtlpMetrics.make`: Moved to effect/unstable/observability/OtlpMetrics; the constructor now also accepts optional cumulative or delta temporality.
+- `OtlpMetrics.make` -> `OtlpMetrics.make`: Moved to effect/observability/OtlpMetrics; the constructor now also accepts optional cumulative or delta temporality.
 
 ### `@effect/opentelemetry/OtlpResource`
 
-- `OtlpResource.unsafeServiceName` -> `OtlpResource.serviceNameUnsafe`: Moved to effect/unstable/observability/OtlpResource and renamed to follow the v4 unsafe-suffix convention.
+- `OtlpResource.make` -> `OtlpResource.make`: The constructor remains in the module moved to effect/observability/OtlpResource.
+
+- `OtlpResource.unsafeServiceName` -> `OtlpResource.serviceNameUnsafe`: Moved to effect/observability/OtlpResource and renamed to follow the v4 unsafe-suffix convention.
 
 ### `@effect/opentelemetry/OtlpTracer`
 
-- `OtlpTracer.layer` -> `OtlpTracer.layer`: The layer remains in the module moved to effect/unstable/observability/OtlpTracer.
+- `OtlpTracer.layer` -> `OtlpTracer.layer`: The layer remains in the module moved to effect/observability/OtlpTracer.
 
-- `OtlpTracer.make` -> `OtlpTracer.make`: The constructor remains in the module moved to effect/unstable/observability/OtlpTracer.
+- `OtlpTracer.make` -> `OtlpTracer.make`: The constructor remains in the module moved to effect/observability/OtlpTracer.
 
 ### `@effect/opentelemetry/Resource`
 
@@ -6240,7 +6412,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform-bun/BunCommandExecutor`
 
-- `BunCommandExecutor.layer` -> `BunChildProcessSpawner.layer`: CommandExecutor became effect/unstable/process/ChildProcessSpawner; the Bun adapter was renamed and still requires FileSystem and Path.
+- `BunCommandExecutor.layer` -> `BunChildProcessSpawner.layer`: CommandExecutor became effect/process/ChildProcessSpawner; the Bun adapter was renamed and still requires FileSystem and Path.
 
 ### `@effect/platform-bun/BunContext`
 
@@ -6302,7 +6474,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform-node-shared/NodeCommandExecutor`
 
-- `NodeCommandExecutor.layer` -> `NodeChildProcessSpawner.layer`: CommandExecutor became effect/unstable/process/ChildProcessSpawner; the Node adapter was renamed and still requires FileSystem and Path.
+- `NodeCommandExecutor.layer` -> `NodeChildProcessSpawner.layer`: CommandExecutor became effect/process/ChildProcessSpawner; the Node adapter was renamed and still requires FileSystem and Path.
 
 ### `@effect/platform-node-shared/NodeFileSystem/ParcelWatcher`
 
@@ -6478,7 +6650,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/Command`
 
-- `Command.Command` -> `ChildProcess.Command`: Commands moved to effect/unstable/process/ChildProcess and are now directly Effectable to spawn a ChildProcessHandle.
+- `Command.Command` -> `ChildProcess.Command`: Commands moved to effect/process/ChildProcess and are now directly Effectable to spawn a ChildProcessHandle.
 
 - `Command.Command.Input` -> `ChildProcess.CommandInput`: The standard-input configuration type was flattened out of the Command namespace.
 
@@ -6516,7 +6688,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/CommandExecutor`
 
-- `CommandExecutor.CommandExecutor` -> `ChildProcessSpawner.ChildProcessSpawner`: The executor service moved to effect/unstable/process/ChildProcessSpawner and was renamed.
+- `CommandExecutor.CommandExecutor` -> `ChildProcessSpawner.ChildProcessSpawner`: The executor service moved to effect/process/ChildProcessSpawner and was renamed.
 
 - `CommandExecutor.Process` -> `ChildProcessSpawner.ChildProcessHandle`: Running-process handles were renamed and moved to ChildProcessSpawner.
 
@@ -6537,6 +6709,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Cookies.ErrorTypeId` -> `Cookies.CookiesError`: The error brand is private in v4; identify the exported error class instead.
 
 - `Cookies.TypeId` -> `Cookies.isCookies`: The collection brand is private in v4; use the public refinement instead.
+
+- `Cookies.isEmpty`: TODO: needs guidance
+
+- `Cookies.remove` -> `Cookies.remove`: Retained with the same dual name-based removal signature.
 
 - `Cookies.unsafeMakeCookie` -> `Cookies.makeCookieUnsafe`: Renamed to put Unsafe last; it still throws on invalid cookie data.
 
@@ -6561,6 +6737,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Etag.GeneratorTypeId` -> `Etag.Generator`: The standalone generator brand was removed; Generator is now a Context.Service class.
 
 - `Etag.layer` -> `Etag.layer`: Retained; it still provides the strong metadata-based ETag Generator service.
+
+- `Etag.toString` -> `Etag.toString`: Retained with the same Etag-to-header-string behavior and signature.
 
 ### `@effect/platform/FetchHttpClient`
 
@@ -6628,11 +6806,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/Headers`
 
-- `Headers.Headers` -> `Headers.Headers`: Import Headers from effect/unstable/http; the immutable string-record interface is retained with its v4 TypeId brand.
+- `Headers.Headers` -> `Headers.Headers`: Import Headers from effect/http; the immutable string-record interface is retained with its v4 TypeId brand.
 
 - `Headers.HeadersTypeId` -> `Headers.TypeId`: The public Headers type-id symbol was renamed from HeadersTypeId to TypeId.
 
+- `Headers.Input` -> `Headers.Input`: Retained with the same record-or-entry-iterable input shape.
+
 - `Headers.currentRedactedNames` -> `Headers.CurrentRedactedNames`: Renamed and changed from FiberRef to Context.Reference; override it with service provisioning.
+
+- `Headers.empty` -> `Headers.empty`: Retained as the empty immutable Headers value.
+
+- `Headers.fromInput` -> `Headers.fromInput`: Retained with the same optional Input and lowercase normalization behavior.
+
+- `Headers.get` -> `Headers.get`: Retained with the same dual, case-insensitive Option-returning signature.
+
+- `Headers.has` -> `Headers.has`: Retained with the same dual, case-insensitive signature.
+
+- `Headers.merge` -> `Headers.merge`: Retained with the same dual signature; values from the second collection win.
 
 - `Headers.remove` -> `Headers.remove / Headers.removeMany`: Use remove for one name or removeMany for an iterable; RegExp removal requires enumerating matching names.
 
@@ -6640,251 +6830,255 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Headers.schemaFromSelf` -> `Schema.Headers`: The encoded-record and self schemas were consolidated and moved to effect/Schema as Schema.Headers.
 
+- `Headers.set` -> `Headers.set`: Retained with the same dual signature and lowercase key normalization.
+
+- `Headers.setAll` -> `Headers.setAll`: Retained with the same dual Input signature; supplied values override existing names.
+
 - `Headers.unsafeFromRecord` -> `Headers.fromRecordUnsafe`: Renamed to put Unsafe last; it still skips name normalization.
 
 ### `@effect/platform/HttpApi`
 
 - `HttpApi.Api` -> `none`: The Context tag carrying the API was removed. Pass the HttpApi value explicitly to builders and clients.
 
-- `HttpApi.HttpApi.Any` -> `effect/unstable/httpapi/HttpApi#Constraint`: Use the erased marker constraint when only HttpApi identity is needed.
+- `HttpApi.HttpApi.Any` -> `effect/httpapi/HttpApi#Constraint`: Use the erased marker constraint when only HttpApi identity is needed.
 
-- `HttpApi.HttpApi.AnyWithProps` -> `effect/unstable/httpapi/HttpApi#Top`: Use the widened HttpApi type that retains runtime properties.
+- `HttpApi.HttpApi.AnyWithProps` -> `effect/httpapi/HttpApi#Top`: Use the widened HttpApi type that retains runtime properties.
 
 - `HttpApi.TypeId` -> `none`: The marker is private in v4; use HttpApi.isHttpApi for runtime narrowing and Constraint or Top for types.
 
-- `HttpApi.make` -> `effect/unstable/httpapi/HttpApi#make`: The constructor remains, but API-wide error and service parameters were removed; declare errors on endpoints and attach middleware.
+- `HttpApi.make` -> `effect/httpapi/HttpApi#make`: The constructor remains, but API-wide error and service parameters were removed; declare errors on endpoints and attach middleware.
 
 ### `@effect/platform/HttpApiBuilder`
 
-- `HttpApiBuilder.Handlers` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers`: Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup\<Group\>.
+- `HttpApiBuilder.Handlers` -> `effect/httpapi/HttpApiBuilder#Handlers`: Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup\<Group\>.
 
-- `HttpApiBuilder.Handlers.Error` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers.Error`: The helper remains and extracts the error channel of an effectful group-builder return.
+- `HttpApiBuilder.Handlers.Error` -> `effect/httpapi/HttpApiBuilder#Handlers.Error`: The helper remains and extracts the error channel of an effectful group-builder return.
 
 - `HttpApiBuilder.Handlers.Middleware` -> `none`: The handler-internal HttpApp middleware alias was removed. Use HttpRouter.middleware inference or HttpRouter.middleware.Fn.
 
-- `HttpApiBuilder.Handlers.ValidateReturn` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers.ValidateReturn`: The validator remains and now checks the endpoint map against handled identifiers.
+- `HttpApiBuilder.Handlers.ValidateReturn` -> `effect/httpapi/HttpApiBuilder#Handlers.ValidateReturn`: The validator remains and now checks the endpoint map against handled identifiers.
 
 - `HttpApiBuilder.HandlersTypeId` -> `none`: The exported symbol was removed; do not inspect or construct the private Handlers marker.
 
 - `HttpApiBuilder.Middleware` -> `none`: The API-specific middleware service tag was removed. Declared HttpApiMiddleware services are applied while routes are built; use HttpRouter.middleware for additional global middleware.
 
-- `HttpApiBuilder.MiddlewareFn` -> `effect/unstable/http/HttpRouter#middleware.Fn`: HTTP apps are Effects in v4; use the router middleware function type or infer it through HttpRouter.middleware.
+- `HttpApiBuilder.MiddlewareFn` -> `effect/http/HttpRouter#middleware.Fn`: HTTP apps are Effects in v4; use the router middleware function type or infer it through HttpRouter.middleware.
 
-- `HttpApiBuilder.Router` -> `effect/unstable/http/HttpRouter#HttpRouter`: The API-specific router tag was removed; API and group layers register with the shared HttpRouter service.
+- `HttpApiBuilder.Router` -> `effect/http/HttpRouter#HttpRouter`: The API-specific router tag was removed; API and group layers register with the shared HttpRouter service.
 
-- `HttpApiBuilder.api` -> `effect/unstable/httpapi/HttpApiBuilder#layer`: Use layer(api) and provide the group layers; it registers the completed API with HttpRouter.
+- `HttpApiBuilder.api` -> `effect/httpapi/HttpApiBuilder#layer`: Use layer(api) and provide the group layers; it registers the completed API with HttpRouter.
 
 - `HttpApiBuilder.buildMiddleware` -> `none`: API-wide middleware assembly was removed. Declared HttpApiMiddleware services are applied while routes are built; use HttpRouter.middleware for additional middleware.
 
-- `HttpApiBuilder.group` -> `effect/unstable/httpapi/HttpApiBuilder#group`: The group layer remains; names are now identifiers and API/group global error channels are gone.
+- `HttpApiBuilder.group` -> `effect/httpapi/HttpApiBuilder#group`: The group layer remains; names are now identifiers and API/group global error channels are gone.
 
-- `HttpApiBuilder.handler` -> `effect/unstable/httpapi/HttpApiBuilder#handler`: The typed callback helper remains; names are now identifiers and API/group global error channels are gone. Pass the returned callback to handlers.handle.
+- `HttpApiBuilder.handler` -> `effect/httpapi/HttpApiBuilder#handler`: The typed callback helper remains; names are now identifiers and API/group global error channels are gone. Pass the returned callback to handlers.handle.
 
-- `HttpApiBuilder.httpApp` -> `effect/unstable/http/HttpRouter#toHttpEffect`: Build the application from the assembled API route layer; HTTP apps are Effects in v4.
+- `HttpApiBuilder.httpApp` -> `effect/http/HttpRouter#toHttpEffect`: Build the application from the assembled API route layer; HTTP apps are Effects in v4.
 
-- `HttpApiBuilder.middleware` -> `effect/unstable/http/HttpRouter#middleware`: Use router effect middleware and provide its layer to the API route layer; global middleware can target all router routes.
+- `HttpApiBuilder.middleware` -> `effect/http/HttpRouter#middleware`: Use router effect middleware and provide its layer to the API route layer; global middleware can target all router routes.
 
-- `HttpApiBuilder.middlewareCors` -> `effect/unstable/http/HttpRouter#cors`: Use the router CORS layer, or provide route-scoped HttpMiddleware.cors through HttpRouter.middleware.
+- `HttpApiBuilder.middlewareCors` -> `effect/http/HttpRouter#cors`: Use the router CORS layer, or provide route-scoped HttpMiddleware.cors through HttpRouter.middleware.
 
-- `HttpApiBuilder.middlewareOpenApi` -> `effect/unstable/httpapi/HttpApiBuilder#layer`: Set openapiPath in layer(api, options). The additionalPropertiesStrategy option was removed.
+- `HttpApiBuilder.middlewareOpenApi` -> `effect/httpapi/HttpApiBuilder#layer`: Set openapiPath in layer(api, options). The additionalPropertiesStrategy option was removed.
 
-- `HttpApiBuilder.toWebHandler` -> `effect/unstable/http/HttpRouter#toWebHandler`: Pass the assembled API route layer to HttpRouter.toWebHandler; the handler and dispose lifecycle is retained.
+- `HttpApiBuilder.toWebHandler` -> `effect/http/HttpRouter#toWebHandler`: Pass the assembled API route layer to HttpRouter.toWebHandler; the handler and dispose lifecycle is retained.
 
 ### `@effect/platform/HttpApiClient`
 
-- `HttpApiClient.Client.Method` -> `effect/unstable/httpapi/HttpApiClient#Client.Method`: The type remains without GroupError. Requests use params/query and responseMode instead of path/urlParams and withResponse.
+- `HttpApiClient.Client.Method` -> `effect/httpapi/HttpApiClient#Client.Method`: The type remains without GroupError. Requests use params/query and responseMode instead of path/urlParams and withResponse.
 
-- `HttpApiClient.endpoint` -> `effect/unstable/httpapi/HttpApiClient#endpoint`: The endpoint client remains, selected by group and endpoint identifiers and using v4 request and responseMode fields.
+- `HttpApiClient.endpoint` -> `effect/httpapi/HttpApiClient#endpoint`: The endpoint client remains, selected by group and endpoint identifiers and using v4 request and responseMode fields.
 
-- `HttpApiClient.make` -> `effect/unstable/httpapi/HttpApiClient#make`: The generated client remains; errors and services are now derived per endpoint and middleware.
+- `HttpApiClient.make` -> `effect/httpapi/HttpApiClient#make`: The generated client remains; errors and services are now derived per endpoint and middleware.
 
-- `HttpApiClient.makeWith` -> `effect/unstable/httpapi/HttpApiClient#makeWith`: The supplied-HttpClient constructor remains and now requires endpoint client-middleware services.
+- `HttpApiClient.makeWith` -> `effect/httpapi/HttpApiClient#makeWith`: The supplied-HttpClient constructor remains and now requires endpoint client-middleware services.
 
 ### `@effect/platform/HttpApiEndpoint`
 
-- `HttpApiEndpoint.HttpApiEndpoint` -> `effect/unstable/httpapi/HttpApiEndpoint#HttpApiEndpoint`: The model remains, but its generics now carry path literals, schemas, middleware, and middleware services.
+- `HttpApiEndpoint.HttpApiEndpoint` -> `effect/httpapi/HttpApiEndpoint#HttpApiEndpoint`: The model remains, but its generics now carry path literals, schemas, middleware, and middleware services.
 
-- `HttpApiEndpoint.HttpApiEndpoint.AddContext` -> `effect/unstable/httpapi/HttpApiEndpoint#AddMiddleware`: Use AddMiddleware to add a middleware identifier and compute its service transformation.
+- `HttpApiEndpoint.HttpApiEndpoint.AddContext` -> `effect/httpapi/HttpApiEndpoint#AddMiddleware`: Use AddMiddleware to add a middleware identifier and compute its service transformation.
 
 - `HttpApiEndpoint.HttpApiEndpoint.AddError` -> `none`: Declare error schemas in the endpoint constructor options; the type helper and fluent addError method were removed.
 
 - `HttpApiEndpoint.HttpApiEndpoint.Constructor` -> `none`: The tagged-template constructor type was removed; use HttpApiEndpoint.make(method)(identifier, path, options?).
 
-- `HttpApiEndpoint.HttpApiEndpoint.Context` -> `effect/unstable/httpapi/HttpApiEndpoint#ServerServices`: Use ServerServices for handler requirements; middleware IDs and extra requirements have separate extractors.
+- `HttpApiEndpoint.HttpApiEndpoint.Context` -> `effect/httpapi/HttpApiEndpoint#ServerServices`: Use ServerServices for handler requirements; middleware IDs and extra requirements have separate extractors.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ContextWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#ServerServicesWithIdentifier`: Name became Identifier; combine with middleware extractors when the complete handler requirement union is needed.
+- `HttpApiEndpoint.HttpApiEndpoint.ContextWithName` -> `effect/httpapi/HttpApiEndpoint#ServerServicesWithIdentifier`: Name became Identifier; combine with middleware extractors when the complete handler requirement union is needed.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Error` -> `effect/unstable/httpapi/HttpApiEndpoint#Errors`: Use Errors for the decoded endpoint and middleware error union; v4 Error extracts the schema.
+- `HttpApiEndpoint.HttpApiEndpoint.Error` -> `effect/httpapi/HttpApiEndpoint#Errors`: Use Errors for the decoded endpoint and middleware error union; v4 Error extracts the schema.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ErrorContext` -> `effect/unstable/httpapi/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
+- `HttpApiEndpoint.HttpApiEndpoint.ErrorContext` -> `effect/httpapi/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ErrorContextWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: Select the endpoint with WithIdentifier, then apply the encode or decode service extractor.
+- `HttpApiEndpoint.HttpApiEndpoint.ErrorContextWithName` -> `effect/httpapi/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: Select the endpoint with WithIdentifier, then apply the encode or decode service extractor.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ErrorWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#ErrorsWithIdentifier`: Renamed for identifier and returns the decoded endpoint plus middleware error union.
+- `HttpApiEndpoint.HttpApiEndpoint.ErrorWithName` -> `effect/httpapi/HttpApiEndpoint#ErrorsWithIdentifier`: Renamed for identifier and returns the decoded endpoint plus middleware error union.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ExcludeName` -> `effect/unstable/httpapi/HttpApiEndpoint#ExcludeIdentifier`: Direct rename from name to identifier.
+- `HttpApiEndpoint.HttpApiEndpoint.ExcludeName` -> `effect/httpapi/HttpApiEndpoint#ExcludeIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ExtractPath` -> `none`: Tagged-template path extraction was removed. Put a params schema or field record in constructor option params.
 
-- `HttpApiEndpoint.HttpApiEndpoint.HandlerRawWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#HandlerRawWithIdentifier`: Direct rename; raw request fields are now params and query.
+- `HttpApiEndpoint.HttpApiEndpoint.HandlerRawWithName` -> `effect/httpapi/HttpApiEndpoint#HandlerRawWithIdentifier`: Direct rename; raw request fields are now params and query.
 
-- `HttpApiEndpoint.HttpApiEndpoint.HandlerWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#HandlerWithIdentifier`: Direct rename from name to identifier.
+- `HttpApiEndpoint.HttpApiEndpoint.HandlerWithName` -> `effect/httpapi/HttpApiEndpoint#HandlerWithIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiEndpoint.HttpApiEndpoint.OptionalTypePropertySignature` -> `none`: Removed with the tagged-template path implementation.
 
 - `HttpApiEndpoint.HttpApiEndpoint.PathEntries` -> `none`: Removed with tagged-template path extraction; declare endpoint params explicitly.
 
-- `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/unstable/httpapi/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params\<Endpoint\>["Type"] for decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/httpapi/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params\<Endpoint\>["Type"] for decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Payload` -> `effect/unstable/httpapi/HttpApiEndpoint#Payload`: The name remains but now extracts the schema; use Payload\<Endpoint\>["Type"] for buffered decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.Payload` -> `effect/httpapi/HttpApiEndpoint#Payload`: The name remains but now extracts the schema; use Payload\<Endpoint\>["Type"] for buffered decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Success` -> `effect/unstable/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Use SuccessWithIdentifier for the decoded, stream-aware result; v4 Success extracts the schema.
+- `HttpApiEndpoint.HttpApiEndpoint.Success` -> `effect/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Use SuccessWithIdentifier for the decoded, stream-aware result; v4 Success extracts the schema.
 
-- `HttpApiEndpoint.HttpApiEndpoint.SuccessWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Direct rename from name to identifier; the result remains decoded and stream-aware.
+- `HttpApiEndpoint.HttpApiEndpoint.SuccessWithName` -> `effect/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Direct rename from name to identifier; the result remains decoded and stream-aware.
 
-- `HttpApiEndpoint.HttpApiEndpoint.UrlParams` -> `effect/unstable/httpapi/HttpApiEndpoint#Query`: urlParams became query; Query extracts the schema, so use Query\<Endpoint\>["Type"] for decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.UrlParams` -> `effect/httpapi/HttpApiEndpoint#Query`: urlParams became query; Query extracts the schema, so use Query\<Endpoint\>["Type"] for decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidateHeaders` -> `effect/unstable/httpapi/HttpApiEndpoint#HeadersConstraint`: Validation moved from an intersection helper to a constructor generic constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidateHeaders` -> `effect/httpapi/HttpApiEndpoint#HeadersConstraint`: Validation moved from an intersection helper to a constructor generic constraint.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ValidateParams` -> `none`: Tagged-template interpolation validation was removed; params are declared explicitly in options.params.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidatePath` -> `effect/unstable/httpapi/HttpApiEndpoint#ParamsConstraint`: path became params and validation is now a constructor constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidatePath` -> `effect/httpapi/HttpApiEndpoint#ParamsConstraint`: path became params and validation is now a constructor constraint.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidatePayload` -> `effect/unstable/httpapi/HttpApiEndpoint#PayloadConstraint`: Payload validation is now a method-sensitive constructor constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidatePayload` -> `effect/httpapi/HttpApiEndpoint#PayloadConstraint`: Payload validation is now a method-sensitive constructor constraint.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams` -> `effect/unstable/httpapi/HttpApiEndpoint#QueryConstraint`: urlParams became query and validation is now a constructor constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams` -> `effect/httpapi/HttpApiEndpoint#QueryConstraint`: urlParams became query and validation is now a constructor constraint.
 
-- `HttpApiEndpoint.PathSegment` -> `effect/unstable/http/HttpRouter#PathInput`: Path input moved to the shared router and is generalized to slash-prefixed paths or wildcard.
+- `HttpApiEndpoint.PathSegment` -> `effect/http/HttpRouter#PathInput`: Path input moved to the shared router and is generalized to slash-prefixed paths or wildcard.
 
 - `HttpApiEndpoint.TypeId` -> `none`: The endpoint type ID is private; use HttpApiEndpoint.isHttpApiEndpoint for runtime narrowing.
 
-- `HttpApiEndpoint.get` -> `effect/unstable/httpapi/HttpApiEndpoint#get`: Use get(identifier, path, options?); tagged templates and fluent schema setters were removed.
+- `HttpApiEndpoint.get` -> `effect/httpapi/HttpApiEndpoint#get`: Use get(identifier, path, options?); tagged templates and fluent schema setters were removed.
 
-- `HttpApiEndpoint.head` -> `effect/unstable/httpapi/HttpApiEndpoint#head`: Use head(identifier, path, options?); tagged templates and fluent schema setters were removed.
+- `HttpApiEndpoint.head` -> `effect/httpapi/HttpApiEndpoint#head`: Use head(identifier, path, options?); tagged templates and fluent schema setters were removed.
 
-- `HttpApiEndpoint.make` -> `effect/unstable/httpapi/HttpApiEndpoint#make`: The factory remains but now requires identifier, path, and options and applies codecs unless disabled.
+- `HttpApiEndpoint.make` -> `effect/httpapi/HttpApiEndpoint#make`: The factory remains but now requires identifier, path, and options and applies codecs unless disabled.
 
-- `HttpApiEndpoint.options` -> `effect/unstable/httpapi/HttpApiEndpoint#options`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.options` -> `effect/httpapi/HttpApiEndpoint#options`: Same HTTP method constructor with the new identifier, path, and options signature.
 
-- `HttpApiEndpoint.patch` -> `effect/unstable/httpapi/HttpApiEndpoint#patch`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.patch` -> `effect/httpapi/HttpApiEndpoint#patch`: Same HTTP method constructor with the new identifier, path, and options signature.
 
-- `HttpApiEndpoint.post` -> `effect/unstable/httpapi/HttpApiEndpoint#post`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.post` -> `effect/httpapi/HttpApiEndpoint#post`: Same HTTP method constructor with the new identifier, path, and options signature.
 
-- `HttpApiEndpoint.put` -> `effect/unstable/httpapi/HttpApiEndpoint#put`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.put` -> `effect/httpapi/HttpApiEndpoint#put`: Same HTTP method constructor with the new identifier, path, and options signature.
 
 ### `@effect/platform/HttpApiError`
 
-- `HttpApiError.Forbidden` -> `effect/unstable/httpapi/HttpApiError#ForbiddenNoContent`: Use ForbiddenNoContent to preserve the empty 403 wire schema; Forbidden now has a JSON-tagged body.
+- `HttpApiError.Forbidden` -> `effect/httpapi/HttpApiError#ForbiddenNoContent`: Use ForbiddenNoContent to preserve the empty 403 wire schema; Forbidden now has a JSON-tagged body.
 
-- `HttpApiError.HttpApiDecodeError` -> `effect/unstable/httpapi/HttpApiError#HttpApiSchemaError`: Validation now stores kind and a SchemaError cause and is a defect unless transformed by schema-error middleware.
+- `HttpApiError.HttpApiDecodeError` -> `effect/httpapi/HttpApiError#HttpApiSchemaError`: Validation now stores kind and a SchemaError cause and is a defect unless transformed by schema-error middleware.
 
 - `HttpApiError.Issue` -> `effect/SchemaIssue#Issue`: Structured failures now live at HttpApiSchemaError.cause.issue; format them explicitly when a flat external list is needed.
 
-- `HttpApiError.TypeId` -> `effect/unstable/httpapi/HttpApiError#HttpApiSchemaErrorTypeId`: The old module symbol is gone; prefer HttpApiSchemaError.is for runtime narrowing.
+- `HttpApiError.TypeId` -> `effect/httpapi/HttpApiError#HttpApiSchemaErrorTypeId`: The old module symbol is gone; prefer HttpApiSchemaError.is for runtime narrowing.
 
 ### `@effect/platform/HttpApiGroup`
 
-- `HttpApiGroup.ApiGroup` -> `effect/unstable/httpapi/HttpApiGroup#Service`: Renamed; the service field and type parameter are now identifier rather than name.
+- `HttpApiGroup.ApiGroup` -> `effect/httpapi/HttpApiGroup#Service`: Renamed; the service field and type parameter are now identifier rather than name.
 
 - `HttpApiGroup.HttpApiGroup.AddContext` -> `none`: Groups no longer carry arbitrary context. Use AddMiddleware for middleware service transformations.
 
-- `HttpApiGroup.HttpApiGroup.Any` -> `effect/unstable/httpapi/HttpApiGroup#Constraint`: Renamed widened structural constraint.
+- `HttpApiGroup.HttpApiGroup.Any` -> `effect/httpapi/HttpApiGroup#Constraint`: Renamed widened structural constraint.
 
-- `HttpApiGroup.HttpApiGroup.AnyWithProps` -> `effect/unstable/httpapi/HttpApiGroup#Top`: Renamed widened runtime-property type.
+- `HttpApiGroup.HttpApiGroup.AnyWithProps` -> `effect/httpapi/HttpApiGroup#Top`: Renamed widened runtime-property type.
 
-- `HttpApiGroup.HttpApiGroup.ClientContext` -> `effect/unstable/httpapi/HttpApiGroup#ClientServices / ErrorServicesDecode / MiddlewareClient`: Client schema services and required client middleware are separate extractors in v4.
+- `HttpApiGroup.HttpApiGroup.ClientContext` -> `effect/httpapi/HttpApiGroup#ClientServices / ErrorServicesDecode / MiddlewareClient`: Client schema services and required client middleware are separate extractors in v4.
 
 - `HttpApiGroup.HttpApiGroup.Context` -> `none`: Group error and context generics were removed; derive server requirements from the group's endpoints.
 
 - `HttpApiGroup.HttpApiGroup.ContextWithName` -> `none`: Select with WithIdentifier and derive endpoint server requirements; groups no longer have a context generic.
 
-- `HttpApiGroup.HttpApiGroup.EndpointsWithName` -> `effect/unstable/httpapi/HttpApiGroup#EndpointsWithIdentifier`: Direct rename from name to identifier.
+- `HttpApiGroup.HttpApiGroup.EndpointsWithName` -> `effect/httpapi/HttpApiGroup#EndpointsWithIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiGroup.HttpApiGroup.Error` -> `none`: Group-level errors were removed. Declare shared errors on each endpoint or through middleware.
 
-- `HttpApiGroup.HttpApiGroup.ErrorContext` -> `effect/unstable/httpapi/HttpApiGroup#ErrorServicesEncode / ErrorServicesDecode`: The closest endpoint-error aggregate splits server encoding from client decoding services.
+- `HttpApiGroup.HttpApiGroup.ErrorContext` -> `effect/httpapi/HttpApiGroup#ErrorServicesEncode / ErrorServicesDecode`: The closest endpoint-error aggregate splits server encoding from client decoding services.
 
 - `HttpApiGroup.HttpApiGroup.ErrorWithName` -> `none`: Group-level errors were removed; select with WithIdentifier and inspect Errors over the selected endpoints.
 
-- `HttpApiGroup.HttpApiGroup.Middleware` -> `effect/unstable/httpapi/HttpApiEndpoint#Middleware`: Middleware is attached to the endpoints present when group.middleware is called; extract it from group endpoints.
+- `HttpApiGroup.HttpApiGroup.Middleware` -> `effect/httpapi/HttpApiEndpoint#Middleware`: Middleware is attached to the endpoints present when group.middleware is called; extract it from group endpoints.
 
-- `HttpApiGroup.HttpApiGroup.MiddlewareWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#Middleware`: Select the group with WithIdentifier, get its endpoints, then apply the endpoint Middleware extractor.
+- `HttpApiGroup.HttpApiGroup.MiddlewareWithName` -> `effect/httpapi/HttpApiEndpoint#Middleware`: Select the group with WithIdentifier, get its endpoints, then apply the endpoint Middleware extractor.
 
-- `HttpApiGroup.HttpApiGroup.Provides` -> `effect/unstable/httpapi/HttpApiGroup#MiddlewareProvides`: Renamed; derives provided services from endpoint middleware.
+- `HttpApiGroup.HttpApiGroup.Provides` -> `effect/httpapi/HttpApiGroup#MiddlewareProvides`: Renamed; derives provided services from endpoint middleware.
 
-- `HttpApiGroup.HttpApiGroup.ToService` -> `effect/unstable/httpapi/HttpApiGroup#ToService`: Same role and now produces Service\<ApiId, Identifier\>.
+- `HttpApiGroup.HttpApiGroup.ToService` -> `effect/httpapi/HttpApiGroup#ToService`: Same role and now produces Service\<ApiId, Identifier\>.
 
-- `HttpApiGroup.HttpApiGroup.WithName` -> `effect/unstable/httpapi/HttpApiGroup#WithIdentifier`: Direct rename from name to identifier.
+- `HttpApiGroup.HttpApiGroup.WithName` -> `effect/httpapi/HttpApiGroup#WithIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiGroup.TypeId` -> `none`: The group type ID is private; use HttpApiGroup.isHttpApiGroup for runtime narrowing.
 
-- `HttpApiGroup.make` -> `effect/unstable/httpapi/HttpApiGroup#make`: The constructor remains; group error and context generics are gone and add is variadic.
+- `HttpApiGroup.make` -> `effect/httpapi/HttpApiGroup#make`: The constructor remains; group error and context generics are gone and add is variadic.
 
 ### `@effect/platform/HttpApiMiddleware`
 
-- `HttpApiMiddleware.HttpApiMiddleware` -> `effect/unstable/httpapi/HttpApiMiddleware#HttpApiMiddleware`: The model remains but now wraps the response effect and carries provided services, an error schema, and required services.
+- `HttpApiMiddleware.HttpApiMiddleware` -> `effect/httpapi/HttpApiMiddleware#HttpApiMiddleware`: The model remains but now wraps the response effect and carries provided services, an error schema, and required services.
 
-- `HttpApiMiddleware.HttpApiMiddleware.Any` -> `effect/unstable/httpapi/HttpApiMiddleware#AnyService`: Renamed widened middleware service-key shape.
+- `HttpApiMiddleware.HttpApiMiddleware.Any` -> `effect/httpapi/HttpApiMiddleware#AnyService`: Renamed widened middleware service-key shape.
 
-- `HttpApiMiddleware.HttpApiMiddleware.AnyId` -> `effect/unstable/httpapi/HttpApiMiddleware#AnyId`: Same name; metadata now includes provided and required services, error schema, client error, and client requirement.
+- `HttpApiMiddleware.HttpApiMiddleware.AnyId` -> `effect/httpapi/HttpApiMiddleware#AnyId`: Same name; metadata now includes provided and required services, error schema, client error, and client requirement.
 
-- `HttpApiMiddleware.HttpApiMiddleware.Error` -> `effect/unstable/httpapi/HttpApiMiddleware#Error`: Same name and now derives the decoded type from the configured error schema.
+- `HttpApiMiddleware.HttpApiMiddleware.Error` -> `effect/httpapi/HttpApiMiddleware#Error`: Same name and now derives the decoded type from the configured error schema.
 
-- `HttpApiMiddleware.HttpApiMiddleware.ErrorContext` -> `effect/unstable/httpapi/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
+- `HttpApiMiddleware.HttpApiMiddleware.ErrorContext` -> `effect/httpapi/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
 
 - `HttpApiMiddleware.HttpApiMiddleware.Only` -> `Extract<R, HttpApiMiddleware.AnyId>`: The helper was removed because middleware IDs are explicit; use Extract when the direct filter is still needed.
 
-- `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/unstable/httpapi/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
+- `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/httpapi/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
 
 - `HttpApiMiddleware.SecurityTypeId` -> `none`: The marker is private; use HttpApiMiddleware.isSecurity.
 
-- `HttpApiMiddleware.Tag` -> `effect/unstable/httpapi/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
+- `HttpApiMiddleware.Tag` -> `effect/httpapi/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
 
-- `HttpApiMiddleware.TagClass` -> `effect/unstable/httpapi/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
+- `HttpApiMiddleware.TagClass` -> `effect/httpapi/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
 
-- `HttpApiMiddleware.TagClass.BaseSecurity` -> `effect/unstable/httpapi/HttpApiMiddleware#ServiceClass`: Security is conditional metadata on ServiceClass; there is no separate public base interface.
+- `HttpApiMiddleware.TagClass.BaseSecurity` -> `effect/httpapi/HttpApiMiddleware#ServiceClass`: Security is conditional metadata on ServiceClass; there is no separate public base interface.
 
-- `HttpApiMiddleware.TagClass.Failure` -> `effect/unstable/httpapi/HttpApiMiddleware#Error`: failure terminology became error; apply the extractor to the middleware ID.
+- `HttpApiMiddleware.TagClass.Failure` -> `effect/httpapi/HttpApiMiddleware#Error`: failure terminology became error; apply the extractor to the middleware ID.
 
-- `HttpApiMiddleware.TagClass.FailureContext` -> `effect/unstable/httpapi/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: Failure schema services split by server encoding and client decoding direction.
+- `HttpApiMiddleware.TagClass.FailureContext` -> `effect/httpapi/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: Failure schema services split by server encoding and client decoding direction.
 
-- `HttpApiMiddleware.TagClass.FailureSchema` -> `effect/unstable/httpapi/HttpApiMiddleware#ErrorSchema`: Renamed and applied to the middleware ID rather than constructor options.
+- `HttpApiMiddleware.TagClass.FailureSchema` -> `effect/httpapi/HttpApiMiddleware#ErrorSchema`: Renamed and applied to the middleware ID rather than constructor options.
 
-- `HttpApiMiddleware.TagClass.FailureService` -> `effect/unstable/httpapi/HttpApiMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
+- `HttpApiMiddleware.TagClass.FailureService` -> `effect/httpapi/HttpApiMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
 
 - `HttpApiMiddleware.TagClass.Optional` -> `none`: Optional declaration and fallback-on-failure behavior were removed; model fallback in the wrapping middleware.
 
-- `HttpApiMiddleware.TagClass.Provides` -> `effect/unstable/httpapi/HttpApiMiddleware#Provides`: Moved to the module level and applied to the middleware ID.
+- `HttpApiMiddleware.TagClass.Provides` -> `effect/httpapi/HttpApiMiddleware#Provides`: Moved to the module level and applied to the middleware ID.
 
-- `HttpApiMiddleware.TagClassAny` -> `effect/unstable/httpapi/HttpApiMiddleware#AnyService`: Renamed widened service-key type.
+- `HttpApiMiddleware.TagClassAny` -> `effect/httpapi/HttpApiMiddleware#AnyService`: Renamed widened service-key type.
 
-- `HttpApiMiddleware.TagClassSecurityAny` -> `effect/unstable/httpapi/HttpApiMiddleware#AnyServiceSecurity`: Renamed widened security service-key type.
+- `HttpApiMiddleware.TagClassSecurityAny` -> `effect/httpapi/HttpApiMiddleware#AnyServiceSecurity`: Renamed widened security service-key type.
 
 - `HttpApiMiddleware.TypeId` -> `none`: The marker is private; use public guards and type extractors.
 
 ### `@effect/platform/HttpApiScalar`
 
-- `HttpApiScalar.layer` -> `effect/unstable/httpapi/HttpApiScalar#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
+- `HttpApiScalar.layer` -> `effect/httpapi/HttpApiScalar#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
 
-- `HttpApiScalar.layerHttpLayerRouter` -> `effect/unstable/httpapi/HttpApiScalar#layer`: The duplicate was removed. Pass options.api as the first layer argument and the remaining Scalar options second.
+- `HttpApiScalar.layerHttpLayerRouter` -> `effect/httpapi/HttpApiScalar#layer`: The duplicate was removed. Pass options.api as the first layer argument and the remaining Scalar options second.
 
-- `HttpApiScalar.layerHttpLayerRouterCdn` -> `effect/unstable/httpapi/HttpApiScalar#layerCdn`: Use the explicit-api CDN layer with path, version, and Scalar options.
+- `HttpApiScalar.layerHttpLayerRouterCdn` -> `effect/httpapi/HttpApiScalar#layerCdn`: Use the explicit-api CDN layer with path, version, and Scalar options.
 
 ### `@effect/platform/HttpApiSchema`
 
-- `HttpApiSchema.AnnotationEmptyDecodeable` -> `effect/unstable/httpapi/HttpApiSchema#asNoContent`: The public marker was removed; represent no-content decoding structurally with asNoContent({ decode }).
+- `HttpApiSchema.AnnotationEmptyDecodeable` -> `effect/httpapi/HttpApiSchema#asNoContent`: The public marker was removed; represent no-content decoding structurally with asNoContent({ decode }).
 
-- `HttpApiSchema.AnnotationEncoding` -> `effect/unstable/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asText / asUint8Array`: The key is internal; select encoding with a public combinator.
+- `HttpApiSchema.AnnotationEncoding` -> `effect/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asText / asUint8Array`: The key is internal; select encoding with a public combinator.
 
-- `HttpApiSchema.AnnotationMultipart` -> `effect/unstable/httpapi/HttpApiSchema#asMultipart`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
+- `HttpApiSchema.AnnotationMultipart` -> `effect/httpapi/HttpApiSchema#asMultipart`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
 
-- `HttpApiSchema.AnnotationMultipartStream` -> `effect/unstable/httpapi/HttpApiSchema#asMultipartStream`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
+- `HttpApiSchema.AnnotationMultipartStream` -> `effect/httpapi/HttpApiSchema#asMultipartStream`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
 
-- `HttpApiSchema.AnnotationParam` -> `effect/unstable/httpapi/HttpApiEndpoint#params`: Path names now live in the router path and schemas in endpoint option params, not schema annotations.
+- `HttpApiSchema.AnnotationParam` -> `effect/httpapi/HttpApiEndpoint#params`: Path names now live in the router path and schemas in endpoint option params, not schema annotations.
 
-- `HttpApiSchema.AnnotationStatus` -> `effect/unstable/httpapi/HttpApiSchema#status`: The public symbol was removed; apply status(code), which uses the httpApiStatus schema annotation.
+- `HttpApiSchema.AnnotationStatus` -> `effect/httpapi/HttpApiSchema#status`: The public symbol was removed; apply status(code), which uses the httpApiStatus schema annotation.
 
-- `HttpApiSchema.Empty` -> `effect/unstable/httpapi/HttpApiSchema#Empty`: The API remains and returns Schema.Void annotated with the supplied status.
+- `HttpApiSchema.Empty` -> `effect/httpapi/HttpApiSchema#Empty`: The API remains and returns Schema.Void annotated with the supplied status.
 
 - `HttpApiSchema.EmptyError` -> `effect/Schema#Error`: Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent.
 
@@ -6894,65 +7088,67 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.EmptyErrorUnifyIgnore` -> `none`: Removed with EmptyError; do not recreate the old Unify marker.
 
-- `HttpApiSchema.Encoding` -> `effect/unstable/httpapi/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as\* combinators.
+- `HttpApiSchema.Encoding` -> `effect/httpapi/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as\* combinators.
 
-- `HttpApiSchema.Multipart` -> `effect/unstable/httpapi/HttpApiSchema#asMultipart`: The type and constructor became a curried schema combinator: schema.pipe(asMultipart(options)).
+- `HttpApiSchema.Multipart` -> `effect/httpapi/HttpApiSchema#asMultipart`: The type and constructor became a curried schema combinator: schema.pipe(asMultipart(options)).
 
-- `HttpApiSchema.MultipartStream` -> `effect/unstable/httpapi/HttpApiSchema#asMultipartStream`: The type and constructor became a curried schema combinator.
+- `HttpApiSchema.MultipartStream` -> `effect/httpapi/HttpApiSchema#asMultipartStream`: The type and constructor became a curried schema combinator.
 
-- `HttpApiSchema.Text` -> `effect/unstable/httpapi/HttpApiSchema#asText`: Apply the encoding combinator to Schema.String instead of using a dedicated constructor.
+- `HttpApiSchema.Text` -> `effect/httpapi/HttpApiSchema#asText`: Apply the encoding combinator to Schema.String instead of using a dedicated constructor.
 
-- `HttpApiSchema.Uint8Array` -> `effect/unstable/httpapi/HttpApiSchema#asUint8Array`: Apply the encoding combinator to Schema.Uint8Array instead of using a dedicated constructor.
+- `HttpApiSchema.Uint8Array` -> `effect/httpapi/HttpApiSchema#asUint8Array`: Apply the encoding combinator to Schema.Uint8Array instead of using a dedicated constructor.
 
 - `HttpApiSchema.UnionUnify` -> `effect/Schema#Union`: Use Schema.Union([self, that]); for endpoint alternatives, pass the schema array directly to preserve metadata.
 
 - `HttpApiSchema.annotations` -> `effect/Schema#annotate`: Schema annotations became annotate; set httpApiStatus directly or prefer HttpApiSchema.status for status only.
 
-- `HttpApiSchema.asEmpty` -> `effect/unstable/httpapi/HttpApiSchema#asNoContent`: Use schema.pipe(asNoContent({ decode }), status(code)); status is now a separate combinator.
+- `HttpApiSchema.asEmpty` -> `effect/httpapi/HttpApiSchema#asNoContent`: Use schema.pipe(asNoContent({ decode }), status(code)); status is now a separate combinator.
 
 - `HttpApiSchema.deunionize` -> `none`: Pass schema arrays to endpoint success, error, and body alternatives so each member retains status and content type.
 
 - `HttpApiSchema.extractAnnotations` -> `none`: The internal symbol-copy helper was removed; HTTP metadata is schema-native and resolved through AST traversal.
 
-- `HttpApiSchema.getEmptyDecodeable` -> `effect/unstable/httpapi/HttpApiSchema#isNoContent`: Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement.
+- `HttpApiSchema.getEmptyDecodeable` -> `effect/httpapi/HttpApiSchema#isNoContent`: Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement.
 
-- `HttpApiSchema.getEncoding` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as\* combinators.
+- `HttpApiSchema.getEncoding` -> `effect/httpapi/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as\* combinators.
 
-- `HttpApiSchema.getMultipart` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with buffered mode; multipart limits are on the encoding value.
+- `HttpApiSchema.getMultipart` -> `effect/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with buffered mode; multipart limits are on the encoding value.
 
-- `HttpApiSchema.getMultipartStream` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with stream mode; multipart limits are on the encoding value.
+- `HttpApiSchema.getMultipartStream` -> `effect/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with stream mode; multipart limits are on the encoding value.
 
 - `HttpApiSchema.getParam` -> `none`: Param identity moved out of schema metadata; read endpoint.path and endpoint.params.
 
 - `HttpApiSchema.getStatus` -> `effect/SchemaAST#resolveAt`: Resolve the httpApiStatus annotation directly, or prefer getStatusSuccess and getStatusError for response logic.
 
-- `HttpApiSchema.getStatusError` -> `effect/unstable/httpapi/HttpApiSchema#getStatusError`: The helper remains but accepts an AST and defaults to 500.
+- `HttpApiSchema.getStatusError` -> `effect/httpapi/HttpApiSchema#getStatusError`: The helper remains but accepts an AST and defaults to 500.
 
-- `HttpApiSchema.getStatusErrorAST` -> `effect/unstable/httpapi/HttpApiSchema#getStatusError`: The AST suffix collapsed into the sole helper, which defaults to 500.
+- `HttpApiSchema.getStatusErrorAST` -> `effect/httpapi/HttpApiSchema#getStatusError`: The AST suffix collapsed into the sole helper, which defaults to 500.
 
-- `HttpApiSchema.getStatusSuccess` -> `effect/unstable/httpapi/HttpApiSchema#getStatusSuccess`: The helper remains but accepts an AST; bare Schema.Void now defaults to 200, so use Empty(204) for 204.
+- `HttpApiSchema.getStatusSuccess` -> `effect/httpapi/HttpApiSchema#getStatusSuccess`: The helper remains but accepts an AST; bare Schema.Void now defaults to 200, so use Empty(204) for 204.
 
-- `HttpApiSchema.getStatusSuccessAST` -> `effect/unstable/httpapi/HttpApiSchema#getStatusSuccess`: The AST suffix collapsed into the sole helper; bare Schema.Void no longer implies 204.
+- `HttpApiSchema.getStatusSuccessAST` -> `effect/httpapi/HttpApiSchema#getStatusSuccess`: The AST suffix collapsed into the sole helper; bare Schema.Void no longer implies 204.
 
-- `HttpApiSchema.param` -> `effect/unstable/httpapi/HttpApiEndpoint#params`: Use a literal /:name path and the matching field in endpoint constructor option params.
+- `HttpApiSchema.param` -> `effect/httpapi/HttpApiEndpoint#params`: Use a literal /:name path and the matching field in endpoint constructor option params.
 
-- `HttpApiSchema.withEncoding` -> `effect/unstable/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asUint8Array / asText`: Replace the generic kind with the matching public curried encoding combinator.
+- `HttpApiSchema.withEncoding` -> `effect/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asUint8Array / asText`: Replace the generic kind with the matching public curried encoding combinator.
 
 ### `@effect/platform/HttpApiSecurity`
 
-- `HttpApiSecurity.Bearer` -> `effect/unstable/httpapi/HttpApiSecurity#Http`: Bearer was generalized to Http with scheme Bearer; the value-level bearer singleton remains.
+- `HttpApiSecurity.Bearer` -> `effect/httpapi/HttpApiSecurity#Http`: Bearer was generalized to Http with scheme Bearer; the value-level bearer singleton remains.
+
+- `HttpApiSecurity.HttpApiSecurity.Type` -> `effect/httpapi/HttpApiSecurity#HttpApiSecurity.Type`: Unchanged after the module move; still extracts the credential type.
 
 - `HttpApiSecurity.TypeId` -> `none`: The marker is private; use the public union or specific Http, ApiKey, and Basic types.
 
-- `HttpApiSecurity.annotate` -> `effect/unstable/httpapi/HttpApiSecurity#annotate`: The combinator remains; its key is now the v4 Context.Key abstraction.
+- `HttpApiSecurity.annotate` -> `effect/httpapi/HttpApiSecurity#annotate`: The combinator remains; its key is now the v4 Context.Key abstraction.
 
-- `HttpApiSecurity.annotateContext` -> `effect/unstable/httpapi/HttpApiSecurity#annotateMerge`: Renamed; it still merges a Context into existing OpenAPI annotations.
+- `HttpApiSecurity.annotateContext` -> `effect/httpapi/HttpApiSecurity#annotateMerge`: Renamed; it still merges a Context into existing OpenAPI annotations.
 
 ### `@effect/platform/HttpApiSwagger`
 
-- `HttpApiSwagger.layer` -> `effect/unstable/httpapi/HttpApiSwagger#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
+- `HttpApiSwagger.layer` -> `effect/httpapi/HttpApiSwagger#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
 
-- `HttpApiSwagger.layerHttpLayerRouter` -> `effect/unstable/httpapi/HttpApiSwagger#layer`: The duplicate was removed. Pass options.api first and the path option second.
+- `HttpApiSwagger.layerHttpLayerRouter` -> `effect/httpapi/HttpApiSwagger#layer`: The duplicate was removed. Pass options.api first and the path option second.
 
 ### `@effect/platform/HttpApp`
 
@@ -6988,9 +7184,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpBody.Uint8Array` -> `HttpBody.Uint8Array`: Retained with the same fields and tag, but v4 exports a class.
 
+- `HttpBody.empty` -> `HttpBody.empty`: Retained as the singleton Empty body.
+
 - `HttpBody.file` -> `HttpBody.file`: Retained; bufferSize was replaced by numeric chunkSize. Offset and bytesToRead accept ByteSize.Input. Invalid ranges and a final EOF-clamped content length above Number.MAX\_SAFE\_INTEGER fail with PlatformError / BadArgument.
 
 - `HttpBody.fileInfo` -> `HttpBody.fileFromInfo`: Renamed; it uses supplied File.Info with ByteSize size metadata and requires FileSystem. Offset and bytesToRead accept ByteSize.Input, while chunkSize is numeric. Invalid ranges and a final EOF-clamped content length above Number.MAX\_SAFE\_INTEGER fail with PlatformError / BadArgument.
+
+- `HttpBody.formData` -> `HttpBody.formData`: Retained with the same Web FormData input.
+
+- `HttpBody.json` -> `HttpBody.json`: Retained as the safe Effect-returning JSON serializer.
+
+- `HttpBody.raw` -> `HttpBody.raw`: Retained with optional contentType and contentLength metadata.
+
+- `HttpBody.stream` -> `HttpBody.stream`: Retained with the same byte stream and optional content metadata.
+
+- `HttpBody.text` -> `HttpBody.text`: Retained; it UTF-8 encodes and defaults to text/plain.
+
+- `HttpBody.uint8Array` -> `HttpBody.uint8Array`: Retained with the same bytes and optional content type.
 
 - `HttpBody.unsafeJson` -> `HttpBody.jsonUnsafe`: Renamed to put Unsafe last; serialization failures still throw.
 
@@ -7022,9 +7232,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpClient.retry` -> `HttpClient.retry`: Retained; the Schedule error channel is included in the resulting client error type.
 
-- `HttpClient.tap` -> `effect/unstable/http/HttpClient#tap`: Moved to the v4 HTTP module with the same response-effect callback and client error/service widening.
+- `HttpClient.tap` -> `effect/http/HttpClient#tap`: Moved to the v4 HTTP module with the same response-effect callback and client error/service widening.
 
-- `HttpClient.transform` -> `effect/unstable/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
+- `HttpClient.tapError`: TODO: needs guidance
+
+- `HttpClient.transform` -> `effect/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
 
 - `HttpClient.withSpanNameGenerator` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.SpanNameGenerator, f))`: The convenience combinator was removed; provide the reference around response effects.
 
@@ -7056,7 +7268,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpClientRequest.make` -> `HttpClientRequest.make`: Retained; all methods now accept Options.NoUrl without the GET/HEAD body restriction.
 
+- `HttpClientRequest.modify` -> `HttpClientRequest.modify`: Retained with data-first and data-last overloads.
+
+- `HttpClientRequest.options` -> `HttpClientRequest.options`: Retained with Options.NoUrl.
+
+- `HttpClientRequest.patch` -> `HttpClientRequest.patch`: Retained with Options.NoUrl.
+
+- `HttpClientRequest.post` -> `HttpClientRequest.post`: Retained with Options.NoUrl.
+
+- `HttpClientRequest.put` -> `HttpClientRequest.put`: Retained with Options.NoUrl.
+
 - `HttpClientRequest.setBody` -> `HttpClientRequest.setBody`: Retained and still synchronizes body content metadata into headers.
+
+- `HttpClientRequest.setHeader` -> `HttpClientRequest.setHeader`: Retained with data-first and data-last overloads.
+
+- `HttpClientRequest.setHeaders` -> `HttpClientRequest.setHeaders`: Retained with data-first and data-last overloads.
 
 - `HttpClientRequest.toUrl` -> `HttpClientRequest.toUrl`: Retained and still returns Option\<URL\>.
 
@@ -7092,9 +7318,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpLayerRouter`
 
-- `HttpLayerRouter.FindMyWay.PathInput` -> `FindMyWay.PathInput`: Import FindMyWay from effect/unstable/http.
+- `HttpLayerRouter.FindMyWay.PathInput` -> `FindMyWay.PathInput`: Import FindMyWay from effect/http.
 
-- `HttpLayerRouter.FindMyWay.make` -> `FindMyWay.make`: Import FindMyWay from effect/unstable/http.
+- `HttpLayerRouter.FindMyWay.make` -> `FindMyWay.make`: Import FindMyWay from effect/http.
 
 - `HttpLayerRouter.MiddlewareTypeId` -> `none`: The middleware type id is internal in v4; use HttpRouter.Middleware.
 
@@ -7120,7 +7346,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.addAll` -> `HttpRouter.addAll`: Moved to the consolidated HttpRouter; it still registers route values through a Layer and supports a prefix option.
 
-- `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/unstable/httpapi.
+- `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/httpapi.
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
 
@@ -7138,6 +7364,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.toWebHandler` -> `HttpRouter.toWebHandler`: Moved to the consolidated router for building a Fetch handler and disposer.
 
+### `@effect/platform/HttpMethod`
+
+- `HttpMethod.all` -> `HttpMethod.all`: Retained as the readonly set of all supported methods.
+
 ### `@effect/platform/HttpMiddleware`
 
 - `HttpMiddleware.SpanNameGenerator` -> `HttpMiddleware.SpanNameGenerator`: The branded interface became a Context.Reference containing the generator.
@@ -7147,6 +7377,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpMiddleware.currentTracerDisabledWhen` -> `HttpMiddleware.TracerDisabledWhen`: The FiberRef became a Context.Reference containing the request predicate.
 
 - `HttpMiddleware.loggerDisabled` -> `HttpMiddleware.withLoggerDisabled`: The FiberRef was removed; locally wrap an effect or use HttpRouter.disableLogger.
+
+- `HttpMiddleware.make` -> `HttpMiddleware.make`: Retained as the precise middleware constructor.
 
 - `HttpMiddleware.withSpanNameGenerator` -> `Layer.provide(layer, Layer.succeed(HttpMiddleware.SpanNameGenerator)(f))`: Provide the SpanNameGenerator reference to the target layer.
 
@@ -7175,6 +7407,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpRouter.HttpRouter.DefaultServices` -> `none`: The custom tagged-router default-service bundle was removed.
 
 - `HttpRouter.HttpRouter.Service` -> `HttpRouter.HttpRouter`: Use the consolidated router service interface.
+
+- `HttpRouter.PathInput` -> `HttpRouter.PathInput`: Retained as an absolute slash path or wildcard.
 
 - `HttpRouter.Route.Middleware` -> `Effect.Effect`: Spell the route response Effect directly, or use HttpRouter.middleware for transforms.
 
@@ -7236,17 +7470,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpServer`
 
-- `HttpServer.Address` -> `effect/unstable/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
+- `HttpServer.Address` -> `effect/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
 
 - `HttpServer.HttpServer` -> `HttpServer.HttpServer`: The interface and tag became one Context.Service class; use its Service member for implementations.
 
 - `HttpServer.ServeOptions` -> `none`: The unused respond option model was removed with no shared v4 counterpart.
 
-- `HttpServer.TcpAddress` -> `effect/unstable/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
+- `HttpServer.TcpAddress` -> `effect/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
 
 - `HttpServer.TypeId` -> `none`: The public TypeId was removed; HttpServer is now a Context.Service class.
 
-- `HttpServer.UnixAddress` -> `effect/unstable/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
+- `HttpServer.UnixAddress` -> `effect/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
 - `HttpServer.addressWith` -> `HttpServer.HttpServer.use(({ address }) => effect(address))`: The accessor was removed; read the service and pass its Address to the callback.
 
@@ -7256,7 +7490,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServer.make` -> `HttpServer.make`: Retained; it returns the Context.Service implementation. Supply a NetAddress.SocketAddress for address, using NetAddress.inetAddressUnsafe for a parsed IP and port or NetAddress.unixPathAddress for a Unix path. Use NetAddress.inetAddress to validate the port through Result instead.
 
-- `HttpServer.serve` -> `effect/unstable/http/HttpServer#serve`: Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model.
+- `HttpServer.serve` -> `effect/http/HttpServer#serve`: Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model.
 
 ### `@effect/platform/HttpServerError`
 
@@ -7298,15 +7532,31 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServerResponse.TypeId` -> `HttpServerResponse.isHttpServerResponse`: The response brand is private in v4; use the public runtime refinement.
 
+- `HttpServerResponse.empty` -> `HttpServerResponse.empty`: Retained with default status 204; responses are no longer Effects or Respondables.
+
 - `HttpServerResponse.expireCookie` -> `HttpServerResponse.expireCookie`: Now effectful and safe; use expireCookieUnsafe for synchronous throwing behavior.
 
 - `HttpServerResponse.file` -> `HttpServerResponse.file`: Retained; offset and bytesToRead accept ByteSize.Input, while chunkSize uses number. Path-backed responses validate ranges and clamp content length to the available bytes.
 
 - `HttpServerResponse.fileWeb` -> `HttpServerResponse.fileWeb`: Web File offset, bytesToRead, and chunkSize options use number, unlike path-backed ByteSize.Input ranges.
 
+- `HttpServerResponse.formData` -> `HttpServerResponse.formData`: Moved unchanged.
+
+- `HttpServerResponse.fromWeb` -> `HttpServerResponse.fromWeb`: Retained; Set-Cookie headers become Cookies and Web bodies become stream bodies.
+
 - `HttpServerResponse.isServerResponse` -> `HttpServerResponse.isHttpServerResponse`: Renamed.
 
+- `HttpServerResponse.json` -> `HttpServerResponse.json`: Retained as the safe effectful JSON constructor.
+
+- `HttpServerResponse.raw` -> `HttpServerResponse.raw`: Moved unchanged.
+
+- `HttpServerResponse.setBody` -> `HttpServerResponse.setBody`: Retained and reflects body content metadata in response headers.
+
 - `HttpServerResponse.setCookie` -> `HttpServerResponse.setCookie`: Retained as the safe effectful cookie setter.
+
+- `HttpServerResponse.setHeader` -> `HttpServerResponse.setHeader`: Retained with data-first and data-last overloads.
+
+- `HttpServerResponse.setHeaders` -> `HttpServerResponse.setHeaders`: Retained with data-first and data-last overloads.
 
 - `HttpServerResponse.stream` -> `HttpServerResponse.stream`: Retained; v4 Stream no longer has a service type parameter.
 
@@ -7322,9 +7572,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServerResponse.unsafeSetCookies` -> `HttpServerResponse.setCookiesUnsafe`: Renamed to put Unsafe last; invalid cookies still throw.
 
+- `HttpServerResponse.urlParams` -> `HttpServerResponse.urlParams`: Retained and widened to accept UrlParams.Input.
+
 ### `@effect/platform/KeyValueStore`
 
-- `KeyValueStore.KeyValueStore` -> `KeyValueStore.KeyValueStore`: The service moved to effect/unstable/persistence/KeyValueStore; missing values now use undefined and operations fail with KeyValueStoreError.
+- `KeyValueStore.KeyValueStore` -> `KeyValueStore.KeyValueStore`: The service moved to effect/persistence/KeyValueStore; missing values now use undefined and operations fail with KeyValueStoreError.
 
 - `KeyValueStore.KeyValueStore.AnyStore` -> `KeyValueStore.KeyValueStore | KeyValueStore.SchemaStore<Schema.Constraint>`: The convenience namespace alias was removed; write the store union explicitly when needed.
 
@@ -7332,7 +7584,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `KeyValueStore.TypeId` -> `none`: The KeyValueStore runtime marker is internal in v4; use the service and interface.
 
+- `KeyValueStore.layerMemory` -> `KeyValueStore.layerMemory`: The in-memory layer remains in the moved module.
+
 - `KeyValueStore.layerSchema` -> `KeyValueStore.toSchemaStore`: Schema stores are now derived with toSchemaStore; define the desired Context.Service and layer explicitly.
+
+- `KeyValueStore.layerStorage` -> `KeyValueStore.layerStorage`: The Web Storage layer remains in the moved module.
 
 - `KeyValueStore.make` -> `KeyValueStore.make`: The constructor remains in the moved module with v4 MakeOptions.
 
@@ -7374,9 +7630,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.TypeId` -> `typeof Multipart.TypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
-- `Multipart.makeChannel` -> `effect/unstable/http/Multipart#makeChannel`: The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays.
+- `Multipart.isField` -> `Multipart.isField`: The guard remains in effect/http/Multipart.
 
-- `Multipart.schemaJson` -> `Multipart.schemaJson`: The JSON-field decoder remains in effect/unstable/http/Multipart and uses v4 Schema constraints.
+- `Multipart.isFile` -> `Multipart.isFile`: The guard remains in effect/http/Multipart.
+
+- `Multipart.isPart` -> `Multipart.isPart`: The guard remains in effect/http/Multipart.
+
+- `Multipart.makeChannel` -> `effect/http/Multipart#makeChannel`: The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays.
+
+- `Multipart.schemaJson` -> `Multipart.schemaJson`: The JSON-field decoder remains in effect/http/Multipart and uses v4 Schema constraints.
 
 - `Multipart.withFieldMimeTypes` -> `Effect.provideService(Multipart.FieldMimeTypes, mimeTypes)`: Provide the v4 Context.Reference around the effect.
 
@@ -7400,9 +7662,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Ndjson.NdjsonOptions` -> `{ readonly ignoreEmptyLines?: boolean }`: The standalone options interface was removed; decoding and duplex APIs accept this inline shape.
 
-- `Ndjson.duplex` -> `Ndjson.duplex`: The API moved to effect/unstable/encoding/Ndjson.
+- `Ndjson.duplex` -> `Ndjson.duplex`: The API moved to effect/encoding/Ndjson.
 
-- `Ndjson.duplexSchema` -> `Ndjson.duplexSchema`: The API moved to effect/unstable/encoding/Ndjson and uses v4 Schema constraints.
+- `Ndjson.duplexSchema` -> `Ndjson.duplexSchema`: The API moved to effect/encoding/Ndjson and uses v4 Schema constraints.
 
 - `Ndjson.pack` -> `Ndjson.encode`: The NDJSON channel constructor was renamed from pack to encode.
 
@@ -7424,11 +7686,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenApi.AdditionalPropertiesStrategy` -> `none`: OpenApi.fromApi no longer accepts generation options; standalone JSON Schema generation has a separate additionalProperties option.
 
-- `OpenApi.Exclude` -> `effect/unstable/httpapi/OpenApi#Exclude`: Same annotation key and default; it is now a Context.Reference value.
+- `OpenApi.Exclude` -> `effect/httpapi/OpenApi#Exclude`: Same annotation key and default; it is now a Context.Reference value.
 
 - `OpenApi.OpenApiSpecContentType` -> `string`: The closed media-type union was removed so custom and streaming media types are supported.
 
-- `OpenApi.fromApi` -> `effect/unstable/httpapi/OpenApi#fromApi`: The operation remains and returns OpenAPI 3.1, but the signature is now only fromApi(api).
+- `OpenApi.Title` -> `effect/httpapi/OpenApi#Title`: Same annotation role, now implemented as a v4 Context.Service.
+
+- `OpenApi.annotations` -> `effect/httpapi/OpenApi#annotations`: Same annotation-context helper after the module move.
+
+- `OpenApi.fromApi` -> `effect/httpapi/OpenApi#fromApi`: The operation remains and returns OpenAPI 3.1, but the signature is now only fromApi(api).
 
 ### `@effect/platform/OpenApiJsonSchema`
 
@@ -7500,41 +7766,43 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Socket.SocketError` -> `Socket.SocketError`: The old union became a tagged wrapper around SocketReadError, SocketWriteError, SocketOpenError, or SocketCloseError.
 
-- `Socket.SocketErrorTypeId` -> `Socket.SocketErrorTypeId`: The error marker remains in effect/unstable/socket/Socket.
+- `Socket.SocketErrorTypeId` -> `Socket.SocketErrorTypeId`: The error marker remains in effect/socket/Socket.
 
 - `Socket.SocketGenericError` -> `Socket.SocketReadError | Socket.SocketWriteError | Socket.SocketOpenError`: The generic reason discriminator was replaced by dedicated read, write, and open error classes.
 
 - `Socket.TypeId` -> `typeof Socket.TypeId`: The socket marker remains exported, but the separate type alias was removed.
 
-- `Socket.WebSocket` -> `Socket.WebSocket`: The opaque service moved to effect/unstable/socket/Socket and is now a Context.Service class for globalThis.WebSocket.
+- `Socket.WebSocket` -> `Socket.WebSocket`: The opaque service moved to effect/socket/Socket and is now a Context.Service class for globalThis.WebSocket.
 
-- `Socket.WebSocketConstructor` -> `Socket.WebSocketConstructor`: The service moved to effect/unstable/socket/Socket and is now a Context.Service class.
+- `Socket.WebSocketConstructor` -> `Socket.WebSocketConstructor`: The service moved to effect/socket/Socket and is now a Context.Service class.
 
 - `Socket.currentSendQueueCapacity` -> `none`: The send queue was removed. The v4 Socket is pull-based: acquire socket.reader in a scope and pull frame batches; writes apply the transport's native backpressure.
 
 - `Socket.defaultCloseCodeIsError` -> `none`: Sockets no longer classify close codes; every close fails the reader's pull with a SocketError wrapping SocketCloseError. Consumers that treat a close as normal catch the error.
 
-- `Socket.fromTransformStream` -> `Socket.fromTransformStream`: The constructor remains in effect/unstable/socket/Socket but drops closeCodeIsError; every close fails the reader's pull with a SocketError wrapping SocketCloseError.
+- `Socket.fromTransformStream` -> `Socket.fromTransformStream`: The constructor remains in effect/socket/Socket but drops closeCodeIsError; every close fails the reader's pull with a SocketError wrapping SocketCloseError.
 
-- `Socket.layerWebSocket` -> `Socket.layerWebSocket`: The constructor remains in effect/unstable/socket/Socket; its URL may now also be an Effect.
+- `Socket.layerWebSocket` -> `Socket.layerWebSocket`: The constructor remains in effect/socket/Socket; its URL may now also be an Effect.
 
 - `Socket.toChannelMap` -> `none`: The v4 Socket read side is an Effect that never completes via Cause.Done; map frames by acquiring Socket.readerBytes or Socket.readerString, or Effect.map the reader from socket.reader, and use Socket.toChannel or Socket.toChannelString for duplex channels.
 
 ### `@effect/platform/SocketServer`
 
-- `SocketServer.Address` -> `effect/unstable/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
+- `SocketServer.Address` -> `effect/net/NetAddress#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
 
-- `SocketServer.ErrorTypeId` -> `SocketServer.ErrorTypeId`: The API moved to effect/unstable/socket/SocketServer and retains this name.
+- `SocketServer.ErrorTypeId` -> `SocketServer.ErrorTypeId`: The API moved to effect/socket/SocketServer and retains this name.
 
-- `SocketServer.TcpAddress` -> `effect/unstable/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
+- `SocketServer.TcpAddress` -> `effect/net/NetAddress#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
 
-- `SocketServer.UnixAddress` -> `effect/unstable/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
+- `SocketServer.UnixAddress` -> `effect/net/NetAddress#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
 ### `@effect/platform/Template`
 
-- `Template.Interpolated.Context` -> `Template.Interpolated.Context`: The API moved to effect/unstable/http/Template; v4 interpolation types also account for Effect values.
+- `Template.Interpolated.Context` -> `Template.Interpolated.Context`: The API moved to effect/http/Template; v4 interpolation types also account for Effect values.
 
-- `Template.Interpolated.Error` -> `Template.Interpolated.Error`: The API moved to effect/unstable/http/Template; v4 interpolation types also account for Effect values.
+- `Template.Interpolated.Error` -> `Template.Interpolated.Error`: The API moved to effect/http/Template; v4 interpolation types also account for Effect values.
+
+- `Template.make` -> `Template.make`: The API moved to effect/http/Template; v4 interpolation types also account for Effect values.
 
 ### `@effect/platform/Terminal`
 
@@ -7548,7 +7816,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Transferable.Uint8Array` -> `Transferable.Uint8Array`: The transferable Uint8Array schema remains in the moved module.
 
-- `Transferable.schema` -> `Transferable.schema`: The schema wrapper moved to effect/unstable/workers/Transferable and uses the v4 Schema model.
+- `Transferable.schema` -> `Transferable.schema`: The schema wrapper moved to effect/workers/Transferable and uses the v4 Schema model.
 
 - `Transferable.unsafeMakeCollector` -> `Transferable.makeCollectorUnsafe`: The unsafe collector constructor was renamed.
 
@@ -7558,15 +7826,27 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Url.setUrlParams` -> `Url.setUrlParams`: Retained and widened to accept UrlParams.Input.
 
+- `Url.urlParams` -> `Url.urlParams`: Retained and returns the v4 UrlParams wrapper.
+
 ### `@effect/platform/UrlParams`
 
 - `UrlParams.CoercibleRecord` -> `UrlParams.CoercibleRecord<A>`: The recursive interface became a generic mapped type preserving the input shape.
 
 - `UrlParams.Input` -> `UrlParams.Input`: Retained and broadened to include UrlParams itself.
 
-- `UrlParams.UrlParams` -> `UrlParams.UrlParams`: Import UrlParams from effect/unstable/http. It is now a branded iterable object with a params field rather than a ReadonlyArray; construct it with UrlParams.make or UrlParams.fromInput.
+- `UrlParams.UrlParams` -> `UrlParams.UrlParams`: Import UrlParams from effect/http. It is now a branded iterable object with a params field rather than a ReadonlyArray; construct it with UrlParams.make or UrlParams.fromInput.
+
+- `UrlParams.append` -> `UrlParams.append`: Retained and returns the immutable UrlParams wrapper.
+
+- `UrlParams.appendAll` -> `UrlParams.appendAll`: Retained and preserves existing parameters.
+
+- `UrlParams.empty` -> `UrlParams.empty`: Now a branded iterable object with params rather than a ReadonlyArray.
+
+- `UrlParams.fromInput` -> `UrlParams.fromInput`: Retained and now also accepts an existing UrlParams.
 
 - `UrlParams.makeUrl` -> `Url.make`: Moved to Url, returns Result, and takes string | undefined for the hash.
+
+- `UrlParams.remove` -> `UrlParams.remove`: Retained and removes every value for the key.
 
 - `UrlParams.schemaFromSelf` -> `Schema.UrlParams`: The declaration schema for the v4 wrapper moved to effect/Schema.
 
@@ -7579,6 +7859,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `UrlParams.schemaRecord` -> `Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema))`: RecordFromUrlParams is a base codec in effect/Schema; compose it with the target schema.
 
 - `UrlParams.schemaStruct` -> `Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema), Schema.decodeEffect)`: Compose the record codec from effect/Schema with the target schema and decode it.
+
+- `UrlParams.set` -> `UrlParams.set`: Retained and replaces all existing values for the key.
+
+- `UrlParams.setAll` -> `UrlParams.setAll`: Retained; supplied keys replace existing values and other keys remain.
 
 - `UrlParams.toString` -> `UrlParams.toString`: Retained and broadened to accept any UrlParams.Input.
 
@@ -7598,7 +7882,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Worker.SerializedWorkerPool.Options` -> `Parameters<typeof RpcClient.makeProtocolWorker>[0]`: Pool sizing options moved to the worker RPC protocol; initial messages are provided separately with RpcWorker.layerInitialMessage.
 
-- `Worker.Worker` -> `Worker.Worker`: The name remains in effect/unstable/workers/Worker, but it is now the low-level send/run abstraction rather than execute/executeEffect.
+- `Worker.Worker` -> `Worker.Worker`: The name remains in effect/workers/Worker, but it is now the low-level send/run abstraction rather than execute/executeEffect.
 
 - `Worker.Worker.Options` -> `Worker.Worker["run"] options`: Encoding moved to RPC schemas; the low-level run operation only accepts an optional onSpawn effect.
 
@@ -7674,43 +7958,45 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/rpc/Rpc`
 
-- `Rpc.AddError` -> `effect/unstable/rpc/Rpc#AddError`: Retained; the added error must now be a Schema.Top and the resulting RPC also preserves its explicit service requirements.
+- `Rpc.AddError` -> `effect/rpc/Rpc#AddError`: Retained; the added error must now be a Schema.Top and the resulting RPC also preserves its explicit service requirements.
 
-- `Rpc.AddMiddleware` -> `effect/unstable/rpc/Rpc#AddMiddleware`: Retained; middleware is now an RpcMiddleware.AnyService and its provides/requires metadata updates the RPC service requirements.
+- `Rpc.AddMiddleware` -> `effect/rpc/Rpc#AddMiddleware`: Retained; middleware is now an RpcMiddleware.AnyService and its provides/requires metadata updates the RPC service requirements.
 
-- `Rpc.Any` -> `effect/unstable/rpc/Rpc#Any`: Retained as the erased RPC shape; use AnyWithProps when schema and middleware fields are required.
+- `Rpc.Any` -> `effect/rpc/Rpc#Any`: Retained as the erased RPC shape; use AnyWithProps when schema and middleware fields are required.
 
 - `Rpc.AnySchema` -> `Schema.Top`: The RPC-specific erased schema alias was removed; use the v4 top schema constraint.
 
 - `Rpc.AnyTaggedRequestSchema` -> `none`: RpcGroup no longer converts Schema.TaggedRequest classes into RPCs; declare the contract explicitly with Rpc.make.
 
-- `Rpc.Context` -> `effect/unstable/rpc/Rpc#Services`: Schema Context became decoding and encoding services; use Services, or ServicesClient / ServicesServer at the corresponding boundary.
+- `Rpc.Context` -> `effect/rpc/Rpc#Services`: Schema Context became decoding and encoding services; use Services, or ServicesClient / ServicesServer at the corresponding boundary.
+
+- `Rpc.Error` -> `effect/rpc/Rpc#Error`: Retained; it includes decoded errors contributed by attached middleware.
 
 - `Rpc.ErrorEncoded` -> `Rpc.ErrorSchema<R>["Encoded"]`: The alias was removed; index the v4 error schema's Encoded member directly.
 
 - `Rpc.ErrorExitEncoded` -> `Rpc.ErrorExitSchema<R>["Encoded"]`: Use the new exit error schema, which includes stream and middleware errors, then select its Encoded member.
 
-- `Rpc.ErrorSchema` -> `effect/unstable/rpc/Rpc#ErrorSchema`: Retained; middleware errors now come from each service's error metadata.
+- `Rpc.ErrorSchema` -> `effect/rpc/Rpc#ErrorSchema`: Retained; middleware errors now come from each service's error metadata.
 
-- `Rpc.Handler` -> `effect/unstable/rpc/Rpc#Handler`: Retained; handler metadata now supplies ServerClient, RequestId, headers, and the concrete RPC.
+- `Rpc.Handler` -> `effect/rpc/Rpc#Handler`: Retained; handler metadata now supplies ServerClient, RequestId, headers, and the concrete RPC.
 
-- `Rpc.Middleware` -> `effect/unstable/rpc/Rpc#Middleware`: Retained and extracts Context.Service identifiers from the attached middleware services.
+- `Rpc.Middleware` -> `effect/rpc/Rpc#Middleware`: Retained and extracts Context.Service identifiers from the attached middleware services.
 
-- `Rpc.MiddlewareClient` -> `effect/unstable/rpc/Rpc#MiddlewareClient`: Retained; required client middleware is derived from services configured with requiredForClient.
+- `Rpc.MiddlewareClient` -> `effect/rpc/Rpc#MiddlewareClient`: Retained; required client middleware is derived from services configured with requiredForClient.
 
-- `Rpc.Payload` -> `effect/unstable/rpc/Rpc#Payload`: Retained as the decoded payload type; use PayloadConstructor for the input accepted by generated clients.
+- `Rpc.Payload` -> `effect/rpc/Rpc#Payload`: Retained as the decoded payload type; use PayloadConstructor for the input accepted by generated clients.
 
-- `Rpc.Success` -> `effect/unstable/rpc/Rpc#Success`: Retained as the decoded success type.
+- `Rpc.Success` -> `effect/rpc/Rpc#Success`: Retained as the decoded success type.
 
 - `Rpc.SuccessChunkEncoded` -> `Rpc.SuccessExitSchema<R>["Encoded"]`: The alias was removed; for a streaming RPC the exit success schema is the stream element schema.
 
-- `Rpc.SuccessEncoded` -> `effect/unstable/rpc/Rpc#SuccessEncoded`: Retained after the module move and now accounts for the RPC's explicit service-requirement parameter.
+- `Rpc.SuccessEncoded` -> `effect/rpc/Rpc#SuccessEncoded`: Retained after the module move and now accounts for the RPC's explicit service-requirement parameter.
 
 - `Rpc.SuccessExitEncoded` -> `Rpc.SuccessExitSchema<R>["Encoded"]`: Use the new exit success schema and select its Encoded member; streaming RPC exits use the element schema separately from the terminal void exit.
 
-- `Rpc.SuccessSchema` -> `effect/unstable/rpc/Rpc#SuccessSchema`: Retained and uses the v4 Schema.Top constraint.
+- `Rpc.SuccessSchema` -> `effect/rpc/Rpc#SuccessSchema`: Retained and uses the v4 Schema.Top constraint.
 
-- `Rpc.Tag` -> `effect/unstable/rpc/Rpc#Tag`: Retained and also accounts for the v4 RPC service-requirement parameter.
+- `Rpc.Tag` -> `effect/rpc/Rpc#Tag`: Retained and also accounts for the v4 RPC service-requirement parameter.
 
 - `Rpc.TypeId` -> `none`: The RPC marker is private in v4; use Rpc.isRpc for runtime checks and Rpc.Any for type constraints.
 
@@ -7718,23 +8004,31 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Rpc.fromTaggedRequest` -> `Rpc.make`: Automatic TaggedRequest conversion was removed; pass the tag, payload, success, and error schemas explicitly to Rpc.make.
 
-- `Rpc.make` -> `effect/unstable/rpc/Rpc#make`: Retained; schemas use v4 Schema.Top constraints and the defect option accepts Rpc.DefectSchema.
+- `Rpc.make` -> `effect/rpc/Rpc#make`: Retained; schemas use v4 Schema.Top constraints and the defect option accepts Rpc.DefectSchema.
 
-- `Rpc.wrap` -> `effect/unstable/rpc/Rpc#wrap`: Retained after the module move; it still applies fork and uninterruptible handler options, while the return type is now uniformly Rpc.Wrapper.
+- `Rpc.wrap` -> `effect/rpc/Rpc#wrap`: Retained after the module move; it still applies fork and uninterruptible handler options, while the return type is now uniformly Rpc.Wrapper.
 
 ### `@effect/rpc/RpcClient`
 
-- `RpcClient.Protocol` -> `effect/unstable/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
+- `RpcClient.FromGroup`: TODO: needs guidance
 
-- `RpcClient.RpcClient.From` -> `effect/unstable/rpc/RpcClient#RpcClient.From`: Generated clients now preserve full RPC tags as property names, remove the Prefix type parameter, and expose streaming results through the asQueue option instead of asMailbox.
+- `RpcClient.Protocol` -> `effect/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
+
+- `RpcClient.RpcClient.From` -> `effect/rpc/RpcClient#RpcClient.From`: Generated clients now preserve full RPC tags as property names, remove the Prefix type parameter, and expose streaming results through the asQueue option instead of asMailbox.
 
 - `RpcClient.RpcClient.NonPrefixed` -> `none`: The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property.
 
 - `RpcClient.RpcClient.Prefixes` -> `none`: Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property.
 
-- `RpcClient.currentHeaders` -> `effect/unstable/rpc/RpcClient#CurrentHeaders`: Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHeaders for scoped overrides.
+- `RpcClient.currentHeaders` -> `effect/rpc/RpcClient#CurrentHeaders`: Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHeaders for scoped overrides.
 
-- `RpcClient.makeProtocolHttp` -> `effect/unstable/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
+- `RpcClient.layerProtocolHttp` -> `effect/rpc/RpcClient#layerProtocolHttp`: Retained; it provides the v4 Protocol from HttpClient and RpcSerialization.
+
+- `RpcClient.make` -> `effect/rpc/RpcClient#make`: Retained; generated calls can now take per-request headers and Context, and include RpcClientError in their error channel.
+
+- `RpcClient.makeNoSerialization`: TODO: needs guidance
+
+- `RpcClient.makeProtocolHttp` -> `effect/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
 
 - `RpcClient.withHeadersEffect` -> `Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))`: withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect.
 
@@ -7744,115 +8038,127 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/rpc/RpcGroup`
 
-- `RpcGroup.Any` -> `effect/unstable/rpc/RpcGroup#Any`: Moved unchanged as the erased RpcGroup constraint.
+- `RpcGroup.Any` -> `effect/rpc/RpcGroup#Any`: Moved unchanged as the erased RpcGroup constraint.
 
-- `RpcGroup.HandlerContext` -> `effect/unstable/rpc/RpcGroup#HandlerServices`: Renamed for v4 service terminology and now includes explicit RPC requirements after removing middleware-provided services.
+- `RpcGroup.HandlerContext` -> `effect/rpc/RpcGroup#HandlerServices`: Renamed for v4 service terminology and now includes explicit RPC requirements after removing middleware-provided services.
 
-- `RpcGroup.HandlersContext` -> `effect/unstable/rpc/RpcGroup#HandlersServices`: Renamed; it unions HandlerServices across the handler object.
+- `RpcGroup.HandlersContext` -> `effect/rpc/RpcGroup#HandlersServices`: Renamed; it unions HandlerServices across the handler object.
+
+- `RpcGroup.HandlersFrom`: TODO: needs guidance
 
 - `RpcGroup.TypeId` -> `none`: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
 
+- `RpcGroup.make` -> `effect/rpc/RpcGroup#make`: Retained for explicit Rpc definitions; passing TaggedRequest schema classes for implicit conversion is no longer supported.
+
 ### `@effect/rpc/RpcMessage`
 
-- `RpcMessage.FromServerEncoded` -> `effect/unstable/rpc/RpcMessage#FromServerEncoded`: The union is retained and now also includes RequestEncoded for server-originated requests and notifications. Handle \_tag: "Request" when matching exhaustively; isNotification identifies notifications.
+- `RpcMessage.FromClientEncoded`: TODO: needs guidance
 
-- `RpcMessage.RequestId` -> `effect/unstable/rpc/RpcMessage#RequestId`: Request ids are now branded string or number values; convert bigint ids before calling the retained RequestId constructor.
+- `RpcMessage.FromServerEncoded` -> `effect/rpc/RpcMessage#FromServerEncoded`: The union is retained and now also includes RequestEncoded for server-originated requests and notifications. Handle \_tag: "Request" when matching exhaustively; isNotification identifies notifications.
 
-- `RpcMessage.RequestIdTypeId` -> `effect/unstable/rpc/RpcMessage#RequestId`: The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand.
+- `RpcMessage.RequestId` -> `effect/rpc/RpcMessage#RequestId`: Request ids are now branded string or number values; convert bigint ids before calling the retained RequestId constructor.
+
+- `RpcMessage.RequestIdTypeId` -> `effect/rpc/RpcMessage#RequestId`: The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand.
 
 ### `@effect/rpc/RpcMiddleware`
 
-- `RpcMiddleware.RpcMiddlewareWrap` -> `effect/unstable/rpc/RpcMiddleware#RpcMiddleware`: The wrap and non-wrap shapes were unified; implement a function receiving the handler effect and request options.
+- `RpcMiddleware.ForClient` -> `effect/rpc/RpcMiddleware#ForClient`: Retained as the marker requirement provided by a client middleware layer.
 
-- `RpcMiddleware.Tag` -> `effect/unstable/rpc/RpcMiddleware#Service`: Renamed and redesigned with explicit requires, provides, clientError, error, and requiredForClient configuration.
+- `RpcMiddleware.RpcMiddlewareWrap` -> `effect/rpc/RpcMiddleware#RpcMiddleware`: The wrap and non-wrap shapes were unified; implement a function receiving the handler effect and request options.
 
-- `RpcMiddleware.TagClass` -> `effect/unstable/rpc/RpcMiddleware#ServiceClass`: Renamed class type for the v4 Context.Service-based middleware declaration.
+- `RpcMiddleware.Tag` -> `effect/rpc/RpcMiddleware#Service`: Renamed and redesigned with explicit requires, provides, clientError, error, and requiredForClient configuration.
 
-- `RpcMiddleware.TagClass.Failure` -> `effect/unstable/rpc/RpcMiddleware#Error`: Failure terminology became error; apply the extractor to the middleware ID.
+- `RpcMiddleware.TagClass` -> `effect/rpc/RpcMiddleware#ServiceClass`: Renamed class type for the v4 Context.Service-based middleware declaration.
 
-- `RpcMiddleware.TagClass.FailureContext` -> `effect/unstable/rpc/RpcMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
+- `RpcMiddleware.TagClass.Failure` -> `effect/rpc/RpcMiddleware#Error`: Failure terminology became error; apply the extractor to the middleware ID.
 
-- `RpcMiddleware.TagClass.FailureSchema` -> `effect/unstable/rpc/RpcMiddleware#ErrorSchema`: Renamed and applied to the middleware ID rather than constructor options.
+- `RpcMiddleware.TagClass.FailureContext` -> `effect/rpc/RpcMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
 
-- `RpcMiddleware.TagClass.FailureService` -> `effect/unstable/rpc/RpcMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
+- `RpcMiddleware.TagClass.FailureSchema` -> `effect/rpc/RpcMiddleware#ErrorSchema`: Renamed and applied to the middleware ID rather than constructor options.
+
+- `RpcMiddleware.TagClass.FailureService` -> `effect/rpc/RpcMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
 
 - `RpcMiddleware.TagClass.Optional` -> `none`: Optional declaration and fallback-on-failure behavior were removed; model fallback inside the middleware effect.
 
-- `RpcMiddleware.TagClass.Provides` -> `effect/unstable/rpc/RpcMiddleware#Provides`: Moved to the module level and applied to the middleware ID metadata.
+- `RpcMiddleware.TagClass.Provides` -> `effect/rpc/RpcMiddleware#Provides`: Moved to the module level and applied to the middleware ID metadata.
 
 - `RpcMiddleware.TagClass.RequiredForClient` -> `RpcMiddleware.ServiceClass["requiredForClient"]`: The standalone options extractor was removed; the boolean is exposed directly by the resulting service class.
 
-- `RpcMiddleware.TagClassAny` -> `effect/unstable/rpc/RpcMiddleware#AnyService`: Renamed widened middleware service-key shape.
+- `RpcMiddleware.TagClassAny` -> `effect/rpc/RpcMiddleware#AnyService`: Renamed widened middleware service-key shape.
 
-- `RpcMiddleware.TagClassAnyWithProps` -> `effect/unstable/rpc/RpcMiddleware#AnyServiceWithProps`: Renamed erased service key whose value has the unified server middleware function shape.
+- `RpcMiddleware.TagClassAnyWithProps` -> `effect/rpc/RpcMiddleware#AnyServiceWithProps`: Renamed erased service key whose value has the unified server middleware function shape.
 
-- `RpcMiddleware.TypeId` -> `effect/unstable/rpc/RpcMiddleware#TypeId`: Retained as the public middleware metadata marker and now has a string-literal type.
+- `RpcMiddleware.TypeId` -> `effect/rpc/RpcMiddleware#TypeId`: Retained as the public middleware metadata marker and now has a string-literal type.
 
-- `RpcMiddleware.layerClient` -> `effect/unstable/rpc/RpcMiddleware#layerClient`: Retained; the client function can now modify the typed Request passed to next and carry a client-only error type.
+- `RpcMiddleware.layerClient` -> `effect/rpc/RpcMiddleware#layerClient`: Retained; the client function can now modify the typed Request passed to next and carry a client-only error type.
 
 ### `@effect/rpc/RpcSchema`
 
-- `RpcSchema.Stream` -> `effect/unstable/rpc/RpcSchema#Stream`: Retained as both the stream schema interface and constructor; error is the second argument and schema services are split by direction.
+- `RpcSchema.Stream` -> `effect/rpc/RpcSchema#Stream`: Retained as both the stream schema interface and constructor; error is the second argument and schema services are split by direction.
 
 - `RpcSchema.StreamSchemaId` -> `none`: The stream marker is private in v4; use RpcSchema.isStreamSchema and getStreamSchemas.
 
-- `RpcSchema.getStreamSchemas` -> `effect/unstable/rpc/RpcSchema#getStreamSchemas`: Retained for internal-style schema inspection; pass the schema itself rather than its AST.
+- `RpcSchema.getStreamSchemas` -> `effect/rpc/RpcSchema#getStreamSchemas`: Retained for internal-style schema inspection; pass the schema itself rather than its AST.
 
-- `RpcSchema.isStreamSchema` -> `effect/unstable/rpc/RpcSchema#isStreamSchema`: Retained; it accepts a v4 Schema.Constraint.
+- `RpcSchema.isStreamSchema` -> `effect/rpc/RpcSchema#isStreamSchema`: Retained; it accepts a v4 Schema.Constraint.
 
 - `RpcSchema.isStreamSerializable` -> `RpcSchema.isStreamSchema(schema)`: The separate WithResult serializability predicate was removed; v4 RPC streaming is identified by its explicit Stream schema.
 
 ### `@effect/rpc/RpcSerialization`
 
-- `RpcSerialization.RpcSerializationError` -> `effect/unstable/rpc/RpcSerialization#MaxBufferSizeExceeded`: Buffer-limit failures now use MaxBufferSizeExceeded. MessagePack-specific decode errors have no counterpart.
+- `RpcSerialization.RpcSerializationError` -> `effect/rpc/RpcSerialization#MaxBufferSizeExceeded`: Buffer-limit failures now use MaxBufferSizeExceeded. MessagePack-specific decode errors have no counterpart.
 
-- `RpcSerialization.layerMsgPack` -> `effect/unstable/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Use SchemaBinary, or layerNdjson when you need newline-delimited JSON framing.
+- `RpcSerialization.layerJson`: TODO: needs guidance
 
-- `RpcSerialization.layerMsgPackWith` -> `effect/unstable/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Pass maxFrameSize to layerSchemaBinary; NDJSON buffer limits remain on layerNdjsonWith.
+- `RpcSerialization.layerMsgPack` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Use SchemaBinary, or layerNdjson when you need newline-delimited JSON framing.
 
-- `RpcSerialization.makeMsgPack` -> `effect/unstable/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Construct SchemaBinary serialization with layerSchemaBinary.
+- `RpcSerialization.layerMsgPackWith` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Pass maxFrameSize to layerSchemaBinary; NDJSON buffer limits remain on layerNdjsonWith.
 
-- `RpcSerialization.msgPack` -> `effect/unstable/rpc/RpcSerialization#layerSchemaBinary`: The MessagePack RpcSerialization service value was removed. Provide layerSchemaBinary instead.
+- `RpcSerialization.makeMsgPack` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Construct SchemaBinary serialization with layerSchemaBinary.
+
+- `RpcSerialization.msgPack` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: The MessagePack RpcSerialization service value was removed. Provide layerSchemaBinary instead.
 
 ### `@effect/rpc/RpcServer`
 
-- `RpcServer.Protocol` -> `effect/unstable/rpc/RpcServer#Protocol`: Retained as a Context.Service; custom transports now expose a disconnect queue, explicit capability flags, and codecFor for schema-aware payload and exit encoding.
+- `RpcServer.Protocol` -> `effect/rpc/RpcServer#Protocol`: Retained as a Context.Service; custom transports now expose a disconnect queue, explicit capability flags, and codecFor for schema-aware payload and exit encoding.
 
-- `RpcServer.fiberIdClientInterrupt` -> `effect/unstable/rpc/RpcSchema#ClientAbort`: The sentinel FiberId was replaced by a Cause annotation; inspect ClientAbort in the interruption cause when client cancellation must be distinguished.
+- `RpcServer.fiberIdClientInterrupt` -> `effect/rpc/RpcSchema#ClientAbort`: The sentinel FiberId was replaced by a Cause annotation; inspect ClientAbort in the interruption cause when client cancellation must be distinguished.
 
 - `RpcServer.fiberIdTransientInterrupt` -> `none`: The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity.
 
-- `RpcServer.layer` -> `effect/unstable/rpc/RpcServer#layer`: Moved to core Effect; server requirements are now derived with Rpc.ServicesServer rather than the former combined Rpc.Context alias.
+- `RpcServer.layer` -> `effect/rpc/RpcServer#layer`: Moved to core Effect; server requirements are now derived with Rpc.ServicesServer rather than the former combined Rpc.Context alias.
 
-- `RpcServer.layerHttpRouter` -> `effect/unstable/rpc/RpcServer#layerHttp`: Renamed; it installs an HTTP or WebSocket RPC route into the v4 HttpRouter service.
+- `RpcServer.layerHttpRouter` -> `effect/rpc/RpcServer#layerHttp`: Renamed; it installs an HTTP or WebSocket RPC route into the v4 HttpRouter service.
 
-- `RpcServer.layerProtocolHttp` -> `effect/unstable/rpc/RpcServer#layerProtocolHttp`: Retained; v4 has one HttpRouter service and no router tag option.
+- `RpcServer.layerProtocolHttp` -> `effect/rpc/RpcServer#layerProtocolHttp`: Retained; v4 has one HttpRouter service and no router tag option.
 
-- `RpcServer.layerProtocolHttpRouter` -> `effect/unstable/rpc/RpcServer#layerProtocolHttp`: The separate layer-router variant was unified with layerProtocolHttp.
+- `RpcServer.layerProtocolHttpRouter` -> `effect/rpc/RpcServer#layerProtocolHttp`: The separate layer-router variant was unified with layerProtocolHttp.
 
-- `RpcServer.layerProtocolWebsocketRouter` -> `effect/unstable/rpc/RpcServer#layerProtocolWebsocket`: Renamed after the HTTP router services were unified.
+- `RpcServer.layerProtocolWebsocketRouter` -> `effect/rpc/RpcServer#layerProtocolWebsocket`: Renamed after the HTTP router services were unified.
 
-- `RpcServer.make` -> `effect/unstable/rpc/RpcServer#make`: Retained; schema encoding services are now explicit server requirements.
+- `RpcServer.make` -> `effect/rpc/RpcServer#make`: Retained; schema encoding services are now explicit server requirements.
 
-- `RpcServer.makeProtocolHttp` -> `effect/unstable/rpc/RpcServer#makeProtocolHttp`: Retained; it registers a POST route in the current v4 HttpRouter.
+- `RpcServer.makeNoSerialization`: TODO: needs guidance
 
-- `RpcServer.makeProtocolHttpRouter` -> `effect/unstable/rpc/RpcServer#makeProtocolHttp`: The separate router constructor was unified with makeProtocolHttp.
+- `RpcServer.makeProtocolHttp` -> `effect/rpc/RpcServer#makeProtocolHttp`: Retained; it registers a POST route in the current v4 HttpRouter.
 
-- `RpcServer.makeProtocolWebsocketRouter` -> `effect/unstable/rpc/RpcServer#makeProtocolWebsocket`: Renamed after the HTTP router services were unified.
+- `RpcServer.makeProtocolHttpRouter` -> `effect/rpc/RpcServer#makeProtocolHttp`: The separate router constructor was unified with makeProtocolHttp.
 
-- `RpcServer.makeProtocolWithHttpApp` -> `effect/unstable/rpc/RpcServer#makeProtocolWithHttpEffect`: HttpApp became HttpEffect; the result contains protocol and httpEffect.
+- `RpcServer.makeProtocolWebsocketRouter` -> `effect/rpc/RpcServer#makeProtocolWebsocket`: Renamed after the HTTP router services were unified.
 
-- `RpcServer.makeProtocolWithHttpAppWebsocket` -> `effect/unstable/rpc/RpcServer#makeProtocolWithHttpEffectWebsocket`: HttpApp became HttpEffect; the result contains the WebSocket protocol and upgrade effect.
+- `RpcServer.makeProtocolWithHttpApp` -> `effect/rpc/RpcServer#makeProtocolWithHttpEffect`: HttpApp became HttpEffect; the result contains protocol and httpEffect.
 
-- `RpcServer.toHttpApp` -> `effect/unstable/rpc/RpcServer#toHttpEffect`: Renamed for the v4 HTTP effect model; it starts the RPC server and returns the request effect.
+- `RpcServer.makeProtocolWithHttpAppWebsocket` -> `effect/rpc/RpcServer#makeProtocolWithHttpEffectWebsocket`: HttpApp became HttpEffect; the result contains the WebSocket protocol and upgrade effect.
 
-- `RpcServer.toHttpAppWebsocket` -> `effect/unstable/rpc/RpcServer#toHttpEffectWebsocket`: Renamed for the v4 HTTP effect model; it returns the WebSocket upgrade effect.
+- `RpcServer.toHttpApp` -> `effect/rpc/RpcServer#toHttpEffect`: Renamed for the v4 HTTP effect model; it starts the RPC server and returns the request effect.
+
+- `RpcServer.toHttpAppWebsocket` -> `effect/rpc/RpcServer#toHttpEffectWebsocket`: Renamed for the v4 HTTP effect model; it returns the WebSocket upgrade effect.
 
 - `RpcServer.toWebHandler` -> `HttpRouter.toWebHandler(RpcServer.layerHttp(options).pipe(Layer.provide(options.layer)))`: The RPC convenience wrapper was removed; build the RPC route layer and convert it with the generic v4 HttpRouter web-handler adapter.
 
 ### `@effect/rpc/RpcTest`
 
-- `RpcTest.makeClient` -> `effect/unstable/rpc/RpcTest#makeClient`: Retained; it uses the v4 no-serialization client/server path and requires handlers plus any server and client middleware services.
+- `RpcTest.makeClient` -> `effect/rpc/RpcTest#makeClient`: Retained; it uses the v4 no-serialization client/server path and requires handlers plus any server and client middleware services.
 
 ### `@effect/sql-clickhouse/ClickhouseClient`
 
@@ -7866,7 +8172,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/sql-clickhouse/ClickhouseMigrator`
 
-- `ClickhouseMigrator.MigrationError` -> `@effect/sql-clickhouse/ClickhouseMigrator#MigrationError`: Retained via effect/unstable/sql/Migrator; migrate reason and its lowercase values to kind with PascalCase values.
+- `ClickhouseMigrator.MigrationError` -> `@effect/sql-clickhouse/ClickhouseMigrator#MigrationError`: Retained via effect/sql/Migrator; migrate reason and its lowercase values to kind with PascalCase values.
 
 ### `@effect/sql-d1/D1Client`
 
@@ -7970,95 +8276,103 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
 
+### `@effect/sql/Migrator`
+
+- `Migrator.make` -> `effect/sql/Migrator#make`: Moved with the same curried make({ dumpSchema })(options) pattern.
+
 ### `@effect/sql/Model`
 
-- `Model.Any` -> `effect/unstable/schema/Model#Any`: Moved; v4 schemas track DecodingServices and EncodingServices separately instead of one Context type.
+- `Model.Any` -> `effect/schema/Model#Any`: Moved; v4 schemas track DecodingServices and EncodingServices separately instead of one Context type.
 
-- `Model.AnyNoContext` -> `effect/unstable/schema/Model#Any`: The distinct no-context alias was removed; Model.Any propagates decoding and encoding services. Constrain both service types to never when required.
+- `Model.AnyNoContext` -> `effect/schema/Model#Any`: The distinct no-context alias was removed; Model.Any propagates decoding and encoding services. Constrain both service types to never when required.
 
 - `Model.BooleanFromNumber` -> `effect/Schema#BooleanFromBit`: Use the core 0 | 1 to boolean schema; Model.BooleanSqlite is the ready-made model field.
 
-- `Model.Class` -> `effect/unstable/schema/Model#Class`: Moved; model variants remain select, insert, update, json, jsonCreate, and jsonUpdate.
+- `Model.Class` -> `effect/schema/Model#Class`: Moved; model variants remain select, insert, update, json, jsonCreate, and jsonUpdate.
 
-- `Model.Date` -> `effect/unstable/schema/Model#Date`: Moved; still serializes DateTime.Utc as a YYYY-MM-DD string.
+- `Model.Date` -> `effect/schema/Model#Date`: Moved; still serializes DateTime.Utc as a YYYY-MM-DD string.
 
 - `Model.DateTimeFromDate` -> `effect/Schema#DateTimeUtcFromDate`: Moved to core Schema and retains Date to DateTime.Utc conversion.
 
-- `Model.Generated` -> `effect/unstable/schema/Model#GeneratedByDb`: Renamed and now read-only, with select and json variants only. Use Model.Field with select, update, and json to preserve writable v3 behavior.
+- `Model.Generated` -> `effect/schema/Model#GeneratedByDb`: Renamed and now read-only, with select and json variants only. Use Model.Field with select, update, and json to preserve writable v3 behavior.
 
-- `Model.extract` -> `effect/unstable/schema/Model#extract`: Retained after moving the model variant helpers into core Effect's unstable schema package.
+- `Model.Override` -> `effect/schema/Model#Override`: Moved with the same explicit-default override purpose.
+
+- `Model.extract` -> `effect/schema/Model#extract`: Retained after moving the model variant helpers into core Effect's unstable schema package.
 
 - `Model.fieldFromKey` -> `effect/Schema#encodeKeys`: The field helper was removed; apply encodeKeys to each concrete struct or model-variant schema that crosses the naming boundary.
 
-- `Model.fields` -> `effect/unstable/schema/Model#fields`: Moved with the variant-model helpers into core Effect's unstable schema package.
+- `Model.fields` -> `effect/schema/Model#fields`: Moved with the variant-model helpers into core Effect's unstable schema package.
 
-- `Model.makeDataLoaders` -> `effect/unstable/sql/SqlModel#makeResolvers`: Returns RequestResolvers instead of callable loaders; execute with SqlResolver.request and use RequestResolver delay/batch combinators for batching controls. The insert resolver requires model decoding services as well as insert-schema encoding services.
+- `Model.makeDataLoaders` -> `effect/sql/SqlModel#makeResolvers`: Returns RequestResolvers instead of callable loaders; execute with SqlResolver.request and use RequestResolver delay/batch combinators for batching controls. The insert resolver requires model decoding services as well as insert-schema encoding services.
 
 ### `@effect/sql/SqlClient`
 
-- `SqlClient.SafeIntegers` -> `effect/unstable/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
+- `SqlClient.SafeIntegers` -> `effect/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
 
-- `SqlClient.TransactionConnection` -> `effect/unstable/sql/SqlClient#TransactionConnection`: Now a factory keyed by client id, not a singleton tag. Prefer the client's transactionService; the payload type is TransactionConnection.Service.
+- `SqlClient.TransactionConnection` -> `effect/sql/SqlClient#TransactionConnection`: Now a factory keyed by client id, not a singleton tag. Prefer the client's transactionService; the payload type is TransactionConnection.Service.
 
 - `SqlClient.TypeId` -> `none`: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
 
-- `SqlClient.make` -> `effect/unstable/sql/SqlClient#make`: Moved; custom clients rename MakeOptions.reactiveMailbox to reactiveQueue and may supply transactionService.
+- `SqlClient.make` -> `effect/sql/SqlClient#make`: Moved; custom clients rename MakeOptions.reactiveMailbox to reactiveQueue and may supply transactionService.
 
 ### `@effect/sql/SqlConnection`
 
-- `SqlConnection.Connection` -> `effect/unstable/sql/SqlConnection#Connection`: Moved; Connection.Acquirer is now top-level SqlConnection.Acquirer, and custom connections must implement executeValuesUnprepared.
+- `SqlConnection.Connection` -> `effect/sql/SqlConnection#Connection`: Moved; Connection.Acquirer is now top-level SqlConnection.Acquirer, and custom connections must implement executeValuesUnprepared.
 
 ### `@effect/sql/SqlError`
 
-- `SqlError.SqlErrorTypeId` -> `effect/unstable/sql/SqlError#isSqlError`: The type id is private; use isSqlError for runtime narrowing or isSqlErrorReason for structured reason values.
+- `SqlError.SqlErrorTypeId` -> `effect/sql/SqlError#isSqlError`: The type id is private; use isSqlError for runtime narrowing or isSqlErrorReason for structured reason values.
 
 ### `@effect/sql/SqlEventJournal`
 
-- `SqlEventJournal.layer` -> `effect/unstable/eventlog/SqlEventJournal#layer`: Moved; rename the eventLogTable layer option to entryTable.
+- `SqlEventJournal.layer` -> `effect/eventlog/SqlEventJournal#layer`: Moved; rename the eventLogTable layer option to entryTable.
 
-- `SqlEventJournal.make` -> `effect/unstable/eventlog/SqlEventJournal#make`: Moved with the same entryTable and remotesTable options.
+- `SqlEventJournal.make` -> `effect/eventlog/SqlEventJournal#make`: Moved with the same entryTable and remotesTable options.
 
 ### `@effect/sql/SqlEventLogServer`
 
-- `SqlEventLogServer.layerStorage` -> `effect/unstable/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module with the same options and EventLogEncryption requirement.
+- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module with the same options and EventLogEncryption requirement.
 
-- `SqlEventLogServer.makeStorage` -> `effect/unstable/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module with the same SQL, encryption, and scope requirements.
+- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module with the same SQL, encryption, and scope requirements.
 
 ### `@effect/sql/SqlPersistedQueue`
 
-- `SqlPersistedQueue.layerStore` -> `effect/unstable/persistence/PersistedQueue#layerStoreSql`: Moved into PersistedQueue and renamed with the Sql suffix; options are unchanged.
+- `SqlPersistedQueue.layerStore` -> `effect/persistence/PersistedQueue#layerStoreSql`: Moved into PersistedQueue and renamed with the Sql suffix; options are unchanged.
 
-- `SqlPersistedQueue.make` -> `effect/unstable/persistence/PersistedQueue#makeStoreSql`: Use the SQL store constructor; PersistedQueue.make creates a typed queue from a store factory and is not equivalent.
+- `SqlPersistedQueue.make` -> `effect/persistence/PersistedQueue#makeStoreSql`: Use the SQL store constructor; PersistedQueue.make creates a typed queue from a store factory and is not equivalent.
 
 ### `@effect/sql/SqlResolver`
 
-- `SqlResolver.SqlResolver` -> `RequestResolver.RequestResolver<SqlResolver.SqlRequest<...>>`: The wrapper interface was removed; constructors return RequestResolvers. Execute them with effect/unstable/sql/SqlResolver#request.
+- `SqlResolver.SqlResolver` -> `RequestResolver.RequestResolver<SqlResolver.SqlRequest<...>>`: The wrapper interface was removed; constructors return RequestResolvers. Execute them with effect/sql/SqlResolver#request.
 
-- `SqlResolver.void` -> `effect/unstable/sql/SqlResolver#void`: Moved, but remove the leading tag and withContext arguments; it now returns a RequestResolver synchronously and runs through SqlResolver.request.
+- `SqlResolver.void` -> `effect/sql/SqlResolver#void`: Moved, but remove the leading tag and withContext arguments; it now returns a RequestResolver synchronously and runs through SqlResolver.request.
 
 ### `@effect/sql/SqlSchema`
 
-- `SqlSchema.single` -> `effect/unstable/sql/SqlSchema#findOne`: Renamed with the same first-row-or-fail behavior; empty results use Cause.NoSuchElementError and schema failures use Schema.SchemaError.
+- `SqlSchema.single` -> `effect/sql/SqlSchema#findOne`: Renamed with the same first-row-or-fail behavior; empty results use Cause.NoSuchElementError and schema failures use Schema.SchemaError.
 
-- `SqlSchema.void` -> `effect/unstable/sql/SqlSchema#void`: Moved with the same encode, execute, and discard-result pattern; schema failures now use Schema.SchemaError.
+- `SqlSchema.void` -> `effect/sql/SqlSchema#void`: Moved with the same encode, execute, and discard-result pattern; schema failures now use Schema.SchemaError.
 
 ### `@effect/sql/Statement`
 
 - `Statement.FragmentId` -> `none`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
 
-- `Statement.Statement` -> `effect/unstable/sql/Statement#Statement`: Moved; the nested Transformer type is now top-level and its callback receives Fiber.Fiber rather than FiberRefs.FiberRefs.
+- `Statement.Statement` -> `effect/sql/Statement#Statement`: Moved; the nested Transformer type is now top-level and its callback receives Fiber.Fiber rather than FiberRefs.FiberRefs.
 
-- `Statement.currentTransformer` -> `effect/unstable/sql/Statement#CurrentTransformer`: Capitalized and changed from FiberRef\<Option\<Transformer\>\> to Context.Reference\<Transformer | undefined\>.
+- `Statement.currentTransformer` -> `effect/sql/Statement#CurrentTransformer`: Capitalized and changed from FiberRef\<Option\<Transformer\>\> to Context.Reference\<Transformer | undefined\>.
 
-- `Statement.custom` -> `effect/unstable/sql/Statement#custom`: Retained, but returns a Custom segment and uses paramA/paramB/paramC; wrap it with Statement.fragment when a Fragment is required.
+- `Statement.custom` -> `effect/sql/Statement#custom`: Retained, but returns a Custom segment and uses paramA/paramB/paramC; wrap it with Statement.fragment when a Fragment is required.
 
-- `Statement.defaultEscape` -> `effect/unstable/sql/Statement#defaultEscape`: Moved with the same signature.
+- `Statement.defaultEscape` -> `effect/sql/Statement#defaultEscape`: Moved with the same signature.
 
-- `Statement.join` -> `effect/unstable/sql/Statement#join`: Moved with the same empty, single, and multiple-clause behavior.
+- `Statement.join` -> `effect/sql/Statement#join`: Moved with the same empty, single, and multiple-clause behavior.
 
-- `Statement.make` -> `effect/unstable/sql/Statement#make`: Moved with the same constructor inputs.
+- `Statement.make` -> `effect/sql/Statement#make`: Moved with the same constructor inputs.
 
-- `Statement.makeCompiler` -> `effect/unstable/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
+- `Statement.makeCompiler` -> `effect/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
+
+- `Statement.or` -> `effect/sql/Statement#or`: Moved unchanged.
 
 - `Statement.setTransformer` -> `Layer.succeed(Statement.CurrentTransformer, transformer)`: The helper was removed; provide the CurrentTransformer reference as a layer.
 
@@ -8640,73 +8954,75 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/workflow/Activity`
 
-- `Activity.Any` -> `effect/unstable/workflow/Activity#Any`: Moved into core Effect. V4 Any is minimal; use AnyWithProps when schemas or execution properties are required.
+- `Activity.Any` -> `effect/workflow/Activity#Any`: Moved into core Effect. V4 Any is minimal; use AnyWithProps when schemas or execution properties are required.
 
-- `Activity.CurrentAttempt` -> `effect/unstable/workflow/Activity#CurrentAttempt`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same default of 1.
+- `Activity.CurrentAttempt` -> `effect/workflow/Activity#CurrentAttempt`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same default of 1.
 
 - `Activity.TypeId` -> `none`: The activity marker is private in v4. Use Activity, Activity.Any, or Activity.AnyWithProps constraints.
 
-- `Activity.make` -> `effect/unstable/workflow/Activity#make`: Moved into core Effect with the same constructor shape, v4 Schema.Constraint service directions, and optional annotations.
+- `Activity.make` -> `effect/workflow/Activity#make`: Moved into core Effect with the same constructor shape, v4 Schema.Constraint service directions, and optional annotations.
 
-- `Activity.raceAll` -> `effect/unstable/workflow/Activity#raceAll`: Moved into core Effect with the same named durable race behavior.
+- `Activity.raceAll` -> `effect/workflow/Activity#raceAll`: Moved into core Effect with the same named durable race behavior.
+
+- `Activity.retry` -> `effect/workflow/Activity#retry`: Moved into core Effect and updated to v4 Effect.retry option types.
 
 ### `@effect/workflow/DurableClock`
 
 - `DurableClock.TypeId` -> `none`: The durable-clock marker is private in v4. Use DurableClock values structurally.
 
-- `DurableClock.make` -> `effect/unstable/workflow/DurableClock#make`: Moved into core Effect; Duration.DurationInput is now Duration.Input.
+- `DurableClock.make` -> `effect/workflow/DurableClock#make`: Moved into core Effect; Duration.DurationInput is now Duration.Input.
 
 ### `@effect/workflow/DurableDeferred`
 
-- `DurableDeferred.Any` -> `effect/unstable/workflow/DurableDeferred#Any`: Moved into core Effect. V4 Any is minimal; use AnyWithProps when success, error, or exit schemas are required.
+- `DurableDeferred.Any` -> `effect/workflow/DurableDeferred#Any`: Moved into core Effect. V4 Any is minimal; use AnyWithProps when success, error, or exit schemas are required.
 
 - `DurableDeferred.TypeId` -> `none`: The durable-deferred marker is private in v4. Use DurableDeferred, Any, or AnyWithProps constraints.
 
-- `DurableDeferred.await` -> `effect/unstable/workflow/DurableDeferred#await`: Moved into core Effect with the same persisted-result and workflow-suspension behavior.
+- `DurableDeferred.await` -> `effect/workflow/DurableDeferred#await`: Moved into core Effect with the same persisted-result and workflow-suspension behavior.
 
-- `DurableDeferred.done` -> `effect/unstable/workflow/DurableDeferred#done`: Moved into core Effect; schema requirements now use explicit directional encoding services.
+- `DurableDeferred.done` -> `effect/workflow/DurableDeferred#done`: Moved into core Effect; schema requirements now use explicit directional encoding services.
 
-- `DurableDeferred.fail` -> `effect/unstable/workflow/DurableDeferred#fail`: Moved into core Effect and now requires the error schema encoding services.
+- `DurableDeferred.fail` -> `effect/workflow/DurableDeferred#fail`: Moved into core Effect and now requires the error schema encoding services.
 
-- `DurableDeferred.failCause` -> `effect/unstable/workflow/DurableDeferred#failCause`: Moved into core Effect and now requires the error schema encoding services.
+- `DurableDeferred.failCause` -> `effect/workflow/DurableDeferred#failCause`: Moved into core Effect and now requires the error schema encoding services.
 
-- `DurableDeferred.into` -> `effect/unstable/workflow/DurableDeferred#into`: Moved into core Effect with the same exit recording and suspension propagation behavior. Provide both decoding and encoding services for the success and error schemas; recording the exit requires encoding services.
+- `DurableDeferred.into` -> `effect/workflow/DurableDeferred#into`: Moved into core Effect with the same exit recording and suspension propagation behavior. Provide both decoding and encoding services for the success and error schemas; recording the exit requires encoding services.
 
-- `DurableDeferred.make` -> `effect/unstable/workflow/DurableDeferred#make`: Moved into core Effect with the same name and optional schemas, expressed through v4 Schema.Constraint.
+- `DurableDeferred.make` -> `effect/workflow/DurableDeferred#make`: Moved into core Effect with the same name and optional schemas, expressed through v4 Schema.Constraint.
 
-- `DurableDeferred.raceAll` -> `effect/unstable/workflow/DurableDeferred#raceAll`: Moved into core Effect with the same persisted-winner behavior.
+- `DurableDeferred.raceAll` -> `effect/workflow/DurableDeferred#raceAll`: Moved into core Effect with the same persisted-winner behavior.
 
-- `DurableDeferred.succeed` -> `effect/unstable/workflow/DurableDeferred#succeed`: Moved into core Effect and now requires the success schema encoding services.
+- `DurableDeferred.succeed` -> `effect/workflow/DurableDeferred#succeed`: Moved into core Effect and now requires the success schema encoding services.
 
 ### `@effect/workflow/DurableQueue`
 
-- `DurableQueue.TypeId` -> `effect/unstable/workflow/DurableQueue#TypeId`: Moved into core Effect; the marker literal changed to \~effect/workflow/DurableQueue. Use typeof DurableQueue.TypeId in type position.
+- `DurableQueue.TypeId` -> `effect/workflow/DurableQueue#TypeId`: Moved into core Effect; the marker literal changed to \~effect/workflow/DurableQueue. Use typeof DurableQueue.TypeId in type position.
 
-- `DurableQueue.make` -> `effect/unstable/workflow/DurableQueue#make`: Moved into core Effect; queue persistence now comes from effect/unstable/persistence.
+- `DurableQueue.make` -> `effect/workflow/DurableQueue#make`: Moved into core Effect; queue persistence now comes from effect/persistence.
 
 ### `@effect/workflow/Workflow`
 
-- `Workflow.Any` -> `effect/unstable/workflow/Workflow#Any`: Moved into core Effect. Workflow identity changed from name to \_tag and definitions are now class-compatible constructors.
+- `Workflow.Any` -> `effect/workflow/Workflow#Any`: Moved into core Effect. Workflow identity changed from name to \_tag and definitions are now class-compatible constructors.
 
 - `Workflow.AnyTaggedRequestSchema` -> `none`: The TaggedRequest adapter constraint was removed. Define the workflow explicitly with Workflow.make and the request payload, success, error, and PrimaryKey schemas.
 
-- `Workflow.CaptureDefects` -> `effect/unstable/workflow/Workflow#CaptureDefects`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same true default.
+- `Workflow.CaptureDefects` -> `effect/workflow/Workflow#CaptureDefects`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same true default.
 
-- `Workflow.Execution` -> `effect/unstable/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to \_tag.
+- `Workflow.Execution` -> `effect/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to \_tag.
 
 - `Workflow.Requirements` -> `Workflow.RequirementsClient / Workflow.RequirementsHandler`: The schema Context union split by direction: client payload encoding and result decoding versus handler payload decoding and result encoding.
 
-- `Workflow.Result` -> `effect/unstable/workflow/Workflow#Result`: Moved into core Effect and remains the Complete or Suspended result type and schema constructor.
+- `Workflow.Result` -> `effect/workflow/Workflow#Result`: Moved into core Effect and remains the Complete or Suspended result type and schema constructor.
 
-- `Workflow.ResultEncoded` -> `effect/unstable/workflow/Workflow#ResultEncoded`: Moved into core Effect and remains both the encoded result type and generic encoded-result codec.
+- `Workflow.ResultEncoded` -> `effect/workflow/Workflow#ResultEncoded`: Moved into core Effect and remains both the encoded result type and generic encoded-result codec.
 
 - `Workflow.ResultTypeId` -> `none`: The result marker is private in v4. Use Workflow.isResult for narrowing.
 
-- `Workflow.SuspendOnFailure` -> `effect/unstable/workflow/Workflow#SuspendOnFailure`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
+- `Workflow.SuspendOnFailure` -> `effect/workflow/Workflow#SuspendOnFailure`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
 
 - `Workflow.TypeId` -> `none`: The workflow marker is private in v4. Use Workflow.Any or Workflow.Workflow constraints.
 
-- `Workflow.Workflow` -> `effect/unstable/workflow/Workflow#Workflow`: Name and name became Tag and \_tag, schemas use directional services, definitions are constructable, and poll returns Option.
+- `Workflow.Workflow` -> `effect/workflow/Workflow#Workflow`: Name and name became Tag and \_tag, schemas use directional services, definitions are constructable, and poll returns Option.
 
 - `Workflow.Workflow.Error` -> `W["errorSchema"]["Type"]`: The namespace alias was removed. Extract the decoded error type from the public errorSchema property.
 
@@ -8716,23 +9032,29 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Workflow.fromTaggedRequest` -> `none`: Removed. Expand to Workflow.make(schema.\_tag, { payload: schema, success: schema.success, error: schema.failure, idempotencyKey: PrimaryKey.value }).
 
-- `Workflow.make` -> `effect/unstable/workflow/Workflow#make`: The signature changed from make({ name, ... }) to make(tag, { ... }); definitions expose \_tag and are class-compatible constructors.
+- `Workflow.isResult` -> `effect/workflow/Workflow#isResult`: Moved into core Effect with the same result refinement behavior.
+
+- `Workflow.make` -> `effect/workflow/Workflow#make`: The signature changed from make({ name, ... }) to make(tag, { ... }); definitions expose \_tag and are class-compatible constructors.
 
 ### `@effect/workflow/WorkflowEngine`
 
-- `WorkflowEngine.makeUnsafe` -> `effect/unstable/workflow/WorkflowEngine#makeUnsafe`: Moved into core Effect. Context service projections now use Service instead of Type, and absent encoded results use Option.
+- `WorkflowEngine.layerMemory` -> `effect/workflow/WorkflowEngine#layerMemory`: Moved into core Effect and remains the non-durable engine for tests and local development.
+
+- `WorkflowEngine.makeUnsafe` -> `effect/workflow/WorkflowEngine#makeUnsafe`: Moved into core Effect. Context service projections now use Service instead of Type, and absent encoded results use Option.
 
 ### `@effect/workflow/WorkflowProxy`
 
-- `WorkflowProxy.ConvertHttpApi` -> `effect/unstable/workflow/WorkflowProxy#ConvertHttpApi`: Moved into core Effect and updated to v4 HttpApiEndpoint types and the consolidated HttpApi architecture.
+- `WorkflowProxy.ConvertHttpApi` -> `effect/workflow/WorkflowProxy#ConvertHttpApi`: Moved into core Effect and updated to v4 HttpApiEndpoint types and the consolidated HttpApi architecture.
 
-- `WorkflowProxy.ConvertRpcs` -> `effect/unstable/workflow/WorkflowProxy#ConvertRpcs`: Moved into core Effect; generated execute, discard, and resume RPCs are now keyed from workflow \_tag.
+- `WorkflowProxy.ConvertRpcs` -> `effect/workflow/WorkflowProxy#ConvertRpcs`: Moved into core Effect; generated execute, discard, and resume RPCs are now keyed from workflow \_tag.
 
 ### `@effect/workflow/WorkflowProxyServer`
 
-- `WorkflowProxyServer.layerHttpApi` -> `effect/unstable/workflow/WorkflowProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi group identifiers and Workflow.RequirementsHandler schema services.
+- `WorkflowProxyServer.RpcHandlers` -> `effect/workflow/WorkflowProxyServer#RpcHandlers`: Moved into core Effect; handler names derive from workflow \_tag and the optional prefix.
 
-- `WorkflowProxyServer.layerRpcHandlers` -> `effect/unstable/workflow/WorkflowProxyServer#layerRpcHandlers`: Moved into core Effect; generated handlers require Workflow.RequirementsHandler rather than the undirected Requirements union.
+- `WorkflowProxyServer.layerHttpApi` -> `effect/workflow/WorkflowProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi group identifiers and Workflow.RequirementsHandler schema services.
+
+- `WorkflowProxyServer.layerRpcHandlers` -> `effect/workflow/WorkflowProxyServer#layerRpcHandlers`: Moved into core Effect; generated handlers require Workflow.RequirementsHandler rather than the undirected Requirements union.
 
 ### `effect/Arbitrary`
 
@@ -8740,11 +9062,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Arbitrary.ArbitraryGenerationContext` -> `Schema.Annotations.ToArbitrary.DeclarationInput`: Native arbitrary callbacks receive DeclarationInput with decoded type-parameter schemas and normalized constraints.
 
-- `Arbitrary.LazyArbitrary` -> `effect/unstable/arbitrary/Arbitrary#Arbitrary`: The generated-value description is now the native Arbitrary interface from effect/unstable/arbitrary.
+- `Arbitrary.LazyArbitrary` -> `effect/arbitrary/Arbitrary#Arbitrary`: The generated-value description is now the native Arbitrary interface from effect/arbitrary.
 
 #### `Arbitrary.make`
 
-**Replacement:** `effect/unstable/arbitrary/Arbitrary#schema`
+**Replacement:** `effect/arbitrary/Arbitrary#schema`
 
 Derive a native Arbitrary from a Schema. Effect no longer bridges to fast-check.
 
@@ -8756,7 +9078,7 @@ Arbitrary.schema(schema)
 
 #### `Arbitrary.makeLazy`
 
-**Replacement:** `effect/unstable/arbitrary/Arbitrary#schema`
+**Replacement:** `effect/arbitrary/Arbitrary#schema`
 
 Lazy and eager Schema derivation are the same native Arbitrary.schema constructor.
 
@@ -14549,13 +14871,13 @@ Schema.toFormatter(schema)
 
 - `Schema.TaggedErrorClass` -> `Schema.TaggedError`: The exported helper interface was removed; use the class returned by Schema.TaggedError and infer its types.
 
-- `Schema.TaggedRequest` -> `effect/unstable/rpc/Rpc.make`: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
+- `Schema.TaggedRequest` -> `effect/rpc/Rpc.make`: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
 
 - `Schema.TaggedRequest.All` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 
 - `Schema.TaggedRequest.Any` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 
-- `Schema.TaggedRequestClass` -> `effect/unstable/rpc/Rpc.make`: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
+- `Schema.TaggedRequestClass` -> `effect/rpc/Rpc.make`: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
 
 - `Schema.TaggedStruct` -> `Schema.TaggedStruct`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
