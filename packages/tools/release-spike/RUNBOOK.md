@@ -160,7 +160,11 @@ pnpm release-spike watch ID2
 
 ### P5. Approve two items from a non-TTY with one OTP (Q4)
 
-Load `spike-approve` into `NPM_TOKEN`. Have the authenticator ready, then:
+Load `spike-approve` into `NPM_TOKEN`. Before approval, the fixture guard uses
+that same token to view every staged id and refuses to spawn pnpm unless all of
+them belong to `@effect/release-spike-fixture`. If the P1 retry with
+`spike-approve` could not view staged items, this CLI probe cannot test approval;
+approve on npmjs.com instead. Otherwise, have the authenticator ready and run:
 
 ```sh
 pnpm release-spike approve ID1 ID2

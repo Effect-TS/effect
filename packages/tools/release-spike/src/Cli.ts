@@ -346,10 +346,13 @@ const runWithOtp = (verb: "approve" | "reject") =>
     const path = yield* Path.Path
     yield* findings.addSecret(otp)
     const token = yield* resolveToken(false)
-    const startedAt = Date.now()
     const results: Array<Record<string, unknown>> = []
     for (const stageId of stageIds) {
-      const staged = yield* Registry.viewStaged(token, stageId)
+      const staged = yield* Registry.viewStaged(
+        token,
+        stageId,
+        (response) => findings.record(`stage-${verb}-preflight-response`, rawResponse(response))
+      )
       if (staged.response.status !== 200 || Option.isNone(staged.item)) {
         return yield* new SpikeError({
           message: `Refusing to ${verb} ${stageId}: could not verify the staged package`
@@ -361,6 +364,7 @@ const runWithOtp = (verb: "approve" | "reject") =>
         })
       }
     }
+    const startedAt = Date.now()
     for (const [index, stageId] of stageIds.entries()) {
       const run = yield* runPnpm(["stage", verb, stageId], { cwd: path.resolve("."), token, otp: Option.some(otp) })
       const otpRejected = /otp|one-time|EOTP|401/i.test(run.stderr)
