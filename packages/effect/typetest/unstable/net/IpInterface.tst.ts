@@ -19,6 +19,25 @@ describe("IpInterface", () => {
     expect(IpNetwork.fromInterface(ipv4)).type.toBe<IpNetwork.Ipv4Network>()
   })
 
+  it("preserves refinements obtained on demand when the address is unchanged", () => {
+    const unspecified = NetAddress.ipv4Unspecified
+    if (NetAddress.isUnspecified(unspecified)) {
+      const precise = IpInterface.make(unspecified, 0)
+      expect(precise).type.toBe<
+        Result.Result<
+          IpInterface.IpInterface<NetAddress.UnspecifiedAddress<NetAddress.Ipv4Address>>,
+          NetAddress.NetAddressError
+        >
+      >()
+      expect(precise).type.toBeAssignableTo<
+        Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>
+      >()
+      expect<Result.Result<IpInterface.Ipv4Interface, NetAddress.NetAddressError>>().type.not.toBeAssignableTo<
+        typeof precise
+      >()
+    }
+  })
+
   it("narrows generic interface addresses", () => {
     const value = null as unknown as IpInterface.IpInterface
     if (IpInterface.isIpv4Interface(value)) {
