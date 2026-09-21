@@ -10,7 +10,17 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"
-import { byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
+import { byReferenceInstances, prototypeLayout } from "./internal/equal.ts"
+import {
+  combineOrdered,
+  elementTerm,
+  entryTerm,
+  finishOrdered,
+  mix,
+  optimize as optimizeInternal,
+  scramble,
+  tag
+} from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -87,6 +97,17 @@ export interface Hash {
  * objects, implement a custom `Hash` interface that hashes the object reference
  * rather than its content.
  *
+ * Class instances without their own `Hash` implementation (for example
+ * `Data.Class` and `Schema.Class` instances) are hashed structurally, including
+ * the members of their prototype chain below `Object.prototype`. That chain is
+ * read once per prototype, so members added, removed or redefined on it after
+ * such instances have been hashed are not reflected. Values implementing `Hash`,
+ * plain objects, arrays and other built-ins are not affected.
+ *
+ * Prototype members that hold functions or objects (such as methods) contribute
+ * through their key only, so structural hashes do not depend on function
+ * identity and are stable across processes.
+ *
  * **Example** (Hashing different values)
  *
  * ```ts import.meta.vitest
@@ -109,48 +130,53 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
     case "string":
       return string(self)
     case "undefined":
-      return string("undefined")
+      return undefinedHash
+    case "boolean":
+      return self ? trueHash : falseHash
     case "function":
     case "object": {
       if (self === null) {
-        return string("null")
+        return nullHash
+      }
+      const cached = hashCache.get(self)
+      if (cached !== undefined) {
+        return cached
+      }
+      if (byReferenceInstances.has(self)) {
+        return random(self)
+      }
+      const cycles = cyclesDetected
+      let h: number
+      if (isHash(self)) {
+        h = tracked(self, true)
+      } else if (typeof self === "function") {
+        h = random(self)
       } else if (self instanceof Date) {
-        if (Number.isNaN(self.getTime())) {
-          return string("Invalid Date")
-        }
-        return string(self.toISOString())
+        // Recomputing costs about as much as a cache lookup and far less than
+        // a cache write, so dates are not cached.
+        const time = self.getTime()
+        return time !== time ? invalidDateHash : number(time)
       } else if (self instanceof RegExp) {
-        return string(self.toString())
+        // Equal compares `/source/flags`; hash the parts without concatenating.
+        h = optimize(entryTerm(string(self.source), string(self.flags)))
       } else {
-        if (byReferenceInstances.has(self)) {
-          return random(self)
+        h = lazilyTracked(self)
+        if (h !== h) {
+          h = tracked(self, false)
         }
-        if (hashCache.has(self)) {
-          return hashCache.get(self)!
-        }
-        const h = withVisitedTracking(self, () => {
-          if (isHash(self)) {
-            return self[symbol]()
-          } else if (typeof self === "function") {
-            return random(self)
-          } else if (self instanceof DataView) {
-            return array(new Uint8Array(self.buffer, self.byteOffset, self.byteLength))
-          } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {
-            return array(self as any)
-          } else if (self instanceof Map) {
-            return hashMap(self)
-          } else if (self instanceof Set) {
-            return hashSet(self)
-          }
-          return structure(self)
-        })
-        hashCache.set(self, h)
+      }
+      if (cyclesDetected !== cycles) {
+        // A hash computed across a cycle depends on where the traversal
+        // started, so it is never cached. Each request then recomputes from its
+        // own root, making the result independent of what was hashed before.
         return h
       }
+      hashCache.set(self, h)
+      return h
     }
     default:
-      // The remaining primitive types are boolean and symbol.
-      return string(String(self))
+      // The remaining primitive type is symbol.
+      return symbolHash(self as symbol)
   }
 }
 
@@ -200,8 +226,9 @@ export const random: <A extends object>(self: A) => number = (self) => {
  *
  * **Details**
  *
- * Supports both direct and pipeable usage. The implementation combines two
- * hash values with `(self * 53) ^ b`.
+ * Supports both direct and pipeable usage. The combination is non-linear and
+ * sensitive to argument order, so folding several hashes through `combine`
+ * does not let differences between parts cancel out.
  *
  * **Example** (Combining hash values)
  *
@@ -224,7 +251,7 @@ export const random: <A extends object>(self: A) => number = (self) => {
 export const combine: {
   (b: number): (self: number) => number
   (self: number, b: number): number
-} = dual(2, (self: number, b: number): number => (self * 53) ^ b)
+} = dual(2, (self: number, b: number): number => optimize(mix(self ^ scramble(b))))
 
 /**
  * Applies bit manipulation techniques to optimize a hash value.
@@ -249,7 +276,7 @@ export const combine: {
  * @category hashing
  * @since 2.0.0
  */
-export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0x40000000)
+export const optimize: (n: number) => number = optimizeInternal
 
 /**
  * Checks whether a value implements the Hash interface.
@@ -313,17 +340,22 @@ export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
  * @since 2.0.0
  */
 export const number = (n: number) => {
-  if (n !== n || n === Infinity || n === -Infinity) {
-    return string(String(n))
+  const h = n | 0
+  // Integers in the 32-bit range are their own hash; `-0` maps to `0`.
+  // (`NaN | 0` is `0`, so NaN never takes this path.)
+  if (h === n) {
+    return optimize(h)
   }
-  let h = n | 0
-  if (h !== n) {
-    h ^= n * 0xffffffff
+  if (n !== n) {
+    return nanHash
   }
-  while (n > 0xffffffff) {
-    h ^= n /= 0xffffffff
+  if (n === Infinity || n === -Infinity) {
+    return n > 0 ? infinityHash : negativeInfinityHash
   }
-  return optimize(h)
+  // Fractions and integers beyond 32 bits: hash the IEEE-754 bits, which
+  // identify the value exactly, mixed down to the hash width.
+  float64[0] = n
+  return optimize(mix(float64Words[0] ^ float64Words[1]))
 }
 
 /**
@@ -385,8 +417,8 @@ export const string = (str: string) => {
  * const hash1 = Hash.structureKeys(person, ["name", "age"])
  * const hash2 = Hash.structureKeys(person, ["name", "city"])
  *
- * hash1 // => -590673747
- * hash2 // => 284850673
+ * hash1 // => 503991967
+ * hash2 // => 761742579
  *
  * const person2 = { name: "John", age: 30, city: "Boston" }
  * const hash3 = Hash.structureKeys(person2, ["name", "age"])
@@ -399,7 +431,7 @@ export const string = (str: string) => {
 export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
   let h = 12289
   for (const key of keys) {
-    h ^= combine(hash(key), hash((o as any)[key]))
+    h ^= entryTerm(hash(key), hash((o as any)[key]))
   }
   return optimize(h)
 }
@@ -425,24 +457,16 @@ export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
  * const obj2 = { name: "Jane", age: 25 }
  * const obj3 = { name: "John", age: 30 }
  *
- * Hash.structure(obj1) // => -590673747
- * Hash.structure(obj2) // => -590160631
- * Hash.structure(obj3) // => -590673747
+ * Hash.structure(obj1) // => 503991967
+ * Hash.structure(obj2) // => -764438887
+ * Hash.structure(obj3) // => 503991967
  * Hash.structure(obj1) === Hash.structure(obj3) // => true
  * ```
  *
  * @category hashing
  * @since 2.0.0
  */
-export const structure = <A extends object>(o: A) => structureKeys(o, getAllObjectKeys(o))
-
-const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<any>) => {
-  let h = seed
-  for (const element of iter) {
-    h ^= f(element)
-  }
-  return optimize(h)
-}
+export const structure = <A extends object>(o: A): number => isPlain(o) ? hashPlainObject(o) : fusedStructure(o)
 
 /**
  * Computes a hash value for an iterable by hashing all of its elements.
@@ -453,13 +477,12 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  *
  * **Details**
  *
- * The implementation folds element hashes from the seed `6151` with XOR and
- * then optimizes the final hash.
+ * Element hashes are folded in order, so reordering or repeating elements
+ * changes the hash.
  *
  * **Gotchas**
  *
- * A hash is not an equality proof. Because this implementation uses XOR,
- * reordered inputs can produce the same hash.
+ * A hash is not an equality proof: distinct inputs can still collide.
  *
  * **Example** (Hashing arrays)
  *
@@ -470,11 +493,11 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  * const arr2 = [1, 2, 3]
  * const arr3 = [3, 2, 1]
  *
- * Hash.array(arr1) // => 6151
- * Hash.array(arr2) // => 6151
- * Hash.array(arr3) // => 6151
+ * Hash.array(arr1) // => -713336228
+ * Hash.array(arr2) // => -713336228
+ * Hash.array(arr3) // => 859902775
  * Hash.array(arr1) === Hash.array(arr2) // => true
- * Hash.array(arr1) === Hash.array(arr3) // => true
+ * Hash.array(arr1) === Hash.array(arr3) // => false
  * ```
  *
  * @see {@link hash} for the general-purpose hash dispatcher
@@ -482,24 +505,284 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  * @category hashing
  * @since 2.0.0
  */
-export const array: <A>(arr: Iterable<A>) => number = iterableWith(6151, hash)
+export const array: <A>(arr: Iterable<A>) => number = (arr) => {
+  let h = arraySeed
+  let length = 0
+  for (const element of arr) {
+    h = combineOrdered(h, hash(element))
+    length++
+  }
+  return finishOrdered(h, length)
+}
 
-const hashMap: <K, V>(map: Iterable<readonly [K, V]>) => number = iterableWith(
-  string("Map"),
-  ([k, v]) => combine(hash(k), hash(v))
-)
-const hashSet: <A>(set: Iterable<A>) => number = iterableWith(string("Set"), hash)
+const arraySeed = 6151
+const mapSeed = tag(8)
+const setSeed = tag(9)
+
+const float64 = new Float64Array(1)
+const float64Words = new Int32Array(float64.buffer)
+
+// Reads bytes in place instead of allocating a `Uint8Array` view.
+const dataView = (view: DataView): number => {
+  let h = arraySeed
+  for (let i = 0; i < view.byteLength; i++) {
+    h = combineOrdered(h, view.getUint8(i))
+  }
+  return finishOrdered(h, view.byteLength)
+}
+
+// `forEach` passes keys and values as arguments, so no entry tuple is
+// allocated per element.
+const hashMap = (map: Map<unknown, unknown>): number => {
+  let h = mapSeed
+  map.forEach((value, key) => {
+    h ^= entryTerm(hash(key), hash(value))
+  })
+  return optimize(h)
+}
+
+const hashSet = (set: Set<unknown>): number => {
+  let h = setSeed
+  set.forEach((value) => {
+    h ^= elementTerm(hash(value))
+  })
+  return optimize(h)
+}
+
+const hasOwn = Object.prototype.hasOwnProperty
+
+// Property keys behave like field indices: every instance of a class shares the
+// same names. Per prototype, the deduplicated prototype-chain keys and their
+// hashes are computed once, and own field-name hashes are memoized, so
+// structural hashing neither re-runs the string hasher per field nor re-walks
+// the chain. Entries are held weakly by the prototype and die with the class.
+//
+// Prototype data members resolve to the same value for every instance, so their
+// combined contribution is a constant of the shape, folded once. An instance
+// that shadows such a key XORs its contribution back out. Members holding
+// functions or objects (methods, variance markers) contribute through their key
+// alone; primitives also contribute their value. Equal objects share keys and
+// equal values, so dropping information only adds collisions, and it keeps
+// shape constants free of identity hashes, which are random per process.
+// Accessors read instance state and stay per instance, as do `constructor` and
+// `stack`, whose inclusion depends on the instance.
+// A prototype chain is assumed unchanged once instances with it have been hashed.
+interface Shape {
+  readonly constant: number
+  readonly constantByKey: Map<PropertyKey, number>
+  readonly dynamicKeys: ReadonlyArray<PropertyKey>
+  readonly dynamicKeyHashes: ReadonlyArray<number>
+  readonly ownKeyHashes: Map<string, number>
+}
+
+const shapeCache = new WeakMap<object, Shape>()
+// Bounds own-key memoization for classes whose instances carry dynamic keys.
+const ownKeyHashesLimit = 256
+
+const shapeOf = (proto: object): Shape => {
+  let shape = shapeCache.get(proto)
+  if (shape === undefined) {
+    const layout = prototypeLayout(proto)
+    let constant = 0
+    const constantByKey = new Map<PropertyKey, number>()
+    const dynamicKeys: Array<PropertyKey> = []
+    const dynamicKeyHashes: Array<number> = []
+    for (let i = 0; i < layout.keys.length; i++) {
+      const key = layout.keys[i]
+      if (layout.constant[i]) {
+        const value = layout.values[i]
+        const contribution = entryTerm(
+          hash(key),
+          typeof value === "function" || (typeof value === "object" && value !== null) ? protoMemberHash : hash(value)
+        )
+        constant ^= contribution
+        constantByKey.set(key, contribution)
+      } else {
+        dynamicKeys.push(key)
+        dynamicKeyHashes.push(hash(key))
+      }
+    }
+    shape = { constant, constantByKey, dynamicKeys, dynamicKeyHashes, ownKeyHashes: new Map<string, number>() }
+    shapeCache.set(proto, shape)
+  }
+  return shape
+}
+
+// Only string keys are memoized: field names are literals the class already
+// holds, while symbols may be collectable and must not be retained here.
+const ownKeyHash = (shape: Shape, key: PropertyKey): number => {
+  if (typeof key !== "string") return hash(key)
+  let h = shape.ownKeyHashes.get(key)
+  if (h === undefined) {
+    h = hash(key)
+    if (shape.ownKeyHashes.size < ownKeyHashesLimit) shape.ownKeyHashes.set(key, h)
+  }
+  return h
+}
+
+// Folds over the keys `getAllObjectKeys` would collect, without materializing
+// them in a `Set`.
+const fusedStructure = (o: object): number => {
+  const own = Reflect.ownKeys(o)
+  let h = 12289
+  const ctor = o.constructor
+  const proto = Object.getPrototypeOf(o)
+  const shape = shapeOf(proto)
+  const skipStack = o instanceof Error
+  const skipConstructor = typeof ctor === "function" && proto === ctor.prototype
+  const constantByKey = shape.constantByKey
+  h ^= shape.constant
+  for (let i = 0; i < own.length; i++) {
+    const key = own[i]
+    if ((skipStack && key === "stack") || (skipConstructor && key === "constructor")) continue
+    if (constantByKey.size > 0) {
+      const shadowed = constantByKey.get(key)
+      if (shadowed !== undefined) h ^= shadowed
+    }
+    h ^= entryTerm(ownKeyHash(shape, key), hash((o as any)[key]))
+  }
+  const dynamicKeys = shape.dynamicKeys
+  for (let i = 0; i < dynamicKeys.length; i++) {
+    const key = dynamicKeys[i]
+    // Like `getAllObjectKeys`, `stack` is only excluded as an own key: when a
+    // prototype also declares it, it is collected again, reading `o.stack`.
+    if (skipConstructor && key === "constructor") continue
+    if (hasOwn.call(o, key) && !(skipStack && key === "stack")) continue
+    h ^= entryTerm(shape.dynamicKeyHashes[i], hash((o as any)[key]))
+  }
+  return optimize(h)
+}
+
+const nullHash = tag(1)
+const undefinedHash = tag(2)
+const trueHash = tag(3)
+const falseHash = tag(4)
+const invalidDateHash = tag(5)
+const circularHash = tag(6)
+const protoMemberHash = tag(7)
+const nanHash = tag(10)
+const infinityHash = tag(11)
+const negativeInfinityHash = tag(12)
+const symbolSeed = tag(14)
 
 const randomHashCache = new WeakMap<any, number>()
-const hashCache = new WeakMap<any, number>()
+const hashCache = new WeakMap<object, number>()
+
+// Symbols compare by identity; the description (the key, for registered
+// symbols) is a stable stand-in, and distinct symbols sharing it merely collide.
+const symbolHash = (sym: symbol): number => optimize(entryTerm(symbolSeed, string(sym.description ?? "")))
+
 const visitedObjects = new WeakSet<object>()
 
-function withVisitedTracking<T>(obj: object, fn: () => T): T {
+// Incremented whenever a traversal reaches an object already on its stack.
+let cyclesDetected = 0
+
+// Hashes an object that may recurse into its contents, tracking the traversal
+// stack for cycle detection. A plain function rather than a callback wrapper,
+// so no closure is allocated per hash.
+function tracked(obj: object, custom: boolean): number {
   if (visitedObjects.has(obj)) {
-    return string("[Circular]") as T
+    cyclesDetected++
+    return circularHash
   }
   visitedObjects.add(obj)
-  const result = fn()
-  visitedObjects.delete(obj)
-  return result
+  // `finally`, so a throwing custom hash cannot leave `obj` marked as visited.
+  try {
+    return custom ? (obj as Hash)[symbol]() : structural(obj)
+  } finally {
+    visitedObjects.delete(obj)
+  }
+}
+
+// Arrays and plain objects join the cycle-tracking set lazily, only when they
+// first meet an object member (just before recursing). Members hashed before
+// that point cannot re-enter the container, so this is exact, and containers
+// of primitives never pay for tracking. Returns `NaN` (never a valid hash) for
+// other objects, which take the eagerly tracked path.
+const lazilyTracked = (self: object): number => {
+  if (Array.isArray(self)) {
+    return hashArray(self)
+  }
+  if (ArrayBuffer.isView(self)) {
+    // Elements of typed arrays and bytes of data views are always primitives.
+    return self instanceof DataView ? dataView(self) : hashArray(self as unknown as ArrayLike<unknown>)
+  }
+  return isPlain(self) ? hashPlainObject(self) : NaN
+}
+
+const isObjectLike = (value: unknown): boolean => {
+  const type = typeof value
+  return (type === "object" && value !== null) || type === "function"
+}
+
+const hashArray = (self: ArrayLike<unknown>): number => {
+  if (visitedObjects.has(self)) {
+    cyclesDetected++
+    return circularHash
+  }
+  let h = arraySeed
+  let tracking = false
+  try {
+    for (let i = 0; i < self.length; i++) {
+      const element = self[i]
+      if (!tracking && isObjectLike(element)) {
+        visitedObjects.add(self)
+        tracking = true
+      }
+      h = combineOrdered(h, hash(element))
+    }
+  } finally {
+    if (tracking) visitedObjects.delete(self)
+  }
+  return finishOrdered(h, self.length)
+}
+
+// Objects whose structural keys are exactly their own keys, as in
+// `getAllObjectKeys`: those whose constructor is `Object`, and those whose
+// prototype is `Object.prototype` or `null` (no prototype keys to add).
+const isPlain = (self: object): boolean => {
+  if ((self as any).constructor === Object) return true
+  const proto = Object.getPrototypeOf(self)
+  return proto === Object.prototype || proto === null
+}
+
+const hashPlainObject = (self: object): number => {
+  if (visitedObjects.has(self)) {
+    cyclesDetected++
+    return circularHash
+  }
+  const keys = Reflect.ownKeys(self)
+  // `getAllObjectKeys` drops `constructor` when it is a class constructor
+  // whose prototype is the object's prototype.
+  const ctor = (self as any).constructor
+  const skip = ctor !== Object && typeof ctor === "function" && ctor.prototype === Object.getPrototypeOf(self)
+    ? "constructor"
+    : undefined
+  let h = 12289
+  let tracking = false
+  try {
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      if (key === skip) continue
+      const value = (self as any)[key]
+      if (!tracking && isObjectLike(value)) {
+        visitedObjects.add(self)
+        tracking = true
+      }
+      h ^= entryTerm(hash(key), hash(value))
+    }
+  } finally {
+    if (tracking) visitedObjects.delete(self)
+  }
+  return optimize(h)
+}
+
+// Objects not handled by `lazilyTracked`: maps, sets and class instances.
+const structural = (self: object): number => {
+  if (self instanceof Map) {
+    return hashMap(self)
+  } else if (self instanceof Set) {
+    return hashSet(self)
+  }
+  return fusedStructure(self)
 }

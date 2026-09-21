@@ -1298,6 +1298,20 @@ describe("Equal.equals", () => {
       expect(Hash.hash(obj1)).not.toBe(Hash.hash(obj2))
     })
 
+    it("does not let an earlier comparison change the result for cyclic values", () => {
+      // Comparing A with B provisionally assumes A ≡ B when the cycle closes,
+      // so P ≡ Q holds only under that assumption, which then fails. That
+      // conditional result must not be remembered as a fact.
+      const A: any = { child: undefined, x: 1, y: 2 }
+      const B: any = { child: undefined, x: 2, y: 1 }
+      const P = { parent: A }
+      const Q = { parent: B }
+      A.child = P
+      B.child = Q
+      assert.isFalse(Equal.equals(A, B))
+      assert.isFalse(Equal.equals(P, Q))
+    })
+
     it("should return false for objects with different circular reference patterns", () => {
       // Object that references itself
       const obj1: any = { a: 1, b: 2 }

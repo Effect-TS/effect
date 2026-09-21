@@ -10,6 +10,9 @@ import { SingleShotGen } from "../Utils.ts"
 import { PipeInspectableProto } from "./core.ts"
 import * as option from "./option.ts"
 
+const SuccessHash = Hash.hash("Success")
+const FailureHash = Hash.hash("Failure")
+
 const TypeId = "~effect/Result"
 
 const CommonProto = {
@@ -33,7 +36,7 @@ const SuccessProto = Object.assign(Object.create(CommonProto), {
     )
   },
   [Hash.symbol]<A, E>(this: Result.Success<A, E>) {
-    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.success))
+    return Hash.combine(Hash.hash(this.success), SuccessHash)
   },
   toString<A, E>(this: Result.Success<A, E>) {
     return `success(${format(this.success)})`
@@ -54,7 +57,7 @@ const FailureProto = Object.assign(Object.create(CommonProto), {
     return isResult(that) && isFailure(that) && Equal.equals(this.failure, that.failure)
   },
   [Hash.symbol]<A, E>(this: Result.Failure<A, E>) {
-    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.failure))
+    return Hash.combine(Hash.hash(this.failure), FailureHash)
   },
   toString<A, E>(this: Result.Failure<A, E>) {
     return `failure(${format(this.failure)})`

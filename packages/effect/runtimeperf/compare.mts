@@ -62,6 +62,16 @@ const runGit = (args) => {
   return result.stdout.trim()
 }
 
+// Patches must keep trailing whitespace: a final blank context line is " \n".
+const runGitRaw = (args) => {
+  const result = run("git", args, { cwd: repoRoot })
+  if (result.error) throw result.error
+  if (result.status !== 0) {
+    throw new Error(`${result.stdout}${result.stderr}`.trim())
+  }
+  return result.stdout
+}
+
 const resolveRef = (ref) => runGit(["rev-parse", "--verify", `${ref}^{commit}`])
 
 const linkDirectory = (source, target) => {
@@ -95,9 +105,9 @@ const createWorktree = (runRoot, name, sha) => {
 }
 
 const applyWorktreeChanges = (path, untracked) => {
-  const diff = runGit(["diff", "--binary", "HEAD", "--"])
+  const diff = runGitRaw(["diff", "--binary", "HEAD", "--"])
   if (diff !== "") {
-    const result = run("git", ["apply", "--binary", "-"], { cwd: path, input: `${diff}\n` })
+    const result = run("git", ["apply", "--binary", "-"], { cwd: path, input: diff })
     if (result.error) throw result.error
     if (result.status !== 0) {
       throw new Error(`${result.stdout}${result.stderr}`.trim())

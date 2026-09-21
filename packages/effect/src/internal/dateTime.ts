@@ -71,11 +71,14 @@ const ProtoTimeZone = {
   }
 }
 
+const NamedZoneHash = Hash.string("Named")
+const OffsetZoneHash = Hash.string("Offset")
+
 const ProtoTimeZoneNamed = {
   ...ProtoTimeZone,
   _tag: "Named",
   [Hash.symbol](this: DateTime.TimeZone.Named) {
-    return Hash.string(`Named:${this.id}`)
+    return Hash.combine(NamedZoneHash, Hash.string(this.id))
   },
   [Equal.symbol](this: DateTime.TimeZone.Named, that: unknown) {
     return isTimeZone(that) && that._tag === "Named" && this.id === that.id
@@ -96,7 +99,7 @@ const ProtoTimeZoneOffset = {
   ...ProtoTimeZone,
   _tag: "Offset",
   [Hash.symbol](this: DateTime.TimeZone.Offset) {
-    return Hash.string(`Offset:${this.offset}`)
+    return Hash.combine(OffsetZoneHash, Hash.number(this.offset))
   },
   [Equal.symbol](this: DateTime.TimeZone.Offset, that: unknown) {
     return isTimeZone(that) && that._tag === "Offset" && this.offset === that.offset

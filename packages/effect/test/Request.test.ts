@@ -157,8 +157,10 @@ describe("Request", { concurrent: false }, () => {
   it("compares StructuralProto values when hashes collide", () => {
     class Req extends Request.Class<{ id: string; account: string }, string> {}
 
-    const a = new Req({ id: "id-8", account: "acct-2811" })
-    const b = new Req({ id: "id-14", account: "acct-755" })
+    // A pair whose hashes collide under the current hash algorithm, found by
+    // search; update it if the algorithm changes.
+    const a = new Req({ id: "id-20", account: "acct-524" })
+    const b = new Req({ id: "id-37", account: "acct-176" })
 
     assert.strictEqual(Hash.hash(a), Hash.hash(b))
     assert.strictEqual(Equal.equals(a, b), false)

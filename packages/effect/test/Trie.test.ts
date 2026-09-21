@@ -9,14 +9,13 @@ import * as Trie from "effect/Trie"
 
 describe("Trie", () => {
   it("equality rejects tries with different numbers of entries after a hash collision", () => {
-    const value = {
-      [Hash.symbol]: () => Hash.hash("a") * 53
-    }
-    const empty = Trie.empty<typeof value>()
-    const nonEmpty = Trie.make(["a", value])
+    // Tries of different sizes whose hashes collide under the current hash
+    // algorithm, found by search; update them if the algorithm changes.
+    const one = Trie.make(["c", 166818])
+    const two = Trie.make(["a", 2], ["b", 18])
 
-    strictEqual(Hash.hash(empty), Hash.hash(nonEmpty))
-    strictEqual(Equal.equals(empty, nonEmpty), false, "tries with different sizes must not be equal")
+    strictEqual(Hash.hash(one), Hash.hash(two))
+    strictEqual(Equal.equals(one, two), false, "tries with different sizes must not be equal")
   })
 
   it("toString renders entries in iteration order", () => {

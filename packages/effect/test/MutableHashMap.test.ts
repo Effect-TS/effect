@@ -307,3 +307,17 @@ describe("MutableHashMap", () => {
     deepStrictEqual(HM.empty<string, string>().pipe(HM.set("key", "value")), HM.make(["key", "value"]))
   })
 })
+
+describe("MutableHashMap as a key", () => {
+  it("keeps finding its own entries after being used to look up another map", () => {
+    const m1 = HM.empty<object, string>()
+    const m2 = HM.empty<object, string>()
+    HM.set(m1, { id: 1 }, "v")
+    HM.set(m2, { id: 1 }, "v")
+    const outer = HM.empty<object, string>()
+    HM.set(outer, m2, "outer")
+    // Finds m2 through Equal; must not affect later lookups in m1.
+    assertSome(HM.get(outer, m1), "outer")
+    assertSome(HM.get(m1, { id: 1 }), "v")
+  })
+})

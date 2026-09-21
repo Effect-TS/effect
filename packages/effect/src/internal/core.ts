@@ -241,6 +241,8 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
 /** @internal */
 export const constEmptyAnnotations: ReadonlyMap<string, unknown> = new Map<string, unknown>()
 
+const FailHash = Hash.string("Fail")
+
 /** @internal */
 export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
   declare readonly error: E
@@ -268,9 +270,7 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.error))(Hash.hash(this.annotations))
-    )
+    return Hash.combine(Hash.combine(Hash.hash(this.annotations), Hash.hash(this.error)), FailHash)
   }
 }
 
@@ -284,6 +284,8 @@ export const causeEmpty: Cause.Cause<never> = new CauseImpl([])
 
 /** @internal */
 export const causeFail = <E>(error: E): Cause.Cause<E> => new CauseImpl([new Fail(error)])
+
+const DieHash = Hash.string("Die")
 
 /** @internal */
 export class Die extends ReasonBase<"Die"> implements Cause.Die {
@@ -312,9 +314,7 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
-    )
+    return Hash.combine(Hash.combine(Hash.hash(this.annotations), Hash.hash(this.defect)), DieHash)
   }
 }
 
@@ -477,6 +477,7 @@ export const makeExit = <
     fiber: FiberImpl<unknown, unknown>
   ) => Primitive | Yield
 }): Fn => {
+  const opHash = Hash.string(options.op)
   const Proto = {
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
@@ -502,7 +503,7 @@ export const makeExit = <
       )
     },
     [Hash.symbol](this: any): number {
-      return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
+      return Hash.combine(opHash, Hash.hash(this[args]))
     }
   }
   const ExitPrimitive = function(this: any, value: unknown) {

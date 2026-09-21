@@ -1,6 +1,6 @@
 import * as Equal from "../Equal.ts"
 import { format } from "../Formatter.ts"
-import { dual, pipe } from "../Function.ts"
+import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol, toJson } from "../Inspectable.ts"
 import * as Option from "../Option.ts"
@@ -10,9 +10,34 @@ import { hasProperty } from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import type * as TR from "../Trie.ts"
 import type { NoInfer } from "../Types.ts"
+import { entryTerm, optimize } from "./hash.ts"
 
 /** @internal */
 export const TrieTypeId = "~effect/Trie"
+
+const TrieSeed = Hash.string(TrieTypeId)
+
+// FNV-1a over UTF-16 code units: a forward key hash that can be extended one
+// character at a time along a path.
+const keySeed = 0x811c9dc5 | 0
+
+const extendKeyHash = (h: number, chars: string): number => {
+  for (let i = 0; i < chars.length; i++) {
+    h = Math.imul(h ^ chars.charCodeAt(i), 0x01000193)
+  }
+  return h
+}
+
+// XOR of the entry terms in `node`'s subtree, where `prefix` is the hash of
+// the key characters above it.
+const hashNode = <V>(node: Node<V>, prefix: number): number => {
+  const here = extendKeyHash(prefix, node.key)
+  let h = node.value === undefined ? 0 : entryTerm(here, Hash.hash(node.value.value))
+  if (node.left !== undefined) h ^= hashNode(node.left, prefix)
+  if (node.mid !== undefined) h ^= hashNode(node.mid, here)
+  if (node.right !== undefined) h ^= hashNode(node.right, prefix)
+  return h
+}
 
 type TraversalMap<K, V, A> = (k: K, v: V) => A
 
@@ -34,22 +59,27 @@ const TrieProto: TR.Trie<unknown> = {
   [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[string, V]> {
     return new TrieIterator(this, (k, v) => [k, v], () => true)
   },
-  [Hash.symbol](this: TR.Trie<unknown>): number {
-    let hash = Hash.hash(TrieTypeId)
-    for (const item of this) {
-      hash ^= pipe(Hash.hash(item[0]), Hash.combine(Hash.hash(item[1])))
-    }
-    return hash
+  [Hash.symbol]<V>(this: TrieImpl<V>): number {
+    // Entries are independent mixed terms, XOR-folded, so the result does not
+    // depend on the tree's shape (which varies with insertion order). Keys are
+    // spelled along the path, so each key's hash is carried down incrementally
+    // instead of concatenating key strings.
+    return optimize(TrieSeed ^ (this._root === undefined ? 0 : hashNode(this._root, keySeed)))
   },
   [Equal.symbol]<V>(this: TrieImpl<V>, that: unknown): boolean {
-    if (isTrie(that) && size(this) === size(that)) {
-      const entries = Array.from(that)
-      return Array.from(this).every((itemSelf, i) => {
-        const itemThat = entries[i]
-        return Equal.equals(itemSelf[0], itemThat[0]) && Equal.equals(itemSelf[1], itemThat[1])
-      })
+    if (!isTrie(that) || size(this) !== size(that)) {
+      return false
     }
-    return false
+    // Equal tries iterate in the same (lexicographic) order: compare in
+    // lockstep, stopping at the first difference, without materializing either.
+    const left = this[Symbol.iterator]()
+    const right = that[Symbol.iterator]()
+    for (let a = left.next(), b = right.next(); !a.done; a = left.next(), b = right.next()) {
+      if (b.done || a.value[0] !== b.value[0] || !Equal.equals(a.value[1], b.value[1])) {
+        return false
+      }
+    }
+    return true
   },
   toString() {
     return `Trie(${format(Array.from(this))})`

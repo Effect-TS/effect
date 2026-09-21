@@ -135,6 +135,19 @@ The compiler comparison calls `z.compile(schema, { strict: true })` and uses
 Zod's `validate` API for boolean checks. Ten representative scenarios also run
 against equivalent Valibot schemas using `parse` and `is`.
 
+The `hash` suite measures `Hash.hash` and `Equal.equals`: warm (cached) and cold
+(fresh) hashing per kind of value, hashed-collection workloads, `HashMap`
+operations at several sizes, equality workloads, and hashing and comparing
+successive versions of persistent structures (`HashMap`, `Chunk`, `Trie`) at
+several sizes. Size series are meant to be read as scaling factors: per-element
+cost should stay flat, or grow logarithmically for tree depth. Hash quality is
+reported separately, as collision counts over corpora of distinct values
+compared with what a uniformly distributed hash would produce:
+
+```sh
+pnpm --dir packages/effect exec node runtimeperf/suites/hash/quality.mts
+```
+
 ## Measurement model
 
 Each worker validates the fixture before and after measuring. The Effect

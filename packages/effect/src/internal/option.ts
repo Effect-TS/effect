@@ -10,6 +10,8 @@ import { hasProperty } from "../Predicate.ts"
 import { SingleShotGen } from "../Utils.ts"
 import { PipeInspectableProto } from "./core.ts"
 
+const SomeHash = Hash.hash("Some")
+
 const TypeId = "~effect/Option"
 
 const CommonProto = {
@@ -35,7 +37,7 @@ const SomeProto = Object.defineProperty(
       )
     },
     [Hash.symbol]<A>(this: Option.Some<A>) {
-      return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.value))
+      return Hash.combine(Hash.hash(this.value), SomeHash)
     },
     toString<A>(this: Option.Some<A>) {
       return `some(${format(this.value)})`

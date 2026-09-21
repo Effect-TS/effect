@@ -1714,7 +1714,12 @@
             "family": "moltar-parse-safe",
             "implementation": "effect",
             "operation": "decode-unknown-sync",
-            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
             "size": "moltar-object"
           },
           "cases": [
@@ -1745,7 +1750,12 @@
             "family": "moltar-parse-safe",
             "implementation": "effect-jit",
             "operation": "decode-unknown-sync",
-            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
             "size": "moltar-object"
           },
           "cases": [
@@ -1776,7 +1786,12 @@
             "family": "moltar-parse-safe",
             "implementation": "effect-aot",
             "operation": "decode-unknown-sync",
-            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
             "size": "moltar-object"
           },
           "cases": [
@@ -1926,7 +1941,12 @@
             "family": "moltar-assert-loose",
             "implementation": "effect",
             "operation": "is",
-            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
             "size": "moltar-object"
           },
           "cases": [
@@ -1957,7 +1977,12 @@
             "family": "moltar-assert-loose",
             "implementation": "effect-jit",
             "operation": "is",
-            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
             "size": "moltar-object"
           },
           "cases": [
@@ -1988,7 +2013,12 @@
             "family": "moltar-assert-loose",
             "implementation": "effect-aot",
             "operation": "is",
-            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
             "size": "moltar-object"
           },
           "cases": [
@@ -3229,6 +3259,629 @@
               "scenario": "compiler-rebuild-makeUnion",
               "operation": "make",
               "size": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "hash",
+      "fixtures": [
+        {
+          "file": "suites/hash/fixtures/hash.ts",
+          "defaults": {
+            "tier": 1,
+            "implementation": "effect",
+            "operation": "hash",
+            "astTags": []
+          },
+          "cases": [
+            {
+              "name": "warm-struct3",
+              "export": "warmStruct3",
+              "scenario": "hash-warm-struct3",
+              "family": "hash-warm",
+              "path": "cached",
+              "size": 3
+            },
+            {
+              "name": "warm-date",
+              "export": "warmDate",
+              "scenario": "hash-warm-date",
+              "family": "hash-warm",
+              "path": "cached",
+              "size": 1
+            },
+            {
+              "name": "warm-reg-exp",
+              "export": "warmRegExp",
+              "scenario": "hash-warm-reg-exp",
+              "family": "hash-warm",
+              "path": "cached",
+              "size": 1
+            },
+            {
+              "name": "cold-struct3",
+              "export": "coldStruct3",
+              "scenario": "hash-cold-struct3",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 3
+            },
+            {
+              "name": "cold-nested",
+              "export": "coldNested",
+              "scenario": "hash-cold-nested",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 1
+            },
+            {
+              "name": "cold-data-class",
+              "export": "coldDataClass",
+              "scenario": "hash-cold-data-class",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 1
+            },
+            {
+              "name": "cold-tuple2",
+              "export": "coldTuple2",
+              "scenario": "hash-cold-tuple2",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 2
+            },
+            {
+              "name": "cold-map8",
+              "export": "coldMap8",
+              "scenario": "hash-cold-map8",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 8
+            },
+            {
+              "name": "cold-set8",
+              "export": "coldSet8",
+              "scenario": "hash-cold-set8",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 8
+            },
+            {
+              "name": "cold-uint8-array64",
+              "export": "coldUint8Array64",
+              "scenario": "hash-cold-uint8-array64",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 64
+            },
+            {
+              "name": "cold-date",
+              "export": "coldDate",
+              "scenario": "hash-cold-date",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 1
+            },
+            {
+              "name": "cold-reg-exp",
+              "export": "coldRegExp",
+              "scenario": "hash-cold-reg-exp",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 1
+            },
+            {
+              "name": "cold-option-some",
+              "export": "coldOptionSome",
+              "scenario": "hash-cold-option-some",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 1
+            },
+            {
+              "name": "cold-chunk16",
+              "export": "coldChunk16",
+              "scenario": "hash-cold-chunk16",
+              "family": "hash-cold",
+              "path": "cold",
+              "size": 16
+            },
+            {
+              "name": "number-int",
+              "export": "numberInt",
+              "scenario": "hash-number-int",
+              "family": "hash-primitive",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "number-float",
+              "export": "numberFloat",
+              "scenario": "hash-number-float",
+              "family": "hash-primitive",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "string16",
+              "export": "string16",
+              "scenario": "hash-string16",
+              "family": "hash-primitive",
+              "path": "valid",
+              "size": 16
+            },
+            {
+              "name": "string256",
+              "export": "string256",
+              "scenario": "hash-string256",
+              "family": "hash-primitive",
+              "path": "valid",
+              "size": 256
+            },
+            {
+              "name": "bigint",
+              "export": "bigint",
+              "scenario": "hash-bigint",
+              "family": "hash-primitive",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "hash-map-data-class-keys64",
+              "export": "hashMapDataClassKeys64",
+              "scenario": "hash-hash-map-data-class-keys64",
+              "family": "hash-workload",
+              "path": "cold",
+              "size": 64
+            },
+            {
+              "name": "equals-nested-cold",
+              "export": "equalsNestedCold",
+              "scenario": "hash-equals-nested-cold",
+              "family": "hash-workload",
+              "path": "cold",
+              "size": 1
+            },
+            {
+              "name": "mixed-corpus-warm256",
+              "export": "mixedCorpusWarm256",
+              "scenario": "hash-mixed-corpus-warm256",
+              "family": "hash-corpus",
+              "path": "cached",
+              "size": 256
+            },
+            {
+              "name": "mixed-corpus-cold256",
+              "export": "mixedCorpusCold256",
+              "scenario": "hash-mixed-corpus-cold256",
+              "family": "hash-corpus",
+              "path": "cold",
+              "size": 256
+            },
+            {
+              "name": "hash-map-record-keys10k",
+              "export": "hashMapRecordKeys10k",
+              "scenario": "hash-hash-map-record-keys10k",
+              "family": "hash-workload",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "hash-map-tuple-keys10k",
+              "export": "hashMapTupleKeys10k",
+              "scenario": "hash-hash-map-tuple-keys10k",
+              "family": "hash-workload",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "scaling-insert-16",
+              "export": "scalingInsert16",
+              "scenario": "hash-scaling-insert-16",
+              "family": "hash-scaling",
+              "operation": "insert",
+              "path": "cold",
+              "size": 16
+            },
+            {
+              "name": "scaling-insert-1024",
+              "export": "scalingInsert1024",
+              "scenario": "hash-scaling-insert-1024",
+              "family": "hash-scaling",
+              "operation": "insert",
+              "path": "cold",
+              "size": 1024
+            },
+            {
+              "name": "scaling-insert-16384",
+              "export": "scalingInsert16384",
+              "scenario": "hash-scaling-insert-16384",
+              "family": "hash-scaling",
+              "operation": "insert",
+              "path": "cold",
+              "size": 16384
+            },
+            {
+              "name": "scaling-hit-16",
+              "export": "scalingHit16",
+              "scenario": "hash-scaling-hit-16",
+              "family": "hash-scaling",
+              "operation": "hit",
+              "path": "cold",
+              "size": 16
+            },
+            {
+              "name": "scaling-hit-1024",
+              "export": "scalingHit1024",
+              "scenario": "hash-scaling-hit-1024",
+              "family": "hash-scaling",
+              "operation": "hit",
+              "path": "cold",
+              "size": 1024
+            },
+            {
+              "name": "scaling-hit-16384",
+              "export": "scalingHit16384",
+              "scenario": "hash-scaling-hit-16384",
+              "family": "hash-scaling",
+              "operation": "hit",
+              "path": "cold",
+              "size": 16384
+            },
+            {
+              "name": "scaling-miss-16",
+              "export": "scalingMiss16",
+              "scenario": "hash-scaling-miss-16",
+              "family": "hash-scaling",
+              "operation": "miss",
+              "path": "cold",
+              "size": 16
+            },
+            {
+              "name": "scaling-miss-1024",
+              "export": "scalingMiss1024",
+              "scenario": "hash-scaling-miss-1024",
+              "family": "hash-scaling",
+              "operation": "miss",
+              "path": "cold",
+              "size": 1024
+            },
+            {
+              "name": "scaling-miss-16384",
+              "export": "scalingMiss16384",
+              "scenario": "hash-scaling-miss-16384",
+              "family": "hash-scaling",
+              "operation": "miss",
+              "path": "cold",
+              "size": 16384
+            },
+            {
+              "name": "scaling-remove-16",
+              "export": "scalingRemove16",
+              "scenario": "hash-scaling-remove-16",
+              "family": "hash-scaling",
+              "operation": "remove",
+              "path": "cold",
+              "size": 16
+            },
+            {
+              "name": "scaling-remove-1024",
+              "export": "scalingRemove1024",
+              "scenario": "hash-scaling-remove-1024",
+              "family": "hash-scaling",
+              "operation": "remove",
+              "path": "cold",
+              "size": 1024
+            },
+            {
+              "name": "scaling-remove-16384",
+              "export": "scalingRemove16384",
+              "scenario": "hash-scaling-remove-16384",
+              "family": "hash-scaling",
+              "operation": "remove",
+              "path": "cold",
+              "size": 16384
+            },
+            {
+              "name": "equals-atom-update-hash-map10k",
+              "export": "equalsAtomUpdateHashMap10k",
+              "scenario": "hash-equals-atom-update-hash-map10k",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "equals-fresh-hash-maps1k",
+              "export": "equalsFreshHashMaps1k",
+              "scenario": "hash-equals-fresh-hash-maps1k",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "equals-same-pair-nested",
+              "export": "equalsSamePairNested",
+              "scenario": "hash-equals-same-pair-nested",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cached",
+              "size": 1
+            },
+            {
+              "name": "equals-same-pair-hash-map1k",
+              "export": "equalsSamePairHashMap1k",
+              "scenario": "hash-equals-same-pair-hash-map1k",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cached",
+              "size": 1000
+            },
+            {
+              "name": "equals-fresh-map1k",
+              "export": "equalsFreshMap1k",
+              "scenario": "hash-equals-fresh-map1k",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "equals-fresh-set1k",
+              "export": "equalsFreshSet1k",
+              "scenario": "hash-equals-fresh-set1k",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "equals-changes-data-class1k",
+              "export": "equalsChangesDataClass1k",
+              "scenario": "hash-equals-changes-data-class1k",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "chunk-append-hash10k",
+              "export": "chunkAppendHash10k",
+              "scenario": "hash-chunk-append-hash10k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "trie-hash-derived1k",
+              "export": "trieHashDerived1k",
+              "scenario": "hash-trie-hash-derived1k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "trie-equals-derived1k",
+              "export": "trieEqualsDerived1k",
+              "scenario": "hash-trie-equals-derived1k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "graph-hash100",
+              "export": "graphHash100",
+              "scenario": "hash-graph-hash100",
+              "family": "persistent",
+              "path": "cold",
+              "size": 100
+            },
+            {
+              "name": "equals-atom-update-hash-map1k",
+              "export": "equalsAtomUpdateHashMap1k",
+              "scenario": "hash-equals-atom-update-hash-map1k",
+              "family": "equal",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "equals-atom-update-hash-map100k",
+              "export": "equalsAtomUpdateHashMap100k",
+              "scenario": "hash-equals-atom-update-hash-map100k",
+              "family": "equal",
+              "path": "cold",
+              "size": 100000
+            },
+            {
+              "name": "chunk-append-hash1k",
+              "export": "chunkAppendHash1k",
+              "scenario": "hash-chunk-append-hash1k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "chunk-append-hash100k",
+              "export": "chunkAppendHash100k",
+              "scenario": "hash-chunk-append-hash100k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 100000
+            },
+            {
+              "name": "chunk-slice-hash1k",
+              "export": "chunkSliceHash1k",
+              "scenario": "hash-chunk-slice-hash1k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "chunk-slice-hash10k",
+              "export": "chunkSliceHash10k",
+              "scenario": "hash-chunk-slice-hash10k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "chunk-slice-hash100k",
+              "export": "chunkSliceHash100k",
+              "scenario": "hash-chunk-slice-hash100k",
+              "family": "persistent",
+              "path": "cold",
+              "size": 100000
+            },
+            {
+              "name": "equals-dedupe-late-fresh100",
+              "export": "equalsDedupeLateFresh100",
+              "scenario": "hash-equals-dedupe-late-fresh100",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 100
+            },
+            {
+              "name": "equals-dedupe-late-reused100",
+              "export": "equalsDedupeLateReused100",
+              "scenario": "hash-equals-dedupe-late-reused100",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cached",
+              "size": 100
+            },
+            {
+              "name": "equals-dedupe-early-fresh100",
+              "export": "equalsDedupeEarlyFresh100",
+              "scenario": "hash-equals-dedupe-early-fresh100",
+              "family": "equal",
+              "operation": "equals",
+              "path": "cold",
+              "size": 100
+            },
+            {
+              "name": "api-array-dedupe-records1k",
+              "export": "apiArrayDedupeRecords1k",
+              "scenario": "hash-api-array-dedupe-records1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-array-dedupe-data-class1k",
+              "export": "apiArrayDedupeDataClass1k",
+              "scenario": "hash-api-array-dedupe-data-class1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-array-intersection-records1k",
+              "export": "apiArrayIntersectionRecords1k",
+              "scenario": "hash-api-array-intersection-records1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-array-difference-records1k",
+              "export": "apiArrayDifferenceRecords1k",
+              "scenario": "hash-api-array-difference-records1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-array-dedupe-adjacent-records1k",
+              "export": "apiArrayDedupeAdjacentRecords1k",
+              "scenario": "hash-api-array-dedupe-adjacent-records1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-hash-set-union-records1k",
+              "export": "apiHashSetUnionRecords1k",
+              "scenario": "hash-api-hash-set-union-records1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-hash-map-union-data-class1k",
+              "export": "apiHashMapUnionDataClass1k",
+              "scenario": "hash-api-hash-map-union-data-class1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-mutable-hash-map-records1k",
+              "export": "apiMutableHashMapRecords1k",
+              "scenario": "hash-api-mutable-hash-map-records1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "api-stream-changes-data-class1k",
+              "export": "apiStreamChangesDataClass1k",
+              "scenario": "hash-api-stream-changes-data-class1k",
+              "family": "api",
+              "operation": "api",
+              "path": "cold",
+              "size": 1000
+            },
+            {
+              "name": "equals-fresh-map8",
+              "export": "equalsFreshMap8",
+              "scenario": "hash-equals-fresh-map8",
+              "family": "equal",
+              "path": "cold",
+              "size": 8
+            },
+            {
+              "name": "equals-fresh-set8",
+              "export": "equalsFreshSet8",
+              "scenario": "hash-equals-fresh-set8",
+              "family": "equal",
+              "path": "cold",
+              "size": 8
+            },
+            {
+              "name": "iterate-hash-map-entries10k",
+              "export": "iterateHashMapEntries10k",
+              "scenario": "hash-iterate-hash-map-entries10k",
+              "family": "iteration",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "iterate-hash-map-keys10k",
+              "export": "iterateHashMapKeys10k",
+              "scenario": "hash-iterate-hash-map-keys10k",
+              "family": "iteration",
+              "path": "cold",
+              "size": 10000
+            },
+            {
+              "name": "iterate-hash-set10k",
+              "export": "iterateHashSet10k",
+              "scenario": "hash-iterate-hash-set10k",
+              "family": "iteration",
+              "path": "cold",
+              "size": 10000
             }
           ]
         }

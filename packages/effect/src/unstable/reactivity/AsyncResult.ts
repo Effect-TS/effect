@@ -53,6 +53,12 @@ export const TypeId: TypeId = "~effect/reactivity/AsyncResult"
  */
 export type AsyncResult<A, E = never> = Initial<A, E> | Success<A, E> | Failure<A, E>
 
+const tagHashes = {
+  Initial: [Hash.string("Initial:false"), Hash.string("Initial:true")],
+  Success: [Hash.string("Success:false"), Hash.string("Success:true")],
+  Failure: [Hash.string("Failure:false"), Hash.string("Failure:true")]
+} as const
+
 /**
  * Returns `true` when a value is an `AsyncResult`.
  *
@@ -131,11 +137,11 @@ const ResultProto = {
     }
   },
   [Hash.symbol](this: AsyncResult<any, any>): number {
-    const tagHash = Hash.string(`${this._tag}:${this.waiting}`)
+    const tagHash = tagHashes[this._tag][this.waiting ? 1 : 0]
     if (this._tag === "Initial") {
       return tagHash
     }
-    return Hash.combine(tagHash)(this._tag === "Success" ? Hash.hash(this.value) : Hash.hash(this.cause))
+    return Hash.combine(this._tag === "Success" ? Hash.hash(this.value) : Hash.hash(this.cause), tagHash)
   }
 }
 

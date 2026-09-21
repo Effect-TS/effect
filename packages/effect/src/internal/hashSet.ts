@@ -10,6 +10,7 @@ import { NodeInspectSymbol, toJson } from "../Inspectable.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
+import { optimize } from "./hash.ts"
 import * as HashMap from "./hashMap.ts"
 
 /** @internal */
@@ -23,9 +24,15 @@ export interface HashSet<out V> extends Iterable<V>, Equal.Equal, Pipeable, Insp
   readonly [HashSetTypeId]: HashSetTypeId
 }
 
+const HashSetSeed = Hash.string(HashSetTypeId)
+
 const HashSetProto: Omit<HashSet<unknown>, HashSetTypeId> = {
   [Hash.symbol]<V>(this: HashSet<V>): number {
-    return Hash.hash(HashSetTypeId)
+    // Order-insensitive like set equality. (Previously every set hashed to the
+    // same constant.)
+    // The backing map's Merkle hash: every value is `true`, so each entry term
+    // is a mix of the element's hash alone.
+    return optimize(HashSetSeed ^ HashMap.entriesHash(keyMap(this)))
   },
   [Equal.symbol]<V>(this: HashSet<V>, that: unknown): boolean {
     return isHashSet(that) && size(this) === size(that) && every(this, (value) => has(that, value))

@@ -20,6 +20,7 @@ import * as Hash from "./Hash.ts"
 import type { TypeLambda } from "./HKT.ts"
 import { type Inspectable, NodeInspectSymbol, toJson } from "./Inspectable.ts"
 import * as Count from "./internal/count.ts"
+import { elementTerm, finishOrdered } from "./internal/hash.ts"
 import type { NonEmptyIterable } from "./NonEmptyIterable.ts"
 import type { Option } from "./Option.ts"
 import * as O from "./Option.ts"
@@ -195,7 +196,7 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
     return isChunk(that) && _equivalence(this, that)
   },
   [Hash.symbol]<A>(this: Chunk<A>): number {
-    return Hash.array(toReadonlyArray(this))
+    return finishOrdered(sequenceHash(this), this.length)
   },
   [Symbol.iterator]<A>(this: Chunk<A>): Iterator<A> {
     switch (this.backing._tag) {
@@ -215,8 +216,96 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
   }
 }
 
+// Sequence hashing with an associative monoid, so a concatenation's hash is
+// computed from its halves' hashes whatever the tree's balance: the polynomial
+// (Rabin–Karp) hash h(xs) = Σ tᵢ·Bⁿ⁻¹⁻ⁱ, with h(L ++ R) = h(L)·B^|R| + h(R),
+// over well-mixed element terms tᵢ. Summaries are cached per chunk node, and
+// chunks share nodes across versions, so hashing a chunk derived by appending
+// or concatenating only visits the nodes it does not share.
+const sequenceBase = 0x9e3779b1 | 0
+
+const basePower = (n: number): number => {
+  let result = 1
+  let base = sequenceBase
+  while (n > 0) {
+    if (n & 1) result = Math.imul(result, base)
+    base = Math.imul(base, base)
+    n >>>= 1
+  }
+  return result
+}
+
+// The summary is stored on the chunk itself: a field write costs far less than
+// a WeakMap write, and chunks define their own hashing, equality and
+// serialization, so the slot is never observed. Initialized for every chunk in
+// `makeChunk` to keep a single object shape.
+interface ChunkWithSequenceHash<A> extends Chunk<A> {
+  _sequenceHash: number | undefined
+}
+
+const hornerHash = <A>(array: ReadonlyArray<A>, from: number, to: number): number => {
+  let h = 0
+  for (let i = from; i < to; i++) {
+    h = (Math.imul(h, sequenceBase) + elementTerm(Hash.hash(array[i]))) | 0
+  }
+  return h
+}
+
+// The hash of the elements in [from, to) of `self`, without copying them:
+// nodes the range covers entirely contribute their cached summary, so a range
+// costs O(log n) plus the partially covered leaves.
+const sequenceHashRange = <A>(self: Chunk<A>, from: number, to: number): number => {
+  if (from >= to) return 0
+  if (from === 0 && to === self.length) return sequenceHash(self)
+  const backing = self.backing
+  switch (backing._tag) {
+    case "IArray":
+      return hornerHash(backing.array, from, to)
+    case "ISlice":
+      return sequenceHashRange(backing.chunk, backing.offset + from, backing.offset + to)
+    case "IConcat": {
+      const split = backing.left.length
+      if (to <= split) return sequenceHashRange(backing.left, from, to)
+      if (from >= split) return sequenceHashRange(backing.right, from - split, to - split)
+      return (Math.imul(sequenceHashRange(backing.left, from, split), basePower(to - split)) +
+        sequenceHashRange(backing.right, 0, to - split)) | 0
+    }
+    default:
+      // Empty and singleton chunks are only ever fully covered.
+      return sequenceHash(self)
+  }
+}
+
+const sequenceHash = <A>(self: Chunk<A>): number => {
+  let h = (self as ChunkWithSequenceHash<A>)._sequenceHash
+  if (h === undefined) {
+    const backing = self.backing
+    switch (backing._tag) {
+      case "IEmpty":
+        h = 0
+        break
+      case "ISingleton":
+        h = elementTerm(Hash.hash(backing.a))
+        break
+      case "IConcat":
+        h = (Math.imul(sequenceHash(backing.left), basePower(backing.right.length)) + sequenceHash(backing.right)) |
+          0
+        break
+      case "IArray":
+        h = hornerHash(backing.array, 0, backing.array.length)
+        break
+      case "ISlice":
+        h = sequenceHashRange(backing.chunk, backing.offset, backing.offset + backing.length)
+        break
+    }
+    ;(self as ChunkWithSequenceHash<A>)._sequenceHash = h
+  }
+  return h
+}
+
 const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
   const chunk = Object.create(ChunkProto)
+  chunk._sequenceHash = undefined
   chunk.backing = backing
   switch (backing._tag) {
     case "IEmpty": {

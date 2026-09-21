@@ -103,6 +103,7 @@ import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 // Cause
 // ----------------------------------------------------------------------------
 
+const InterruptHash = Hash.string("Interrupt")
 /** @internal */
 export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrupt {
   declare readonly fiberId: number | undefined
@@ -130,9 +131,7 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
+    return Hash.combine(Hash.combine(InterruptHash, Hash.hash(this.fiberId)), Hash.random(this.annotations))
   }
 }
 

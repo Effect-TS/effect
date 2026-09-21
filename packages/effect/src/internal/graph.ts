@@ -5,6 +5,11 @@ import { NodeInspectSymbol } from "../Inspectable.ts"
 import * as Option from "../Option.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
+import { elementTerm, entryTerm, mix, optimize } from "./hash.ts"
+
+const GraphHash = Hash.string("Graph")
+const DirectedHash = Hash.string("directed")
+const UndirectedHash = Hash.string("undirected")
 
 /** @internal */
 export const TypeId = "~effect/Graph"
@@ -64,10 +69,12 @@ const edgeEquals = (type: Graph.Kind, self: Graph.Edge<any>, that: Graph.Edge<an
       (self.source === that.target && self.target === that.source)) &&
   Equal.equals(self.data, that.data)
 
+// Undirected edges are symmetric in their endpoints: a sum of independently
+// mixed endpoint terms is symmetric without cancelling self-loops (as XOR would).
 const edgeHash = (type: Graph.Kind, edge: Graph.Edge<any>): number =>
   type === "directed"
     ? Hash.hash(edge)
-    : Hash.optimize(Hash.hash(edge.data) ^ (Hash.hash(edge.source) + Hash.hash(edge.target)))
+    : entryTerm((elementTerm(Hash.hash(edge.source)) + elementTerm(Hash.hash(edge.target))) | 0, Hash.hash(edge.data))
 
 const ProtoGraph = {
   [TypeId]: {
@@ -106,17 +113,19 @@ const ProtoGraph = {
     return false
   },
   [Hash.symbol](this: GraphImpl<any, any, any>): number {
-    let hash = Hash.string("Graph")
-    hash = hash ^ Hash.string(this.type)
+    let hash = GraphHash
+    hash = hash ^ (this.type === "directed" ? DirectedHash : UndirectedHash)
     hash = hash ^ Hash.number(this.nodes.size)
     hash = hash ^ Hash.number(this.edges.size)
-    for (const [nodeIndex, nodeData] of this.nodes) {
-      hash = hash ^ (Hash.hash(nodeIndex) + Hash.hash(nodeData))
-    }
-    for (const [edgeIndex, edgeData] of this.edges) {
-      hash = hash ^ (Hash.hash(edgeIndex) + edgeHash(this.type, edgeData))
-    }
-    return hash
+    // Nodes and edges are independent mixed terms, XOR-folded (order-insensitive
+    // like graph equality), rather than linear sums that cancel and collide.
+    this.nodes.forEach((nodeData, nodeIndex) => {
+      hash ^= entryTerm(Hash.hash(nodeIndex), Hash.hash(nodeData))
+    })
+    this.edges.forEach((edgeData, edgeIndex) => {
+      hash ^= mix(entryTerm(Hash.hash(edgeIndex), edgeHash(this.type, edgeData)))
+    })
+    return optimize(hash)
   },
   toJSON(this: GraphImpl<any, any, any>) {
     return {
