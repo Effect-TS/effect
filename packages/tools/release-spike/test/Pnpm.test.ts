@@ -1,3 +1,5 @@
+import { Findings } from "@effect/release-spike/Findings"
+import { runPnpm, stageIdsFromJson } from "@effect/release-spike/Pnpm"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
@@ -9,8 +11,6 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import type * as ChildProcess from "effect/unstable/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
-import { Findings } from "../src/Findings.ts"
-import { runPnpm, stageIdsFromJson } from "../src/Pnpm.ts"
 
 const makeHandle = (stdout: string, stderr: string) =>
   ChildProcessSpawner.makeHandle({
@@ -38,8 +38,8 @@ describe("runPnpm", () => {
         assert.strictEqual(command._tag, "StandardCommand")
         spawned = command as ChildProcess.StandardCommand
         return Effect.succeed(makeHandle(
-          `stdout \${token} \${otp}`,
-          `stderr \${otp} \${token}`
+          `stdout ${token} ${otp}`,
+          `stderr ${otp} ${token}`
         ))
       })
     )

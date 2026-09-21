@@ -1,3 +1,4 @@
+import { listStaged, viewStaged } from "@effect/release-spike/Registry"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -5,7 +6,6 @@ import * as Option from "effect/Option"
 import * as HttpClient from "effect/unstable/http/HttpClient"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { listStaged, viewStaged } from "../src/Registry.ts"
 
 const clientLayer = (status: number, body: unknown) =>
   Layer.succeed(
