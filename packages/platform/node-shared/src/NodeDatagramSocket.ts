@@ -22,7 +22,7 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
 import * as Dgram from "node:dgram"
@@ -59,33 +59,18 @@ const acquire =
   > =>
     Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
       type A = NetAddress.Family<L>
-      const scope = yield* Effect.scope
       const family = NetAddress.isInetAddressV4(options.localAddress) ? "udp4" : "udp6"
-      let socket: Dgram.Socket
-      try {
-        socket = Dgram.createSocket({
-          type: family,
-          reuseAddr: options.reuseAddress ?? false,
-          ipv6Only: options.ipv6Only ?? false
-        })
-      } catch (cause) {
-        return yield* Effect.fail(openError(cause))
-      }
-
-      let scopeIds: Map<string, number>
-      try {
-        scopeIds = networkInterfaces()
-      } catch (cause) {
-        socket.close()
-        return yield* Effect.fail(openError(cause))
-      }
-
-      let released = false
-      let nativeState: "Idle" | "Running" | "Closed" = "Idle"
-      let acquisitionInFlight = false
+      type NativeState = "Idle" | "Binding" | "Running" | "Connecting" | "Closed"
+      type ReleaseState =
+        | { readonly _tag: "Open" }
+        | { readonly _tag: "Closing"; readonly complete: (effect: Effect.Effect<void>) => void }
+        | { readonly _tag: "Closed" }
+      let nativeState: NativeState = "Idle"
+      let releaseState: ReleaseState = { _tag: "Open" }
       const pending = new Set<(cause: unknown) => void>()
       const closedCause = new Error("Datagram socket closed")
-      let cleanupComplete: ((effect: Effect.Effect<void>) => void) | undefined
+
+      const isReleased = () => releaseState._tag !== "Open"
 
       const settlePending = (cause: unknown) => {
         for (const settle of pending) settle(cause)
@@ -102,13 +87,11 @@ const acquire =
       ): Effect.Effect<void, Datagram.DatagramSocketError> =>
         Effect.callback((resume) => {
           let active = true
-          let attached = false
           let detach: (() => void) | void
           const cleanup = () => {
-            if (!attached) return
-            attached = false
-            detach?.()
+            const run = detach
             detach = undefined
+            run?.()
           }
           const complete = (effect: Effect.Effect<void, Datagram.DatagramSocketError>) => {
             if (!active) return
@@ -120,12 +103,12 @@ const acquire =
           const settle = (cause: unknown) => complete(Effect.fail(onClosed(cause)))
           pending.add(settle)
           try {
-            detach = attach(complete)
+            const release = attach(complete)
+            if (active) detach = release
+            else release?.()
           } catch (cause) {
             complete(Effect.die(cause))
           }
-          attached = true
-          if (!active) cleanup()
           return Effect.sync(() => {
             if (!active) return
             active = false
@@ -134,48 +117,78 @@ const acquire =
           })
         })
 
-      const finishCleanup = (effect: Effect.Effect<void> = Effect.void) => {
-        const complete = cleanupComplete
-        if (complete === undefined) return
-        cleanupComplete = undefined
+      const finishRelease = (socket: Dgram.Socket, effect: Effect.Effect<void> = Effect.void) => {
+        if (releaseState._tag !== "Closing") return
+        const complete = releaseState.complete
+        releaseState = { _tag: "Closed" }
         socket.removeAllListeners()
         complete(effect)
       }
 
-      const closeNative = () => {
-        if (nativeState === "Closed") return finishCleanup()
+      const closeNative = (socket: Dgram.Socket) => {
+        if (nativeState === "Closed") return finishRelease(socket)
         try {
           socket.close()
         } catch (cause) {
           if ((cause as NodeJS.ErrnoException)?.code === "ERR_SOCKET_DGRAM_NOT_RUNNING") {
-            if (!acquisitionInFlight) finishCleanup()
+            if (nativeState !== "Binding" && nativeState !== "Connecting") finishRelease(socket)
             return
           }
-          finishCleanup(Effect.die(cause))
+          finishRelease(socket, Effect.die(cause))
         }
+      }
+
+      const releaseSocket = (socket: Dgram.Socket) =>
+        Effect.callback<void>((resume) => {
+          releaseState = { _tag: "Closing", complete: resume }
+          settlePending(closedCause)
+          closeNative(socket)
+        })
+
+      // Own the socket before interface discovery, listener setup, or native
+      // acquisition. Release settles Effect callbacks before awaiting `close`;
+      // a late `listening` transition retries an initially premature close.
+      const socket = yield* Effect.acquireRelease(
+        Effect.try({
+          try: () =>
+            Dgram.createSocket({
+              type: family,
+              reuseAddr: options.reuseAddress ?? false,
+              ipv6Only: options.ipv6Only ?? false
+            }),
+          catch: openError
+        }),
+        releaseSocket
+      )
+      if (isReleased()) return yield* Effect.fail(openError(closedCause))
+
+      let scopeIds: Map<string, number>
+      try {
+        scopeIds = networkInterfaces()
+      } catch (cause) {
+        return yield* Effect.fail(openError(cause))
       }
 
       function onListening() {
         nativeState = "Running"
-        acquisitionInFlight = false
-        if (released) closeNative()
+        if (isReleased()) closeNative(socket)
       }
 
       function onClose() {
         nativeState = "Closed"
-        acquisitionInFlight = false
         settlePending(closedCause)
-        if (released) finishCleanup()
+        if (isReleased()) finishRelease(socket)
         else handlers.onError(closedCause)
       }
 
       function onError(cause: NodeJS.ErrnoException) {
-        if (acquisitionInFlight) {
-          acquisitionInFlight = false
-          if (released && nativeState !== "Running") finishCleanup()
+        if (nativeState === "Binding" || nativeState === "Connecting") {
+          const wasBinding = nativeState === "Binding"
+          nativeState = wasBinding ? "Idle" : "Running"
+          if (isReleased() && wasBinding) finishRelease(socket)
           return
         }
-        if (released || isRecoverableReceiveError(cause)) return
+        if (isReleased() || isRecoverableReceiveError(cause)) return
         socket.off("message", onMessage)
         handlers.onError(cause)
       }
@@ -213,20 +226,6 @@ const acquire =
       socket.on("error", onError)
       socket.on("close", onClose)
 
-      // This finalizer is registered before bind/connect. It synchronously settles
-      // all Effect callbacks, then waits for native cleanup. A late `listening`
-      // event retries close, so an interrupted bind cannot leak a late resource.
-      yield* Scope.addFinalizer(
-        scope,
-        Effect.callback<void>((resume) => {
-          released = true
-          settlePending(closedCause)
-          cleanupComplete = resume
-          closeNative()
-        })
-      )
-      if (released) return yield* Effect.fail(openError(closedCause))
-
       const ensureScope = (scopeId: number) => {
         if (process.platform === "win32" || scopeId === 0 || hasScopeId(scopeIds, scopeId)) return
         scopeIds = networkInterfaces()
@@ -243,15 +242,20 @@ const acquire =
         start: () => void
       ): Effect.Effect<void, Datagram.DatagramSocketError> =>
         nativeCallback(openError, (complete) => {
-          const succeed = () => complete(Effect.void)
+          const previous: NativeState = event === "listening" ? "Idle" : "Running"
+          const acquiring: NativeState = event === "listening" ? "Binding" : "Connecting"
+          const succeed = () => {
+            nativeState = "Running"
+            complete(Effect.void)
+          }
           const fail = (cause: unknown) => complete(Effect.fail(openError(cause)))
           socket.once(event, succeed)
           socket.once("error", fail)
-          acquisitionInFlight = true
+          nativeState = acquiring
           try {
             start()
           } catch (cause) {
-            acquisitionInFlight = false
+            nativeState = previous
             complete(Effect.fail(openError(cause)))
           }
           return () => {

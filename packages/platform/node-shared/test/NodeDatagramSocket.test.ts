@@ -1,6 +1,6 @@
 import * as NodeDatagramSocket from "@effect/platform-node-shared/NodeDatagramSocket"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Result, Scope } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Result, Scope } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Buffer } from "node:buffer"
 import * as Dgram from "node:dgram"
@@ -51,6 +51,23 @@ const captureNativeSocket = (event: "error" | "message") =>
       return { closed, signal, spy }
     }),
     ({ spy }) => Effect.sync(() => spy.mockRestore())
+  )
+
+type SendImpl = (this: Dgram.Socket, ...args: Array<any>) => any
+
+const withSendSpy = (impl: (original: SendImpl, sends: number, args: Array<any>, self: Dgram.Socket) => any) =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const original = Dgram.Socket.prototype.send as unknown as SendImpl
+      let sends = 0
+      return vi.spyOn(Dgram.Socket.prototype, "send").mockImplementation(function(
+        this: Dgram.Socket,
+        ...args: Array<any>
+      ) {
+        return impl(original, ++sends, args, this)
+      })
+    }),
+    (spy) => Effect.sync(() => spy.mockRestore())
   )
 
 describe("NodeDatagramSocket acquisition", { concurrent: false }, () => {
@@ -145,6 +162,38 @@ describe("NodeDatagramSocket acquisition", { concurrent: false }, () => {
       nativeSocket.emit("listening")
       yield* Deferred.await(closed).pipe(Effect.timeout("5 seconds"))
       yield* Fiber.join(interrupting)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(opening)))
+      assert.deepStrictEqual(nativeSocket.eventNames(), [])
+    }))
+
+  it.effect("finishes interrupted acquisition when a pending bind terminates with an error", () =>
+    Effect.gen(function*() {
+      const started = Deferred.makeUnsafe<Dgram.Socket>()
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi.spyOn(Dgram.Socket.prototype, "bind").mockImplementation(function(this: Dgram.Socket) {
+            Deferred.doneUnsafe(started, Exit.succeed(this))
+            return this
+          })
+        ),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+      const opening = yield* NodeDatagramSocket.bind({ localAddress }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      const nativeSocket = yield* Deferred.await(started)
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi.spyOn(nativeSocket, "close").mockImplementation(() => {
+            throw Object.assign(new Error("Not running"), { code: "ERR_SOCKET_DGRAM_NOT_RUNNING" })
+          })
+        ),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+      const interrupting = yield* Fiber.interrupt(opening).pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isUndefined(interrupting.pollUnsafe())
+      nativeSocket.emit("error", Object.assign(new Error("bind failed"), { code: "EADDRINUSE" }))
+      yield* Fiber.join(interrupting).pipe(Effect.timeout("5 seconds"))
       assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(opening)))
       assert.deepStrictEqual(nativeSocket.eventNames(), [])
     }))
@@ -299,6 +348,91 @@ describe("NodeDatagramSocket acquisition", { concurrent: false }, () => {
         })
       })
       assert.isTrue(Exit.hasDies(exit))
+    }))
+})
+
+describe("NodeDatagramSocket native send settlement", { concurrent: false }, () => {
+  it.effect("ignores late completion after send interruption and keeps the endpoint usable", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const socket = yield* NodeDatagramSocket.bind({ localAddress }).pipe(Scope.provide(scope))
+      const peer = yield* NodeDatagramSocket.bind({ localAddress })
+      let captured: ((error: Error | null) => void) | undefined
+      yield* withSendSpy((original, sends, args, self) => {
+        if (sends === 1) {
+          captured = args[args.length - 1]
+          return
+        }
+        return original.apply(self, args)
+      })
+      const sending = yield* socket.write({ data: new Uint8Array([1]), peer: peer.address }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.isDefined(captured)
+      yield* Fiber.interrupt(sending)
+      const exit = yield* Fiber.await(sending)
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+      captured!(new Error("late failure"))
+      captured!(null)
+      yield* socket.write({ data: new Uint8Array([2]), peer: peer.address })
+      assert.deepStrictEqual(Array.from((yield* peer.pull)[0].data), [2])
+      yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("5 seconds"))
+    }))
+
+  it.effect("maps a synchronous native send failure and keeps the endpoint usable", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const socket = yield* NodeDatagramSocket.bind({ localAddress }).pipe(Scope.provide(scope))
+      const peer = yield* NodeDatagramSocket.bind({ localAddress })
+      yield* withSendSpy((original, sends, args, self) => {
+        if (sends === 1) throw new Error("synchronous native failure")
+        return original.apply(self, args)
+      })
+      const failure = yield* socket.writeMany([
+        { data: new Uint8Array([1]), peer: peer.address },
+        { data: new Uint8Array([2]), peer: peer.address }
+      ]).pipe(Effect.flip)
+      assert.strictEqual(failure.reason._tag, "DatagramSocketWriteError")
+      if (failure.reason._tag === "DatagramSocketWriteError") assert.strictEqual(failure.reason.accepted, 0)
+      yield* socket.write({ data: new Uint8Array([3]), peer: peer.address })
+      assert.deepStrictEqual(Array.from((yield* peer.pull)[0].data), [3])
+      yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("5 seconds"))
+    }))
+
+  it.effect("settles once when the native send callback completes synchronously", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const socket = yield* NodeDatagramSocket.bind({ localAddress }).pipe(Scope.provide(scope))
+      const peer = yield* NodeDatagramSocket.bind({ localAddress })
+      yield* withSendSpy((_original, _sends, args) => {
+        const callback = args[args.length - 1]
+        callback(null)
+        callback(new Error("second completion must be ignored"))
+      })
+      yield* socket.writeMany([
+        { data: new Uint8Array([1]), peer: peer.address },
+        { data: new Uint8Array([2]), peer: peer.address }
+      ])
+      yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("5 seconds"))
+    }))
+
+  it.effect("settles a pending native send as closed before finalization completes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const socket = yield* NodeDatagramSocket.bind({ localAddress }).pipe(Scope.provide(scope))
+      const peer = yield* NodeDatagramSocket.bind({ localAddress })
+      let captured: ((error: Error | null) => void) | undefined
+      yield* withSendSpy((_original, _sends, args) => {
+        captured = args[args.length - 1]
+      })
+      const sending = yield* socket.write({ data: new Uint8Array([1]), peer: peer.address }).pipe(
+        Effect.flip,
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.isDefined(captured)
+      yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("5 seconds"))
+      assert.strictEqual((yield* Fiber.join(sending)).reason._tag, "DatagramSocketClosedError")
+      captured!(null)
     }))
 })
 

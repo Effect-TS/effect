@@ -745,8 +745,8 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       }
     }
 
-    const send = (packet: Packet<A>, accepted: number): Effect.Effect<void, DatagramSocketError> =>
-      whileOpen(() => binding.send({ data: new Uint8Array(packet.data), peer: packet.peer })).pipe(
+    const submit = (packet: Packet<A>, accepted: number): Effect.Effect<void, DatagramSocketError> =>
+      binding.send({ data: new Uint8Array(packet.data), peer: packet.peer }).pipe(
         Effect.catch((cause) => {
           if (cause.reason._tag !== "DatagramSocketWriteError") return Effect.fail(cause)
           if (cause.reason.accepted !== 0) {
@@ -765,7 +765,7 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
     const write = (packet: Packet<A>): Effect.Effect<void, DatagramSocketError> =>
       whileOpen(() => {
         const failure = validatePacket(packet)
-        return failure === undefined ? send(packet, 0) : Effect.fail(failure)
+        return failure === undefined ? submit(packet, 0) : Effect.fail(failure)
       })
 
     const writeMany = (packets: ReadonlyArray<Packet<A>>): Effect.Effect<void, DatagramSocketError> =>
@@ -777,7 +777,7 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
         let accepted = 0
         return Effect.whileLoop({
           while: () => accepted < packets.length,
-          body: () => send(packets[accepted], accepted),
+          body: () => whileOpen(() => submit(packets[accepted], accepted)),
           step: () => accepted++
         })
       })
