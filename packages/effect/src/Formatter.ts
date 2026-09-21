@@ -318,20 +318,19 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
-      let current = redacted
-      if (current instanceof Error && !Predicate.hasProperty(current, "toJSON")) {
-        current = { ...current, name: current.name, message: current.message }
-      }
+      const current = redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")
+        ? { ...redacted, name: redacted.name, message: redacted.message }
+        : redacted
       while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
         ancestors.pop()
       }
-      if (ancestors.includes(redacted) || (current !== redacted && ancestors.includes(current))) {
+      if (ancestors.includes(redacted)) {
         return undefined // circular reference
       }
+      ancestors.push(redacted)
       if (current !== redacted) {
-        ancestors.push(redacted)
+        ancestors.push(current)
       }
-      ancestors.push(current)
       return current
     },
     options?.space
