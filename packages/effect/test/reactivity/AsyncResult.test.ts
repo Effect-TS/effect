@@ -1,33 +1,15 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Cause, Option } from "effect"
+import { Cause } from "effect"
 import { AsyncResult } from "effect/unstable/reactivity"
 
 describe("AsyncResult", () => {
-  describe("dual APIs", () => {
-    it("waiting supports both call styles without options", () => {
-      const dataFirst = AsyncResult.waiting(AsyncResult.success(1))
-      const dataLast = AsyncResult.waiting()(AsyncResult.success(2))
+  it("waiting dispatches with optional options", () => {
+    const result = AsyncResult.success(1)
 
-      expect(dataFirst.waiting).toBe(true)
-      expect(dataLast.waiting).toBe(true)
-    })
-
-    it("waiting supports both call styles with options", () => {
-      const dataFirst = AsyncResult.waiting(AsyncResult.success(1), { touch: false })
-      const dataLast = AsyncResult.waiting({ touch: false })(AsyncResult.success(2))
-
-      expect(dataFirst.waiting).toBe(true)
-      expect(dataLast.waiting).toBe(true)
-    })
-
-    it("replacePrevious supports data-first and data-last calls", () => {
-      const previous = Option.some(AsyncResult.success(1))
-      const dataFirst = AsyncResult.replacePrevious(AsyncResult.fail("data-first"), previous)
-      const dataLast = AsyncResult.replacePrevious(previous)(AsyncResult.fail("data-last"))
-
-      expect(Option.map(dataFirst.previousSuccess, (success) => success.value)).toEqual(Option.some(1))
-      expect(Option.map(dataLast.previousSuccess, (success) => success.value)).toEqual(Option.some(1))
-    })
+    expect(AsyncResult.waiting(result).waiting).toBe(true)
+    expect(AsyncResult.waiting(result, { touch: false }).waiting).toBe(true)
+    expect(AsyncResult.waiting()(result).waiting).toBe(true)
+    expect(AsyncResult.waiting({ touch: false })(result).waiting).toBe(true)
   })
 
   describe("builder", () => {

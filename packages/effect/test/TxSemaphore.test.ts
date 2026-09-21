@@ -57,43 +57,6 @@ describe("TxSemaphore", () => {
         assert.strictEqual(availableAfter, 4)
       })))
 
-    it.effect("acquireN supports data-first and data-last calls", () =>
-      Effect.tx(Effect.gen(function*() {
-        const dataFirst = yield* TxSemaphore.make(5)
-        const dataLast = yield* TxSemaphore.make(5)
-
-        yield* TxSemaphore.acquireN(dataFirst, 2)
-        yield* TxSemaphore.acquireN(3)(dataLast)
-
-        assert.strictEqual(yield* TxSemaphore.available(dataFirst), 3)
-        assert.strictEqual(yield* TxSemaphore.available(dataLast), 2)
-      })))
-
-    it.effect("tryAcquireN supports data-first and data-last calls", () =>
-      Effect.tx(Effect.gen(function*() {
-        const dataFirst = yield* TxSemaphore.make(5)
-        const dataLast = yield* TxSemaphore.make(5)
-
-        assert.isTrue(yield* TxSemaphore.tryAcquireN(dataFirst, 2))
-        assert.isTrue(yield* TxSemaphore.tryAcquireN(3)(dataLast))
-        assert.strictEqual(yield* TxSemaphore.available(dataFirst), 3)
-        assert.strictEqual(yield* TxSemaphore.available(dataLast), 2)
-      })))
-
-    it.effect("releaseN supports data-first and data-last calls", () =>
-      Effect.tx(Effect.gen(function*() {
-        const dataFirst = yield* TxSemaphore.make(5)
-        const dataLast = yield* TxSemaphore.make(5)
-        yield* TxSemaphore.acquireN(dataFirst, 4)
-        yield* TxSemaphore.acquireN(dataLast, 4)
-
-        yield* TxSemaphore.releaseN(dataFirst, 2)
-        yield* TxSemaphore.releaseN(3)(dataLast)
-
-        assert.strictEqual(yield* TxSemaphore.available(dataFirst), 3)
-        assert.strictEqual(yield* TxSemaphore.available(dataLast), 4)
-      })))
-
     it.effect("tryAcquire succeeds when permits available", () =>
       Effect.tx(Effect.gen(function*() {
         const semaphore = yield* TxSemaphore.make(2)

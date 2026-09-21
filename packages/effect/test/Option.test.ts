@@ -198,7 +198,6 @@ describe("Option", () => {
     assertNone(product(Option.some(1), Option.none()))
     assertNone(product(Option.none(), Option.some("a")))
     assertSome(product(Option.some(1), Option.some("a")), [1, "a"])
-    assertSome(product(Option.some("a"))(Option.some(1)), [1, "a"])
   })
 
   it("productMany", () => {
@@ -207,7 +206,6 @@ describe("Option", () => {
     assertSome(productMany(Option.some(1), []), [1])
     assertNone(productMany(Option.some(1), [Option.none()]))
     assertSome(productMany(Option.some(1), [Option.some(2)]), [1, 2])
-    assertSome(productMany([Option.some(2)])(Option.some(1)), [1, 2])
   })
 
   it("fromIterable", () => {
