@@ -54,6 +54,55 @@ const captureNativeSocket = (event: "error" | "message") =>
   )
 
 describe("NodeDatagramSocket acquisition", { concurrent: false }, () => {
+  it.effect("owns a created socket before setup interruption can escape", () =>
+    Effect.gen(function*() {
+      const created = Deferred.makeUnsafe<Dgram.Socket>()
+      let closeCalls = 0
+      let interruptRequested = false
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          const originalOn = Dgram.Socket.prototype.on
+          const on = vi.spyOn(Dgram.Socket.prototype, "on").mockImplementation(function(
+            this: Dgram.Socket,
+            event: string | symbol,
+            listener: (...args: Array<any>) => void
+          ) {
+            const result = originalOn.call(this, event, listener)
+            if (event === "listening" && !interruptRequested) {
+              Deferred.doneUnsafe(created, Exit.succeed(this))
+              interruptRequested = true
+              Fiber.getCurrent()!.interruptUnsafe()
+            }
+            return result
+          })
+          const originalClose = Dgram.Socket.prototype.close
+          const close = vi.spyOn(Dgram.Socket.prototype, "close").mockImplementation(function(
+            this: Dgram.Socket,
+            callback?: () => void
+          ) {
+            closeCalls++
+            return originalClose.call(this, callback)
+          })
+          return { close, on }
+        }),
+        ({ close, on }) =>
+          Effect.sync(() => {
+            close.mockRestore()
+            on.mockRestore()
+          })
+      )
+
+      const opening = yield* NodeDatagramSocket.bind({ localAddress }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      const exit = yield* Fiber.await(opening)
+      const nativeSocket = yield* Deferred.await(created)
+      assert.isTrue(interruptRequested)
+      assert.isTrue(Exit.hasInterrupts(exit))
+      assert.strictEqual(closeCalls, 1)
+      assert.deepStrictEqual(nativeSocket.eventNames(), [])
+    }))
+
   it.effect("closes a native socket whose bind completes after acquisition is interrupted", () =>
     Effect.gen(function*() {
       const started = Deferred.makeUnsafe<Dgram.Socket>()

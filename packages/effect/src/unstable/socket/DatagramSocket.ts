@@ -6,7 +6,9 @@
  * Binding acquires a ready-to-use endpoint owned by its scope. Read and write
  * operations share that endpoint; stopping a consumer leaves it open. Local
  * buffering cannot provide remote backpressure, and successful writes do not
- * acknowledge delivery.
+ * acknowledge delivery. Transport adapters implementing {@link Binding} must
+ * settle pending operations when their scope closes; otherwise callers and
+ * scope closure can remain suspended.
  *
  * @since 4.0.0
  */
@@ -125,7 +127,9 @@ interface Socket<A extends NetAddress.IpAddress, W> {
   readonly address: Inet<A>
   /**
    * Reads the next non-empty batch of complete packets. Concurrent pulls consume
-   * distinct packets. Interrupting a pull leaves the endpoint open and loses no packet.
+   * distinct packets. Interrupting while waiting leaves the endpoint open and
+   * reserves or removes no packet. Once a result is computed, ordinary Effect
+   * interruption rules apply before the caller observes it.
    */
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError>
   /**
@@ -805,17 +809,30 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
         })
       })
 
-    const pull = Effect.suspend(() => {
+    const pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError> = Effect.suspend(() => {
       if (status === "Closed") return Effect.fail(closedError)
-      return Queue.takeBetween(inbox, 1, limits.readBatchSize).pipe(
-        Effect.flatMap((batch) =>
-          Effect.suspend(() => {
+      return Queue.peek(inbox).pipe(
+        Effect.flatMap(() =>
+          Effect.suspend((): Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError> => {
             if (status === "Closed") return Effect.fail(closedError)
+            const batch: Array<Packet<A>> = []
+            while (batch.length < limits.readBatchSize) {
+              const next = Queue.takeUnsafe(inbox)
+              if (next === undefined) break
+              if (Exit.isFailure(next)) {
+                if (batch.length === 0) return Effect.failCause(next.cause)
+                break
+              }
+              batch.push(next.value)
+            }
+            // Another puller may consume the item observed by `peek` before this
+            // continuation runs. Wait again without reserving anything.
+            if (batch.length === 0) return pull
             for (const packet of batch) queuedBytes -= packet.data.byteLength
             return Effect.succeed(batch as unknown as NonEmptyReadonlyArray<Packet<A>>)
           })
         ),
-        Effect.catchCause((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.failCause(cause))
+        Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
       )
     })
 

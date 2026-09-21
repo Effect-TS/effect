@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Scope, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Scheduler, Scope, Stream } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
 
@@ -226,6 +226,74 @@ describe("DatagramSocket.fromTransport", () => {
       assert.deepStrictEqual(yield* socket.pull, [packet([1])])
       handlers.onMessage(new Uint8Array([2]), address)
       assert.deepStrictEqual(yield* socket.pull, [packet([2])])
+    }))
+
+  it.effect("reuses receive byte capacity after interruption at a scheduler yield", () =>
+    Effect.gen(function*() {
+      const { handlers, socket } = yield* transportFixture({
+        receiveCapacityBytes: 2
+      })
+      const receiving = yield* socket.pull.pipe(
+        Effect.provideService(Scheduler.MaxOpsBeforeYield, 3),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      handlers.onMessage(new Uint8Array([1]), address)
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(receiving)
+
+      handlers.onMessage(new Uint8Array([2]), address)
+      yield* socket.pull
+      handlers.onMessage(new Uint8Array([3]), address)
+      handlers.onMessage(new Uint8Array([4]), address)
+      assert.deepStrictEqual(yield* socket.pull, [packet([3]), packet([4])])
+    }))
+
+  it.effect("preserves interruption when closure races a scheduler-yielded pull", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const { handlers, socket } = yield* transportFixture().pipe(Scope.provide(scope))
+      const receiving = yield* socket.pull.pipe(
+        Effect.provideService(Scheduler.MaxOpsBeforeYield, 3),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      handlers.onMessage(new Uint8Array([1]), address)
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Fiber.interrupt(receiving)
+      yield* Fiber.join(closing)
+      const exit = yield* Fiber.await(receiving)
+      assert.isTrue(Exit.hasInterrupts(exit))
+    }))
+
+  it.effect("reuses receive byte capacity after scheduler-yielded channel cancellation", () =>
+    Effect.gen(function*() {
+      const { handlers, socket } = yield* transportFixture({
+        receiveCapacityBytes: 2
+      })
+      const channel = yield* Stream.never.pipe(
+        Stream.pipeThroughChannel(Datagram.toChannel(socket)),
+        Stream.runDrain,
+        Effect.provideService(Scheduler.MaxOpsBeforeYield, 3),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      handlers.onMessage(new Uint8Array([1]), address)
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(channel)
+
+      handlers.onMessage(new Uint8Array([2]), address)
+      yield* socket.pull
+      handlers.onMessage(new Uint8Array([3]), address)
+      handlers.onMessage(new Uint8Array([4]), address)
+      assert.deepStrictEqual(yield* socket.pull, [packet([3]), packet([4])])
     }))
 
   it.effect("conserves packets across deterministic multi-reader interruptions", () =>

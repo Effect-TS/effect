@@ -57,7 +57,7 @@ const acquire =
     Datagram.DatagramSocketError,
     Scope.Scope
   > =>
-    Effect.gen(function*() {
+    Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
       type A = Datagram.FamilyOf<L>
       const scope = yield* Effect.scope
       const family = NetAddress.isInetAddressV4(options.localAddress) ? "udp4" : "udp6"
@@ -239,7 +239,7 @@ const acquire =
       } catch (cause) {
         return yield* Effect.fail(openError(cause))
       }
-      yield* awaitNative("listening", () => socket.bind(options.localAddress.port, localHost))
+      yield* restore(awaitNative("listening", () => socket.bind(options.localAddress.port, localHost)))
 
       if (options.broadcast === true) {
         try {
@@ -257,7 +257,7 @@ const acquire =
         } catch (cause) {
           return yield* Effect.fail(openError(cause))
         }
-        yield* awaitNative("connect", () => socket.connect(remote.port, host))
+        yield* restore(awaitNative("connect", () => socket.connect(remote.port, host)))
         nativeConnected = true
       }
 
@@ -360,7 +360,7 @@ const acquire =
         addMembership: (group, membershipOptions) => membership("addMembership", group, membershipOptions),
         dropMembership: (group, membershipOptions) => membership("dropMembership", group, membershipOptions)
       }
-    })
+    }))
 
 /**
  * Acquires a bound Node.js UDP socket owned by the current scope.
