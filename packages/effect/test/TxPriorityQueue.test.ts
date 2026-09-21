@@ -18,6 +18,13 @@ describe("TxPriorityQueue", () => {
         assert.deepStrictEqual(all, [1, 2, 3])
       })))
 
+    it.effect("fromIterable supports the curried call", () =>
+      Effect.tx(Effect.gen(function*() {
+        const pq = yield* TxPriorityQueue.fromIterable(Order.Number)([3, 1, 2])
+        const all = yield* TxPriorityQueue.toArray(pq)
+        assert.deepStrictEqual(all, [1, 2, 3])
+      })))
+
     it.effect("make creates from variadic args", () =>
       Effect.tx(Effect.gen(function*() {
         const pq = yield* TxPriorityQueue.make(Order.Number)(5, 3, 1, 4, 2)

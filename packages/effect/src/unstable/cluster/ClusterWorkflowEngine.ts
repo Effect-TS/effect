@@ -385,8 +385,9 @@ export const make = Effect.gen(function*() {
 
   const engine = WorkflowEngine.makeUnsafe({
     register: (workflow, execute) =>
-      Effect.suspend(() =>
-        sharding.registerEntity(
+      Effect.suspend(() => {
+        const existing = workflows.get(workflow._tag)
+        const registration = sharding.registerEntity(
           ensureEntity(workflow),
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
@@ -537,7 +538,15 @@ export const make = Effect.gen(function*() {
           // fork their wake and return an asynchronous reply.
           { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
-      ),
+        if (existing === undefined || existing === workflow) return registration
+        return Effect.logWarning(
+          `Workflow "${workflow._tag}" is already registered with payload shape ${
+            payloadShape(
+              existing
+            )
+          }; ignoring duplicate definition with payload shape ${payloadShape(workflow)}`
+        ).pipe(Effect.andThen(registration))
+      }),
 
     execute: (workflow, { discard, executionId, parent, payload }) => {
       ensureEntity(workflow)
@@ -903,3 +912,12 @@ export const layer: Layer.Layer<
 > = ClockEntityLayer.pipe(
   Layer.provideMerge(Layer.effect(WorkflowEngine.WorkflowEngine)(make))
 )
+
+const payloadShape = (workflow: Workflow.Any): string => {
+  try {
+    const { definitions, schema } = Schema.toJsonSchemaDocument(workflow.payloadSchema)
+    return JSON.stringify(Object.keys(definitions).length === 0 ? schema : { ...schema, $defs: definitions })
+  } catch {
+    return "<unavailable>"
+  }
+}

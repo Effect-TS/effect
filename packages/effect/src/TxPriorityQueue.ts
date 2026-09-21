@@ -144,19 +144,26 @@ export const empty = <A>(order: Order<A>): Effect.Effect<TxPriorityQueue<A>> =>
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterable: {
-  <A>(order: Order<A>): (iterable: Iterable<A>) => Effect.Effect<TxPriorityQueue<A>>
-  <A>(order: Order<A>, iterable: Iterable<A>): Effect.Effect<TxPriorityQueue<A>>
-} = dual(
-  2,
-  <A>(order: Order<A>, iterable: Iterable<A>): Effect.Effect<TxPriorityQueue<A>> => {
-    const arr = Array.from(iterable).sort((a, b) => order(a, b))
-    return Effect.map(
-      TxRef.make<Chunk<A>>(C.fromIterable(arr)),
-      (ref) => makeTxPriorityQueue(ref, order)
-    )
+export function fromIterable<A>(
+  order: Order<A>
+): (iterable: Iterable<A>) => Effect.Effect<TxPriorityQueue<A>>
+export function fromIterable<A>(
+  order: Order<A>,
+  iterable: Iterable<A>
+): Effect.Effect<TxPriorityQueue<A>>
+export function fromIterable<A>(
+  order: Order<A>,
+  iterable?: Iterable<A>
+): Effect.Effect<TxPriorityQueue<A>> | ((iterable: Iterable<A>) => Effect.Effect<TxPriorityQueue<A>>) {
+  if (iterable === undefined) {
+    return (iterable) => fromIterable(order, iterable)
   }
-)
+  const arr = Array.from(iterable).sort((a, b) => order(a, b))
+  return Effect.map(
+    TxRef.make<Chunk<A>>(C.fromIterable(arr)),
+    (ref) => makeTxPriorityQueue(ref, order)
+  )
+}
 
 /**
  * Creates a `TxPriorityQueue` from variadic elements.

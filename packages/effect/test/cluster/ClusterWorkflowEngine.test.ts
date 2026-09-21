@@ -9,6 +9,7 @@ import {
   Fiber,
   Latch,
   Layer,
+  Logger,
   Option,
   Result,
   Schema,
@@ -949,6 +950,64 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("bounds a durable clock notification when its workflow is absent after restart", () =>
+    Effect.gen(function*() {
+      const clockDuration = 3000
+      const registrationTimeout = 5000
+      const RemovedWorkflow = Workflow.make("RemovedWorkflow", {
+        payload: {},
+        success: Schema.Void,
+        idempotencyKey: () => "one"
+      })
+      const shared = yield* Layer.build(
+        MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
+      )
+      const driver = Context.get(shared, MessageStorage.MemoryDriver)
+      const storageLayer = Layer.succeed(
+        MessageStorage.MessageStorage,
+        Context.get(shared, MessageStorage.MessageStorage)
+      )
+      const config = { entityRegistrationTimeout: registrationTimeout }
+      const clock = DurableClock.make({ name: "wait", duration: clockDuration })
+
+      const executionId = yield* Effect.gen(function*() {
+        const executionId = yield* RemovedWorkflow.execute({}, { discard: true })
+        yield* pollUntil(RemovedWorkflow, executionId, "Suspended")
+        return executionId
+      }).pipe(Effect.provide(
+        RemovedWorkflow.toLayer(() =>
+          DurableClock.sleep({ name: "wait", duration: clockDuration, inMemoryThreshold: Duration.zero })
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer, config })))
+      ))
+      const clockRequest = driver.journal.find((message) =>
+        message._tag === "Request" && message.address.entityType === "Workflow/-/DurableClock"
+      )
+      assert(clockRequest !== undefined && clockRequest._tag === "Request")
+
+      yield* Effect.gen(function*() {
+        // Fire the persisted timer before the registration-start deadline.
+        yield* TestClock.adjust(clockDuration)
+        // This is the completion emitted by ClockEntity when the persisted timer fires.
+        // Calling it directly isolates the notifyLocal registration wait from storage claims.
+        const fiber = yield* DurableDeferred.done(clock.deferred, {
+          token: DurableDeferred.tokenFromExecutionId(clock.deferred, {
+            workflow: RemovedWorkflow,
+            executionId
+          }),
+          exit: Exit.void
+        }).pipe(Effect.forkDetach({ startImmediately: true }))
+        yield* Effect.yieldNow
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* TestClock.adjust(registrationTimeout - clockDuration)
+
+        const exit = fiber.pollUnsafe()
+        assert(exit !== undefined, "the notifyLocal registration wait must be bounded")
+        const defect = Exit.findDefect(exit)
+        assert(Result.isSuccess(defect) && defect.success instanceof Error)
+        assert.strictEqual(defect.success.message, `Entity type 'Workflow/${RemovedWorkflow._tag}' not registered`)
+      }).pipe(Effect.provide(makeTestWorkflowEngine({ storageLayer, config })))
+    }))
+
   for (const [id, threshold] of [["number", 0], ["bigint", 0n]] as const) {
     it.effect(`DurableClock.sleep preserves an explicit ${id} zero threshold`, () => verifyZeroThreshold(id, threshold))
   }
@@ -1445,6 +1504,77 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
     }).pipe(Effect.provide(TestWorkflowEngine)))
+
+  it.effect("warns for conflicting definitions and stays silent for the same definition", () => {
+    class FirstPayload extends Schema.Class<FirstPayload>("DuplicateClassPayload")({
+      organizationId: Schema.String
+    }) {}
+    class SecondPayload extends Schema.Class<SecondPayload>("DuplicateClassPayload")({
+      deploymentId: Schema.Number
+    }) {}
+    const first = Workflow.make("DuplicateClassPayloadWorkflow", {
+      payload: FirstPayload,
+      idempotencyKey: ({ organizationId }) => organizationId
+    })
+    const second = Workflow.make("DuplicateClassPayloadWorkflow", {
+      payload: SecondPayload,
+      idempotencyKey: ({ deploymentId }) => String(deploymentId)
+    })
+    const warnings: Array<unknown> = []
+    const logger = Logger.make<unknown, void>((options) => {
+      if (options.logLevel === "Warn") {
+        warnings.push(options.message)
+      }
+    })
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine
+      yield* engine.register(first, () => Effect.void)
+      yield* engine.register(first, () => Effect.void)
+
+      assert.deepStrictEqual(warnings, [])
+
+      yield* engine.register(second, () => Effect.void)
+
+      const warning = warnings
+        .map((message) => globalThis.Array.isArray(message) ? message.join(" ") : String(message))
+        .find((message) => message.includes("DuplicateClassPayloadWorkflow"))
+      assert(warning, "duplicate workflow registration must emit a warning containing its tag")
+      const normalized = warning.toLowerCase()
+      for (const fragment of ["organizationid", "string", "deploymentid", "number"]) {
+        assert.include(normalized, fragment, `warning must identify both class payload shapes: ${warning}`)
+      }
+    }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
+  })
+
+  it.effect("does not fail when duplicate workflow payload shapes cannot be rendered", () => {
+    const payloadKey = Symbol("payload")
+    const first = Workflow.make("UnavailablePayloadShapeWorkflow", {
+      payload: Schema.Struct({ [payloadKey]: Schema.String }),
+      idempotencyKey: () => "first"
+    })
+    const second = Workflow.make("UnavailablePayloadShapeWorkflow", {
+      payload: Schema.Struct({ [payloadKey]: Schema.Number }),
+      idempotencyKey: () => "second"
+    })
+    const warnings: Array<unknown> = []
+    const logger = Logger.make<unknown, void>((options) => {
+      if (options.logLevel === "Warn") {
+        warnings.push(options.message)
+      }
+    })
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine
+      yield* engine.register(first, () => Effect.void)
+      yield* engine.register(second, () => Effect.void)
+
+      const warning = warnings
+        .map((message) => globalThis.Array.isArray(message) ? message.join(" ") : String(message))
+        .find((message) => message.includes("UnavailablePayloadShapeWorkflow"))
+      assert(warning, "duplicate workflow registration must still warn when rendering a payload shape fails")
+    }).pipe(Effect.provide(TestWorkflowEngine), Effect.withLogger(logger))
+  })
 
   it.effect("propagates trace context to persisted workflow requests", () => {
     let callerSpan: Tracer.NativeSpan | undefined
