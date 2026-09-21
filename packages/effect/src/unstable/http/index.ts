@@ -112,6 +112,11 @@ export * as HttpServerResponse from "./HttpServerResponse.ts"
 /**
  * @since 4.0.0
  */
+export * as HttpSocketProtocols from "./HttpSocketProtocols.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as HttpStaticServer from "./HttpStaticServer.ts"
 
 /**
