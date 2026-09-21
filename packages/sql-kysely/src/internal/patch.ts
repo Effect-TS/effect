@@ -35,8 +35,7 @@ function effectifyWith(
   obj: any,
   commit: (plugins: ReadonlyArray<KyselyPlugin>) => Effect.Effect<ReadonlyArray<unknown>, SqlError>,
   whitelist: Array<string>,
-  plugins: ReadonlyArray<KyselyPlugin> = [],
-  methods: Readonly<Record<string, (...args: Array<any>) => any>> = {}
+  plugins: ReadonlyArray<KyselyPlugin> = []
 ) {
   if (typeof obj !== "object" || obj === null) {
     return obj
@@ -48,9 +47,6 @@ function effectifyWith(
       const desc = Object.getOwnPropertyDescriptor(target, prop)
       if (desc && !desc.configurable && !desc.writable) {
         return target[prop]
-      }
-      if (typeof prop === "string" && prop in methods && "transaction" in target) {
-        return methods[prop].bind(target)
       }
       const prototype = Object.getPrototypeOf(target)
       if (Effect.EffectTypeId in prototype && prop === "commit") {
@@ -68,12 +64,11 @@ function effectifyWith(
             target[prop].call(target, ...args),
             commit,
             whitelist,
-            prop === "withPlugin" ? [...plugins, args[0] as KyselyPlugin] : prop === "withoutPlugins" ? [] : plugins,
-            methods
+            prop === "withPlugin" ? [...plugins, args[0] as KyselyPlugin] : prop === "withoutPlugins" ? [] : plugins
           )
         }
       }
-      return effectifyWith(target[prop], commit, whitelist, plugins, methods)
+      return effectifyWith(target[prop], commit, whitelist, plugins)
     }
   })
 }
@@ -120,9 +115,8 @@ export const effectifyWithSql = <T>(
   obj: T,
   client: Client.SqlClient,
   whitelist: Array<string> = [],
-  plugins: ReadonlyArray<KyselyPlugin> = [],
-  methods: Readonly<Record<string, (...args: Array<any>) => any>> = {}
-): T => effectifyWith(obj, makeSqlCommit(client), whitelist, plugins, methods)
+  plugins: ReadonlyArray<KyselyPlugin> = []
+): T => effectifyWith(obj, makeSqlCommit(client), whitelist, plugins)
 
 /**
  *  @internal
