@@ -119,8 +119,33 @@ describe("Pnpm layer", () => {
     }).pipe(Effect.provide(Pnpm.layer.pipe(
       Layer.provide(commandDependencies([{
         stdout: JSON.stringify({
-          effect: { version: "4.0.0-rc.118", stageId: "stage-effect" },
-          vitest: { name: "@effect/vitest", version: "4.0.0-rc.118" }
+          effect: {
+            id: "effect@4.0.0-rc.118",
+            name: "effect",
+            version: "4.0.0-rc.118",
+            size: 2438912,
+            unpackedSize: 11319222,
+            shasum: "339deaedfc5fe1431a76352f0c493ec890ceec7d",
+            integrity: "sha512-real-stage-output",
+            filename: "effect-4.0.0-rc.118.tgz",
+            files: [{ path: "package.json", size: 4321, mode: 420 }],
+            entryCount: 1570,
+            bundled: [],
+            stageId: "stage-effect"
+          },
+          vitest: {
+            id: "@effect/vitest@4.0.0-rc.118",
+            name: "@effect/vitest",
+            version: "4.0.0-rc.118",
+            size: 12345,
+            unpackedSize: 45678,
+            shasum: "6f1ed002ab5595859014ebf0951522d9f7ee292e",
+            integrity: "sha512-real-stage-output",
+            filename: "effect-vitest-4.0.0-rc.118.tgz",
+            files: [{ path: "package.json", size: 987, mode: 420 }],
+            entryCount: 42,
+            bundled: []
+          }
         })
       }], commands))
     )))
@@ -144,6 +169,16 @@ describe("Pnpm layer", () => {
     }).pipe(Effect.provide(Pnpm.layer.pipe(Layer.provide(commandDependencies([
       { stdout: ReleasePlan.NO_PENDING_CHANGES + "\n" }
     ], commands)))))
+  })
+
+  it.effect("maps a warning-prefixed no-pending response to no applied versions", () => {
+    const commands: Array<ChildProcess.StandardCommand> = []
+    return Effect.gen(function*() {
+      const pnpm = yield* Pnpm
+      assert.deepStrictEqual(yield* pnpm.applyVersions, [])
+    }).pipe(Effect.provide(Pnpm.layer.pipe(Layer.provide(commandDependencies([{
+      stdout: `WARN  The current working tree has uncommitted changes\n${ReleasePlan.NO_PENDING_CHANGES}\n`
+    }], commands)))))
   })
 })
 
@@ -352,6 +387,30 @@ describe("Registry layer", () => {
       Effect.provideService(Console.Console, testConsole)
     )
   })
+
+  it.effect("fails closed when the stage queue stops before its reported total", () => {
+    const client = HttpClient.make((request) =>
+      Effect.succeed(HttpClientResponse.fromWeb(
+        request,
+        new Response(
+          JSON.stringify({
+            items: [{ id: "stage-0", packageName: "effect", version: "4.0.0-rc.118" }],
+            total: 2
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+      ))
+    )
+    return Effect.gen(function*() {
+      const registry = yield* Registry
+      const error = yield* Effect.flip(registry.listStaged)
+      assert.strictEqual(error._tag, "ReleaseError")
+      assert.include(error.message, "2")
+    }).pipe(
+      Effect.provide(Registry.layer.pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))),
+      Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: { NPM_STAGE_TOKEN: "stage-token" } })))
+    )
+  })
 })
 
 describe("Workspace layer", () => {
@@ -361,7 +420,6 @@ describe("Workspace layer", () => {
     const output = JSON.stringify([
       { path: root, private: true },
       { name: "effect", version: "4.0.0-rc.118", path: `${root}/packages/effect` },
-      { name: "missing-version", path: `${root}/packages/missing` },
       { name: "@effect/release", version: "0.0.0", path: `${root}/packages/tools/release`, private: true }
     ])
     return Effect.gen(function*() {
@@ -371,6 +429,21 @@ describe("Workspace layer", () => {
         { name: "@effect/release", version: "0.0.0", dir: "packages/tools/release", private: true }
       ])
       assert.deepStrictEqual(commands[0].args, ["-r", "ls", "--depth", "-1", "--json"])
+    }).pipe(Effect.provide(Workspace.layer.pipe(Layer.provide(commandDependencies([{ stdout: output }], commands)))))
+  })
+
+  it.effect("rejects a named workspace package without a version", () => {
+    const commands: Array<ChildProcess.StandardCommand> = []
+    const root = globalThis.process.cwd()
+    const output = JSON.stringify([
+      { path: root, private: true },
+      { name: "missing-version", path: `${root}/packages/missing` }
+    ])
+    return Effect.gen(function*() {
+      const workspace = yield* Workspace
+      const error = yield* Effect.flip(workspace.packages)
+      assert.strictEqual(error._tag, "ReleaseError")
+      assert.include(error.message, "missing-version")
     }).pipe(Effect.provide(Workspace.layer.pipe(Layer.provide(commandDependencies([{ stdout: output }], commands)))))
   })
 })

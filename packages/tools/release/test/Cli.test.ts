@@ -74,6 +74,14 @@ const appLayer = (options: {
 
 const run = (args: ReadonlyArray<string>) => Command.runWith(cli, { version: "0.0.0", renderErrors: false })(args)
 
+const mutationNames = (calls: ReturnType<typeof makeCalls>) =>
+  callNames(calls).filter((name) =>
+    name.startsWith("git.") ||
+    name.startsWith("github.") ||
+    name === "pnpm.applyVersions" ||
+    name === "pnpm.stagePublish"
+  )
+
 describe("release run", () => {
   it.effect("opens the version PR and stages nothing while intents are pending", () =>
     Effect.gen(function*() {
@@ -148,5 +156,83 @@ describe("release run", () => {
       const { layer } = appLayer({ plan: emptyPlan, published: new Set() })
       const error = yield* Effect.flip(run(["run"]).pipe(Effect.provide(layer)))
       assert.notStrictEqual((error as { _tag: string })._tag, "ReleaseError")
+    }))
+
+  it.effect("rejects expected Version when routing chooses Stage without mutating anything", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = appLayer({
+        plan: emptyPlan,
+        published: new Set(["@effect/vitest@4.0.0-rc.117"]),
+        staged: []
+      })
+      const error = yield* Effect.flip(
+        run(["run", "--tag", "rc", "--expect", "Version"]).pipe(Effect.provide(layer))
+      )
+
+      assert.strictEqual((error as { _tag: string })._tag, "ReleaseError")
+      assert.include((error as Error).message, "Version")
+      assert.include((error as Error).message, "Stage")
+      assert.deepStrictEqual(mutationNames(calls), [])
+    }))
+
+  it.effect("rejects expected Stage when routing chooses Version without mutating anything", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = appLayer({ plan: rcPlan, published: new Set() })
+      const error = yield* Effect.flip(
+        run(["run", "--tag", "rc", "--expect", "Stage"]).pipe(Effect.provide(layer))
+      )
+
+      assert.strictEqual((error as { _tag: string })._tag, "ReleaseError")
+      assert.include((error as Error).message, "Stage")
+      assert.include((error as Error).message, "Version")
+      assert.deepStrictEqual(mutationNames(calls), [])
+    }))
+
+  it.effect("rejects expected Stage when routing chooses Idle without mutating anything", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = appLayer({
+        plan: emptyPlan,
+        published: new Set(["effect@4.0.0-rc.117", "@effect/vitest@4.0.0-rc.117"]),
+        staged: []
+      })
+      const error = yield* Effect.flip(
+        run(["run", "--tag", "rc", "--expect", "Stage"]).pipe(Effect.provide(layer))
+      )
+
+      assert.strictEqual((error as { _tag: string })._tag, "ReleaseError")
+      assert.include((error as Error).message, "Stage")
+      assert.include((error as Error).message, "Idle")
+      assert.deepStrictEqual(mutationNames(calls), [])
+    }))
+
+  it.effect("runs when the expected Version route matches", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = appLayer({ plan: rcPlan, published: new Set() })
+      yield* run(["run", "--tag", "rc", "--expect", "Version"]).pipe(Effect.provide(layer))
+
+      assert.strictEqual(callsTo(calls, "github.createPullRequest").length, 1)
+      assert.deepStrictEqual(callsTo(calls, "pnpm.stagePublish"), [])
+    }))
+
+  it.effect("runs when the expected Stage route matches", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = appLayer({ plan: emptyPlan, published: new Set(), staged: [] })
+      yield* run(["run", "--tag", "rc", "--expect", "Stage"]).pipe(Effect.provide(layer))
+
+      assert.strictEqual(callsTo(calls, "pnpm.stagePublish").length, 1)
+      assert.deepStrictEqual(callsTo(calls, "github.createPullRequest"), [])
+    }))
+
+  it.effect("prints the version PR title on a dry run without touching git or GitHub", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = appLayer({ plan: rcPlan, published: new Set() })
+      yield* run(["run", "--tag", "rc", "--dry-run"]).pipe(Effect.provide(layer))
+
+      assert.include((yield* TestConsole.logLines).join("\n"), "Version Packages (rc)")
+      assert.deepStrictEqual(
+        callNames(calls).filter((name) => name.startsWith("git.") || name.startsWith("github.")),
+        []
+      )
+      assert.deepStrictEqual(callsTo(calls, "pnpm.applyVersions"), [])
     }))
 })
