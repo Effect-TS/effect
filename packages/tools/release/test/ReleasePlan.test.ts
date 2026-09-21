@@ -15,6 +15,20 @@ const dryRun = [
 ].join("\n")
 
 describe("ReleasePlan.parseDryRun", () => {
+  it.effect("ignores pnpm warnings printed before the release plan", () =>
+    Effect.gen(function*() {
+      const plan = yield* ReleasePlan.parseDryRun([
+        "WARN  The current working tree has uncommitted changes",
+        "WARN  Proceeding because this is a dry run",
+        dryRun
+      ].join("\n"))
+      assert.deepStrictEqual(plan.releases.map((release) => release.name), [
+        "@effect/ai-openai-compat",
+        "ai-docs",
+        "effect"
+      ])
+    }))
+
   it.effect("parses every line of a release plan", () =>
     Effect.gen(function*() {
       const plan = yield* ReleasePlan.parseDryRun(dryRun)
