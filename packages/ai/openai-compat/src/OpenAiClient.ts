@@ -1104,10 +1104,7 @@ const ChatCompletionToolCall = Schema.Struct({
 })
 
 const ChatCompletionToolCallDelta = Schema.Struct({
-  // Some OpenAI-compatible providers (e.g. Cloudflare Workers AI) only send the
-  // tool call id on the first fragment and `id: null` on every continuation.
-  // The argument fragments live on those continuations, so they must not be
-  // dropped during chunk validation.
+  // Some providers send `id: null` on tool-call continuation fragments.
   id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
@@ -1123,9 +1120,7 @@ const ChatCompletionMessage = Schema.Struct({
 })
 
 const ChatCompletionDelta = Schema.Struct({
-  // Some OpenAI-compatible providers (e.g. Cloudflare Workers AI) send
-  // `role: null` on streamed text deltas. Accepting null keeps the
-  // text-bearing chunk from being classified as an unknown event.
+  // Some providers send `role: null` on streamed text deltas.
   role: Schema.optionalKey(Schema.NullOr(Schema.String)),
   content: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning: Schema.optionalKey(Schema.NullOr(Schema.String)),
