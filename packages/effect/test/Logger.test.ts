@@ -120,9 +120,7 @@ describe("Logger", () => {
       const json: Array<{ readonly message: unknown; readonly level: string }> = []
       const logger = Logger.formatJson.pipe(Logger.map((output) => void json.push(JSON.parse(output))))
 
-      yield* Effect.gen(function*() {
-        yield* Effect.fail(new Error("boom"))
-      }).pipe(
+      yield* Effect.fail(new Error("boom")).pipe(
         Effect.tapError(Effect.logError),
         Effect.ignore,
         Effect.provide(Logger.layer([logger]))
