@@ -1675,7 +1675,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
     const { builtIns } = yield* CliConfig.CliConfig
-    const formatter = yield* CliOutput.Formatter
+    const formatter = yield* CliOutput.resolveFormatter
     const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
     yield* Console.log(formatter.formatHelpDoc(helpDoc))
     if (renderErrors && error.errors.length > 0) {
@@ -1685,7 +1685,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 
 const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
   Effect.gen(function*() {
-    const formatter = yield* CliOutput.Formatter
+    const formatter = yield* CliOutput.resolveFormatter
     yield* Console.error(formatter.formatError(error))
     error[Runtime.errorReported] = false
   })
