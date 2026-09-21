@@ -1021,6 +1021,79 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(text, "Hello")
       }))
 
+    it.effect("preserves streamed text and tool args with nullable delta fields", () =>
+      Effect.gen(function*() {
+        const chunk = (delta: Record<string, unknown>) => ({
+          id: "chatcmpl_nullable_delta_fields",
+          object: "chat.completion.chunk",
+          model: "gpt-4o-mini",
+          created: 1,
+          choices: [{ index: 0, delta, finish_reason: null }]
+        })
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                chunk({ content: "Hello", role: null }),
+                chunk({
+                  tool_calls: [{
+                    index: 0,
+                    id: "call_1",
+                    type: "function",
+                    function: { name: "TestTool", arguments: "" }
+                  }]
+                }),
+                chunk({
+                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "{\"in" } }]
+                }),
+                chunk({
+                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "put\":\"hel" } }]
+                }),
+                chunk({
+                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "lo\"}" } }]
+                }),
+                {
+                  id: "chatcmpl_nullable_delta_fields",
+                  object: "chat.completion.chunk",
+                  model: "gpt-4o-mini",
+                  created: 1,
+                  choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }]
+                },
+                "[DONE]"
+              ]))
+            )
+          ))
+        )
+
+        const partsChunk = yield* LanguageModel.streamText({
+          prompt: "use the tool",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(layer)
+        )
+
+        const parts = globalThis.Array.from(partsChunk)
+        const text = parts
+          .filter((part) => part.type === "text-delta")
+          .map((part) => part.delta)
+          .join("")
+        const toolCall = parts.find((part) => part.type === "tool-call")
+
+        assert.strictEqual(text, "Hello")
+        assert.isDefined(toolCall)
+        if (toolCall?.type !== "tool-call") {
+          return
+        }
+        assert.strictEqual(toolCall.id, "call_1")
+        assert.deepStrictEqual(toolCall.params, { input: "hello" })
+      }))
+
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(

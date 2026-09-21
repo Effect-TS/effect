@@ -148,55 +148,6 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
-    it.effect("accepts nullable role and tool call id in chat chunks", () =>
-      Effect.gen(function*() {
-        const client = yield* OpenAiClient.OpenAiClient
-
-        const events = yield* client.createResponseStream({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: "hello" }]
-        }).pipe(
-          Effect.flatMap(([_, stream]) => Stream.runCollect(stream))
-        )
-
-        assert.deepNestedPropertyVal(events[0], "choices[0].delta.role", null)
-        assert.deepNestedPropertyVal(events[1], "choices[0].delta.tool_calls[0].id", null)
-      }).pipe(Effect.provide(makeTestLayer({
-        _tag: "Sse",
-        events: [
-          {
-            id: "chatcmpl_nullable_role",
-            object: "chat.completion.chunk",
-            model: "gpt-4o-mini",
-            created: 1,
-            choices: [{
-              index: 0,
-              delta: { content: "Hello", role: null },
-              finish_reason: null
-            }]
-          },
-          {
-            id: "chatcmpl_nullable_tool_call_id",
-            object: "chat.completion.chunk",
-            model: "gpt-4o-mini",
-            created: 1,
-            choices: [{
-              index: 0,
-              delta: {
-                tool_calls: [{
-                  index: 0,
-                  id: null,
-                  type: "function",
-                  function: { name: null, arguments: "{}" }
-                }]
-              },
-              finish_reason: null
-            }]
-          },
-          "[DONE]"
-        ]
-      }))))
-
     it.effect("surfaces schema-mismatched chat chunks and continues streaming", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
