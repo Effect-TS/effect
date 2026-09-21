@@ -60,12 +60,12 @@ const acquire =
     Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
       type A = NetAddress.Family<L>
       const family = NetAddress.isInetAddressV4(options.localAddress) ? "udp4" : "udp6"
-      type NativeState = "Idle" | "Binding" | "Running" | "Connecting" | "Closed"
+      type NativeState = "Open" | "Acquiring" | "Closed"
       type ReleaseState =
         | { readonly _tag: "Open" }
         | { readonly _tag: "Closing"; readonly complete: (effect: Effect.Effect<void>) => void }
         | { readonly _tag: "Closed" }
-      let nativeState: NativeState = "Idle"
+      let nativeState: NativeState = "Open"
       let releaseState: ReleaseState = { _tag: "Open" }
       const pending = new Set<(cause: unknown) => void>()
       const closedCause = new Error("Datagram socket closed")
@@ -137,10 +137,6 @@ const acquire =
         try {
           socket.close()
         } catch (cause) {
-          if ((cause as NodeJS.ErrnoException)?.code === "ERR_SOCKET_DGRAM_NOT_RUNNING") {
-            if (nativeState !== "Binding" && nativeState !== "Connecting") finishRelease(socket)
-            return
-          }
           finishRelease(socket, Effect.die(cause))
         }
       }
@@ -165,11 +161,6 @@ const acquire =
               ipv6Only: options.ipv6Only ?? false
             })
 
-            function onListening() {
-              nativeState = "Running"
-              if (isReleased()) closeNative(socket)
-            }
-
             function onClose() {
               nativeState = "Closed"
               settlePending(closedCause)
@@ -178,12 +169,9 @@ const acquire =
             }
 
             function onError(cause: NodeJS.ErrnoException) {
-              if (nativeState === "Binding" || nativeState === "Connecting") {
-                const wasBinding = nativeState === "Binding"
-                nativeState = wasBinding ? "Idle" : "Running"
-                if (isReleased() && wasBinding) finishRelease(socket)
-                return
-              }
+              // The per-acquisition listener owns bind/connect errors while the
+              // persistent listener keeps continuous EventEmitter coverage.
+              if (nativeState === "Acquiring") return
               if (isReleased() || isRecoverableReceiveError(cause)) return
               socket.off("message", onMessage)
               handlers.onError(cause)
@@ -217,7 +205,6 @@ const acquire =
               handlers.onMessage(data, peer)
             }
 
-            socket.on("listening", onListening)
             socket.on("message", onMessage)
             socket.on("error", onError)
             socket.on("close", onClose)
@@ -245,23 +232,25 @@ const acquire =
         start: () => void
       ): Effect.Effect<void, Datagram.DatagramSocketError> =>
         nativeCallback(openError, (complete) => {
-          const previous: NativeState = event === "listening" ? "Idle" : "Running"
-          const acquiring: NativeState = event === "listening" ? "Binding" : "Connecting"
           const succeed = () => {
-            nativeState = "Running"
+            if (nativeState === "Acquiring") nativeState = "Open"
             complete(Effect.void)
           }
-          const fail = (cause: unknown) => complete(Effect.fail(openError(cause)))
+          const fail = (cause: unknown) => {
+            if (nativeState === "Acquiring") nativeState = "Open"
+            complete(Effect.fail(openError(cause)))
+          }
           socket.once(event, succeed)
           socket.once("error", fail)
-          nativeState = acquiring
+          nativeState = "Acquiring"
           try {
             start()
           } catch (cause) {
-            nativeState = previous
+            if (nativeState === "Acquiring") nativeState = "Open"
             complete(Effect.fail(openError(cause)))
           }
           return () => {
+            if (nativeState === "Acquiring") nativeState = "Open"
             socket.off(event, succeed)
             socket.off("error", fail)
           }
