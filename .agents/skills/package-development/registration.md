@@ -27,7 +27,7 @@ Classify every row as applicable or not applicable.
 
 | Surface                                           | Check                                                                                                                                        |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.changeset/config.json`                          | Published fixed-group membership uses the current name; private tooling is not added solely because it builds.                               |
+| `pnpm-workspace.yaml` `versioning`                | Published fixed-group membership (`fixed`, `lanes`) uses the current name; private tooling goes in `ignore`, not in the group.               |
 | `README.md`                                       | Public catalog entries have the current name, path, description, and documentation link.                                                     |
 | AI documentation copy tooling and package `files` | Published payloads include required generated documentation. Continue with [publishing.md](publishing.md) for the full packed-surface audit. |
 | Snapshot publishing workflows                     | Snapshot publishing selects the package path. Existing globs may already cover it; apply root workflow requirements before editing.          |

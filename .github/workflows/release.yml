@@ -9,6 +9,15 @@ concurrency:
 
 permissions: {}
 
+# On every push to main, `pnpm release route` decides between:
+#   Version: pending change intents -> create or update the "Version Packages"
+#            pull request from `pnpm version -r` (bumps, changelogs, ledger).
+#   Stage:   the version PR merged -> build and `pnpm stage publish` every
+#            unpublished version. Nothing is published directly; a maintainer
+#            approves the staged versions afterwards (approval flow and the
+#            website deployment that follows it are pending a decision, see
+#            EFF-1455).
+#   Idle:    nothing to do.
 jobs:
   release:
     if: github.repository_owner == 'Effect-Ts'
@@ -22,29 +31,44 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          # This is required to ensure the `GITHUB_TOKEN` we provide below is
-          # **always** used when pushing updates to the changesets release branch.
-          # Otherwise the default token will be used, and actions on that versioned
-          # release branch will not be triggered.
-          persist-credentials: false
+          # A personal access token, not the workflow token, so that checks run
+          # on the version branch this job pushes.
+          token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - name: Upgrade npm for OIDC support
-        run: npm install -g npm@11
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@d0ee272882939fa35f22d979828acb7e61e0bd47 # v2.0.0-next.4
-        with:
-          version-script: pnpm changeset-version
-          publish-script: pnpm changeset-publish
-          # Use a personal access token instead of the one that GitHub generates
-          # automatically to ensure workflows get triggered on the changesets
-          # release branch.
-          github-token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
-      - name: Deploy website
-        if: steps.changesets.outputs.published == 'true'
-        uses: ./.github/actions/deploy-website
-        with:
-          channel: v4
-          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
-          revision: ${{ github.sha }}
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Decide route
+        id: route
+        env:
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
+        run: |
+          set -euo pipefail
+          route="$(pnpm --silent release route)"
+          echo "$route"
+          echo "tag=$(echo "$route" | jq -r '._tag')" >> "$GITHUB_OUTPUT"
+      - name: Create or update the version pull request
+        if: steps.route.outputs.tag == 'Version'
+        env:
+          GH_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+        run: pnpm --silent release run --tag rc
+      - name: Set strip internals config
+        if: steps.route.outputs.tag == 'Stage'
+        run: node scripts/set-strip-internal.mjs
+      - name: Run codemods
+        if: steps.route.outputs.tag == 'Stage'
+        run: pnpm codemod
+      - name: Build packages
+        if: steps.route.outputs.tag == 'Stage'
+        env:
+          # Leave memory for the runner and package builds on the 8 GB runner.
+          # The native TypeScript compiler uses Go's soft memory limit.
+          GOMEMLIMIT: 4GiB
+        run: pnpm build
+      - name: Stage packages on npm
+        if: steps.route.outputs.tag == 'Stage'
+        env:
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
+        run: pnpm --silent release run --tag rc

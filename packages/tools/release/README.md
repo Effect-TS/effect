@@ -14,7 +14,10 @@ pnpm release route           # Version, Stage or Idle, and why
 pnpm release run --tag rc    # act on the route (what the workflow calls)
 ```
 
+`plan` and `route` are read-only (`route` queries the registry for published
+versions and, when `NPM_STAGE_TOKEN` is set, the stage queue). `run` pushes a
+branch and opens or updates a pull request on the Version route, and uploads
+staged versions on the Stage route; it is meant for `.github/workflows/release.yml`.
+
 The behaviour is specified by the tests in `test/` and by
-[CONTRACT.md](./CONTRACT.md). The `src/` modules currently hold the contract
-only; every member raises `not implemented` until the implementation run
-fills it in.
+[CONTRACT.md](./CONTRACT.md).

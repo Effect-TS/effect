@@ -1,7 +1,7 @@
-import type * as Effect from "effect/Effect"
-import { notImplementedEffect, type ReleaseError } from "./Errors.ts"
+import * as Effect from "effect/Effect"
+import { ReleaseError } from "./Errors.ts"
 import type { StagedItem } from "./Registry.ts"
-import type { Release, ReleasePlan } from "./ReleasePlan.ts"
+import { effectiveReleases, type Release, type ReleasePlan } from "./ReleasePlan.ts"
 import type { WorkspacePackage } from "./Workspace.ts"
 
 /**
@@ -57,5 +57,37 @@ export interface RoutingInput {
 
 export const versionKey = (name: string, version: string): string => `${name}@${version}`
 
-export const decide = (_input: RoutingInput): Effect.Effect<Route, ReleaseError> =>
-  notImplementedEffect("Routing.decide")
+export const decide = (input: RoutingInput): Effect.Effect<Route, ReleaseError> =>
+  Effect.gen(function*() {
+    const releases = effectiveReleases(input.plan)
+    if (releases.length > 0) {
+      return { _tag: "Version", plan: input.plan, releases } as const
+    }
+
+    const publicPackages = input.packages.filter((pkg) => !pkg.private)
+    const stale = publicPackages.flatMap((pkg) =>
+      input.staged
+        .filter((item) => item.packageName === pkg.name && item.version !== pkg.version)
+        .map((item) => `${pkg.name}: staged ${item.version}, manifest ${pkg.version}`)
+    )
+    if (stale.length > 0) {
+      return yield* new ReleaseError({
+        message: `Stale staged versions must be rejected before staging: ${stale.join("; ")}`
+      })
+    }
+
+    const toStage: Array<WorkspacePackage> = []
+    const skipped: Array<Skipped> = []
+    for (const pkg of publicPackages) {
+      if (input.published.has(versionKey(pkg.name, pkg.version))) {
+        skipped.push({ name: pkg.name, version: pkg.version, reason: "published" })
+      } else if (input.staged.some((item) => item.packageName === pkg.name && item.version === pkg.version)) {
+        skipped.push({ name: pkg.name, version: pkg.version, reason: "staged" })
+      } else {
+        toStage.push(pkg)
+      }
+    }
+    return toStage.length > 0
+      ? { _tag: "Stage", toStage, skipped } as const
+      : { _tag: "Idle", skipped } as const
+  })

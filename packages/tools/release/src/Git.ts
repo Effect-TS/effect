@@ -1,9 +1,12 @@
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
+import type * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
-import type { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
-import { notImplementedEffect, type ReleaseError } from "./Errors.ts"
+import * as Option from "effect/Option"
+import type * as Path from "effect/Path"
+import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+import { ReleaseError } from "./Errors.ts"
+import { findWorkspaceRoot, runCommand, runCommandOk } from "./Process.ts"
 
 /**
  * The git operations the version-PR flow needs. The implementation shells out
@@ -21,8 +24,39 @@ export class Git extends Context.Service<Git, {
   /** `git checkout <ref>`; used to return to the original commit afterwards. */
   readonly checkout: (ref: string) => Effect.Effect<void, ReleaseError>
 }>()("@effect/release/Git") {
-  static readonly layer: Layer.Layer<Git, never, ChildProcessSpawner> = Layer.effect(
-    Git,
-    notImplementedEffect("Git.layer")
-  )
+  static readonly layer: Layer.Layer<Git, never, ChildProcessSpawner | FileSystem.FileSystem | Path.Path> = Layer
+    .effect(
+      Git,
+      Effect.gen(function*() {
+        const root = yield* findWorkspaceRoot.pipe(Effect.orDie)
+        const spawner = yield* ChildProcessSpawner
+        const git = (args: ReadonlyArray<string>) =>
+          runCommandOk("git", args, { cwd: root }).pipe(Effect.provideService(ChildProcessSpawner, spawner))
+
+        const headSha = git(["rev-parse", "HEAD"]).pipe(Effect.map((stdout) => stdout.trim()))
+
+        const commitAll = Effect.fn("Git.commitAll")(function*(message: string) {
+          yield* git(["add", "-A"])
+          const staged = yield* runCommand("git", ["diff", "--cached", "--quiet"], { cwd: root }).pipe(
+            Effect.provideService(ChildProcessSpawner, spawner)
+          )
+          if (staged.exitCode === 0) return Option.none<string>()
+          if (staged.exitCode !== 1) {
+            return yield* new ReleaseError({
+              message: `git diff --cached --quiet exited ${staged.exitCode}: ${staged.stderr.trim()}`
+            })
+          }
+          yield* git(["commit", "--message", message])
+          return Option.some(yield* headSha)
+        })
+
+        return Git.of({
+          headSha,
+          resetBranch: (branch, from) => git(["checkout", "-B", branch, from]).pipe(Effect.asVoid),
+          commitAll,
+          pushForce: (branch) => git(["push", "--force", "origin", branch]).pipe(Effect.asVoid),
+          checkout: (ref) => git(["checkout", ref]).pipe(Effect.asVoid)
+        })
+      })
+    )
 }

@@ -1,15 +1,14 @@
 # Release tool contract
 
-This document, the JSDoc in `src/`, and the tests in `test/` are the
-specification handed to the implementation run. Nothing in `src/` is
-implemented yet: every member raises `not implemented`, so the suite is red
-by construction and turns green as the modules are filled in.
+This document, the JSDoc in `src/`, and the tests in `test/` specify
+`@effect/release`. The tests are the executable part of the contract; the
+implementation in `src/` satisfies them.
 
 ## What the tool replaces
 
-Today `release.yml` runs `changesets/action`, which on every push to `main`
-either updates the "Version Packages (rc)" pull request on
-`changeset-release/main` or, when that PR has just merged, publishes to npm
+Until this tool landed, `release.yml` ran `changesets/action`, which on every
+push to `main` either updated the "Version Packages (rc)" pull request on
+`changeset-release/main` or, when that PR had just merged, published to npm
 directly. The replacement keeps the shape and changes two things:
 
 - versions, changelogs and the consumed-intent ledger come from
@@ -24,7 +23,7 @@ directly. The replacement keeps the shape and changes two things:
 | Module               | Role                                                                                                                                                      | Backed by                                     |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `ReleasePlan`        | Types for pnpm's release plan; parsers for `pnpm version -r --dry-run` text and `pnpm version -r --json`; `effectiveReleases`, `isEmpty`, `prereleaseTag` | pure                                          |
-| `Workspace`          | Public/private packages with their manifest versions                                                                                                      | `pnpm -r ls --depth -1 --json` or manifests   |
+| `Workspace`          | Public/private packages with their manifest versions                                                                                                      | `pnpm -r ls --depth -1 --json`                |
 | `Pnpm`               | `dryRunPlan`, `applyVersions`, `stagePublish`                                                                                                             | `ChildProcessSpawner`, stdin detached         |
 | `Git`                | `headSha`, `resetBranch`, `commitAll`, `pushForce`, `checkout`                                                                                            | `git` via `ChildProcessSpawner`               |
 | `GitHub`             | `findPullRequest`, `createPullRequest`, `updatePullRequest`                                                                                               | `gh` via `ChildProcessSpawner`, `GH_TOKEN`    |
@@ -33,6 +32,11 @@ directly. The replacement keeps the shape and changes two things:
 | `VersionPullRequest` | `title`, `body`, `sync`                                                                                                                                   | `Git`, `Pnpm`, `GitHub`                       |
 | `Release`            | `plan`, `route`, `run` orchestration                                                                                                                      | all of the above                              |
 | `Cli`                | `release plan`, `release route`, `release run --tag <tag> [--dry-run]`                                                                                    | `Release`                                     |
+| `Process`            | Detached-stdin command runner and workspace-root discovery shared by the layers                                                                           | `ChildProcessSpawner`, `FileSystem`, `Path`   |
+
+Every command-backed layer anchors its commands at the directory holding
+`pnpm-workspace.yaml`, found by walking up from the current directory, because
+`pnpm release` runs from the package directory.
 
 ## Behaviour the tests pin down
 
@@ -46,16 +50,17 @@ carries the text.
 **No-op releases are not releases.** pnpm lists dependents whose version does
 not move (`0.0.0 → 0.0.0`, private tooling pulled in "via dependencies").
 `effectiveReleases` drops them; a plan with only such lines is empty and must
-not open a version PR.
+not open a version PR. With `versioning.ignore` covering every private
+package this no longer happens on this repository, but the guard stays.
 
 **Routing.** Pending effective releases always win: `Version`, even if
-unpublished versions exist. With an empty plan, public packages whose
-manifest version is neither published nor staged are staged; published ones
-and ones already staged at that version are reported in `skipped`; private
-packages are invisible. A staged item for a public package at a different
-version is a stale upload and fails the decision with a `ReleaseError` naming
-the package and both versions. Staged items for names outside the workspace
-are ignored. Nothing to stage means `Idle`.
+unpublished versions exist (the registry is not even consulted then). With an
+empty plan, public packages whose manifest version is neither published nor
+staged are staged; published ones and ones already staged at that version are
+reported in `skipped`; private packages are invisible. A staged item for a
+public package at a different version is a stale upload and fails the decision
+with a `ReleaseError` naming the package and both versions. Staged items for
+names outside the workspace are ignored. Nothing to stage means `Idle`.
 
 **Version PR.** Branch `changeset-release/main` into `main`, title
 `Version Packages` or `Version Packages (<prerelease tag>)`, commit message
@@ -71,44 +76,45 @@ empty; it always checks the original SHA back out, also on failure.
 and exactly the `toStage` names, and never touches git or GitHub. `--dry-run`
 reaches only the staging call. `--tag` is required.
 
-## Workflow integration (implementation run, not this one)
+## Workflow integration
 
-`release.yml` keeps its filename (npm trusted-publisher configuration is keyed
-to it) and its trigger (push to `main`, no cancel-in-progress). Its single job
-becomes:
+`.github/workflows/release.yml` keeps its filename (npm trusted-publisher
+configuration is keyed to it) and its trigger (push to `main`, no
+cancel-in-progress). Its single job:
 
-1. checkout with the PAT currently in `CHANGESET_GITHUB_TOKEN` (so checks run
-   on the version branch), `./.github/actions/setup`;
-2. `pnpm release route`, exported as a step output;
-3. on `Version`: `pnpm release run --tag rc` (only git and GitHub are
-   touched);
-4. on `Stage`: the existing build steps (`set-strip-internal`, `codemod`,
-   `build`), then `pnpm release run --tag rc` with `id-token: write` for
-   trusted publishing;
-5. no website deploy here; it moves to the approval step.
+1. checks out with the PAT in `CHANGESET_GITHUB_TOKEN` (so checks run on the
+   version branch), runs `./.github/actions/setup`, sets the bot git identity;
+2. runs `pnpm --silent release route` and exports `_tag` as a step output;
+3. on `Version`: `pnpm --silent release run --tag rc` with `GH_TOKEN` (only
+   git and GitHub are touched);
+4. on `Stage`: `set-strip-internal`, `codemod`, `build`, then
+   `pnpm --silent release run --tag rc`; the job's `id-token: write` lets pnpm
+   use trusted publishing;
+5. no website deployment: it followed publication before and now belongs
+   with the approval step, which is pending a decision (EFF-1455).
 
 The `rc` tag is a workflow constant until the fixed group leaves the `rc`
-lane.
+lane. `NPM_STAGE_TOKEN` (a stage-only granular token) is optional: without it
+the stage queue is treated as empty with a warning, so the only loss is the
+"already staged" skip.
 
-## Prerequisites the implementation run must also land
+## Migration landed with the implementation
 
-- `versioning` in `pnpm-workspace.yaml`: `fixed` (the group from
-  `.changeset/config.json`), `ignore` (every private package, or pnpm bumps
-  them "via dependencies"), `lanes` (every fixed-group member on `rc`),
-  `changelog.storage: repository`.
-- Removal of `.changeset/config.json`, `.changeset/pre.json`, the
-  `@changesets/*` devDependencies and patch, and the `changeset-*` scripts;
-  a decision on `.changeset/pre/` (delete, or migrate into the ledger).
-- The changesets skill and AGENTS.md wording (`pnpm change` instead of
-  `pnpm changeset`).
-- A stage-only granular token as `NPM_STAGE_TOKEN` for `Registry.listStaged`,
-  pending the P1 probe in the release-spike runbook. Until that probe runs,
-  the implementation may treat a missing token as "nothing staged" and log it;
-  the routing tests do not depend on how the queue is read.
+- `versioning` in `pnpm-workspace.yaml`: `fixed` (the former changesets fixed
+  group), `ignore` (every private package), `lanes` (every fixed-group member
+  on `rc`), `changelog.storage: repository`. `pnpm version -r --dry-run` on
+  this repository now lists exactly the 31 published packages at the next rc.
+- `.changeset/config.json`, `.changeset/pre.json`, the `@changesets/*`
+  devDependencies and patch, and the `changeset-*` scripts are gone.
+  `.changeset/pre/` (the intents consumed by earlier rc releases) is kept as
+  history; pnpm reads only the top-level `.changeset/*.md` files.
+- The changesets skill, package registration checklist and `AGENTS.md`
+  describe `pnpm change` / `versioning` instead of the changesets config.
 
 ## Out of scope
 
-The approval gate (all staged versions ready, then approve) and the
-approval path itself wait on the live spike findings and on the maintainer
-decision recorded in EFF-1455. `Registry.listStaged` is defined here only
-because routing needs to skip versions already awaiting approval.
+The approval gate (all staged versions ready, then approve), the approval
+path itself, and the website deployment that follows publication wait on the
+live spike findings and on the maintainer decision recorded in EFF-1455.
+`Registry.listStaged` is defined here only because routing needs to skip
+versions already awaiting approval.

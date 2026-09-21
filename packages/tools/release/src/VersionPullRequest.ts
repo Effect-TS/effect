@@ -1,9 +1,10 @@
-import type * as Effect from "effect/Effect"
-import { notImplemented, notImplementedEffect, type ReleaseError } from "./Errors.ts"
-import type { Git } from "./Git.ts"
-import type { GitHub, PullRequest } from "./GitHub.ts"
-import type { Pnpm } from "./Pnpm.ts"
-import type { ReleasePlan } from "./ReleasePlan.ts"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import type { ReleaseError } from "./Errors.ts"
+import { Git } from "./Git.ts"
+import { GitHub, type PullRequest } from "./GitHub.ts"
+import { Pnpm } from "./Pnpm.ts"
+import { effectiveReleases, prereleaseTag, type ReleasePlan } from "./ReleasePlan.ts"
 
 /** Same branch the changesets action used, so existing branch protection and tooling keep working. */
 export const RELEASE_BRANCH = "changeset-release/main"
@@ -21,7 +22,11 @@ export const BODY_INTRO =
  * `Version Packages`, or `Version Packages (<tag>)` when
  * `ReleasePlan.prereleaseTag` is defined (for example `Version Packages (rc)`).
  */
-export const title = (_plan: ReleasePlan): string => notImplemented("VersionPullRequest.title")
+export const title = (plan: ReleasePlan): string =>
+  Option.match(prereleaseTag(plan), {
+    onNone: () => TITLE,
+    onSome: (tag) => `${TITLE} (${tag})`
+  })
 
 /**
  * Markdown body: {@link BODY_INTRO}, then a `## Releases` section with one
@@ -29,7 +34,12 @@ export const title = (_plan: ReleasePlan): string => notImplemented("VersionPull
  * `` - `<name>`: <currentVersion> → <newVersion> (<bumpType>) ``. No-op
  * releases are omitted. Deterministic for a given plan.
  */
-export const body = (_plan: ReleasePlan): string => notImplemented("VersionPullRequest.body")
+export const body = (plan: ReleasePlan): string => {
+  const lines = effectiveReleases(plan).map((release) =>
+    `- \`${release.name}\`: ${release.currentVersion} → ${release.newVersion} (${release.bumpType})`
+  )
+  return `${BODY_INTRO}\n\n## Releases\n\n${lines.join("\n")}\n`
+}
 
 export type SyncResult =
   | { readonly _tag: "Created"; readonly pullRequest: PullRequest }
@@ -49,5 +59,30 @@ export type SyncResult =
  *    then `updatePullRequest` with the fresh title and body, or `createPullRequest`;
  * 7. always, even on failure, `Git.checkout` of the SHA from step 1.
  */
-export const sync = (_plan: ReleasePlan): Effect.Effect<SyncResult, ReleaseError, Git | Pnpm | GitHub> =>
-  notImplementedEffect("VersionPullRequest.sync")
+export const sync = (plan: ReleasePlan): Effect.Effect<SyncResult, ReleaseError, Git | Pnpm | GitHub> =>
+  Effect.gen(function*() {
+    const git = yield* Git
+    const pnpm = yield* Pnpm
+    const github = yield* GitHub
+    const originalSha = yield* git.headSha
+
+    const work: Effect.Effect<SyncResult, ReleaseError> = Effect.gen(function*() {
+      yield* git.resetBranch(RELEASE_BRANCH, BASE_BRANCH)
+      yield* pnpm.applyVersions
+      const commit = yield* git.commitAll(COMMIT_MESSAGE)
+      if (Option.isNone(commit)) {
+        return { _tag: "NoChanges" } as const
+      }
+      yield* git.pushForce(RELEASE_BRANCH)
+      const existing = yield* github.findPullRequest({ head: RELEASE_BRANCH, base: BASE_BRANCH })
+      const content = { title: title(plan), body: body(plan) }
+      if (Option.isSome(existing)) {
+        const pullRequest = yield* github.updatePullRequest(existing.value.number, content)
+        return { _tag: "Updated", pullRequest } as const
+      }
+      const pullRequest = yield* github.createPullRequest({ head: RELEASE_BRANCH, base: BASE_BRANCH, ...content })
+      return { _tag: "Created", pullRequest } as const
+    })
+
+    return yield* work.pipe(Effect.ensuring(git.checkout(originalSha).pipe(Effect.orDie)))
+  })
