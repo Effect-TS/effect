@@ -8732,6 +8732,9 @@ export const forkDetach: <
  * Child fibers that already exist before the wrapped effect starts are not
  * awaited.
  *
+ * If interrupted while awaiting child fibers, the interruption replaces the
+ * wrapped effect's result, whether it succeeded or failed.
+ *
  * @see {@link forkChild} for forking child fibers that are awaited by this operator
  * @see {@link forkDetach} for forking fibers outside the child scope
  * @see {@link forkIn} for forking into an explicit scope
