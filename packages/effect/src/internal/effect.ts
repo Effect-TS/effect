@@ -5506,6 +5506,7 @@ export const awaitAllChildren = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   withFiber((fiber) => {
     const initialChildren = fiber._children && new Set(fiber._children)
+    const isInterruptible = fiber.interruptible
     return onExitPrimitive(
       self,
       (_) => {
@@ -5518,9 +5519,9 @@ export const awaitAllChildren = <A, E, R>(
             (child: FiberImpl<any, any>) => !initialChildren.has(child)
           ) as Set<FiberImpl<any, any>>
         }
-        return asVoid(fiberAwaitAll(children))
-      },
-      true
+        const awaitChildren = asVoid(fiberAwaitAll(children))
+        return isInterruptible ? interruptible(awaitChildren) : awaitChildren
+      }
     )
   })
 
