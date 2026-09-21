@@ -3,6 +3,96 @@ import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
+  describe("dual APIs", () => {
+    it.effect("offer", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<number>()
+        const dataLast = yield* Queue.unbounded<number>()
+
+        assert.isTrue(yield* Queue.offer(dataFirst, 1))
+        assert.isTrue(yield* Queue.offer(2)(dataLast))
+        assert.deepStrictEqual(yield* Queue.takeAll(dataFirst), [1])
+        assert.deepStrictEqual(yield* Queue.takeAll(dataLast), [2])
+      }))
+
+    it.effect("offerUnsafe", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<number>()
+        const dataLast = yield* Queue.unbounded<number>()
+
+        assert.isTrue(Queue.offerUnsafe(dataFirst, 1))
+        assert.isTrue(Queue.offerUnsafe(2)(dataLast))
+        assert.deepStrictEqual(yield* Queue.takeAll(dataFirst), [1])
+        assert.deepStrictEqual(yield* Queue.takeAll(dataLast), [2])
+      }))
+
+    it.effect("offerAll", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<number>()
+        const dataLast = yield* Queue.unbounded<number>()
+
+        assert.deepStrictEqual(yield* Queue.offerAll(dataFirst, [1, 2]), [])
+        assert.deepStrictEqual(yield* Queue.offerAll([3, 4])(dataLast), [])
+        assert.deepStrictEqual(yield* Queue.takeAll(dataFirst), [1, 2])
+        assert.deepStrictEqual(yield* Queue.takeAll(dataLast), [3, 4])
+      }))
+
+    it.effect("offerAllUnsafe", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<number>()
+        const dataLast = yield* Queue.unbounded<number>()
+
+        assert.deepStrictEqual(Queue.offerAllUnsafe(dataFirst, [1, 2]), [])
+        assert.deepStrictEqual(Queue.offerAllUnsafe([3, 4])(dataLast), [])
+        assert.deepStrictEqual(yield* Queue.takeAll(dataFirst), [1, 2])
+        assert.deepStrictEqual(yield* Queue.takeAll(dataLast), [3, 4])
+      }))
+
+    it.effect("fail", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<never, string>()
+        const dataLast = yield* Queue.unbounded<never, string>()
+
+        assert.isTrue(yield* Queue.fail(dataFirst, "data-first"))
+        assert.isTrue(yield* Queue.fail("data-last")(dataLast))
+        assert.strictEqual(yield* Queue.take(dataFirst).pipe(Effect.flip), "data-first")
+        assert.strictEqual(yield* Queue.take(dataLast).pipe(Effect.flip), "data-last")
+      }))
+
+    it.effect("failCauseUnsafe", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<never, string>()
+        const dataLast = yield* Queue.unbounded<never, string>()
+
+        assert.isTrue(Queue.failCauseUnsafe(dataFirst, Cause.fail("data-first")))
+        assert.isTrue(Queue.failCauseUnsafe(Cause.fail("data-last"))(dataLast))
+        assert.strictEqual(yield* Queue.take(dataFirst).pipe(Effect.flip), "data-first")
+        assert.strictEqual(yield* Queue.take(dataLast).pipe(Effect.flip), "data-last")
+      }))
+
+    it.effect("takeN", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<number>()
+        const dataLast = yield* Queue.unbounded<number>()
+        yield* Queue.offerAll(dataFirst, [1, 2])
+        yield* Queue.offerAll(dataLast, [3, 4])
+
+        assert.deepStrictEqual(yield* Queue.takeN(dataFirst, 2), [1, 2])
+        assert.deepStrictEqual(yield* Queue.takeN(2)(dataLast), [3, 4])
+      }))
+
+    it.effect("takeBetween", () =>
+      Effect.gen(function*() {
+        const dataFirst = yield* Queue.unbounded<number>()
+        const dataLast = yield* Queue.unbounded<number>()
+        yield* Queue.offerAll(dataFirst, [1, 2])
+        yield* Queue.offerAll(dataLast, [3, 4])
+
+        assert.deepStrictEqual(yield* Queue.takeBetween(dataFirst, 1, 2), [1, 2])
+        assert.deepStrictEqual(yield* Queue.takeBetween(1, 2)(dataLast), [3, 4])
+      }))
+  })
+
   it.effect("isEnqueue type guard", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(10)
