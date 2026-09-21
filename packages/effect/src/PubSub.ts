@@ -5,8 +5,8 @@
  * `Subscription` receives its own copy of every accepted message. Unlike a
  * queue, subscribers do not compete for messages. This module includes bounded,
  * dropping, sliding, and unbounded hubs, optional replay buffers for late
- * subscribers, message-taking helpers, capacity and shutdown operations, and
- * low-level types for custom hub strategies.
+ * subscribers, message-taking helpers, capacity and shutdown operations, a
+ * type guard, and low-level types for custom hub strategies.
  *
  * @since 2.0.0
  */
@@ -24,6 +24,7 @@ import * as MutableRef from "./MutableRef.ts"
 import { nextPow2 } from "./Number.ts"
 import * as Option from "./Option.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
+import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
 import type { Covariant, Invariant } from "./Types.ts"
 
@@ -199,6 +200,32 @@ export declare namespace PubSub {
     ): void
   }
 }
+
+/**
+ * Returns `true` if a value is a `PubSub`.
+ *
+ * **Details**
+ *
+ * This is a type guard that checks for the `PubSub` runtime marker.
+ *
+ * **Example** (Checking if a value is a PubSub)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, PubSub } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const pubsub = yield* PubSub.bounded<string>(10)
+ *   return [PubSub.isPubSub(pubsub), PubSub.isPubSub({}), PubSub.isPubSub(null)]
+ * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [true, false, false]
+ * ```
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isPubSub = <A = unknown>(u: unknown): u is PubSub<A> => hasProperty(u, TypeId)
 
 const SubscriptionTypeId = "~effect/PubSub/Subscription"
 
