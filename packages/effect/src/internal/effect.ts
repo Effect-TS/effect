@@ -5506,7 +5506,7 @@ export const awaitAllChildren = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   withFiber((fiber) => {
     const initialChildren = fiber._children && new Set(fiber._children)
-    return onExit(
+    return onExitPrimitive(
       self,
       (_) => {
         let children = fiber._children
@@ -5519,7 +5519,8 @@ export const awaitAllChildren = <A, E, R>(
           ) as Set<FiberImpl<any, any>>
         }
         return asVoid(fiberAwaitAll(children))
-      }
+      },
+      true
     )
   })
 
