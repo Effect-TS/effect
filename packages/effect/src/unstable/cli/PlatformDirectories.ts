@@ -66,6 +66,10 @@ export class MissingHome extends Data.TaggedError("PlatformDirectoriesMissingHom
   }
 }
 
+// Path is one implementation for the host. This resolver has to apply win32
+// rules on a POSIX machine and POSIX rules on Windows, because every platform
+// branch is tested from one host. The effect package does not ship a second
+// Path, so absolute checks and joins stay local.
 const isWindowsAbsolute = (path: string): boolean => /^[a-zA-Z]:[\\/]/.test(path) || /^[\\/]/.test(path)
 
 const isPosixAbsolute = (path: string): boolean => path.startsWith("/")
@@ -171,7 +175,9 @@ const hostPlatform = (): string => {
  *
  * Provide this at the CLI boundary. Pass `platform` in tests so every host
  * convention can run on one machine. `home` comes from `USERPROFILE` then
- * `HOME` on Windows, and from `HOME` then `USERPROFILE` elsewhere.
+ * `HOME` on Windows, and from `HOME` then `USERPROFILE` elsewhere. A missing
+ * variable is `None`. A provider fault dies. {@link MissingHome} is the only
+ * typed failure, and it is the one a CLI can act on.
  *
  * **Example** (An empty XDG variable stays unset)
  *
@@ -201,15 +207,16 @@ const hostPlatform = (): string => {
 export const layer = (options: {
   readonly appName: string
   readonly platform?: string | undefined
-}): Layer.Layer<PlatformDirectories, MissingHome | Config.ConfigError> =>
+}): Layer.Layer<PlatformDirectories, MissingHome> =>
   Layer.effect(PlatformDirectories)(Effect.gen(function*() {
     const platform = options.platform ?? hostPlatform()
-    const xdgConfigHome = Option.getOrUndefined(yield* optional("XDG_CONFIG_HOME"))
-    const appData = Option.getOrUndefined(yield* optional("APPDATA"))
+    const read = (name: string) => Effect.orDie(optional(name))
+    const xdgConfigHome = Option.getOrUndefined(yield* read("XDG_CONFIG_HOME"))
+    const appData = Option.getOrUndefined(yield* read("APPDATA"))
     const home = Option.getOrUndefined(
       platform === "win32"
-        ? Option.firstSomeOf([yield* optional("USERPROFILE"), yield* optional("HOME")])
-        : Option.firstSomeOf([yield* optional("HOME"), yield* optional("USERPROFILE")])
+        ? Option.firstSomeOf([yield* read("USERPROFILE"), yield* read("HOME")])
+        : Option.firstSomeOf([yield* read("HOME"), yield* read("USERPROFILE")])
     )
     const config = resolveConfigDirectory({
       appName: options.appName,
