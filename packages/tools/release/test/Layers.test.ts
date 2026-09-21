@@ -388,6 +388,29 @@ describe("Registry layer", () => {
     )
   })
 
+  it.effect("returns an authenticated empty stage queue", () => {
+    const requests: Array<HttpClientRequest.HttpClientRequest> = []
+    const client = HttpClient.make((request) => {
+      requests.push(request)
+      return Effect.succeed(HttpClientResponse.fromWeb(
+        request,
+        new Response(JSON.stringify({ items: [], total: 0 }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      ))
+    })
+    return Effect.gen(function*() {
+      const registry = yield* Registry
+      assert.deepStrictEqual(yield* registry.listStaged, [])
+      assert.lengthOf(requests, 1)
+      assert.strictEqual(requests[0].headers.authorization, "Bearer stage-token")
+    }).pipe(
+      Effect.provide(Registry.layer.pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))),
+      Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: { NPM_STAGE_TOKEN: "stage-token" } })))
+    )
+  })
+
   it.effect("fails closed when the stage queue stops before its reported total", () => {
     const client = HttpClient.make((request) =>
       Effect.succeed(HttpClientResponse.fromWeb(

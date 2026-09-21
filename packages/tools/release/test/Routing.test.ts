@@ -77,6 +77,26 @@ describe("Routing.decide", () => {
       }
     }))
 
+  it.effect("is Idle when every public package is already staged", () =>
+    Effect.gen(function*() {
+      const route = yield* Routing.decide({
+        plan: emptyPlan,
+        packages,
+        published: new Set(),
+        staged: [
+          stagedItem("effect", "4.0.0-rc.117", "validating"),
+          stagedItem("@effect/vitest", "4.0.0-rc.117", "validating")
+        ]
+      })
+      assert.deepStrictEqual(route, {
+        _tag: "Idle",
+        skipped: [
+          { name: "effect", version: "4.0.0-rc.117", reason: "staged" },
+          { name: "@effect/vitest", version: "4.0.0-rc.117", reason: "staged" }
+        ]
+      })
+    }))
+
   it.effect("is Idle when every public package is published", () =>
     Effect.gen(function*() {
       const route = yield* Routing.decide({

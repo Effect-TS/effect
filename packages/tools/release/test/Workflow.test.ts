@@ -74,9 +74,18 @@ describe("release workflow", () => {
     assert.lengthOf(patReferences, 1)
     assert.match(patReferences[0][0], /^jobs\.version\.steps\.\d+\.env\.GH_TOKEN$/)
     const stageTokenReferences = allSecrets.filter(([, value]) => value.includes("NPM_STAGE_TOKEN"))
-    assert.lengthOf(stageTokenReferences, 1)
-    assert.match(stageTokenReferences[0][0], /^jobs\.stage\.steps\.\d+\.env\.NPM_STAGE_TOKEN$/)
-    assert.lengthOf(allSecrets, 2, "only the route-specific run steps may receive secrets")
+    assert.deepStrictEqual(
+      stageTokenReferences.map(([path]) => path),
+      [
+        `jobs.route.steps.${route.steps?.findIndex((step) => step.run?.includes("release route"))}.env.NPM_STAGE_TOKEN`,
+        `jobs.stage.steps.${stage.steps?.findIndex((step) => step.run?.includes("release run"))}.env.NPM_STAGE_TOKEN`
+      ]
+    )
+    assert.lengthOf(allSecrets, 3, "only the route-specific run steps may receive secrets")
+
+    const routeStep = route.steps?.find((step) => step.run?.includes("release route"))
+    assert.exists(routeStep)
+    assert.deepStrictEqual(Object.keys(routeStep.env ?? {}), ["NPM_STAGE_TOKEN"])
 
     const versionStep = version.steps?.find((step) => step.env?.GH_TOKEN !== undefined)
     assert.exists(versionStep)
@@ -87,6 +96,7 @@ describe("release workflow", () => {
     const stageStep = stage.steps?.find((step) => step.run?.includes("release run"))
     assert.exists(stageStep)
     assert.include(stageStep.run, "release run --tag rc --expect Stage")
+    assert.deepStrictEqual(Object.keys(stageStep.env ?? {}), ["NPM_STAGE_TOKEN"])
     assert.deepStrictEqual(
       secretReferences(stage, ["jobs", "stage"]).filter(([, value]) => value.includes("CHANGESET_GITHUB_TOKEN")),
       []
