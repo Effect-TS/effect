@@ -39,40 +39,6 @@ import * as NetAddress from "../net/NetAddress.ts"
 export const TypeId = "~effect/socket/DatagramSocket"
 
 /**
- * Normalizes an address type to its IPv4 or IPv6 family.
- *
- * @category models
- * @since 4.0.0
- */
-export type Family<A extends NetAddress.IpAddress> = NetAddress.Family<A>
-
-/**
- * The internet endpoint type for an address family.
- *
- * @category models
- * @since 4.0.0
- */
-export type Inet<A extends NetAddress.IpAddress> = NetAddress.Inet<A>
-
-/**
- * The family carried by a local internet endpoint type.
- *
- * @category models
- * @since 4.0.0
- */
-export type FamilyOf<L extends NetAddress.InetAddress> = NetAddress.Family<L>
-
-/**
- * A native multicast interface selector. IPv4 uses an interface address and
- * IPv6 uses an interface index. `ipv4Unspecified` and index `0` ask the OS to
- * choose its default interface.
- *
- * @category models
- * @since 4.0.0
- */
-export type MulticastInterface<A extends NetAddress.IpAddress> = NetAddress.MulticastInterface<A>
-
-/**
  * A datagram payload and its peer address.
  *
  * **Details**
@@ -673,15 +639,13 @@ const validateRemote = (
   if (NetAddress.isUnspecified(canonical.address)) return invalid("Datagram peer address must be specified")
 }
 
-interface Endpoint<A extends NetAddress.IpAddress> extends MakeUnassociatedOptions<A> {}
-
 const makeEndpoint = <L extends NetAddress.InetAddress>(
   options: BindOptions<L>,
   acquire: (
     handlers: Handlers<NetAddress.Family<L>>
   ) => Effect.Effect<Binding<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope>,
   remote?: NetAddress.Inet<NetAddress.Family<L>>
-): Effect.Effect<Endpoint<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope> =>
+): Effect.Effect<MakeUnassociatedOptions<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope> =>
   Effect.gen(function*() {
     const validation = validateOptions(options) ??
       (remote === undefined ? undefined : validateRemote(options.localAddress, remote))
@@ -745,11 +709,16 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       return yield* Effect.fail(closedError)
     }
 
-    const guard = (operation: Effect.Effect<void, DatagramSocketError>): Effect.Effect<void, DatagramSocketError> =>
-      operation.pipe(
-        Effect.flatMap(() => status === "Closed" ? Effect.fail(closedError) : Effect.void),
-        Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
-      )
+    const whileOpen = (
+      operation: () => Effect.Effect<void, DatagramSocketError>
+    ): Effect.Effect<void, DatagramSocketError> =>
+      Effect.suspend(() => {
+        if (status === "Closed") return Effect.fail(closedError)
+        return operation().pipe(
+          Effect.flatMap(() => status === "Closed" ? Effect.fail(closedError) : Effect.void),
+          Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
+        )
+      })
 
     const validatePacket = (packet: Packet<A>): DatagramSocketError | undefined => {
       if (packet.data.byteLength > limits.maxPacketBytes) {
@@ -772,7 +741,7 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
     }
 
     const send = (packet: Packet<A>, accepted: number): Effect.Effect<void, DatagramSocketError> =>
-      guard(binding.send({ data: new Uint8Array(packet.data), peer: packet.peer })).pipe(
+      whileOpen(() => binding.send({ data: new Uint8Array(packet.data), peer: packet.peer })).pipe(
         Effect.catch((cause) => {
           if (cause.reason._tag !== "DatagramSocketWriteError") return Effect.fail(cause)
           if (cause.reason.accepted !== 0) {
@@ -837,9 +806,6 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       )
     })
 
-    const ensureOpen = (operation: () => Effect.Effect<void, DatagramSocketError>) =>
-      Effect.suspend(() => status === "Closed" ? Effect.fail(closedError) : guard(operation()))
-
     const validateInterface = (
       networkInterface: NetAddress.MulticastInterface<A>
     ): DatagramSocketError | undefined => {
@@ -857,8 +823,7 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       group: NetAddress.MulticastAddress<A>,
       options_: MembershipOptions<A> | undefined
     ): Effect.Effect<void, DatagramSocketError> =>
-      Effect.suspend(() => {
-        if (status === "Closed") return Effect.fail(closedError)
+      whileOpen(() => {
         if (
           !NetAddress.isMulticast(group) ||
           NetAddress.isIpv4Address(group) !== NetAddress.isInetAddressV4(options.localAddress)
@@ -877,7 +842,7 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
             !NetAddress.isUnicast(source) || NetAddress.isUnspecified(source))
         ) return Effect.fail(invalid("Datagram membership source must be specified unicast of the group's family"))
         const snapshot = Object.freeze({ interface: networkInterface, source }) as MembershipOptions<A>
-        return guard(binding[operation](group, snapshot))
+        return binding[operation](group, snapshot)
       })
 
     return {
@@ -885,12 +850,11 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       pull,
       write,
       writeMany,
-      setBroadcast: (enabled) => ensureOpen(() => binding.setBroadcast(enabled)),
+      setBroadcast: (enabled) => whileOpen(() => binding.setBroadcast(enabled)),
       setMulticastInterface: (networkInterface) =>
-        Effect.suspend(() => {
-          if (status === "Closed") return Effect.fail(closedError)
+        whileOpen(() => {
           const failure = validateInterface(networkInterface)
-          return failure === undefined ? guard(binding.setMulticastInterface(networkInterface)) : Effect.fail(failure)
+          return failure === undefined ? binding.setMulticastInterface(networkInterface) : Effect.fail(failure)
         }),
       addMembership: (group, options_) =>
         membership(

@@ -81,10 +81,8 @@ const acquire =
       }
 
       let released = false
-      let nativeRunning = false
-      let nativeClosed = false
+      let nativeState: "Idle" | "Running" | "Closed" = "Idle"
       let acquisitionInFlight = false
-      let nativeConnected = false
       const pending = new Set<(cause: unknown) => void>()
       const closedCause = new Error("Datagram socket closed")
       let cleanupComplete: ((effect: Effect.Effect<void>) => void) | undefined
@@ -102,7 +100,7 @@ const acquire =
       }
 
       const closeNative = () => {
-        if (nativeClosed) return finishCleanup()
+        if (nativeState === "Closed") return finishCleanup()
         try {
           socket.close()
         } catch (cause) {
@@ -115,14 +113,13 @@ const acquire =
       }
 
       function onListening() {
-        nativeRunning = true
+        nativeState = "Running"
         acquisitionInFlight = false
         if (released) closeNative()
       }
 
       function onClose() {
-        nativeRunning = false
-        nativeClosed = true
+        nativeState = "Closed"
         acquisitionInFlight = false
         settlePending(closedCause)
         if (released) finishCleanup()
@@ -132,7 +129,7 @@ const acquire =
       function onError(cause: NodeJS.ErrnoException) {
         if (acquisitionInFlight) {
           acquisitionInFlight = false
-          if (released && !nativeRunning) finishCleanup()
+          if (released && nativeState !== "Running") finishCleanup()
           return
         }
         if (released || isRecoverableReceiveError(cause)) return
@@ -250,7 +247,8 @@ const acquire =
       }
 
       const remote = "remote" in options ? options.remote as NetAddress.InetAddress : undefined
-      if (remote !== undefined && !isDeno) {
+      const useConnectedSend = remote !== undefined && !isDeno
+      if (useConnectedSend) {
         let host: string
         try {
           host = nativeHost(remote)
@@ -258,7 +256,6 @@ const acquire =
           return yield* Effect.fail(openError(cause))
         }
         yield* restore(awaitNative("connect", () => socket.connect(remote.port, host)))
-        nativeConnected = true
       }
 
       let address: NetAddress.InetAddress
@@ -292,7 +289,7 @@ const acquire =
             const callback = (cause: Error | null) =>
               finish(cause === null ? Effect.void : Effect.fail(writeError(cause, packet.peer)))
             try {
-              if (nativeConnected) socket.send(packet.data, callback)
+              if (useConnectedSend) socket.send(packet.data, callback)
               else socket.send(packet.data, packet.peer.port, host, callback)
             } catch (cause) {
               finish(Effect.fail(writeError(cause, packet.peer)))
