@@ -109,7 +109,8 @@ export type SyncResult =
  *    identity and its title is the ready title: `NoChanges`, no git.
  * 4. Otherwise remember `Git.headSha`; `Git.resetBranch(PUBLISH_BRANCH, BASE_BRANCH)`;
  *    write `ReleaseManifest.encode(manifest)` to `MANIFEST_PATH` under the
- *    workspace root (creating `.release/`); `Git.commitAll(COMMIT_MESSAGE)`;
+ *    workspace root (creating `.release/`);
+ *    `Git.commitPaths(COMMIT_MESSAGE, [MANIFEST_PATH])`;
  *    `Git.pushForce(PUBLISH_BRANCH)`; then `updatePullRequest` or
  *    `createPullRequest` with the ready title and body; always, even on
  *    failure, `Git.checkout` of the remembered SHA.
@@ -155,7 +156,7 @@ export const sync = (
       yield* fs.writeFileString(file, encode(manifest)).pipe(
         Effect.mapError((cause) => new ReleaseError({ message: `Could not write ${MANIFEST_PATH}`, cause }))
       )
-      const commit = yield* git.commitAll(COMMIT_MESSAGE)
+      const commit = yield* git.commitPaths(COMMIT_MESSAGE, [MANIFEST_PATH])
       if (Option.isNone(commit)) {
         return yield* new ReleaseError({
           message: `${MANIFEST_PATH} on ${BASE_BRANCH} already pins release ${identity(manifest)}; nothing to propose`

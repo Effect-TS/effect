@@ -23,10 +23,12 @@ staged versions on the Stage route; it is meant for `.github/workflows/release.y
 `readiness` is what `.github/workflows/release-readiness.yml` calls on a
 schedule: it commits the release manifest (`.release/manifest.json`) on
 `publish-release/main` and opens or refreshes the publish pull request, or
-reports why the release is not ready. `publish` rechecks the whole release
-against the manifest merged on `main`, approves only the pinned staged
-uploads, waits until every version is served, and prints the revision the
-website should deploy. It needs `NPM_APPROVE_TOKEN` and a one-time password
+reports why the release is not ready. It requires `NPM_STAGE_TOKEN` so a
+missing queue credential cannot look like a missing release. `publish`
+rechecks the whole release against the manifest read from `origin/main`,
+approves only the pinned staged uploads, waits until every version is served,
+and prints the revision the website should deploy. It needs
+`NPM_APPROVE_TOKEN` and a one-time password
 in `NPM_OTP`; approval cannot run unattended, see `CONTRACT.md`.
 
 The behaviour is specified by the tests in `test/` and by

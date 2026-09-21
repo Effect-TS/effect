@@ -25,7 +25,7 @@ directly. The replacement keeps the shape and changes two things:
 | `ReleasePlan`        | Types for pnpm's release plan; parsers for `pnpm version -r --dry-run` text and `pnpm version -r --json`; `effectiveReleases`, `isEmpty`, `prereleaseTag` | pure                                          |
 | `Workspace`          | Public/private packages with their manifest versions                                                                                                      | `pnpm -r ls --depth -1 --json`                |
 | `Pnpm`               | `dryRunPlan`, `applyVersions`, `stagePublish`                                                                                                             | `ChildProcessSpawner`, stdin detached         |
-| `Git`                | `headSha`, `resetBranch`, `commitAll`, `pushForce`, `checkout`                                                                                            | `git` via `ChildProcessSpawner`               |
+| `Git`                | `headSha`, `resetBranch`, `commitAll`, `commitPaths`, `showFile`, `pushForce`, `checkout`                                                                 | `git` via `ChildProcessSpawner`               |
 | `GitHub`             | `findPullRequest`, `createPullRequest`, `updatePullRequest`                                                                                               | `gh` via `ChildProcessSpawner`, `GH_TOKEN`    |
 | `Registry`           | `isPublished`, `listStaged` (read-only)                                                                                                                   | `HttpClient`; `NPM_STAGE_TOKEN` for the queue |
 | `Routing`            | `decide`: Version, Stage or Idle                                                                                                                          | pure                                          |
@@ -136,10 +136,9 @@ tests fail until a secure OTP handoff is implemented.
 | `Publication`        | `readiness` and `publish` orchestration                                                           | all of the above, `Registry`, `Workspace` |
 | `Cli`                | `release readiness --tag <tag> [--dry-run]`, `release publish --expect-identity <id> [--dry-run]` | `Publication`                             |
 
-`Git` gains `lastCommitTouching(path)`; nothing else in the existing modules
-changes. `cli` resolves `Publication` at run time (`Effect.serviceOption`)
-rather than requiring it statically, so the version and stage commands keep
-requiring only `Release`; `bin.ts` always provides it.
+`Git` also provides `lastCommitTouching(path)`, `showFile(ref, path)` and
+`commitPaths(message, paths)`. The CLI requires both `Release` and
+`Publication` statically, and `bin.ts` provides them.
 
 ### The manifest
 
@@ -176,8 +175,10 @@ npm CLI fixtures and pnpm's renderer; the live probe may amend the sets.
 1. lists the workspace, the queue and the published state; the release set is
    every public package whose manifest version is not published. Empty →
    `Idle`;
-2. if the manifest already on `main` still pins items in the queue, that
-   release is authorised and unfinished → `InProgress`, no new PR;
+2. reads the manifest from `origin/main`; if it pins approvable or pending
+   items, that release is authorised and unfinished → `InProgress`, no new
+   PR. If its remaining items are blocked, rejected, missing or unknown →
+   `Stalled`, with the blockers reported;
 3. any release-set package with no upload at its version → `Incomplete`;
 4. otherwise builds the manifest (`fromStaged` fails on a stale upload at
    another version, exactly like `Routing`), assesses readiness and calls
@@ -188,8 +189,10 @@ rewrites the title to `Publish Packages (rc) [not ready]` and lists the
 blockers in the body (`Marked`); without one it does nothing (`Skipped`).
 When ready, an open PR that already carries this identity is left alone
 (`NoChanges`), so repeated runs are no-ops; otherwise the branch
-`publish-release/main` is reset from `main`, the manifest committed as
-"Publish Packages", force-pushed, and the PR created or updated. The step
+`publish-release/main` is reset from `main`, only the manifest is committed
+as "Publish Packages", the branch is force-pushed, and the PR is created or
+updated. Closing the PR does not reject a release; a later readiness run can
+create it again while the staged items remain ready. The step
 holds `NPM_STAGE_TOKEN` (queue reads) and `CHANGESET_GITHUB_TOKEN` (branch
 push and PR) and nothing else; the job has no `id-token` permission and runs
 no build.
@@ -207,10 +210,10 @@ itself is complete and runs the same way from a maintainer's terminal against
 a checkout of `main`. It reads the OTP from `NPM_OTP` (never a flag, so it is
 not on argv) and:
 
-1. decodes the manifest at `MANIFEST_PATH` on the checkout; its identity must
+1. reads and decodes `MANIFEST_PATH` from `origin/main`; its identity must
    equal the expected one, otherwise it fails before any registry call. This
-   is what ties the merge to one exact manifest: neither the current queue
-   nor an unmerged branch is ever consulted for what to publish;
+   ties approval to one merged manifest even when the command runs from
+   another checkout;
 2. rechecks the whole release with `Readiness.assess`; any blocker fails the
    run before anything is approved;
 3. approves each `approvable` package in manifest order with
@@ -224,9 +227,12 @@ not on argv) and:
 
 Packages already public are verified, never re-approved, so running the
 command again with the same identity and a fresh OTP finishes a partially
-published release. When everything is already public it returns
-`AlreadyPublished` with the same website revision, so a failed website
-dispatch is retried by running it again. The specified workflow writes
+published release. If an approved item has left the queue but its version is
+not served yet, the command verifies that exact staged item still exists and
+waits for the version to become public before approving anything else. It
+never infers approval from a missing queue entry. When everything is already
+public it returns `AlreadyPublished` with the same website revision, so a
+failed website dispatch is retried by running it again. The specified workflow writes
 `published=true` and `revision=<sourceSha>` to its outputs and runs the
 website step only on `published == 'true'` with channel `v4` and that
 revision; until it exists, the website is dispatched by hand with the
@@ -249,7 +255,9 @@ GitHub changelog:
   CI approval, which is why merging the publish PR authorises publication and
   a maintainer still supplies the OTP at dispatch time.
 
-Not verifiable without live registry probes: whether
+Both readiness and publication require `NPM_STAGE_TOKEN`; they fail before
+registry or GitHub calls when it is absent rather than treating the release as
+missing. Not verifiable without live registry probes: whether
 `NPM_STAGE_TOKEN` can read `GET /-/stage`; the exact status vocabulary; and
 whether a granular publish token from a 2FA account plus one TOTP approves
 non-interactively, and whether the registry accepts the same TOTP across 31

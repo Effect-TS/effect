@@ -57,8 +57,7 @@ export class Git extends Context.Service<Git, {
 
         const headSha = git(["rev-parse", "HEAD"]).pipe(Effect.map((stdout) => stdout.trim()))
 
-        const commitAll = Effect.fn("Git.commitAll")(function*(message: string) {
-          yield* git(["add", "-A"])
+        const commitStaged = Effect.fn("Git.commitStaged")(function*(message: string) {
           const staged = yield* runCommand("git", ["diff", "--cached", "--quiet"], { cwd: root }).pipe(
             Effect.provideService(ChildProcessSpawner, spawner)
           )
@@ -70,6 +69,11 @@ export class Git extends Context.Service<Git, {
           }
           yield* git(["commit", "--message", message])
           return Option.some(yield* headSha)
+        })
+
+        const commitAll = Effect.fn("Git.commitAll")(function*(message: string) {
+          yield* git(["add", "-A"])
+          return yield* commitStaged(message)
         })
 
         return Git.of({
@@ -86,8 +90,45 @@ export class Git extends Context.Service<Git, {
                   : Effect.succeed(stdout.trim())
               )
             ),
-          showFile: () => Effect.die(new Error("not implemented: Git.showFile")),
-          commitPaths: () => Effect.die(new Error("not implemented: Git.commitPaths"))
+          showFile: (ref, path) =>
+            Effect.gen(function*() {
+              // Check the ref separately so a missing remote branch is not
+              // mistaken for a missing manifest.
+              yield* git(["rev-parse", "--verify", `${ref}^{commit}`])
+              const shown = yield* runCommand("git", ["show", `${ref}:${path}`], { cwd: root }).pipe(
+                Effect.provideService(ChildProcessSpawner, spawner)
+              )
+              if (shown.exitCode === 0) return Option.some(shown.stdout)
+              if (
+                shown.exitCode === 128 &&
+                (shown.stderr.includes("does not exist in") || shown.stderr.includes("exists on disk, but not in"))
+              ) {
+                return Option.none<string>()
+              }
+              return yield* new ReleaseError({
+                message: `git show ${ref}:${path} exited ${shown.exitCode}: ${(shown.stderr || shown.stdout).trim()}`
+              })
+            }),
+          commitPaths: (message, paths) =>
+            Effect.gen(function*() {
+              if (paths.length === 0) {
+                return yield* new ReleaseError({ message: "Cannot commit an empty path list" })
+              }
+              yield* git(["add", "--", ...paths])
+              const staged = yield* runCommand("git", ["diff", "--cached", "--quiet", "--", ...paths], {
+                cwd: root
+              }).pipe(Effect.provideService(ChildProcessSpawner, spawner))
+              if (staged.exitCode === 0) return Option.none<string>()
+              if (staged.exitCode !== 1) {
+                return yield* new ReleaseError({
+                  message: `git diff --cached --quiet exited ${staged.exitCode}: ${staged.stderr.trim()}`
+                })
+              }
+              // --only prevents an unrelated pre-staged path from becoming
+              // part of the release authorisation commit.
+              yield* git(["commit", "--only", "--message", message, "--", ...paths])
+              return Option.some(yield* headSha)
+            })
         })
       })
     )

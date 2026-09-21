@@ -63,10 +63,7 @@ export class StageApproval extends Context.Service<StageApproval, {
 
       // Read once, while the layer's configuration is in scope; a missing token
       // fails each call (before any request), not the layer.
-      const configured = yield* Config.option(Config.Redacted(APPROVE_TOKEN)).pipe(
-        Effect.mapError((cause) => new ReleaseError({ message: `Could not read ${APPROVE_TOKEN}`, cause })),
-        Effect.orDie
-      )
+      const configured = yield* Config.option(Config.Redacted(APPROVE_TOKEN)).pipe(Effect.orDie)
       const token: Effect.Effect<Redacted.Redacted<string>, ReleaseError> = Option.isNone(configured)
         ? Effect.fail(new ReleaseError({ message: `${APPROVE_TOKEN} is not set; approving staged versions needs it` }))
         : Effect.succeed(configured.value)

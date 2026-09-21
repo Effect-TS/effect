@@ -20,6 +20,7 @@ export interface StagedItem {
 }
 
 export const REGISTRY = "https://registry.npmjs.org/"
+export const STAGE_TOKEN = "NPM_STAGE_TOKEN"
 
 const escapeName = (name: string) => name.replaceAll("/", "%2F")
 
@@ -69,12 +70,12 @@ export class Registry extends Context.Service<Registry, {
       })
 
       const listStaged = Effect.gen(function*() {
-        const token = yield* Config.option(Config.Redacted("NPM_STAGE_TOKEN")).pipe(
-          Effect.mapError((cause) => new ReleaseError({ message: "Could not read NPM_STAGE_TOKEN", cause }))
+        const token = yield* Config.option(Config.Redacted(STAGE_TOKEN)).pipe(
+          Effect.mapError((cause) => new ReleaseError({ message: `Could not read ${STAGE_TOKEN}`, cause }))
         )
         if (Option.isNone(token)) {
           // stderr on purpose: `release route` prints JSON on stdout for the workflow to parse.
-          yield* Console.error("warning: NPM_STAGE_TOKEN is not set; treating the stage queue as empty")
+          yield* Console.error(`warning: ${STAGE_TOKEN} is not set; treating the stage queue as empty`)
           return []
         }
         const items: Array<StagedItem> = []

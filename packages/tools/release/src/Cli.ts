@@ -55,25 +55,12 @@ const run = Command.make(
   )
 )
 
-/**
- * `Publication` is resolved at run time rather than declared as a static
- * requirement of `cli`, so that the version and stage commands keep requiring
- * only `Release` (as `test/Cli.test.ts` provides). `bin.ts` always wires it;
- * a missing service is a wiring defect, hence the die.
- */
-const publicationService = Effect.serviceOption(Publication).pipe(
-  Effect.flatMap(Option.match({
-    onNone: () => Effect.die(new Error("Publication service is not provided to the release CLI")),
-    onSome: Effect.succeed
-  }))
-)
-
 const readiness = Command.make(
   "readiness",
   { tag: tagFlag, dryRun: dryRunFlag },
   ({ dryRun, tag }) =>
     Effect.gen(function*() {
-      const publication = yield* publicationService
+      const publication = yield* Publication
       const result = yield* publication.readiness({ tag, dryRun })
       yield* Console.log(JSON.stringify(result, null, 2))
     })
@@ -102,7 +89,7 @@ const publish = Command.make(
   { expectIdentity: expectIdentityFlag, dryRun: dryRunFlag },
   ({ dryRun, expectIdentity }) =>
     Effect.gen(function*() {
-      const publication = yield* publicationService
+      const publication = yield* Publication
       const result = yield* publication.publish({ expectedIdentity: expectIdentity, otp: yield* otp, dryRun })
       yield* Console.log(JSON.stringify(result, null, 2))
     })
