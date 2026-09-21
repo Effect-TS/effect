@@ -1,6 +1,6 @@
 // @effect-diagnostics floatingEffect:skip-file
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Layer, Path, Runtime, Stdio } from "effect"
+import { Effect, FileSystem, Layer, Path, Runtime, Schema, Stdio } from "effect"
 import { Argument, CliError, CliOutput, Command, Flag } from "effect/unstable/cli"
 import { toImpl } from "effect/unstable/cli/internal/command"
 import * as Lexer from "effect/unstable/cli/internal/lexer"
@@ -296,6 +296,12 @@ describe("Command errors", () => {
   })
 
   describe("UserError", () => {
+    it("is user-facing so Command.run can render it through the protocol", () => {
+      const error = new CliError.UserError({ cause: "failed" })
+
+      assert.isTrue(CliError.isUserFacing(error))
+    })
+
     it("prefers the user-facing message over the cause", () => {
       const error = new CliError.UserError({
         cause: new Error("internal details"),
@@ -430,6 +436,31 @@ describe("Command errors", () => {
 
       assert.strictEqual(single.message, `Unexpected positional argument: "extra"`)
       assert.strictEqual(multiple.message, `Unexpected positional arguments: "first", "second"`)
+    })
+  })
+
+  describe("UserFacing", () => {
+    it("detects tagged domain errors that implement the protocol", () => {
+      class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
+        path: Schema.String
+      }) implements CliError.UserFacing {
+        readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
+        get userMessage() {
+          return `${this.path} already exists`
+        }
+      }
+
+      const error = new Occupied({ path: "config.yaml" })
+
+      assert.isTrue(CliError.isUserFacing(error))
+      assert.isFalse(CliError.isCliError(error))
+      assert.strictEqual(error._tag, "Occupied")
+      assert.strictEqual(error.userMessage, "config.yaml already exists")
+    })
+
+    it("rejects values that only look like a user-facing error", () => {
+      assert.isFalse(CliError.isUserFacing({ userMessage: "nope" }))
+      assert.isFalse(CliError.isUserFacing(new Error("nope")))
     })
   })
 })

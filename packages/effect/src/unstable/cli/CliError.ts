@@ -4,12 +4,14 @@
  * CLI errors describe problems such as unknown or duplicate flags, missing
  * flags or arguments, unexpected positional arguments, invalid values, unknown
  * subcommands, user handler failures, and requests to show command help. This
- * module includes the `CliError` union, the `isCliError` guard, schema-backed
- * error classes with display messages, and the `NonShowHelpErrors` union used
- * when parse or validation errors should be shown with help output.
+ * module includes the `CliError` union, the `isCliError` guard, the
+ * `UserFacing` protocol for tagged handler failures, schema-backed error
+ * classes with display messages, and the `NonShowHelpErrors` union used when
+ * parse or validation errors should be shown with help output.
  *
  * @since 4.0.0
  */
+import * as Effect from "../../Effect.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Runtime from "../../Runtime.ts"
 import * as Schema from "../../Schema.ts"
@@ -41,6 +43,80 @@ const TypeId = "~effect/cli/CliError"
  * @since 4.0.0
  */
 export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
+
+/**
+ * Type identifier for user-facing CLI failures.
+ *
+ * **Details**
+ *
+ * Domain errors implement {@link UserFacing} with this identifier so
+ * `Command.run` can render them without wrapping them in {@link UserError}.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export const UserErrorTypeId: unique symbol = Symbol.for("~effect/cli/CliError/UserFacing")
+
+/**
+ * @category type IDs
+ * @since 4.0.0
+ */
+export type UserErrorTypeId = typeof UserErrorTypeId
+
+/**
+ * Protocol for handler failures that should be rendered as user-facing CLI
+ * errors while keeping their original tagged type.
+ *
+ * **Details**
+ *
+ * `Command.run` renders `userMessage` through the installed formatter, marks
+ * the original error as already reported, and rethrows that same value. Tests,
+ * telemetry, and exit-code derivation therefore still see the domain tag.
+ *
+ * **Example** (Opting a tagged error into user-facing rendering)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { CliError } from "effect/unstable/cli"
+ *
+ * class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
+ *   path: Schema.String
+ * }) implements CliError.UserFacing {
+ *   readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
+ *   get userMessage() {
+ *     return `${this.path} already exists. Re-run with --force to replace it.`
+ *   }
+ * }
+ *
+ * const error = new Occupied({ path: "config.yaml" })
+ * CliError.isUserFacing(error) // => true
+ * error._tag // => "Occupied"
+ * ```
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export interface UserFacing {
+  readonly [UserErrorTypeId]: UserErrorTypeId
+  readonly userMessage: string
+}
+
+/**
+ * Returns `true` when a failure implements the {@link UserFacing} protocol.
+ *
+ * **Details**
+ *
+ * {@link UserError} implements the protocol, so existing handler failures keep
+ * working. Other tagged errors opt in by setting {@link UserErrorTypeId} and
+ * a string `userMessage`.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isUserFacing = (u: unknown): u is UserFacing =>
+  Predicate.hasProperty(u, UserErrorTypeId) &&
+  Predicate.hasProperty(u, "userMessage") &&
+  typeof u.userMessage === "string"
 
 /**
  * Union type representing all possible CLI error conditions.
@@ -481,8 +557,10 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
  * **Details**
  *
  * `userMessage` can provide safe, user-facing text independently of the
- * underlying cause. When omitted or empty, `message` uses a non-empty string
- * cause or `Error.message`, then falls back to `"An error occurred"`.
+ * underlying cause. The field is always a string, so `UserError` structurally
+ * implements {@link UserFacing}. Construction may omit it, in which case it is
+ * `""` and `message` uses a non-empty string cause or `Error.message`, then
+ * falls back to `"An error occurred"`.
  *
  * **Example** (Wrapping user errors)
  *
@@ -524,14 +602,24 @@ export class UserError extends Schema.TaggedError<UserError>(
   `${TypeId}/UserError`
 )("UserError", {
   cause: Schema.Defect(),
-  userMessage: Schema.optionalKey(Schema.String)
-}) {
+  userMessage: Schema.String.pipe(
+    Schema.withConstructorDefault(Effect.succeed("")),
+    Schema.withDecodingDefaultKey(Effect.succeed(""))
+  )
+}) implements UserFacing {
   /**
    * Marks this value as a user handler error for runtime guards.
    *
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
+
+  /**
+   * Marks this value as a user-facing CLI failure.
+   *
+   * @since 4.0.0
+   */
+  readonly [UserErrorTypeId]: UserErrorTypeId = UserErrorTypeId
 
   /**
    * Controls whether the runtime logger should report this error. The CLI
