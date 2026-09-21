@@ -2165,61 +2165,65 @@ describe("Effect", () => {
     it.effect("can be interrupted while awaiting children after success", () =>
       Effect.gen(function*() {
         const childStarted = yield* Deferred.make<void>()
+        const childFiber = yield* Deferred.make<Fiber.Fiber<void>>()
         const releaseChild = yield* Deferred.make<void>()
         const fiber = yield* Effect.gen(function*() {
-          yield* Effect.gen(function*() {
+          const child = yield* Effect.gen(function*() {
             yield* Deferred.succeed(childStarted, void 0)
             yield* Deferred.await(releaseChild)
           }).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Deferred.succeed(childFiber, child)
           return 1
         }).pipe(
           Effect.awaitAllChildren,
           Effect.forkChild({ startImmediately: true })
         )
 
+        const child = yield* Deferred.await(childFiber)
         yield* Deferred.await(childStarted)
         fiber.interruptUnsafe()
         yield* Effect.yieldNow
         yield* Effect.yieldNow
         const exit = fiber.pollUnsafe()
+        const childExit = child.pollUnsafe()
 
         yield* Deferred.succeed(releaseChild, void 0)
         yield* Fiber.await(fiber)
 
-        assert.isDefined(exit)
-        if (exit !== undefined) {
-          assert.isTrue(Exit.hasInterrupts(exit))
-        }
+        assert(exit !== undefined && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+        assert(childExit !== undefined && Exit.isFailure(childExit) && Cause.hasInterruptsOnly(childExit.cause))
       }))
 
     it.effect("can be interrupted while awaiting children after failure", () =>
       Effect.gen(function*() {
         const childStarted = yield* Deferred.make<void>()
+        const childFiber = yield* Deferred.make<Fiber.Fiber<void>>()
         const releaseChild = yield* Deferred.make<void>()
         const fiber = yield* Effect.gen(function*() {
-          yield* Effect.gen(function*() {
+          const child = yield* Effect.gen(function*() {
             yield* Deferred.succeed(childStarted, void 0)
             yield* Deferred.await(releaseChild)
           }).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Deferred.succeed(childFiber, child)
           return yield* Effect.fail("boom")
         }).pipe(
           Effect.awaitAllChildren,
           Effect.forkChild({ startImmediately: true })
         )
 
+        const child = yield* Deferred.await(childFiber)
         yield* Deferred.await(childStarted)
         fiber.interruptUnsafe()
         yield* Effect.yieldNow
         yield* Effect.yieldNow
         const exit = fiber.pollUnsafe()
+        const childExit = child.pollUnsafe()
 
         yield* Deferred.succeed(releaseChild, void 0)
         yield* Fiber.await(fiber)
 
-        assert.isDefined(exit)
-        if (exit !== undefined) {
-          assert.isTrue(Exit.hasInterrupts(exit))
-        }
+        assert(exit !== undefined && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+        assert(childExit !== undefined && Exit.isFailure(childExit) && Cause.hasInterruptsOnly(childExit.cause))
       }))
 
     it.effect("does not await children forked outside the wrapped effect", () =>
