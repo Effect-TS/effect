@@ -11,6 +11,7 @@
  *
  * @since 4.0.0
  */
+import * as Effect from "../../Effect.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Runtime from "../../Runtime.ts"
 import * as Schema from "../../Schema.ts"
@@ -81,7 +82,7 @@ export type UserErrorTypeId = typeof UserErrorTypeId
  * class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
  *   path: Schema.String
  * }) implements CliError.UserFacing {
- *   readonly [CliError.UserErrorTypeId] = CliError.UserErrorTypeId
+ *   readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
  *   get userMessage() {
  *     return `${this.path} already exists. Re-run with --force to replace it.`
  *   }
@@ -106,16 +107,16 @@ export interface UserFacing {
  * **Details**
  *
  * {@link UserError} implements the protocol, so existing handler failures keep
- * working. Other tagged errors opt in by setting {@link UserErrorTypeId}.
+ * working. Other tagged errors opt in by setting {@link UserErrorTypeId} and
+ * a string `userMessage`.
  *
  * @category guards
  * @since 4.0.0
  */
-export const isUserFacing = (u: unknown): u is UserFacing | UserError =>
-  Predicate.hasProperty(u, UserErrorTypeId) && (
-    (isCliError(u) && u._tag === "UserError") ||
-    (Predicate.hasProperty(u, "userMessage") && typeof u.userMessage === "string")
-  )
+export const isUserFacing = (u: unknown): u is UserFacing =>
+  Predicate.hasProperty(u, UserErrorTypeId) &&
+  Predicate.hasProperty(u, "userMessage") &&
+  typeof u.userMessage === "string"
 
 /**
  * Union type representing all possible CLI error conditions.
@@ -556,8 +557,10 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
  * **Details**
  *
  * `userMessage` can provide safe, user-facing text independently of the
- * underlying cause. When omitted or empty, `message` uses a non-empty string
- * cause or `Error.message`, then falls back to `"An error occurred"`.
+ * underlying cause. The field is always a string, so `UserError` structurally
+ * implements {@link UserFacing}. Construction may omit it, in which case it is
+ * `""` and `message` uses a non-empty string cause or `Error.message`, then
+ * falls back to `"An error occurred"`.
  *
  * **Example** (Wrapping user errors)
  *
@@ -599,8 +602,11 @@ export class UserError extends Schema.TaggedError<UserError>(
   `${TypeId}/UserError`
 )("UserError", {
   cause: Schema.Defect(),
-  userMessage: Schema.optionalKey(Schema.String)
-}) {
+  userMessage: Schema.String.pipe(
+    Schema.withConstructorDefault(Effect.succeed("")),
+    Schema.withDecodingDefaultKey(Effect.succeed(""))
+  )
+}) implements UserFacing {
   /**
    * Marks this value as a user handler error for runtime guards.
    *
@@ -613,7 +619,7 @@ export class UserError extends Schema.TaggedError<UserError>(
    *
    * @since 4.0.0
    */
-  readonly [UserErrorTypeId] = UserErrorTypeId
+  readonly [UserErrorTypeId]: UserErrorTypeId = UserErrorTypeId
 
   /**
    * Controls whether the runtime logger should report this error. The CLI

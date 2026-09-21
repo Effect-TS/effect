@@ -1683,7 +1683,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
     }
   })
 
-const showUserError = (error: CliError.UserFacing | CliError.UserError): Effect.Effect<void> =>
+const showUserError = (error: CliError.UserFacing): Effect.Effect<void> =>
   Effect.gen(function*() {
     const formatter = yield* CliOutput.Formatter
     const rendered = CliError.isCliError(error) && error._tag === "UserError"
@@ -1693,7 +1693,7 @@ const showUserError = (error: CliError.UserFacing | CliError.UserError): Effect.
         userMessage: error.userMessage
       })
     yield* Console.error(formatter.formatError(rendered))
-    ;(error as { [Runtime.errorReported]: boolean })[Runtime.errorReported] = false
+    ;(error as unknown as { [Runtime.errorReported]: boolean })[Runtime.errorReported] = false
   })
 
 /**

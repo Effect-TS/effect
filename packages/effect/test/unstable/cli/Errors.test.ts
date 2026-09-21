@@ -444,7 +444,7 @@ describe("Command errors", () => {
       class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
         path: Schema.String
       }) implements CliError.UserFacing {
-        readonly [CliError.UserErrorTypeId] = CliError.UserErrorTypeId
+        readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
         get userMessage() {
           return `${this.path} already exists`
         }
