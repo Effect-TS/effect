@@ -57,13 +57,14 @@ export const makeWithSql = <DB>(config: KyselyConfig) =>
     const client = yield* Client.SqlClient
 
     const db = new Kysely<DB>(config) as unknown as EffectKysely<DB>
-    db.withTransaction = client.withTransaction
 
     // SelectQueryBuilder is not exported from "kysely" so we patch the prototype from it's instance
     const selectPrototype = Object.getPrototypeOf(db.selectFrom("" as any))
     patch(selectPrototype)
 
-    return effectifyWithSql(db, client, ["withTransaction", "compile"], config.plugins)
+    return effectifyWithSql(db, client, ["compile"], config.plugins, {
+      withTransaction: client.withTransaction
+    })
   })
 
 /**
