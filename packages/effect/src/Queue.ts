@@ -709,10 +709,7 @@ export const offer: {
  * @category offering
  * @since 4.0.0
  */
-export const offerUnsafe: {
-  <A>(message: A): <E>(self: Enqueue<A, E>) => boolean
-  <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): boolean
-} = dual(2, <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): boolean => {
+export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): boolean => {
   if (self.state._tag !== "Open") {
     return false
   } else if (self.messages.length >= self.capacity) {
@@ -730,7 +727,7 @@ export const offerUnsafe: {
   MutableList.append(self.messages, message)
   scheduleReleaseTaker(self as Queue<A, E>)
   return true
-})
+}
 
 /**
  * Adds multiple messages to the queue. Returns the remaining messages that
@@ -819,10 +816,7 @@ export const offerAll: {
  * @category offering
  * @since 4.0.0
  */
-export const offerAllUnsafe: {
-  <A>(messages: Iterable<A>): <E>(self: Enqueue<A, E>) => Array<A>
-  <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Array<A>
-} = dual(2, <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Array<A> => {
+export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Array<A> => {
   if (self.state._tag !== "Open") {
     return Arr.fromIterable(messages)
   } else if (
@@ -854,7 +848,7 @@ export const offerAllUnsafe: {
   }
   scheduleReleaseTaker(self as Queue<A, E>)
   return remaining
-})
+}
 
 /**
  * Fails the queue with an error. If the queue is already done, `false` is
@@ -959,10 +953,7 @@ export const failCause: {
  * @category completion
  * @since 4.0.0
  */
-export const failCauseUnsafe: {
-  <E>(cause: Cause<E>): <A>(self: Enqueue<A, E>) => boolean
-  <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boolean
-} = dual(2, <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boolean => {
+export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boolean => {
   if (self.state._tag !== "Open") {
     return false
   }
@@ -977,7 +968,7 @@ export const failCauseUnsafe: {
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
   return true
-})
+}
 
 /**
  * Signals queue completion.
