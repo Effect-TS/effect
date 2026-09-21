@@ -1,6 +1,6 @@
 import * as NodeDatagramSocket from "@effect/platform-node-shared/NodeDatagramSocket"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Result, Scope } from "effect"
+import { Deferred, Effect, Exit, Fiber, Result, Scope } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import { Buffer } from "node:buffer"
 import * as Dgram from "node:dgram"
@@ -54,6 +54,85 @@ const captureNativeSocket = (event: "error" | "message") =>
   )
 
 describe("NodeDatagramSocket acquisition", { concurrent: false }, () => {
+  it.effect("closes a native socket whose bind completes after acquisition is interrupted", () =>
+    Effect.gen(function*() {
+      const started = Deferred.makeUnsafe<Dgram.Socket>()
+      const closed = Deferred.makeUnsafe<void>()
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi.spyOn(Dgram.Socket.prototype, "bind").mockImplementation(function(
+            this: Dgram.Socket
+          ) {
+            Deferred.doneUnsafe(started, Exit.succeed(this))
+            return this
+          })
+        ),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+
+      const opening = yield* NodeDatagramSocket.bind({ localAddress }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      const nativeSocket = yield* Deferred.await(started)
+      let nativeRunning = false
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi.spyOn(nativeSocket, "close").mockImplementation((callback?: () => void) => {
+            if (!nativeRunning) {
+              throw Object.assign(new Error("Not running"), { code: "ERR_SOCKET_DGRAM_NOT_RUNNING" })
+            }
+            nativeSocket.emit("close")
+            callback?.()
+            return nativeSocket
+          })
+        ),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+      nativeSocket.once("close", () => Deferred.doneUnsafe(closed, Exit.void))
+      const interrupting = yield* Fiber.interrupt(opening).pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isUndefined(interrupting.pollUnsafe())
+
+      nativeRunning = true
+      nativeSocket.emit("listening")
+      yield* Deferred.await(closed).pipe(Effect.timeout("5 seconds"))
+      yield* Fiber.join(interrupting)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(opening)))
+      assert.deepStrictEqual(nativeSocket.eventNames(), [])
+    }))
+
+  it.effect("settles an interrupted connect and ignores a late native completion", () =>
+    Effect.gen(function*() {
+      const peer = yield* NodeDatagramSocket.bind({ localAddress })
+      const started = Deferred.makeUnsafe<Dgram.Socket>()
+      const closed = Deferred.makeUnsafe<void>()
+      let bound!: { readonly address: string; readonly port: number }
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi.spyOn(Dgram.Socket.prototype, "connect").mockImplementation(function(this: Dgram.Socket) {
+            bound = this.address()
+            Deferred.doneUnsafe(started, Exit.succeed(this))
+            return this
+          })
+        ),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+
+      const opening = yield* NodeDatagramSocket.connect({ localAddress, remote: peer.address }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      const nativeSocket = yield* Deferred.await(started)
+      nativeSocket.once("close", () => Deferred.doneUnsafe(closed, Exit.void))
+      yield* Fiber.interrupt(opening)
+      yield* Deferred.await(closed).pipe(Effect.timeout("5 seconds"))
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(opening)))
+      assert.isFalse(nativeSocket.emit("connect"))
+
+      const rebound = yield* NodeDatagramSocket.bind({
+        localAddress: NetAddress.inetAddressFromIpStringUnsafe(bound.address, bound.port)
+      })
+      assert.strictEqual(rebound.address.port, bound.port)
+    }))
+
   it.effect("preserves synchronous bind failures and cleans up the unopened socket", () =>
     Effect.gen(function*() {
       const cause = new Error("bind failed synchronously")

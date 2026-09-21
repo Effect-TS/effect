@@ -88,7 +88,7 @@ describe("DatagramSocket endpoint variants", () => {
     void erased
   })
 
-  it("narrows by the renamed discriminant tags", () => {
+  it("narrows by the association discriminant tags", () => {
     if (socket._tag === "Associated") {
       expect(socket).type.toBe<DatagramSocket.Associated>()
       expect(socket.remote).type.toBe<NetAddress.InetAddress>()

@@ -1,6 +1,8 @@
 /**
  * Scoped datagram endpoints with packet-preserving reads, writes, and streaming adapters.
  *
+ * **Details**
+ *
  * Binding acquires a ready-to-use endpoint owned by its scope. Read and write
  * operations share that endpoint; stopping a consumer leaves it open. Local
  * buffering cannot provide remote backpressure, and successful writes do not
@@ -8,7 +10,7 @@
  *
  * @since 4.0.0
  */
-import { isArrayNonEmpty, type NonEmptyReadonlyArray } from "../../Array.ts"
+import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Channel from "../../Channel.ts"
 import * as Context from "../../Context.ts"
@@ -18,6 +20,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import { identity } from "../../Function.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Pull from "../../Pull.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
@@ -95,23 +98,19 @@ export interface Packet<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
  *
  * `interface` uses the operating system's native selector: an interface address
  * for IPv4 or an interface index for IPv6. Omit it, use `ipv4Unspecified`, or
- * use index `0` to let the operating system choose. `source` restricts the membership
- * to one sender (source-specific multicast) and must be a specified unicast address of the group's family.
- * Inputs are read and validated when the operation executes; the operation
- * works on a snapshot, so later changes to this object are not observed.
- * Native source-specific membership support depends on the runtime and OS.
- * Membership affects reception, not the outgoing multicast interface. The port
- * comes from the socket's binding. Duplicate joins and leaves of absent
- * memberships fail with the runtime's native error.
+ * use index `0` to let the operating system choose. `source` restricts the
+ * membership to one sender and must be a specified unicast address of the
+ * group's family. Inputs are read and validated when the operation executes;
+ * the operation works on a snapshot, so later changes are not observed.
+ * Membership affects reception, not the outgoing multicast interface.
  *
  * **Gotchas**
  *
  * Positive IPv6 indices are resolved from a point-in-time interface snapshot.
- * Adapters refresh that snapshot once after a miss; an index that remains
- * unresolved fails with `DatagramSocketConfigurationError`. Interface
- * enumeration is not a permanent OS identity and need not discover every
- * interface.
- * Incoming packets identify the sender, not the destination multicast group.
+ * Adapters may cache interface enumeration and refresh it on a miss; an index
+ * that stays unresolved fails with `DatagramSocketConfigurationError`.
+ * Interface enumeration is not a permanent OS identity. Incoming packets
+ * identify the sender, not the destination multicast group.
  *
  * @category models
  * @since 4.0.0
@@ -122,23 +121,21 @@ export interface MembershipOptions<A extends NetAddress.IpAddress = NetAddress.I
 }
 
 interface Socket<A extends NetAddress.IpAddress, W> {
-  readonly [TypeId]: {
-    readonly _A: Types.Invariant<A>
-  }
+  readonly [TypeId]: { readonly _A: Types.Invariant<A> }
   readonly address: Inet<A>
   /**
    * Reads the next non-empty batch of complete packets. Concurrent pulls consume
-   * distinct packets. Interrupting a pull leaves the endpoint open.
+   * distinct packets. Interrupting a pull leaves the endpoint open and loses no packet.
    */
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError>
   /**
-   * Writes a datagram, waiting for local acceptance.
+   * Writes one datagram, waiting for local acceptance.
    *
    * **Details**
    *
    * The payload is copied when this effect executes, not when it is created.
-   * Keep the input stable until that execution settles. Re-executing the same
-   * effect reads the input again.
+   * Keep the input stable until execution settles. Validation precedence is
+   * payload size, numeric destination validity, then address-family agreement.
    */
   readonly write: (payload: W) => Effect.Effect<void, DatagramSocketError>
   /**
@@ -146,46 +143,37 @@ interface Socket<A extends NetAddress.IpAddress, W> {
    *
    * **Details**
    *
-   * Creating the effect does not snapshot the inputs. Keep the inputs stable until
-   * that execution settles. The whole batch is size- and family-validated before
-   * any submission. Each payload is then copied immediately before its sequential,
-   * input-order submission, which awaits local acceptance before continuing; local
-   * acceptance is not delivery. Other concurrent batches may interleave at submission
-   * granularity. The first write failure reports the exact accepted prefix and no
-   * later packet is submitted. Interruption stops later submissions, although the
-   * in-flight native send may finish. Closure reports `DatagramSocketClosedError`;
-   * it and interruption leave in-flight progress unknown, so a retry can duplicate
-   * packets.
+   * Creating the effect does not snapshot inputs. The whole batch is validated
+   * before submission. Payloads are copied immediately before each sequential,
+   * input-order submission. Other batches may interleave at submission
+   * granularity. The first failure reports the exact accepted prefix and stops
+   * later submissions. Validation precedence for each packet is payload size,
+   * numeric destination validity, then address-family agreement.
    */
   readonly writeMany: (payloads: ReadonlyArray<W>) => Effect.Effect<void, DatagramSocketError>
   /**
-   * Enables or disables permission to send IPv4 broadcasts. Unicast writes remain
-   * available. Changes affect every consumer and may interleave with batch writes.
+   * Enables or disables permission to send IPv4 broadcasts without affecting
+   * unicast traffic or a pending receive.
    */
   readonly setBroadcast: (enabled: boolean) => Effect.Effect<void, DatagramSocketError>
   /**
-   * Selects the outgoing interface for multicast sends. IPv4 uses an interface
-   * address and IPv6 uses an unsigned 32-bit interface index. Unknown but
-   * well-formed selectors fail with `DatagramSocketConfigurationError`.
+   * Selects the outgoing multicast interface. Unknown but well-formed selectors
+   * fail with `DatagramSocketConfigurationError`.
    */
   readonly setMulticastInterface: (
     networkInterface: MulticastInterface<A>
   ) => Effect.Effect<void, DatagramSocketError>
   /**
    * Joins a multicast group until explicitly dropped or the socket closes.
-   * Duplicate joins retain native error behavior; memberships are not reference counted.
-   * For scoped cleanup, acquire this operation and use
-   * `Effect.ignore(socket.dropMembership(group, options))` as the infallible
-   * release. Release is best-effort because socket closure already removes OS
-   * memberships and causes a later leave to report `DatagramSocketClosedError`.
+   * Memberships are not reference counted.
    */
   readonly addMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
     options?: NoInfer<MembershipOptions<Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
   /**
-   * Leaves a multicast group using the same group, interface, and source as the join.
-   * Missing memberships retain native error behavior. Already buffered packets remain readable.
+   * Leaves a multicast group using the same group, interface, and source as the
+   * join. Buffered packets remain readable.
    */
   readonly dropMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
@@ -194,9 +182,11 @@ interface Socket<A extends NetAddress.IpAddress, W> {
 }
 
 /**
- * A bound, unassociated datagram socket whose writes specify a destination for each packet.
+ * A bound, unassociated datagram socket whose writes specify a destination for
+ * each packet.
  *
  * @see {@link Associated} for a fixed peer association
+ *
  * @category models
  * @since 4.0.0
  */
@@ -209,11 +199,9 @@ export interface Unassociated<A extends NetAddress.IpAddress = NetAddress.IpAddr
  *
  * **Details**
  *
- * Peer association filters incoming packets but does not establish a handshake
- * or confirm reachability. Successful writes only confirm local runtime
- * acceptance and do not guarantee delivery. Platform adapters may silently drop
- * recoverable receive-side network errors reported for an otherwise healthy
- * associated endpoint.
+ * Peer association filters incoming packets but establishes no handshake and
+ * confirms no reachability. Recoverable receive-side network errors may be
+ * silently dropped for an otherwise healthy endpoint.
  *
  * @category models
  * @since 4.0.0
@@ -228,33 +216,22 @@ export interface Associated<A extends NetAddress.IpAddress = NetAddress.IpAddres
  *
  * **Details**
  *
- * The socket is ready to send and receive when acquisition succeeds. `address`
- * is its actual local address, including the assigned port when binding to zero.
- * Read and write operations share the endpoint. Concurrent pulls consume distinct
- * batches, and interrupting an operation leaves the endpoint open.
- *
- * Closing the acquisition scope discards buffered packets and fails pending and
- * future operations with `DatagramSocketClosedError`. Writes are never replayed
- * on another endpoint. A terminal receive error refuses new packets, lets pulls
- * drain already-buffered packets, then fails with its native cause; recoverable
- * receive drops do not. Closure discards any remainder and takes precedence over
- * an unobserved terminal failure. The acquisition scope continues to own the
- * endpoint. Retry scoped binding and consumption to create another socket after
- * a terminal failure.
- *
- * The family parameter is invariant because write and configuration operations
- * consume family-specific values. Consequently, a precise IPv4 or IPv6 socket
- * is not assignable to the erased `DatagramSocket<IpAddress>` service type.
- * Acquire an erased socket from an erased local address for direct service
- * provision; `DatagramSocketFactory` preserves precise inference.
+ * The socket is ready when acquisition succeeds. Its scope owns the endpoint.
+ * Closing that scope discards buffered packets and fails pending and future
+ * operations with `DatagramSocketClosedError`. Terminal receive failures drain
+ * buffered packets before repeating the same read error; writes remain
+ * independent until closure. The family parameter is invariant because writes
+ * and configuration consume family-specific values.
  *
  * @category models
  * @since 4.0.0
  */
-export type DatagramSocket<A extends NetAddress.IpAddress = NetAddress.IpAddress> = Unassociated<A> | Associated<A>
+export type DatagramSocket<A extends NetAddress.IpAddress = NetAddress.IpAddress> =
+  | Unassociated<A>
+  | Associated<A>
 
 /**
- * Service identifying an unassociated or associated datagram socket.
+ * Service identifying a datagram socket.
  *
  * @category services
  * @since 4.0.0
@@ -277,19 +254,10 @@ export const isDatagramSocket = (value: unknown): value is DatagramSocket => Pre
  * **Details**
  *
  * Defaults are 256 queued packets, 4 MiB queued payload bytes, 16 packets per
- * pull, and a 65,507-byte maximum payload. That conservative cross-family limit
- * is the IPv4 maximum total length (65,535) less the minimum IPv4 (20) and UDP
- * (8) headers; it is not a path MTU guarantee. Overflow and oversized incoming
- * payloads are silently tail-dropped. These
- * limits do not include packets already handed to consumers or kernel buffers.
- * Numeric addresses avoid implicit DNS resolution. Numeric limits are validated
- * as positive safe integers before transport acquisition.
- *
- * The public contract centers on values produced by `NetAddress` constructors.
- * The core also revalidates port and IPv6 scope numbers because native runtimes
- * can coerce them in routing-significant ways, but it is not a complete validator
- * for arbitrary forged address objects. Other native rejections are wrapped as
- * open, write, or configuration errors; malformed structural misuse may defect.
+ * pull, and a 65,507-byte maximum payload. Overflow and oversized incoming
+ * packets are silently tail-dropped. Numeric limits, ports, scopes, and
+ * `ipv6Only` family compatibility are validated before transport acquisition.
+ * Numeric addresses avoid implicit DNS resolution.
  *
  * @category models
  * @since 4.0.0
@@ -297,20 +265,15 @@ export const isDatagramSocket = (value: unknown): value is DatagramSocket => Pre
 export interface BindOptions<L extends NetAddress.InetAddress = NetAddress.InetAddress> {
   /**
    * Enables IPv4 broadcast sending during acquisition, before peer association.
-   * Defaults to false. Use an unassociated socket to collect discovery replies
-   * from multiple peers. Broadcast reception does not require this flag.
+   * Broadcast reception does not require this flag.
    */
   readonly broadcast?: boolean | undefined
   /**
-   * Enables `SO_REUSEADDR` during acquisition. Defaults to false. This is
-   * commonly required when several multicast listeners bind the same port.
+   * Enables `SO_REUSEADDR`, commonly needed by multicast listeners sharing a port.
    */
   readonly reuseAddress?: boolean | undefined
   /**
-   * Restricts an IPv6 binding to IPv6 traffic (`IPV6_V6ONLY`). Defaults to
-   * false, which on dual-stack systems also receives IPv4 senders as
-   * IPv4-mapped peers. Setting this for an IPv4 local address fails before
-   * transport acquisition for both binding and associated acquisition.
+   * Restricts an IPv6 binding to IPv6 traffic. It is invalid for IPv4 bindings.
    */
   readonly ipv6Only?: boolean | undefined
   readonly localAddress: L
@@ -325,8 +288,9 @@ export interface BindOptions<L extends NetAddress.InetAddress = NetAddress.InetA
  *
  * **Details**
  *
- * The peer must have a nonzero port and a specified IP address. Unspecified
- * addresses such as `0.0.0.0` and `::` are valid bindings but invalid peers.
+ * The peer must have a nonzero port and an address that remains specified after
+ * canonicalization; this also rejects IPv4-mapped unspecified addresses.
+ * `broadcast` is meaningful when the fixed remote is a broadcast address.
  *
  * @category models
  * @since 4.0.0
@@ -336,7 +300,151 @@ export interface ConnectOptions<L extends NetAddress.InetAddress = NetAddress.In
 }
 
 /**
- * Transport service that acquires scoped datagram endpoints from binding options.
+ * A failure while opening or associating a datagram socket.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketOpenError extends Schema.TaggedError<DatagramSocketOpenError>(
+  "effect/socket/DatagramSocket/DatagramSocketOpenError"
+)("DatagramSocketOpenError", { cause: Schema.Defect() }) {
+  override readonly message = "An error occurred while opening the datagram socket"
+}
+
+/**
+ * A failure while configuring a datagram socket.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketConfigurationError extends Schema.TaggedError<DatagramSocketConfigurationError>(
+  "effect/socket/DatagramSocket/DatagramSocketConfigurationError"
+)("DatagramSocketConfigurationError", {
+  operation: Schema.Literals(["setBroadcast", "setMulticastInterface", "addMembership", "dropMembership"]),
+  cause: Schema.Defect()
+}) {
+  override get message() {
+    return `An error occurred while configuring the datagram socket (${this.operation})`
+  }
+}
+
+/**
+ * A terminal failure while receiving datagrams.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketReadError extends Schema.TaggedError<DatagramSocketReadError>(
+  "effect/socket/DatagramSocket/DatagramSocketReadError"
+)("DatagramSocketReadError", { cause: Schema.Defect() }) {
+  override readonly message = "An error occurred while receiving datagrams"
+}
+
+/**
+ * A failure while sending a datagram.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketWriteError extends Schema.TaggedError<DatagramSocketWriteError>(
+  "effect/socket/DatagramSocket/DatagramSocketWriteError"
+)("DatagramSocketWriteError", {
+  cause: Schema.Defect(),
+  destination: Schema.InetAddressFromString,
+  accepted: Schema.Int
+}) {
+  override get message() {
+    return `An error occurred while sending a datagram to ${this.destination}`
+  }
+}
+
+/**
+ * An operation attempted after endpoint closure.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketClosedError extends Schema.TaggedError<DatagramSocketClosedError>(
+  "effect/socket/DatagramSocket/DatagramSocketClosedError"
+)("DatagramSocketClosedError", {}) {
+  override readonly message = "Datagram socket is closed"
+}
+
+/**
+ * Invalid binding, peer, buffering, or configuration options.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketInvalidOptionsError extends Schema.TaggedError<DatagramSocketInvalidOptionsError>(
+  "effect/socket/DatagramSocket/DatagramSocketInvalidOptionsError"
+)("DatagramSocketInvalidOptionsError", { message: Schema.String }) {}
+
+/**
+ * A payload exceeding the configured datagram size limit.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketMessageTooLargeError extends Schema.TaggedError<DatagramSocketMessageTooLargeError>(
+  "effect/socket/DatagramSocket/DatagramSocketMessageTooLargeError"
+)("DatagramSocketMessageTooLargeError", { size: Schema.Int, maxPacketBytes: Schema.Int }) {
+  override get message() {
+    return `Datagram payload of ${this.size} bytes exceeds the ${this.maxPacketBytes}-byte limit`
+  }
+}
+
+/**
+ * Schema for all datagram socket failure reasons.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DatagramSocketErrorReason = Schema.Union([
+  DatagramSocketOpenError,
+  DatagramSocketConfigurationError,
+  DatagramSocketReadError,
+  DatagramSocketWriteError,
+  DatagramSocketClosedError,
+  DatagramSocketInvalidOptionsError,
+  DatagramSocketMessageTooLargeError
+])
+
+/**
+ * Union of datagram acquisition, I/O, and lifetime failure reasons.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export type DatagramSocketErrorReason =
+  | DatagramSocketOpenError
+  | DatagramSocketConfigurationError
+  | DatagramSocketReadError
+  | DatagramSocketWriteError
+  | DatagramSocketClosedError
+  | DatagramSocketInvalidOptionsError
+  | DatagramSocketMessageTooLargeError
+
+/**
+ * A datagram failure retaining its schema-backed reason.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class DatagramSocketError extends Schema.TaggedError<DatagramSocketError>(
+  "effect/socket/DatagramSocket/DatagramSocketError"
+)("DatagramSocketError", { reason: DatagramSocketErrorReason }) {
+  override get cause(): unknown {
+    return "cause" in this.reason ? this.reason.cause : undefined
+  }
+
+  override get message(): string {
+    return this.reason.message
+  }
+}
+
+/**
+ * Transport service that acquires scoped datagram endpoints.
  *
  * @category services
  * @since 4.0.0
@@ -351,7 +459,7 @@ export class DatagramSocketFactory extends Context.Service<DatagramSocketFactory
 }>()("effect/socket/DatagramSocketFactory") {}
 
 /**
- * Acquires a bound datagram socket using the platform factory and the current scope.
+ * Acquires an unassociated socket through the platform factory.
  *
  * @category constructors
  * @since 4.0.0
@@ -360,10 +468,10 @@ export const bind = <L extends NetAddress.InetAddress>(options: BindOptions<L>):
   Unassociated<FamilyOf<L>>,
   DatagramSocketError,
   DatagramSocketFactory | Scope.Scope
-> => DatagramSocketFactory.use((factory) => factory.bind(options))
+> => Effect.flatMap(DatagramSocketFactory, (factory) => factory.bind(options))
 
 /**
- * Acquires a bound, peer-associated socket using the platform factory and the current scope.
+ * Acquires an associated socket through the platform factory.
  *
  * @category constructors
  * @since 4.0.0
@@ -372,19 +480,17 @@ export const connect = <L extends NetAddress.InetAddress>(options: ConnectOption
   Associated<FamilyOf<L>>,
   DatagramSocketError,
   DatagramSocketFactory | Scope.Scope
-> => DatagramSocketFactory.use((factory) => factory.connect(options))
+> => Effect.flatMap(DatagramSocketFactory, (factory) => factory.connect(options))
 
 /**
- * Operations for constructing an unassociated datagram socket with per-packet destinations.
+ * Operations for constructing a raw unassociated socket.
  *
  * **Details**
  *
- * `pull` supplies complete incoming packets. `write` and `writeMany` complete
- * after local acceptance. Implementations supply every operation, own resource
- * cleanup, and must settle operations when their acquisition scope closes.
- * Unsupported configuration operations fail with `DatagramSocketConfigurationError`.
- * Operations supplied here are exposed as given: this raw constructor adds no
- * closed-socket guard, membership validation, or membership-options snapshot.
+ * Implementations supply every operation, own cleanup, and settle operations
+ * when their acquisition scope closes. These operations are exposed as given:
+ * the raw constructor adds no lifetime guard, membership validation, or
+ * membership-options snapshot.
  *
  * @category models
  * @since 4.0.0
@@ -407,17 +513,13 @@ export interface MakeUnassociatedOptions<A extends NetAddress.IpAddress = NetAdd
 }
 
 /**
- * Operations for constructing an associated datagram socket with a fixed remote address.
+ * Operations for constructing a raw associated socket.
  *
  * **Details**
  *
- * `pull` supplies complete incoming packets from the associated peer. `write`
- * and `writeMany` send payloads to `remote` and complete after local acceptance.
- * Implementations supply every operation, own resource cleanup, and must settle
- * operations when their acquisition scope closes. Unsupported configuration
- * operations fail with `DatagramSocketConfigurationError`. Operations supplied
- * here are exposed as given: this raw constructor adds no closed-socket guard,
- * membership validation, or membership-options snapshot.
+ * Implementations supply every operation, own cleanup, and implement fixed-peer
+ * behavior. The raw constructor does not open or connect a native socket and
+ * adds no guards.
  *
  * @category models
  * @since 4.0.0
@@ -440,90 +542,48 @@ export interface MakeAssociatedOptions<A extends NetAddress.IpAddress = NetAddre
   ) => Effect.Effect<void, DatagramSocketError>
 }
 
+const variance = { _A: identity }
+
 /**
- * Constructs an unassociated datagram socket from read and write operations.
+ * Constructs a raw unassociated socket.
  *
- * **Details**
+ * **When to use**
  *
- * Operations must support caller interruption. The supplied operations are
- * exposed directly, including batch writes and socket configuration.
+ * Use to build test doubles and in-memory transports. Supplied operations are
+ * exposed directly and must support caller interruption.
  *
- * @see {@link makeAssociated} for a fixed remote address
- * @see {@link fromTransport} to adapt packet callbacks with scoped cleanup and buffering
  * @category constructors
  * @since 4.0.0
  */
 export const makeUnassociated = <A extends NetAddress.IpAddress>(
   options: MakeUnassociatedOptions<A>
-): Unassociated<A> => make(options, UnassociatedProto) as Unassociated<A>
+): Unassociated<A> => ({ [TypeId]: variance, _tag: "Unassociated", ...options })
 
 /**
- * Constructs an associated datagram socket from read and write operations.
+ * Constructs a raw associated socket.
  *
- * **Details**
+ * **When to use**
  *
- * Operations must support caller interruption and implement the fixed-peer
- * behavior. This constructor does not open or connect a native socket.
- * The supplied operations are exposed directly.
+ * Use to build test doubles and in-memory transports. Supplied operations are
+ * exposed directly and must support caller interruption.
  *
- * @see {@link makeUnassociated} for writes with per-packet destinations
- * @see {@link fromAssociatedTransport} to adapt a scoped native transport
  * @category constructors
  * @since 4.0.0
  */
-export const makeAssociated = <A extends NetAddress.IpAddress>(options: MakeAssociatedOptions<A>): Associated<A> =>
-  Object.assign(make(options, AssociatedProto), { remote: options.remote }) as Associated<A>
-
-const variance = {
-  _A: identity
-}
-
-const UnassociatedProto = {
-  [TypeId]: variance,
-  _tag: "Unassociated"
-}
-
-const AssociatedProto = {
-  [TypeId]: variance,
-  _tag: "Associated"
-}
-
-interface MakeOptions<A extends NetAddress.IpAddress, W> extends Omit<Socket<A, W>, typeof TypeId> {}
-
-const make = <A extends NetAddress.IpAddress, W>(options: MakeOptions<A, W>, proto: object): Socket<A, W> => {
-  const socket = Object.create(proto)
-  socket.address = options.address
-  socket.pull = options.pull
-  socket.write = options.write
-  socket.writeMany = options.writeMany
-  socket.setBroadcast = options.setBroadcast
-  socket.setMulticastInterface = options.setMulticastInterface
-  socket.addMembership = options.addMembership
-  socket.dropMembership = options.dropMembership
-  return socket
-}
+export const makeAssociated = <A extends NetAddress.IpAddress>(
+  options: MakeAssociatedOptions<A>
+): Associated<A> => ({ [TypeId]: variance, _tag: "Associated", ...options })
 
 /**
- * Callbacks through which a transport supplies incoming datagrams and
- * terminal receive errors.
+ * Callbacks through which a transport supplies packets and terminal errors.
  *
  * **Details**
  *
  * `onMessage` takes ownership of the payload without copying it. Adapters must
- * not mutate or reuse its backing memory after calling `onMessage`. The retained
- * backing allocation must also be proportional to the payload: adapters copy
- * views over materially larger native allocations before delivery so the byte
- * capacity reflects retained memory. Exact-sized stable payloads may be transferred
- * directly. Adapters convert native source addresses to `NetAddress`. A packet
- * whose source cannot be represented is silently dropped without affecting
- * other buffered or subsequent packets.
- *
- * `onError` is only for terminal receive failures. Adapters must classify and
- * drop recoverable receive errors without calling it. Calling `onError` refuses
- * new packets, lets pulls drain buffered packets, then fails future pulls.
- * Reported peers must truthfully use the binding family. In particular,
- * dual-stack IPv4 senders are represented as IPv4-mapped IPv6 peers, not cast
- * to another family.
+ * not reuse the backing memory and must copy views over materially larger
+ * native allocations. `onError` is only for terminal receive failures;
+ * adapters classify and drop recoverable failures. Reported peers truthfully
+ * retain the binding family, including IPv4-mapped IPv6 peers.
  *
  * @category models
  * @since 4.0.0
@@ -538,31 +598,18 @@ export interface Handlers<A extends NetAddress.IpAddress = NetAddress.IpAddress>
  *
  * **Details**
  *
- * `send` completes when the runtime accepts the packet, including any wait for
- * native backpressure. Batch writes submit packets sequentially through `send`.
- * A failed `send` reports zero accepted packets; the core tracks the successful
- * prefix of each batch. It interrupts pending sends and reports
- * `DatagramSocketClosedError` when the binding scope closes. The adapter must support interruption and remove operation
- * listeners on completion or interruption. A payload may be retained by the
- * runtime after interruption; an in-flight outcome is then unknown. Resource
- * cleanup belongs to the acquisition scope. The adapter must settle its own
- * operations when that scope closes; the seam intentionally has no separate
- * native-close notification hook.
- * Adapters supply every operation, returning `DatagramSocketConfigurationError`
- * for unsupported configuration. The constructor guards their lifetime. Membership
- * operations receive a branded multicast group and a frozen options snapshot whose
- * cross-field rules were validated on an open socket. Adapters format native
- * interface selectors at operation time, preserve native join/leave errors, and release
- * memberships when closing their native socket.
+ * `send` completes on runtime acceptance, including native backpressure.
+ * Failed sends report `accepted: 0`; the core rebases batch progress. The
+ * adapter owns native resources and settles its pending operations when its
+ * scope closes; the constructor reports `DatagramSocketClosedError`.
+ * Membership operations receive branded groups and frozen, validated options.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Binding<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
   readonly setBroadcast: (enabled: boolean) => Effect.Effect<void, DatagramSocketError>
-  readonly setMulticastInterface: (
-    networkInterface: MulticastInterface<A>
-  ) => Effect.Effect<void, DatagramSocketError>
+  readonly setMulticastInterface: (networkInterface: MulticastInterface<A>) => Effect.Effect<void, DatagramSocketError>
   readonly addMembership: (
     group: NetAddress.MulticastAddress<A>,
     options: MembershipOptions<A>
@@ -575,438 +622,318 @@ export interface Binding<A extends NetAddress.IpAddress = NetAddress.IpAddress> 
   readonly send: (packet: Packet<A>) => Effect.Effect<void, DatagramSocketError>
 }
 
-/**
- * Acquires a scoped datagram endpoint from a transport binding.
- *
- * **Details**
- *
- * `acquire` registers resource cleanup in the provided scope and returns the
- * bound address and send operation. It must clean up partial acquisition,
- * including resources obtained after interruption. It must honor `broadcast`
- * during acquisition, before associating a remote peer.
- *
- * The constructor owns buffering and closure signaling for pending acquisition,
- * reads, and sends. Adapters own native resources and interruptible I/O. Failure
- * or interruption during acquisition releases partially acquired resources
- * before returning. Closing the owning scope settles operations before awaiting
- * native cleanup; subsequent operations fail instead of waiting for a new socket.
- *
- * @see {@link makeUnassociated} to supply read and write operations directly
- * @see {@link fromAssociatedTransport} for peer-associated sockets
- * @category constructors
- * @since 4.0.0
- */
-export const fromTransport = <L extends NetAddress.InetAddress>(
-  options: BindOptions<L>,
-  acquire: (
-    handlers: Handlers<FamilyOf<L>>
-  ) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
-): Effect.Effect<Unassociated<FamilyOf<L>>, DatagramSocketError, Scope.Scope> => fromTransportWith(options, acquire)
+const defaults = {
+  receiveCapacity: 256,
+  receiveCapacityBytes: 4 * 1024 * 1024,
+  readBatchSize: 16,
+  maxPacketBytes: 65_507
+} as const
 
-function fromTransportWith<L extends NetAddress.InetAddress>(
-  options: BindOptions<L>,
-  acquire: (
-    handlers: Handlers<FamilyOf<L>>
-  ) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
-): Effect.Effect<Unassociated<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
-function fromTransportWith<L extends NetAddress.InetAddress>(
-  options: BindOptions<L>,
-  acquire: (
-    handlers: Handlers<FamilyOf<L>>
-  ) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>,
-  remote: Inet<FamilyOf<L>>
-): Effect.Effect<Associated<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
-function fromTransportWith<L extends NetAddress.InetAddress>(
+const error = (reason: DatagramSocketErrorReason) => new DatagramSocketError({ reason })
+const invalid = (message: string) => error(new DatagramSocketInvalidOptionsError({ message }))
+const closed = () => error(new DatagramSocketClosedError())
+
+const validU32 = (value: number) => Number.isInteger(value) && value >= 0 && value <= 0xffff_ffff
+const validPort = (value: number, allowZero: boolean) =>
+  Number.isInteger(value) && value >= (allowZero ? 0 : 1) && value <= 0xffff
+
+const validateOptions = (options: BindOptions): DatagramSocketError | undefined => {
+  for (const key of ["receiveCapacity", "receiveCapacityBytes", "readBatchSize", "maxPacketBytes"] as const) {
+    const value = options[key]
+    if (value !== undefined && (!Number.isSafeInteger(value) || value <= 0)) {
+      return invalid(`${key} must be a positive safe integer`)
+    }
+  }
+  if (!validPort(options.localAddress.port, true)) {
+    return invalid("Datagram local port must be an integer from 0 through 65535")
+  }
+  if (NetAddress.isInetAddressV6(options.localAddress) && !validU32(options.localAddress.scopeId)) {
+    return invalid("Datagram IPv6 scopeId must be an unsigned 32-bit integer")
+  }
+  if (options.ipv6Only === true && NetAddress.isInetAddressV4(options.localAddress)) {
+    return invalid("ipv6Only cannot be enabled for an IPv4 local address")
+  }
+}
+
+const validateRemote = (
+  local: NetAddress.InetAddress,
+  remote: NetAddress.InetAddress
+): DatagramSocketError | undefined => {
+  if (local._tag !== remote._tag) return invalid("Datagram peer must use the socket's address family")
+  if (!validPort(remote.port, false)) return invalid("Datagram peer port must be an integer from 1 through 65535")
+  if (NetAddress.isInetAddressV6(remote) && !validU32(remote.scopeId)) {
+    return invalid("Datagram IPv6 scopeId must be an unsigned 32-bit integer")
+  }
+  const canonical = NetAddress.toCanonical(remote)
+  if (NetAddress.isUnspecified(canonical.address)) return invalid("Datagram peer address must be specified")
+}
+
+interface Endpoint<A extends NetAddress.IpAddress> extends MakeUnassociatedOptions<A> {}
+
+const makeEndpoint = <L extends NetAddress.InetAddress>(
   options: BindOptions<L>,
   acquire: (
     handlers: Handlers<FamilyOf<L>>
   ) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>,
   remote?: Inet<FamilyOf<L>>
-): Effect.Effect<
-  DatagramSocket<FamilyOf<L>>,
-  DatagramSocketError,
-  Scope.Scope
-> {
-  return Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-    const invalidLocalAddress = invalidInetAddress(options.localAddress, true)
-    if (invalidLocalAddress !== undefined) {
-      return yield* error(new DatagramSocketInvalidOptionsError({ message: invalidLocalAddress }))
-    }
-    const invalidOption = invalidBufferingOption(options)
-    if (invalidOption !== undefined) {
-      return yield* error(
-        new DatagramSocketInvalidOptionsError({
-          message: `${invalidOption} must be a positive safe integer`
-        })
-      )
-    }
-    if (options.ipv6Only === true && NetAddress.isIpv4Address(options.localAddress.address)) {
-      return yield* error(
-        new DatagramSocketInvalidOptionsError({
-          message: "ipv6Only cannot be enabled for an IPv4 local address"
-        })
-      )
-    }
+): Effect.Effect<Endpoint<FamilyOf<L>>, DatagramSocketError, Scope.Scope> =>
+  Effect.gen(function*() {
+    const validation = validateOptions(options) ??
+      (remote === undefined ? undefined : validateRemote(options.localAddress, remote))
+    if (validation !== undefined) return yield* Effect.fail(validation)
 
-    const parentScope = yield* Effect.scope
-    const socketScope = Scope.forkUnsafe(parentScope)
-    // The public constructor fixes the input shape for the lifetime of this socket.
+    const parent = yield* Effect.scope
+    if (parent.state._tag === "Closed") return yield* Effect.fail(closed())
+
     type A = FamilyOf<L>
-    const toPacket = remote === undefined
-      ? (value: Packet<A> | Uint8Array) => value as Packet<A>
-      : (value: Packet<A> | Uint8Array): Packet<A> => ({ data: value as Uint8Array, peer: remote })
+    const inbox = yield* Queue.make<Packet<A>, DatagramSocketError>()
+    const adapterScope = yield* Scope.make("sequential")
+    const limits = {
+      receiveCapacity: options.receiveCapacity ?? defaults.receiveCapacity,
+      receiveCapacityBytes: options.receiveCapacityBytes ?? defaults.receiveCapacityBytes,
+      readBatchSize: options.readBatchSize ?? defaults.readBatchSize,
+      maxPacketBytes: options.maxPacketBytes ?? defaults.maxPacketBytes
+    }
+    let status: "Open" | "Closed" = "Open"
+    const isClosed = () => status === "Closed"
+    let queuedBytes = 0
+    const closedError = closed()
+    const canonicalRemote = remote === undefined ? undefined : NetAddress.toCanonical(remote)
 
-    return yield* Effect.gen(function*() {
-      const transportScope = Scope.makeUnsafe()
-      const receiver = yield* makeReceiver(options)
-      const closed = Deferred.makeUnsafe<never, DatagramSocketError>()
+    const closeCore = Effect.sync(() => {
+      if (status === "Closed") return
+      status = "Closed"
+      queuedBytes = 0
+      Queue.failCauseUnsafe(inbox, Cause.fail(closedError))
+      Queue.shutdownUnsafe(inbox)
+    })
 
-      // In an already closed scope this runs immediately, before acquisition.
-      yield* Scope.addFinalizerExit(
-        socketScope,
-        Effect.fnUntraced(function*(exit) {
-          // Settle I/O and discard buffered packets before native cleanup can suspend.
-          const err = error(new DatagramSocketClosedError({}))
-          receiver.close(err)
-          Deferred.doneUnsafe(closed, Exit.fail(err))
-          yield* Scope.close(transportScope, exit)
+    // One finalizer owns the order, so core settlement precedes adapter cleanup
+    // even when the parent scope itself uses the parallel finalizer strategy.
+    yield* Scope.addFinalizerExit(parent, (exit_) => Effect.andThen(closeCore, Scope.close(adapterScope, exit_)))
+    if (isClosed()) return yield* Effect.fail(closedError)
+
+    const handlers: Handlers<A> = {
+      onMessage(data, peer) {
+        if (status === "Closed") return
+        if (canonicalRemote !== undefined && !Equal.equals(NetAddress.toCanonical(peer), canonicalRemote)) return
+        const size = data.byteLength
+        if (
+          size > limits.maxPacketBytes ||
+          Queue.sizeUnsafe(inbox) >= limits.receiveCapacity ||
+          queuedBytes + size > limits.receiveCapacityBytes
+        ) return
+        if (Queue.offerUnsafe(inbox, { data, peer })) queuedBytes += size
+      },
+      onError(cause) {
+        if (status === "Closed") return
+        Queue.failCauseUnsafe(inbox, Cause.fail(error(new DatagramSocketReadError({ cause }))))
+      }
+    }
+
+    const binding = yield* Scope.provide(acquire(handlers), adapterScope).pipe(
+      Effect.onExit((exit_) => Exit.isSuccess(exit_) ? Effect.void : Scope.close(adapterScope, exit_)),
+      Effect.catch((cause) => isClosed() ? Effect.fail(closedError) : Effect.fail(cause))
+    )
+    if (isClosed()) {
+      yield* Scope.close(adapterScope, Exit.void)
+      return yield* Effect.fail(closedError)
+    }
+
+    const guard = (operation: Effect.Effect<void, DatagramSocketError>): Effect.Effect<void, DatagramSocketError> =>
+      operation.pipe(
+        Effect.flatMap(() => status === "Closed" ? Effect.fail(closedError) : Effect.void),
+        Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
+      )
+
+    const validatePacket = (packet: Packet<A>): DatagramSocketError | undefined => {
+      if (packet.data.byteLength > limits.maxPacketBytes) {
+        return error(
+          new DatagramSocketMessageTooLargeError({
+            size: packet.data.byteLength,
+            maxPacketBytes: limits.maxPacketBytes
+          })
+        )
+      }
+      if (!validPort(packet.peer.port, false)) {
+        return invalid("A datagram peer port must be an integer between 1 and 65535")
+      }
+      if (NetAddress.isInetAddressV6(packet.peer) && !validU32(packet.peer.scopeId)) {
+        return invalid("Datagram destination scopeId must be an unsigned 32-bit integer")
+      }
+      if (options.localAddress._tag !== packet.peer._tag) {
+        return invalid("Datagram destination must use the socket's address family")
+      }
+    }
+
+    const send = (packet: Packet<A>, accepted: number): Effect.Effect<void, DatagramSocketError> =>
+      guard(binding.send({ data: new Uint8Array(packet.data), peer: packet.peer })).pipe(
+        Effect.catch((cause) => {
+          if (cause.reason._tag !== "DatagramSocketWriteError") return Effect.fail(cause)
+          if (cause.reason.accepted !== 0) {
+            return Effect.die(new Error("Datagram transport send reported invalid accepted progress"))
+          }
+          return Effect.fail(error(
+            new DatagramSocketWriteError({
+              cause: cause.reason.cause,
+              destination: cause.reason.destination,
+              accepted
+            })
+          ))
         })
       )
 
-      const guard = <A>(operation: Effect.Effect<A, DatagramSocketError>) =>
-        Effect.raceFirst(
-          Effect.suspend(() =>
-            Deferred.isDoneUnsafe(closed) ? Effect.fail(error(new DatagramSocketClosedError({}))) : operation
-          ),
-          Deferred.await(closed)
-        )
-
-      const scoped = Scope.provide(transportScope)
-      const binding = yield* Effect.suspend(() => acquire(receiver)).pipe(scoped, guard, restore)
-
-      if (Deferred.isDoneUnsafe(closed)) return yield* error(new DatagramSocketClosedError({}))
-
-      const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
-      const validatePacket = (packet: Packet<A>): DatagramSocketError | undefined => {
-        if (packet.data.byteLength > maxPacketBytes) {
-          return error(new DatagramSocketMessageTooLargeError({ size: packet.data.byteLength, maxPacketBytes }))
-        }
-        const invalidDestination = invalidInetAddress(packet.peer, false)
-        if (invalidDestination !== undefined) {
-          return error(new DatagramSocketInvalidOptionsError({ message: invalidDestination }))
-        }
-        if (packet.peer._tag !== options.localAddress._tag) {
-          return error(
-            new DatagramSocketInvalidOptionsError({
-              message: "Datagram destination must use the socket's address family"
-            })
-          )
-        }
-      }
-
-      // Called during execution, immediately before each sequential submission.
-      const sendPacket = (packet: Packet<A>, accepted: number) =>
-        binding.send({ ...packet, data: Uint8Array.from(packet.data) }).pipe(
-          Effect.catch(rebaseWriteFailure(accepted))
-        )
-
-      const write = Effect.fnUntraced(function*(value: Packet<A> | Uint8Array) {
-        const packet = toPacket(value)
+    const write = (packet: Packet<A>): Effect.Effect<void, DatagramSocketError> =>
+      Effect.suspend(() => {
+        if (status === "Closed") return Effect.fail(closedError)
         const failure = validatePacket(packet)
-        if (failure !== undefined) return yield* failure
-        return yield* sendPacket(packet, 0)
-      }, guard)
+        return failure === undefined ? send(packet, 0) : Effect.fail(failure)
+      })
 
-      const writeBatch = Effect.fnUntraced(function*(packets: ReadonlyArray<Packet<A> | Uint8Array>) {
-        // Validate the whole logical group without yielding, copying or submitting any member.
-        for (let index = 0; index < packets.length; index++) {
-          const failure = validatePacket(toPacket(packets[index]))
-          if (failure !== undefined) return yield* failure
+    const writeMany = (packets: ReadonlyArray<Packet<A>>): Effect.Effect<void, DatagramSocketError> =>
+      Effect.suspend(() => {
+        if (status === "Closed") return Effect.fail(closedError)
+        for (const packet of packets) {
+          const failure = validatePacket(packet)
+          if (failure !== undefined) return Effect.fail(failure)
         }
+        let accepted = 0
+        return Effect.whileLoop({
+          while: () => accepted < packets.length,
+          body: () => status === "Closed" ? Effect.fail(closedError) : send(packets[accepted], accepted),
+          step: () => accepted++
+        })
+      })
 
-        for (let index = 0; index < packets.length; index++) {
-          yield* sendPacket(toPacket(packets[index]), index)
+    const pull = Effect.suspend(() => {
+      if (status === "Closed") return Effect.fail(closedError)
+      return Queue.takeBetween(inbox, 1, limits.readBatchSize).pipe(
+        Effect.flatMap((batch) =>
+          Effect.suspend(() => {
+            if (status === "Closed") return Effect.fail(closedError)
+            for (const packet of batch) queuedBytes -= packet.data.byteLength
+            return Effect.succeed(batch as unknown as NonEmptyReadonlyArray<Packet<A>>)
+          })
+        ),
+        Effect.catchCause((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.failCause(cause))
+      )
+    })
+
+    const ensureOpen = (operation: () => Effect.Effect<void, DatagramSocketError>) =>
+      Effect.suspend(() => status === "Closed" ? Effect.fail(closedError) : guard(operation()))
+
+    const validateInterface = (networkInterface: MulticastInterface<A>): DatagramSocketError | undefined => {
+      if (NetAddress.isInetAddressV4(options.localAddress)) {
+        if (!NetAddress.isIpv4Address(networkInterface)) {
+          return invalid("IPv4 multicast interfaces must be IPv4 addresses")
         }
-      }, guard)
-
-      const membership = (operation: "addMembership" | "dropMembership") =>
-      <G extends A>(
-        group: NetAddress.MulticastAddress<G>,
-        membershipOptions?: NoInfer<MembershipOptions<Family<G>>>
-      ) =>
-        guard(Effect.suspend(() => {
-          const snapshot: MembershipOptions<A> = Object.freeze({
-            interface: membershipOptions?.interface,
-            source: membershipOptions?.source
-          }) as MembershipOptions<A>
-          const message = invalidMembershipOptions(options.localAddress.address, group, snapshot)
-          return message === undefined
-            ? binding[operation](group as NetAddress.MulticastAddress<A>, snapshot)
-            : Effect.fail(error(new DatagramSocketInvalidOptionsError({ message })))
-        }))
-
-      const socketOptions: MakeOptions<A, Packet<A> | Uint8Array> = {
-        setBroadcast: (enabled) => guard(Effect.suspend(() => binding.setBroadcast(enabled))),
-        setMulticastInterface: (networkInterface) =>
-          guard(Effect.suspend(() => {
-            const message = invalidMulticastInterface(options.localAddress.address, networkInterface)
-            return message === undefined
-              ? binding.setMulticastInterface(networkInterface)
-              : Effect.fail(error(new DatagramSocketInvalidOptionsError({ message })))
-          })),
-        addMembership: membership("addMembership"),
-        dropMembership: membership("dropMembership"),
-        address: binding.address,
-        pull: receiver.pull,
-        write,
-        writeMany: writeBatch
+      } else if (typeof networkInterface !== "number" || !validU32(networkInterface)) {
+        return invalid("IPv6 multicast interfaces must be unsigned 32-bit integers")
       }
-      return remote === undefined ? makeUnassociated(socketOptions) : makeAssociated({ ...socketOptions, remote })
-    }).pipe(Effect.onError((cause) => Scope.close(socketScope, Exit.failCause(cause))))
-  }))
-}
+    }
+
+    const membership = (
+      operation: "addMembership" | "dropMembership",
+      group: NetAddress.MulticastAddress<A>,
+      options_: MembershipOptions<A> | undefined
+    ): Effect.Effect<void, DatagramSocketError> =>
+      Effect.suspend(() => {
+        if (status === "Closed") return Effect.fail(closedError)
+        if (
+          !NetAddress.isMulticast(group) ||
+          NetAddress.isIpv4Address(group) !== NetAddress.isInetAddressV4(options.localAddress)
+        ) {
+          return Effect.fail(invalid("Datagram multicast group must use the socket's address family"))
+        }
+        const networkInterface = options_?.interface
+        const source = options_?.source
+        if (networkInterface !== undefined) {
+          const failure = validateInterface(networkInterface)
+          if (failure !== undefined) return Effect.fail(failure)
+        }
+        if (
+          source !== undefined &&
+          (NetAddress.isIpv4Address(source) !== NetAddress.isIpv4Address(group) ||
+            !NetAddress.isUnicast(source) || NetAddress.isUnspecified(source))
+        ) return Effect.fail(invalid("Datagram membership source must be specified unicast of the group's family"))
+        const snapshot = Object.freeze({ interface: networkInterface, source }) as MembershipOptions<A>
+        return guard(binding[operation](group, snapshot))
+      })
+
+    return {
+      address: binding.address,
+      pull,
+      write,
+      writeMany,
+      setBroadcast: (enabled) => ensureOpen(() => binding.setBroadcast(enabled)),
+      setMulticastInterface: (networkInterface) =>
+        Effect.suspend(() => {
+          if (status === "Closed") return Effect.fail(closedError)
+          const failure = validateInterface(networkInterface)
+          return failure === undefined ? guard(binding.setMulticastInterface(networkInterface)) : Effect.fail(failure)
+        }),
+      addMembership: (group, options_) =>
+        membership("addMembership", group as NetAddress.MulticastAddress<A>, options_ as MembershipOptions<A>),
+      dropMembership: (group, options_) =>
+        membership("dropMembership", group as NetAddress.MulticastAddress<A>, options_ as MembershipOptions<A>)
+    }
+  })
 
 /**
- * Acquires a scoped peer-associated socket with a byte-oriented writer.
+ * Acquires a scoped endpoint from a transport binding.
  *
  * **Details**
  *
- * Validates the remote address before asking the adapter to bind and associate
- * the endpoint. Incoming packets are filtered to the canonical peer IP address,
- * port, and IPv6 scope. Peer association does not establish a handshake.
+ * Options are validated before transport work. Acquisition in an already closed
+ * scope fails `DatagramSocketClosedError` without invoking the transport.
+ * `acquire` registers resource cleanup in its provided scope and must clean up
+ * partial and late acquisition. Closing the owner settles core state before the
+ * adapter's native cleanup is awaited.
  *
- * @see {@link fromTransport} for acquisition ownership and adapter requirements
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromTransport = <L extends NetAddress.InetAddress>(
+  options: BindOptions<L>,
+  acquire: (handlers: Handlers<FamilyOf<L>>) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
+): Effect.Effect<Unassociated<FamilyOf<L>>, DatagramSocketError, Scope.Scope> =>
+  Effect.map(makeEndpoint(options, acquire), makeUnassociated)
+
+/**
+ * Acquires a scoped peer-associated endpoint.
+ *
+ * **Details**
+ *
+ * The remote is validated before acquisition. Incoming packets are compared
+ * using canonical IP, port, and scope values, while the public `remote` and
+ * delivered peer retain the socket's declared address family.
+ *
  * @category constructors
  * @since 4.0.0
  */
 export const fromAssociatedTransport = <L extends NetAddress.InetAddress>(
   options: ConnectOptions<L>,
-  acquire: (
-    handlers: Handlers<FamilyOf<L>>
-  ) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
+  acquire: (handlers: Handlers<FamilyOf<L>>) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
 ): Effect.Effect<Associated<FamilyOf<L>>, DatagramSocketError, Scope.Scope> =>
-  Effect.gen(function*() {
-    const invalidRemote = invalidInetAddress(options.remote, false)
-    if (invalidRemote !== undefined) {
-      return yield* error(new DatagramSocketInvalidOptionsError({ message: invalidRemote }))
-    }
-    if (options.remote._tag !== options.localAddress._tag) {
-      return yield* error(
-        new DatagramSocketInvalidOptionsError({
-          message: "Datagram peer must use the local address family"
-        })
-      )
-    }
-    const peer = NetAddress.toCanonical(options.remote)
-    if (peer.port === 0 || NetAddress.isUnspecified(peer.address)) {
-      return yield* error(
-        new DatagramSocketInvalidOptionsError({
-          message: "A datagram peer must have a nonzero port and a specified IP address"
-        })
-      )
-    }
-
-    return yield* fromTransportWith(options, (handlers) =>
-      acquire({
-        ...handlers,
-        onMessage(data, source) {
-          if (Equal.equals(NetAddress.toCanonical(source), peer)) handlers.onMessage(data, source)
-        }
-      }), options.remote)
+  Effect.map(makeEndpoint(options, acquire, options.remote), (endpoint) => {
+    const remote = options.remote
+    return makeAssociated({
+      ...endpoint,
+      remote,
+      write: (payload) => endpoint.write({ data: payload, peer: remote }),
+      writeMany: (payloads) =>
+        Effect.suspend(() => endpoint.writeMany(payloads.map((data) => ({ data, peer: remote }))))
+    })
   })
 
 /**
- * Failures while opening or associating a datagram socket.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketOpenError extends Schema.TaggedError<DatagramSocketOpenError>(
-  "effect/socket/DatagramSocket/DatagramSocketOpenError"
-)("DatagramSocketOpenError", {
-  cause: Schema.Defect()
-}) {
-  override readonly message = "An error occurred while opening the datagram socket"
-}
-
-/**
- * Failures while changing broadcast permission, multicast interface, or membership.
+ * Converts a socket's reader into a stream of packets.
  *
  * **Details**
  *
- * Includes unsupported operations. A configuration failure does not terminate
- * reads or close the socket. The cause retains the native failure.
+ * Stopping the stream interrupts its pull without closing the socket. Multiple
+ * consumers share the reader and consume distinct packets.
  *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketConfigurationError extends Schema.TaggedError<DatagramSocketConfigurationError>(
-  "effect/socket/DatagramSocket/DatagramSocketConfigurationError"
-)("DatagramSocketConfigurationError", {
-  operation: Schema.Literals(["setBroadcast", "setMulticastInterface", "addMembership", "dropMembership"]),
-  cause: Schema.Defect()
-}) {
-  override get message() {
-    return `An error occurred while configuring the datagram socket (${this.operation})`
-  }
-}
-
-/**
- * Failures while receiving datagrams from a socket.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketReadError extends Schema.TaggedError<DatagramSocketReadError>(
-  "effect/socket/DatagramSocket/DatagramSocketReadError"
-)("DatagramSocketReadError", {
-  cause: Schema.Defect()
-}) {
-  override readonly message = "An error occurred while receiving datagrams"
-}
-
-/**
- * Failures while sending a datagram to a destination.
- *
- * **Details**
- *
- * `accepted` is the exact number of datagrams from this `write` or `writeMany`
- * call accepted by the local runtime before the submission stopped. No later
- * datagram from that call was accepted. It is always zero for `write`.
- * `destination` identifies the attempted submission where the group stopped;
- * for runtimes with queued asynchronous network errors, it is not proof that
- * this peer caused the native `cause`. Acceptance does not mean remote delivery.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketWriteError extends Schema.TaggedError<DatagramSocketWriteError>(
-  "effect/socket/DatagramSocket/DatagramSocketWriteError"
-)("DatagramSocketWriteError", {
-  cause: Schema.Defect(),
-  destination: Schema.InetAddressFromString,
-  accepted: Schema.Int
-}) {
-  override get message(): string {
-    return `An error occurred while sending a datagram to ${this.destination}`
-  }
-}
-
-/**
- * An operation interrupted by endpoint closure or attempted after closure.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketClosedError extends Schema.TaggedError<DatagramSocketClosedError>(
-  "effect/socket/DatagramSocket/DatagramSocketClosedError"
-)("DatagramSocketClosedError", {}) {
-  override readonly message = "Datagram socket is closed"
-}
-
-/**
- * Invalid datagram binding, peer, or buffering options.
- *
- * **Details**
- *
- * `receiveCapacity`, `receiveCapacityBytes`, `readBatchSize`, and
- * `maxPacketBytes`, when supplied, must be positive safe integers. Ports must
- * be integral 16-bit values (and peer ports nonzero), and IPv6 scope ids and
- * interface indices must be unsigned 32-bit integers. `ipv6Only` cannot be
- * enabled for an IPv4 local address. These options and local/remote family
- * agreement are validated before transport acquisition. Batch destinations and
- * membership group/source/selector agreement are validated on an open socket
- * before any adapter work.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketInvalidOptionsError extends Schema.TaggedError<DatagramSocketInvalidOptionsError>(
-  "effect/socket/DatagramSocket/DatagramSocketInvalidOptionsError"
-)("DatagramSocketInvalidOptionsError", {
-  message: Schema.String
-}) {}
-
-/**
- * A datagram payload exceeding the configured size limit.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketMessageTooLargeError extends Schema.TaggedError<DatagramSocketMessageTooLargeError>(
-  "effect/socket/DatagramSocket/DatagramSocketMessageTooLargeError"
-)("DatagramSocketMessageTooLargeError", {
-  size: Schema.Int,
-  maxPacketBytes: Schema.Int
-}) {
-  override get message(): string {
-    return `Datagram payload of ${this.size} bytes exceeds the ${this.maxPacketBytes}-byte limit`
-  }
-}
-
-/**
- * Union of datagram acquisition, I/O, and lifetime failure reasons.
- *
- * @category errors
- * @since 4.0.0
- */
-export type DatagramSocketErrorReason =
-  | DatagramSocketOpenError
-  | DatagramSocketConfigurationError
-  | DatagramSocketReadError
-  | DatagramSocketWriteError
-  | DatagramSocketClosedError
-  | DatagramSocketInvalidOptionsError
-  | DatagramSocketMessageTooLargeError
-
-/**
- * Schema for all datagram socket failure reasons.
- *
- * @category schemas
- * @since 4.0.0
- */
-export const DatagramSocketErrorReason = Schema.Union([
-  DatagramSocketOpenError,
-  DatagramSocketConfigurationError,
-  DatagramSocketReadError,
-  DatagramSocketWriteError,
-  DatagramSocketClosedError,
-  DatagramSocketInvalidOptionsError,
-  DatagramSocketMessageTooLargeError
-])
-
-/**
- * A datagram failure retaining its schema-backed reason and underlying cause.
- *
- * @category errors
- * @since 4.0.0
- */
-export class DatagramSocketError extends Schema.TaggedError<DatagramSocketError>(
-  "effect/socket/DatagramSocket/DatagramSocketError"
-)("DatagramSocketError", {
-  reason: DatagramSocketErrorReason
-}) {
-  override get cause(): unknown {
-    return "cause" in this.reason ? this.reason.cause : undefined
-  }
-
-  override get message(): string {
-    return this.reason.message
-  }
-}
-
-/**
- * Converts a bound socket's reader into a stream of packets.
- *
- * **Details**
- *
- * Stopping the stream interrupts its pending pull without closing the socket.
- * The socket's acquisition scope continues to own the endpoint. Multiple
- * consumers share the reader and consume distinct packets rather than broadcast.
- * To let a stream own the endpoint, acquire it inside `Stream.unwrap` and map
- * the acquired socket to `toStream`.
- *
- * @see {@link toChannel} for duplex I/O
  * @category combinators
  * @since 4.0.0
  */
@@ -1014,22 +941,49 @@ export const toStream = <A extends NetAddress.IpAddress>(
   self: DatagramSocket<A>
 ): Stream.Stream<Packet<A>, DatagramSocketError> => Stream.fromPull(Effect.succeed(self.pull))
 
+const toChannelInternal = <A extends NetAddress.IpAddress, IE, W>(
+  self: Socket<A, W>
+): Channel.Channel<
+  NonEmptyReadonlyArray<Packet<A>>,
+  DatagramSocketError | IE,
+  void,
+  NonEmptyReadonlyArray<W>,
+  IE
+> =>
+  Channel.fromTransform(Effect.fnUntraced(function*(upstream, scope) {
+    const sendFailed = Deferred.makeUnsafe<never, DatagramSocketError | IE>()
+    let writeFailure: Cause.Cause<DatagramSocketError | IE> | undefined
+    yield* upstream.pipe(
+      Effect.flatMap((group) => self.writeMany(group)),
+      Effect.forever({ disableYield: true }),
+      Effect.catchCauseFilter(Pull.filterNoDone, (cause) =>
+        Effect.sync(() => {
+          writeFailure = cause as Cause.Cause<DatagramSocketError | IE>
+          Deferred.doneUnsafe(sendFailed, Effect.failCause(writeFailure))
+        })),
+      Effect.forkIn(scope)
+    )
+    return Effect.catchCause(
+      Effect.suspend(() =>
+        writeFailure !== undefined
+          ? Effect.failCause(writeFailure)
+          : Effect.raceFirst(self.pull, Deferred.await(sendFailed))
+      ),
+      (cause) => Effect.failCause(writeFailure ?? cause)
+    )
+  }))
+
 /**
- * Converts a bound socket into a duplex channel of packet batches.
+ * Converts a socket into a duplex channel of packet batches.
  *
  * **Details**
  *
  * Normal upstream completion leaves reception running. Upstream and send
- * failures fail the channel, interrupting a suspended receive. Receive failure
- * interrupts sending. Downstream termination interrupts both directions without
- * closing the socket; its acquisition scope continues to own the endpoint.
- * A finite outgoing stream does not imply a finite number of responses.
- * Each outgoing group is submitted with `writeMany` before pulling the next.
- * Application queue policies apply before a group is pulled; the active write
- * owns its unsent remainder. Other writes may interleave.
+ * failures interrupt a suspended receive; receive failure interrupts sending.
+ * Downstream termination interrupts both channel directions without closing
+ * the socket. Each outgoing group is submitted with `writeMany` before the
+ * next group is pulled.
  *
- * @see {@link toStream} for read-only consumption
- * @see {@link Unassociated} for batch completion and failure semantics
  * @category combinators
  * @since 4.0.0
  */
@@ -1048,20 +1002,7 @@ export const toChannel: {
     NonEmptyReadonlyArray<Uint8Array>,
     IE
   >
-} = <A extends NetAddress.IpAddress, IE>(self: DatagramSocket<A>) => {
-  const pull = Channel.fromPull(Effect.succeed(self.pull))
-  // Each overload restricts channel input to the corresponding socket's write shape.
-  const writeBatch = self.writeMany.bind(self) as unknown as (
-    packets: ReadonlyArray<Packet<A> | Uint8Array>
-  ) => Effect.Effect<void, DatagramSocketError>
-  const identity = Channel.identity<NonEmptyReadonlyArray<Packet<A> | Uint8Array>, IE, unknown>().pipe(
-    Channel.mapEffect(writeBatch),
-    Channel.drain,
-    Channel.mapDone(() => undefined)
-  )
-
-  return Channel.merge(pull, identity, { haltStrategy: "left" })
-}
+} = toChannelInternal as any
 
 /**
  * Creates a duplex channel adapter with a fixed upstream error type.
@@ -1086,156 +1027,3 @@ export const toChannelWith = <IE = never>() =>
       IE
     >
   }
-
-const makeReceiver = Effect.fnUntraced(function*<L extends NetAddress.InetAddress>(options: BindOptions<L>) {
-  type A = FamilyOf<L>
-  const maxPacketBytes = options.maxPacketBytes ?? defaultMaxPacketBytes
-  const receiveCapacity = options.receiveCapacity ?? 256
-  const receiveCapacityBytes = options.receiveCapacityBytes ?? 4 * 1024 * 1024
-  const readBatchSize = options.readBatchSize ?? 16
-  const incoming = yield* Queue.dropping<Packet<A>, DatagramSocketError>(receiveCapacity)
-
-  // The endpoint owns the buffer, independently of the fibers receiving packets.
-  let queuedBytes = 0
-  let readError: DatagramSocketError | undefined
-
-  const fail = (cause: DatagramSocketError) => {
-    if (readError !== undefined) return
-    readError = cause
-    Queue.failCauseUnsafe(incoming, Cause.fail(cause))
-  }
-
-  const close = (cause: DatagramSocketError) => {
-    readError = cause
-    queuedBytes = 0
-    Queue.failCauseUnsafe(incoming, Cause.fail(cause))
-    Queue.shutdownUnsafe(incoming)
-  }
-
-  const onError = (cause: unknown) => {
-    if (readError !== undefined) return
-    fail(error(new DatagramSocketReadError({ cause })))
-  }
-
-  const onMessage = (data: Uint8Array, peer: Inet<A>) => {
-    const size = data.byteLength
-    if (
-      readError !== undefined || size > maxPacketBytes ||
-      Queue.isFullUnsafe(incoming) ||
-      queuedBytes + size > receiveCapacityBytes
-    ) return
-
-    if (Queue.offerUnsafe(incoming, { data, peer })) {
-      queuedBytes += size
-    }
-  }
-
-  const pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError> = Effect.gen(function*() {
-    while (true) {
-      // Dequeue and byte accounting cannot be separated by a fiber interruption.
-      const packets: Array<Packet<A>> = []
-      while (packets.length < readBatchSize) {
-        const next = Queue.takeUnsafe(incoming)
-        if (next === undefined || Exit.isFailure(next)) break
-        queuedBytes -= next.value.data.byteLength
-        packets.push(next.value)
-      }
-
-      if (isArrayNonEmpty(packets)) return packets
-      if (readError !== undefined) return yield* readError
-
-      // Wait without reserving a packet; the queue schedules reader wakeups.
-      yield* Effect.ignore(Queue.peek(incoming))
-    }
-  })
-
-  return { onError, onMessage, pull, close }
-})
-
-const error = (reason: DatagramSocketErrorReason) => new DatagramSocketError({ reason })
-
-const defaultMaxPacketBytes = 65507
-
-// A binding reports zero progress for a failed send; the core owns the accepted prefix of each batch.
-const rebaseWriteFailure =
-  (accepted: number) => (failure: DatagramSocketError): Effect.Effect<never, DatagramSocketError> => {
-    if (failure.reason._tag !== "DatagramSocketWriteError") return Effect.fail(failure)
-    if (failure.reason.accepted !== 0) {
-      return Effect.die(new Error("Datagram socket binding reported nonzero progress for a failed send"))
-    }
-    return Effect.fail(error(
-      new DatagramSocketWriteError({
-        cause: failure.reason.cause,
-        destination: failure.reason.destination,
-        accepted
-      })
-    ))
-  }
-
-const invalidBufferingOption = (options: BindOptions): keyof BindOptions | undefined => {
-  for (
-    const key of [
-      "receiveCapacity",
-      "receiveCapacityBytes",
-      "readBatchSize",
-      "maxPacketBytes"
-    ] as const
-  ) {
-    const value = options[key]
-    if (value !== undefined && (!Number.isSafeInteger(value) || value <= 0)) return key
-  }
-}
-
-const invalidMembershipOptions = (
-  socketAddress: NetAddress.IpAddress,
-  group: NetAddress.MulticastAddress,
-  options: MembershipOptions
-): string | undefined => {
-  if (!NetAddress.isMulticast(group)) return "Membership group must be a multicast address"
-  if (group._tag !== socketAddress._tag) return "Membership group must use the socket's address family"
-  const invalidInterface = invalidMulticastInterface(group, options.interface)
-  if (invalidInterface !== undefined) return invalidInterface
-  const { source } = options
-  if (source === undefined) return
-  if (source._tag !== group._tag) return "Membership source must use the multicast group's address family"
-  if (!NetAddress.isUnicast(source)) return "Membership source must be a specified unicast address"
-}
-
-const invalidMulticastInterface = (
-  family: NetAddress.IpAddress,
-  networkInterface: NetAddress.Ipv4Address | number | undefined
-): string | undefined => {
-  if (networkInterface === undefined) return
-  if (NetAddress.isIpv4Address(family)) {
-    if (!NetAddress.isIpv4Address(networkInterface)) {
-      return "An IPv4 multicast interface must be an IPv4 address"
-    }
-    return
-  }
-  if (
-    typeof networkInterface !== "number" ||
-    !Number.isInteger(networkInterface) ||
-    networkInterface < 0 ||
-    networkInterface > 0xffff_ffff
-  ) {
-    return "An IPv6 multicast interface must be an unsigned 32-bit integer"
-  }
-}
-
-const invalidInetAddress = (address: NetAddress.InetAddress, allowZeroPort: boolean): string | undefined => {
-  if (
-    !Number.isInteger(address.port) ||
-    address.port < (allowZeroPort ? 0 : 1) ||
-    address.port > 0xffff
-  ) {
-    return allowZeroPort
-      ? "A local datagram port must be an integer between 0 and 65535"
-      : "A datagram peer port must be an integer between 1 and 65535"
-  }
-  if (
-    NetAddress.isInetAddressV6(address) &&
-    (!Number.isInteger(address.scopeId) || address.scopeId < 0 || address.scopeId > 0xffff_ffff)
-  ) {
-    return "An IPv6 scope id must be an unsigned 32-bit integer"
-  }
-}

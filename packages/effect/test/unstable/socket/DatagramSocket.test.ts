@@ -375,19 +375,25 @@ describe("DatagramSocket.fromTransport", () => {
       Effect.gen(function*() {
         const scope = yield* Scope.fork(yield* Effect.scope)
         const started = yield* Deferred.make<void>()
-        const interrupted = yield* Deferred.make<void>()
+        const adapterClosed = yield* Deferred.make<never, Datagram.DatagramSocketError>()
         const cleanupStarted = yield* Deferred.make<void>()
         const finishCleanup = yield* Deferred.make<void>()
+        const adapterFailure = new Datagram.DatagramSocketError({
+          reason: new Datagram.DatagramSocketClosedError()
+        })
         const pending = Deferred.succeed(started, undefined).pipe(
           Effect.andThen(Effect.never),
-          Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+          Effect.raceFirst(Deferred.await(adapterClosed))
         )
         let handlers!: Datagram.Handlers
         const acquire = Datagram.fromTransport({ localAddress: address }, (callbacks) =>
           Effect.gen(function*() {
             handlers = callbacks
             yield* Effect.addFinalizer(() =>
-              Deferred.succeed(cleanupStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCleanup)))
+              Deferred.fail(adapterClosed, adapterFailure).pipe(
+                Effect.andThen(Deferred.succeed(cleanupStarted, undefined)),
+                Effect.andThen(Deferred.await(finishCleanup))
+              )
             )
             if (phase === "acquisition") return yield* pending
             return { ...binding, send: () => pending }
@@ -407,7 +413,6 @@ describe("DatagramSocket.fromTransport", () => {
         const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild({ startImmediately: true }))
         yield* Effect.gen(function*() {
           yield* Deferred.await(cleanupStarted)
-          yield* Deferred.await(interrupted)
           for (const fiber of fibers) {
             assert.strictEqual((yield* Fiber.join(fiber)).reason._tag, "DatagramSocketClosedError")
           }
@@ -704,7 +709,15 @@ describe("DatagramSocket.writeMany", () => {
   it.effect("settles blocked batches on closure and rejects subsequent writes", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Effect.scope)
-      const socket = yield* sendTransport(() => Effect.never).pipe(Scope.provide(scope))
+      const adapterClosed = yield* Deferred.make<void, Datagram.DatagramSocketError>()
+      const socket = yield* Datagram.fromTransport(
+        { localAddress: address },
+        () =>
+          Effect.gen(function*() {
+            yield* Effect.addFinalizer(() => Deferred.fail(adapterClosed, writeFailure(address, 0)))
+            return { ...binding, send: () => Deferred.await(adapterClosed) }
+          })
+      ).pipe(Scope.provide(scope))
       const writing = yield* socket.writeMany(packets).pipe(
         Effect.flip,
         Effect.forkChild({ startImmediately: true })
@@ -848,29 +861,38 @@ describe("DatagramSocket configuration", () => {
   it.effect("settles pending controls on close and rejects subsequent controls before calling the binding", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Effect.scope)
+      const adapterClosed = yield* Deferred.make<void, Datagram.DatagramSocketError>()
       let calls = 0
       const socket = yield* Datagram.fromTransport({ localAddress: address }, () =>
-        Effect.succeed({
-          ...binding,
-          send: () => Effect.void,
-          setBroadcast: () =>
-            Effect.suspend(() => {
-              calls++
-              return Effect.void
-            }),
-          setMulticastInterface: () =>
-            Effect.suspend(() => {
-              calls++
-              return Effect.never
-            }),
-          addMembership: () =>
-            Effect.sync(() => {
-              calls++
-            }),
-          dropMembership: () =>
-            Effect.sync(() => {
-              calls++
-            })
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Deferred.fail(
+              adapterClosed,
+              new Datagram.DatagramSocketError({ reason: new Datagram.DatagramSocketClosedError() })
+            )
+          )
+          return {
+            ...binding,
+            send: () => Effect.void,
+            setBroadcast: () =>
+              Effect.suspend(() => {
+                calls++
+                return Effect.void
+              }),
+            setMulticastInterface: () =>
+              Effect.suspend(() => {
+                calls++
+                return Deferred.await(adapterClosed)
+              }),
+            addMembership: () =>
+              Effect.sync(() => {
+                calls++
+              }),
+            dropMembership: () =>
+              Effect.sync(() => {
+                calls++
+              })
+          }
         })).pipe(Scope.provide(scope))
       const pending = yield* socket.setMulticastInterface(NetAddress.ipv4Loopback).pipe(
         Effect.flip,
