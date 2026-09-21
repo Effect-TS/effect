@@ -91,6 +91,49 @@ const acquire =
         for (const settle of pending) settle(cause)
       }
 
+      // Centralize the callback ownership shared by acquisition and sends:
+      // every native wait is registered for scope-close settlement, resumes at
+      // most once, and runs its native detach action on completion or interrupt.
+      const nativeCallback = (
+        onClosed: (cause: unknown) => Datagram.DatagramSocketError,
+        attach: (
+          complete: (effect: Effect.Effect<void, Datagram.DatagramSocketError>) => void
+        ) => (() => void) | void
+      ): Effect.Effect<void, Datagram.DatagramSocketError> =>
+        Effect.callback((resume) => {
+          let active = true
+          let attached = false
+          let detach: (() => void) | void
+          const cleanup = () => {
+            if (!attached) return
+            attached = false
+            detach?.()
+            detach = undefined
+          }
+          const complete = (effect: Effect.Effect<void, Datagram.DatagramSocketError>) => {
+            if (!active) return
+            active = false
+            pending.delete(settle)
+            cleanup()
+            resume(effect)
+          }
+          const settle = (cause: unknown) => complete(Effect.fail(onClosed(cause)))
+          pending.add(settle)
+          try {
+            detach = attach(complete)
+          } catch (cause) {
+            complete(Effect.die(cause))
+          }
+          attached = true
+          if (!active) cleanup()
+          return Effect.sync(() => {
+            if (!active) return
+            active = false
+            pending.delete(settle)
+            cleanup()
+          })
+        })
+
       const finishCleanup = (effect: Effect.Effect<void> = Effect.void) => {
         const complete = cleanupComplete
         if (complete === undefined) return
@@ -199,20 +242,9 @@ const acquire =
         event: "listening" | "connect",
         start: () => void
       ): Effect.Effect<void, Datagram.DatagramSocketError> =>
-        Effect.callback((resume) => {
-          let active = true
-          const finish = (effect: Effect.Effect<void, Datagram.DatagramSocketError>) => {
-            if (!active) return
-            active = false
-            pending.delete(settle)
-            socket.off(event, succeed)
-            socket.off("error", fail)
-            resume(effect)
-          }
-          const settle = (cause: unknown) => finish(Effect.fail(openError(cause)))
-          const succeed = () => finish(Effect.void)
-          const fail = (cause: unknown) => finish(Effect.fail(openError(cause)))
-          pending.add(settle)
+        nativeCallback(openError, (complete) => {
+          const succeed = () => complete(Effect.void)
+          const fail = (cause: unknown) => complete(Effect.fail(openError(cause)))
           socket.once(event, succeed)
           socket.once("error", fail)
           acquisitionInFlight = true
@@ -220,14 +252,12 @@ const acquire =
             start()
           } catch (cause) {
             acquisitionInFlight = false
-            finish(Effect.fail(openError(cause)))
+            complete(Effect.fail(openError(cause)))
           }
-          return Effect.sync(() => {
-            active = false
-            pending.delete(settle)
+          return () => {
             socket.off(event, succeed)
             socket.off("error", fail)
-          })
+          }
         })
 
       let localHost: string
@@ -276,28 +306,15 @@ const acquire =
           } catch (cause) {
             return Effect.fail(writeError(cause, packet.peer))
           }
-          return Effect.callback<void, Datagram.DatagramSocketError>((resume) => {
-            let active = true
-            const finish = (effect: Effect.Effect<void, Datagram.DatagramSocketError>) => {
-              if (!active) return
-              active = false
-              pending.delete(settle)
-              resume(effect)
-            }
-            const settle = (cause: unknown) => finish(Effect.fail(writeError(cause, packet.peer)))
-            pending.add(settle)
+          return nativeCallback((cause) => writeError(cause, packet.peer), (complete) => {
             const callback = (cause: Error | null) =>
-              finish(cause === null ? Effect.void : Effect.fail(writeError(cause, packet.peer)))
+              complete(cause === null ? Effect.void : Effect.fail(writeError(cause, packet.peer)))
             try {
               if (useConnectedSend) socket.send(packet.data, callback)
               else socket.send(packet.data, packet.peer.port, host, callback)
             } catch (cause) {
-              finish(Effect.fail(writeError(cause, packet.peer)))
+              complete(Effect.fail(writeError(cause, packet.peer)))
             }
-            return Effect.sync(() => {
-              active = false
-              pending.delete(settle)
-            })
           })
         })
 

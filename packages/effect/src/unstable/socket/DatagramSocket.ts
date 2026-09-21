@@ -90,7 +90,9 @@ interface Socket<A extends NetAddress.IpAddress, W> {
    * Reads the next non-empty batch of complete packets. Concurrent pulls consume
    * distinct packets. Interrupting while waiting leaves the endpoint open and
    * reserves or removes no packet. Once a result is computed, ordinary Effect
-   * interruption rules apply before the caller observes it.
+   * interruption rules apply before the caller observes it. If the socket
+   * closes after a batch is dequeued but before the caller observes it, closure
+   * wins and that batch is discarded.
    */
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError>
   /**
@@ -652,7 +654,6 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
     if (validation !== undefined) return yield* Effect.fail(validation)
 
     const parent = yield* Effect.scope
-    if (parent.state._tag === "Closed") return yield* Effect.fail(closed())
 
     type A = NetAddress.Family<L>
     const inbox = yield* Queue.make<Packet<A>, DatagramSocketError>()
@@ -673,6 +674,8 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       if (status === "Closed") return
       status = "Closed"
       queuedBytes = 0
+      // Failing settles waiters with the typed closure error; shutting down
+      // then discards buffered packets. Neither operation provides both.
       Queue.failCauseUnsafe(inbox, Cause.fail(closedError))
       Queue.shutdownUnsafe(inbox)
     })
@@ -680,7 +683,23 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
     // One finalizer owns the order, so core settlement precedes adapter cleanup
     // even when the parent scope itself uses the parallel finalizer strategy.
     yield* Scope.addFinalizerExit(parent, (exit_) => Effect.andThen(closeCore, Scope.close(adapterScope, exit_)))
-    if (isClosed()) return yield* Effect.fail(closedError)
+
+    // Every operation that depends on the open endpoint passes through this
+    // boundary: reject before invocation when closed, and let closure win over
+    // a typed result that settles after closure. Interruption and defects pass
+    // through. This also means a pull dequeued synchronously before yielding is
+    // discarded if closure overtakes its result; dequeue accounting remains
+    // synchronous.
+    const whileOpen = <R>(
+      operation: () => Effect.Effect<R, DatagramSocketError>
+    ): Effect.Effect<R, DatagramSocketError> =>
+      Effect.suspend(() => {
+        if (status === "Closed") return Effect.fail(closedError)
+        return operation().pipe(
+          Effect.flatMap((value) => status === "Closed" ? Effect.fail(closedError) : Effect.succeed(value)),
+          Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
+        )
+      })
 
     const handlers: Handlers<A> = {
       onMessage(data, peer) {
@@ -700,25 +719,11 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       }
     }
 
-    const binding = yield* Scope.provide(acquire(handlers), adapterScope).pipe(
-      Effect.onExit((exit_) => Exit.isSuccess(exit_) ? Effect.void : Scope.close(adapterScope, exit_)),
-      Effect.catch((cause) => isClosed() ? Effect.fail(closedError) : Effect.fail(cause))
+    const binding = yield* whileOpen(() =>
+      Scope.provide(acquire(handlers), adapterScope).pipe(
+        Effect.onExit((exit_) => Exit.isSuccess(exit_) && !isClosed() ? Effect.void : Scope.close(adapterScope, exit_))
+      )
     )
-    if (isClosed()) {
-      yield* Scope.close(adapterScope, Exit.void)
-      return yield* Effect.fail(closedError)
-    }
-
-    const whileOpen = (
-      operation: () => Effect.Effect<void, DatagramSocketError>
-    ): Effect.Effect<void, DatagramSocketError> =>
-      Effect.suspend(() => {
-        if (status === "Closed") return Effect.fail(closedError)
-        return operation().pipe(
-          Effect.flatMap(() => status === "Closed" ? Effect.fail(closedError) : Effect.void),
-          Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
-        )
-      })
 
     const validatePacket = (packet: Packet<A>): DatagramSocketError | undefined => {
       if (packet.data.byteLength > limits.maxPacketBytes) {
@@ -758,15 +763,13 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
       )
 
     const write = (packet: Packet<A>): Effect.Effect<void, DatagramSocketError> =>
-      Effect.suspend(() => {
-        if (status === "Closed") return Effect.fail(closedError)
+      whileOpen(() => {
         const failure = validatePacket(packet)
         return failure === undefined ? send(packet, 0) : Effect.fail(failure)
       })
 
     const writeMany = (packets: ReadonlyArray<Packet<A>>): Effect.Effect<void, DatagramSocketError> =>
-      Effect.suspend(() => {
-        if (status === "Closed") return Effect.fail(closedError)
+      whileOpen(() => {
         for (const packet of packets) {
           const failure = validatePacket(packet)
           if (failure !== undefined) return Effect.fail(failure)
@@ -774,17 +777,15 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
         let accepted = 0
         return Effect.whileLoop({
           while: () => accepted < packets.length,
-          body: () => status === "Closed" ? Effect.fail(closedError) : send(packets[accepted], accepted),
+          body: () => send(packets[accepted], accepted),
           step: () => accepted++
         })
       })
 
-    const pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError> = Effect.suspend(() => {
-      if (status === "Closed") return Effect.fail(closedError)
-      return Queue.peek(inbox).pipe(
+    const pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError> = whileOpen(() =>
+      Queue.peek(inbox).pipe(
         Effect.flatMap(() =>
           Effect.suspend((): Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError> => {
-            if (status === "Closed") return Effect.fail(closedError)
             const batch: Array<Packet<A>> = []
             while (batch.length < limits.readBatchSize) {
               const next = Queue.takeUnsafe(inbox)
@@ -801,10 +802,9 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
             for (const packet of batch) queuedBytes -= packet.data.byteLength
             return Effect.succeed(batch as unknown as NonEmptyReadonlyArray<Packet<A>>)
           })
-        ),
-        Effect.catch((cause) => status === "Closed" ? Effect.fail(closedError) : Effect.fail(cause))
+        )
       )
-    })
+    )
 
     const validateInterface = (
       networkInterface: NetAddress.MulticastInterface<A>

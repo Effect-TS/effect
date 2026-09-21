@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Scheduler, Scope, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Scheduler, Scope, Stream } from "effect"
 import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Datagram from "effect/unstable/socket/DatagramSocket"
 
@@ -269,6 +269,39 @@ describe("DatagramSocket.fromTransport", () => {
       yield* Fiber.join(closing)
       const exit = yield* Fiber.await(receiving)
       assert.isTrue(Exit.hasInterrupts(exit))
+    }))
+
+  it.effect("lets closure overtake a scheduler-yielded pull after synchronous dequeue", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const { handlers, socket } = yield* transportFixture().pipe(Scope.provide(scope))
+      const dequeued = Deferred.makeUnsafe<void>()
+      const data = new Uint8Array([1])
+      const byteLength = data.byteLength
+      let byteLengthReads = 0
+      Object.defineProperty(data, "byteLength", {
+        get() {
+          if (++byteLengthReads === 2) Deferred.doneUnsafe(dequeued, Exit.void)
+          return byteLength
+        }
+      })
+      const receiving = yield* socket.pull.pipe(
+        Effect.provideService(Scheduler.MaxOpsBeforeYield, 3),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      handlers.onMessage(data, address)
+      yield* Deferred.await(dequeued)
+      assert.isUndefined(receiving.pollUnsafe())
+      yield* Scope.close(scope, Exit.void)
+      const exit = yield* Fiber.await(receiving)
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) {
+        assert.strictEqual(
+          (Cause.squash(exit.cause) as Datagram.DatagramSocketError).reason._tag,
+          "DatagramSocketClosedError"
+        )
+      }
     }))
 
   it.effect("reuses receive byte capacity after scheduler-yielded channel cancellation", () =>
@@ -767,6 +800,28 @@ describe("DatagramSocket.writeMany", () => {
       assert.strictEqual(calls, 1)
     }))
 
+  it.effect("stops a batch when closure overtakes a pending submission", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const gate = yield* Deferred.make<void>()
+      let calls = 0
+      const socket = yield* sendTransport(() =>
+        Effect.suspend(() => {
+          calls++
+          return calls === 1 ? Deferred.await(gate) : Effect.void
+        })
+      ).pipe(Scope.provide(scope))
+      const writing = yield* socket.writeMany(packets).pipe(
+        Effect.flip,
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.strictEqual(calls, 1)
+      yield* Scope.close(scope, Exit.void)
+      yield* Deferred.succeed(gate, undefined)
+      assert.strictEqual((yield* Fiber.join(writing)).reason._tag, "DatagramSocketClosedError")
+      assert.strictEqual(calls, 1)
+    }))
+
   it.effect("passes non-write failures through unchanged", () =>
     Effect.gen(function*() {
       const failure = new Datagram.DatagramSocketError({ reason: new Datagram.DatagramSocketClosedError({}) })
@@ -925,6 +980,12 @@ describe("DatagramSocket.writeMany", () => {
 
 describe("DatagramSocket configuration", () => {
   const group = ipv4MulticastFixture("239.255.0.1")
+  const configurationFailure = new Datagram.DatagramSocketError({
+    reason: new Datagram.DatagramSocketConfigurationError({
+      operation: "addMembership",
+      cause: new Error("native configuration failed")
+    })
+  })
 
   it.effect("settles pending controls on close and rejects subsequent controls before calling the binding", () =>
     Effect.gen(function*() {
@@ -986,6 +1047,88 @@ describe("DatagramSocket configuration", () => {
         assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "DatagramSocketClosedError")
       }
       assert.strictEqual(calls, 1)
+    }))
+
+  it.effect.each([
+    { name: "success", result: Effect.void },
+    { name: "typed failure", result: Effect.fail(configurationFailure) }
+  ])("lets closure win over a late adapter control $name", ({ result }) =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const gate = yield* Deferred.make<void>()
+      let calls = 0
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, () =>
+        Effect.succeed({
+          ...binding,
+          setBroadcast: () =>
+            Effect.suspend(() => {
+              calls++
+              return Deferred.await(gate).pipe(Effect.andThen(result))
+            })
+        })).pipe(Scope.provide(scope))
+      const pending = yield* socket.setBroadcast(true).pipe(
+        Effect.flip,
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.strictEqual(calls, 1)
+      yield* Scope.close(scope, Exit.void)
+      yield* Deferred.succeed(gate, undefined)
+      assert.strictEqual((yield* Fiber.join(pending)).reason._tag, "DatagramSocketClosedError")
+      assert.strictEqual(calls, 1)
+    }))
+
+  it.effect("passes a typed adapter control failure through unchanged while open", () =>
+    Effect.gen(function*() {
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, () =>
+        Effect.succeed({ ...binding, addMembership: () => Effect.fail(configurationFailure) }))
+      assert.strictEqual(yield* socket.addMembership(group).pipe(Effect.flip), configurationFailure)
+    }))
+
+  it.effect("preserves interruption of a pending control and leaves the endpoint usable", () =>
+    Effect.gen(function*() {
+      let interrupted = false
+      let broadcasts = 0
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, () =>
+        Effect.succeed({
+          ...binding,
+          setMulticastInterface: () =>
+            Effect.onInterrupt(Effect.never, () =>
+              Effect.sync(() => {
+                interrupted = true
+              })),
+          setBroadcast: () => Effect.sync(() => broadcasts++)
+        }))
+      const pending = yield* socket.setMulticastInterface(NetAddress.ipv4Loopback).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Fiber.interrupt(pending)
+      const exit = yield* Fiber.await(pending)
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+      assert.isTrue(interrupted)
+      yield* socket.setBroadcast(true)
+      assert.strictEqual(broadcasts, 1)
+    }))
+
+  it.effect("applies validation while open and closure precedence after close", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      let calls = 0
+      const socket = yield* Datagram.fromTransport({ localAddress: address }, () =>
+        Effect.succeed({
+          ...binding,
+          addMembership: () => Effect.sync(() => calls++)
+        })).pipe(Scope.provide(scope))
+      const invalid = { source: NetAddress.ipv4Unspecified }
+      assert.strictEqual(
+        (yield* socket.addMembership(group, invalid).pipe(Effect.flip)).reason._tag,
+        "DatagramSocketInvalidOptionsError"
+      )
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual(
+        (yield* socket.addMembership(group, invalid).pipe(Effect.flip)).reason._tag,
+        "DatagramSocketClosedError"
+      )
+      assert.strictEqual(calls, 0)
     }))
 
   it.effect("validates native multicast selectors before calling the binding", () =>
