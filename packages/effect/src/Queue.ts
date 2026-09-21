@@ -643,7 +643,10 @@ export const unbounded = <A, E = never>(): Effect<Queue<A, E>> => make()
  * @category offering
  * @since 2.0.0
  */
-export const offer = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> =>
+export const offer: {
+  <A>(message: A): <E>(self: Enqueue<A, E>) => Effect<boolean>
+  <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean>
+} = dual(2, <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> =>
   internalEffect.suspend(() => {
     if (self.state._tag !== "Open") {
       return exitFalse
@@ -667,7 +670,7 @@ export const offer = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Eff
     MutableList.append(self.messages, message)
     scheduleReleaseTaker(self as Queue<A, E>)
     return exitTrue
-  })
+  }))
 
 /**
  * Adds a message to the queue synchronously. Returns `false` if the queue is done.
@@ -760,7 +763,10 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
  * @category offering
  * @since 2.0.0
  */
-export const offerAll = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
+export const offerAll: {
+  <A>(messages: Iterable<A>): <E>(self: Enqueue<A, E>) => Effect<Array<A>>
+  <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>>
+} = dual(2, <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
   internalEffect.suspend(() => {
     if (self.state._tag !== "Open") {
       return internalEffect.succeed(Arr.fromIterable(messages))
@@ -772,7 +778,7 @@ export const offerAll = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effe
       return internalEffect.succeed(remaining)
     }
     return offerRemainingArray(self as Queue<A, E>, remaining)
-  })
+  }))
 
 /**
  * Adds multiple messages to the queue synchronously. Returns the remaining messages that
@@ -870,7 +876,10 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
  * @category completion
  * @since 4.0.0
  */
-export const fail = <A, E>(self: Enqueue<A, E>, error: E) => failCause(self, core.causeFail(error))
+export const fail: {
+  <E>(error: E): <A>(self: Enqueue<A, E>) => Effect<boolean>
+  <A, E>(self: Enqueue<A, E>, error: E): Effect<boolean>
+} = dual(2, <A, E>(self: Enqueue<A, E>, error: E): Effect<boolean> => failCause(self, core.causeFail(error)))
 
 /**
  * Fails the queue with a cause. If the queue is already done, `false` is
@@ -1348,10 +1357,10 @@ export const collect = <A, E>(self: Dequeue<A, E | Done>): Effect<Array<A>, Pull
  * @category taking
  * @since 2.0.0
  */
-export const takeN = <A, E>(
-  self: Dequeue<A, E>,
-  n: number
-): Effect<Array<A>, E> => takeBetween(self, n, n)
+export const takeN: {
+  (n: number): <A, E>(self: Dequeue<A, E>) => Effect<Array<A>, E>
+  <A, E>(self: Dequeue<A, E>, n: number): Effect<Array<A>, E>
+} = dual(2, <A, E>(self: Dequeue<A, E>, n: number): Effect<Array<A>, E> => takeBetween(self, n, n))
 
 /**
  * Takes between `min` and `max` messages from the queue.
@@ -1392,17 +1401,16 @@ export const takeN = <A, E>(
  * @category taking
  * @since 2.0.0
  */
-export const takeBetween = <A, E>(
-  self: Dequeue<A, E>,
-  min: number,
-  max: number
-): Effect<Array<A>, E> => {
+export const takeBetween: {
+  (min: number, max: number): <A, E>(self: Dequeue<A, E>) => Effect<Array<A>, E>
+  <A, E>(self: Dequeue<A, E>, min: number, max: number): Effect<Array<A>, E>
+} = dual(3, <A, E>(self: Dequeue<A, E>, min: number, max: number): Effect<Array<A>, E> => {
   min = Count.normalize(min)
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
     takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(awaitTake(self), takeBetween(self, 1, max))
   )
-}
+})
 
 /**
  * Takes a single message from the queue, or wait for a message to be

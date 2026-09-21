@@ -1,3 +1,4 @@
+import type { Option } from "effect"
 import { AsyncResult } from "effect/unstable/reactivity"
 import { describe, expect, it } from "tstyche"
 
@@ -6,8 +7,22 @@ interface TestError {
 }
 
 declare const result: AsyncResult.AsyncResult<number, TestError>
+declare const previous: Option.Option<AsyncResult.AsyncResult<string, never>>
 
 describe("AsyncResult", () => {
+  it("waiting call shapes", () => {
+    expect(AsyncResult.waiting(result)).type.toBe<AsyncResult.AsyncResult<number, TestError>>()
+    expect(AsyncResult.waiting(result, { touch: false })).type.toBe<AsyncResult.AsyncResult<number, TestError>>()
+    expect(AsyncResult.waiting()(result)).type.toBe<AsyncResult.AsyncResult<number, TestError>>()
+    expect(AsyncResult.waiting({ touch: false })(result)).type.toBe<AsyncResult.AsyncResult<number, TestError>>()
+  })
+
+  it("data-last replacePrevious", () => {
+    expect(AsyncResult.replacePrevious(previous)(result)).type.toBe<
+      AsyncResult.AsyncResult<string, TestError>
+    >()
+  })
+
   describe("builder", () => {
     it("exhaustive is only available when all cases are handled", () => {
       const complete = AsyncResult.builder(result)
