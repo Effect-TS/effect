@@ -363,7 +363,10 @@ export const failWithPrevious = <A, E>(
  * @category constructors
  * @since 4.0.0
  */
-export const waiting = <R extends AsyncResult<any, any>>(self: R, options?: {
+export const waiting: {
+  (options?: { readonly touch?: boolean | undefined }): <R extends AsyncResult<any, any>>(self: R) => R
+  <R extends AsyncResult<any, any>>(self: R, options?: { readonly touch?: boolean | undefined }): R
+} = dual((args) => isAsyncResult(args[0]), <R extends AsyncResult<any, any>>(self: R, options?: {
   readonly touch?: boolean | undefined
 }): R => {
   if (self.waiting) {
@@ -375,7 +378,7 @@ export const waiting = <R extends AsyncResult<any, any>>(self: R, options?: {
     ;(result as any).timestamp = Date.now()
   }
   return result
-}
+})
 
 /**
  * Refreshes the timestamp of a `Success` result while preserving its value and waiting flag; non-success results are returned unchanged.
@@ -397,7 +400,15 @@ export const touch = <A extends AsyncResult<any, any>>(result: A): A => {
  * @category combinators
  * @since 4.0.0
  */
-export const replacePrevious = <R extends AsyncResult<any, any>, XE, A>(
+export const replacePrevious: {
+  <XE, A>(previous: Option.Option<AsyncResult<A, XE>>): <R extends AsyncResult<any, any>>(
+    self: R
+  ) => With<R, A, AsyncResult.Failure<R>>
+  <R extends AsyncResult<any, any>, XE, A>(
+    self: R,
+    previous: Option.Option<AsyncResult<A, XE>>
+  ): With<R, A, AsyncResult.Failure<R>>
+} = dual(2, <R extends AsyncResult<any, any>, XE, A>(
   self: R,
   previous: Option.Option<AsyncResult<A, XE>>
 ): With<R, A, AsyncResult.Failure<R>> => {
@@ -405,7 +416,7 @@ export const replacePrevious = <R extends AsyncResult<any, any>, XE, A>(
     return failureWithPrevious(self.cause, { previous, waiting: self.waiting }) as any
   }
   return self as any
-}
+})
 
 /**
  * Returns the current success value, or the previous success value stored in a failure, as an `Option`.
