@@ -39,7 +39,7 @@ const marker = () => `<!-- ${PublishPullRequest.IDENTITY_MARKER}: ${identity()} 
 describe("PublishPullRequest.title", () => {
   it("names the dist-tag and flags an unready release", () => {
     assert.strictEqual(PublishPullRequest.title(manifest, ready()), "Publish Packages (rc)")
-    assert.strictEqual(PublishPullRequest.title(manifest, notReady()), "Publish Packages (rc) [not ready()]")
+    assert.strictEqual(PublishPullRequest.title(manifest, notReady()), "Publish Packages (rc) [not ready]")
     assert.strictEqual(PublishPullRequest.title({ ...manifest, tag: "latest" }, ready()), "Publish Packages")
   })
 })
@@ -65,7 +65,7 @@ describe("PublishPullRequest.body", () => {
     assert.deepStrictEqual(PublishPullRequest.identityFromBody(body), Option.some(identity()))
   })
 
-  it("lists blockers when the release is not ready()", () => {
+  it("lists blockers when the release is not ready", () => {
     const body = PublishPullRequest.body(manifest, notReady())
     assert.include(body, marker())
     assert.include(body, "## Blockers")
@@ -177,7 +177,7 @@ describe("PublishPullRequest.sync", () => {
       const calls = makeCalls()
       const existing = pullRequest({
         headRef: "publish-release/main",
-        title: "Publish Packages (rc) [not ready()]",
+        title: "Publish Packages (rc) [not ready]",
         body: PublishPullRequest.body(manifest, notReady())
       })
       const result = yield* PublishPullRequest.sync(manifest, ready()).pipe(
@@ -189,7 +189,7 @@ describe("PublishPullRequest.sync", () => {
       assert.notInclude(input.body, "## Blockers")
     }))
 
-  it.effect("marks an open PR as not ready() without touching git", () =>
+  it.effect("marks an open PR as not ready without touching git", () =>
     Effect.gen(function*() {
       const calls = makeCalls()
       const existing = pullRequest({
@@ -211,12 +211,12 @@ describe("PublishPullRequest.sync", () => {
         { title: string; body: string }
       ]
       assert.strictEqual(number, 8500)
-      assert.strictEqual(input.title, "Publish Packages (rc) [not ready()]")
+      assert.strictEqual(input.title, "Publish Packages (rc) [not ready]")
       assert.include(input.body, "## Blockers")
       assert.include(input.body, "validating")
     }))
 
-  it.effect("creates nothing while the release is not ready()", () =>
+  it.effect("creates nothing while the release is not ready", () =>
     Effect.gen(function*() {
       const calls = makeCalls()
       const result = yield* PublishPullRequest.sync(manifest, notReady()).pipe(
