@@ -20,7 +20,7 @@ export interface PnpmOptions {
   readonly cwd: string
   /** Registry token, passed to pnpm through the environment (never argv). */
   readonly token: Option.Option<Redacted.Redacted<string>>
-  /** One-time password, passed to pnpm through `npm_config_otp` (never argv). */
+  /** One-time password, passed through pnpm's `--otp` option. */
   readonly otp?: Option.Option<Redacted.Redacted<string>> | undefined
 }
 
@@ -29,7 +29,8 @@ const REGISTRY_TOKEN_ENV = "npm_config_//registry.npmjs.org/:_authToken"
 /**
  * Runs `pnpm <args>` the way CI would: stdin is not a TTY, so pnpm cannot fall
  * back to an interactive OTP or web-auth prompt. Credentials travel only via
- * environment variables and are scrubbed from the captured output.
+ * environment variables, except for pnpm's OTP option, and are scrubbed from
+ * the captured output.
  */
 export const runPnpm = Effect.fn("runPnpm")(function*(
   args: ReadonlyArray<string>,
@@ -43,12 +44,13 @@ export const runPnpm = Effect.fn("runPnpm")(function*(
     yield* findings.addSecret(options.token.value)
     env[REGISTRY_TOKEN_ENV] = Redacted.value(options.token.value)
   }
+  const commandArgs = [...args]
   if (options.otp !== undefined && Option.isSome(options.otp)) {
     yield* findings.addSecret(options.otp.value)
-    env["npm_config_otp"] = Redacted.value(options.otp.value)
+    commandArgs.push("--otp", Redacted.value(options.otp.value))
   }
 
-  const command = ChildProcess.make("pnpm", args, {
+  const command = ChildProcess.make("pnpm", commandArgs, {
     cwd: options.cwd,
     env,
     extendEnv: true,

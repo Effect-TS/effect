@@ -18,6 +18,8 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": false,
     "erasableSyntaxOnly": false,
     "resolveJsonModule": true,
     "types": ["node"],

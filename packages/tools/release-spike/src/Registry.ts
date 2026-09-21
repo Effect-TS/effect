@@ -36,7 +36,7 @@ export interface RegistryResponse {
   readonly durationMs: number
 }
 
-const escapeName = (name: string) => name.replace("/", "%2F")
+const escapeName = (name: string) => name.replaceAll("/", "%2F")
 
 const tryJson = (text: string): unknown => {
   try {
@@ -109,13 +109,15 @@ export const attestationsUrl = (name: string, version: string) =>
 /** Lists every staged item visible to the caller, paging like the npm CLI does. */
 export const listStaged = Effect.fn("listStaged")(function*(
   token: Option.Option<Redacted.Redacted<string>>,
-  pkg: Option.Option<string>
+  pkg: Option.Option<string>,
+  onResponse: (response: RegistryResponse) => Effect.Effect<void, SpikeError> = () => Effect.void
 ) {
   const items: Array<{ readonly item: StageItem; readonly raw: unknown }> = []
   const responses: Array<RegistryResponse> = []
   for (let page = 0; page < 50; page++) {
     const response = yield* registryGet(stageListUrl(page, pkg), { token, headers: stageHeaders })
     responses.push(response)
+    yield* onResponse(response)
     if (response.status !== 200) break
     const decoded = yield* decodeStageListPage(response.body).pipe(
       Effect.mapError((cause) => new SpikeError({ message: "Unexpected stage list shape", cause }))
@@ -133,9 +135,11 @@ export const listStaged = Effect.fn("listStaged")(function*(
 
 export const viewStaged = Effect.fn("viewStaged")(function*(
   token: Option.Option<Redacted.Redacted<string>>,
-  stageId: string
+  stageId: string,
+  onResponse: (response: RegistryResponse) => Effect.Effect<void, SpikeError> = () => Effect.void
 ) {
   const response = yield* registryGet(stageViewUrl(stageId), { token, headers: stageHeaders })
+  yield* onResponse(response)
   const item = response.status === 200
     ? Option.some(
       yield* decodeStageItem(response.body).pipe(

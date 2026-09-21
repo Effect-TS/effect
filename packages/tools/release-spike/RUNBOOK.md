@@ -22,7 +22,7 @@ package, and on short-lived credentials scoped to it.
 | #  | Question                                                                                                                                 | Probe  |
 | -- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Q1 | What `status` values does a staged item go through, and how long does the scan take?                                                     | P3, P4 |
-| Q2 | Can a token that CI could hold (stage-only granular token) call `GET /-/stage`? Can OIDC?                                                | P1, P4 |
+| Q2 | Can a token that CI could hold (stage-only granular token) call `GET /-/stage`?                                                          | P1     |
 | Q3 | Does the registry refuse re-staging an already staged version, and how?                                                                  | P2     |
 | Q4 | Does `stage approve --otp` work from a non-interactive process with a granular token, and is one OTP accepted for consecutive approvals? | P5     |
 | Q5 | Does provenance generated at staging survive approval? Is an `approver` recorded?                                                        | P6     |
@@ -91,11 +91,12 @@ log; `pnpm release-spike report` summarises it at any point.
 ```sh
 pnpm release-spike list --anonymous
 pnpm release-spike stage --dry-run --set-version 0.0.0-spike.0
-git checkout -- packages/tools/release-spike/fixture/package.json
 ```
 
-Expected: `GET /-/stage -> 401`, and a dry-run pack that exits 0 without
-uploading. Both were verified while building the harness.
+Expected: the list command records the 401 response and exits non-zero. The
+dry-run pack exits 0 without uploading, reports that no stage id is expected,
+and restores the fixture manifest automatically. Both were verified while
+building the harness.
 
 ### P1. Can a stage-only token list staged items? (Q2)
 
@@ -115,7 +116,6 @@ Still with `spike-stage`:
 
 ```sh
 pnpm release-spike stage --set-version 0.0.0-spike.1 --tag spike --repeat 2
-git checkout -- packages/tools/release-spike/fixture/package.json
 ```
 
 Expected: attempt 1 exits 0 and prints a stage id; attempt 2 fails. The
@@ -133,10 +133,12 @@ pnpm release-spike view ID1
 ```
 
 Expected: the status starts at `validating` and leaves it within roughly five
-to fifteen minutes. The findings entry records every transition with timing,
-the final status word (we expect `staged`), and every field name the registry
-returns beyond the ones the harness models. Those exact strings are what the
-production gate will be written against.
+to fifteen minutes. The harness records every observation as it happens, keeps
+status transitions separately, and stops after observing the changed status
+three consecutive times. A stable status does not prove scanning finished.
+Only a successful approval or the enabled Approve button on npmjs.com does.
+The exact status strings and fields are what the production gate will be
+written against.
 
 ### P4. Stage through trusted publishing with provenance (Q1, Q2, Q5)
 
@@ -146,11 +148,11 @@ with:
 - version `0.0.0-spike.2`
 - tag `spike`
 - dry-run **off**
-- probe-list on
 
-Expected: the stage step exits 0 and prints a stage id (`ID2`); the probe-list
-step fails, which confirms an OIDC-only job cannot query the stage queue. Download
-the `release-spike-findings-*` artifact. Then locally:
+Expected: the stage step exits 0 and prints a stage id (`ID2`). Download the
+`release-spike-findings-*` artifact. npm documents that short-lived OIDC
+tokens cannot run stage queue subcommands; this workflow does not repeat an
+anonymous list call and mislabel it as an OIDC probe. Then locally:
 
 ```sh
 pnpm release-spike watch ID2
@@ -194,7 +196,6 @@ provenance; it is the control.
 
 ```sh
 pnpm release-spike stage --set-version 0.0.0-spike.3 --tag spike
-git checkout -- packages/tools/release-spike/fixture/package.json
 pnpm release-spike reject ID3
 ```
 
@@ -210,7 +211,8 @@ Confirms the cleanup path the future stage job will document, and whether
 3. Delete both granular tokens on npmjs.com and `unset NPM_TOKEN`.
 4. Leave the trusted publisher in place if a second round is likely; otherwise
    remove it.
-5. `git checkout -- packages/tools/release-spike/fixture/package.json`.
+5. After the findings are attached to EFF-1455, revert PR #8341 so the spike
+   workflow, fixture package, and root script do not remain on `main`.
 
 ## Reporting back
 

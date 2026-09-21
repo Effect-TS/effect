@@ -49,6 +49,11 @@ const summarizeResponse = (response: Registry.RegistryResponse) => ({
   ...(response.status === 200 ? {} : { body: response.body ?? response.text.slice(0, 2000) })
 })
 
+const rawResponse = (response: Registry.RegistryResponse) => ({
+  ...summarizeResponse(response),
+  body: response.body ?? response.text.slice(0, 2000)
+})
+
 const unique = (values: ReadonlyArray<string>) => Array.from(new Set(values)).sort()
 
 // ---------------------------------------------------------------------------
@@ -67,7 +72,11 @@ const list = Command.make(
     Effect.gen(function*() {
       const findings = yield* Findings
       const token = yield* resolveToken(anonymous)
-      const { items, responses } = yield* Registry.listStaged(token, pkg)
+      const { items, responses } = yield* Registry.listStaged(
+        token,
+        pkg,
+        (response) => findings.record("stage-list-response", rawResponse(response))
+      )
       const rows = items.map(({ item, raw }) => ({ ...item, extraFields: Registry.extraFields(raw) }))
       const statuses = unique(rows.map((row) => row.status ?? "<missing>"))
       yield* findings.record("stage-list", {
@@ -77,6 +86,10 @@ const list = Command.make(
         statuses,
         items: rows
       })
+      const failed = responses.find((response) => response.status < 200 || response.status >= 300)
+      if (failed !== undefined) {
+        return yield* new SpikeError({ message: `GET /-/stage returned HTTP ${failed.status}` })
+      }
       yield* Console.log(`GET /-/stage -> ${responses.map((response) => response.status).join(", ")}`)
       if (rows.length === 0) {
         yield* Console.log("No staged items visible to this credential.")
@@ -103,7 +116,11 @@ const view = Command.make(
     Effect.gen(function*() {
       const findings = yield* Findings
       const token = yield* resolveToken(anonymous)
-      const { item, response } = yield* Registry.viewStaged(token, stageId)
+      const { item, response } = yield* Registry.viewStaged(
+        token,
+        stageId,
+        (response) => findings.record("stage-view-response", rawResponse(response))
+      )
       yield* findings.record("stage-view", {
         authenticated: Option.isSome(token),
         stageId,
@@ -111,6 +128,9 @@ const view = Command.make(
         item: Option.getOrUndefined(item),
         extraFields: Registry.extraFields(response.body)
       })
+      if (response.status < 200 || response.status >= 300) {
+        return yield* new SpikeError({ message: `GET /-/stage/${stageId} returned HTTP ${response.status}` })
+      }
       yield* Console.log(`GET /-/stage/${stageId} -> ${response.status}`)
       yield* Console.log(JSON.stringify(findings.redactUnknown(response.body ?? response.text), null, 2))
     })
@@ -129,8 +149,8 @@ const timeoutFlag = Flag.Int("timeout").pipe(
   Flag.withDefault(30)
 )
 const whileFlag = Flag.String("while").pipe(
-  Flag.withDescription("Keep polling while the status equals this value"),
-  Flag.withDefault("validating")
+  Flag.withDescription("Keep polling while the status equals this value (defaults to the first observed status)"),
+  Flag.optional
 )
 
 const watch = Command.make("watch", {
@@ -144,6 +164,9 @@ const watch = Command.make("watch", {
     const token = yield* resolveToken(false)
     const startedAt = Date.now()
     const transitions: Array<{ readonly afterMs: number; readonly status: string; readonly httpStatus: number }> = []
+    let initialStatus = Option.getOrUndefined(whileStatus)
+    let settlingStatus: string | undefined
+    let settlingObservations = 0
 
     const poll = Effect.gen(function*() {
       const { item, response } = yield* Registry.viewStaged(token, stageId)
@@ -151,21 +174,33 @@ const watch = Command.make("watch", {
         ? Option.match(item, { onNone: () => "<missing>", onSome: (found) => found.status ?? "<missing>" })
         : `<http ${response.status}>`
       const previous = transitions.at(-1)
+      const observation = { afterMs: Date.now() - startedAt, status, httpStatus: response.status }
+      yield* findings.record("stage-watch-observation", { stageId, ...observation })
       if (previous === undefined || previous.status !== status) {
-        transitions.push({ afterMs: Date.now() - startedAt, status, httpStatus: response.status })
+        transitions.push(observation)
         yield* Console.log(
           `+${Math.round((Date.now() - startedAt) / 1000)}s status=${status} (http ${response.status})`
         )
       }
-      return status
+      if (initialStatus === undefined) initialStatus = status
+      if (status === initialStatus) {
+        settlingStatus = undefined
+        settlingObservations = 0
+      } else if (status === settlingStatus) {
+        settlingObservations++
+      } else {
+        settlingStatus = status
+        settlingObservations = 1
+      }
+      return { settled: settlingObservations >= 3, status }
     })
 
     const outcome = yield* poll.pipe(
       Effect.repeat({
         schedule: Schedule.spaced(Duration.seconds(interval)),
-        until: (status) => status !== whileStatus
+        until: ({ settled }) => settled
       }),
-      Effect.map((status) => ({ finalStatus: status, timedOut: false })),
+      Effect.map(({ status }) => ({ finalStatus: status, timedOut: false })),
       Effect.timeoutOption(Duration.minutes(timeout)),
       Effect.map(Option.getOrElse(() => ({ finalStatus: transitions.at(-1)?.status ?? "<none>", timedOut: true })))
     )
@@ -180,7 +215,8 @@ const watch = Command.make("watch", {
     yield* Console.log(
       outcome.timedOut
         ? `Timed out after ${timeout} minutes; last status ${outcome.finalStatus}`
-        : `Left "${whileStatus}" after ${Math.round((Date.now() - startedAt) / 1000)}s; now ${outcome.finalStatus}`
+        : `Left "${initialStatus}" and observed "${outcome.finalStatus}" three times; ` +
+          `finished after ${Math.round((Date.now() - startedAt) / 1000)}s`
     )
   })).pipe(Command.withDescription("Poll a staged item and record every status transition with timing"))
 
@@ -228,54 +264,70 @@ const stage = Command.make("stage", {
     const path = yield* Path.Path
     const cwd = path.resolve(dir)
     const manifestPath = path.join(cwd, "package.json")
-    const manifest = yield* fs.readFileString(manifestPath).pipe(
-      Effect.map((content) => JSON.parse(content) as { name: string; version: string }),
+    const originalManifest = yield* fs.readFileString(manifestPath).pipe(
       Effect.mapError((cause) => new SpikeError({ message: `Could not read ${manifestPath}`, cause }))
     )
+    const manifest = yield* Effect.try({
+      try: () => JSON.parse(originalManifest) as { name: string; version: string },
+      catch: (cause) => new SpikeError({ message: `Could not parse ${manifestPath}`, cause })
+    })
     if (manifest.name !== FIXTURE_NAME) {
       return yield* new SpikeError({
         message: `Refusing to stage ${manifest.name}: this harness only stages ${FIXTURE_NAME}`
       })
     }
-    if (Option.isSome(setVersion)) {
-      manifest.version = setVersion.value
-      yield* fs.writeFileString(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`).pipe(
-        Effect.mapError((cause) => new SpikeError({ message: `Could not write ${manifestPath}`, cause }))
-      )
-    }
-    const token = yield* resolveToken(false)
-    const args = [
-      "stage",
-      "publish",
-      "--tag",
-      tag,
-      "--no-git-checks",
-      "--json",
-      ...(dryRun ? ["--dry-run"] : []),
-      ...(provenance ? ["--provenance"] : [])
-    ]
-    for (let attempt = 1; attempt <= repeat; attempt++) {
-      const run = yield* runPnpm(args, { cwd, token })
-      const stageIds = stageIdsFromJson(run.stdout)
-      yield* findings.record("stage-publish", {
-        attempt,
-        package: manifest.name,
-        version: manifest.version,
+    const runStage = Effect.gen(function*() {
+      const token = yield* resolveToken(false)
+      const args = [
+        "stage",
+        "publish",
+        "--tag",
         tag,
-        dryRun,
-        provenance,
-        credential: Option.isSome(token) ? "token" : "none (OIDC or pnpm config)",
-        exitCode: run.exitCode,
-        durationMs: run.durationMs,
-        stageIds,
-        stdout: run.stdout,
-        stderr: run.stderr
-      })
-      yield* Console.log(
-        `attempt ${attempt}: pnpm exited ${run.exitCode} in ${run.durationMs}ms` +
-          (stageIds.length > 0 ? `; stage id ${stageIds.map((entry) => entry.stageId).join(", ")}` : "")
+        "--no-git-checks",
+        "--json",
+        ...(dryRun ? ["--dry-run"] : []),
+        ...(provenance ? ["--provenance"] : [])
+      ]
+      for (let attempt = 1; attempt <= repeat; attempt++) {
+        const run = yield* runPnpm(args, { cwd, token })
+        const stageIds = stageIdsFromJson(run.stdout)
+        yield* findings.record("stage-publish", {
+          attempt,
+          package: manifest.name,
+          version: manifest.version,
+          tag,
+          dryRun,
+          provenance,
+          credential: Option.isSome(token) ? "token" : "none (OIDC or pnpm config)",
+          exitCode: run.exitCode,
+          durationMs: run.durationMs,
+          stageIds,
+          stdout: run.stdout,
+          stderr: run.stderr
+        })
+        yield* Console.log(
+          `attempt ${attempt}: pnpm exited ${run.exitCode} in ${run.durationMs}ms` +
+            (stageIds.length > 0
+              ? `; stage id ${stageIds.map((entry) => entry.stageId).join(", ")}`
+              : dryRun
+              ? "; dry run, no stage id expected"
+              : "; no stage id found in pnpm output")
+        )
+        if (run.exitCode !== 0) yield* Console.log(run.stderr.trim())
+      }
+    })
+    if (Option.isNone(setVersion)) {
+      yield* runStage
+    } else {
+      manifest.version = setVersion.value
+      yield* Effect.scoped(
+        Effect.acquireRelease(
+          fs.writeFileString(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`).pipe(
+            Effect.mapError((cause) => new SpikeError({ message: `Could not write ${manifestPath}`, cause }))
+          ),
+          () => fs.writeFileString(manifestPath, originalManifest).pipe(Effect.orDie)
+        ).pipe(Effect.andThen(runStage))
       )
-      if (run.exitCode !== 0) yield* Console.log(run.stderr.trim())
     }
   })).pipe(Command.withDescription("Run `pnpm stage publish` for the fixture with a non-TTY stdin, like CI"))
 
@@ -296,6 +348,19 @@ const runWithOtp = (verb: "approve" | "reject") =>
     const token = yield* resolveToken(false)
     const startedAt = Date.now()
     const results: Array<Record<string, unknown>> = []
+    for (const stageId of stageIds) {
+      const staged = yield* Registry.viewStaged(token, stageId)
+      if (staged.response.status !== 200 || Option.isNone(staged.item)) {
+        return yield* new SpikeError({
+          message: `Refusing to ${verb} ${stageId}: could not verify the staged package`
+        })
+      }
+      if (staged.item.value.packageName !== FIXTURE_NAME) {
+        return yield* new SpikeError({
+          message: `Refusing to ${verb} ${stageId}: belongs to ${staged.item.value.packageName}, not ${FIXTURE_NAME}`
+        })
+      }
+    }
     for (const [index, stageId] of stageIds.entries()) {
       const run = yield* runPnpm(["stage", verb, stageId], { cwd: path.resolve("."), token, otp: Option.some(otp) })
       const otpRejected = /otp|one-time|EOTP|401/i.test(run.stderr)

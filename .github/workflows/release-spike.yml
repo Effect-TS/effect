@@ -21,11 +21,6 @@ on:
         required: true
         default: true
         type: boolean
-      probe-list:
-        description: Also call `stage list` with no token, to record how OIDC-only CI is refused
-        required: true
-        default: true
-        type: boolean
 
 permissions: {}
 
@@ -56,10 +51,6 @@ jobs:
           extra=()
           if [[ "$DRY_RUN" == "true" ]]; then extra+=(--dry-run); fi
           pnpm release-spike stage --set-version "$VERSION" --tag "$TAG" --provenance "${extra[@]}"
-      - name: Probe stage list with the OIDC-only environment (expected to fail)
-        if: ${{ inputs.probe-list }}
-        continue-on-error: true
-        run: pnpm release-spike list --package @effect/release-spike-fixture
       - name: Summarise findings
         if: ${{ always() }}
         run: pnpm release-spike report
