@@ -1,0 +1,72 @@
+# Isolated, manually dispatched probe for npm staged publishing.
+#
+# It only ever touches packages/tools/release-spike/fixture, a disposable
+# package, and defaults to a dry run. It is not part of the release process.
+# See packages/tools/release-spike/RUNBOOK.md before dispatching it.
+name: Release spike (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Fixture version to stage (throwaway, e.g. 0.0.0-spike.3)
+        required: true
+        type: string
+      tag:
+        description: dist-tag to stage under (never latest)
+        required: true
+        default: spike
+        type: string
+      dry-run:
+        description: Pack only; upload nothing to the registry
+        required: true
+        default: true
+        type: boolean
+      probe-list:
+        description: Also call `stage list` with no token, to record how OIDC-only CI is refused
+        required: true
+        default: true
+        type: boolean
+
+permissions: {}
+
+jobs:
+  stage:
+    if: github.repository_owner == 'Effect-Ts'
+    name: Stage fixture via trusted publishing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_SPIKE_FINDINGS: ${{ github.workspace }}/tmp/release-spike/findings.jsonl
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Stage the fixture (OIDC, provenance)
+        env:
+          VERSION: ${{ inputs.version }}
+          TAG: ${{ inputs.tag }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          extra=()
+          if [[ "$DRY_RUN" == "true" ]]; then extra+=(--dry-run); fi
+          pnpm release-spike stage --set-version "$VERSION" --tag "$TAG" --provenance "${extra[@]}"
+      - name: Probe stage list with the OIDC-only environment (expected to fail)
+        if: ${{ inputs.probe-list }}
+        continue-on-error: true
+        run: pnpm release-spike list --package @effect/release-spike-fixture
+      - name: Summarise findings
+        if: ${{ always() }}
+        run: pnpm release-spike report
+      - name: Upload findings
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-spike-findings-${{ github.run_id }}
+          path: tmp/release-spike/findings.jsonl
+          if-no-files-found: warn

@@ -1,0 +1,19 @@
+{
+  "name": "@effect/release-spike-fixture",
+  "version": "0.0.0",
+  "description": "Disposable package used only to exercise npm staged publishing for the Effect release tooling. Never depend on it.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.js",
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/tools/release-spike/fixture"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@effect/release-spike",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Manually invoked harness that probes npm staged publishing against a disposable fixture package",
+  "homepage": "https://effect.website",
+  "type": "module",
+  "exports": {
+    ".": "./src/Cli.ts",
+    "./*": "./src/*.ts",
+    "./bin": null
+  },
+  "bin": {
+    "effect-release-spike": "./src/bin.ts"
+  },
+  "scripts": {
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^6.0.3"
+  }
+}

@@ -39,6 +39,7 @@
     { "path": "packages/tools/openapi-generator" },
     { "path": "packages/tools/jsdocs" },
     { "path": "packages/tools/oxc" },
+    { "path": "packages/tools/release-spike" },
     { "path": "packages/tools/utils" },
     { "path": "packages/vitest" }
   ]

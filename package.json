@@ -29,6 +29,7 @@
     "ai-docgen": "effect-ai-docgen ai-docs/src -o LLMS.md",
     "ai-docgen:watch": "pnpm ai-docgen --watch",
     "api-diff": "pnpm --dir packages/tools/api-diff exec node src/bin.ts",
+    "release-spike": "pnpm --dir packages/tools/release-spike exec node src/bin.ts",
     "test-types": "tstyche --target '>=5.9'",
     "changeset-version": "changeset version",
     "changeset-publish": "node scripts/set-strip-internal.mjs && pnpm codemod && pnpm build && changeset publish"
