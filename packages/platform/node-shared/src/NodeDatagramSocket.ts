@@ -52,13 +52,13 @@ const hasScopeId = (scopeIds: ReadonlyMap<string, number>, scopeId: number) => {
 
 const acquire =
   <L extends NetAddress.InetAddress>(options: Datagram.BindOptions<L> | Datagram.ConnectOptions<L>) =>
-  (handlers: Datagram.Handlers<Datagram.FamilyOf<L>>): Effect.Effect<
-    Datagram.Binding<Datagram.FamilyOf<L>>,
+  (handlers: Datagram.Handlers<NetAddress.Family<L>>): Effect.Effect<
+    Datagram.Binding<NetAddress.Family<L>>,
     Datagram.DatagramSocketError,
     Scope.Scope
   > =>
     Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-      type A = Datagram.FamilyOf<L>
+      type A = NetAddress.Family<L>
       const scope = yield* Effect.scope
       const family = NetAddress.isInetAddressV4(options.localAddress) ? "udp4" : "udp6"
       let socket: Dgram.Socket
@@ -140,7 +140,7 @@ const acquire =
         handlers.onError(cause)
       }
 
-      function parsePeer(host: string, port: number): Datagram.Inet<A> | undefined {
+      function parsePeer(host: string, port: number): NetAddress.Inet<A> | undefined {
         let parsed = NetAddress.inetAddressFromHostString(host, port, scopeIds)
         if (Result.isFailure(parsed)) {
           try {
@@ -156,7 +156,7 @@ const acquire =
           peer = Result.getOrThrow(NetAddress.inetAddressV6(NetAddress.toIpv4Mapped(peer.address), peer.port))
         }
         if (family === "udp4" && !NetAddress.isInetAddressV4(peer)) return undefined
-        return peer as Datagram.Inet<A>
+        return peer as NetAddress.Inet<A>
       }
 
       function onMessage(message: Buffer, info: Dgram.RemoteInfo) {
@@ -317,7 +317,7 @@ const acquire =
           }
         })
 
-      const multicastInterface = (networkInterface: NetAddress.Ipv4Address | number) => {
+      const multicastInterface = (networkInterface: NetAddress.MulticastInterface<A>) => {
         if (typeof networkInterface === "number") ensureScope(networkInterface)
         return NetAddress.formatMulticastInterface(networkInterface, scopeIds, process.platform)
       }
@@ -349,7 +349,7 @@ const acquire =
         })
 
       return {
-        address: address as Datagram.Inet<A>,
+        address: address as NetAddress.Inet<A>,
         send,
         setBroadcast: (enabled) => configure("setBroadcast", () => socket.setBroadcast(enabled)),
         setMulticastInterface: (networkInterface) =>
@@ -370,7 +370,7 @@ const acquire =
  */
 export const bind = <L extends NetAddress.InetAddress>(
   options: Datagram.BindOptions<L>
-): Effect.Effect<Datagram.Unassociated<Datagram.FamilyOf<L>>, Datagram.DatagramSocketError, Scope.Scope> =>
+): Effect.Effect<Datagram.Unassociated<NetAddress.Family<L>>, Datagram.DatagramSocketError, Scope.Scope> =>
   Datagram.fromTransport(options, acquire(options))
 
 /**
@@ -386,7 +386,7 @@ export const bind = <L extends NetAddress.InetAddress>(
  */
 export const connect = <L extends NetAddress.InetAddress>(
   options: Datagram.ConnectOptions<L>
-): Effect.Effect<Datagram.Associated<Datagram.FamilyOf<L>>, Datagram.DatagramSocketError, Scope.Scope> =>
+): Effect.Effect<Datagram.Associated<NetAddress.Family<L>>, Datagram.DatagramSocketError, Scope.Scope> =>
   Datagram.fromAssociatedTransport(options, acquire(options))
 
 /**

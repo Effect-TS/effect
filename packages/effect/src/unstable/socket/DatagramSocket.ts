@@ -44,8 +44,7 @@ export const TypeId = "~effect/socket/DatagramSocket"
  * @category models
  * @since 4.0.0
  */
-export type Family<A extends NetAddress.IpAddress> = A extends NetAddress.Ipv4Address ? NetAddress.Ipv4Address
-  : NetAddress.Ipv6Address
+export type Family<A extends NetAddress.IpAddress> = NetAddress.Family<A>
 
 /**
  * The internet endpoint type for an address family.
@@ -53,8 +52,7 @@ export type Family<A extends NetAddress.IpAddress> = A extends NetAddress.Ipv4Ad
  * @category models
  * @since 4.0.0
  */
-export type Inet<A extends NetAddress.IpAddress> = A extends NetAddress.Ipv4Address ? NetAddress.InetAddressV4
-  : NetAddress.InetAddressV6
+export type Inet<A extends NetAddress.IpAddress> = NetAddress.Inet<A>
 
 /**
  * The family carried by a local internet endpoint type.
@@ -62,8 +60,7 @@ export type Inet<A extends NetAddress.IpAddress> = A extends NetAddress.Ipv4Addr
  * @category models
  * @since 4.0.0
  */
-export type FamilyOf<L extends NetAddress.InetAddress> = L extends NetAddress.InetAddressV4 ? NetAddress.Ipv4Address
-  : NetAddress.Ipv6Address
+export type FamilyOf<L extends NetAddress.InetAddress> = NetAddress.Family<L>
 
 /**
  * A native multicast interface selector. IPv4 uses an interface address and
@@ -73,9 +70,7 @@ export type FamilyOf<L extends NetAddress.InetAddress> = L extends NetAddress.In
  * @category models
  * @since 4.0.0
  */
-export type MulticastInterface<A extends NetAddress.IpAddress> = A extends NetAddress.Ipv4Address
-  ? NetAddress.Ipv4Address
-  : number
+export type MulticastInterface<A extends NetAddress.IpAddress> = NetAddress.MulticastInterface<A>
 
 /**
  * A datagram payload and its peer address.
@@ -90,7 +85,7 @@ export type MulticastInterface<A extends NetAddress.IpAddress> = A extends NetAd
  */
 export interface Packet<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
   readonly data: Uint8Array
-  readonly peer: Inet<A>
+  readonly peer: NetAddress.Inet<A>
 }
 
 /**
@@ -118,13 +113,13 @@ export interface Packet<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
  * @since 4.0.0
  */
 export interface MembershipOptions<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
-  readonly interface?: MulticastInterface<A> | undefined
+  readonly interface?: NetAddress.MulticastInterface<A> | undefined
   readonly source?: A | undefined
 }
 
 interface Socket<A extends NetAddress.IpAddress, W> {
   readonly [TypeId]: { readonly _A: Types.Invariant<A> }
-  readonly address: Inet<A>
+  readonly address: NetAddress.Inet<A>
   /**
    * Reads the next non-empty batch of complete packets. Concurrent pulls consume
    * distinct packets. Interrupting while waiting leaves the endpoint open and
@@ -165,7 +160,7 @@ interface Socket<A extends NetAddress.IpAddress, W> {
    * fail with `DatagramSocketConfigurationError`.
    */
   readonly setMulticastInterface: (
-    networkInterface: MulticastInterface<A>
+    networkInterface: NetAddress.MulticastInterface<A>
   ) => Effect.Effect<void, DatagramSocketError>
   /**
    * Joins a multicast group until explicitly dropped or the socket closes.
@@ -173,7 +168,7 @@ interface Socket<A extends NetAddress.IpAddress, W> {
    */
   readonly addMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
-    options?: NoInfer<MembershipOptions<Family<G>>>
+    options?: NoInfer<MembershipOptions<NetAddress.Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
   /**
    * Leaves a multicast group using the same group, interface, and source as the
@@ -181,7 +176,7 @@ interface Socket<A extends NetAddress.IpAddress, W> {
    */
   readonly dropMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
-    options?: NoInfer<MembershipOptions<Family<G>>>
+    options?: NoInfer<MembershipOptions<NetAddress.Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
 }
 
@@ -212,7 +207,7 @@ export interface Unassociated<A extends NetAddress.IpAddress = NetAddress.IpAddr
  */
 export interface Associated<A extends NetAddress.IpAddress = NetAddress.IpAddress> extends Socket<A, Uint8Array> {
   readonly _tag: "Associated"
-  readonly remote: Inet<A>
+  readonly remote: NetAddress.Inet<A>
 }
 
 /**
@@ -300,7 +295,7 @@ export interface BindOptions<L extends NetAddress.InetAddress = NetAddress.InetA
  * @since 4.0.0
  */
 export interface ConnectOptions<L extends NetAddress.InetAddress = NetAddress.InetAddress> extends BindOptions<L> {
-  readonly remote: NoInfer<Inet<FamilyOf<L>>>
+  readonly remote: NoInfer<NetAddress.Inet<NetAddress.Family<L>>>
 }
 
 /**
@@ -456,10 +451,10 @@ export class DatagramSocketError extends Schema.TaggedError<DatagramSocketError>
 export class DatagramSocketFactory extends Context.Service<DatagramSocketFactory, {
   readonly bind: <L extends NetAddress.InetAddress>(
     options: BindOptions<L>
-  ) => Effect.Effect<Unassociated<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
+  ) => Effect.Effect<Unassociated<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope>
   readonly connect: <L extends NetAddress.InetAddress>(
     options: ConnectOptions<L>
-  ) => Effect.Effect<Associated<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
+  ) => Effect.Effect<Associated<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope>
 }>()("effect/socket/DatagramSocketFactory") {}
 
 /**
@@ -469,7 +464,7 @@ export class DatagramSocketFactory extends Context.Service<DatagramSocketFactory
  * @since 4.0.0
  */
 export const bind = <L extends NetAddress.InetAddress>(options: BindOptions<L>): Effect.Effect<
-  Unassociated<FamilyOf<L>>,
+  Unassociated<NetAddress.Family<L>>,
   DatagramSocketError,
   DatagramSocketFactory | Scope.Scope
 > => Effect.flatMap(DatagramSocketFactory, (factory) => factory.bind(options))
@@ -481,7 +476,7 @@ export const bind = <L extends NetAddress.InetAddress>(options: BindOptions<L>):
  * @since 4.0.0
  */
 export const connect = <L extends NetAddress.InetAddress>(options: ConnectOptions<L>): Effect.Effect<
-  Associated<FamilyOf<L>>,
+  Associated<NetAddress.Family<L>>,
   DatagramSocketError,
   DatagramSocketFactory | Scope.Scope
 > => Effect.flatMap(DatagramSocketFactory, (factory) => factory.connect(options))
@@ -500,19 +495,21 @@ export const connect = <L extends NetAddress.InetAddress>(options: ConnectOption
  * @since 4.0.0
  */
 export interface MakeUnassociatedOptions<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
-  readonly address: Inet<A>
+  readonly address: NetAddress.Inet<A>
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError>
   readonly write: (packet: Packet<A>) => Effect.Effect<void, DatagramSocketError>
   readonly writeMany: (packets: ReadonlyArray<Packet<A>>) => Effect.Effect<void, DatagramSocketError>
   readonly setBroadcast: (enabled: boolean) => Effect.Effect<void, DatagramSocketError>
-  readonly setMulticastInterface: (networkInterface: MulticastInterface<A>) => Effect.Effect<void, DatagramSocketError>
+  readonly setMulticastInterface: (
+    networkInterface: NetAddress.MulticastInterface<A>
+  ) => Effect.Effect<void, DatagramSocketError>
   readonly addMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
-    options?: NoInfer<MembershipOptions<Family<G>>>
+    options?: NoInfer<MembershipOptions<NetAddress.Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
   readonly dropMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
-    options?: NoInfer<MembershipOptions<Family<G>>>
+    options?: NoInfer<MembershipOptions<NetAddress.Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
 }
 
@@ -529,20 +526,22 @@ export interface MakeUnassociatedOptions<A extends NetAddress.IpAddress = NetAdd
  * @since 4.0.0
  */
 export interface MakeAssociatedOptions<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
-  readonly address: Inet<A>
-  readonly remote: Inet<A>
+  readonly address: NetAddress.Inet<A>
+  readonly remote: NetAddress.Inet<A>
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<Packet<A>>, DatagramSocketError>
   readonly write: (payload: Uint8Array) => Effect.Effect<void, DatagramSocketError>
   readonly writeMany: (payloads: ReadonlyArray<Uint8Array>) => Effect.Effect<void, DatagramSocketError>
   readonly setBroadcast: (enabled: boolean) => Effect.Effect<void, DatagramSocketError>
-  readonly setMulticastInterface: (networkInterface: MulticastInterface<A>) => Effect.Effect<void, DatagramSocketError>
+  readonly setMulticastInterface: (
+    networkInterface: NetAddress.MulticastInterface<A>
+  ) => Effect.Effect<void, DatagramSocketError>
   readonly addMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
-    options?: NoInfer<MembershipOptions<Family<G>>>
+    options?: NoInfer<MembershipOptions<NetAddress.Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
   readonly dropMembership: <G extends A>(
     group: NetAddress.MulticastAddress<G>,
-    options?: NoInfer<MembershipOptions<Family<G>>>
+    options?: NoInfer<MembershipOptions<NetAddress.Family<G>>>
   ) => Effect.Effect<void, DatagramSocketError>
 }
 
@@ -593,7 +592,7 @@ export const makeAssociated = <A extends NetAddress.IpAddress>(
  * @since 4.0.0
  */
 export interface Handlers<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
-  readonly onMessage: (data: Uint8Array, peer: Inet<A>) => void
+  readonly onMessage: (data: Uint8Array, peer: NetAddress.Inet<A>) => void
   readonly onError: (cause: unknown) => void
 }
 
@@ -613,7 +612,9 @@ export interface Handlers<A extends NetAddress.IpAddress = NetAddress.IpAddress>
  */
 export interface Binding<A extends NetAddress.IpAddress = NetAddress.IpAddress> {
   readonly setBroadcast: (enabled: boolean) => Effect.Effect<void, DatagramSocketError>
-  readonly setMulticastInterface: (networkInterface: MulticastInterface<A>) => Effect.Effect<void, DatagramSocketError>
+  readonly setMulticastInterface: (
+    networkInterface: NetAddress.MulticastInterface<A>
+  ) => Effect.Effect<void, DatagramSocketError>
   readonly addMembership: (
     group: NetAddress.MulticastAddress<A>,
     options: MembershipOptions<A>
@@ -622,7 +623,7 @@ export interface Binding<A extends NetAddress.IpAddress = NetAddress.IpAddress> 
     group: NetAddress.MulticastAddress<A>,
     options: MembershipOptions<A>
   ) => Effect.Effect<void, DatagramSocketError>
-  readonly address: Inet<A>
+  readonly address: NetAddress.Inet<A>
   readonly send: (packet: Packet<A>) => Effect.Effect<void, DatagramSocketError>
 }
 
@@ -677,10 +678,10 @@ interface Endpoint<A extends NetAddress.IpAddress> extends MakeUnassociatedOptio
 const makeEndpoint = <L extends NetAddress.InetAddress>(
   options: BindOptions<L>,
   acquire: (
-    handlers: Handlers<FamilyOf<L>>
-  ) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>,
-  remote?: Inet<FamilyOf<L>>
-): Effect.Effect<Endpoint<FamilyOf<L>>, DatagramSocketError, Scope.Scope> =>
+    handlers: Handlers<NetAddress.Family<L>>
+  ) => Effect.Effect<Binding<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope>,
+  remote?: NetAddress.Inet<NetAddress.Family<L>>
+): Effect.Effect<Endpoint<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope> =>
   Effect.gen(function*() {
     const validation = validateOptions(options) ??
       (remote === undefined ? undefined : validateRemote(options.localAddress, remote))
@@ -689,7 +690,7 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
     const parent = yield* Effect.scope
     if (parent.state._tag === "Closed") return yield* Effect.fail(closed())
 
-    type A = FamilyOf<L>
+    type A = NetAddress.Family<L>
     const inbox = yield* Queue.make<Packet<A>, DatagramSocketError>()
     const adapterScope = yield* Scope.make("sequential")
     const limits = {
@@ -839,7 +840,9 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
     const ensureOpen = (operation: () => Effect.Effect<void, DatagramSocketError>) =>
       Effect.suspend(() => status === "Closed" ? Effect.fail(closedError) : guard(operation()))
 
-    const validateInterface = (networkInterface: MulticastInterface<A>): DatagramSocketError | undefined => {
+    const validateInterface = (
+      networkInterface: NetAddress.MulticastInterface<A>
+    ): DatagramSocketError | undefined => {
       if (NetAddress.isInetAddressV4(options.localAddress)) {
         if (!NetAddress.isIpv4Address(networkInterface)) {
           return invalid("IPv4 multicast interfaces must be IPv4 addresses")
@@ -890,9 +893,17 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
           return failure === undefined ? guard(binding.setMulticastInterface(networkInterface)) : Effect.fail(failure)
         }),
       addMembership: (group, options_) =>
-        membership("addMembership", group as NetAddress.MulticastAddress<A>, options_ as MembershipOptions<A>),
+        membership(
+          "addMembership",
+          group as NetAddress.MulticastAddress<A>,
+          options_ as unknown as MembershipOptions<A>
+        ),
       dropMembership: (group, options_) =>
-        membership("dropMembership", group as NetAddress.MulticastAddress<A>, options_ as MembershipOptions<A>)
+        membership(
+          "dropMembership",
+          group as NetAddress.MulticastAddress<A>,
+          options_ as unknown as MembershipOptions<A>
+        )
     }
   })
 
@@ -912,8 +923,10 @@ const makeEndpoint = <L extends NetAddress.InetAddress>(
  */
 export const fromTransport = <L extends NetAddress.InetAddress>(
   options: BindOptions<L>,
-  acquire: (handlers: Handlers<FamilyOf<L>>) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
-): Effect.Effect<Unassociated<FamilyOf<L>>, DatagramSocketError, Scope.Scope> =>
+  acquire: (
+    handlers: Handlers<NetAddress.Family<L>>
+  ) => Effect.Effect<Binding<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope>
+): Effect.Effect<Unassociated<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope> =>
   Effect.map(makeEndpoint(options, acquire), makeUnassociated)
 
 /**
@@ -930,8 +943,10 @@ export const fromTransport = <L extends NetAddress.InetAddress>(
  */
 export const fromAssociatedTransport = <L extends NetAddress.InetAddress>(
   options: ConnectOptions<L>,
-  acquire: (handlers: Handlers<FamilyOf<L>>) => Effect.Effect<Binding<FamilyOf<L>>, DatagramSocketError, Scope.Scope>
-): Effect.Effect<Associated<FamilyOf<L>>, DatagramSocketError, Scope.Scope> =>
+  acquire: (
+    handlers: Handlers<NetAddress.Family<L>>
+  ) => Effect.Effect<Binding<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope>
+): Effect.Effect<Associated<NetAddress.Family<L>>, DatagramSocketError, Scope.Scope> =>
   Effect.map(makeEndpoint(options, acquire, options.remote), (endpoint) => {
     const remote = options.remote
     return makeAssociated({

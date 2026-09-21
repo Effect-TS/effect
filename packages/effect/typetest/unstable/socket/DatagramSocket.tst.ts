@@ -32,6 +32,19 @@ declare const associatedOptionsV4: DatagramSocket.MakeAssociatedOptions<NetAddre
 declare const unassociatedOptionsV4: DatagramSocket.MakeUnassociatedOptions<NetAddress.Ipv4Address>
 
 describe("DatagramSocket endpoint variants", () => {
+  it("preserves the DatagramSocket address helper aliases", () => {
+    expect<DatagramSocket.Family<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>>().type.toBe<
+      NetAddress.Family<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>
+    >()
+    expect<DatagramSocket.Inet<NetAddress.Ipv6Address>>().type.toBe<NetAddress.Inet<NetAddress.Ipv6Address>>()
+    expect<DatagramSocket.FamilyOf<NetAddress.InetAddressV4>>().type.toBe<
+      NetAddress.Family<NetAddress.InetAddressV4>
+    >()
+    expect<DatagramSocket.MulticastInterface<NetAddress.Ipv6Address>>().type.toBe<
+      NetAddress.MulticastInterface<NetAddress.Ipv6Address>
+    >()
+  })
+
   it("returns the explicit association variants from raw constructors", () => {
     expect(DatagramSocket.makeAssociated(associatedOptions)).type.toBe<DatagramSocket.Associated>()
     expect(DatagramSocket.makeUnassociated(unassociatedOptions)).type.toBe<DatagramSocket.Unassociated>()
