@@ -157,6 +157,8 @@ export const gitLayer = (calls: Calls, options?: {
   readonly commitSha?: Option.Option<string>
   readonly ledgerSha?: string
   readonly pushFailure?: Effect.Effect<never, any> | undefined
+  /** Files served by `showFile` for `origin/main`, keyed by workspace-relative path. */
+  readonly onMain?: ReadonlyMap<string, string> | undefined
 }) =>
   Layer.succeed(
     Git,
@@ -171,7 +173,15 @@ export const gitLayer = (calls: Calls, options?: {
         track(calls, "git", "pushForce", branch).pipe(Effect.andThen(options?.pushFailure ?? Effect.void)),
       checkout: (ref) => track(calls, "git", "checkout", ref),
       lastCommitTouching: (path) =>
-        track(calls, "git", "lastCommitTouching", path).pipe(Effect.as(options?.ledgerSha ?? LEDGER_SHA))
+        track(calls, "git", "lastCommitTouching", path).pipe(Effect.as(options?.ledgerSha ?? LEDGER_SHA)),
+      showFile: (ref, path) =>
+        track(calls, "git", "showFile", ref, path).pipe(
+          Effect.as(ref === "origin/main" ? Option.fromNullishOr(options?.onMain?.get(path)) : Option.none())
+        ),
+      commitPaths: (message, paths) =>
+        track(calls, "git", "commitPaths", message, paths).pipe(
+          Effect.as(options?.commitSha ?? Option.some("fedcba9876543210"))
+        )
     })
   )
 
@@ -258,6 +268,8 @@ export const workspaceLayer = (calls: Calls, list: ReadonlyArray<WorkspacePackag
  */
 export const stageApprovalLayer = (calls: Calls, options?: {
   readonly items?: Array<StagedItem>
+  /** Items `viewStaged` can see that `listStaged` no longer returns (left the queue). */
+  readonly viewable?: ReadonlyArray<StagedItem> | undefined
   readonly failing?: ReadonlySet<string> | undefined
   readonly onApproved?: (id: string) => void
 }) =>
@@ -266,7 +278,9 @@ export const stageApprovalLayer = (calls: Calls, options?: {
     StageApproval.of({
       viewStaged: (id) =>
         track(calls, "approval", "viewStaged", id).pipe(
-          Effect.as(Option.fromUndefinedOr(options?.items?.find((item) => item.id === id)))
+          Effect.as(Option.fromUndefinedOr(
+            options?.items?.find((item) => item.id === id) ?? options?.viewable?.find((item) => item.id === id)
+          ))
         ),
       approve: (id, otp) =>
         track(calls, "approval", "approve", id, Redacted.value(otp)).pipe(

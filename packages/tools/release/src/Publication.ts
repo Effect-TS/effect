@@ -44,6 +44,12 @@ export type ReadinessResult =
    * publication. No new PR is opened until it finishes.
    */
   | { readonly _tag: "InProgress"; readonly identity: string; readonly remaining: ReadonlyArray<ManifestPackage> }
+  /**
+   * The merged manifest still pins queue items, but none is approvable or
+   * pending (blocked, rejected, unknown): that release can neither finish nor
+   * be superseded until the items are dealt with. No PR is opened.
+   */
+  | { readonly _tag: "Stalled"; readonly identity: string; readonly blockers: ReadonlyArray<PackageReadiness> }
   /** Some unpublished public packages are not in the queue at all; no manifest can be built. */
   | {
     readonly _tag: "Incomplete"

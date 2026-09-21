@@ -1,4 +1,5 @@
 import { cli } from "@effect/release"
+import { Publication } from "@effect/release/Publication"
 import type { StagedItem } from "@effect/release/Registry"
 import { Release } from "@effect/release/Release"
 import type { ReleasePlan } from "@effect/release/ReleasePlan"
@@ -59,7 +60,15 @@ const appLayer = (options: {
   readonly staged?: ReadonlyArray<StagedItem>
 }) => {
   const calls = makeCalls()
-  const layer = Release.layer.pipe(
+  /** The publish commands are covered in PublishCli.test.ts; here the service only satisfies the CLI's requirement. */
+  const publication = Layer.succeed(
+    Publication,
+    Publication.of({
+      readiness: () => Effect.die("release readiness is not exercised by these tests"),
+      publish: () => Effect.die("release publish is not exercised by these tests")
+    })
+  )
+  const layer = Layer.mergeAll(Release.layer, publication).pipe(
     Layer.provideMerge(Layer.mergeAll(
       pnpmLayer(calls, { plan: options.plan, applied: [] }),
       gitLayer(calls),

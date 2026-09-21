@@ -30,6 +30,21 @@ export class Git extends Context.Service<Git, {
    * "Version Packages" merge a staged release was built from.
    */
   readonly lastCommitTouching: (path: string) => Effect.Effect<string, ReleaseError>
+  /**
+   * `git show <ref>:<path>`; `none` when the path does not exist at `ref`.
+   * The publish flow reads the release manifest from `origin/main` this way,
+   * so "merged" is structural rather than a property of the checkout.
+   */
+  readonly showFile: (ref: string, path: string) => Effect.Effect<Option.Option<string>, ReleaseError>
+  /**
+   * Stages exactly `paths` and commits; `none` when they hold no change. The
+   * publish PR commits only `.release/manifest.json` with this, so the
+   * authorisation artifact can never carry an unrelated file.
+   */
+  readonly commitPaths: (
+    message: string,
+    paths: ReadonlyArray<string>
+  ) => Effect.Effect<Option.Option<string>, ReleaseError>
 }>()("@effect/release/Git") {
   static readonly layer: Layer.Layer<Git, never, ChildProcessSpawner | FileSystem.FileSystem | Path.Path> = Layer
     .effect(
@@ -70,7 +85,9 @@ export class Git extends Context.Service<Git, {
                   ? new ReleaseError({ message: `No commit on the current branch touched ${path}` })
                   : Effect.succeed(stdout.trim())
               )
-            )
+            ),
+          showFile: () => Effect.die(new Error("not implemented: Git.showFile")),
+          commitPaths: () => Effect.die(new Error("not implemented: Git.commitPaths"))
         })
       })
     )

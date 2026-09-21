@@ -98,7 +98,7 @@ describe("PublishPullRequest.sync", () => {
       const order = [
         "git.resetBranch",
         "fs.writeFileString",
-        "git.commitAll",
+        "git.commitPaths",
         "git.pushForce",
         "github.createPullRequest"
       ]
@@ -112,7 +112,12 @@ describe("PublishPullRequest.sync", () => {
         ReleaseManifest.MANIFEST_PATH,
         ReleaseManifest.encode(manifest)
       ])
-      assert.deepStrictEqual(callsTo(calls, "git.commitAll")[0].args, ["Publish Packages"])
+      // The authorisation artifact commits exactly the manifest, never whatever else the tree holds.
+      assert.deepStrictEqual(callsTo(calls, "git.commitPaths")[0].args, [
+        "Publish Packages",
+        [ReleaseManifest.MANIFEST_PATH]
+      ])
+      assert.deepStrictEqual(callsTo(calls, "git.commitAll"), [])
       assert.deepStrictEqual(callsTo(calls, "git.pushForce")[0].args, ["publish-release/main"])
       assert.deepStrictEqual(callsTo(calls, "git.checkout")[0].args, ["abc123"])
       assert.deepStrictEqual(callsTo(calls, "github.findPullRequest")[0].args, [{
@@ -172,7 +177,7 @@ describe("PublishPullRequest.sync", () => {
       assert.include(input.body, marker())
     }))
 
-  it.effect("re-marks a previously unready PR as ready()", () =>
+  it.effect("re-marks a previously unready PR as ready", () =>
     Effect.gen(function*() {
       const calls = makeCalls()
       const existing = pullRequest({
