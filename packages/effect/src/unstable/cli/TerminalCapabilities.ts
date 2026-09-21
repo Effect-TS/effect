@@ -139,18 +139,20 @@ const environment = Config.all({
  * **Details**
  *
  * An empty environment value is unset, matching `ConfigProvider.fromEnv`.
- * `FORCE_COLOR=` therefore does not force color on.
+ * `FORCE_COLOR=` therefore does not force color on. A missing variable is
+ * `None`, not a `ConfigError`. A provider fault dies, so the layer does not
+ * ask the CLI to recover from it.
  *
  * @see {@link detect} for the precedence rules
  *
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<TerminalCapabilities, Config.ConfigError, Stdio.Stdio> = Layer.effect(
+export const layer: Layer.Layer<TerminalCapabilities, never, Stdio.Stdio> = Layer.effect(
   TerminalCapabilities
 )(Effect.gen(function*() {
   const stdio = yield* Stdio.Stdio
-  const env = yield* environment
+  const env = yield* Effect.orDie(environment)
   const [stdinIsTerminal, stdoutIsTerminal] = yield* Effect.all([
     stdio.stdinIsTerminal,
     stdio.stdoutIsTerminal
