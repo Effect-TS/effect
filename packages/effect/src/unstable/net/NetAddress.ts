@@ -282,6 +282,75 @@ export declare namespace SocketAddress {
 }
 
 /**
+ * The IPv4 or IPv6 family of an IP address or internet address type.
+ *
+ * **Details**
+ *
+ * Refinements such as `MulticastAddress<A>` are dropped; the result is the
+ * plain `Ipv4Address` or `Ipv6Address` for the family. Unions distribute, so
+ * `Family<IpAddress>` and `Family<InetAddress>` are both `IpAddress`.
+ *
+ * **Example** (Deriving the family of an internet address)
+ *
+ * ```ts import.meta.vitest
+ * import { NetAddress } from "effect/unstable/net"
+ *
+ * const family: NetAddress.Family<NetAddress.InetAddressV6> = NetAddress.ipv6Loopback
+ * ```
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Family<A extends IpAddress | InetAddress> = A extends Ipv4Address | InetAddressV4 ? Ipv4Address
+  : Ipv6Address
+
+/**
+ * The internet address type for an IP address family.
+ *
+ * **Details**
+ *
+ * `Inet<Ipv4Address>` is `InetAddressV4` and `Inet<Ipv6Address>` is
+ * `InetAddressV6`. Refinements on `A` are dropped because the port-carrying
+ * types hold a plain family address. `Inet<IpAddress>` is `InetAddress`.
+ *
+ * **Example** (Selecting the internet address for a family)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { NetAddress } from "effect/unstable/net"
+ *
+ * const endpoint: NetAddress.Inet<NetAddress.Ipv4Address> = Result.getOrThrow(
+ *   NetAddress.inetAddressV4(NetAddress.ipv4Loopback, 8080)
+ * )
+ * ```
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Inet<A extends IpAddress = IpAddress> = A extends Ipv4Address ? InetAddressV4 : InetAddressV6
+
+/**
+ * A native multicast interface selector for an IP address family: an interface
+ * address for IPv4 or an interface index for IPv6. `ipv4Unspecified` and index
+ * `0` select the operating system default.
+ *
+ * **Example** (Selecting multicast interfaces by family)
+ *
+ * ```ts import.meta.vitest
+ * import { NetAddress } from "effect/unstable/net"
+ *
+ * const ipv4Interface: NetAddress.MulticastInterface<NetAddress.Ipv4Address> =
+ *   NetAddress.ipv4Unspecified
+ * const ipv6Interface: NetAddress.MulticastInterface<NetAddress.Ipv6Address> = 0
+ * ```
+ *
+ * @see {@link formatMulticastInterface}
+ * @category models
+ * @since 4.0.0
+ */
+export type MulticastInterface<A extends IpAddress = IpAddress> = A extends Ipv4Address ? Ipv4Address : number
+
+/**
  * A checked network-address operation failure retaining the address or supplied input.
  *
  * **Details**
@@ -1404,7 +1473,7 @@ export const formatNativeHost = (
  * @since 4.0.0
  */
 export const formatMulticastInterface = (
-  networkInterface: Ipv4Address | number,
+  networkInterface: MulticastInterface,
   scopeIds: ReadonlyMap<string, number>,
   platform?: string
 ): string => {

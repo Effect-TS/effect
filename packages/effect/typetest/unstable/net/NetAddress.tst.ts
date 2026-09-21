@@ -208,6 +208,44 @@ describe("NetAddress", () => {
     }
   })
 
+  it("derives address families, internet addresses, and multicast interfaces", () => {
+    type CustomIpv4Address = NetAddress.Ipv4Address & Brand.Brand<"CustomIpv4Address">
+
+    expect<NetAddress.Family<NetAddress.InetAddressV6>>().type.toBe<NetAddress.Ipv6Address>()
+    expect<NetAddress.Family<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>>().type.toBe<
+      NetAddress.Ipv4Address
+    >()
+    expect<NetAddress.Family<CustomIpv4Address>>().type.toBe<NetAddress.Ipv4Address>()
+    expect<NetAddress.Family<NetAddress.Ipv6Address>>().type.toBe<NetAddress.Ipv6Address>()
+    expect<NetAddress.Family<NetAddress.IpAddress>>().type.toBe<NetAddress.IpAddress>()
+    expect<NetAddress.Family<NetAddress.InetAddress>>().type.toBe<NetAddress.IpAddress>()
+    expect<NetAddress.Family<never>>().type.toBe<never>()
+
+    expect<NetAddress.Inet<NetAddress.Ipv4Address>>().type.toBe<NetAddress.InetAddressV4>()
+    expect<NetAddress.Inet<NetAddress.Ipv6Address>>().type.toBe<NetAddress.InetAddressV6>()
+    expect<NetAddress.Inet<NetAddress.MulticastAddress<NetAddress.Ipv4Address>>>().type.toBe<
+      NetAddress.InetAddressV4
+    >()
+    expect<NetAddress.Inet>().type.toBe<NetAddress.InetAddress>()
+    expect<NetAddress.Inet<never>>().type.toBe<never>()
+
+    expect<NetAddress.MulticastInterface<NetAddress.Ipv4Address>>().type.toBe<NetAddress.Ipv4Address>()
+    expect<NetAddress.MulticastInterface<NetAddress.Ipv6Address>>().type.toBe<number>()
+    expect<NetAddress.MulticastInterface>().type.toBe<NetAddress.Ipv4Address | number>()
+    expect<Parameters<typeof NetAddress.formatMulticastInterface>[0]>().type.toBe<NetAddress.MulticastInterface>()
+
+    const localV4 = null as unknown as NetAddress.InetAddressV4
+    const remoteV4 = null as unknown as NetAddress.InetAddressV4
+    const remoteV6 = null as unknown as NetAddress.InetAddressV6
+    const bind = <L extends NetAddress.InetAddress>(options: {
+      readonly localAddress: L
+      readonly remote?: NoInfer<NetAddress.Inet<NetAddress.Family<L>>> | undefined
+    }): NetAddress.Family<L> => options.localAddress.address as NetAddress.Family<L>
+
+    expect(bind({ localAddress: localV4, remote: remoteV4 })).type.toBe<NetAddress.Ipv4Address>()
+    expect(bind).type.not.toBeCallableWith({ localAddress: localV4, remote: remoteV6 })
+  })
+
   it("preserves named schema types when annotating codecs", () => {
     expect(Schema.MacAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.MacAddressFromString>()
     expect(Schema.Ipv4AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4AddressFromString>()
