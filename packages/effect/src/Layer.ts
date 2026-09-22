@@ -235,18 +235,43 @@ export interface MemoMap {
 type MemoMapEntry = {
   observers: number
   effect: Effect<Context.Context<any>, any>
+  readonly scope: Scope.Closeable
   readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<void>
 }
 
-const memoMapReuse = <RIn, E, ROut>(
-  entry: MemoMapEntry,
-  scope: Scope.Scope
-): Effect<Context.Context<ROut>, E, RIn> => {
+// Built outside `getOrElseMemoize` so the finalizer, which lives as long as
+// the entry, captures only what it releases.
+const makeMemoMapEntry = (
+  memoMap: MemoMapImpl,
+  layer: Layer<any, any, any>,
+  effect: Effect<Context.Context<any>, any>
+): MemoMapEntry => {
+  const entry: MemoMapEntry = {
+    observers: 0,
+    effect,
+    scope: Scope.makeUnsafe(),
+    finalizer: (exit) =>
+      internalEffect.suspend(() => {
+        if (--entry.observers > 0) return internalEffect.void
+        memoMap.map.delete(layer)
+        return Scope.close(entry.scope, exit)
+      })
+  }
+  return entry
+}
+
+/**
+ * Counts `scope` as an observer of `entry` and registers its finalizer in the
+ * same synchronous step, so no interrupt can land between the two. Returns
+ * `false` for a scope that is already closed, which observes nothing: a
+ * published entry always has an observer, so counting this one and releasing
+ * it again would cancel out.
+ */
+const memoMapObserve = (entry: MemoMapEntry, scope: Scope.Scope): boolean => {
+  if (scope.state._tag === "Closed") return false
   entry.observers++
-  return internalEffect.andThen(
-    internalEffect.scopeAddFinalizerExit(scope, (exit) => entry.finalizer(exit)),
-    entry.effect
-  )
+  internalEffect.scopeAddFinalizerUnsafe(scope, {}, entry.finalizer)
+  return true
 }
 
 /**
@@ -387,41 +412,10 @@ export const fromBuildMemo = <ROut, E, RIn>(
   return self
 }
 
-const memoMapBuild = <RIn, E, ROut>(
-  memoMap: MemoMapImpl,
-  layer: Layer<ROut, E, RIn>,
-  scope: Scope.Scope,
-  build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
-): Effect<Context.Context<ROut>, E, RIn> => {
-  const layerScope = Scope.makeUnsafe()
-  const deferred = Deferred.makeUnsafe<Context.Context<ROut>, E>()
-  const entry: MemoMapEntry = {
-    observers: 1,
-    effect: Deferred.await(deferred),
-    finalizer: (exit: Exit.Exit<unknown, unknown>) =>
-      internalEffect.suspend(() => {
-        entry.observers--
-        if (entry.observers === 0) {
-          memoMap.map.delete(layer)
-          return Scope.close(layerScope, exit)
-        }
-        return internalEffect.void
-      })
-  }
-  memoMap.map.set(layer, entry)
-  return internalEffect.scopeAddFinalizerExit(scope, entry.finalizer).pipe(
-    internalEffect.flatMap(() => build(memoMap, layerScope)),
-    internalEffect.onExit((exit) => {
-      entry.effect = exit
-      return Deferred.done(deferred, exit)
-    })
-  )
-}
-
 class MemoMapImpl implements MemoMap {
-  get [MemoMapTypeId](): typeof MemoMapTypeId {
-    return MemoMapTypeId
-  }
+  readonly [MemoMapTypeId] = MemoMapTypeId
+
+  readonly map = new Map<Layer<any, any, any>, MemoMapEntry>()
 
   readonly parent: MemoMap | undefined
 
@@ -429,15 +423,14 @@ class MemoMapImpl implements MemoMap {
     this.parent = parent
   }
 
-  readonly map = new Map<Layer<any, any, any>, MemoMapEntry>()
-
   get<RIn, E, ROut>(
     layer: Layer<ROut, E, RIn>,
     scope: Scope.Scope
   ): Effect<Context.Context<ROut>, E, RIn> | undefined {
     const local = this.map.get(layer)
     if (local) {
-      return memoMapReuse(local, scope)
+      memoMapObserve(local, scope)
+      return local.effect
     }
     return this.parent?.get(layer, scope)
   }
@@ -448,11 +441,27 @@ class MemoMapImpl implements MemoMap {
     build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
   ): Effect<Context.Context<ROut>, E, RIn> {
     return internalEffect.suspend(() => {
-      const existing = this.get(layer, scope)
-      if (existing) {
-        return existing
-      }
-      return memoMapBuild(this, layer, scope, build)
+      // The exit handler is in place before the lookup, so an entry is only
+      // published once the handler that completes it exists.
+      let complete: ((exit: Exit.Exit<Context.Context<ROut>, E>) => Effect<void>) | undefined
+      return internalEffect.onExitPrimitive(
+        internalEffect.suspend(() => {
+          const existing = this.get(layer, scope)
+          if (existing) return existing
+          const deferred = Deferred.makeUnsafe<Context.Context<ROut>, E>()
+          const entry = makeMemoMapEntry(this, layer, Deferred.await(deferred))
+          // A requester whose scope is closed has already left, so there is
+          // nothing to share: its build releases as it acquires.
+          if (!memoMapObserve(entry, scope)) return build(this, scope)
+          complete = (exit) => {
+            entry.effect = exit
+            return Deferred.done(deferred, exit)
+          }
+          this.map.set(layer, entry)
+          return build(this, entry.scope)
+        }),
+        (exit) => complete?.(exit)
+      )
     })
   }
 }
