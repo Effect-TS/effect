@@ -360,31 +360,15 @@ export const of = <A>(a: A): NonEmptyChunk<A> => makeChunk({ _tag: "ISingleton",
 export const fromIterable = <A>(self: Iterable<A>): Chunk<A> =>
   isChunk(self) ? self : fromArrayUnsafe(RA.fromIterable(self))
 
-const copyToArray = <A>(
-  self: Chunk<A>,
-  array: Array<any>,
-  initial: number,
-  offset = 0,
-  length = self.length
-): void => {
-  if (length === 0) return
+const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): void => {
   switch (self.backing._tag) {
     case "IArray": {
-      copy(self.backing.array, offset, array, initial, length)
+      copy(self.backing.array, 0, array, initial, self.length)
       break
     }
     case "IConcat": {
-      const leftLength = Math.min(length, Math.max(0, self.left.length - offset))
-      if (leftLength > 0) copyToArray(self.left, array, initial, offset, leftLength)
-      if (leftLength < length) {
-        copyToArray(
-          self.right,
-          array,
-          initial + leftLength,
-          Math.max(0, offset - self.left.length),
-          length - leftLength
-        )
-      }
+      copyToArray(self.left, array, initial)
+      copyToArray(self.right, array, initial + self.left.length)
       break
     }
     case "ISingleton": {
@@ -392,7 +376,7 @@ const copyToArray = <A>(
       break
     }
     case "ISlice": {
-      copyToArray(self.backing.chunk, array, initial, self.backing.offset + offset, length)
+      copy(toReadonlyArray(self.backing.chunk), self.backing.offset, array, initial, self.length)
       break
     }
   }
