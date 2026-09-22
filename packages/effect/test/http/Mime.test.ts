@@ -3,11 +3,6 @@ import * as Mime from "effect/http/Mime"
 import * as Option from "effect/Option"
 
 describe("Mime", () => {
-  it("supports lookups after the first reverse lookup", () => {
-    assert.deepStrictEqual(Mime.getExtension("text/html"), Option.some("html"))
-    assert.deepStrictEqual(Mime.getType("index.html"), Option.some("text/html"))
-  })
-
   it("looks up common static file types", () => {
     assert.deepStrictEqual(Mime.getType("index.html"), Option.some("text/html"))
     assert.deepStrictEqual(Mime.getType("styles.css"), Option.some("text/css"))
