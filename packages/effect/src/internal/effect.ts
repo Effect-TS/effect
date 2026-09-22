@@ -644,7 +644,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         observers[i](exit)
       }
     }
-    this._stack.length = 0
+    // No need to clear the stack: an exit leaves the run loop only once
+    // getCont has popped every frame, as long as every continuation returns
+    // an effect, which its type requires
     this._children = undefined
     this.context = Context.empty()
   }
