@@ -549,12 +549,11 @@ const makeSocket = Effect.gen(function*() {
 
       // A failed queue cannot be reused, so the next turn gets a fresh one on
       // the same socket.
-      const failTurn = (error: AiError.AiError) =>
-        Effect.gen(function*() {
-          const failed = connection.incoming
-          connection.incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
-          yield* Queue.fail(failed, error)
-        })
+      const failTurn = Effect.fnUntraced(function*(error: AiError.AiError) {
+        const failed = connection.incoming
+        connection.incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
+        yield* Queue.fail(failed, error)
+      })
 
       const handleMessage = (msg: Uint8Array | string): Effect.Effect<void, AiError.AiError> | undefined => {
         const text = typeof msg === "string" ? msg : decoder.decode(msg)
@@ -563,6 +562,7 @@ const makeSocket = Effect.gen(function*() {
           if (event.type === "error" && "status" in event) {
             const status = Number(event.status)
             const error = "error" in event ? event.error as typeof ErrorEvent.Type.error : event
+            const errorType = error.type ?? error.code ?? "unknown"
             const json = JSON.stringify(error)
             const aiError = AiError.make({
               module: "OpenAiClient",
@@ -570,8 +570,8 @@ const makeSocket = Effect.gen(function*() {
               reason: AiError.reasonFromHttpStatus({
                 description: json,
                 status: isNaN(status) ?
-                  error.type !== undefined && Object.hasOwn(errorTypeToStatus, error.type)
-                    ? errorTypeToStatus[error.type]
+                  Object.hasOwn(errorTypeToStatus, errorType)
+                    ? errorTypeToStatus[errorType]
                     : 500 :
                   status,
                 metadata: error as any,
@@ -587,9 +587,7 @@ const makeSocket = Effect.gen(function*() {
                 }
               })
             })
-            // The stale `previous_response_id` fails only this turn, not the
-            // socket. LanguageModel retries it with the full prompt.
-            return error.code === "previous_response_not_found" ? failTurn(aiError) : Effect.fail(aiError)
+            return errorType === "previous_response_not_found" ? failTurn(aiError) : Effect.fail(aiError)
           }
           Queue.offerUnsafe(connection.incoming, event)
         } catch {}
