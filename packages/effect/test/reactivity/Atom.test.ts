@@ -2557,13 +2557,47 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(atom)
 
       assert.strictEqual(r.get(atom), 10)
-      assert.strictEqual(rebuilds, 1)
+      assert.strictEqual(rebuilds, 0)
 
       value = 11
       r.set(fn, void 0)
 
       assert.strictEqual(r.get(atom), 11)
-      assert.strictEqual(rebuilds, 2)
+      assert.strictEqual(rebuilds, 1)
+    })
+
+    it("does not re-run a hydrated effect", async () => {
+      let runs = 0
+      const atom = counterRuntime.atom(Effect.sync(() => ++runs)).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({
+          key: "hydrated-effect",
+          schema: AsyncResult.Schema({ success: Schema.Number })
+        }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      const fn = counterRuntime.fn(
+        Effect.fn(function*() {
+        }),
+        { reactivityKeys: ["counter"] }
+      )
+      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "hydrated-effect",
+        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
+        dehydratedAt: 0
+      }]
+      Hydration.hydrate(r, dehydratedState)
+      r.mount(atom)
+
+      assert.deepStrictEqual(r.get(atom), AsyncResult.success(10, { timestamp: 0 }))
+      assert.strictEqual(runs, 0)
+
+      r.set(fn, void 0)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
     })
   })
 

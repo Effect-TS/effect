@@ -456,7 +456,7 @@ class RegistryImpl implements AtomRegistry {
       if (target === atom) {
         node.setValue(decoded)
       } else {
-        this.ensureNode(target).setInitialValue(decoded)
+        this.ensureNode(target).setValue(decoded)
       }
     }
     return node
