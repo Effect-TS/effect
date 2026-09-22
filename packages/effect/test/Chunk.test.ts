@@ -764,6 +764,17 @@ describe("Chunk", () => {
     assertSome(Chunk.findLastIndex(chunk, isUndefined), 1)
     assertTrue(Chunk.some(chunk, isUndefined))
     assertFalse(Chunk.every(chunk, (a) => a !== undefined))
+    assertSome(Chunk.findLast(chunk, isUndefined), undefined)
+    const others = Chunk.make<[number | undefined, ...Array<number | undefined>]>(1, undefined, 2)
+    deepStrictEqual(Chunk.toArray(Chunk.difference(others, chunk)), [2])
+    deepStrictEqual(Chunk.toArray(Chunk.difference(chunk, Chunk.make(3))), [1, undefined])
+  })
+
+  it("findLast", () => {
+    assertSome(Chunk.findLast(Chunk.make(1, 2, 3, 4), (n) => n % 2 === 1), 3)
+    assertSome(Chunk.findLast(Chunk.appendAll(Chunk.make(1, 3), Chunk.make(4, 5, 6)), (n) => n % 2 === 1), 5)
+    assertNone(Chunk.findLast(Chunk.make(2, 4), (n) => n % 2 === 1))
+    assertNone(Chunk.findLast(Chunk.empty<number>(), (n) => n % 2 === 1))
   })
 
   it("filterMap", () => {
