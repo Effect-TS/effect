@@ -217,4 +217,57 @@ describe("Logger", () => {
       assert.strictEqual(result[2], "second")
       assert.match(result[3] as string, /boom/)
     }))
+
+  describe("a logger that throws", () => {
+    const failing = Logger.make((): void => {
+      throw new Error("logger defect")
+    })
+    const recording = (records: Array<string>) =>
+      Logger.make((options): void => {
+        const messages = options.message as ReadonlyArray<unknown>
+        const defects = options.cause.reasons.map((reason) =>
+          Cause.isDieReason(reason) ? String(reason.defect) : reason._tag
+        )
+        records.push([options.logLevel, ...messages.map(String), ...defects].join(" "))
+      })
+
+    it.effect("does not stop the other loggers or fail the logging fiber", () =>
+      Effect.gen(function*() {
+        const records: Array<string> = []
+        const result = yield* Effect.log("hello").pipe(
+          Effect.as("business result"),
+          Effect.provide(Logger.layer([failing, recording(records)]))
+        )
+        assert.strictEqual(result, "business result")
+        assert.deepStrictEqual(records, [
+          "Info hello",
+          "Error Unhandled error in Logger Error: logger defect"
+        ])
+      }))
+
+    it.effect("is reported at UnhandledLogLevel, or not at all when it is undefined", () =>
+      Effect.gen(function*() {
+        const warn: Array<string> = []
+        yield* Effect.log("hello").pipe(
+          Effect.provide(Logger.layer([failing, recording(warn)])),
+          Effect.provideService(References.UnhandledLogLevel, "Warn")
+        )
+        const silent: Array<string> = []
+        yield* Effect.log("hello").pipe(
+          Effect.provide(Logger.layer([failing, recording(silent)])),
+          Effect.provideService(References.UnhandledLogLevel, undefined)
+        )
+        assert.deepStrictEqual(warn, ["Info hello", "Warn Unhandled error in Logger Error: logger defect"])
+        assert.deepStrictEqual(silent, ["Info hello"])
+      }))
+
+    it.effect("does not recurse when it also throws on its own error report", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.log("hello").pipe(
+          Effect.as("business result"),
+          Effect.provide(Logger.layer([failing]))
+        )
+        assert.strictEqual(result, "business result")
+      }))
+  })
 })

@@ -547,13 +547,12 @@ export const TracerSpanLinks: Context.Reference<ReadonlyArray<SpanLink>> = refer
 export const TracerTimingEnabled: Context.Reference<boolean> = references.TracerTimingEnabled
 
 /**
- * Context reference for the log severity used when a pool finalizer reports an
- * unhandled error.
+ * Context reference for the log severity used to report an unhandled error
+ * raised by a pool finalizer, a `Logger` or an `ErrorReporter`.
  *
  * **When to use**
  *
- * Use to choose whether and at which severity pool finalizer failures are
- * reported.
+ * Use to choose whether and at which severity these failures are reported.
  *
  * **Details**
  *

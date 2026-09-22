@@ -94,7 +94,8 @@ import {
   TracerEnabled,
   TracerSpanAnnotations,
   TracerSpanLinks,
-  TracerTimingEnabled
+  TracerTimingEnabled,
+  UnhandledLogLevel
 } from "./references.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
@@ -6576,26 +6577,52 @@ export const logWithLevel = (level?: LogLevel.Severity) =>
     cause = causeEmpty
   }
   return withFiber((fiber) => {
-    const logLevel = level ?? fiber.cache.logLevel
-    if (isLogLevelGreaterThan(fiber.cache.minimumLogLevel, logLevel)) {
-      return void_
-    }
-    const clock = fiber.getRef(ClockRef)
-    const loggers = fiber.getRef(CurrentLoggers)
-    if (loggers.size > 0) {
-      const date = new Date(clock.currentTimeMillisUnsafe())
-      for (const logger of loggers) {
-        logger.log({
-          cause,
-          fiber,
-          date,
-          logLevel,
-          message
-        })
-      }
-    }
+    logUnsafe(fiber, level ?? fiber.cache.logLevel, message, cause, true)
     return void_
   })
+}
+
+// Each logger owns its own delivery: a logger that throws loses only its own
+// line. Its error is logged at `UnhandledLogLevel` instead of failing the
+// fiber, and errors raised while logging that error are dropped.
+const logUnsafe = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  logLevel: LogLevel.LogLevel,
+  message: ReadonlyArray<any>,
+  cause: Cause.Cause<unknown>,
+  reportFailures: boolean
+): void => {
+  if (isLogLevelGreaterThan(fiber.cache.minimumLogLevel, logLevel)) return
+  const loggers = fiber.getRef(CurrentLoggers)
+  if (loggers.size === 0) return
+  const date = new Date(fiber.getRef(ClockRef).currentTimeMillisUnsafe())
+  let defects: Array<unknown> | undefined
+  for (const logger of loggers) {
+    try {
+      logger.log({
+        cause,
+        fiber,
+        date,
+        logLevel,
+        message
+      })
+    } catch (defect) {
+      if (reportFailures) (defects ??= []).push(defect)
+    }
+  }
+  if (defects !== undefined) logUnhandledUnsafe(fiber, "Unhandled error in Logger", defects)
+}
+
+const logUnhandledUnsafe = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  message: string,
+  defects: ReadonlyArray<unknown>
+): void => {
+  const logLevel = fiber.getRef(UnhandledLogLevel)
+  if (logLevel === undefined) return
+  for (let i = 0; i < defects.length; i++) {
+    logUnsafe(fiber, logLevel, [message], causeDie(defects[i]), false)
+  }
 }
 
 const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
