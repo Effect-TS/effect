@@ -436,7 +436,7 @@ const cleanErrorStack = (
   const lines = (stack.startsWith(message) ? stack.slice(message.length) : stack).split("\n")
   const out: Array<string> = [message]
   for (let i = 1; i < lines.length; i++) {
-    if (/(?:Generator\.next|~effect\/Effect)/.test(lines[i])) {
+    if (/Generator\.next|~effect\/(?:Effect|Utils)/.test(lines[i])) {
       break
     }
     out.push(lines[i])
@@ -1058,13 +1058,13 @@ export const transposeOption = <A = never, E = never, R = never>(
 /** @internal */
 export const failCauseSync = <E>(
   evaluate: LazyArg<Cause.Cause<E>>
-): Effect.Effect<never, E> => suspend(() => failCause(internalCall(evaluate)))
+): Effect.Effect<never, E> => suspend(() => failCause(evaluate()))
 
 /** @internal */
 export const die = (defect: unknown): Effect.Effect<never> => exitDie(defect)
 
 /** @internal */
-export const failSync = <E>(error: LazyArg<E>): Effect.Effect<never, E> => suspend(() => fail(internalCall(error)))
+export const failSync = <E>(error: LazyArg<E>): Effect.Effect<never, E> => suspend(() => fail(error()))
 
 /** @internal */
 const void_: Effect.Effect<void> = succeed(void 0)
@@ -1084,9 +1084,9 @@ const try_ = <A, E = Cause.UnknownError>(
     : options.catch
   return suspend(() => {
     try {
-      return succeed(internalCall(evaluate))
+      return succeed(evaluate())
     } catch (err) {
-      return fail(internalCall(() => catcher(err)) as E)
+      return fail(catcher(err) as E)
     }
   })
 }
@@ -1098,7 +1098,7 @@ export const promise = <A>(
   evaluate: (signal: AbortSignal) => PromiseLike<A>
 ): Effect.Effect<A> =>
   callbackOptions<A>(function(resume, signal) {
-    internalCall(() => evaluate(signal!)).then(
+    evaluate(signal!).then(
       (a) => resume(succeed(a)),
       (e) => resume(die(e))
     )
@@ -1124,7 +1124,7 @@ export const tryPromise = <A, E = Cause.UnknownError>(
       }
     }
     try {
-      internalCall(() => f(signal!)).then(
+      f(signal!).then(
         (a) => resume(succeed(a)),
         failWithCatch
       )
@@ -1483,16 +1483,10 @@ const OnSuccessProto = makePrimitiveProto({
   [evaluate]: evaluateCont
 })
 
-const OnSuccessImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
-  this[args] = self
-  this[contA] = f
-} as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
-OnSuccessImpl.prototype = OnSuccessProto
-
 // A success continuation with an extra payload slot. The stored continuation
 // receives the primitive as `this` and reads `this.payload`, so combinators
-// like map / as / tap / andThen can share module-level continuation functions
-// instead of allocating a closure per call.
+// like map / as / tap / andThen / flatMap can share module-level continuation
+// functions instead of allocating a closure per call.
 const ContImpl = function(
   this: any,
   self: Effect.Effect<any, any, any>,
@@ -1514,17 +1508,28 @@ ContImpl.prototype = OnSuccessProto
 const returnPayload = function(this: { readonly payload: any }) {
   return this.payload
 }
+// V8 includes the property name of a stored continuation in its stack trace.
+// Other engines need an explicit frame for the stack cleaner to cut at.
+const continuationMarksStack = (() => {
+  const marker = "~effect/Effect/stackProbe"
+  const probe = {
+    [marker]: function stackProbe() {
+      return new Error().stack
+    }
+  }
+  return probe[marker]()?.includes("[as " + marker + "]") === true
+})()
 const mapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return succeed(internalCall(() => f(value)))
+  return succeed(continuationMarksStack ? f(value) : internalCall(() => f(value)))
 }
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return internalCall(() => f(value))
+  return f(value)
 }
 const tapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return new ContImpl(internalCall(() => f(value)), returnPayload, exitSucceed(value))
+  return new ContImpl(f(value), returnPayload, exitSucceed(value))
 }
 const tapEffectCont = function(this: { readonly payload: any }, value: any) {
   return new ContImpl(this.payload, returnPayload, exitSucceed(value))
@@ -1802,7 +1807,7 @@ export const flatMap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> => new OnSuccessImpl(self, f.length !== 1 ? (a: A) => f(a) : f)
+  ): Effect.Effect<B, E | E2, R | R2> => new ContImpl(self, andThenCont, f)
 )
 
 /** @internal */
@@ -2424,8 +2429,8 @@ export const zipWith: {
   ): Effect.Effect<B, E2 | E, R2 | R> =>
     options?.concurrent
       // Use `all` exclusively for concurrent cases, as it introduces additional overhead due to the management of concurrency
-      ? map(all([self, that], { concurrency: 2 }), ([a, a2]) => internalCall(() => f(a, a2)))
-      : flatMap(self, (a) => map(that, (a2) => internalCall(() => f(a, a2))))
+      ? map(all([self, that], { concurrency: 2 }), ([a, a2]) => f(a, a2))
+      : flatMap(self, (a) => map(that, (a2) => f(a, a2)))
 )
 
 // ----------------------------------------------------------------------------
@@ -2643,7 +2648,7 @@ export const catchCauseIf: {
       if (!predicate(cause)) {
         return failCause(cause) as any
       }
-      return internalCall(() => f(cause))
+      return f(cause)
     })
 )
 
@@ -2669,7 +2674,7 @@ export const catchCauseFilter: {
   ): Effect.Effect<A | B, Cause.Cause.Error<X> | E2, R | R2> =>
     catchCause(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
       const eb = filter(cause)
-      return Result.isFailure(eb) ? failCause(eb.failure) : internalCall(() => f(eb.success, cause))
+      return Result.isFailure(eb) ? failCause(eb.failure) : f(eb.success, cause)
     })
 )
 
@@ -2735,8 +2740,7 @@ export const tapCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A, E | E2, R | R2> =>
-    catchCause(self, (cause) => andThen(internalCall(() => f(cause)), failCause(cause)))
+  ): Effect.Effect<A, E | E2, R | R2> => catchCause(self, (cause) => andThen(f(cause), failCause(cause)))
 )
 
 /** @internal */
@@ -2760,7 +2764,7 @@ export const tapCauseIf: {
     catchCauseIf(
       self,
       predicate,
-      (cause) => andThen(internalCall(() => f(cause)), failCause(cause))
+      (cause) => andThen(f(cause), failCause(cause))
     )
 )
 
@@ -2787,7 +2791,7 @@ export const tapCauseFilter: {
       if (Result.isFailure(result)) {
         return failCause(cause)
       }
-      return andThen(internalCall(() => f(result.success, cause)), failCause(cause))
+      return andThen(f(result.success, cause), failCause(cause))
     })
 )
 
@@ -2923,9 +2927,9 @@ export const catchIf: {
       const error = findError(cause)
       if (Result.isFailure(error)) return failCause(error.failure)
       if (!predicate(error.success)) {
-        return orElse ? internalCall(() => orElse(error.success as any)) : failCause(cause as any as Cause.Cause<E3>)
+        return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
       }
-      return internalCall(() => f(error.success as any))
+      return f(error.success as any)
     })
 )
 
@@ -2957,9 +2961,9 @@ export const catchFilter: {
       if (Result.isFailure(error)) return failCause(error.failure)
       const result = filter(error.success)
       if (Result.isFailure(result)) {
-        return orElse ? internalCall(() => orElse(result.failure as any)) : failCause(cause as any as Cause.Cause<E3>)
+        return orElse ? orElse(result.failure as any) : failCause(cause as any as Cause.Cause<E3>)
       }
-      return internalCall(() => f(result.success))
+      return f(result.success)
     })
 )
 
@@ -3117,7 +3121,7 @@ export const catchTags: {
         ? Result.succeed(e)
         : Result.fail(e)
     },
-    (e: any) => internalCall(() => cases[e["_tag"] as string](e)),
+    (e: any) => cases[e["_tag"] as string](e),
     orElse
   ) as any
 })
@@ -3224,7 +3228,7 @@ export const catchReason: {
       (e: any): Effect.Effect<A2 | A3, E | E2 | E3, R2 | R3> => {
         const reason = e.reason as any
         if (isTagged(reason, reasonTag)) return f(reason as any, e)
-        return orElse ? internalCall(() => orElse(reason, e)) : fail(e)
+        return orElse ? orElse(reason, e) : fail(e)
       }
     ) as any
 )
@@ -3326,9 +3330,9 @@ export const catchReasons: {
       const reason = e.reason
       keys ??= Object.keys(cases)
       if (keys.includes(reason._tag)) {
-        return internalCall(() => (cases as any)[reason._tag](reason, e))
+        return (cases as any)[reason._tag](reason, e)
       }
-      return orElse ? internalCall(() => orElse(reason, e)) : fail(e)
+      return orElse ? orElse(reason, e) : fail(e)
     }
   )
 })
@@ -3617,8 +3621,14 @@ export const matchCause: {
     }
   ): Effect.Effect<A2 | A3, never, R> =>
     matchCauseEffect(self, {
-      onFailure: (cause) => sync(() => options.onFailure(cause)),
-      onSuccess: (value) => sync(() => options.onSuccess(value))
+      onFailure: (cause) =>
+        continuationMarksStack
+          ? succeed(options.onFailure(cause))
+          : sync(() => options.onFailure(cause)),
+      onSuccess: (value) =>
+        continuationMarksStack
+          ? succeed(options.onSuccess(value))
+          : sync(() => options.onSuccess(value))
     })
 )
 
@@ -3650,7 +3660,7 @@ export const matchEffect: {
       onFailure: (cause) => {
         const fail = cause.reasons.find(isFailReason)
         return fail
-          ? internalCall(() => options.onFailure(fail.error))
+          ? options.onFailure(fail.error)
           : failCause(cause as Cause.Cause<never>)
       },
       onSuccess: options.onSuccess
@@ -3679,9 +3689,19 @@ export const match: {
       readonly onSuccess: (value: A) => A3
     }
   ): Effect.Effect<A2 | A3, never, R> =>
-    matchEffect(self, {
-      onFailure: (error) => sync(() => options.onFailure(error)),
-      onSuccess: (value) => sync(() => options.onSuccess(value))
+    matchCauseEffect(self, {
+      onFailure: (cause) => {
+        const fail = cause.reasons.find(isFailReason)
+        return fail
+          ? continuationMarksStack
+            ? succeed(options.onFailure(fail.error))
+            : sync(() => options.onFailure(fail.error))
+          : failCause(cause as Cause.Cause<never>)
+      },
+      onSuccess: (value) =>
+        continuationMarksStack
+          ? succeed(options.onSuccess(value))
+          : sync(() => options.onSuccess(value))
     })
 )
 
@@ -6119,7 +6139,7 @@ export const useSpan: {
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
     onExitUnsafe(fiber, (exit) => endSpan(span, exit, clock, timingEnabled))
-    return internalCall(() => evaluate(span))
+    return evaluate(span)
   })
 }
 

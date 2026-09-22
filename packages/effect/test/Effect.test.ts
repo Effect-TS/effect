@@ -3063,6 +3063,42 @@ describe("Effect", () => {
       }))
   })
 
+  describe("match", () => {
+    it("preserves handler receivers and treats thrown exceptions as defects", () => {
+      const options = {
+        value: 42,
+        onFailure(this: { value: number }) {
+          return this.value
+        },
+        onSuccess(this: { value: number }) {
+          return this.value
+        }
+      }
+      assert.strictEqual(Effect.runSync(Effect.match(Effect.succeed(1), options)), 42)
+      assert.strictEqual(Effect.runSync(Effect.match(Effect.fail("error"), options)), 42)
+      const boom = new Error("boom")
+      assertExitDefect(
+        Effect.runSyncExit(Effect.match(Effect.succeed(1), {
+          onFailure: () => 0,
+          onSuccess: () => {
+            throw boom
+          }
+        })),
+        boom
+      )
+    })
+  })
+
+  describe("flatMap", () => {
+    it("passes only the value to callbacks regardless of declared arity", () => {
+      function callback(this: unknown, _value: number) {
+        // eslint-disable-next-line prefer-rest-params
+        return Effect.succeed([this, arguments.length])
+      }
+      assert.deepStrictEqual(Effect.runSync(Effect.flatMap(Effect.succeed(1), callback)), [undefined, 1])
+    })
+  })
+
   describe("zip", () => {
     it.effect("concurrent: false", () => {
       const executionOrder: Array<string> = []
