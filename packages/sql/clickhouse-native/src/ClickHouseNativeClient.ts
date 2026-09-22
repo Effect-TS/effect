@@ -68,11 +68,14 @@ export const toSqlError = (cause: unknown, operation: string): SqlError => {
   if ([242, 36, 60, 62].includes(server.code)) {
     return SqlError.make({ reason: SqlSyntaxError.make(fields) })
   }
-  if ([159, 160, 469].includes(server.code) || server.name.includes("TIMEOUT")) {
+  if ([159, 160, 469].includes(server.code)) {
     return SqlError.make({ reason: StatementTimeoutError.make(fields) })
   }
   if (server.name.includes("LOCK_TIMEOUT")) {
     return SqlError.make({ reason: LockTimeoutError.make(fields) })
+  }
+  if (server.name.includes("TIMEOUT")) {
+    return SqlError.make({ reason: StatementTimeoutError.make(fields) })
   }
   if (server.name.includes("DEADLOCK")) {
     return SqlError.make({ reason: DeadlockError.make(fields) })
