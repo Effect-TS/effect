@@ -214,8 +214,8 @@ export interface Persisted {
 const MultipartErrorTypeId = "~effect/http/Multipart/MultipartError"
 
 const toMultipartError = (cause: unknown): MultipartError =>
-  Predicate.hasProperty(cause, MultipartErrorTypeId)
-    ? cause as MultipartError
+  isMultipartError(cause)
+    ? cause
     : MultipartError.fromReason("InternalError", cause)
 
 /**
