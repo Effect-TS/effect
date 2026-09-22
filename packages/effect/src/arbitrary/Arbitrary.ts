@@ -201,11 +201,35 @@ export interface CheckOptions {
   readonly replay?: Replay | undefined
 }
 
+/**
+ * Independent defaults for property checking and sampling, excluding replay tokens.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
 export interface GlobalOptions {
   readonly check?: Omit<CheckOptions, "replay"> | undefined
   readonly sample?: SampleOptions | undefined
 }
 
+/**
+ * Replaces the defaults used by {@link checkEffect} and {@link sampleEffect}.
+ *
+ * **Details**
+ *
+ * Options are resolved once per execution: explicit non-`undefined` values, then configured defaults, then built-in
+ * defaults. The supplied configuration is copied. Pass `{}` to reset it. Replay tokens retain control of replayed checks.
+ *
+ * **Gotchas**
+ *
+ * Configure defaults before starting concurrent tests. Changes affect subsequent executions, including Effects created
+ * earlier, but do not affect active runs.
+ *
+ * @unstable
+ * @category configuration
+ * @since 4.0.0
+ */
 export const configureGlobal = Internal.configureGlobal
 
 /**
