@@ -511,13 +511,14 @@ export const isEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
  *
  * const program = Effect.gen(function*() {
  *   const empty = yield* TxHashSet.empty<string>()
- *   yield* TxHashSet.isNonEmpty(empty) // => false
+ *   const emptyResult = yield* TxHashSet.isNonEmpty(empty)
  *
  *   const nonEmpty = yield* TxHashSet.make("a")
- *   yield* TxHashSet.isNonEmpty(nonEmpty) // => true
+ *   const nonEmptyResult = yield* TxHashSet.isNonEmpty(nonEmpty)
+ *   return [emptyResult, nonEmptyResult] as const
  * })
  *
- * await Effect.runPromise(program)
+ * await Effect.runPromise(program) // => [false, true]
  * ```
  *
  * @category predicates
