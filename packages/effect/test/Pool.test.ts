@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scope } from "effect"
+import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scheduler, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
 
@@ -680,6 +680,21 @@ describe("Pool", () => {
       yield* Deferred.await(started)
       yield* Fiber.interrupt(fiber)
       strictEqual(yield* Pool.use(pool, (item) => Effect.succeed(item)), "resource")
+    }))
+
+  it.effect("an interrupted use returns its lease", () =>
+    Effect.gen(function*() {
+      for (let budget = 2; budget <= 10; budget++) {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+        const fiber = yield* Effect.forkChild(
+          Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)),
+          { startImmediately: true }
+        )
+        yield* Fiber.interrupt(fiber)
+        strictEqual(pool.state.usage, 0, `MaxOpsBeforeYield ${budget}`)
+        const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
+        assert.isDefined(next.pollUnsafe(), `MaxOpsBeforeYield ${budget}`)
+      }
     }))
 
   it.effect("use waits for an available item", () =>

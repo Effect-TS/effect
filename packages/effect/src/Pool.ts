@@ -498,35 +498,38 @@ export const use: {
   self: Pool<A, E>,
   f: (item: A) => Effect.Effect<B, E2, R2>
 ): Effect.Effect<B, E | E2, R2> =>
-  internal.suspend(() => {
+  core.withFiber((fiber) => {
     const state = self.state
     if (state.isShuttingDown) return internal.interrupt
     if (state.availableHead !== undefined) {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
-        return useItem(self, state.availableHead, f)
+        return useItem(self, state.availableHead, f, fiber)
       }
       state.usage--
     }
-    return getSlowWith(self, (self, item, _fiber, restore) => useItem(self, item, f, restore))
+    return getSlowWith(self, (self, item, fiber, restore) => useItem(self, item, f, fiber, restore))
   }))
 
+// Count the lease and install its release in the same step.
 const useItem = <A, E, B, E2, R2>(
   self: Pool<A, E>,
   item: PoolItem<A, E>,
   f: (item: A) => Effect.Effect<B, E2, R2>,
+  fiber: Fiber.Fiber<unknown, unknown>,
   restore?: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<B, E | E2, R2> => {
   if (!leaseItemBookkeeping(self, item)) {
     return item.exit as Exit.Exit<never, E>
   }
+  internal.onExitUnsafe(fiber, item.release)
   let body: Effect.Effect<B, E2, R2>
   try {
     body = f((item.exit as Exit.Success<A, E>).value)
   } catch (defect) {
-    return internal.flatMap(item.release(item.exit), () => core.exitDie(defect))
+    return core.exitDie(defect)
   }
-  return internal.onExitPrimitive(restore !== undefined ? restore(body) : body, item.release)
+  return restore !== undefined ? restore(body) : body
 }
 
 const getSlowWith = <A, E, X, R>(
@@ -604,9 +607,10 @@ const leaseItem = <A, E>(
   }
   const scope = Context.getUnsafe(fiber.context, Scope.Scope)
   if (scope.state._tag === "Closed") {
-    return internal.flatMap(item.release(item.exit), () => item.exit)
+    internal.onExitUnsafe(fiber, item.release)
+  } else {
+    internal.scopeAddFinalizerUnsafe(scope, {}, item.release)
   }
-  internal.scopeAddFinalizerUnsafe(scope, {}, item.release)
   return item.exit
 }
 
