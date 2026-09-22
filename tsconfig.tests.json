@@ -55,6 +55,8 @@
       "@effect/platform-node-shared/*": ["./packages/platform/node-shared/src/*.ts"],
       "@effect/sql-clickhouse": ["./packages/sql/clickhouse/src/index.ts"],
       "@effect/sql-clickhouse/*": ["./packages/sql/clickhouse/src/*.ts"],
+      "@effect/sql-clickhouse-native": ["./packages/sql/clickhouse-native/src/index.ts"],
+      "@effect/sql-clickhouse-native/*": ["./packages/sql/clickhouse-native/src/*.ts"],
       "@effect/sql-d1": ["./packages/sql/d1/src/index.ts"],
       "@effect/sql-d1/*": ["./packages/sql/d1/src/*.ts"],
       "@effect/sql-libsql": ["./packages/sql/libsql/src/index.ts"],

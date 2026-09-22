@@ -188,6 +188,9 @@ importers:
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
+      '@effect/sql-clickhouse-native':
+        specifier: workspace:*
+        version: link:../packages/sql/clickhouse-native
       '@effect/sql-d1':
         specifier: workspace:*
         version: link:../packages/sql/d1
@@ -524,6 +527,15 @@ importers:
       '@clickhouse/client':
         specifier: ^1.23.1
         version: 1.23.1
+    devDependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform/node
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
+  packages/sql/clickhouse-native:
     devDependencies:
       '@effect/platform-node':
         specifier: workspace:^
@@ -978,6 +990,9 @@ importers:
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
+      '@effect/sql-clickhouse-native':
+        specifier: workspace:*
+        version: link:../packages/sql/clickhouse-native
       '@effect/sql-d1':
         specifier: workspace:*
         version: link:../packages/sql/d1
@@ -1023,6 +1038,9 @@ importers:
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
+      '@effect/sql-clickhouse-native':
+        specifier: workspace:*
+        version: link:../packages/sql/clickhouse-native
       '@effect/sql-d1':
         specifier: workspace:*
         version: link:../packages/sql/d1
