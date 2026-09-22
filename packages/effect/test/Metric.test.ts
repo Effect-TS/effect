@@ -54,6 +54,62 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.value(second)).count, 10)
     }))
 
+  it.effect("keeps an id containing a colon apart from an id with a description", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(`${id}:requests`)
+      const second = Metric.counter(id, { description: "requests" })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 1)
+      assert.strictEqual((yield* Metric.value(second)).count, 10)
+      assert.strictEqual((yield* Metric.snapshot).length, 2)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect("keeps a description apart from attributes", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { description: `[["route","/users"]]` })
+      const second = Metric.counter(id, { attributes: { route: "/users" } })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 1)
+      assert.strictEqual((yield* Metric.value(second)).count, 10)
+      assert.strictEqual((yield* Metric.snapshot).length, 2)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect("keeps the same id with different descriptions in separate series", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { description: "first" })
+      const second = Metric.counter(id, { description: "second" })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 1)
+      assert.strictEqual((yield* Metric.value(second)).count, 10)
+      assert.strictEqual((yield* Metric.snapshot).length, 2)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect("keeps a counter and a gauge with the same id in separate series", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const counter = Metric.counter(id)
+      const gauge = Metric.gauge(id)
+
+      yield* Metric.update(counter, 1)
+      yield* Metric.update(gauge, 10)
+
+      assert.deepStrictEqual(yield* Metric.value(counter), { count: 1, incremental: false })
+      assert.strictEqual((yield* Metric.value(gauge)).value, 10)
+      assert.strictEqual((yield* Metric.snapshot).length, 2)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect("keeps equal attribute names with different values in separate series", () =>
     Effect.gen(function*() {
       const id = nextId()

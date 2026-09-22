@@ -3477,15 +3477,10 @@ export const disableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A
 function makeKey<Input, State>(
   metric: Metric<Input, State>,
   attributes: Metric.Attributes | undefined
-) {
-  let key = `${metric.type}:${metric.id}`
-  if (Predicate.isNotUndefined(metric.description)) {
-    key += `:${metric.description}`
-  }
-  if (Predicate.isNotUndefined(attributes)) {
-    key += `:${serializeAttributes(attributes)}`
-  }
-  return key
+): string {
+  // Every part is JSON-encoded so that no id, description or attribute value
+  // can spell another metric's key.
+  return JSON.stringify([metric.type, metric.id, metric.description, attributes && sortedEntries(attributes)])
 }
 
 function makeHooks<Input, State>(
@@ -3496,10 +3491,9 @@ function makeHooks<Input, State>(
   return { get, update, modify: modify ?? update }
 }
 
-function serializeAttributes(attributes: Metric.Attributes): string {
+function sortedEntries(attributes: Metric.Attributes): Array<[string, string]> {
   const entries = Array.isArray(attributes) ? [...attributes] : Object.entries(attributes)
-  entries.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
-  return JSON.stringify(entries)
+  return entries.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
 }
 
 function mergeAttributes(
