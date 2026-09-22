@@ -9,6 +9,7 @@
  */
 import * as Effect from "./Effect.ts"
 import { dual } from "./Function.ts"
+import * as internal from "./internal/effect.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 
@@ -133,8 +134,14 @@ export const makeUnsafe = <K = unknown>(options: {
   let totalPermits = maxPermits
   let waitingPermits = 0
 
+  // What one call holds: `permits` is what it is still owed, so
+  // `requested - permits` is what it holds at every moment, granted or not.
+  // One release settles either outcome, which is why the release can be
+  // installed in the same step that takes the first permit.
   type Waiter = {
     permits: number
+    notify: (() => void) | undefined
+    readonly remove: () => void
     readonly resume: () => void
   }
 
@@ -175,6 +182,70 @@ export const makeUnsafe = <K = unknown>(options: {
     return totalPermits
   }
 
+  /**
+   * Takes what is available now and registers a waiter for the rest.
+   * `undefined` means the whole request was granted outright.
+   */
+  const enterUnsafe = (key: K, permits: number): Waiter | undefined => {
+    if (totalPermits >= permits) {
+      totalPermits -= permits
+      return undefined
+    }
+
+    const needed = permits - totalPermits
+    if (totalPermits > 0) {
+      totalPermits = 0
+    }
+    waitingPermits += needed
+
+    const waiters = Option.getOrElse(
+      MutableHashMap.get(partitions, key),
+      () => {
+        const set = new Set<Waiter>()
+        MutableHashMap.set(partitions, key, set)
+        return set
+      }
+    )
+
+    const entry: Waiter = {
+      permits: needed,
+      notify: undefined,
+      remove: () => {
+        if (waiters.delete(entry) && waiters.size === 0) {
+          MutableHashMap.remove(partitions, key)
+        }
+      },
+      resume: () => {
+        entry.remove()
+        entry.notify?.()
+      }
+    }
+
+    waiters.add(entry)
+    return entry
+  }
+
+  /** Returns everything the call holds, granted or not. */
+  const leaveUnsafe = (entry: Waiter, permits: number): void => {
+    entry.remove()
+    waitingPermits -= entry.permits
+    releaseUnsafe(permits - entry.permits)
+    entry.permits = 0
+  }
+
+  /** Waits for the rest of a partly granted request. */
+  const awaitGrant = (entry: Waiter): Effect.Effect<void> =>
+    Effect.callback<void>((resume) => {
+      if (entry.permits === 0) {
+        resume(Effect.void)
+        return
+      }
+      entry.notify = () => resume(Effect.void)
+      return Effect.sync(() => {
+        entry.notify = undefined
+      })
+    })
+
   const take = (key: K, permits: number): Effect.Effect<void> => {
     if (permits <= 0) {
       return Effect.void
@@ -186,47 +257,16 @@ export const makeUnsafe = <K = unknown>(options: {
         return
       }
 
-      if (totalPermits >= permits) {
-        totalPermits -= permits
+      const entry = enterUnsafe(key, permits)
+      if (entry === undefined) {
         resume(Effect.void)
         return
       }
 
-      const needed = permits - totalPermits
-      if (totalPermits > 0) {
-        totalPermits = 0
-      }
-      waitingPermits += needed
-
-      const waiters = Option.getOrElse(
-        MutableHashMap.get(partitions, key),
-        () => {
-          const set = new Set<Waiter>()
-          MutableHashMap.set(partitions, key, set)
-          return set
-        }
-      )
-
-      const entry: Waiter = {
-        permits: needed,
-        resume: () => {
-          cleanup()
-          resume(Effect.void)
-        }
-      }
-
-      const cleanup = () => {
-        if (waiters.delete(entry) && waiters.size === 0) {
-          MutableHashMap.remove(partitions, key)
-        }
-      }
-
-      waiters.add(entry)
+      entry.notify = () => resume(Effect.void)
 
       return Effect.sync(() => {
-        cleanup()
-        waitingPermits -= entry.permits
-        releaseUnsafe(permits - entry.permits)
+        leaveUnsafe(entry, permits)
       })
     })
   }
@@ -237,19 +277,28 @@ export const makeUnsafe = <K = unknown>(options: {
         return effect
       }
 
-      const takePermits = take(key, permits)
-      return Effect.uninterruptibleMask((restore) =>
-        Effect.flatMap(
-          restore(takePermits),
-          () =>
-            Effect.ensuring(
-              restore(effect),
-              Effect.sync(() => {
-                releaseUnsafe(permits)
-              })
-            )
+      return Effect.uninterruptibleMask((restore) => {
+        if (maxPermits < permits) {
+          return restore(Effect.never)
+        }
+        // Taking the first permit and installing the release are one step, so
+        // an interrupt either finds nothing taken or runs the release.
+        const entry = enterUnsafe(key, permits)
+        return internal.onExitPrimitive(
+          entry === undefined
+            ? restore(effect)
+            : Effect.flatMap(restore(awaitGrant(entry)), () => restore(effect)),
+          () => {
+            if (entry === undefined) {
+              releaseUnsafe(permits)
+            } else {
+              leaveUnsafe(entry, permits)
+            }
+            return undefined
+          },
+          true
         )
-      )
+      })
     }
 
   const tryTake = (permits: number): boolean => {
@@ -279,16 +328,18 @@ export const makeUnsafe = <K = unknown>(options: {
           return Effect.asSome(effect)
         }
 
-        return Effect.suspend(() => {
+        return Effect.uninterruptibleMask((restore) => {
           if (!tryTake(permits)) {
             return Effect.succeed(Option.none())
           }
 
-          return Effect.ensuring(
-            Effect.asSome(effect),
-            Effect.sync(() => {
+          return internal.onExitPrimitive(
+            restore(Effect.asSome(effect)),
+            () => {
               releaseUnsafe(permits)
-            })
+              return undefined
+            },
+            true
           )
         })
       }

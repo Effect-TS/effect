@@ -132,4 +132,78 @@ describe("PartitionedSemaphore", () => {
         assert.deepStrictEqual(exit, Exit.void)
       }))
   }
+
+  // A small op budget makes the fiber yield at each point between taking a
+  // permit and installing its release; interrupting it there must return the
+  // permit. (With a budget below 3 a fiber yields again before making
+  // progress.)
+  const interruptAtEveryYield = (
+    test: (
+      budget: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+    ) => Effect.Effect<boolean>
+  ) =>
+    Effect.gen(function*() {
+      const failed: Array<number> = []
+      for (let ops = 3; ops <= 64; ops++) {
+        const ok = yield* test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops))
+        if (!ok) failed.push(ops)
+      }
+      assert.deepStrictEqual(failed, [])
+    })
+
+  it.effect("an interrupted withPermits returns its permit at every yield", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+        const fiber = yield* Effect.forkChild(budget(sem.withPermits("k", 1)(Effect.never)), {
+          startImmediately: true
+        })
+        yield* Fiber.interrupt(fiber)
+        if ((yield* sem.available) !== 1) return false
+        // the permit is really free: a later withPermits completes
+        const next = yield* Effect.forkChild(sem.withPermits("k", 1)(Effect.void), { startImmediately: true })
+        return next.pollUnsafe() !== undefined
+      })
+    ))
+
+  it.effect("an interrupted withPermits returns a permit handed to it at every yield", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+        yield* sem.take("a", 1)
+        const fiber = yield* Effect.forkChild(budget(sem.withPermits("k", 1)(Effect.never)), {
+          startImmediately: true
+        })
+        yield* Effect.yieldNow
+        yield* sem.release(1)
+        yield* Fiber.interrupt(fiber)
+        return (yield* sem.available) === 1
+      })
+    ))
+
+  it.effect("an interrupted withPermitsIfAvailable returns its permit at every yield", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+        const fiber = yield* Effect.forkChild(budget(sem.withPermitsIfAvailable(1)(Effect.never)), {
+          startImmediately: true
+        })
+        yield* Fiber.interrupt(fiber)
+        return (yield* sem.available) === 1
+      })
+    ))
+
+  it.effect("a waiter woken by a release runs and returns its permits", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })
+        yield* sem.take("a", 2)
+        const fiber = yield* Effect.forkChild(budget(sem.withPermits("k", 2)(Effect.void)), {
+          startImmediately: true
+        })
+        yield* sem.release(2)
+        yield* Fiber.await(fiber)
+        return (yield* sem.available) === 2
+      })
+    ))
 })
