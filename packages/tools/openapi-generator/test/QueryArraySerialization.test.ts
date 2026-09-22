@@ -8,6 +8,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { rolldown } from "rolldown"
@@ -21,7 +22,8 @@ const modules = {
   "effect/http/HttpClient": HttpClient,
   "effect/http/HttpClientError": HttpClientError,
   "effect/http/HttpClientRequest": HttpClientRequest,
-  "effect/http/HttpClientResponse": HttpClientResponse
+  "effect/http/HttpClientResponse": HttpClientResponse,
+  "effect/http/UrlParams": UrlParams
 }
 
 const formats = ["httpclient", "httpclient-type-only"] as const
@@ -213,17 +215,17 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["red", "blue"] },
-            search: "?tags=red%2Cblue",
+            search: "?tags=red,blue",
             parsed: [["tags", "red,blue"]]
           },
           {
             params: { tags: ["blue", "red"] },
-            search: "?tags=blue%2Cred",
+            search: "?tags=blue,red",
             parsed: [["tags", "blue,red"]]
           },
           {
             params: { tags: ["red", "red"] },
-            search: "?tags=red%2Cred",
+            search: "?tags=red,red",
             parsed: [["tags", "red,red"]]
           },
           {
@@ -240,7 +242,7 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["red", "blue"] },
-            search: "?tags=red%2Cblue",
+            search: "?tags=red,blue",
             parsed: [["tags", "red,blue"]]
           },
           {
@@ -288,7 +290,7 @@ describe("query array serialization", () => {
         [
           {
             params: { ids: [1, 0, 2.5], flags: [true, false] },
-            search: "?ids=1%2C0%2C2.5&flags=true%2Cfalse",
+            search: "?ids=1,0,2.5&flags=true,false",
             parsed: [["ids", "1,0,2.5"], ["flags", "true,false"]]
           }
         ]
@@ -305,7 +307,7 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["red", "blue"], q: "a b,c" },
-            search: "?tags=red%2Cblue&q=a+b%2Cc",
+            search: "?tags=red,blue&q=a+b%2Cc",
             parsed: [["tags", "red,blue"], ["q", "a b,c"]]
           },
           {
@@ -335,7 +337,7 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["red", "blue"] },
-            search: "?tags=red%2Cblue",
+            search: "?tags=red,blue",
             parsed: [["tags", "red,blue"]]
           }
         ]
@@ -347,11 +349,138 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["a b", "a&b", "a+b", "a%b", "héllo", "a,b"] },
-            search: "?tags=a+b%2Ca%26b%2Ca%2Bb%2Ca%25b%2Ch%C3%A9llo%2Ca%2Cb",
+            search: "?tags=a+b,a%26b,a%2Bb,a%25b,h%C3%A9llo,a%2Cb",
             parsed: [["tags", "a b,a&b,a+b,a%b,héllo,a,b"]]
           }
         ]
       ))
+
+    it.effect("distinguishes delimiter commas from commas and percent escapes in elements", () =>
+      assertQueryUrls(
+        itemsSpec({ parameters: [stringArrayParameter({ explode: false })] }),
+        [
+          { params: { tags: ["a,b", "c"] }, search: "?tags=a%2Cb,c", parsed: [["tags", "a,b,c"]] },
+          { params: { tags: ["a", "b", "c"] }, search: "?tags=a,b,c", parsed: [["tags", "a,b,c"]] },
+          { params: { tags: ["%2C", "", "#?="] }, search: "?tags=%252C,,%23%3F%3D", parsed: [["tags", "%2C,,#?="]] }
+        ]
+      ))
+
+    for (
+      const [name, schema] of Object.entries({
+        tuple: { type: "array", prefixItems: [{ type: "integer" }, { type: "string" }], items: false },
+        enum: { type: "array", items: { enum: [0, "blue"] } },
+        oneOf: { type: "array", items: { oneOf: [{ type: "integer" }, { type: "string" }] } },
+        anyOf: { type: "array", items: { anyOf: [{ type: "integer" }, { type: "string" }] } },
+        types: { type: "array", items: { type: ["integer", "string"] } },
+        reference: { type: "array", items: { $ref: "#/components/schemas/Identifier" } },
+        intersection: {
+          allOf: [{ type: "array", items: { $ref: "#/components/schemas/Identifier" } }, { minItems: 1 }]
+        },
+        arrayUnion: {
+          oneOf: [{ type: "array", items: { type: "integer" } }, { type: "array", items: { type: "string" } }]
+        },
+        nullable: { type: ["array", "null"], items: { type: ["integer", "string", "null"] } },
+        nullableUnion: {
+          anyOf: [{ type: "array", items: { $ref: "#/components/schemas/Identifier" } }, { type: "null" }]
+        }
+      })
+    ) {
+      it.effect(`serializes arrays described by ${name}`, () =>
+        assertQueryUrls(
+          itemsSpec({
+            parameters: [stringArrayParameter({ explode: false, schema })],
+            schemas: { Identifier: { oneOf: [{ type: "integer" }, { type: "string" }] } }
+          }),
+          name === "arrayUnion"
+            ? [{ params: { tags: [0, 1] }, search: "?tags=0,1", parsed: [["tags", "0,1"]] }]
+            : [{ params: { tags: [0, "blue"] }, search: "?tags=0,blue", parsed: [["tags", "0,blue"]] }]
+        ))
+    }
+
+    it.effect("preserves null handling for OpenAPI 3.0 nullable arrays", () =>
+      assertQueryUrls(
+        {
+          ...itemsSpec({
+            parameters: [stringArrayParameter({
+              explode: false,
+              schema: { type: "array", nullable: true, items: { type: "string", nullable: true } }
+            })]
+          }),
+          openapi: "3.0.0"
+        } as unknown as OpenAPISpec,
+        [
+          { params: { tags: null }, search: "?tags=null", parsed: [["tags", "null"]] },
+          { params: { tags: [null, "blue"] }, search: "?tags=null,blue", parsed: [["tags", "null,blue"]] }
+        ]
+      ))
+
+    it.effect("keeps scalar branches of scalar-or-array unions usable", () =>
+      assertQueryUrls(
+        itemsSpec({
+          parameters: [stringArrayParameter({
+            explode: false,
+            schema: { anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] }
+          })]
+        }),
+        [
+          { params: { tags: "a,b" }, search: "?tags=a%2Cb", parsed: [["tags", "a,b"]] },
+          { params: { tags: ["a", "b"] }, search: "?tags=a,b", parsed: [["tags", "a,b"]] }
+        ]
+      ))
+
+    it.effect("preserves query strings, fragments and subsequently added parameters", () =>
+      Effect.gen(function*() {
+        const spec = itemsSpec({
+          path: "/items?existing=a%20b#section",
+          parameters: [stringArrayParameter({ explode: false }), {
+            name: "token",
+            in: "query",
+            schema: { type: "string" }
+          }]
+        })
+        for (const format of formats) {
+          const source = yield* generate(spec, format)
+          const make = yield* Effect.promise(() => loadTestClient(source))
+          for (const variant of requestVariants) {
+            const { httpClient, urls } = makeRecorder(variant)
+            const client = make(httpClient.pipe(HttpClient.mapRequest(HttpClientRequest.setUrlParam("token", "x+y"))))
+            yield* invoke(client, variant.method, {
+              params: { tags: ["a,b", "c"], token: "overridden" },
+              search: "",
+              parsed: []
+            })
+            assert.strictEqual(
+              urls[0].href,
+              "https://example.test/items?existing=a%20b&tags=a%2Cb,c&token=x%2By#section"
+            )
+          }
+        }
+      }))
+
+    it.effect("keeps CSV parameters visible and replaceable in client middleware", () =>
+      Effect.gen(function*() {
+        const spec = itemsSpec({ parameters: [stringArrayParameter({ explode: false })] })
+        for (const format of formats) {
+          const source = yield* generate(spec, format)
+          const make = yield* Effect.promise(() => loadTestClient(source))
+          for (const variant of requestVariants) {
+            for (
+              const replace of [
+                HttpClientRequest.setUrlParam("tags", "override"),
+                HttpClientRequest.setUrlParams({ tags: "override" })
+              ]
+            ) {
+              const { httpClient, urls } = makeRecorder(variant)
+              const client = make(httpClient.pipe(HttpClient.mapRequest((request) => {
+                assert.deepStrictEqual(UrlParams.getAll(request.urlParams, "tags"), ["a,b,c"])
+                return replace(request)
+              })))
+              yield* invoke(client, variant.method, { params: { tags: ["a,b", "c"] }, search: "", parsed: [] })
+              assert.strictEqual(urls[0].search, "?tags=override")
+            }
+          }
+        }
+      }))
 
     it.effect("keeps path parameters separate from query arrays", () =>
       assertQueryUrls(
@@ -374,7 +503,7 @@ describe("query array serialization", () => {
             pathId: "42",
             pathname: "/items/42",
             params: { tags: ["red", "blue"], ids: [7, 8] },
-            search: "?tags=red%2Cblue&ids=7%2C8",
+            search: "?tags=red,blue&ids=7,8",
             parsed: [["tags", "red,blue"], ["ids", "7,8"]]
           }
         ]
@@ -424,6 +553,43 @@ describe("query array serialization", () => {
         ]
       ))
 
+    it.effect("keeps nested deepObject arrays unchanged", () =>
+      assertQueryUrls(
+        itemsSpec({
+          parameters: [{
+            name: "filter",
+            in: "query",
+            style: "deepObject",
+            explode: true,
+            schema: { $ref: "#/components/schemas/Filter" }
+          }],
+          schemas: { Filter: { type: "object", properties: { ids: { type: "array", items: { type: "integer" } } } } }
+        }),
+        [{
+          params: { filter: { ids: [1, 2] } },
+          search: "?filter%5Bids%5D=1&filter%5Bids%5D=2",
+          parsed: [["filter[ids]", "1"], ["filter[ids]", "2"]]
+        }]
+      ))
+
+    it.effect("does not CSV-encode arrays of objects or nested arrays", () =>
+      assertQueryUrls(
+        itemsSpec({
+          parameters: [stringArrayParameter({
+            explode: false,
+            schema: {
+              type: "array",
+              items: { anyOf: [{ type: "object" }, { type: "array", items: { type: "integer" } }] }
+            }
+          })]
+        }),
+        [{
+          params: { tags: [{ id: 1 }, [2, 3]] },
+          search: "?tags=%5Bobject+Object%5D&tags=2%2C3",
+          parsed: [["tags", "[object Object]"], ["tags", "2,3"]]
+        }]
+      ))
+
     it.effect("does not convert object query parameters", () =>
       assertQueryUrls(
         itemsSpec({
@@ -460,7 +626,7 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["red", "blue"] },
-            search: "?tags=red%2Cblue",
+            search: "?tags=red,blue",
             parsed: [["tags", "red,blue"]]
           }
         ]
@@ -490,7 +656,7 @@ describe("query array serialization", () => {
         [
           {
             params: { tags: ["red", "blue"] },
-            search: "?tags=red%2Cblue",
+            search: "?tags=red,blue",
             parsed: [["tags", "red,blue"]]
           }
         ]

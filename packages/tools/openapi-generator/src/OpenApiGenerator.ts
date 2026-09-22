@@ -298,7 +298,7 @@ const parseOpenApi = (
           schema: parameter.schema,
           ...effectiveParameterSerialization(parameter)
         }
-        if (isCsvQueryArrayParameter(parameter, resolveRef)) {
+        if (isNonExplodedFormQueryParameter(parameter)) {
           op.urlParamsCsv.push(parameter.name)
         }
         switch (parameter.in) {
@@ -763,39 +763,18 @@ const effectiveParameterSerialization = (parameter: OpenApiParameter): {
 }
 
 /**
- * Detects a top-level query array serialized as one comma-separated value.
+ * Records parameters whose scalar array values use comma-separated serialization.
  *
- * Only `style: "form"` with `explode: false` and scalar array items qualify.
- * Other delimiter styles, object items, and nested arrays keep their existing
- * repeated-parameter behavior.
+ * The generated serializer checks the value rather than the schema syntax. This
+ * also handles arrays described by references, unions, intersections and nullable
+ * schemas without duplicating the schema importer's normalization logic.
  */
-const isCsvQueryArrayParameter = (
-  parameter: OpenApiParameter,
-  resolveRef: (ref: string) => unknown
-): boolean => {
+const isNonExplodedFormQueryParameter = (parameter: OpenApiParameter): boolean => {
   const serialization = effectiveParameterSerialization(parameter)
   return parameter.in === "query" &&
     serialization.style === "form" &&
-    serialization.explode === false &&
-    isScalarArraySchema(parameter.schema, resolveRef)
+    serialization.explode === false
 }
-
-const isScalarArraySchema = (schema: unknown, resolveRef: (ref: string) => unknown): boolean => {
-  const resolved = resolveReference(schema, resolveRef)
-  const items = Predicate.isObject(resolved) && resolved.type === "array"
-    ? resolveReference(resolved.items, resolveRef)
-    : undefined
-  return Predicate.isObject(items) && isScalarArrayItems(items)
-}
-
-const scalarArrayItemTypes: ReadonlySet<unknown> = new Set(["string", "number", "integer", "boolean"])
-
-const isScalarArrayItems = (items: Record<string, unknown>): boolean =>
-  scalarArrayItemTypes.has(items.type) ||
-  (Array.isArray(items.enum) && items.enum.length > 0 && items.enum.every(isScalarValue))
-
-const isScalarValue = (value: unknown): boolean =>
-  value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean"
 
 const buildParameterSchema = <
   Parameter extends {

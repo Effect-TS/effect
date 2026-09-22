@@ -102,20 +102,19 @@ const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, stre
 /**
  * Renders the query parameter pipeline shared by every generated request path.
  *
- * Array query parameters recorded as comma-separated are converted to a single
- * value before URL encoding. Every other parameter keeps the repeated-parameter
- * behavior produced by `HttpClientRequest.setUrlParams`.
+ * Non-exploded form arrays encode their elements before joining them. Operations
+ * without these parameters keep the existing structured URL parameter pipeline.
  */
 const queryParamsPipelineSource = (operation: ParsedOperation, paramsAccessor: string): string | undefined => {
   if (operation.urlParams.length === 0) {
     return undefined
   }
-  const csvParams = new Set(operation.urlParamsCsv)
   const props = operation.urlParams.map((param) =>
-    csvParams.has(param)
-      ? `"${param}": __encodeFormQueryArray(${paramsAccessor}["${param}"])`
-      : `"${param}": ${paramsAccessor}["${param}"] as any`
+    `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}] as any`
   )
+  if (operation.urlParamsCsv.length > 0) {
+    return `__setFormQueryParams({ ${props.join(", ")} }, ${JSON.stringify(operation.urlParamsCsv)})`
+  }
   return `HttpClientRequest.setUrlParams({ ${props.join(", ")} })`
 }
 
@@ -534,6 +533,9 @@ export const make = (
         `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
         `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
       )
+      if (hasCsvUrlParams(operations)) {
+        imports.push(`import * as UrlParams from "effect/http/UrlParams"`)
+      }
       return imports.join("\n")
     },
     toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
@@ -960,6 +962,9 @@ export const make = (
         `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
         `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
       )
+      if (hasCsvUrlParams(operations)) {
+        imports.push(`import * as UrlParams from "effect/http/UrlParams"`)
+      }
       return imports.join("\n")
     },
     toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
@@ -1014,18 +1019,20 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
     return Effect.succeed(method(path))
   })`
 
-const formQueryArraySource =
-  `const __encodeFormQueryArray = (value: ReadonlyArray<unknown> | undefined): string | undefined => {
-    if (value === undefined || value.length === 0) {
-      return undefined
+const formQueryArraySource = `const __setFormQueryParams = (
+    params: Record<string, unknown>,
+    csvNames: ReadonlyArray<string>,
+  ) => (request: HttpClientRequest.HttpClientRequest): HttpClientRequest.HttpClientRequest => {
+    let query = UrlParams.empty
+    for (const [name, value] of Object.entries(params)) {
+      const comma = csvNames.includes(name) && Array.isArray(value) && value.every((item) =>
+        item === null || item === undefined || typeof item === "string" || typeof item === "number" || typeof item === "boolean"
+      )
+      query = UrlParams.appendAll(query, UrlParams.fromInput({ [name]: value } as any, {
+        arrayFormat: comma ? "comma" : "repeat",
+      }))
     }
-    const parts: Array<string> = []
-    for (const element of value) {
-      if (element !== undefined) {
-        parts.push(String(element))
-      }
-    }
-    return parts.length === 0 ? undefined : parts.join(",")
+    return HttpClientRequest.setUrlParams(request, query)
   }`
 
 const commonSource = `const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
