@@ -15,11 +15,8 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
-import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
+import { HttpClient, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 
 interface CommandOutput {
   readonly stdout?: string

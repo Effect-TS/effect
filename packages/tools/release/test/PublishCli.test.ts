@@ -11,9 +11,8 @@ import * as Redacted from "effect/Redacted"
 import * as Stdio from "effect/Stdio"
 import * as Terminal from "effect/Terminal"
 import { TestConsole } from "effect/testing"
-import * as CliOutput from "effect/unstable/cli/CliOutput"
-import * as Command from "effect/unstable/cli/Command"
-import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
+import { CliOutput, Command } from "effect/unstable/cli"
+import { ChildProcessSpawner } from "effect/unstable/process"
 import { LEDGER_SHA } from "./utils.ts"
 
 const cliEnvironment = (env: Record<string, string>) =>
