@@ -534,7 +534,7 @@ export type TemplateExpression = TemplateExpressionItem | ReadonlyArray<Template
 // Constructors
 // =============================================================================
 
-const Proto = (() => ({
+const Proto = {
   ...Effectable.Prototype<Command>({
     label: "Command",
     evaluate(fiber) {
@@ -542,7 +542,7 @@ const Proto = (() => ({
     }
   }),
   [TypeId]: TypeId
-}))()
+}
 
 /**
  * Checks whether a value is a `Command`.
