@@ -824,13 +824,15 @@ describe("Chunk", () => {
     }
   })
 
-  it("flatMap reads the holes of a sparse backing array as undefined", () => {
+  it("flatMap and join read the holes of a sparse backing array as undefined", () => {
     const sparse: Array<string> = new Array(3)
     sparse[0] = "a"
     sparse[2] = "c"
     const chunk = Chunk.fromArrayUnsafe(sparse)
     const doubled = Chunk.flatMap(chunk, (a) => Chunk.make(a, a))
     deepStrictEqual(Array.from(doubled), ["a", "a", undefined, undefined, "c", "c"])
+    strictEqual(Chunk.join(chunk, "-"), "a--c")
+    strictEqual(Chunk.join(Chunk.appendAll(chunk, Chunk.make("d")), ""), "acd")
   })
 
   it("union", () => {

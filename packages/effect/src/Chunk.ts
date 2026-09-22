@@ -2768,7 +2768,7 @@ export const some: {
 export const join: {
   (sep: string): (self: Chunk<string>) => string
   (self: Chunk<string>, sep: string): string
-} = RA.join
+} = dual(2, (self: Chunk<string>, sep: string): string => toReadonlyArray(self).join(sep))
 
 /**
  * Reduces the elements of a chunk from left to right.
