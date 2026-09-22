@@ -1,13 +1,15 @@
-import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import { ReleaseError } from "./Errors.ts"
+import { versionKey } from "./Routing.ts"
+import { optionalSecret } from "./Secrets.ts"
 
 /** A staged (uploaded, not yet approved) version as returned by `GET /-/stage`. */
 export interface StagedItem {
@@ -19,23 +21,29 @@ export interface StagedItem {
   readonly status: Option.Option<string>
 }
 
+/** Wire shape of one staged item (`GET /-/stage` entries and `GET /-/stage/<id>`). */
+export const StagedItemSchema = Schema.Struct({
+  id: Schema.String,
+  packageName: Schema.String,
+  version: Schema.String,
+  tag: Schema.OptionFromOptionalKey(Schema.String),
+  status: Schema.OptionFromOptionalKey(Schema.String)
+})
+
 export const REGISTRY = "https://registry.npmjs.org/"
 export const STAGE_TOKEN = "NPM_STAGE_TOKEN"
 
+/** The headers every stage-queue request carries; the token is the caller's credential. */
+export const stageRequest = (token: Redacted.Redacted<string>) => (self: HttpClientRequest.HttpClientRequest) =>
+  self.pipe(
+    HttpClientRequest.acceptJson,
+    HttpClientRequest.bearerToken(token),
+    HttpClientRequest.setHeaders({ "npm-auth-type": "web", "npm-command": "stage" })
+  )
+
 const escapeName = (name: string) => name.replaceAll("/", "%2F")
 
-const StagePage = Schema.Struct({
-  items: Schema.Array(
-    Schema.Struct({
-      id: Schema.String,
-      packageName: Schema.String,
-      version: Schema.String,
-      tag: Schema.optionalKey(Schema.String),
-      status: Schema.optionalKey(Schema.String)
-    })
-  ),
-  total: Schema.Number
-})
+const StagePage = Schema.Struct({ items: Schema.Array(StagedItemSchema), total: Schema.Number })
 
 const decodeStagePage = Schema.decodeUnknownEffect(Schema.fromJsonString(StagePage))
 
@@ -70,9 +78,7 @@ export class Registry extends Context.Service<Registry, {
       })
 
       const listStaged = Effect.gen(function*() {
-        const token = yield* Config.option(Config.Redacted(STAGE_TOKEN)).pipe(
-          Effect.mapError((cause) => new ReleaseError({ message: `Could not read ${STAGE_TOKEN}`, cause }))
-        )
+        const token = yield* optionalSecret(STAGE_TOKEN)
         if (Option.isNone(token)) {
           // stderr on purpose: `release route` prints JSON on stdout for the workflow to parse.
           yield* Console.error(`warning: ${STAGE_TOKEN} is not set; treating the stage queue as empty`)
@@ -83,12 +89,7 @@ export class Registry extends Context.Service<Registry, {
           const url = new URL("-/stage", REGISTRY)
           url.searchParams.set("page", String(page))
           url.searchParams.set("perPage", String(PER_PAGE))
-          const request = HttpClientRequest.get(url.href).pipe(
-            HttpClientRequest.acceptJson,
-            HttpClientRequest.bearerToken(token.value),
-            HttpClientRequest.setHeaders({ "npm-auth-type": "web", "npm-command": "stage" })
-          )
-          const response = yield* client.execute(request).pipe(
+          const response = yield* client.execute(HttpClientRequest.get(url.href).pipe(stageRequest(token.value))).pipe(
             Effect.mapError((cause) => new ReleaseError({ message: `Request to ${url.href} failed`, cause }))
           )
           if (response.status !== 200) {
@@ -102,15 +103,7 @@ export class Registry extends Context.Service<Registry, {
               new ReleaseError({ message: `Unexpected stage queue shape from ${url.href}`, cause })
             )
           )
-          for (const item of decoded.items) {
-            items.push({
-              id: item.id,
-              packageName: item.packageName,
-              version: item.version,
-              tag: Option.fromUndefinedOr(item.tag),
-              status: Option.fromUndefinedOr(item.status)
-            })
-          }
+          items.push(...decoded.items)
           if (items.length >= decoded.total) return items
           if (decoded.items.length < PER_PAGE) {
             return yield* new ReleaseError({
@@ -127,3 +120,12 @@ export class Registry extends Context.Service<Registry, {
     })
   )
 }
+
+/** `name@version` keys of every package the registry already serves at that version, probed 8 at a time. */
+export const publishedKeys = (
+  registry: Registry["Service"],
+  packages: ReadonlyArray<{ readonly name: string; readonly version: string }>
+): Effect.Effect<ReadonlySet<string>, ReleaseError> =>
+  Effect.filter(packages, (pkg) => registry.isPublished(pkg.name, pkg.version), { concurrency: 8 }).pipe(
+    Effect.map((served) => new Set(served.map((pkg) => versionKey(pkg.name, pkg.version))))
+  )

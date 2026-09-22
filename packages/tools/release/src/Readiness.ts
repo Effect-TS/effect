@@ -6,7 +6,7 @@ import { versionKey } from "./Routing.ts"
 /**
  * Registry status words, as observed on `GET /-/stage` items. The registry
  * documents none of them; the sets below are the contract's assumption and
- * the live probe (EFF-1455 P3) may amend them. Anything outside every set is
+ * a live registry probe may amend them. Anything outside every set is
  * `unknown` and never ready: readiness fails closed on new vocabulary.
  */
 export const APPROVABLE_STATUSES: ReadonlySet<string> = new Set(["staged", "awaiting_approval"])

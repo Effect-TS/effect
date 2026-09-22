@@ -57,24 +57,26 @@ export class Git extends Context.Service<Git, {
 
         const headSha = git(["rev-parse", "HEAD"]).pipe(Effect.map((stdout) => stdout.trim()))
 
-        const commitStaged = Effect.fn("Git.commitStaged")(function*(message: string) {
-          const staged = yield* runCommand("git", ["diff", "--cached", "--quiet"], { cwd: root }).pipe(
-            Effect.provideService(ChildProcessSpawner, spawner)
-          )
-          if (staged.exitCode === 0) return Option.none<string>()
-          if (staged.exitCode !== 1) {
-            return yield* new ReleaseError({
-              message: `git diff --cached --quiet exited ${staged.exitCode}: ${staged.stderr.trim()}`
-            })
+        /** Commits what is in the index (limited to `paths` when given); `none` when nothing is staged. */
+        const commitStaged = Effect.fn("Git.commitStaged")(
+          function*(message: string, paths: ReadonlyArray<string> = []) {
+            const scope = paths.length === 0 ? [] : ["--", ...paths]
+            const staged = yield* runCommand("git", ["diff", "--cached", "--quiet", ...scope], { cwd: root }).pipe(
+              Effect.provideService(ChildProcessSpawner, spawner)
+            )
+            if (staged.exitCode === 0) return Option.none<string>()
+            if (staged.exitCode !== 1) {
+              return yield* new ReleaseError({
+                message: `git diff --cached --quiet exited ${staged.exitCode}: ${staged.stderr.trim()}`
+              })
+            }
+            // --only keeps an unrelated pre-staged path out of a path-limited commit.
+            yield* git(["commit", ...(paths.length === 0 ? [] : ["--only"]), "--message", message, ...scope])
+            return Option.some(yield* headSha)
           }
-          yield* git(["commit", "--message", message])
-          return Option.some(yield* headSha)
-        })
+        )
 
-        const commitAll = Effect.fn("Git.commitAll")(function*(message: string) {
-          yield* git(["add", "-A"])
-          return yield* commitStaged(message)
-        })
+        const commitAll = (message: string) => git(["add", "-A"]).pipe(Effect.andThen(commitStaged(message)))
 
         return Git.of({
           headSha,
@@ -110,26 +112,20 @@ export class Git extends Context.Service<Git, {
               })
             }),
           commitPaths: (message, paths) =>
-            Effect.gen(function*() {
-              if (paths.length === 0) {
-                return yield* new ReleaseError({ message: "Cannot commit an empty path list" })
-              }
-              yield* git(["add", "--", ...paths])
-              const staged = yield* runCommand("git", ["diff", "--cached", "--quiet", "--", ...paths], {
-                cwd: root
-              }).pipe(Effect.provideService(ChildProcessSpawner, spawner))
-              if (staged.exitCode === 0) return Option.none<string>()
-              if (staged.exitCode !== 1) {
-                return yield* new ReleaseError({
-                  message: `git diff --cached --quiet exited ${staged.exitCode}: ${staged.stderr.trim()}`
-                })
-              }
-              // --only prevents an unrelated pre-staged path from becoming
-              // part of the release authorisation commit.
-              yield* git(["commit", "--only", "--message", message, "--", ...paths])
-              return Option.some(yield* headSha)
-            })
+            paths.length === 0
+              ? new ReleaseError({ message: "Cannot commit an empty path list" })
+              : git(["add", "--", ...paths]).pipe(Effect.andThen(commitStaged(message, paths)))
         })
       })
     )
 }
+
+/** Runs `work`, then always, even on failure, checks the original `HEAD` back out. */
+export const withRestoredHead = <A, E>(
+  git: Git["Service"],
+  work: Effect.Effect<A, E>
+): Effect.Effect<A, E | ReleaseError> =>
+  Effect.gen(function*() {
+    const originalSha = yield* git.headSha
+    return yield* work.pipe(Effect.ensuring(git.checkout(originalSha).pipe(Effect.orDie)))
+  })

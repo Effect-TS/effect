@@ -4,6 +4,7 @@ import * as Schema from "effect/Schema"
 import { createHash } from "node:crypto"
 import { ReleaseError } from "./Errors.ts"
 import type { StagedItem } from "./Registry.ts"
+import { staleStaged } from "./Routing.ts"
 import type { WorkspacePackage } from "./Workspace.ts"
 
 /**
@@ -69,17 +70,18 @@ export const fromStaged = (input: {
 }): Effect.Effect<ReleaseManifest, ReleaseError> =>
   Effect.gen(function*() {
     const publicPackages = input.packages.filter((pkg) => !pkg.private).sort(compareNames)
+    const stale = staleStaged(publicPackages, input.staged)
+    if (stale.length > 0) {
+      return yield* new ReleaseError({
+        message: `Stale staged versions must be rejected before publishing: ${
+          stale.map(({ item, pkg }) => `${pkg.name}: staged ${item.version} (${item.id}), manifest ${pkg.version}`)
+            .join("; ")
+        }`
+      })
+    }
     const packages: Array<ManifestPackage> = []
     for (const pkg of publicPackages) {
       const items = input.staged.filter((item) => item.packageName === pkg.name)
-      const stale = items.filter((item) => item.version !== pkg.version)
-      if (stale.length > 0) {
-        return yield* new ReleaseError({
-          message: `Stale staged versions must be rejected before publishing: ${
-            stale.map((item) => `${pkg.name}: staged ${item.version} (${item.id}), manifest ${pkg.version}`).join("; ")
-          }`
-        })
-      }
       const matching = items.filter((item) => Option.isNone(item.tag) || item.tag.value === input.tag)
       if (matching.length === 0) {
         const otherTags = items.flatMap((item) => Option.isSome(item.tag) ? [`${item.tag.value} (${item.id})`] : [])
@@ -159,12 +161,7 @@ export const decode = (text: string): Effect.Effect<ReleaseManifest, ReleaseErro
         })
       }
     }
-    return {
-      schema: SCHEMA_VERSION,
-      tag: json.tag,
-      sourceSha: json.sourceSha,
-      packages: json.packages.map((pkg) => ({ name: pkg.name, version: pkg.version, stageId: pkg.stageId }))
-    }
+    return { schema: SCHEMA_VERSION, tag: json.tag, sourceSha: json.sourceSha, packages: json.packages }
   })
 
 /**

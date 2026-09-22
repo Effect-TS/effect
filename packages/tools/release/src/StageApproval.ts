@@ -1,4 +1,3 @@
-import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -9,22 +8,13 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import { ReleaseError } from "./Errors.ts"
-import { REGISTRY, type StagedItem } from "./Registry.ts"
+import { REGISTRY, type StagedItem, StagedItemSchema, stageRequest } from "./Registry.ts"
+import { optionalSecret } from "./Secrets.ts"
 
 /** Environment variable holding the maintainer token used to approve. */
 export const APPROVE_TOKEN = "NPM_APPROVE_TOKEN"
 
-const StagedItemJson = Schema.fromJsonString(
-  Schema.Struct({
-    id: Schema.String,
-    packageName: Schema.String,
-    version: Schema.String,
-    tag: Schema.optionalKey(Schema.String),
-    status: Schema.optionalKey(Schema.String)
-  })
-)
-
-const decodeStagedItem = Schema.decodeUnknownEffect(StagedItemJson)
+const decodeStagedItem = Schema.decodeUnknownEffect(Schema.fromJsonString(StagedItemSchema))
 
 const OtpChallengeBody = Schema.fromJsonString(
   Schema.Struct({ authUrl: Schema.String, doneUrl: Schema.String })
@@ -63,7 +53,7 @@ export class StageApproval extends Context.Service<StageApproval, {
 
       // Read once, while the layer's configuration is in scope; a missing token
       // fails each call (before any request), not the layer.
-      const configured = yield* Config.option(Config.Redacted(APPROVE_TOKEN)).pipe(Effect.orDie)
+      const configured = yield* optionalSecret(APPROVE_TOKEN).pipe(Effect.orDie)
       const token: Effect.Effect<Redacted.Redacted<string>, ReleaseError> = Option.isNone(configured)
         ? Effect.fail(new ReleaseError({ message: `${APPROVE_TOKEN} is not set; approving staged versions needs it` }))
         : Effect.succeed(configured.value)
@@ -71,11 +61,7 @@ export class StageApproval extends Context.Service<StageApproval, {
       const execute = (id: string, request: HttpClientRequest.HttpClientRequest) =>
         Effect.gen(function*() {
           const bearer = yield* token
-          return yield* client.execute(request.pipe(
-            HttpClientRequest.acceptJson,
-            HttpClientRequest.bearerToken(bearer),
-            HttpClientRequest.setHeaders({ "npm-auth-type": "web", "npm-command": "stage" })
-          )).pipe(
+          return yield* client.execute(request.pipe(stageRequest(bearer))).pipe(
             Effect.mapError((cause) =>
               new ReleaseError({ message: `Request for staged package ${id} to ${request.url} failed`, cause })
             )
@@ -102,13 +88,7 @@ export class StageApproval extends Context.Service<StageApproval, {
         const item = yield* decodeStagedItem(text).pipe(
           Effect.mapError((cause) => new ReleaseError({ message: `Unexpected staged item shape from ${url}`, cause }))
         )
-        return Option.some<StagedItem>({
-          id: item.id,
-          packageName: item.packageName,
-          version: item.version,
-          tag: Option.fromUndefinedOr(item.tag),
-          status: Option.fromUndefinedOr(item.status)
-        })
+        return Option.some<StagedItem>(item)
       })
 
       const approve = Effect.fn("StageApproval.approve")(function*(id: string, otp: Redacted.Redacted<string>) {

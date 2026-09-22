@@ -57,6 +57,25 @@ export interface RoutingInput {
 
 export const versionKey = (name: string, version: string): string => `${name}@${version}`
 
+/** Whether `staged` holds an upload of exactly `name@version`. */
+export const stagedAt = (staged: ReadonlyArray<StagedItem>, name: string, version: string): boolean =>
+  staged.some((item) => item.packageName === name && item.version === version)
+
+/**
+ * Uploads of a public package at a version other than its manifest version.
+ * Staging or publishing on top of one would put two versions in front of the
+ * approval gate, so both `decide` and `ReleaseManifest.fromStaged` refuse.
+ */
+export const staleStaged = (
+  publicPackages: ReadonlyArray<WorkspacePackage>,
+  staged: ReadonlyArray<StagedItem>
+): ReadonlyArray<{ readonly pkg: WorkspacePackage; readonly item: StagedItem }> =>
+  publicPackages.flatMap((pkg) =>
+    staged
+      .filter((item) => item.packageName === pkg.name && item.version !== pkg.version)
+      .map((item) => ({ pkg, item }))
+  )
+
 export const decide = (input: RoutingInput): Effect.Effect<Route, ReleaseError> =>
   Effect.gen(function*() {
     const releases = effectiveReleases(input.plan)
@@ -65,14 +84,12 @@ export const decide = (input: RoutingInput): Effect.Effect<Route, ReleaseError> 
     }
 
     const publicPackages = input.packages.filter((pkg) => !pkg.private)
-    const stale = publicPackages.flatMap((pkg) =>
-      input.staged
-        .filter((item) => item.packageName === pkg.name && item.version !== pkg.version)
-        .map((item) => `${pkg.name}: staged ${item.version}, manifest ${pkg.version}`)
-    )
+    const stale = staleStaged(publicPackages, input.staged)
     if (stale.length > 0) {
       return yield* new ReleaseError({
-        message: `Stale staged versions must be rejected before staging: ${stale.join("; ")}`
+        message: `Stale staged versions must be rejected before staging: ${
+          stale.map(({ item, pkg }) => `${pkg.name}: staged ${item.version}, manifest ${pkg.version}`).join("; ")
+        }`
       })
     }
 
@@ -81,7 +98,7 @@ export const decide = (input: RoutingInput): Effect.Effect<Route, ReleaseError> 
     for (const pkg of publicPackages) {
       if (input.published.has(versionKey(pkg.name, pkg.version))) {
         skipped.push({ name: pkg.name, version: pkg.version, reason: "published" })
-      } else if (input.staged.some((item) => item.packageName === pkg.name && item.version === pkg.version)) {
+      } else if (stagedAt(input.staged, pkg.name, pkg.version)) {
         skipped.push({ name: pkg.name, version: pkg.version, reason: "staged" })
       } else {
         toStage.push(pkg)

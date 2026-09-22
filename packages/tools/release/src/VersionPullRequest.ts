@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type { ReleaseError } from "./Errors.ts"
-import { Git } from "./Git.ts"
-import { GitHub, type PullRequest } from "./GitHub.ts"
+import { Git, withRestoredHead } from "./Git.ts"
+import { GitHub, type PullRequest, upsertPullRequest } from "./GitHub.ts"
 import { Pnpm } from "./Pnpm.ts"
 import { effectiveReleases, prereleaseTag, type ReleasePlan } from "./ReleasePlan.ts"
 
@@ -64,25 +64,24 @@ export const sync = (plan: ReleasePlan): Effect.Effect<SyncResult, ReleaseError,
     const git = yield* Git
     const pnpm = yield* Pnpm
     const github = yield* GitHub
-    const originalSha = yield* git.headSha
-
-    const work: Effect.Effect<SyncResult, ReleaseError> = Effect.gen(function*() {
-      yield* git.resetBranch(RELEASE_BRANCH, BASE_BRANCH)
-      yield* pnpm.applyVersions
-      const commit = yield* git.commitAll(COMMIT_MESSAGE)
-      if (Option.isNone(commit)) {
-        return { _tag: "NoChanges" } as const
-      }
-      yield* git.pushForce(RELEASE_BRANCH)
-      const existing = yield* github.findPullRequest({ head: RELEASE_BRANCH, base: BASE_BRANCH })
-      const content = { title: title(plan), body: body(plan) }
-      if (Option.isSome(existing)) {
-        const pullRequest = yield* github.updatePullRequest(existing.value.number, content)
-        return { _tag: "Updated", pullRequest } as const
-      }
-      const pullRequest = yield* github.createPullRequest({ head: RELEASE_BRANCH, base: BASE_BRANCH, ...content })
-      return { _tag: "Created", pullRequest } as const
-    })
-
-    return yield* work.pipe(Effect.ensuring(git.checkout(originalSha).pipe(Effect.orDie)))
+    return yield* withRestoredHead(
+      git,
+      Effect.gen(function*() {
+        yield* git.resetBranch(RELEASE_BRANCH, BASE_BRANCH)
+        yield* pnpm.applyVersions
+        const commit = yield* git.commitAll(COMMIT_MESSAGE)
+        if (Option.isNone(commit)) {
+          return { _tag: "NoChanges" } as const
+        }
+        yield* git.pushForce(RELEASE_BRANCH)
+        const existing = yield* github.findPullRequest({ head: RELEASE_BRANCH, base: BASE_BRANCH })
+        return yield* upsertPullRequest(github, {
+          head: RELEASE_BRANCH,
+          base: BASE_BRANCH,
+          existing,
+          title: title(plan),
+          body: body(plan)
+        })
+      })
+    )
   })

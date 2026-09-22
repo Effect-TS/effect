@@ -5,7 +5,7 @@ import { ReleaseError } from "./Errors.ts"
 import { Git } from "./Git.ts"
 import { GitHub } from "./GitHub.ts"
 import { Pnpm, type StagedPackage } from "./Pnpm.ts"
-import { Registry } from "./Registry.ts"
+import { publishedKeys, Registry } from "./Registry.ts"
 import { effectiveReleases, type ReleasePlan } from "./ReleasePlan.ts"
 import * as Routing from "./Routing.ts"
 import type { Route, Skipped } from "./Routing.ts"
@@ -63,26 +63,16 @@ export class Release extends Context.Service<Release, {
 
       const route: Effect.Effect<Route, ReleaseError> = Effect.gen(function*() {
         const currentPlan = yield* plan
-        const packages = yield* workspace.packages
         if (effectiveReleases(currentPlan).length > 0) {
-          return yield* Routing.decide({ plan: currentPlan, packages, published: new Set(), staged: [] })
+          // Pending intents always win; neither the workspace nor the registry is consulted.
+          return yield* Routing.decide({ plan: currentPlan, packages: [], published: new Set(), staged: [] })
         }
-        const publicPackages = packages.filter((pkg) => !pkg.private)
-        const publishedKeys = yield* Effect.forEach(
-          publicPackages,
-          (pkg) =>
-            registry.isPublished(pkg.name, pkg.version).pipe(
-              Effect.map((published) => published ? Routing.versionKey(pkg.name, pkg.version) : undefined)
-            ),
-          { concurrency: 8 }
+        const packages = yield* workspace.packages
+        const [published, staged] = yield* Effect.all(
+          [publishedKeys(registry, packages.filter((pkg) => !pkg.private)), registry.listStaged],
+          { concurrency: 2 }
         )
-        const staged = yield* registry.listStaged
-        return yield* Routing.decide({
-          plan: currentPlan,
-          packages,
-          published: new Set(publishedKeys.filter((key): key is string => key !== undefined)),
-          staged
-        })
+        return yield* Routing.decide({ plan: currentPlan, packages, published, staged })
       })
 
       const run = Effect.fn("Release.run")(function*(options: RunOptions) {

@@ -1,12 +1,13 @@
-import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Command from "effect/unstable/cli/Command"
 import * as Flag from "effect/unstable/cli/Flag"
-import { ReleaseError } from "./Errors.ts"
 import { OTP, Publication } from "./Publication.ts"
 import { Release } from "./Release.ts"
+import { requireSecret } from "./Secrets.ts"
+
+const printJson = (value: unknown) => Console.log(JSON.stringify(value, null, 2))
 
 const tagFlag = Flag.String("tag").pipe(
   Flag.withDescription("dist-tag for staged versions, e.g. rc")
@@ -26,14 +27,14 @@ const plan = Command.make("plan", {}, () =>
   Effect.gen(function*() {
     const release = yield* Release
     const result = yield* release.plan
-    yield* Console.log(JSON.stringify(result, null, 2))
+    yield* printJson(result)
   })).pipe(Command.withDescription("Print the release plan pnpm derives from the pending change intents"))
 
 const route = Command.make("route", {}, () =>
   Effect.gen(function*() {
     const release = yield* Release
     const result = yield* release.route
-    yield* Console.log(JSON.stringify(result, null, 2))
+    yield* printJson(result)
   })).pipe(Command.withDescription("Print what a push to main would do: Version, Stage or Idle"))
 
 const run = Command.make(
@@ -47,7 +48,7 @@ const run = Command.make(
         dryRun,
         expectedRoute: Option.getOrUndefined(expect)
       })
-      yield* Console.log(JSON.stringify(result, null, 2))
+      yield* printJson(result)
     })
 ).pipe(
   Command.withDescription(
@@ -62,7 +63,7 @@ const readiness = Command.make(
     Effect.gen(function*() {
       const publication = yield* Publication
       const result = yield* publication.readiness({ tag, dryRun })
-      yield* Console.log(JSON.stringify(result, null, 2))
+      yield* printJson(result)
     })
 ).pipe(
   Command.withDescription(
@@ -75,14 +76,7 @@ const expectIdentityFlag = Flag.String("expect-identity").pipe(
 )
 
 /** The OTP comes from the environment so that it never appears on argv or in the shell history. */
-const otp = Config.option(Config.Redacted(OTP)).pipe(
-  Effect.mapError((cause) => new ReleaseError({ message: `Could not read ${OTP}`, cause })),
-  Effect.flatMap((otp) =>
-    Option.isNone(otp)
-      ? new ReleaseError({ message: `${OTP} is not set; approving staged versions needs a one-time password` })
-      : Effect.succeed(otp.value)
-  )
-)
+const otp = requireSecret(OTP, `${OTP} is not set; approving staged versions needs a one-time password`)
 
 const publish = Command.make(
   "publish",
@@ -91,7 +85,7 @@ const publish = Command.make(
     Effect.gen(function*() {
       const publication = yield* Publication
       const result = yield* publication.publish({ expectedIdentity: expectIdentity, otp: yield* otp, dryRun })
-      yield* Console.log(JSON.stringify(result, null, 2))
+      yield* printJson(result)
     })
 ).pipe(
   Command.withDescription(

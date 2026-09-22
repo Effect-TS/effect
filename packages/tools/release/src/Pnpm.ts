@@ -8,7 +8,7 @@ import * as Schema from "effect/Schema"
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { ReleaseError } from "./Errors.ts"
 import { findWorkspaceRoot, runCommandOk } from "./Process.ts"
-import { type AppliedVersion, NO_PENDING_CHANGES, parseApplied, parseDryRun, type ReleasePlan } from "./ReleasePlan.ts"
+import { type AppliedVersion, parseApplied, parseDryRun, type ReleasePlan } from "./ReleasePlan.ts"
 
 /** One package reported by `pnpm stage publish -r --json`. */
 export interface StagedPackage {
@@ -62,13 +62,7 @@ export class Pnpm extends Context.Service<Pnpm, {
 
         const dryRunPlan = pnpm(["version", "-r", "--dry-run"]).pipe(Effect.flatMap(parseDryRun))
 
-        const applyVersions = pnpm(["version", "-r", "--json"]).pipe(
-          Effect.flatMap((stdout) =>
-            stdout.trim() === NO_PENDING_CHANGES
-              ? Effect.succeed<ReadonlyArray<AppliedVersion>>([])
-              : parseApplied(stdout)
-          )
-        )
+        const applyVersions = pnpm(["version", "-r", "--json"]).pipe(Effect.flatMap(parseApplied))
 
         const stagePublish = Effect.fn("Pnpm.stagePublish")(function*(options: {
           readonly tag: string

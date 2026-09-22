@@ -3,15 +3,16 @@ import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import { ReleaseError } from "./Errors.ts"
-import { Git } from "./Git.ts"
-import { GitHub, type PullRequest } from "./GitHub.ts"
+import { Git, withRestoredHead } from "./Git.ts"
+import { GitHub, type PullRequest, upsertPullRequest } from "./GitHub.ts"
 import { findWorkspaceRoot } from "./Process.ts"
 import type { PackageReadiness, Readiness } from "./Readiness.ts"
 import { encode, identity, MANIFEST_PATH, type ReleaseManifest } from "./ReleaseManifest.ts"
+import { BASE_BRANCH } from "./VersionPullRequest.ts"
 
 /** Sibling of `changeset-release/main`; one branch per base, force-pushed on every change. */
 export const PUBLISH_BRANCH = "publish-release/main"
-export const BASE_BRANCH = "main"
+export { BASE_BRANCH } from "./VersionPullRequest.ts"
 export const COMMIT_MESSAGE = "Publish Packages"
 export const TITLE = "Publish Packages"
 /** Appended to the title while the release is not approvable. */
@@ -144,32 +145,27 @@ export const sync = (
     }
 
     const root = yield* findWorkspaceRoot
-    const originalSha = yield* git.headSha
-    const work: Effect.Effect<SyncResult, ReleaseError> = Effect.gen(function*() {
-      yield* git.resetBranch(PUBLISH_BRANCH, BASE_BRANCH)
-      const file = path.join(root, MANIFEST_PATH)
-      yield* fs.makeDirectory(path.dirname(file), { recursive: true }).pipe(
-        Effect.mapError((cause) =>
-          new ReleaseError({ message: `Could not create ${path.dirname(MANIFEST_PATH)}`, cause })
+    return yield* withRestoredHead(
+      git,
+      Effect.gen(function*() {
+        yield* git.resetBranch(PUBLISH_BRANCH, BASE_BRANCH)
+        const file = path.join(root, MANIFEST_PATH)
+        yield* fs.makeDirectory(path.dirname(file), { recursive: true }).pipe(
+          Effect.mapError((cause) =>
+            new ReleaseError({ message: `Could not create ${path.dirname(MANIFEST_PATH)}`, cause })
+          )
         )
-      )
-      yield* fs.writeFileString(file, encode(manifest)).pipe(
-        Effect.mapError((cause) => new ReleaseError({ message: `Could not write ${MANIFEST_PATH}`, cause }))
-      )
-      const commit = yield* git.commitPaths(COMMIT_MESSAGE, [MANIFEST_PATH])
-      if (Option.isNone(commit)) {
-        return yield* new ReleaseError({
-          message: `${MANIFEST_PATH} on ${BASE_BRANCH} already pins release ${identity(manifest)}; nothing to propose`
-        })
-      }
-      yield* git.pushForce(PUBLISH_BRANCH)
-      if (Option.isSome(existing)) {
-        const pullRequest = yield* github.updatePullRequest(existing.value.number, content)
-        return { _tag: "Updated", pullRequest } as const
-      }
-      const pullRequest = yield* github.createPullRequest({ head: PUBLISH_BRANCH, base: BASE_BRANCH, ...content })
-      return { _tag: "Created", pullRequest } as const
-    })
-
-    return yield* work.pipe(Effect.ensuring(git.checkout(originalSha).pipe(Effect.orDie)))
+        yield* fs.writeFileString(file, encode(manifest)).pipe(
+          Effect.mapError((cause) => new ReleaseError({ message: `Could not write ${MANIFEST_PATH}`, cause }))
+        )
+        const commit = yield* git.commitPaths(COMMIT_MESSAGE, [MANIFEST_PATH])
+        if (Option.isNone(commit)) {
+          return yield* new ReleaseError({
+            message: `${MANIFEST_PATH} on ${BASE_BRANCH} already pins release ${identity(manifest)}; nothing to propose`
+          })
+        }
+        yield* git.pushForce(PUBLISH_BRANCH)
+        return yield* upsertPullRequest(github, { head: PUBLISH_BRANCH, base: BASE_BRANCH, existing, ...content })
+      })
+    )
   })

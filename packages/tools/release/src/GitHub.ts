@@ -116,3 +116,26 @@ export class GitHub extends Context.Service<GitHub, {
       })
     )
 }
+
+export type UpsertResult =
+  | { readonly _tag: "Created"; readonly pullRequest: PullRequest }
+  | { readonly _tag: "Updated"; readonly pullRequest: PullRequest }
+
+/** Refreshes `existing` with `title` and `body`, or opens the PR from `head` into `base`. */
+export const upsertPullRequest = (github: GitHub["Service"], input: {
+  readonly head: string
+  readonly base: string
+  readonly existing: Option.Option<PullRequest>
+  readonly title: string
+  readonly body: string
+}): Effect.Effect<UpsertResult, ReleaseError> =>
+  Option.match(input.existing, {
+    onNone: () =>
+      github.createPullRequest({ head: input.head, base: input.base, title: input.title, body: input.body }).pipe(
+        Effect.map((pullRequest) => ({ _tag: "Created", pullRequest }) as const)
+      ),
+    onSome: (existing) =>
+      github.updatePullRequest(existing.number, { title: input.title, body: input.body }).pipe(
+        Effect.map((pullRequest) => ({ _tag: "Updated", pullRequest }) as const)
+      )
+  })

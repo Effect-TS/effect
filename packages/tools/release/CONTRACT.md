@@ -33,6 +33,7 @@ directly. The replacement keeps the shape and changes two things:
 | `Release`            | `plan`, `route`, `run` orchestration                                                                                                                      | all of the above                              |
 | `Cli`                | `release plan`, `release route`, `release run --tag <tag> [--expect Version\|Stage] [--dry-run]`, `release readiness`, `release publish`                  | `Release`, `Publication`                      |
 | `Process`            | Detached-stdin command runner and workspace-root discovery shared by the layers                                                                           | `ChildProcessSpawner`, `FileSystem`, `Path`   |
+| `Secrets`            | `optionalSecret`, `requireSecret`: redacted environment variables with one error shape                                                                    | `Config`                                      |
 
 Every command-backed layer anchors its commands at the directory holding
 `pnpm-workspace.yaml`, found by walking up from the current directory, because
