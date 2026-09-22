@@ -338,25 +338,34 @@ const startEntry = <K, A, E, R>(
   onDone: (exit: Exit.Exit<A, E>) => Effect.Effect<void> | undefined,
   lookup: () => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E> => {
-  const restore = enterMask(fiber)
-  const start = () => {
-    entry.fiber = effect.forkUnsafe(
-      fiber,
+  const produce = Scope.provide(effect.suspend(lookup), entry.scope)
+  entry.fiber = effect.forkUnsafe(
+    fiber,
+    effect.onExitPrimitive(
       effect.onExitPrimitive(
-        effect.onExitPrimitive(Scope.provide(effect.suspend(lookup), entry.scope), onDone),
-        (exit) => {
-          Deferred.doneUnsafe(entry.deferred, exit)
-          return undefined
-        }
+        before === undefined ? produce : effect.flatMap(effect.uninterruptible(before), () => produce),
+        onDone
       ),
-      true,
-      true
-    )
-    return entry.deferred.effect ?? restore(Deferred.await(entry.deferred))
+      (exit) => {
+        Deferred.doneUnsafe(entry.deferred, exit)
+        return undefined
+      }
+    ),
+    true,
+    true
+  )
+  const result = entry.deferred.effect
+  if (result !== undefined) {
+    // The entry finished within this step, so there is nothing to wait for and
+    // nothing to release.
+    entry.awaiters--
+    entry.fiber = undefined
+    return result
   }
+  const restore = enterMask(fiber)
   return effect.onExitPrimitive(
-    before === undefined ? start() : effect.flatMap(before, start),
-    release(entry, fiber, map, key)
+    restore(Deferred.await(entry.deferred)),
+    release(entry, entry.fiber, fiber, map, key)
   )
 }
 
@@ -385,9 +394,13 @@ const awaitEntry = <K, A, E>(
 ): Effect.Effect<A, E> => {
   if (entry.deferred.effect !== undefined) return entry.deferred.effect
   if (!(entry instanceof EntryImpl)) return Deferred.await(entry.deferred)
+  const lookup = entry.fiber
+  // Without a handle on the lookup there is nothing to cancel, so this caller
+  // only observes the result.
+  if (lookup === undefined) return Deferred.await(entry.deferred)
   const restore = enterMask(fiber)
   entry.awaiters++
-  return effect.onExitPrimitive(restore(Deferred.await(entry.deferred)), release(entry, fiber, map, key))
+  return effect.onExitPrimitive(restore(Deferred.await(entry.deferred)), release(entry, lookup, fiber, map, key))
 }
 
 /**
@@ -398,15 +411,19 @@ const awaitEntry = <K, A, E>(
  */
 const release = <K, A, E>(
   entry: EntryImpl<A, E>,
+  lookup: Fiber.Fiber<A, E>,
   fiber: FiberImpl<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>> | undefined,
   key: K
 ) =>
 (): Effect.Effect<void> | undefined => {
-  const lookup = entry.fiber
-  if (--entry.awaiters > 0 || lookup === undefined) return undefined
+  if (--entry.awaiters > 0) return undefined
+  // The last caller to leave drops the entry's handle on its lookup.
   entry.fiber = undefined
+  // An entry that produced a result stays cached, whoever is left.
   if (entry.deferred.effect !== undefined) return undefined
+  // Nobody is waiting and there is no result, so the entry is this caller's to
+  // remove: unpublish it first, then end its lookup and close its scope.
   if (map !== undefined) {
     const current = MutableHashMap.get(map, key)
     if (Option.isSome(current) && current.value === entry) {
@@ -414,6 +431,9 @@ const release = <K, A, E>(
     }
   }
   lookup.interruptUnsafe(fiber.id)
+  // The lookup closes the scope itself when it ends interrupted, but it can
+  // also have finished between the check above and this interrupt, so the
+  // caller that removed the entry closes it last.
   return effect.flatMap(effect.fiberAwait(lookup), () => Scope.close(entry.scope, effect.exitVoid))
 }
 
