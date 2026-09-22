@@ -401,6 +401,39 @@ const RequestMessageItem = Schema.Struct({
   ])
 })
 
+const InputCodeInterpreterCall = Schema.Struct({
+  id: Schema.String,
+  type: Schema.Literal("code_interpreter_call"),
+  code: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  container_id: Schema.String,
+  outputs: Schema.optionalKey(Schema.NullOr(Schema.Array(Schema.Unknown))),
+  status: Schema.optionalKey(
+    Schema.Literals(["in_progress", "completed", "incomplete", "interpreting", "failed"])
+  )
+})
+
+const InputFileSearchCall = Schema.Struct({
+  id: Schema.String,
+  type: Schema.Literal("file_search_call"),
+  status: Schema.optionalKey(Schema.String),
+  queries: Schema.optionalKey(Schema.Array(Schema.String)),
+  results: Schema.optionalKey(Schema.NullOr(Schema.Unknown))
+})
+
+const InputImageGenerationCall = Schema.Struct({
+  id: Schema.String,
+  type: Schema.Literal("image_generation_call"),
+  result: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  status: Schema.optionalKey(Schema.Literals(["in_progress", "completed", "generating", "failed"]))
+})
+
+const InputWebSearchCall = Schema.Struct({
+  id: Schema.String,
+  type: Schema.Literal("web_search_call"),
+  action: Schema.optionalKey(Schema.Unknown),
+  status: Schema.optionalKey(Schema.String)
+})
+
 /**
  * Schema for item shapes accepted by an OpenAI Responses request `input` field.
  *
@@ -432,7 +465,11 @@ export const InputItem = Schema.Union([
   ShellCall,
   ShellCallOutput,
   ApplyPatchCallOutput,
-  McpApprovalResponse
+  McpApprovalResponse,
+  InputCodeInterpreterCall,
+  InputFileSearchCall,
+  InputImageGenerationCall,
+  InputWebSearchCall
 ])
 
 /**

@@ -34,7 +34,7 @@ import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
 import * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
-import { OpenAiClient } from "./OpenAiClient.ts"
+import { OpenAiClient, OpenAiSocket } from "./OpenAiClient.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
@@ -816,6 +816,7 @@ const prepareMessages = Effect.fnUntraced(
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<ReadonlyArray<typeof OpenAiSchema.InputItem.Encoded>, AiError.AiError> {
     const processedApprovalIds = new Set<string>()
+    const websocketMode = Option.isSome(yield* Effect.serviceOption(OpenAiSocket))
 
     const hasConversation = Predicate.isNotNullish(config.conversation)
     const useItemReferences = config.store === true &&
@@ -846,7 +847,7 @@ const prepareMessages = Effect.fnUntraced(
     if (Predicate.isNotUndefined(config.top_logprobs)) {
       include.add("message.output_text.logprobs")
     }
-    if (!useItemReferences && capabilities.isReasoningModel) {
+    if ((websocketMode || !useItemReferences) && capabilities.isReasoningModel) {
       include.add("reasoning.encrypted_content")
     }
     if (codeInterpreterTool) {
@@ -942,6 +943,18 @@ const prepareMessages = Effect.fnUntraced(
         case "assistant": {
           const reasoningMessages: Record<string, DeepMutable<typeof OpenAiSchema.ReasoningItem.Encoded>> = Object
             .create(null)
+
+          const providerExecutedParts = message.content.filter((part) =>
+            (part.type === "tool-call" || part.type === "tool-result") && part.providerExecuted
+          )
+          const unreplayableProviderItem = (name: string, id: string) =>
+            AiError.make({
+              module: "OpenAiLanguageModel",
+              method: "prepareMessages",
+              reason: new AiError.InvalidRequestError({
+                description: `Cannot replay provider-executed tool item '${name}' ('${id}') losslessly`
+              })
+            })
 
           for (const part of message.content) {
             switch (part.type) {
@@ -1046,6 +1059,96 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 if (part.providerExecuted) {
+                  if (
+                    config.store !== true && options.incrementalFallback !== true
+                  ) {
+                    break
+                  }
+                  const result = providerExecutedParts.find((candidate) =>
+                    candidate.type === "tool-result" && candidate.id === part.id && candidate.name === part.name
+                  )
+                  if (Predicate.isUndefined(result) || result.type !== "tool-result") {
+                    return yield* unreplayableProviderItem(part.name, part.id)
+                  }
+                  if (
+                    Predicate.hasProperty(result.result, "type") &&
+                    result.result.type === "execution-denied"
+                  ) {
+                    break
+                  }
+
+                  const itemId = getItemId(part) ?? getItemId(result) ?? part.id
+                  switch (part.name) {
+                    case "OpenAiWebSearch":
+                    case "OpenAiWebSearchPreview": {
+                      if (
+                        !Predicate.hasProperty(result.result, "action") ||
+                        !Predicate.hasProperty(result.result, "status")
+                      ) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "web_search_call",
+                        id: itemId,
+                        action: result.result.action,
+                        status: result.result.status as string
+                      })
+                      break
+                    }
+                    case "OpenAiCodeInterpreter": {
+                      if (
+                        !Predicate.hasProperty(part.params, "code") ||
+                        !Predicate.hasProperty(part.params, "container_id") ||
+                        !Predicate.hasProperty(result.result, "status") ||
+                        !Predicate.hasProperty(result.result, "outputs")
+                      ) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "code_interpreter_call",
+                        id: itemId,
+                        code: part.params.code as string | null,
+                        container_id: part.params.container_id as string,
+                        status: result.result.status as any,
+                        outputs: result.result.outputs as any
+                      })
+                      break
+                    }
+                    case "OpenAiFileSearch": {
+                      if (
+                        !Predicate.hasProperty(result.result, "status") ||
+                        !Predicate.hasProperty(result.result, "queries") ||
+                        !Predicate.hasProperty(result.result, "results")
+                      ) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "file_search_call",
+                        id: itemId,
+                        status: result.result.status as string,
+                        queries: result.result.queries as Array<string>,
+                        results: result.result.results
+                      })
+                      break
+                    }
+                    case "OpenAiImageGeneration": {
+                      if (!Predicate.hasProperty(result.result, "result")) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "image_generation_call",
+                        id: itemId,
+                        result: result.result.result as string | null,
+                        status: (Predicate.hasProperty(result.result, "status")
+                          ? result.result.status
+                          : "completed") as any
+                      })
+                      break
+                    }
+                    default: {
+                      return yield* unreplayableProviderItem(part.name, part.id)
+                    }
+                  }
                   break
                 }
 
@@ -1131,6 +1234,16 @@ const prepareMessages = Effect.fnUntraced(
                 if (useItemReferences) {
                   const id = getItemId(part) ?? part.id
                   messages.push({ type: "item_reference", id })
+                } else if (
+                  part.providerExecuted &&
+                  (config.store === true || options.incrementalFallback === true)
+                ) {
+                  const call = providerExecutedParts.find((candidate) =>
+                    candidate.type === "tool-call" && candidate.id === part.id && candidate.name === part.name
+                  )
+                  if (Predicate.isUndefined(call)) {
+                    return yield* unreplayableProviderItem(part.name, part.id)
+                  }
                 }
               }
             }
@@ -1728,6 +1841,7 @@ const makeStreamResponse = Effect.fnUntraced(
     IdGenerator.IdGenerator
   > {
     const idGenerator = yield* IdGenerator.IdGenerator
+    const websocketMode = Option.isSome(yield* Effect.serviceOption(OpenAiSocket))
 
     const approvalRequests = getApprovalRequestIdMapping(options.prompt)
     const streamApprovalRequests = new Map<string, string>()
@@ -2645,9 +2759,9 @@ const makeStreamResponse = Effect.fnUntraced(
 
           case "response.reasoning_summary_part.done": {
             const reasoningPart = getOrCreateReasoningPart(event.item_id)
-            // Stored item references do not need encrypted content, so the
-            // reasoning part can be concluded immediately.
-            if (config.store === true && config.useItemReferences !== false) {
+            // HTTP requests using stored item references do not need encrypted
+            // content, so the reasoning part can be concluded immediately.
+            if (!websocketMode && config.store === true && config.useItemReferences !== false) {
               parts.push({
                 type: "reasoning-end",
                 id: `${event.item_id}:${event.summary_index}`,

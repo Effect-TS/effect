@@ -705,9 +705,7 @@ const ErrorEvent = Schema.Struct({
   type: Schema.Literal("error").pipe(
     Schema.withDecodingDefault(Effect.succeed("error" as const))
   ),
-  status: Schema.Int.pipe(
-    Schema.withDecodingDefault(Effect.succeed(500))
-  ),
+  status: Schema.optionalKey(Schema.Int),
   // xAI sends `code` in place of `type`, e.g. `previous_response_not_found`
   error: Schema.Struct({
     type: Schema.optional(Schema.String),
