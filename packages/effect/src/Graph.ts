@@ -860,9 +860,10 @@ class EdgeIdentity<NI, EI> implements Equal.Equal {
 
   [Hash.symbol](): number {
     const hash = Hash.hash(this.identity)
-    return this.type === "directed"
-      ? Hash.combine(Hash.hash(this.target))(Hash.combine(Hash.hash(this.source))(hash))
-      : Hash.optimize(hash ^ (Hash.hash(this.source) + Hash.hash(this.target)))
+    if (this.type === "directed") {
+      return Hash.optimize(Hash.combine(Hash.combine(hash, Hash.hash(this.source)), Hash.hash(this.target)))
+    }
+    return Hash.optimize(Hash.combine(hash, internal.endpointsHash(this.source, this.target)))
   }
 }
 
