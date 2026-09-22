@@ -318,7 +318,8 @@ export const encodeBase64Url: (input: Uint8Array | string) => string = (input) =
  */
 export const decodeBase64Url = (str: string): Result.Result<Uint8Array, EncodingError> => {
   const stripped = stripCrlf(str)
-  const length = stripped.length
+  const unpadded = stripped.replace(/=+$/, "")
+  const length = unpadded.length
   if (length % 4 === 1) {
     return Result.fail(
       new EncodingError({
@@ -342,7 +343,7 @@ export const decodeBase64Url = (str: string): Result.Result<Uint8Array, Encoding
   }
 
   // Some variants allow or require omitting the padding '=' signs
-  let sanitized = length % 4 === 2 ? `${stripped}==` : length % 4 === 3 ? `${stripped}=` : stripped
+  let sanitized = length % 4 === 2 ? `${unpadded}==` : length % 4 === 3 ? `${unpadded}=` : unpadded
   sanitized = sanitized.replace(/-/g, "+").replace(/_/g, "/")
 
   return decodeBase64(sanitized)
