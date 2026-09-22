@@ -496,11 +496,20 @@ const makeSocket = Effect.gen(function*() {
 
   const decoder = new TextDecoder()
 
+  type SocketConnection = {
+    readonly send: (
+      message: typeof OpenAiSchema.CreateResponse.Encoded
+    ) => Effect.Effect<void, AiError.AiError>
+    incoming: Queue.Queue<ResponseStreamEvent, AiError.AiError>
+    /**
+     * `previous_response_not_found` fails the turn, not the socket. The next
+     * request on this connection must not treat that failure as a disconnect.
+     */
+    retain: boolean
+  }
+
   const queueRef: RcRef.RcRef<
-    {
-      readonly send: (message: typeof OpenAiSchema.CreateResponse.Encoded) => Effect.Effect<void, AiError.AiError>
-      readonly incoming: Queue.Dequeue<ResponseStreamEvent, AiError.AiError>
-    }
+    SocketConnection
   > = yield* RcRef.make({
     idleTimeToLive: 60_000,
     acquire: Effect.gen(function*() {
@@ -520,65 +529,99 @@ const makeSocket = Effect.gen(function*() {
       })
 
       const incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
-      const send = (message: typeof OpenAiSchema.CreateResponse.Encoded) =>
-        writer.write(JSON.stringify({
-          type: "response.create",
-          ...message
-        })).pipe(
-          Effect.mapError((_error) =>
-            AiError.make({
-              module: "OpenAiClient",
-              method: "createResponseStream",
-              reason: new AiError.NetworkError({
-                reason: "TransportError",
-                request: {
-                  method: "POST",
-                  url: request.url,
-                  urlParams: [],
-                  hash: undefined,
-                  headers: request.headers
-                },
-                description: "Failed to send message over WebSocket"
+      const connection: SocketConnection = {
+        incoming,
+        retain: false,
+        send: (message) =>
+          writer.write(JSON.stringify({
+            type: "response.create",
+            ...message
+          })).pipe(
+            Effect.mapError((_error) =>
+              AiError.make({
+                module: "OpenAiClient",
+                method: "createResponseStream",
+                reason: new AiError.NetworkError({
+                  reason: "TransportError",
+                  request: {
+                    method: "POST",
+                    url: request.url,
+                    urlParams: [],
+                    hash: undefined,
+                    headers: request.headers
+                  },
+                  description: "Failed to send message over WebSocket"
+                })
               })
-            })
+            )
           )
-        )
+      }
+
+      const streamError = (
+        status: number,
+        error: { readonly type?: string | undefined }
+      ) => {
+        const json = JSON.stringify(error)
+        const errorType = error.type
+        return AiError.make({
+          module: "OpenAiClient",
+          method: "createResponseStream",
+          reason: AiError.reasonFromHttpStatus({
+            description: json,
+            status: isNaN(status) ?
+              errorType !== undefined && Object.hasOwn(errorTypeToStatus, errorType)
+                ? errorTypeToStatus[errorType]
+                : 500 :
+              status,
+            metadata: error as any,
+            http: {
+              body: json,
+              request: {
+                method: "POST",
+                url: request.url,
+                urlParams: [],
+                hash: undefined,
+                headers: request.headers
+              }
+            }
+          })
+        })
+      }
+
+      // Fail the current turn and keep reading. A shared queue cannot be reused
+      // after Queue.fail, so the next turn gets a fresh queue on the same socket.
+      const retainSocket = (error: AiError.AiError) =>
+        Effect.gen(function*() {
+          const failed = connection.incoming
+          connection.retain = true
+          connection.incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
+          yield* Queue.fail(failed, error)
+        })
 
       const handleMessage = (msg: Uint8Array | string): Effect.Effect<void, AiError.AiError> | undefined => {
         const text = typeof msg === "string" ? msg : decoder.decode(msg)
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(text)
+        } catch {
+          return undefined
+        }
+        if (isPreviousResponseNotFound(parsed)) {
+          const record = parsed as Record<string, unknown>
+          const status = Number(record.status)
+          const error = "error" in record && typeof record.error === "object" && record.error !== null
+            ? record.error as { readonly type?: string | undefined }
+            : record as { readonly type?: string | undefined }
+          return retainSocket(streamError(isNaN(status) ? 400 : status, error))
+        }
         try {
           const event = decodeEvent(text)
           if (event.type === "error" && "status" in event) {
             const status = Number(event.status)
             const error = "error" in event ? event.error as typeof ErrorEvent.Type.error : event
-            const json = JSON.stringify(error)
-            return Effect.fail(
-              AiError.make({
-                module: "OpenAiClient",
-                method: "createResponseStream",
-                reason: AiError.reasonFromHttpStatus({
-                  description: json,
-                  status: isNaN(status) ?
-                    Object.hasOwn(errorTypeToStatus, error.type)
-                      ? errorTypeToStatus[error.type]
-                      : 500 :
-                    status,
-                  metadata: error as any,
-                  http: {
-                    body: json,
-                    request: {
-                      method: "POST",
-                      url: request.url,
-                      urlParams: [],
-                      hash: undefined,
-                      headers: request.headers
-                    }
-                  }
-                })
-              })
-            )
+            return Effect.fail(streamError(status, error))
           }
-          Queue.offerUnsafe(incoming, event)
+          Queue.offerUnsafe(connection.incoming, event)
         } catch {}
         return undefined
       }
@@ -612,14 +655,14 @@ const makeSocket = Effect.gen(function*() {
               description: error.message
             })
           })),
-        Effect.catchCause((cause) => Queue.failCause(incoming, cause)),
+        Effect.catchCause((cause) => Queue.failCause(connection.incoming, cause)),
         Effect.ensuring(Effect.forkIn(RcRef.invalidate(queueRef), socketScope, {
           startImmediately: true
         })),
         Effect.forkScoped({ startImmediately: true })
       )
 
-      return { send, incoming } as const
+      return connection
     })
   })
 
@@ -639,15 +682,22 @@ const makeSocket = Effect.gen(function*() {
           () => semaphore.release(1),
           { interruptible: true }
         )
-        const { send, incoming } = yield* RcRef.get(queueRef)
+        const connection = yield* RcRef.get(queueRef)
+        const incoming = connection.incoming
         let done = false
 
         yield* Scope.addFinalizerExit(
           scope,
-          () => done ? Effect.void : RcRef.invalidate(queueRef)
+          () => {
+            if (done || connection.retain) {
+              connection.retain = false
+              return Effect.void
+            }
+            return RcRef.invalidate(queueRef)
+          }
         )
 
-        yield* send(options).pipe(
+        yield* connection.send(options).pipe(
           Effect.forkScoped({ startImmediately: true })
         )
 
@@ -690,6 +740,20 @@ const errorTypeToStatus: Record<string, number> = {
 
 const AllEvents = Schema.Union([ErrorEvent, OpenAiSchema.ResponseStreamEvent])
 const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
+
+const isPreviousResponseNotFound = (value: unknown): boolean => {
+  if (typeof value !== "object" || value === null || !("type" in value) || value.type !== "error") {
+    return false
+  }
+  if ("code" in value && value.code === "previous_response_not_found") {
+    return true
+  }
+  return "error" in value &&
+    typeof value.error === "object" &&
+    value.error !== null &&
+    "code" in value.error &&
+    value.error.code === "previous_response_not_found"
+}
 
 /**
  * Uses OpenAI's WebSocket mode for response streams within the provided effect.
