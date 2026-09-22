@@ -4,17 +4,17 @@
  * @unstable
  * @since 4.0.0
  */
-import * as Cause from "../Cause.ts"
-import type * as Effect from "../Effect.ts"
-import type * as Filter from "../Filter.ts"
-import * as Formatter from "../Formatter.ts"
-import { dual } from "../Function.ts"
-import type * as Model from "../internal/arbitrary/model.ts"
-import * as Internal from "../internal/arbitrary/runner.ts"
-import type { Pipeable } from "../Pipeable.ts"
-import { hasProperty, type Predicate, type Refinement } from "../Predicate.ts"
-import type * as Schema_ from "../Schema.ts"
-import type * as Types from "../Types.ts"
+import * as Cause from "./Cause.ts"
+import type * as Effect from "./Effect.ts"
+import type * as Filter from "./Filter.ts"
+import * as Formatter from "./Formatter.ts"
+import { dual } from "./Function.ts"
+import type * as Model from "./internal/arbitrary/model.ts"
+import * as Internal from "./internal/arbitrary/runner.ts"
+import type { Pipeable } from "./Pipeable.ts"
+import { hasProperty, type Predicate, type Refinement } from "./Predicate.ts"
+import type * as Schema_ from "./Schema.ts"
+import type * as Types from "./Types.ts"
 
 /**
  * Runtime type identifier for `Arbitrary` values.
@@ -461,8 +461,7 @@ export function Constant<const A>(value: A): Arbitrary<A> {
  * **Example** (Removing irrelevant commands)
  *
  * ```ts import.meta.vitest
- * import { Effect, Schema } from "effect"
- * import { Arbitrary } from "effect/arbitrary"
+ * import { Arbitrary, Effect, Schema } from "effect"
  *
  * const command = Arbitrary.schema(Schema.Literals(["Add", "Reset", "Stop"]))
  * const commands = Arbitrary.array(command, { maxLength: 50 })

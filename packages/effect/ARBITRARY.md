@@ -14,9 +14,8 @@ Effect divides the work into three parts:
   it as an input generator with built-in shrinking.
 - `it.prop`, `it.effect.prop`, or `Arbitrary.checkEffect` runs the rule against generated inputs.
 
-The API used here is currently available from `effect/arbitrary`. The `unstable` segment matters:
-the ideas are stable, but names, result types, generation policies, and replay format may still change before this
-module is promoted.
+The API is available from `effect/Arbitrary` or as the `Arbitrary` export from `effect`. It is marked `@unstable`:
+names, result types, generation policies, and replay format may still change before this module is promoted.
 
 ## Writing a First Property
 
@@ -25,7 +24,7 @@ Consider the rule “adding zero does not change an integer.” With `@effect/vi
 ```ts
 import { it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const integer = Arbitrary.schema(Schema.Int)
 
@@ -59,7 +58,7 @@ without overflow or loss of precision, we should restrict the inputs accordingly
 
 ```ts
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const SmallInt = Schema.Int.check(
   Schema.isBetween({ minimum: -100, maximum: 100 })
@@ -115,7 +114,7 @@ Use:
 
 ```ts
 import { Result, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const integers = Arbitrary.schema(Schema.Int)
 
@@ -183,7 +182,7 @@ callback when you can, because creating a Schema inside the callback repeats tha
 
 ```ts
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const Length = Arbitrary.schema(
   Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 4 }))
@@ -221,7 +220,7 @@ important transition:
 
 ```ts
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const Key = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 20 }))
 
@@ -285,7 +284,7 @@ the result instead of immediately failing a Vitest test. It accepts a function t
 
 ```ts
 import { Effect, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const values = Arbitrary.schema(Schema.Array(Schema.Int))
 
@@ -303,7 +302,7 @@ A property may also return an `Effect`, so it can use Effect services or fail th
 
 ```ts
 import { Effect, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const program = Arbitrary.checkEffect(
   Arbitrary.schema(Schema.String),
@@ -345,7 +344,7 @@ rule is often called a **law**.
 ```ts
 import { it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const smallInt = Arbitrary.schema(
   Schema.Int.check(Schema.isBetween({ minimum: -100, maximum: 100 }))
@@ -480,7 +479,7 @@ and update operations below are correct, but `front` deliberately reads the last
 ```ts
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 interface Queue {
   readonly front: ReadonlyArray<number>
@@ -620,7 +619,7 @@ sets directly, it generates command sequences and runs the same history against 
 ```ts
 import { it } from "@effect/vitest"
 import { HashSet, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const Key = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: 20 })
@@ -684,7 +683,7 @@ reported counterexample:
 
 ```ts
 import { Effect, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const arbitrary = Arbitrary.schema(Schema.Int)
 
@@ -794,7 +793,7 @@ meaning from the object shape:
 
 ```ts
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 interface Literal {
   readonly _tag: "Literal"
@@ -865,7 +864,7 @@ Recursive Schemas are supported as long as there is a way for generation to stop
 
 ```ts
 import { Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 interface Node {
   readonly value: string
@@ -948,7 +947,7 @@ works needs no Arbitrary-specific annotation.
 ```ts
 import { assert, it } from "@effect/vitest"
 import { Effect, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const Name = Arbitrary.schema(Schema.Literals(["Ada", "Grace"]))
 

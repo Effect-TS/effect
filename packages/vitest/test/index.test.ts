@@ -1,7 +1,7 @@
 import { afterAll, assert, describe, expect, it, layer } from "@effect/vitest"
 import * as testAssert from "@effect/vitest/utils"
 import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 import { TestClock } from "effect/testing"
 
 it.effect(

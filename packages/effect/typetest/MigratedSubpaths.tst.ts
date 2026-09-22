@@ -1,5 +1,5 @@
 import * as Ai from "effect/ai"
-import * as Arbitrary from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 import * as Cli from "effect/cli"
 import * as Cluster from "effect/cluster"
 import * as DevTools from "effect/devtools"

@@ -1,6 +1,5 @@
 import { afterEach, assert, describe, it } from "@effect/vitest"
-import { Effect, Schema } from "effect"
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import { Arbitrary, Effect, Schema } from "effect"
 
 describe("Arbitrary.configureGlobal", { concurrent: false }, () => {
   afterEach(() => Arbitrary.configureGlobal({}))

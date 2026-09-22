@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Result, Schema } from "effect"
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 describe("Arbitrary shared shrink contexts", () => {
   const field = Arbitrary.schema(Schema.Literals([8, 1]), { shrink: (n) => n === 8 ? [1] as const : [] })

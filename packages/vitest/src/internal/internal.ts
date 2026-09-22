@@ -2,7 +2,7 @@
  * @since 4.0.0
  */
 
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"

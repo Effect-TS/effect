@@ -121,7 +121,7 @@ Note: `positive`, `negative`, `nonNegative`, `nonPositive` have been removed in 
 
 ### Utility renames
 
-`equivalence` → `toEquivalence`, `arbitrary` → [`Arbitrary.schema`](#migrating-from-the-fast-check-bridge-to-native-arbitrary) from `effect/arbitrary`, `pretty` → `toFormatter`, `standardSchemaV1` → `toStandardSchemaV1`
+`equivalence` → `toEquivalence`, `arbitrary` → [`Arbitrary.schema`](#migrating-from-the-fast-check-bridge-to-native-arbitrary) from `effect/Arbitrary`, `pretty` → `toFormatter`, `standardSchemaV1` → `toStandardSchemaV1`
 
 ## Detailed migrations
 
@@ -1097,7 +1097,7 @@ function split(separator: string) {
 ## Migrating from the fast-check bridge to native Arbitrary
 
 This section covers migration from the fast-check bridge published in `effect@4.0.0-rc.109` to the native,
-Schema-first module at `effect/arbitrary`.
+Schema-first module at `effect/Arbitrary`.
 
 The new module removes fast-check from the `effect` package. Applications may still install and use fast-check
 directly, but Effect Schema generation and `@effect/vitest` property tests no longer depend on it.
@@ -1118,7 +1118,7 @@ The following APIs have been removed:
 Import the native module explicitly:
 
 ```ts
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 ```
 
 If other tests still use fast-check-specific APIs, add fast-check as a direct development dependency and import it
@@ -1145,7 +1145,7 @@ Now derive and sample through the Effect-native module:
 
 ```ts
 import { Effect, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const Person = Schema.Struct({
   name: Schema.String,
@@ -1184,7 +1184,7 @@ Now `Arbitrary.checkEffect` runs a pure or Effectful property and returns a stru
 
 ```ts
 import { Effect, Schema } from "effect"
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const result = await Effect.runPromise(
   Arbitrary.checkEffect(
@@ -1395,7 +1395,7 @@ it.prop("mixed", [Schema.String, fc.integer()], ([text, value]) => true)
 Replace those inputs with Schemas when they describe a domain supported by Schema, or compose a native Arbitrary:
 
 ```ts
-import { Arbitrary } from "effect/arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 const integer = Arbitrary.schema(Schema.Int)
 

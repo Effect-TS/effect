@@ -1,5 +1,4 @@
-import { type Effect, hole, Result, Schema, type SchemaAST } from "effect"
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import { Arbitrary, type Effect, hole, Result, Schema, type SchemaAST } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Arbitrary", () => {

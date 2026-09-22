@@ -11,7 +11,7 @@ import type {
   SampleError,
   SampleOptions,
   SchemaOptions
-} from "../../arbitrary/Arbitrary.ts"
+} from "../../Arbitrary.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import { pipeArguments } from "../../Pipeable.ts"

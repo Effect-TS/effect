@@ -11,7 +11,7 @@
  */
 import * as assert from "node:assert"
 import { isDeepStrictEqual } from "node:util"
-import * as Arbitrary from "../arbitrary/Arbitrary.ts"
+import * as Arbitrary from "../Arbitrary.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import { pipe } from "../Function.ts"
