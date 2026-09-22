@@ -11,8 +11,9 @@ describe("Base64Url", () => {
   it("decodes padded and unpadded input", () => {
     const expected = new Uint8Array([72, 101, 108, 108, 111, 63])
     assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode("SGVsbG8_")), expected)
-    assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode("SGVsbG8_=")), expected)
+    assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode("-_8=")), new Uint8Array([251, 255]))
     assert.strictEqual(Result.getOrThrow(Base64Url.decodeString("8J-Riw")), "👋")
+    assert.strictEqual(Result.getOrThrow(Base64Url.decodeString("8J-Riw==")), "👋")
   })
 
   it("rejects the standard Base64 alphabet and malformed lengths", () => {
@@ -25,5 +26,11 @@ describe("Base64Url", () => {
     }
 
     assert.isTrue(Result.isFailure(Base64Url.decode("a")))
+  })
+
+  it("rejects malformed padding", () => {
+    for (const input of ["SGVsbG8_=", "SGVsbG8_==", "AAAA=", "AAAA==", "AAA=="]) {
+      assert.isTrue(Result.isFailure(Base64Url.decode(input)), input)
+    }
   })
 })
