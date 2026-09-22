@@ -11,11 +11,12 @@
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
+import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Deferred from "./Deferred.ts"
 import * as Duration from "./Duration.ts"
 import type * as Effect from "./Effect.ts"
-import type * as Exit from "./Exit.ts"
+import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
 import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
@@ -270,7 +271,7 @@ export const get: {
           // Move the entry to the end of the map to keep it fresh
           MutableHashMap.remove(state.map, key)
           MutableHashMap.set(state.map, key, oentry.value)
-          return restore(awaitEntry(oentry.value))
+          return awaitEntry(oentry.value, restore)
         }
         const scope = Scope.makeUnsafe()
         const deferred = Deferred.makeUnsafe<A, E>()
@@ -286,7 +287,7 @@ export const get: {
             entry.awaiters = 0
             entry.fiber = effect.forkUnsafe(
               fiber,
-              effect.onExit(Scope.provide(self.lookup(key), scope), (exit) => {
+              effect.onExit(effect.suspend(() => Scope.provide(self.lookup(key), scope)), (exit) => {
                 Deferred.doneUnsafe(deferred, exit)
                 if (effect.exitHasInterrupts(exit)) {
                   if (self.state._tag === "Open") {
@@ -304,20 +305,30 @@ export const get: {
               true,
               true
             )
-            return restore(awaitEntry(entry))
+            return awaitEntry(entry, restore)
           })
         )
       })
     )
 )
 
-const awaitEntry = <A, E>(entry: Entry<A, E>): Effect.Effect<A, E> => {
-  if (entry.deferred.effect !== undefined || !entry.fiber) return Deferred.await(entry.deferred)
+const awaitEntry = <A, E>(
+  entry: Entry<A, E>,
+  restore: <X, Y, Z>(effect: Effect.Effect<X, Y, Z>) => Effect.Effect<X, Y, Z>
+): Effect.Effect<A, E> => {
+  if (Deferred.isDoneUnsafe(entry.deferred) || !entry.fiber) return restore(Deferred.await(entry.deferred))
   entry.awaiters = (entry.awaiters ?? 0) + 1
-  return effect.onExit(Deferred.await(entry.deferred), () => {
+  // Install cleanup before restoring interruptibility: a pending interrupt
+  // can otherwise prevent the waiter from decrementing the count.
+  return effect.onExit(restore(Deferred.await(entry.deferred)), () => {
     entry.awaiters!--
-    if (entry.awaiters !== 0 || entry.deferred.effect !== undefined) return effect.void
-    return effect.asVoid(effect.fiberInterrupt(entry.fiber!))
+    if (entry.awaiters !== 0 || Deferred.isDoneUnsafe(entry.deferred)) return effect.void
+    return effect.flatMap(effect.fiberInterrupt(entry.fiber!), () => {
+      const exit = entry.fiber!.pollUnsafe()
+      return exit && Exit.isFailure(exit) && Cause.hasDies(exit.cause)
+        ? effect.failCause(exit.cause)
+        : effect.void
+    })
   })
 }
 
@@ -377,7 +388,7 @@ export const getOption: {
       core.withFiber((fiber) =>
         effect.flatMap(
           getImpl(self, key, fiber),
-          (entry) => entry ? effect.asSome(restore(Deferred.await(entry.deferred))) : effect.succeedNone
+          (entry) => entry ? effect.asSome(awaitEntry(entry, restore)) : effect.succeedNone
         )
       )
     )
@@ -610,7 +621,7 @@ export const invalidateWhen: {
           if (entry === undefined) {
             return effect.succeed(false)
           }
-          return restore(Deferred.await(entry.deferred)).pipe(
+          return awaitEntry(entry, restore).pipe(
             effect.flatMap((value) => {
               if (self.state._tag === "Closed") {
                 return effect.succeed(false)
@@ -658,6 +669,9 @@ export const refresh: {
   <Key, A, E, R>(self: ScopedCache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     effect.uninterruptibleMask(effect.fnUntraced(function*(restore) {
       if (self.state._tag === "Closed") return yield* effect.interrupt
+      // A new key must share the same forked lookup and waiter accounting as get.
+      // An existing key still builds its replacement independently of readers.
+      if (!MutableHashMap.has(self.state.map, key)) return yield* restore(get(self, key))
       const fiber = Fiber.getCurrent()!
       const scope = Scope.makeUnsafe()
       const deferred = Deferred.makeUnsafe<A, E>()

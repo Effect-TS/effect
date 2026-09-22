@@ -2389,6 +2389,7 @@ describe("ScopedCache", () => {
         const closing = yield* Latch.make()
         const close = yield* Latch.make()
         const acquired = yield* Latch.make()
+        let acquisitions = 0
         let releases = 0
         const cache = yield* ScopedCache.make({
           capacity: 1,
@@ -2402,7 +2403,7 @@ describe("ScopedCache", () => {
                   }))
                 return 1
               }
-              yield* Effect.acquireRelease(Effect.void, () => Effect.sync(() => releases++))
+              yield* Effect.acquireRelease(Effect.sync(() => acquisitions++), () => Effect.sync(() => releases++))
               yield* acquired.open
               return yield* Effect.never
             })
@@ -2420,7 +2421,8 @@ describe("ScopedCache", () => {
         yield* Fiber.interrupt(second)
         yield* Fiber.join(interruptFirst)
 
-        assert.strictEqual(releases, 1)
+        assert.isAbove(acquisitions, 0)
+        assert.strictEqual(releases, acquisitions)
         assert.strictEqual(yield* ScopedCache.size(cache), 0)
       }))
 
