@@ -117,6 +117,16 @@ export class Config extends Context.Service<
        * Defaults to `true`.
        */
       readonly strictJsonSchema?: boolean | undefined
+      /**
+       * Whether stored response items should be sent as item references.
+       *
+       * Set to `false` for OpenAI-compatible providers that support response
+       * storage and `previous_response_id`, but require historical assistant
+       * content to be serialized inline.
+       *
+       * Defaults to `true` when `store` is `true`.
+       */
+      readonly useItemReferences?: boolean | undefined
     }
   >
 >()("@effect/ai-openai/OpenAiLanguageModel/Config") {}
@@ -644,7 +654,12 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         config,
         options
       })
-      const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, ...apiConfig } = config
+      const {
+        fileIdPrefixes: _fip,
+        strictJsonSchema: _sjs,
+        useItemReferences: _uir,
+        ...apiConfig
+      } = config
       const request: Mutable<typeof OpenAiSchema.CreateResponse.Encoded> = {
         ...apiConfig,
         input: messages,
@@ -803,6 +818,7 @@ const prepareMessages = Effect.fnUntraced(
     const processedApprovalIds = new Set<string>()
 
     const hasConversation = Predicate.isNotNullish(config.conversation)
+    const useItemReferences = config.store === true && config.useItemReferences !== false
 
     // Provider-Defined Tools
     const applyPatchTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.ApplyPatch> =>
@@ -936,7 +952,7 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
-                if (config.store === true && Predicate.isNotNull(id)) {
+                if (useItemReferences && Predicate.isNotNull(id)) {
                   messages.push({ type: "item_reference", id })
                   break
                 }
@@ -968,7 +984,7 @@ const prepareMessages = Effect.fnUntraced(
                 if (Predicate.isNotNull(id)) {
                   const message = reasoningMessages[id]
 
-                  if (config.store === true) {
+                  if (useItemReferences) {
                     // Use item references to refer to reasoning (single reference)
                     // when the first part is encountered
                     if (Predicate.isUndefined(message)) {
@@ -1022,7 +1038,7 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
-                if (config.store && Predicate.isNotNull(id)) {
+                if (useItemReferences && Predicate.isNotNull(id)) {
                   messages.push({ type: "item_reference", id })
                   break
                 }
@@ -1110,7 +1126,7 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
-                if (config.store === true) {
+                if (useItemReferences) {
                   const id = getItemId(part) ?? part.id
                   messages.push({ type: "item_reference", id })
                 }
@@ -1130,7 +1146,7 @@ const prepareMessages = Effect.fnUntraced(
 
               processedApprovalIds.add(part.approvalId)
 
-              if (config.store === true) {
+              if (useItemReferences) {
                 messages.push({ type: "item_reference", id: part.approvalId })
               }
 

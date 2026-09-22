@@ -536,7 +536,7 @@ describe("OpenAiLanguageModel", () => {
             }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
               store: true,
               useItemReferences: false
-            } as any)))
+            })))
 
             const requests = yield* MockHttpClient.requests
             const body = yield* getRequestBody(requests[0])
@@ -2143,7 +2143,7 @@ describe("OpenAiLanguageModel", () => {
             strictJsonSchema: false,
             useItemReferences: false,
             temperature: 0.5
-          } as any))
+          }))
         )
 
         const requests = yield* MockHttpClient.requests
