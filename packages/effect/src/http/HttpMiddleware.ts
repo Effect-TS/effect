@@ -211,7 +211,7 @@ export const tracer: <E, R>(
     })
     const prevServices = fiber.context
     fiber.setContext(Context.add(fiber.context, ParentSpan, span))
-    return Effect.onExitPrimitive(httpApp, (exit) => {
+    internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
@@ -284,7 +284,8 @@ export const tracer: <E, R>(
         span.end(endTime, spanExit)
       }, 0)
       return undefined
-    }, true)
+    })
+    return httpApp
   })
 )
 

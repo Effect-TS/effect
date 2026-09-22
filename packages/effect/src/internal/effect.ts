@@ -2207,10 +2207,11 @@ export const updateContext: {
       const nextContext = f(prevContext)
       if (prevContext === nextContext) return self as any
       fiber.setContext(nextContext)
-      return onExitPrimitive(self, () => {
+      onExitUnsafe(fiber, () => {
         fiber.setContext(prevContext)
         return undefined
       })
+      return self as any
     })
 )
 
@@ -4133,12 +4134,7 @@ export const addFinalizer = <R>(
       )
   )
 
-/** @internal */
-export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
-  self: Effect.Effect<A, E, R>,
-  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | undefined,
-  interruptible?: boolean
-) => Effect.Effect<A, E | XE, R | XR> = (function() {
+const OnExitImpl = (function() {
   const Proto = makePrimitiveProto({
     op: "OnExit",
     [evaluate](this: any, fiber: FiberImpl) {
@@ -4168,10 +4164,27 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
     this.interruptible = interruptible
   } as unknown as PrimitiveCtor<[effect: any, onExit: any, interruptible: any]>
   OnExitImpl.prototype = Proto
-  return function(effect: any, onExit: any, interruptible?: boolean) {
-    return new OnExitImpl(effect, onExit, interruptible)
-  } as any
+  return OnExitImpl
 })()
+
+/** @internal */
+export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
+  self: Effect.Effect<A, E, R>,
+  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | undefined,
+  interruptible?: boolean
+) => Effect.Effect<A, E | XE, R | XR> = (effect, onExit, interruptible) =>
+  new OnExitImpl(effect, onExit, interruptible) as any
+
+/**
+ * Pushes an exit finalizer for the current `withFiber` evaluation. Only call inside `withFiber`.
+ * @internal
+ */
+export const onExitUnsafe = <A = unknown, E = unknown>(
+  fiber: Fiber.Fiber<unknown, unknown>,
+  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, unknown, unknown> | undefined
+): void => {
+  ;(fiber as FiberImpl)._stack.push(new OnExitImpl(undefined, f, undefined))
+}
 
 /** @internal */
 export const onExit: {
@@ -6102,10 +6115,8 @@ export const useSpan: {
     const span = makeSpanUnsafe(fiber, name, options)
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    return onExit(
-      suspend(() => internalCall(() => evaluate(span))),
-      (exit) => endSpan(span, exit, clock, timingEnabled)
-    )
+    onExitUnsafe(fiber, (exit) => endSpan(span, exit, clock, timingEnabled))
+    return internalCall(() => evaluate(span))
   })
 }
 
