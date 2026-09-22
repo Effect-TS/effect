@@ -8978,23 +8978,20 @@ export const broadcastN: {
     }
   ) {
     const n = Count.normalize(options.n)
-    const pubsub = yield* makePubSub<Take.Take<A, E>>(options)
+    const hub = yield* makeBroadcastHub(self, options)
     const streams = new Array(n)
     const parentScope = yield* Scope.Scope
     for (let i = 0; i < n; i++) {
       const scope = Scope.forkUnsafe(parentScope)
-      const subscription = yield* PubSub.subscribe(pubsub).pipe(
+      const channel = yield* hub.subscribe.pipe(
         Effect.provideService(Scope.Scope, scope)
       )
-      streams[i] = Channel.fromEffectTake(PubSub.take(subscription)).pipe(
+      streams[i] = channel.pipe(
         Channel.onExit((exit) => Scope.close(scope, exit)),
         fromChannel
       )
     }
-    yield* Channel.runForEach(self.channel, (value) => PubSub.publish(pubsub, value)).pipe(
-      Effect.onExit((exit) => PubSub.publish(pubsub, exit)),
-      Effect.forkScoped
-    )
+    yield* hub.start
     return streams as TupleOf<N, Stream<A, E>>
   })
 )
@@ -9086,7 +9083,60 @@ export const broadcast: {
     readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
     readonly replay?: number | undefined
   }
-): Effect.Effect<Stream<A, E>, never, Scope.Scope | R> => Effect.map(toPubSubTake(self, options), fromPubSubTake))
+): Effect.Effect<Stream<A, E>, never, Scope.Scope | R> =>
+  Effect.flatMap(
+    makeBroadcastHub(self, options),
+    (hub) => Effect.as(hub.start, fromChannel(Channel.unwrap(hub.subscribe)))
+  ))
+
+const zero = constant(0)
+
+// The hub owns both the subscriptions and the upstream. `start` runs the
+// upstream once, so a subscriber that registers before it sees every element
+// published after that. The upstream's end is kept as a state that every
+// subscriber reads once its subscription is empty, so a subscriber still ends
+// when it registered after the end was published, or when its copy of the end
+// was dropped.
+const makeBroadcastHub = Effect.fnUntraced(function*<A, E, R>(
+  self: Stream<A, E, R>,
+  options: {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
+) {
+  const pubsub = yield* makePubSub<Take.Take<A, E>>(options)
+  const scope = yield* Scope.Scope
+  const context = yield* Effect.context<R>()
+  let upstream: "idle" | "running" | Exit.Exit<void, E> = "idle"
+  const run = Channel.runForEach(self.channel, (value) => PubSub.publish(pubsub, value)).pipe(
+    Effect.onExit((exit) => {
+      upstream = exit
+      return PubSub.publish(pubsub, exit)
+    }),
+    Effect.provideContext(context),
+    Effect.forkIn(scope)
+  )
+  const start = Effect.suspend(() => {
+    if (upstream !== "idle") return Effect.void
+    upstream = "running"
+    return run
+  })
+  const subscribe = Effect.map(PubSub.subscribe(pubsub), (subscription) => {
+    const take = PubSub.take(subscription)
+    return Channel.fromEffectTake(
+      Effect.suspend(() =>
+        typeof upstream === "object" && Option.getOrElse(PubSub.remainingUnsafe(subscription), zero) === 0
+          ? Effect.succeed(upstream)
+          : take
+      )
+    )
+  })
+  return { start, subscribe } as const
+})
 
 /**
  * Returns a new Stream that multicasts the original stream, subscribing when the first consumer starts.
@@ -9176,7 +9226,10 @@ export const share: {
 ): Effect.Effect<Stream<A, E>, never, Scope.Scope | R> =>
   Effect.map(
     RcRef.make({
-      acquire: broadcast(self, options),
+      acquire: Effect.map(
+        makeBroadcastHub(self, options),
+        (hub) => fromChannel(Channel.unwrap(Effect.uninterruptible(Effect.tap(hub.subscribe, hub.start))))
+      ),
       idleTimeToLive: options.idleTimeToLive
     }),
     (ref) => unwrap(RcRef.get(ref))

@@ -24,6 +24,7 @@ import {
   References,
   Result,
   Schedule,
+  Scheduler,
   Schema,
   Scope,
   Sink,
@@ -2268,6 +2269,153 @@ describe("Stream", () => {
         deepStrictEqual(result1, [0])
         deepStrictEqual(result2, [0, 1])
       }))
+    // Lets every runnable fiber make progress without advancing the clock
+    const settle = Effect.gen(function*() {
+      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+    })
+    // Runs `test` with each op budget in 3..64 on the consumer, so a yield lands
+    // at every point of its subscription. Returns the budgets that failed.
+    const failingBudgets = (test: (budget: number) => Effect.Effect<boolean, never, Scope.Scope>) =>
+      Effect.gen(function*() {
+        const failed: Array<number> = []
+        for (let budget = 3; budget <= 64; budget++) {
+          if (!(yield* Effect.scoped(test(budget)))) failed.push(budget)
+        }
+        return failed
+      })
+    const collectNow = <A, E>(stream: Stream.Stream<A, E>, budget: number) =>
+      Effect.gen(function*() {
+        const fiber = yield* stream.pipe(
+          Stream.runCollect,
+          Effect.provideService(Scheduler.MaxOpsBeforeYield, budget),
+          Effect.forkChild({ startImmediately: true })
+        )
+        for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+        const exit = fiber.pollUnsafe()
+        yield* Fiber.interrupt(fiber)
+        return exit
+      })
+
+    it.effect("the first consumer sees every element and ends, at every op budget", () =>
+      Effect.gen(function*() {
+        const failed = yield* failingBudgets((budget) =>
+          Effect.gen(function*() {
+            const shared = yield* Stream.share(Stream.make(1, 2, 3), { capacity: 8 })
+            const exit = yield* collectNow(shared, budget)
+            return exit !== undefined && Exit.isSuccess(exit) && exit.value.length === 3
+          })
+        )
+        deepStrictEqual(failed, [])
+      }))
+
+    it.effect(
+      "a consumer interrupted while it subscribes does not stall later consumers",
+      () =>
+        Effect.gen(function*() {
+          const failed: Array<string> = []
+          for (let budget = 3; budget <= 6; budget++) {
+            for (let delay = 0; delay <= 90; delay++) {
+              const ok = yield* Effect.scoped(Effect.gen(function*() {
+                const shared = yield* Stream.share(Stream.make(1, 2, 3), { capacity: 8, idleTimeToLive: "1 minute" })
+                const first = yield* shared.pipe(
+                  Stream.runCollect,
+                  Effect.provideService(Scheduler.MaxOpsBeforeYield, budget),
+                  Effect.forkChild({ startImmediately: true })
+                )
+                for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+                yield* Fiber.interrupt(first)
+                return (yield* collectNow(shared, 2048)) !== undefined
+              }))
+              if (!ok) failed.push(`${budget}/${delay}`)
+            }
+          }
+          deepStrictEqual(failed, [])
+        }),
+      30_000
+    )
+
+    it.effect("with idleTimeToLive, a consumer that subscribes after the upstream ended still ends", () =>
+      Effect.gen(function*() {
+        const shared = yield* Stream.share(Stream.make(1, 2, 3), { capacity: 8, idleTimeToLive: "1 minute" })
+        deepStrictEqual(yield* collectNow(shared, 2048), Exit.succeed([1, 2, 3]))
+        deepStrictEqual(yield* collectNow(shared, 2048), Exit.succeed([]))
+      }))
+
+    it.effect("broadcast: a consumer that subscribes after the upstream ended still ends", () =>
+      Effect.gen(function*() {
+        const broadcasted = yield* Stream.broadcast(Stream.make(1, 2, 3), { capacity: 8 })
+        yield* settle
+        deepStrictEqual(yield* collectNow(broadcasted, 2048), Exit.succeed([]))
+        const replayed = yield* Stream.broadcast(Stream.make(1, 2, 3), { capacity: 8, replay: 8 })
+        yield* settle
+        deepStrictEqual(yield* collectNow(replayed, 2048), Exit.succeed([1, 2, 3]))
+      }))
+
+    it.effect(
+      "broadcast: a consumer that subscribes while the upstream is ending still ends",
+      () =>
+        Effect.gen(function*() {
+          const failed: Array<string> = []
+          for (let budget = 3; budget <= 12; budget++) {
+            for (let delay = 0; delay <= 16; delay++) {
+              const ended = yield* Effect.scoped(Effect.gen(function*() {
+                const broadcasted = yield* Stream.broadcast(Stream.make(1, 2, 3), { capacity: 8 }).pipe(
+                  Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)
+                )
+                for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+                return (yield* collectNow(broadcasted, 2048)) !== undefined
+              }))
+              if (!ended) failed.push(`${budget}/${delay}`)
+            }
+          }
+          deepStrictEqual(failed, [])
+        }),
+      30_000
+    )
+
+    it.effect("broadcast: the first consumer ends at every op budget", () =>
+      Effect.gen(function*() {
+        const failed = yield* failingBudgets((budget) =>
+          Effect.gen(function*() {
+            const broadcasted = yield* Stream.broadcast(Stream.make(1, 2, 3), { capacity: 8 })
+            const exit = yield* collectNow(broadcasted, budget)
+            return exit !== undefined && Exit.isSuccess(exit)
+          })
+        )
+        deepStrictEqual(failed, [])
+      }))
+
+    for (const name of ["broadcast", "broadcastN", "share"] as const) {
+      it.effect(`${name}: a subscriber ends when the dropping strategy drops its copy of the end`, () =>
+        Effect.gen(function*() {
+          const gate = yield* Deferred.make<void>()
+          const source = Stream.fromEffect(Deferred.await(gate)).pipe(
+            Stream.drain,
+            Stream.concat(Stream.fromArrays([1], [2], [3]))
+          )
+          const options = { capacity: 1, strategy: "dropping" } as const
+          const stream = name === "broadcast"
+            ? yield* Stream.broadcast(source, options)
+            : name === "share"
+            ? yield* Stream.share(source, options)
+            : (yield* Stream.broadcastN(source, { ...options, n: 1 }))[0]
+          const unblock = yield* Deferred.make<void>()
+          const fiber = yield* stream.pipe(
+            Stream.tap(() => Deferred.await(unblock)),
+            Stream.runCollect,
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* settle
+          yield* Deferred.succeed(gate, void 0)
+          yield* settle
+          yield* Deferred.succeed(unblock, void 0)
+          yield* settle
+          const exit = fiber.pollUnsafe()
+          yield* Fiber.interrupt(fiber)
+          // the full buffer dropped element 3 and the end published after it
+          assertTrue(exit !== undefined && Exit.isSuccess(exit) && exit.value.length < 3)
+        }))
+    }
   })
 
   describe("raceAll", () => {
