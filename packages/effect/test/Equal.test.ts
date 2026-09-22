@@ -18,6 +18,30 @@ class Key implements Equal.Equal, Hash.Hash {
 }
 
 describe("Equal.equals", () => {
+  it("does not cache an equality found through a provisional circular pair", () => {
+    interface Child {
+      parent?: Parent
+    }
+
+    class Parent implements Hash.Hash {
+      constructor(readonly child: Child, readonly x: number, readonly y: number) {}
+
+      [Hash.symbol](): number {
+        return 0
+      }
+    }
+
+    const p: Child = {}
+    const q: Child = {}
+    const a = new Parent(p, 1, 2)
+    const b = new Parent(q, 2, 1)
+    p.parent = a
+    q.parent = b
+
+    expect(Equal.equals(a, b)).toBe(false)
+    expect(Equal.equals(p, q)).toBe(false)
+  })
+
   describe("plain objects", () => {
     it("should return true for structurally identical objects (structural equality)", () => {
       const obj1 = { a: 1, b: 2 }
