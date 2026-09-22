@@ -157,6 +157,33 @@ describe("HashMap", () => {
       expect(entries).toEqual([["a", 1], ["b", 2]])
     })
 
+    it("iterates every entry once across all node kinds", () => {
+      // Enough keys for indexed and array nodes; the colliding keys make a collision node.
+      class Colliding implements Equal.Equal {
+        constructor(readonly id: number) {}
+        [Equal.symbol](that: Equal.Equal): boolean {
+          return that instanceof Colliding && this.id === that.id
+        }
+        [Hash.symbol](): number {
+          return 7
+        }
+      }
+      const expected: Array<readonly [unknown, number]> = [
+        ...Array.from({ length: 2000 }, (_, i) => [i, i] as const),
+        ...Array.from({ length: 5 }, (_, i) => [new Colliding(i), -i] as const)
+      ]
+      const map = HashMap.fromIterable(expected)
+      const entries = Array.from(map)
+      expect(entries.length).toBe(expected.length)
+      expect(new Set(entries.map(([key]) => key)).size).toBe(expected.length)
+      for (const [key, value] of entries) {
+        expect(HashMap.get(map, key)).toEqual(Option.some(value))
+      }
+      expect(Array.from(HashMap.entries(map))).toEqual(entries)
+      expect(Array.from(HashMap.keys(map))).toEqual(entries.map(([key]) => key))
+      expect(Array.from(HashMap.values(map))).toEqual(entries.map(([, value]) => value))
+    })
+
     it("does not expose mutable collision entries", () => {
       const map = HashMap.make(["fF", 1], ["AA", 2])
       const entry = Array.from(HashMap.entries(map)).find(([key]) => key === "fF")!
