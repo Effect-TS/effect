@@ -34,7 +34,7 @@ import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
 import * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
-import { OpenAiClient } from "./OpenAiClient.ts"
+import { OpenAiClient, OpenAiSocket } from "./OpenAiClient.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
@@ -117,6 +117,16 @@ export class Config extends Context.Service<
        * Defaults to `true`.
        */
       readonly strictJsonSchema?: boolean | undefined
+      /**
+       * Whether stored response items should be sent as item references.
+       *
+       * Set to `false` for OpenAI-compatible providers that support response
+       * storage and `previous_response_id`, but require historical assistant
+       * content to be serialized inline.
+       *
+       * Defaults to `true` when `store` is `true`.
+       */
+      readonly useItemReferences?: boolean | undefined
     }
   >
 >()("@effect/ai-openai/OpenAiLanguageModel/Config") {}
@@ -644,7 +654,12 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         config,
         options
       })
-      const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, ...apiConfig } = config
+      const {
+        fileIdPrefixes: _fip,
+        strictJsonSchema: _sjs,
+        useItemReferences: _uir,
+        ...apiConfig
+      } = config
       const request: Mutable<typeof OpenAiSchema.CreateResponse.Encoded> = {
         ...apiConfig,
         input: messages,
@@ -801,8 +816,12 @@ const prepareMessages = Effect.fnUntraced(
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<ReadonlyArray<typeof OpenAiSchema.InputItem.Encoded>, AiError.AiError> {
     const processedApprovalIds = new Set<string>()
+    const websocketMode = Option.isSome(yield* Effect.serviceOption(OpenAiSocket))
 
     const hasConversation = Predicate.isNotNullish(config.conversation)
+    const useItemReferences = config.store === true &&
+      config.useItemReferences !== false &&
+      options.incrementalFallback !== true
 
     // Provider-Defined Tools
     const applyPatchTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.ApplyPatch> =>
@@ -828,7 +847,7 @@ const prepareMessages = Effect.fnUntraced(
     if (Predicate.isNotUndefined(config.top_logprobs)) {
       include.add("message.output_text.logprobs")
     }
-    if (config.store === false && capabilities.isReasoningModel) {
+    if ((websocketMode || !useItemReferences) && capabilities.isReasoningModel) {
       include.add("reasoning.encrypted_content")
     }
     if (codeInterpreterTool) {
@@ -925,6 +944,18 @@ const prepareMessages = Effect.fnUntraced(
           const reasoningMessages: Record<string, DeepMutable<typeof OpenAiSchema.ReasoningItem.Encoded>> = Object
             .create(null)
 
+          const providerExecutedParts = message.content.filter((part) =>
+            (part.type === "tool-call" || part.type === "tool-result") && part.providerExecuted
+          )
+          const unreplayableProviderItem = (name: string, id: string) =>
+            AiError.make({
+              module: "OpenAiLanguageModel",
+              method: "prepareMessages",
+              reason: new AiError.InvalidRequestError({
+                description: `Cannot replay provider-executed tool item '${name}' ('${id}') losslessly`
+              })
+            })
+
           for (const part of message.content) {
             switch (part.type) {
               case "text": {
@@ -936,7 +967,7 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
-                if (config.store === true && Predicate.isNotNull(id)) {
+                if (useItemReferences && Predicate.isNotNull(id)) {
                   messages.push({ type: "item_reference", id })
                   break
                 }
@@ -968,7 +999,7 @@ const prepareMessages = Effect.fnUntraced(
                 if (Predicate.isNotNull(id)) {
                   const message = reasoningMessages[id]
 
-                  if (config.store === true) {
+                  if (useItemReferences) {
                     // Use item references to refer to reasoning (single reference)
                     // when the first part is encountered
                     if (Predicate.isUndefined(message)) {
@@ -1022,12 +1053,102 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
-                if (config.store && Predicate.isNotNull(id)) {
+                if (useItemReferences && Predicate.isNotNull(id)) {
                   messages.push({ type: "item_reference", id })
                   break
                 }
 
                 if (part.providerExecuted) {
+                  if (
+                    config.store !== true && options.incrementalFallback !== true
+                  ) {
+                    break
+                  }
+                  const result = providerExecutedParts.find((candidate) =>
+                    candidate.type === "tool-result" && candidate.id === part.id && candidate.name === part.name
+                  )
+                  if (Predicate.isUndefined(result) || result.type !== "tool-result") {
+                    return yield* unreplayableProviderItem(part.name, part.id)
+                  }
+                  if (
+                    Predicate.hasProperty(result.result, "type") &&
+                    result.result.type === "execution-denied"
+                  ) {
+                    break
+                  }
+
+                  const itemId = getItemId(part) ?? getItemId(result) ?? part.id
+                  switch (part.name) {
+                    case "OpenAiWebSearch":
+                    case "OpenAiWebSearchPreview": {
+                      if (
+                        !Predicate.hasProperty(result.result, "action") ||
+                        !Predicate.hasProperty(result.result, "status")
+                      ) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "web_search_call",
+                        id: itemId,
+                        action: result.result.action,
+                        status: result.result.status as string
+                      })
+                      break
+                    }
+                    case "OpenAiCodeInterpreter": {
+                      if (
+                        !Predicate.hasProperty(part.params, "code") ||
+                        !Predicate.hasProperty(part.params, "container_id") ||
+                        !Predicate.hasProperty(result.result, "status") ||
+                        !Predicate.hasProperty(result.result, "outputs")
+                      ) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "code_interpreter_call",
+                        id: itemId,
+                        code: part.params.code as string | null,
+                        container_id: part.params.container_id as string,
+                        status: result.result.status as any,
+                        outputs: result.result.outputs as any
+                      })
+                      break
+                    }
+                    case "OpenAiFileSearch": {
+                      if (
+                        !Predicate.hasProperty(result.result, "status") ||
+                        !Predicate.hasProperty(result.result, "queries") ||
+                        !Predicate.hasProperty(result.result, "results")
+                      ) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "file_search_call",
+                        id: itemId,
+                        status: result.result.status as string,
+                        queries: result.result.queries as Array<string>,
+                        results: result.result.results
+                      })
+                      break
+                    }
+                    case "OpenAiImageGeneration": {
+                      if (!Predicate.hasProperty(result.result, "result")) {
+                        return yield* unreplayableProviderItem(part.name, part.id)
+                      }
+                      messages.push({
+                        type: "image_generation_call",
+                        id: itemId,
+                        result: result.result.result as string | null,
+                        status: (Predicate.hasProperty(result.result, "status")
+                          ? result.result.status
+                          : "completed") as any
+                      })
+                      break
+                    }
+                    default: {
+                      return yield* unreplayableProviderItem(part.name, part.id)
+                    }
+                  }
                   break
                 }
 
@@ -1110,9 +1231,19 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
-                if (config.store === true) {
+                if (useItemReferences) {
                   const id = getItemId(part) ?? part.id
                   messages.push({ type: "item_reference", id })
+                } else if (
+                  part.providerExecuted &&
+                  (config.store === true || options.incrementalFallback === true)
+                ) {
+                  const call = providerExecutedParts.find((candidate) =>
+                    candidate.type === "tool-call" && candidate.id === part.id && candidate.name === part.name
+                  )
+                  if (Predicate.isUndefined(call)) {
+                    return yield* unreplayableProviderItem(part.name, part.id)
+                  }
                 }
               }
             }
@@ -1130,7 +1261,7 @@ const prepareMessages = Effect.fnUntraced(
 
               processedApprovalIds.add(part.approvalId)
 
-              if (config.store === true) {
+              if (useItemReferences) {
                 messages.push({ type: "item_reference", id: part.approvalId })
               }
 
@@ -1710,6 +1841,7 @@ const makeStreamResponse = Effect.fnUntraced(
     IdGenerator.IdGenerator
   > {
     const idGenerator = yield* IdGenerator.IdGenerator
+    const websocketMode = Option.isSome(yield* Effect.serviceOption(OpenAiSocket))
 
     const approvalRequests = getApprovalRequestIdMapping(options.prompt)
     const streamApprovalRequests = new Map<string, string>()
@@ -2627,9 +2759,9 @@ const makeStreamResponse = Effect.fnUntraced(
 
           case "response.reasoning_summary_part.done": {
             const reasoningPart = getOrCreateReasoningPart(event.item_id)
-            // When OpenAI stores message data, we can immediately conclude the
-            // reasoning part given that we do not need the encrypted content
-            if (config.store === true) {
+            // HTTP requests using stored item references do not need encrypted
+            // content, so the reasoning part can be concluded immediately.
+            if (!websocketMode && config.store === true && config.useItemReferences !== false) {
               parts.push({
                 type: "reasoning-end",
                 id: `${event.item_id}:${event.summary_index}`,

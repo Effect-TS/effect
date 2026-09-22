@@ -506,6 +506,133 @@ describe("OpenAiLanguageModel", () => {
             })
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
+        it.effect("serializes stored assistant history according to item reference config", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: storedHistoryPrompt,
+              toolkit: TestToolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })))
+
+            yield* LanguageModel.generateText({
+              prompt: storedHistoryPrompt,
+              toolkit: TestToolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+              store: true,
+              useItemReferences: false
+            })))
+
+            const requests = yield* MockHttpClient.requests
+            const referencedBody = yield* getRequestBody(requests[0])
+            const inlineBody = yield* getRequestBody(requests[1])
+
+            assert.deepStrictEqual(referencedBody.input, [
+              { role: "user", content: [{ type: "input_text", text: "Question" }] },
+              { type: "item_reference", id: "msg_1" },
+              { type: "item_reference", id: "rs_1" },
+              { type: "item_reference", id: "fc_1" },
+              { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+
+            assert.deepStrictEqual(inlineBody.input, [
+              { role: "user", content: [{ type: "input_text", text: "Question" }] },
+              {
+                id: "msg_1",
+                type: "message",
+                role: "assistant",
+                status: "completed",
+                content: [{
+                  type: "output_text",
+                  text: "Answer",
+                  annotations: [],
+                  logprobs: []
+                }]
+              },
+              {
+                type: "reasoning",
+                id: "rs_1",
+                summary: [{ type: "summary_text", text: "Thinking" }],
+                encrypted_content: "encrypted-reasoning"
+              },
+              {
+                type: "function_call",
+                name: "TestTool",
+                call_id: "call_1",
+                arguments: "{\"input\":\"value\"}",
+                id: "fc_1"
+              },
+              { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+            strictEqual(inlineBody.useItemReferences, undefined)
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("replays matched provider-executed history inline", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: providerExecutedHistoryPrompt,
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+              store: true,
+              useItemReferences: false
+            })))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [
+              { role: "user", content: [{ type: "input_text", text: "Search" }] },
+              {
+                type: "web_search_call",
+                id: "ws_1",
+                status: "completed",
+                action: { type: "search", query: "Effect TypeScript" }
+              },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("fails locally when provider-executed history cannot be replayed inline", () =>
+          Effect.gen(function*() {
+            const cases = [
+              providerExecutedCall,
+              providerExecutedResult
+            ] as const
+            yield* Effect.forEach(cases, (part) =>
+              LanguageModel.generateText({
+                prompt: Prompt.make([
+                  { role: "user", content: "Search" },
+                  {
+                    role: "assistant",
+                    content: [part]
+                  },
+                  { role: "user", content: "Continue" }
+                ]),
+                toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+                disableToolCallResolution: true
+              }).pipe(
+                Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+                  store: true,
+                  useItemReferences: false
+                })),
+                Effect.flip,
+                Effect.tap((error) =>
+                  Effect.sync(() => {
+                    strictEqual(error.reason._tag, "InvalidRequestError")
+                    if (error.reason._tag === "InvalidRequestError") {
+                      assert.include(error.reason.description, "OpenAiWebSearch")
+                      assert.include(error.reason.description, "ws_1")
+                    }
+                  })
+                )
+              ))
+
+            strictEqual((yield* MockHttpClient.requests).length, 0)
+          }).pipe(Effect.provide(makeTestLayer())))
+
         it.effect("converts tool call parts to function_call", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -2073,6 +2200,7 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
             fileIdPrefixes: ["file-"],
             strictJsonSchema: false,
+            useItemReferences: false,
             temperature: 0.5
           }))
         )
@@ -2082,6 +2210,7 @@ describe("OpenAiLanguageModel", () => {
 
         strictEqual(body.fileIdPrefixes, undefined)
         strictEqual(body.strictJsonSchema, undefined)
+        strictEqual(body.useItemReferences, undefined)
         strictEqual(body.temperature, 0.5)
       }).pipe(Effect.provide(makeTestLayer())))
   })
@@ -2362,6 +2491,74 @@ const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
 })
 
 const TestToolkit = Toolkit.make(TestTool)
+
+const storedHistoryPrompt = Prompt.make([
+  { role: "user", content: "Question" },
+  {
+    role: "assistant",
+    content: [
+      Prompt.textPart({
+        text: "Answer",
+        options: { openai: { itemId: "msg_1" } }
+      }),
+      Prompt.reasoningPart({
+        text: "Thinking",
+        options: {
+          openai: {
+            itemId: "rs_1",
+            encryptedContent: "encrypted-reasoning"
+          }
+        }
+      }),
+      Prompt.toolCallPart({
+        id: "call_1",
+        name: "TestTool",
+        params: { input: "value" },
+        providerExecuted: false,
+        options: { openai: { itemId: "fc_1" } }
+      })
+    ]
+  },
+  {
+    role: "tool",
+    content: [Prompt.toolResultPart({
+      id: "call_1",
+      name: "TestTool",
+      isFailure: false,
+      result: { output: "result" },
+      providerExecuted: false
+    })]
+  },
+  { role: "user", content: "Continue" }
+])
+
+const providerExecutedCall = Prompt.toolCallPart({
+  id: "ws_1",
+  name: "OpenAiWebSearch",
+  params: {
+    action: { type: "search", query: "Effect TypeScript" }
+  },
+  providerExecuted: true,
+  options: { openai: { itemId: "ws_1", status: "completed" } }
+})
+
+const providerExecutedResult = Prompt.toolResultPart({
+  id: "ws_1",
+  name: "OpenAiWebSearch",
+  isFailure: false,
+  result: {
+    action: { type: "search", query: "Effect TypeScript" },
+    status: "completed"
+  },
+  providerExecuted: true,
+  options: { openai: { itemId: "ws_1", status: "completed" } }
+})
+
+const providerExecutedHistoryPrompt = Prompt.make([
+  { role: "user", content: "Search" },
+  { role: "assistant", content: [providerExecutedCall, providerExecutedResult] },
+  { role: "user", content: "Continue" }
+])
 
 const McpToolkit = Toolkit.make(OpenAiTool.Mcp({
   server_label: "npm",
