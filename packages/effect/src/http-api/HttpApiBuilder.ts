@@ -88,7 +88,7 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
     >()
     const routes: Array<HttpRouter.Route<any, any>> = []
     const availableGroups = Array.from(services.mapUnsafe.keys()).filter((key) =>
-      key.startsWith("effect/httpapi/HttpApiGroup/")
+      key.startsWith("effect/http-api/HttpApiGroup/")
     )
     const groups = Object.values(api.groups) as ReadonlyArray<HttpApiGroup.Top>
     for (const group of groups) {
@@ -210,7 +210,7 @@ export const handler = <
   R
 > => f
 
-const HandlersTypeId = "~effect/httpapi/HttpApiBuilder/Handlers"
+const HandlersTypeId = "~effect/http-api/HttpApiBuilder/Handlers"
 
 type EndpointMap<Endpoints extends HttpApiEndpoint.Constraint> = {
   readonly [Endpoint in Endpoints as HttpApiEndpoint.Identifier<Endpoint>]: Endpoint
@@ -997,7 +997,7 @@ const makeSecurityMiddleware = (
   return middleware
 }
 
-const HandlerErrorTypeId = "~effect/httpapi/HttpApiBuilder/HandlerError" as const
+const HandlerErrorTypeId = "~effect/http-api/HttpApiBuilder/HandlerError" as const
 class HandlerError {
   readonly [HandlerErrorTypeId] = HandlerErrorTypeId
   readonly error: unknown
@@ -1165,7 +1165,7 @@ function encodeFailureEvent(cause: Cause.Cause<unknown>, encoder: SseStreamEncod
   )
 }
 
-const reservedStreamFailureEvent = "effect/httpapi/stream/failure"
+const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 
 function renderSseEvent(event: Sse.EventEncoded) {
   return Sse.encoder.write({

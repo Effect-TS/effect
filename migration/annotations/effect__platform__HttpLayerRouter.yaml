@@ -1,6 +1,6 @@
 "@effect/platform/HttpLayerRouter#addHttpApi":
   replacement: "HttpApiBuilder.layer"
-  note: "HTTP API registration moved to effect/httpapi."
+  note: "HTTP API registration moved to effect/http-api."
 "@effect/platform/HttpLayerRouter#cors":
   replacement: "HttpRouter.cors"
   note: "HttpLayerRouter was consolidated into v4 HttpRouter."

@@ -32,9 +32,9 @@ import { HttpApiSchemaError } from "./HttpApiError.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
 
-const TypeId = "~effect/httpapi/HttpApiMiddleware"
+const TypeId = "~effect/http-api/HttpApiMiddleware"
 
-const SecurityTypeId = "~effect/httpapi/HttpApiMiddleware/Security"
+const SecurityTypeId = "~effect/http-api/HttpApiMiddleware/Security"
 
 /**
  * Returns `true` when an HTTP API middleware service is security middleware.
@@ -424,7 +424,7 @@ function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
  *   HttpApiError,
  *   HttpApiGroup,
  *   HttpApiMiddleware
- * } from "effect/httpapi"
+ * } from "effect/http-api"
  *
  * class CustomError extends Schema.TaggedError<CustomError>()("CustomError", {}) {}
  *

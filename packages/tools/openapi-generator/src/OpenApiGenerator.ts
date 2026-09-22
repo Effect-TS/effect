@@ -12,8 +12,8 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/http-api/OpenApi"
 import type { HttpMethod } from "effect/http/HttpMethod"
-import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/httpapi/OpenApi"
 import * as JsonPointer from "effect/JsonPointer"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
