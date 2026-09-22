@@ -41,6 +41,21 @@ describe("Metric", () => {
       assert.strictEqual(valueB.count, 10)
     }))
 
+  it.effect("registers an unattributed metric again after the registry is cleared", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    return Effect.gen(function*() {
+      const counter = Metric.counter(nextId())
+
+      yield* Metric.update(counter, 1)
+      registry.clear()
+      yield* Metric.update(counter, 10)
+
+      const snapshots = yield* Metric.snapshot
+      assert.deepStrictEqual(snapshots.map((snapshot) => snapshot.state), [{ count: 10, incremental: false }])
+      assert.strictEqual((yield* Metric.value(counter)).count, 10)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
   it.effect("keeps distinct attribute sets in separate series", () =>
     Effect.gen(function*() {
       const id = nextId()

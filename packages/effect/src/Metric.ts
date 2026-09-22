@@ -1660,7 +1660,7 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   declare readonly Input: Contravariant<Input>
   declare readonly State: Covariant<State>
 
-  readonly #metadata = new WeakMap<MetricRegistry, Metric.Metadata<Input, State>>()
+  #key: string | undefined
 
   readonly id: string
   readonly description: string | undefined
@@ -1695,20 +1695,17 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
     if (Object.keys(extraAttributes).length > 0) {
       return this.getOrCreate(context, mergeAttributes(this.attributes, extraAttributes)).hooks
     }
-    const registry = Context.get(context, MetricRegistry)
-    let metadata = this.#metadata.get(registry)
-    if (Predicate.isUndefined(metadata)) {
-      metadata = this.getOrCreate(context, this.attributes)
-      this.#metadata.set(registry, metadata)
-    }
-    return metadata.hooks
+    // The registry owns the series, so it is looked up on every update; only
+    // the key, which is fixed per metric, is cached.
+    const key = this.#key ??= makeKey(this, this.attributes)
+    return (Context.get(context, MetricRegistry).get(key) ?? this.getOrCreate(context, this.attributes, key)).hooks
   }
 
   getOrCreate(
     context: Context.Context<never>,
-    attributes: Metric.Attributes | undefined
+    attributes: Metric.Attributes | undefined,
+    key = makeKey(this, attributes)
   ): Metric.Metadata<Input, State> {
-    const key = makeKey(this, attributes)
     const registry = Context.get(context, MetricRegistry)
     if (registry.has(key)) {
       return registry.get(key)!
