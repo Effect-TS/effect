@@ -125,8 +125,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         if (byReferenceInstances.has(self)) {
           return random(self)
         }
-        if (hashCache.has(self)) {
-          return hashCache.get(self)!
+        const cached = hashCache.get(self)
+        if (cached !== undefined) {
+          return cached
         }
         if (visitedObjects.has(self)) {
           backEdges++
@@ -136,8 +137,8 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         const seen = backEdges
         let h: number
         try {
-          if (isHash(self)) {
-            h = self[symbol]()
+          if (symbol in self) {
+            h = (self as Hash)[symbol]()
           } else if (typeof self === "function") {
             h = random(self)
           } else if (self instanceof DataView) {
