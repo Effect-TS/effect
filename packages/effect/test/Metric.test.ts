@@ -56,6 +56,21 @@ describe("Metric", () => {
     }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
   })
 
+  it.effect("shares one series between no attributes and empty attributes", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id)
+      const second = Metric.counter(id, { attributes: {} })
+      const third = Metric.counter(id, { attributes: [] })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+      yield* Metric.update(third, 100)
+
+      assert.strictEqual((yield* Metric.snapshot).length, 1)
+      assert.strictEqual((yield* Metric.value(first)).count, 111)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect("keeps distinct attribute sets in separate series", () =>
     Effect.gen(function*() {
       const id = nextId()

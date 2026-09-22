@@ -3476,8 +3476,10 @@ function makeKey<Input, State>(
   attributes: Metric.Attributes | undefined
 ): string {
   // Every part is JSON-encoded so that no id, description or attribute value
-  // can spell another metric's key.
-  return JSON.stringify([metric.type, metric.id, metric.description, attributes && sortedEntries(attributes)])
+  // can spell another metric's key. Empty attributes select the unattributed
+  // series.
+  const entries = attributes && sortedEntries(attributes)
+  return JSON.stringify([metric.type, metric.id, metric.description, entries?.length ? entries : undefined])
 }
 
 function makeHooks<Input, State>(
