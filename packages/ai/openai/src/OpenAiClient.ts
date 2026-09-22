@@ -11,6 +11,7 @@
 import * as AiError from "effect/ai/AiError"
 import * as ResponseIdTracker from "effect/ai/ResponseIdTracker"
 import * as Array from "effect/Array"
+import * as Cause from "effect/Cause"
 import type * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -496,10 +497,13 @@ const makeSocket = Effect.gen(function*() {
 
   const decoder = new TextDecoder()
 
+  // The response currently in flight, or undefined between turns. Each turn
+  // owns its queue; the reader ends or fails it, so a turn that is still
+  // current when its consumer leaves was abandoned mid-response.
+  type Turn = Queue.Queue<ResponseStreamEvent, AiError.AiError | Cause.Done>
   type SocketConnection = {
     readonly send: (message: typeof OpenAiSchema.CreateResponse.Encoded) => Effect.Effect<void, AiError.AiError>
-    // Replaced when the provider fails a single turn without closing the socket
-    incoming: Queue.Queue<ResponseStreamEvent, AiError.AiError>
+    current: Turn | undefined
   }
 
   const queueRef: RcRef.RcRef<SocketConnection> = yield* RcRef.make({
@@ -521,7 +525,7 @@ const makeSocket = Effect.gen(function*() {
       })
 
       const connection: SocketConnection = {
-        incoming: yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>(),
+        current: undefined,
         send: (message) =>
           writer.write(JSON.stringify({
             type: "response.create",
@@ -547,24 +551,29 @@ const makeSocket = Effect.gen(function*() {
           )
       }
 
-      // A failed queue cannot be reused, so the next turn gets a fresh one on
-      // the same socket.
-      const failTurn = Effect.fnUntraced(function*(error: AiError.AiError) {
-        const failed = connection.incoming
-        connection.incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
-        yield* Queue.fail(failed, error)
-      })
-
-      const handleMessage = (msg: Uint8Array | string): Effect.Effect<void, AiError.AiError> | undefined => {
-        const text = typeof msg === "string" ? msg : decoder.decode(msg)
+      const handleMessage = (msg: Uint8Array | string): void => {
+        const turn = connection.current
+        if (turn === undefined) return
+        let event: typeof AllEvents.Type
         try {
-          const event = decodeEvent(text)
-          if (event.type === "error" && "status" in event) {
-            const status = Number(event.status)
-            const error = "error" in event ? event.error as typeof ErrorEvent.Type.error : event
-            const errorType = error.type ?? error.code ?? "unknown"
-            const json = JSON.stringify(error)
-            const aiError = AiError.make({
+          event = decodeEvent(typeof msg === "string" ? msg : decoder.decode(msg))
+        } catch {
+          return
+        }
+        if (event.type === "error" && "status" in event) {
+          const status = Number(event.status)
+          const error = "error" in event ? event.error as typeof ErrorEvent.Type.error : event
+          const errorType = error.type ?? error.code ?? "unknown"
+          const json = JSON.stringify(error)
+          // LanguageModel retries `previous_response_not_found` with the full
+          // prompt on this socket. Other errors leave the turn current so its
+          // finalizer invalidates the connection, preserving the existing policy.
+          if (errorType === "previous_response_not_found") {
+            connection.current = undefined
+          }
+          Queue.failCauseUnsafe(
+            turn,
+            Cause.fail(AiError.make({
               module: "OpenAiClient",
               method: "createResponseStream",
               reason: AiError.reasonFromHttpStatus({
@@ -586,12 +595,18 @@ const makeSocket = Effect.gen(function*() {
                   }
                 }
               })
-            })
-            return errorType === "previous_response_not_found" ? failTurn(aiError) : Effect.fail(aiError)
-          }
-          Queue.offerUnsafe(connection.incoming, event)
-        } catch {}
-        return undefined
+            }))
+          )
+          return
+        }
+        Queue.offerUnsafe(turn, event)
+        if (
+          event.type === "response.completed" || event.type === "response.incomplete" ||
+          event.type === "response.failed"
+        ) {
+          connection.current = undefined
+          Queue.endUnsafe(turn)
+        }
       }
 
       yield* Effect.gen(function*() {
@@ -599,10 +614,7 @@ const makeSocket = Effect.gen(function*() {
         while (true) {
           const messages = yield* pull
           for (let i = 0; i < messages.length; i++) {
-            const result = handleMessage(messages[i])
-            if (result !== undefined) {
-              yield* result
-            }
+            handleMessage(messages[i])
           }
         }
       }).pipe(
@@ -623,7 +635,9 @@ const makeSocket = Effect.gen(function*() {
               description: error.message
             })
           })),
-        Effect.catchCause((cause) => Queue.failCause(connection.incoming, cause)),
+        Effect.catchCause((cause) =>
+          connection.current === undefined ? Effect.void : Queue.failCause(connection.current, cause)
+        ),
         Effect.ensuring(Effect.forkIn(RcRef.invalidate(queueRef), socketScope, {
           startImmediately: true
         })),
@@ -651,26 +665,21 @@ const makeSocket = Effect.gen(function*() {
           { interruptible: true }
         )
         const connection = yield* RcRef.get(queueRef)
-        const incoming = connection.incoming
-        let done = false
+        const turn: Turn = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError | Cause.Done>()
+        connection.current = turn
 
-        // A replaced queue means the provider failed only this turn and the
-        // socket is still usable.
+        // Leaving while the response is still streaming makes the socket
+        // unusable for the next turn.
         yield* Scope.addFinalizerExit(
           scope,
-          () => done || connection.incoming !== incoming ? Effect.void : RcRef.invalidate(queueRef)
+          () => connection.current === turn ? RcRef.invalidate(queueRef) : Effect.void
         )
 
         yield* connection.send(options).pipe(
           Effect.forkScoped({ startImmediately: true })
         )
 
-        return Stream.fromQueue(incoming).pipe(
-          Stream.takeUntil((e) => {
-            done = e.type === "response.completed" || e.type === "response.incomplete" || e.type === "response.failed"
-            return done
-          })
-        )
+        return Stream.fromQueue(turn)
       }))
 
       return Effect.succeed([
