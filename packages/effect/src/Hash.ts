@@ -10,7 +10,7 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"
-import { byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
+import { addBackEdge, backEdges, byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -128,7 +128,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
           return cached
         }
         if (visitedObjects.has(self)) {
-          backEdges++
+          addBackEdge()
           return string("[Circular]")
         }
         visitedObjects.add(self)
@@ -513,4 +513,3 @@ const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) =>
 const randomHashCache = new WeakMap<any, number>()
 const hashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()
-let backEdges = 0
