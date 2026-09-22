@@ -1739,6 +1739,15 @@ describe("Cache", () => {
           )
         })
     )
+    it.effect("a lookup can inspect its own pending entry", () =>
+      Effect.gen(function*() {
+        let cache!: Cache.Cache<number, number>
+        cache = yield* Cache.make({
+          capacity: 10,
+          lookup: (key: number) => Effect.map(Cache.getSuccess(cache, key), () => key)
+        })
+        assert.deepStrictEqual(show(yield* Effect.exit(Cache.get(cache, 1))), "ok:1")
+      }))
   })
 })
 

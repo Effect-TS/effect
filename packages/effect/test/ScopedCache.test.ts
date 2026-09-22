@@ -2607,6 +2607,42 @@ describe("ScopedCache", () => {
         assert.deepStrictEqual({ later: show(later), released }, { later: "ok:1", released: [2] })
       }))
 
+    it.effect("interrupting refresh while closing the replaced entry does not poison the new value", () =>
+      Effect.gen(function*() {
+        const closing = yield* Deferred.make<void>()
+        const allowClose = yield* Deferred.make<void>()
+        const released: Array<number> = []
+        let lookups = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_: number) =>
+            Effect.acquireRelease(
+              Effect.sync(() => ++lookups),
+              (n) =>
+                Effect.gen(function*() {
+                  if (n === 1) {
+                    yield* Deferred.succeed(closing, undefined)
+                    yield* Deferred.await(allowClose)
+                  }
+                  released.push(n)
+                })
+            )
+        })
+        assert.strictEqual(yield* ScopedCache.get(cache, 1), 1)
+        const refresh = yield* Effect.forkChild(ScopedCache.refresh(cache, 1), { startImmediately: true })
+        yield* Deferred.await(closing)
+        const interrupt = yield* Effect.forkChild(Fiber.interrupt(refresh), { startImmediately: true })
+        yield* settle
+        yield* Deferred.succeed(allowClose, undefined)
+        yield* Fiber.join(interrupt)
+        const later = yield* Effect.exit(ScopedCache.get(cache, 1))
+        assert.deepStrictEqual({ later: show(later), released, lookups }, {
+          later: "ok:2",
+          released: [1],
+          lookups: 2
+        })
+      }))
+
     it.effect("a throwing timeToLive fails every caller with the same defect", () =>
       Effect.gen(function*() {
         const gate = yield* Deferred.make<number>()
