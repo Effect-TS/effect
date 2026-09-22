@@ -597,6 +597,47 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result._tag, "Some")
       }))
 
+    it.live("classifies nested invalid-request errors without status", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://nested-errors.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+
+        const error = yield* OpenAiClient.withWebSocketMode(
+          Effect.gen(function*() {
+            const client = yield* OpenAiClient.OpenAiClient
+            const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+            const [error] = yield* Effect.all([
+              Stream.runDrain(stream).pipe(Effect.flip),
+              nextWebSocketCreate(server).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() =>
+                    server.send({
+                      error: {
+                        type: "invalid_request_error",
+                        message: "bad"
+                      }
+                    })
+                  )
+                )
+              )
+            ], { concurrency: "unbounded" })
+            return error
+          })
+        ).pipe(
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://nested-errors.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http"))),
+          Effect.timeout("5 seconds")
+        )
+
+        assert.strictEqual(error.reason._tag, "InvalidRequestError")
+      }))
+
     it.live("replaces the WebSocket after a non-retryable error event", () =>
       Effect.gen(function*() {
         const server = yield* Effect.acquireRelease(
@@ -872,6 +913,96 @@ describe("OpenAiClient", () => {
             encrypted_content: "encrypted-reasoning"
           }
         })
+      }))
+
+    it.live("preserves encrypted reasoning across repeated default-config recovery", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://repeated-reasoning-recovery.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+        const requests: Array<WebSocketResponseCreate> = []
+
+        const drive = Effect.gen(function*() {
+          const chat = yield* Chat.empty
+          yield* chat.streamText({ prompt: "first" }).pipe(Stream.runDrain)
+          yield* chat.streamText({ prompt: "second" }).pipe(Stream.runDrain)
+          yield* chat.streamText({ prompt: "third" }).pipe(Stream.runDrain)
+        }).pipe(
+          OpenAiClient.withWebSocketMode,
+          Effect.provide(OpenAiLanguageModel.model("o3-mini", { store: true })),
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://repeated-reasoning-recovery.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http")))
+        )
+
+        const respond = Effect.gen(function*() {
+          requests.push(yield* nextWebSocketCreate(server))
+          sendWebSocketReasoningCompleted(server, "resp_1", "rs_1", "first thought", "encrypted-1")
+
+          requests.push(yield* nextWebSocketCreate(server))
+          server.send({
+            error: {
+              message: "gRPC error: Response with id=resp_1 not found",
+              type: "api_error"
+            }
+          })
+
+          requests.push(yield* nextWebSocketCreate(server))
+          sendWebSocketReasoningCompleted(server, "resp_2", "rs_2", "second thought", "encrypted-2")
+
+          requests.push(yield* nextWebSocketCreate(server))
+          server.send({
+            error: {
+              message: "gRPC error: Response with id=resp_2 not found",
+              type: "api_error"
+            }
+          })
+
+          requests.push(yield* nextWebSocketCreate(server))
+          sendWebSocketCompleted(server, "resp_3", "msg_3", "done")
+        })
+
+        yield* Effect.all([drive, respond], { concurrency: "unbounded" }).pipe(
+          Effect.timeout("5 seconds")
+        )
+
+        assert.deepStrictEqual(requests.map((request) => request.include), [
+          ["reasoning.encrypted_content"],
+          ["reasoning.encrypted_content"],
+          ["reasoning.encrypted_content"],
+          ["reasoning.encrypted_content"],
+          ["reasoning.encrypted_content"]
+        ])
+        assert.deepStrictEqual(
+          requests[2]?.input.filter((item) => item.type === "reasoning"),
+          [{
+            type: "reasoning",
+            id: "rs_1",
+            summary: [{ type: "summary_text", text: "first thought" }],
+            encrypted_content: "encrypted-1"
+          }]
+        )
+        assert.deepStrictEqual(
+          requests[4]?.input.filter((item) => item.type === "reasoning"),
+          [
+            {
+              type: "reasoning",
+              id: "rs_1",
+              summary: [{ type: "summary_text", text: "first thought" }],
+              encrypted_content: "encrypted-1"
+            },
+            {
+              type: "reasoning",
+              id: "rs_2",
+              summary: [{ type: "summary_text", text: "second thought" }],
+              encrypted_content: "encrypted-2"
+            }
+          ]
+        )
       }))
 
     it.effect("accepts keepalive stream events", () =>
