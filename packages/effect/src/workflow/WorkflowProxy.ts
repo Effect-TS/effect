@@ -11,8 +11,8 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
-import * as HttpApiEndpoint from "../httpapi/HttpApiEndpoint.ts"
-import * as HttpApiGroup from "../httpapi/HttpApiGroup.ts"
+import * as HttpApiEndpoint from "../http-api/HttpApiEndpoint.ts"
+import * as HttpApiGroup from "../http-api/HttpApiGroup.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as Schema from "../Schema.ts"
@@ -110,7 +110,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
  *
  * ```ts import.meta.vitest
  * import { Layer, Schema } from "effect"
- * import { HttpApi, HttpApiBuilder } from "effect/httpapi"
+ * import { HttpApi, HttpApiBuilder } from "effect/http-api"
  * import { Workflow, WorkflowProxy, WorkflowProxyServer } from "effect/workflow"
  *
  * const EmailWorkflow = Workflow.make("EmailWorkflow", {

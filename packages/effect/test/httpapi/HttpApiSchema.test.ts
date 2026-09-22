@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { HttpApiSchema } from "effect/httpapi"
+import { HttpApiSchema } from "effect/http-api"
 
 const getStreamMetadata = (self: HttpApiSchema.StreamSchema) =>
   self._tag === "StreamSse" ?

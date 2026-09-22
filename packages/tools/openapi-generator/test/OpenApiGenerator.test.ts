@@ -1,7 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/httpapi/OpenApi"
+import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
 import type * as JsonSchema from "effect/JsonSchema"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -998,7 +998,7 @@ export const TestClientError = <Tag extends string, E>(
                           encoding: "sse",
                           errorSchema: {},
                           causeSchema: {},
-                          failureEvent: "effect/httpapi/stream/failure"
+                          failureEvent: "effect/http-api/stream/failure"
                         }
                       }
                     }
@@ -1018,7 +1018,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
-          `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/httpapi/stream/failure"), "data": Schema.String`,
+          `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/http-api/stream/failure"), "data": Schema.String`,
           `readonly "streamEventsSse": () => Stream.Stream<typeof StreamEvents200Sse.Type, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `sseEventRequest(StreamEvents200Sse)`,
           `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
@@ -1478,7 +1478,7 @@ export const TestClientError = <Tag extends string, E>(
           ]
         },
         [
-          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/httpapi"`,
+          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/http-api"`,
           `export type GetUserPathParams = { readonly "id": string }`,
           `export const GetUserPathParams = Schema.Struct({ "id": Schema.String })`,
           `class UsersGroup extends HttpApiGroup.make("Users")`,
@@ -1863,7 +1863,7 @@ export const CreatePayloadRequestText = Schema.String`,
                           causeSchema: {
                             type: "object"
                           },
-                          failureEvent: "effect/httpapi/stream/failure"
+                          failureEvent: "effect/http-api/stream/failure"
                         }
                       }
                     }
@@ -1904,7 +1904,7 @@ export const CreatePayloadRequestText = Schema.String`,
                           causeSchema: {
                             type: "object"
                           },
-                          failureEvent: "effect/httpapi/stream/failure"
+                          failureEvent: "effect/http-api/stream/failure"
                         }
                       }
                     }
@@ -1978,7 +1978,7 @@ export const CreatePayloadRequestText = Schema.String`,
                           causeSchema: {
                             type: "object"
                           },
-                          failureEvent: "effect/httpapi/stream/failure"
+                          failureEvent: "effect/http-api/stream/failure"
                         } as any
                       }
                     }

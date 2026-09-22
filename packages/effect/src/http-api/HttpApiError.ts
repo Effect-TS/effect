@@ -454,7 +454,7 @@ export const ServiceUnavailableNoContent = ServiceUnavailable.pipe(HttpApiSchema
  * @category type IDs
  * @since 4.0.0
  */
-export type HttpApiSchemaErrorTypeId = "~effect/httpapi/HttpApiError/HttpApiSchemaError"
+export type HttpApiSchemaErrorTypeId = "~effect/http-api/HttpApiError/HttpApiSchemaError"
 
 /**
  * Runtime identifier used to mark and detect `HttpApiSchemaError` values.
@@ -463,7 +463,7 @@ export type HttpApiSchemaErrorTypeId = "~effect/httpapi/HttpApiError/HttpApiSche
  * @category type IDs
  * @since 4.0.0
  */
-export const HttpApiSchemaErrorTypeId: HttpApiSchemaErrorTypeId = "~effect/httpapi/HttpApiError/HttpApiSchemaError"
+export const HttpApiSchemaErrorTypeId: HttpApiSchemaErrorTypeId = "~effect/http-api/HttpApiError/HttpApiSchemaError"
 
 /**
  * Error raised when an HTTP API request or response component fails schema

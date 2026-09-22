@@ -137,18 +137,18 @@ effect/TestClock -> effect/testing/TestClock (barrel: effect/testing)
 @effect/platform/Template -> effect/http/Template (barrel: effect/http)
 @effect/platform/Url -> effect/http/Url (barrel: effect/http)
 @effect/platform/UrlParams -> effect/http/UrlParams (barrel: effect/http)
-@effect/platform/HttpApi -> effect/httpapi/HttpApi (barrel: effect/httpapi)
-@effect/platform/HttpApiBuilder -> effect/httpapi/HttpApiBuilder (barrel: effect/httpapi)
-@effect/platform/HttpApiClient -> effect/httpapi/HttpApiClient (barrel: effect/httpapi)
-@effect/platform/HttpApiEndpoint -> effect/httpapi/HttpApiEndpoint (barrel: effect/httpapi)
-@effect/platform/HttpApiError -> effect/httpapi/HttpApiError (barrel: effect/httpapi)
-@effect/platform/HttpApiGroup -> effect/httpapi/HttpApiGroup (barrel: effect/httpapi)
-@effect/platform/HttpApiMiddleware -> effect/httpapi/HttpApiMiddleware (barrel: effect/httpapi)
-@effect/platform/HttpApiScalar -> effect/httpapi/HttpApiScalar (barrel: effect/httpapi)
-@effect/platform/HttpApiSchema -> effect/httpapi/HttpApiSchema (barrel: effect/httpapi)
-@effect/platform/HttpApiSecurity -> effect/httpapi/HttpApiSecurity (barrel: effect/httpapi)
-@effect/platform/HttpApiSwagger -> effect/httpapi/HttpApiSwagger (barrel: effect/httpapi)
-@effect/platform/OpenApi -> effect/httpapi/OpenApi (barrel: effect/httpapi)
+@effect/platform/HttpApi -> effect/http-api/HttpApi (barrel: effect/http-api)
+@effect/platform/HttpApiBuilder -> effect/http-api/HttpApiBuilder (barrel: effect/http-api)
+@effect/platform/HttpApiClient -> effect/http-api/HttpApiClient (barrel: effect/http-api)
+@effect/platform/HttpApiEndpoint -> effect/http-api/HttpApiEndpoint (barrel: effect/http-api)
+@effect/platform/HttpApiError -> effect/http-api/HttpApiError (barrel: effect/http-api)
+@effect/platform/HttpApiGroup -> effect/http-api/HttpApiGroup (barrel: effect/http-api)
+@effect/platform/HttpApiMiddleware -> effect/http-api/HttpApiMiddleware (barrel: effect/http-api)
+@effect/platform/HttpApiScalar -> effect/http-api/HttpApiScalar (barrel: effect/http-api)
+@effect/platform/HttpApiSchema -> effect/http-api/HttpApiSchema (barrel: effect/http-api)
+@effect/platform/HttpApiSecurity -> effect/http-api/HttpApiSecurity (barrel: effect/http-api)
+@effect/platform/HttpApiSwagger -> effect/http-api/HttpApiSwagger (barrel: effect/http-api)
+@effect/platform/OpenApi -> effect/http-api/OpenApi (barrel: effect/http-api)
 @effect/opentelemetry/Otlp -> effect/observability/Otlp (barrel: effect/observability)
 @effect/opentelemetry/internal/otlpExporter -> effect/observability/OtlpExporter (barrel: effect/observability)
 @effect/opentelemetry/OtlpLogger -> effect/observability/OtlpLogger (barrel: effect/observability)
@@ -342,7 +342,7 @@ effect/http/HttpStaticServer (barrel: effect/http)
 effect/http/MultipartParser (barrel: effect/http)
 effect/http/MultipartParser/HeadersParser (barrel: effect/http)
 effect/http/MultipartParser/Search (barrel: effect/http)
-effect/httpapi/HttpApiTest (barrel: effect/httpapi)
+effect/http-api/HttpApiTest (barrel: effect/http-api)
 effect/observability/PrometheusMetrics (barrel: effect/observability)
 effect/persistence/Redis (barrel: effect/persistence)
 effect/reactivity/AsyncResult (barrel: effect/reactivity)
@@ -517,17 +517,17 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/platform/FetchHttpClient` -> `effect/http/FetchHttpClient`
 - `@effect/platform/FileSystem` -> `effect/FileSystem`
 - `@effect/platform/Headers` -> `effect/http/Headers`
-- `@effect/platform/HttpApi` -> `effect/httpapi/HttpApi`
-- `@effect/platform/HttpApiBuilder` -> `effect/httpapi/HttpApiBuilder`
-- `@effect/platform/HttpApiClient` -> `effect/httpapi/HttpApiClient`
-- `@effect/platform/HttpApiEndpoint` -> `effect/httpapi/HttpApiEndpoint`
-- `@effect/platform/HttpApiError` -> `effect/httpapi/HttpApiError`
-- `@effect/platform/HttpApiGroup` -> `effect/httpapi/HttpApiGroup`
-- `@effect/platform/HttpApiMiddleware` -> `effect/httpapi/HttpApiMiddleware`
-- `@effect/platform/HttpApiScalar` -> `effect/httpapi/HttpApiScalar`
-- `@effect/platform/HttpApiSchema` -> `effect/httpapi/HttpApiSchema`
-- `@effect/platform/HttpApiSecurity` -> `effect/httpapi/HttpApiSecurity`
-- `@effect/platform/HttpApiSwagger` -> `effect/httpapi/HttpApiSwagger`
+- `@effect/platform/HttpApi` -> `effect/http-api/HttpApi`
+- `@effect/platform/HttpApiBuilder` -> `effect/http-api/HttpApiBuilder`
+- `@effect/platform/HttpApiClient` -> `effect/http-api/HttpApiClient`
+- `@effect/platform/HttpApiEndpoint` -> `effect/http-api/HttpApiEndpoint`
+- `@effect/platform/HttpApiError` -> `effect/http-api/HttpApiError`
+- `@effect/platform/HttpApiGroup` -> `effect/http-api/HttpApiGroup`
+- `@effect/platform/HttpApiMiddleware` -> `effect/http-api/HttpApiMiddleware`
+- `@effect/platform/HttpApiScalar` -> `effect/http-api/HttpApiScalar`
+- `@effect/platform/HttpApiSchema` -> `effect/http-api/HttpApiSchema`
+- `@effect/platform/HttpApiSecurity` -> `effect/http-api/HttpApiSecurity`
+- `@effect/platform/HttpApiSwagger` -> `effect/http-api/HttpApiSwagger`
 - `@effect/platform/HttpApp` -> `effect/http/HttpEffect`
 - `@effect/platform/HttpBody` -> `effect/http/HttpBody`
 - `@effect/platform/HttpClient` -> `effect/http/HttpClient`
@@ -551,7 +551,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/platform/MsgPack` -> `effect/encoding/SchemaBinary`: MessagePack support was removed. Schema-aware encode, decode, and duplex now live on SchemaBinary. Untyped MessagePack of unknown values has no replacement.
 - `@effect/platform/Multipart` -> `effect/http/Multipart`
 - `@effect/platform/Ndjson` -> `effect/encoding/Ndjson`
-- `@effect/platform/OpenApi` -> `effect/httpapi/OpenApi`
+- `@effect/platform/OpenApi` -> `effect/http-api/OpenApi`
 - `@effect/platform/OpenApiJsonSchema`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/Path` -> `effect/Path`
 - `@effect/platform/PlatformConfigProvider`: No single module replacement; follow the curated per-API guidance below.
@@ -6840,23 +6840,23 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApi.Api` -> `none`: The Context tag carrying the API was removed. Pass the HttpApi value explicitly to builders and clients.
 
-- `HttpApi.HttpApi.Any` -> `effect/httpapi/HttpApi#Constraint`: Use the erased marker constraint when only HttpApi identity is needed.
+- `HttpApi.HttpApi.Any` -> `effect/http-api/HttpApi#Constraint`: Use the erased marker constraint when only HttpApi identity is needed.
 
-- `HttpApi.HttpApi.AnyWithProps` -> `effect/httpapi/HttpApi#Top`: Use the widened HttpApi type that retains runtime properties.
+- `HttpApi.HttpApi.AnyWithProps` -> `effect/http-api/HttpApi#Top`: Use the widened HttpApi type that retains runtime properties.
 
 - `HttpApi.TypeId` -> `none`: The marker is private in v4; use HttpApi.isHttpApi for runtime narrowing and Constraint or Top for types.
 
-- `HttpApi.make` -> `effect/httpapi/HttpApi#make`: The constructor remains, but API-wide error and service parameters were removed; declare errors on endpoints and attach middleware.
+- `HttpApi.make` -> `effect/http-api/HttpApi#make`: The constructor remains, but API-wide error and service parameters were removed; declare errors on endpoints and attach middleware.
 
 ### `@effect/platform/HttpApiBuilder`
 
-- `HttpApiBuilder.Handlers` -> `effect/httpapi/HttpApiBuilder#Handlers`: Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup\<Group\>.
+- `HttpApiBuilder.Handlers` -> `effect/http-api/HttpApiBuilder#Handlers`: Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup\<Group\>.
 
-- `HttpApiBuilder.Handlers.Error` -> `effect/httpapi/HttpApiBuilder#Handlers.Error`: The helper remains and extracts the error channel of an effectful group-builder return.
+- `HttpApiBuilder.Handlers.Error` -> `effect/http-api/HttpApiBuilder#Handlers.Error`: The helper remains and extracts the error channel of an effectful group-builder return.
 
 - `HttpApiBuilder.Handlers.Middleware` -> `none`: The handler-internal HttpApp middleware alias was removed. Use HttpRouter.middleware inference or HttpRouter.middleware.Fn.
 
-- `HttpApiBuilder.Handlers.ValidateReturn` -> `effect/httpapi/HttpApiBuilder#Handlers.ValidateReturn`: The validator remains and now checks the endpoint map against handled identifiers.
+- `HttpApiBuilder.Handlers.ValidateReturn` -> `effect/http-api/HttpApiBuilder#Handlers.ValidateReturn`: The validator remains and now checks the endpoint map against handled identifiers.
 
 - `HttpApiBuilder.HandlersTypeId` -> `none`: The exported symbol was removed; do not inspect or construct the private Handlers marker.
 
@@ -6866,13 +6866,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiBuilder.Router` -> `effect/http/HttpRouter#HttpRouter`: The API-specific router tag was removed; API and group layers register with the shared HttpRouter service.
 
-- `HttpApiBuilder.api` -> `effect/httpapi/HttpApiBuilder#layer`: Use layer(api) and provide the group layers; it registers the completed API with HttpRouter.
+- `HttpApiBuilder.api` -> `effect/http-api/HttpApiBuilder#layer`: Use layer(api) and provide the group layers; it registers the completed API with HttpRouter.
 
 - `HttpApiBuilder.buildMiddleware` -> `none`: API-wide middleware assembly was removed. Declared HttpApiMiddleware services are applied while routes are built; use HttpRouter.middleware for additional middleware.
 
-- `HttpApiBuilder.group` -> `effect/httpapi/HttpApiBuilder#group`: The group layer remains; names are now identifiers and API/group global error channels are gone.
+- `HttpApiBuilder.group` -> `effect/http-api/HttpApiBuilder#group`: The group layer remains; names are now identifiers and API/group global error channels are gone.
 
-- `HttpApiBuilder.handler` -> `effect/httpapi/HttpApiBuilder#handler`: The typed callback helper remains; names are now identifiers and API/group global error channels are gone. Pass the returned callback to handlers.handle.
+- `HttpApiBuilder.handler` -> `effect/http-api/HttpApiBuilder#handler`: The typed callback helper remains; names are now identifiers and API/group global error channels are gone. Pass the returned callback to handlers.handle.
 
 - `HttpApiBuilder.httpApp` -> `effect/http/HttpRouter#toHttpEffect`: Build the application from the assembled API route layer; HTTP apps are Effects in v4.
 
@@ -6880,205 +6880,205 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiBuilder.middlewareCors` -> `effect/http/HttpRouter#cors`: Use the router CORS layer, or provide route-scoped HttpMiddleware.cors through HttpRouter.middleware.
 
-- `HttpApiBuilder.middlewareOpenApi` -> `effect/httpapi/HttpApiBuilder#layer`: Set openapiPath in layer(api, options). The additionalPropertiesStrategy option was removed.
+- `HttpApiBuilder.middlewareOpenApi` -> `effect/http-api/HttpApiBuilder#layer`: Set openapiPath in layer(api, options). The additionalPropertiesStrategy option was removed.
 
 - `HttpApiBuilder.toWebHandler` -> `effect/http/HttpRouter#toWebHandler`: Pass the assembled API route layer to HttpRouter.toWebHandler; the handler and dispose lifecycle is retained.
 
 ### `@effect/platform/HttpApiClient`
 
-- `HttpApiClient.Client.Method` -> `effect/httpapi/HttpApiClient#Client.Method`: The type remains without GroupError. Requests use params/query and responseMode instead of path/urlParams and withResponse.
+- `HttpApiClient.Client.Method` -> `effect/http-api/HttpApiClient#Client.Method`: The type remains without GroupError. Requests use params/query and responseMode instead of path/urlParams and withResponse.
 
-- `HttpApiClient.endpoint` -> `effect/httpapi/HttpApiClient#endpoint`: The endpoint client remains, selected by group and endpoint identifiers and using v4 request and responseMode fields.
+- `HttpApiClient.endpoint` -> `effect/http-api/HttpApiClient#endpoint`: The endpoint client remains, selected by group and endpoint identifiers and using v4 request and responseMode fields.
 
-- `HttpApiClient.make` -> `effect/httpapi/HttpApiClient#make`: The generated client remains; errors and services are now derived per endpoint and middleware.
+- `HttpApiClient.make` -> `effect/http-api/HttpApiClient#make`: The generated client remains; errors and services are now derived per endpoint and middleware.
 
-- `HttpApiClient.makeWith` -> `effect/httpapi/HttpApiClient#makeWith`: The supplied-HttpClient constructor remains and now requires endpoint client-middleware services.
+- `HttpApiClient.makeWith` -> `effect/http-api/HttpApiClient#makeWith`: The supplied-HttpClient constructor remains and now requires endpoint client-middleware services.
 
 ### `@effect/platform/HttpApiEndpoint`
 
-- `HttpApiEndpoint.HttpApiEndpoint` -> `effect/httpapi/HttpApiEndpoint#HttpApiEndpoint`: The model remains, but its generics now carry path literals, schemas, middleware, and middleware services.
+- `HttpApiEndpoint.HttpApiEndpoint` -> `effect/http-api/HttpApiEndpoint#HttpApiEndpoint`: The model remains, but its generics now carry path literals, schemas, middleware, and middleware services.
 
-- `HttpApiEndpoint.HttpApiEndpoint.AddContext` -> `effect/httpapi/HttpApiEndpoint#AddMiddleware`: Use AddMiddleware to add a middleware identifier and compute its service transformation.
+- `HttpApiEndpoint.HttpApiEndpoint.AddContext` -> `effect/http-api/HttpApiEndpoint#AddMiddleware`: Use AddMiddleware to add a middleware identifier and compute its service transformation.
 
 - `HttpApiEndpoint.HttpApiEndpoint.AddError` -> `none`: Declare error schemas in the endpoint constructor options; the type helper and fluent addError method were removed.
 
 - `HttpApiEndpoint.HttpApiEndpoint.Constructor` -> `none`: The tagged-template constructor type was removed; use HttpApiEndpoint.make(method)(identifier, path, options?).
 
-- `HttpApiEndpoint.HttpApiEndpoint.Context` -> `effect/httpapi/HttpApiEndpoint#ServerServices`: Use ServerServices for handler requirements; middleware IDs and extra requirements have separate extractors.
+- `HttpApiEndpoint.HttpApiEndpoint.Context` -> `effect/http-api/HttpApiEndpoint#ServerServices`: Use ServerServices for handler requirements; middleware IDs and extra requirements have separate extractors.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ContextWithName` -> `effect/httpapi/HttpApiEndpoint#ServerServicesWithIdentifier`: Name became Identifier; combine with middleware extractors when the complete handler requirement union is needed.
+- `HttpApiEndpoint.HttpApiEndpoint.ContextWithName` -> `effect/http-api/HttpApiEndpoint#ServerServicesWithIdentifier`: Name became Identifier; combine with middleware extractors when the complete handler requirement union is needed.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Error` -> `effect/httpapi/HttpApiEndpoint#Errors`: Use Errors for the decoded endpoint and middleware error union; v4 Error extracts the schema.
+- `HttpApiEndpoint.HttpApiEndpoint.Error` -> `effect/http-api/HttpApiEndpoint#Errors`: Use Errors for the decoded endpoint and middleware error union; v4 Error extracts the schema.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ErrorContext` -> `effect/httpapi/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
+- `HttpApiEndpoint.HttpApiEndpoint.ErrorContext` -> `effect/http-api/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ErrorContextWithName` -> `effect/httpapi/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: Select the endpoint with WithIdentifier, then apply the encode or decode service extractor.
+- `HttpApiEndpoint.HttpApiEndpoint.ErrorContextWithName` -> `effect/http-api/HttpApiEndpoint#ErrorServicesEncode / ErrorServicesDecode`: Select the endpoint with WithIdentifier, then apply the encode or decode service extractor.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ErrorWithName` -> `effect/httpapi/HttpApiEndpoint#ErrorsWithIdentifier`: Renamed for identifier and returns the decoded endpoint plus middleware error union.
+- `HttpApiEndpoint.HttpApiEndpoint.ErrorWithName` -> `effect/http-api/HttpApiEndpoint#ErrorsWithIdentifier`: Renamed for identifier and returns the decoded endpoint plus middleware error union.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ExcludeName` -> `effect/httpapi/HttpApiEndpoint#ExcludeIdentifier`: Direct rename from name to identifier.
+- `HttpApiEndpoint.HttpApiEndpoint.ExcludeName` -> `effect/http-api/HttpApiEndpoint#ExcludeIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ExtractPath` -> `none`: Tagged-template path extraction was removed. Put a params schema or field record in constructor option params.
 
-- `HttpApiEndpoint.HttpApiEndpoint.HandlerRawWithName` -> `effect/httpapi/HttpApiEndpoint#HandlerRawWithIdentifier`: Direct rename; raw request fields are now params and query.
+- `HttpApiEndpoint.HttpApiEndpoint.HandlerRawWithName` -> `effect/http-api/HttpApiEndpoint#HandlerRawWithIdentifier`: Direct rename; raw request fields are now params and query.
 
-- `HttpApiEndpoint.HttpApiEndpoint.HandlerWithName` -> `effect/httpapi/HttpApiEndpoint#HandlerWithIdentifier`: Direct rename from name to identifier.
+- `HttpApiEndpoint.HttpApiEndpoint.HandlerWithName` -> `effect/http-api/HttpApiEndpoint#HandlerWithIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiEndpoint.HttpApiEndpoint.OptionalTypePropertySignature` -> `none`: Removed with the tagged-template path implementation.
 
 - `HttpApiEndpoint.HttpApiEndpoint.PathEntries` -> `none`: Removed with tagged-template path extraction; declare endpoint params explicitly.
 
-- `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/httpapi/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params\<Endpoint\>["Type"] for decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/http-api/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params\<Endpoint\>["Type"] for decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Payload` -> `effect/httpapi/HttpApiEndpoint#Payload`: The name remains but now extracts the schema; use Payload\<Endpoint\>["Type"] for buffered decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.Payload` -> `effect/http-api/HttpApiEndpoint#Payload`: The name remains but now extracts the schema; use Payload\<Endpoint\>["Type"] for buffered decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Success` -> `effect/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Use SuccessWithIdentifier for the decoded, stream-aware result; v4 Success extracts the schema.
+- `HttpApiEndpoint.HttpApiEndpoint.Success` -> `effect/http-api/HttpApiEndpoint#SuccessWithIdentifier`: Use SuccessWithIdentifier for the decoded, stream-aware result; v4 Success extracts the schema.
 
-- `HttpApiEndpoint.HttpApiEndpoint.SuccessWithName` -> `effect/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Direct rename from name to identifier; the result remains decoded and stream-aware.
+- `HttpApiEndpoint.HttpApiEndpoint.SuccessWithName` -> `effect/http-api/HttpApiEndpoint#SuccessWithIdentifier`: Direct rename from name to identifier; the result remains decoded and stream-aware.
 
-- `HttpApiEndpoint.HttpApiEndpoint.UrlParams` -> `effect/httpapi/HttpApiEndpoint#Query`: urlParams became query; Query extracts the schema, so use Query\<Endpoint\>["Type"] for decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.UrlParams` -> `effect/http-api/HttpApiEndpoint#Query`: urlParams became query; Query extracts the schema, so use Query\<Endpoint\>["Type"] for decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidateHeaders` -> `effect/httpapi/HttpApiEndpoint#HeadersConstraint`: Validation moved from an intersection helper to a constructor generic constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidateHeaders` -> `effect/http-api/HttpApiEndpoint#HeadersConstraint`: Validation moved from an intersection helper to a constructor generic constraint.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ValidateParams` -> `none`: Tagged-template interpolation validation was removed; params are declared explicitly in options.params.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidatePath` -> `effect/httpapi/HttpApiEndpoint#ParamsConstraint`: path became params and validation is now a constructor constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidatePath` -> `effect/http-api/HttpApiEndpoint#ParamsConstraint`: path became params and validation is now a constructor constraint.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidatePayload` -> `effect/httpapi/HttpApiEndpoint#PayloadConstraint`: Payload validation is now a method-sensitive constructor constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidatePayload` -> `effect/http-api/HttpApiEndpoint#PayloadConstraint`: Payload validation is now a method-sensitive constructor constraint.
 
-- `HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams` -> `effect/httpapi/HttpApiEndpoint#QueryConstraint`: urlParams became query and validation is now a constructor constraint.
+- `HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams` -> `effect/http-api/HttpApiEndpoint#QueryConstraint`: urlParams became query and validation is now a constructor constraint.
 
 - `HttpApiEndpoint.PathSegment` -> `effect/http/HttpRouter#PathInput`: Path input moved to the shared router and is generalized to slash-prefixed paths or wildcard.
 
 - `HttpApiEndpoint.TypeId` -> `none`: The endpoint type ID is private; use HttpApiEndpoint.isHttpApiEndpoint for runtime narrowing.
 
-- `HttpApiEndpoint.get` -> `effect/httpapi/HttpApiEndpoint#get`: Use get(identifier, path, options?); tagged templates and fluent schema setters were removed.
+- `HttpApiEndpoint.get` -> `effect/http-api/HttpApiEndpoint#get`: Use get(identifier, path, options?); tagged templates and fluent schema setters were removed.
 
-- `HttpApiEndpoint.head` -> `effect/httpapi/HttpApiEndpoint#head`: Use head(identifier, path, options?); tagged templates and fluent schema setters were removed.
+- `HttpApiEndpoint.head` -> `effect/http-api/HttpApiEndpoint#head`: Use head(identifier, path, options?); tagged templates and fluent schema setters were removed.
 
-- `HttpApiEndpoint.make` -> `effect/httpapi/HttpApiEndpoint#make`: The factory remains but now requires identifier, path, and options and applies codecs unless disabled.
+- `HttpApiEndpoint.make` -> `effect/http-api/HttpApiEndpoint#make`: The factory remains but now requires identifier, path, and options and applies codecs unless disabled.
 
-- `HttpApiEndpoint.options` -> `effect/httpapi/HttpApiEndpoint#options`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.options` -> `effect/http-api/HttpApiEndpoint#options`: Same HTTP method constructor with the new identifier, path, and options signature.
 
-- `HttpApiEndpoint.patch` -> `effect/httpapi/HttpApiEndpoint#patch`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.patch` -> `effect/http-api/HttpApiEndpoint#patch`: Same HTTP method constructor with the new identifier, path, and options signature.
 
-- `HttpApiEndpoint.post` -> `effect/httpapi/HttpApiEndpoint#post`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.post` -> `effect/http-api/HttpApiEndpoint#post`: Same HTTP method constructor with the new identifier, path, and options signature.
 
-- `HttpApiEndpoint.put` -> `effect/httpapi/HttpApiEndpoint#put`: Same HTTP method constructor with the new identifier, path, and options signature.
+- `HttpApiEndpoint.put` -> `effect/http-api/HttpApiEndpoint#put`: Same HTTP method constructor with the new identifier, path, and options signature.
 
 ### `@effect/platform/HttpApiError`
 
-- `HttpApiError.Forbidden` -> `effect/httpapi/HttpApiError#ForbiddenNoContent`: Use ForbiddenNoContent to preserve the empty 403 wire schema; Forbidden now has a JSON-tagged body.
+- `HttpApiError.Forbidden` -> `effect/http-api/HttpApiError#ForbiddenNoContent`: Use ForbiddenNoContent to preserve the empty 403 wire schema; Forbidden now has a JSON-tagged body.
 
-- `HttpApiError.HttpApiDecodeError` -> `effect/httpapi/HttpApiError#HttpApiSchemaError`: Validation now stores kind and a SchemaError cause and is a defect unless transformed by schema-error middleware.
+- `HttpApiError.HttpApiDecodeError` -> `effect/http-api/HttpApiError#HttpApiSchemaError`: Validation now stores kind and a SchemaError cause and is a defect unless transformed by schema-error middleware.
 
 - `HttpApiError.Issue` -> `effect/SchemaIssue#Issue`: Structured failures now live at HttpApiSchemaError.cause.issue; format them explicitly when a flat external list is needed.
 
-- `HttpApiError.TypeId` -> `effect/httpapi/HttpApiError#HttpApiSchemaErrorTypeId`: The old module symbol is gone; prefer HttpApiSchemaError.is for runtime narrowing.
+- `HttpApiError.TypeId` -> `effect/http-api/HttpApiError#HttpApiSchemaErrorTypeId`: The old module symbol is gone; prefer HttpApiSchemaError.is for runtime narrowing.
 
 ### `@effect/platform/HttpApiGroup`
 
-- `HttpApiGroup.ApiGroup` -> `effect/httpapi/HttpApiGroup#Service`: Renamed; the service field and type parameter are now identifier rather than name.
+- `HttpApiGroup.ApiGroup` -> `effect/http-api/HttpApiGroup#Service`: Renamed; the service field and type parameter are now identifier rather than name.
 
 - `HttpApiGroup.HttpApiGroup.AddContext` -> `none`: Groups no longer carry arbitrary context. Use AddMiddleware for middleware service transformations.
 
-- `HttpApiGroup.HttpApiGroup.Any` -> `effect/httpapi/HttpApiGroup#Constraint`: Renamed widened structural constraint.
+- `HttpApiGroup.HttpApiGroup.Any` -> `effect/http-api/HttpApiGroup#Constraint`: Renamed widened structural constraint.
 
-- `HttpApiGroup.HttpApiGroup.AnyWithProps` -> `effect/httpapi/HttpApiGroup#Top`: Renamed widened runtime-property type.
+- `HttpApiGroup.HttpApiGroup.AnyWithProps` -> `effect/http-api/HttpApiGroup#Top`: Renamed widened runtime-property type.
 
-- `HttpApiGroup.HttpApiGroup.ClientContext` -> `effect/httpapi/HttpApiGroup#ClientServices / ErrorServicesDecode / MiddlewareClient`: Client schema services and required client middleware are separate extractors in v4.
+- `HttpApiGroup.HttpApiGroup.ClientContext` -> `effect/http-api/HttpApiGroup#ClientServices / ErrorServicesDecode / MiddlewareClient`: Client schema services and required client middleware are separate extractors in v4.
 
 - `HttpApiGroup.HttpApiGroup.Context` -> `none`: Group error and context generics were removed; derive server requirements from the group's endpoints.
 
 - `HttpApiGroup.HttpApiGroup.ContextWithName` -> `none`: Select with WithIdentifier and derive endpoint server requirements; groups no longer have a context generic.
 
-- `HttpApiGroup.HttpApiGroup.EndpointsWithName` -> `effect/httpapi/HttpApiGroup#EndpointsWithIdentifier`: Direct rename from name to identifier.
+- `HttpApiGroup.HttpApiGroup.EndpointsWithName` -> `effect/http-api/HttpApiGroup#EndpointsWithIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiGroup.HttpApiGroup.Error` -> `none`: Group-level errors were removed. Declare shared errors on each endpoint or through middleware.
 
-- `HttpApiGroup.HttpApiGroup.ErrorContext` -> `effect/httpapi/HttpApiGroup#ErrorServicesEncode / ErrorServicesDecode`: The closest endpoint-error aggregate splits server encoding from client decoding services.
+- `HttpApiGroup.HttpApiGroup.ErrorContext` -> `effect/http-api/HttpApiGroup#ErrorServicesEncode / ErrorServicesDecode`: The closest endpoint-error aggregate splits server encoding from client decoding services.
 
 - `HttpApiGroup.HttpApiGroup.ErrorWithName` -> `none`: Group-level errors were removed; select with WithIdentifier and inspect Errors over the selected endpoints.
 
-- `HttpApiGroup.HttpApiGroup.Middleware` -> `effect/httpapi/HttpApiEndpoint#Middleware`: Middleware is attached to the endpoints present when group.middleware is called; extract it from group endpoints.
+- `HttpApiGroup.HttpApiGroup.Middleware` -> `effect/http-api/HttpApiEndpoint#Middleware`: Middleware is attached to the endpoints present when group.middleware is called; extract it from group endpoints.
 
-- `HttpApiGroup.HttpApiGroup.MiddlewareWithName` -> `effect/httpapi/HttpApiEndpoint#Middleware`: Select the group with WithIdentifier, get its endpoints, then apply the endpoint Middleware extractor.
+- `HttpApiGroup.HttpApiGroup.MiddlewareWithName` -> `effect/http-api/HttpApiEndpoint#Middleware`: Select the group with WithIdentifier, get its endpoints, then apply the endpoint Middleware extractor.
 
-- `HttpApiGroup.HttpApiGroup.Provides` -> `effect/httpapi/HttpApiGroup#MiddlewareProvides`: Renamed; derives provided services from endpoint middleware.
+- `HttpApiGroup.HttpApiGroup.Provides` -> `effect/http-api/HttpApiGroup#MiddlewareProvides`: Renamed; derives provided services from endpoint middleware.
 
-- `HttpApiGroup.HttpApiGroup.ToService` -> `effect/httpapi/HttpApiGroup#ToService`: Same role and now produces Service\<ApiId, Identifier\>.
+- `HttpApiGroup.HttpApiGroup.ToService` -> `effect/http-api/HttpApiGroup#ToService`: Same role and now produces Service\<ApiId, Identifier\>.
 
-- `HttpApiGroup.HttpApiGroup.WithName` -> `effect/httpapi/HttpApiGroup#WithIdentifier`: Direct rename from name to identifier.
+- `HttpApiGroup.HttpApiGroup.WithName` -> `effect/http-api/HttpApiGroup#WithIdentifier`: Direct rename from name to identifier.
 
 - `HttpApiGroup.TypeId` -> `none`: The group type ID is private; use HttpApiGroup.isHttpApiGroup for runtime narrowing.
 
-- `HttpApiGroup.make` -> `effect/httpapi/HttpApiGroup#make`: The constructor remains; group error and context generics are gone and add is variadic.
+- `HttpApiGroup.make` -> `effect/http-api/HttpApiGroup#make`: The constructor remains; group error and context generics are gone and add is variadic.
 
 ### `@effect/platform/HttpApiMiddleware`
 
-- `HttpApiMiddleware.HttpApiMiddleware` -> `effect/httpapi/HttpApiMiddleware#HttpApiMiddleware`: The model remains but now wraps the response effect and carries provided services, an error schema, and required services.
+- `HttpApiMiddleware.HttpApiMiddleware` -> `effect/http-api/HttpApiMiddleware#HttpApiMiddleware`: The model remains but now wraps the response effect and carries provided services, an error schema, and required services.
 
-- `HttpApiMiddleware.HttpApiMiddleware.Any` -> `effect/httpapi/HttpApiMiddleware#AnyService`: Renamed widened middleware service-key shape.
+- `HttpApiMiddleware.HttpApiMiddleware.Any` -> `effect/http-api/HttpApiMiddleware#AnyService`: Renamed widened middleware service-key shape.
 
-- `HttpApiMiddleware.HttpApiMiddleware.AnyId` -> `effect/httpapi/HttpApiMiddleware#AnyId`: Same name; metadata now includes provided and required services, error schema, client error, and client requirement.
+- `HttpApiMiddleware.HttpApiMiddleware.AnyId` -> `effect/http-api/HttpApiMiddleware#AnyId`: Same name; metadata now includes provided and required services, error schema, client error, and client requirement.
 
-- `HttpApiMiddleware.HttpApiMiddleware.Error` -> `effect/httpapi/HttpApiMiddleware#Error`: Same name and now derives the decoded type from the configured error schema.
+- `HttpApiMiddleware.HttpApiMiddleware.Error` -> `effect/http-api/HttpApiMiddleware#Error`: Same name and now derives the decoded type from the configured error schema.
 
-- `HttpApiMiddleware.HttpApiMiddleware.ErrorContext` -> `effect/httpapi/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
+- `HttpApiMiddleware.HttpApiMiddleware.ErrorContext` -> `effect/http-api/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
 
 - `HttpApiMiddleware.HttpApiMiddleware.Only` -> `Extract<R, HttpApiMiddleware.AnyId>`: The helper was removed because middleware IDs are explicit; use Extract when the direct filter is still needed.
 
-- `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/httpapi/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
+- `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/http-api/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
 
 - `HttpApiMiddleware.SecurityTypeId` -> `none`: The marker is private; use HttpApiMiddleware.isSecurity.
 
-- `HttpApiMiddleware.Tag` -> `effect/httpapi/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
+- `HttpApiMiddleware.Tag` -> `effect/http-api/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
 
-- `HttpApiMiddleware.TagClass` -> `effect/httpapi/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
+- `HttpApiMiddleware.TagClass` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
 
-- `HttpApiMiddleware.TagClass.BaseSecurity` -> `effect/httpapi/HttpApiMiddleware#ServiceClass`: Security is conditional metadata on ServiceClass; there is no separate public base interface.
+- `HttpApiMiddleware.TagClass.BaseSecurity` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: Security is conditional metadata on ServiceClass; there is no separate public base interface.
 
-- `HttpApiMiddleware.TagClass.Failure` -> `effect/httpapi/HttpApiMiddleware#Error`: failure terminology became error; apply the extractor to the middleware ID.
+- `HttpApiMiddleware.TagClass.Failure` -> `effect/http-api/HttpApiMiddleware#Error`: failure terminology became error; apply the extractor to the middleware ID.
 
-- `HttpApiMiddleware.TagClass.FailureContext` -> `effect/httpapi/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: Failure schema services split by server encoding and client decoding direction.
+- `HttpApiMiddleware.TagClass.FailureContext` -> `effect/http-api/HttpApiMiddleware#ErrorServicesEncode / ErrorServicesDecode`: Failure schema services split by server encoding and client decoding direction.
 
-- `HttpApiMiddleware.TagClass.FailureSchema` -> `effect/httpapi/HttpApiMiddleware#ErrorSchema`: Renamed and applied to the middleware ID rather than constructor options.
+- `HttpApiMiddleware.TagClass.FailureSchema` -> `effect/http-api/HttpApiMiddleware#ErrorSchema`: Renamed and applied to the middleware ID rather than constructor options.
 
-- `HttpApiMiddleware.TagClass.FailureService` -> `effect/httpapi/HttpApiMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
+- `HttpApiMiddleware.TagClass.FailureService` -> `effect/http-api/HttpApiMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
 
 - `HttpApiMiddleware.TagClass.Optional` -> `none`: Optional declaration and fallback-on-failure behavior were removed; model fallback in the wrapping middleware.
 
-- `HttpApiMiddleware.TagClass.Provides` -> `effect/httpapi/HttpApiMiddleware#Provides`: Moved to the module level and applied to the middleware ID.
+- `HttpApiMiddleware.TagClass.Provides` -> `effect/http-api/HttpApiMiddleware#Provides`: Moved to the module level and applied to the middleware ID.
 
-- `HttpApiMiddleware.TagClassAny` -> `effect/httpapi/HttpApiMiddleware#AnyService`: Renamed widened service-key type.
+- `HttpApiMiddleware.TagClassAny` -> `effect/http-api/HttpApiMiddleware#AnyService`: Renamed widened service-key type.
 
-- `HttpApiMiddleware.TagClassSecurityAny` -> `effect/httpapi/HttpApiMiddleware#AnyServiceSecurity`: Renamed widened security service-key type.
+- `HttpApiMiddleware.TagClassSecurityAny` -> `effect/http-api/HttpApiMiddleware#AnyServiceSecurity`: Renamed widened security service-key type.
 
 - `HttpApiMiddleware.TypeId` -> `none`: The marker is private; use public guards and type extractors.
 
 ### `@effect/platform/HttpApiScalar`
 
-- `HttpApiScalar.layer` -> `effect/httpapi/HttpApiScalar#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
+- `HttpApiScalar.layer` -> `effect/http-api/HttpApiScalar#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
 
-- `HttpApiScalar.layerHttpLayerRouter` -> `effect/httpapi/HttpApiScalar#layer`: The duplicate was removed. Pass options.api as the first layer argument and the remaining Scalar options second.
+- `HttpApiScalar.layerHttpLayerRouter` -> `effect/http-api/HttpApiScalar#layer`: The duplicate was removed. Pass options.api as the first layer argument and the remaining Scalar options second.
 
-- `HttpApiScalar.layerHttpLayerRouterCdn` -> `effect/httpapi/HttpApiScalar#layerCdn`: Use the explicit-api CDN layer with path, version, and Scalar options.
+- `HttpApiScalar.layerHttpLayerRouterCdn` -> `effect/http-api/HttpApiScalar#layerCdn`: Use the explicit-api CDN layer with path, version, and Scalar options.
 
 ### `@effect/platform/HttpApiSchema`
 
-- `HttpApiSchema.AnnotationEmptyDecodeable` -> `effect/httpapi/HttpApiSchema#asNoContent`: The public marker was removed; represent no-content decoding structurally with asNoContent({ decode }).
+- `HttpApiSchema.AnnotationEmptyDecodeable` -> `effect/http-api/HttpApiSchema#asNoContent`: The public marker was removed; represent no-content decoding structurally with asNoContent({ decode }).
 
-- `HttpApiSchema.AnnotationEncoding` -> `effect/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asText / asUint8Array`: The key is internal; select encoding with a public combinator.
+- `HttpApiSchema.AnnotationEncoding` -> `effect/http-api/HttpApiSchema#asJson / asFormUrlEncoded / asText / asUint8Array`: The key is internal; select encoding with a public combinator.
 
-- `HttpApiSchema.AnnotationMultipart` -> `effect/httpapi/HttpApiSchema#asMultipart`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
+- `HttpApiSchema.AnnotationMultipart` -> `effect/http-api/HttpApiSchema#asMultipart`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
 
-- `HttpApiSchema.AnnotationMultipartStream` -> `effect/httpapi/HttpApiSchema#asMultipartStream`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
+- `HttpApiSchema.AnnotationMultipartStream` -> `effect/http-api/HttpApiSchema#asMultipartStream`: The symbol annotation became a brand plus internal encoding metadata; apply the schema combinator.
 
-- `HttpApiSchema.AnnotationParam` -> `effect/httpapi/HttpApiEndpoint#params`: Path names now live in the router path and schemas in endpoint option params, not schema annotations.
+- `HttpApiSchema.AnnotationParam` -> `effect/http-api/HttpApiEndpoint#params`: Path names now live in the router path and schemas in endpoint option params, not schema annotations.
 
-- `HttpApiSchema.AnnotationStatus` -> `effect/httpapi/HttpApiSchema#status`: The public symbol was removed; apply status(code), which uses the httpApiStatus schema annotation.
+- `HttpApiSchema.AnnotationStatus` -> `effect/http-api/HttpApiSchema#status`: The public symbol was removed; apply status(code), which uses the httpApiStatus schema annotation.
 
-- `HttpApiSchema.Empty` -> `effect/httpapi/HttpApiSchema#Empty`: The API remains and returns Schema.Void annotated with the supplied status.
+- `HttpApiSchema.Empty` -> `effect/http-api/HttpApiSchema#Empty`: The API remains and returns Schema.Void annotated with the supplied status.
 
 - `HttpApiSchema.EmptyError` -> `effect/Schema#Error`: Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent.
 
@@ -7088,67 +7088,67 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiSchema.EmptyErrorUnifyIgnore` -> `none`: Removed with EmptyError; do not recreate the old Unify marker.
 
-- `HttpApiSchema.Encoding` -> `effect/httpapi/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as\* combinators.
+- `HttpApiSchema.Encoding` -> `effect/http-api/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as\* combinators.
 
-- `HttpApiSchema.Multipart` -> `effect/httpapi/HttpApiSchema#asMultipart`: The type and constructor became a curried schema combinator: schema.pipe(asMultipart(options)).
+- `HttpApiSchema.Multipart` -> `effect/http-api/HttpApiSchema#asMultipart`: The type and constructor became a curried schema combinator: schema.pipe(asMultipart(options)).
 
-- `HttpApiSchema.MultipartStream` -> `effect/httpapi/HttpApiSchema#asMultipartStream`: The type and constructor became a curried schema combinator.
+- `HttpApiSchema.MultipartStream` -> `effect/http-api/HttpApiSchema#asMultipartStream`: The type and constructor became a curried schema combinator.
 
-- `HttpApiSchema.Text` -> `effect/httpapi/HttpApiSchema#asText`: Apply the encoding combinator to Schema.String instead of using a dedicated constructor.
+- `HttpApiSchema.Text` -> `effect/http-api/HttpApiSchema#asText`: Apply the encoding combinator to Schema.String instead of using a dedicated constructor.
 
-- `HttpApiSchema.Uint8Array` -> `effect/httpapi/HttpApiSchema#asUint8Array`: Apply the encoding combinator to Schema.Uint8Array instead of using a dedicated constructor.
+- `HttpApiSchema.Uint8Array` -> `effect/http-api/HttpApiSchema#asUint8Array`: Apply the encoding combinator to Schema.Uint8Array instead of using a dedicated constructor.
 
 - `HttpApiSchema.UnionUnify` -> `effect/Schema#Union`: Use Schema.Union([self, that]); for endpoint alternatives, pass the schema array directly to preserve metadata.
 
 - `HttpApiSchema.annotations` -> `effect/Schema#annotate`: Schema annotations became annotate; set httpApiStatus directly or prefer HttpApiSchema.status for status only.
 
-- `HttpApiSchema.asEmpty` -> `effect/httpapi/HttpApiSchema#asNoContent`: Use schema.pipe(asNoContent({ decode }), status(code)); status is now a separate combinator.
+- `HttpApiSchema.asEmpty` -> `effect/http-api/HttpApiSchema#asNoContent`: Use schema.pipe(asNoContent({ decode }), status(code)); status is now a separate combinator.
 
 - `HttpApiSchema.deunionize` -> `none`: Pass schema arrays to endpoint success, error, and body alternatives so each member retains status and content type.
 
 - `HttpApiSchema.extractAnnotations` -> `none`: The internal symbol-copy helper was removed; HTTP metadata is schema-native and resolved through AST traversal.
 
-- `HttpApiSchema.getEmptyDecodeable` -> `effect/httpapi/HttpApiSchema#isNoContent`: Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement.
+- `HttpApiSchema.getEmptyDecodeable` -> `effect/http-api/HttpApiSchema#isNoContent`: Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement.
 
-- `HttpApiSchema.getEncoding` -> `effect/httpapi/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as\* combinators.
+- `HttpApiSchema.getEncoding` -> `effect/http-api/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as\* combinators.
 
-- `HttpApiSchema.getMultipart` -> `effect/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with buffered mode; multipart limits are on the encoding value.
+- `HttpApiSchema.getMultipart` -> `effect/http-api/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with buffered mode; multipart limits are on the encoding value.
 
-- `HttpApiSchema.getMultipartStream` -> `effect/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with stream mode; multipart limits are on the encoding value.
+- `HttpApiSchema.getMultipartStream` -> `effect/http-api/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with stream mode; multipart limits are on the encoding value.
 
 - `HttpApiSchema.getParam` -> `none`: Param identity moved out of schema metadata; read endpoint.path and endpoint.params.
 
 - `HttpApiSchema.getStatus` -> `effect/SchemaAST#resolveAt`: Resolve the httpApiStatus annotation directly, or prefer getStatusSuccess and getStatusError for response logic.
 
-- `HttpApiSchema.getStatusError` -> `effect/httpapi/HttpApiSchema#getStatusError`: The helper remains but accepts an AST and defaults to 500.
+- `HttpApiSchema.getStatusError` -> `effect/http-api/HttpApiSchema#getStatusError`: The helper remains but accepts an AST and defaults to 500.
 
-- `HttpApiSchema.getStatusErrorAST` -> `effect/httpapi/HttpApiSchema#getStatusError`: The AST suffix collapsed into the sole helper, which defaults to 500.
+- `HttpApiSchema.getStatusErrorAST` -> `effect/http-api/HttpApiSchema#getStatusError`: The AST suffix collapsed into the sole helper, which defaults to 500.
 
-- `HttpApiSchema.getStatusSuccess` -> `effect/httpapi/HttpApiSchema#getStatusSuccess`: The helper remains but accepts an AST; bare Schema.Void now defaults to 200, so use Empty(204) for 204.
+- `HttpApiSchema.getStatusSuccess` -> `effect/http-api/HttpApiSchema#getStatusSuccess`: The helper remains but accepts an AST; bare Schema.Void now defaults to 200, so use Empty(204) for 204.
 
-- `HttpApiSchema.getStatusSuccessAST` -> `effect/httpapi/HttpApiSchema#getStatusSuccess`: The AST suffix collapsed into the sole helper; bare Schema.Void no longer implies 204.
+- `HttpApiSchema.getStatusSuccessAST` -> `effect/http-api/HttpApiSchema#getStatusSuccess`: The AST suffix collapsed into the sole helper; bare Schema.Void no longer implies 204.
 
-- `HttpApiSchema.param` -> `effect/httpapi/HttpApiEndpoint#params`: Use a literal /:name path and the matching field in endpoint constructor option params.
+- `HttpApiSchema.param` -> `effect/http-api/HttpApiEndpoint#params`: Use a literal /:name path and the matching field in endpoint constructor option params.
 
-- `HttpApiSchema.withEncoding` -> `effect/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asUint8Array / asText`: Replace the generic kind with the matching public curried encoding combinator.
+- `HttpApiSchema.withEncoding` -> `effect/http-api/HttpApiSchema#asJson / asFormUrlEncoded / asUint8Array / asText`: Replace the generic kind with the matching public curried encoding combinator.
 
 ### `@effect/platform/HttpApiSecurity`
 
-- `HttpApiSecurity.Bearer` -> `effect/httpapi/HttpApiSecurity#Http`: Bearer was generalized to Http with scheme Bearer; the value-level bearer singleton remains.
+- `HttpApiSecurity.Bearer` -> `effect/http-api/HttpApiSecurity#Http`: Bearer was generalized to Http with scheme Bearer; the value-level bearer singleton remains.
 
-- `HttpApiSecurity.HttpApiSecurity.Type` -> `effect/httpapi/HttpApiSecurity#HttpApiSecurity.Type`: Unchanged after the module move; still extracts the credential type.
+- `HttpApiSecurity.HttpApiSecurity.Type` -> `effect/http-api/HttpApiSecurity#HttpApiSecurity.Type`: Unchanged after the module move; still extracts the credential type.
 
 - `HttpApiSecurity.TypeId` -> `none`: The marker is private; use the public union or specific Http, ApiKey, and Basic types.
 
-- `HttpApiSecurity.annotate` -> `effect/httpapi/HttpApiSecurity#annotate`: The combinator remains; its key is now the v4 Context.Key abstraction.
+- `HttpApiSecurity.annotate` -> `effect/http-api/HttpApiSecurity#annotate`: The combinator remains; its key is now the v4 Context.Key abstraction.
 
-- `HttpApiSecurity.annotateContext` -> `effect/httpapi/HttpApiSecurity#annotateMerge`: Renamed; it still merges a Context into existing OpenAPI annotations.
+- `HttpApiSecurity.annotateContext` -> `effect/http-api/HttpApiSecurity#annotateMerge`: Renamed; it still merges a Context into existing OpenAPI annotations.
 
 ### `@effect/platform/HttpApiSwagger`
 
-- `HttpApiSwagger.layer` -> `effect/httpapi/HttpApiSwagger#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
+- `HttpApiSwagger.layer` -> `effect/http-api/HttpApiSwagger#layer`: Pass the HttpApi as the first argument; the layer now contributes directly to HttpRouter.
 
-- `HttpApiSwagger.layerHttpLayerRouter` -> `effect/httpapi/HttpApiSwagger#layer`: The duplicate was removed. Pass options.api first and the path option second.
+- `HttpApiSwagger.layerHttpLayerRouter` -> `effect/http-api/HttpApiSwagger#layer`: The duplicate was removed. Pass options.api first and the path option second.
 
 ### `@effect/platform/HttpApp`
 
@@ -7346,7 +7346,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.addAll` -> `HttpRouter.addAll`: Moved to the consolidated HttpRouter; it still registers route values through a Layer and supports a prefix option.
 
-- `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/httpapi.
+- `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/http-api.
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
 
@@ -7686,15 +7686,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `OpenApi.AdditionalPropertiesStrategy` -> `none`: OpenApi.fromApi no longer accepts generation options; standalone JSON Schema generation has a separate additionalProperties option.
 
-- `OpenApi.Exclude` -> `effect/httpapi/OpenApi#Exclude`: Same annotation key and default; it is now a Context.Reference value.
+- `OpenApi.Exclude` -> `effect/http-api/OpenApi#Exclude`: Same annotation key and default; it is now a Context.Reference value.
 
 - `OpenApi.OpenApiSpecContentType` -> `string`: The closed media-type union was removed so custom and streaming media types are supported.
 
-- `OpenApi.Title` -> `effect/httpapi/OpenApi#Title`: Same annotation role, now implemented as a v4 Context.Service.
+- `OpenApi.Title` -> `effect/http-api/OpenApi#Title`: Same annotation role, now implemented as a v4 Context.Service.
 
-- `OpenApi.annotations` -> `effect/httpapi/OpenApi#annotations`: Same annotation-context helper after the module move.
+- `OpenApi.annotations` -> `effect/http-api/OpenApi#annotations`: Same annotation-context helper after the module move.
 
-- `OpenApi.fromApi` -> `effect/httpapi/OpenApi#fromApi`: The operation remains and returns OpenAPI 3.1, but the signature is now only fromApi(api).
+- `OpenApi.fromApi` -> `effect/http-api/OpenApi#fromApi`: The operation remains and returns OpenAPI 3.1, but the signature is now only fromApi(api).
 
 ### `@effect/platform/OpenApiJsonSchema`
 

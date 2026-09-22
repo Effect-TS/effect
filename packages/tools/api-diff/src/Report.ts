@@ -9,7 +9,7 @@ const unstableDomains = new Set([
   "encoding",
   "eventlog",
   "http",
-  "httpapi",
+  "http-api",
   "net",
   "observability",
   "persistence",

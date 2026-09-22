@@ -23,7 +23,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 
-const TypeId = "~effect/httpapi/HttpApi"
+const TypeId = "~effect/http-api/HttpApi"
 
 /**
  * Returns `true` when a value is an `HttpApi`.
@@ -344,7 +344,7 @@ const extractResponseContent = (
 export class AdditionalSchemas extends Context.Service<
   AdditionalSchemas,
   ReadonlyArray<Schema.Constraint>
->()("effect/httpapi/HttpApi/AdditionalSchemas") {}
+>()("effect/http-api/HttpApi/AdditionalSchemas") {}
 
 /**
  * Schema parse options for server and client codecs, set on an API, group, or
@@ -366,4 +366,4 @@ export class AdditionalSchemas extends Context.Service<
 export class ParseOptions extends Context.Service<
   ParseOptions,
   SchemaAST.ParseOptions
->()("effect/httpapi/HttpApi/ParseOptions") {}
+>()("effect/http-api/HttpApi/ParseOptions") {}

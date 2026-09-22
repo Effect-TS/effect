@@ -56,7 +56,7 @@ export const imports = (
   [
     `import * as ${importName} from "effect/Schema"`,
     ...(options?.multipart === true ? [`import { Multipart } from "effect/http"`] : []),
-    `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/httpapi"`
+    `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/http-api"`
   ].join("\n")
 
 /**

@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 import { HttpClientRequest, HttpServerRequest } from "effect/http"
-import { HttpApiBuilder, HttpApiSecurity } from "effect/httpapi"
+import { HttpApiBuilder, HttpApiSecurity } from "effect/http-api"
 
 const decode = <Security extends HttpApiSecurity.HttpApiSecurity>(authorization: string, security: Security) =>
   HttpApiBuilder.securityDecode(security).pipe(

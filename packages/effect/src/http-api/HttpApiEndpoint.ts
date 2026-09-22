@@ -35,7 +35,7 @@ import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
 
-const TypeId = "~effect/httpapi/HttpApiEndpoint"
+const TypeId = "~effect/http-api/HttpApiEndpoint"
 
 /**
  * Returns `true` when a value is an `HttpApiEndpoint`, narrowing the value to the
@@ -1214,7 +1214,7 @@ function getPayload(
   return result
 }
 
-const reservedStreamFailureEvent = "effect/httpapi/stream/failure"
+const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 
 function getSuccessResponse(
   success: Schema.Top | ReadonlyArray<Schema.Top> | undefined,

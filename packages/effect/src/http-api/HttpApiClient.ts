@@ -653,7 +653,7 @@ export const endpoint = <
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from "effect/httpapi"
+ * import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
  *
  * const Api = HttpApi.make("Api").add(
  *   HttpApiGroup.make("users").add(
@@ -880,7 +880,7 @@ function failUnsupportedContentType(
   )
 }
 
-const reservedStreamFailureEvent = "effect/httpapi/stream/failure"
+const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 
 type StreamSuccessSchema =
   | HttpApiSchema.StreamSchema

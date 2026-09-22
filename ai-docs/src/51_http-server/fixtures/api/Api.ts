@@ -1,4 +1,4 @@
-import { HttpApi, OpenApi } from "effect/httpapi"
+import { HttpApi, OpenApi } from "effect/http-api"
 import { SystemApi } from "./System.ts"
 import { UsersApiGroup } from "./Users.ts"
 

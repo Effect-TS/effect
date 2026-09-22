@@ -8,7 +8,7 @@ import {
   HttpApiSchema,
   HttpApiSecurity,
   OpenApi
-} from "effect/httpapi"
+} from "effect/http-api"
 
 class HeaderAuthA extends HttpApiMiddleware.Service<HeaderAuthA>()("HeaderAuthA", {
   security: {
@@ -256,7 +256,7 @@ describe("OpenApi", () => {
     }
     assert.strictEqual(
       streamExtension.failureEvent,
-      "effect/httpapi/stream/failure"
+      "effect/http-api/stream/failure"
     )
     assert.property(streamExtension, "causeSchema")
     assert.property(streamExtension, "errorSchema")

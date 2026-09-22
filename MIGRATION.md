@@ -50,7 +50,7 @@ For example, replace `effect/unstable/http` with `effect/http` and
 are no compatibility exports for the old paths.
 
 Unstable modules include: `ai`, `cli`, `cluster`, `devtools`, `eventlog`,
-`http`, `httpapi`, `jsonschema`, `observability`, `persistence`, `process`,
+`http`, `http-api`, `jsonschema`, `observability`, `persistence`, `process`,
 `reactivity`, `rpc`, `schema`, `socket`, `sql`, `workflow`, `workers`.
 
 Moving these modules does not stabilize their APIs.

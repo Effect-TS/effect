@@ -3,7 +3,7 @@ import { strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
-import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/httpapi"
+import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 
 describe("HttpApiClient", () => {
   describe("ParseOptions", () => {
@@ -62,7 +62,7 @@ describe("HttpApiClient", () => {
             httpClient: clientFromResponse(() =>
               new Response(
                 textStream([
-                  Sse.encoder.write({ _tag: "Event", event: "effect/httpapi/stream/failure", id: undefined, data })
+                  Sse.encoder.write({ _tag: "Event", event: "effect/http-api/stream/failure", id: undefined, data })
                 ]),
                 { headers: { "content-type": "text/event-stream" } }
               )
@@ -261,7 +261,7 @@ describe("HttpApiClient", () => {
         const encodedCause = yield* encodeCause(expectedCause)
         const failureEvent = Sse.encoder.write({
           _tag: "Event",
-          event: "effect/httpapi/stream/failure",
+          event: "effect/http-api/stream/failure",
           id: undefined,
           data: encodedCause
         })
@@ -284,7 +284,7 @@ describe("HttpApiClient", () => {
       Effect.gen(function*() {
         const failureEvent = Sse.encoder.write({
           _tag: "Event",
-          event: "effect/httpapi/stream/failure",
+          event: "effect/http-api/stream/failure",
           id: undefined,
           data: "not-json"
         })
@@ -298,7 +298,7 @@ describe("HttpApiClient", () => {
         const events = yield* Stream.runCollect(stream)
 
         assert.deepStrictEqual(events, [{
-          event: "effect/httpapi/stream/failure",
+          event: "effect/http-api/stream/failure",
           data: "not-json"
         }])
       }))

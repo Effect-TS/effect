@@ -1,6 +1,6 @@
 import { type Effect, hole, Schema, type Stream, Struct } from "effect"
+import { HttpApiEndpoint, HttpApiError, HttpApiMiddleware, HttpApiSchema } from "effect/http-api"
 import type { HttpServerResponse } from "effect/http/HttpServerResponse"
-import { HttpApiEndpoint, HttpApiError, HttpApiMiddleware, HttpApiSchema } from "effect/httpapi"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpApiEndpoint", () => {
