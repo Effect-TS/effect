@@ -506,6 +506,74 @@ describe("OpenAiLanguageModel", () => {
             })
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
+        it.effect("uses item references for stored assistant history by default", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: storedHistoryPrompt,
+              toolkit: TestToolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [
+              { role: "user", content: [{ type: "input_text", text: "Question" }] },
+              { type: "item_reference", id: "msg_1" },
+              { type: "item_reference", id: "rs_1" },
+              { type: "item_reference", id: "fc_1" },
+              { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("serializes stored assistant history inline when item references are disabled", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: storedHistoryPrompt,
+              toolkit: TestToolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+              store: true,
+              useItemReferences: false
+            } as any)))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [
+              { role: "user", content: [{ type: "input_text", text: "Question" }] },
+              {
+                id: "msg_1",
+                type: "message",
+                role: "assistant",
+                status: "completed",
+                content: [{
+                  type: "output_text",
+                  text: "Answer",
+                  annotations: [],
+                  logprobs: []
+                }]
+              },
+              {
+                type: "reasoning",
+                id: "rs_1",
+                summary: [{ type: "summary_text", text: "Thinking" }],
+                encrypted_content: "encrypted-reasoning"
+              },
+              {
+                type: "function_call",
+                name: "TestTool",
+                call_id: "call_1",
+                arguments: "{\"input\":\"value\"}",
+                id: "fc_1"
+              },
+              { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+            strictEqual(body.useItemReferences, undefined)
+          }).pipe(Effect.provide(makeTestLayer())))
+
         it.effect("converts tool call parts to function_call", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -2073,8 +2141,9 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
             fileIdPrefixes: ["file-"],
             strictJsonSchema: false,
+            useItemReferences: false,
             temperature: 0.5
-          }))
+          } as any))
         )
 
         const requests = yield* MockHttpClient.requests
@@ -2082,6 +2151,7 @@ describe("OpenAiLanguageModel", () => {
 
         strictEqual(body.fileIdPrefixes, undefined)
         strictEqual(body.strictJsonSchema, undefined)
+        strictEqual(body.useItemReferences, undefined)
         strictEqual(body.temperature, 0.5)
       }).pipe(Effect.provide(makeTestLayer())))
   })
@@ -2362,6 +2432,46 @@ const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
 })
 
 const TestToolkit = Toolkit.make(TestTool)
+
+const storedHistoryPrompt = Prompt.make([
+  { role: "user", content: "Question" },
+  {
+    role: "assistant",
+    content: [
+      Prompt.textPart({
+        text: "Answer",
+        options: { openai: { itemId: "msg_1" } }
+      }),
+      Prompt.reasoningPart({
+        text: "Thinking",
+        options: {
+          openai: {
+            itemId: "rs_1",
+            encryptedContent: "encrypted-reasoning"
+          }
+        }
+      }),
+      Prompt.toolCallPart({
+        id: "call_1",
+        name: "TestTool",
+        params: { input: "value" },
+        providerExecuted: false,
+        options: { openai: { itemId: "fc_1" } }
+      })
+    ]
+  },
+  {
+    role: "tool",
+    content: [Prompt.toolResultPart({
+      id: "call_1",
+      name: "TestTool",
+      isFailure: false,
+      result: { output: "result" },
+      providerExecuted: false
+    })]
+  },
+  { role: "user", content: "Continue" }
+])
 
 const McpToolkit = Toolkit.make(OpenAiTool.Mcp({
   server_label: "npm",

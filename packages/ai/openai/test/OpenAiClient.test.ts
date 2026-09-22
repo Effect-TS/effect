@@ -677,7 +677,10 @@ describe("OpenAiClient", () => {
           yield* chat.streamText({ prompt: "later" }).pipe(Stream.runDrain)
         }).pipe(
           OpenAiClient.withWebSocketMode,
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+            store: true,
+            useItemReferences: false
+          } as any)),
           Effect.provide(OpenAiClient.layer({
             apiKey: Redacted.make("sk-test"),
             apiUrl: "https://previous-response.test/v1"
