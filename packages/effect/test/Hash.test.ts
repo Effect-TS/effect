@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Chunk, Graph, Hash, HashMap, HashSet, Trie } from "effect"
+import { Chunk, Equal, Graph, Hash, HashMap, HashSet, Trie } from "effect"
 
 const range = (length: number): ReadonlyArray<number> => Array.from({ length }, (_, index) => index)
 
@@ -162,6 +162,59 @@ describe("Hash", () => {
     })
   })
 
+  describe("hash law", () => {
+    let seed = 1
+    const random = (n: number): number => {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0
+      return (seed >>> 16) % n
+    }
+    const randomKey = (): unknown => [random(60), `k${random(60)}`, [random(4), random(4)]][random(3)]
+    const shuffle = <A>(values: ReadonlyArray<A>): Array<A> => {
+      const output = [...values]
+      for (let i = output.length - 1; i > 0; i--) {
+        const j = random(i + 1)
+        ;[output[i], output[j]] = [output[j], output[i]]
+      }
+      return output
+    }
+
+    it("hashes HashMaps and HashSets independently of insertion order", () => {
+      for (let run = 0; run < 200; run++) {
+        const keys = Array.from(new Set(range(1 + random(80)).map(() => random(1000))))
+        const entries = keys.map((key) => [key, random(3)] as const)
+        const reordered = shuffle(entries)
+        assert.strictEqual(Hash.hash(HashMap.fromIterable(entries)), Hash.hash(HashMap.fromIterable(reordered)))
+        assert.strictEqual(Hash.hash(HashSet.fromIterable(keys)), Hash.hash(HashSet.fromIterable(shuffle(keys))))
+      }
+    })
+
+    it("hashes a HashMap like a fresh build after persistent and in-place edits", () => {
+      for (let run = 0; run < 100; run++) {
+        let map = HashMap.empty<unknown, number>()
+        for (let step = 0; step < 40; step++) {
+          const operation = random(3)
+          if (operation === 0) {
+            map = HashMap.mutate(map, (mutable) => {
+              for (let i = random(20); i >= 0; i--) {
+                if (random(3) === 0) HashMap.remove(mutable, randomKey())
+                else HashMap.set(mutable, randomKey(), random(3))
+                // Hashes the nodes mid-session, before they are edited again.
+                if (random(4) === 0) mutable[Hash.symbol]()
+              }
+            })
+          } else if (operation === 1) {
+            map = HashMap.remove(map, randomKey())
+          } else {
+            map = HashMap.set(map, randomKey(), random(3))
+          }
+          const rebuilt = HashMap.fromIterable(shuffle(Array.from(map)))
+          assert.isTrue(Equal.equals(map, rebuilt))
+          assert.strictEqual(Hash.hash(map), Hash.hash(rebuilt))
+        }
+      }
+    })
+  })
+
   describe("cyclic values", () => {
     it("does not cache a hash computed from a circular sentinel", () => {
       interface Node {
@@ -179,6 +232,19 @@ describe("Hash", () => {
 
       Hash.hash(b2)
       assert.strictEqual(Hash.hash(a1), Hash.hash(a2))
+    })
+
+    it("does not cache a HashMap subtree hash computed from a circular sentinel", () => {
+      const make = () => {
+        const holder: { map?: unknown; tag: number } = { tag: 1 }
+        const map = HashMap.make(["inner", { holder }])
+        holder.map = map
+        return { holder, map }
+      }
+      const first = make()
+      const second = make()
+      Hash.hash(first.map)
+      assert.strictEqual(Hash.hash(first.holder), Hash.hash(second.holder))
     })
 
     it("clears visited state when a custom hasher throws", () => {
