@@ -562,8 +562,15 @@ const makeSocket = Effect.gen(function*() {
         }
         if (event.type === "error" && "status" in event) {
           const status = Number(event.status)
-          const error = "error" in event ? event.error as typeof ErrorEvent.Type.error : event
-          const errorType = error.type ?? error.code ?? "unknown"
+          const error = ("error" in event ? event.error : event) as {
+            readonly type?: string
+            readonly code?: string
+            readonly message: string
+          }
+          const errorType = error.code ??
+            (error.type === "api_error" && /^gRPC error: Response with id=\S+ not found$/.test(error.message)
+              ? "previous_response_not_found"
+              : error.type ?? "unknown")
           const json = JSON.stringify(error)
           // LanguageModel retries `previous_response_not_found` with the full
           // prompt on this socket. Other errors leave the turn current so its
@@ -578,11 +585,13 @@ const makeSocket = Effect.gen(function*() {
               method: "createResponseStream",
               reason: AiError.reasonFromHttpStatus({
                 description: json,
-                status: isNaN(status) ?
-                  Object.hasOwn(errorTypeToStatus, errorType)
+                status: errorType === "previous_response_not_found"
+                  ? 400
+                  : isNaN(status)
+                  ? Object.hasOwn(errorTypeToStatus, errorType)
                     ? errorTypeToStatus[errorType]
-                    : 500 :
-                  status,
+                    : 500
+                  : status,
                 metadata: error as any,
                 http: {
                   body: json,
@@ -693,7 +702,9 @@ const makeSocket = Effect.gen(function*() {
 })
 
 const ErrorEvent = Schema.Struct({
-  type: Schema.Literal("error"),
+  type: Schema.Literal("error").pipe(
+    Schema.withDecodingDefault(Effect.succeed("error" as const))
+  ),
   status: Schema.Int.pipe(
     Schema.withDecodingDefault(Effect.succeed(500))
   ),
