@@ -20,12 +20,13 @@ describe("OpenAiTool", () => {
     const webSearch = OpenAiTool.WebSearch({})
 
     type Failure = {
-      readonly action: Generated.WebSearchToolCall["action"]
-      readonly status: "in_progress" | "searching" | "failed"
+      readonly action?: Exclude<Generated.WebSearchToolCall["action"], undefined>
+      readonly status: "in_progress" | "searching" | "failed" | "incomplete"
     }
 
     expect<Tool.Failure<typeof webSearch>>().type.toBe<Failure>()
-    expect<Tool.Success<typeof webSearch>["status"]>().type.toBe<"completed">()
+    expect<Tool.Parameters<typeof webSearch>>().type.toBe<Pick<Failure, "action">>()
+    expect<Tool.Success<typeof webSearch>>().type.toBe<Pick<Failure, "action"> & { readonly status: "completed" }>()
   })
 
   it("keeps search sources optional and distinguishes URL sources from named API sources", () => {

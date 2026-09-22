@@ -2,11 +2,12 @@ import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAi
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
-import { type AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
+import { AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const webSearchFailures = [
   { tool: OpenAiTool.WebSearch({}), status: "failed" },
+  { tool: OpenAiTool.WebSearch({}), status: "incomplete" },
   { tool: OpenAiTool.WebSearchPreview({}), status: "searching" }
 ] as const
 
@@ -55,13 +56,9 @@ describe("OpenAiLanguageModel", () => {
           const body = method === "generateText"
             ? JSON.stringify(makeDefaultResponse({ output: [item] }))
             : `data: ${JSON.stringify(event)}\n\n`
-          const client = HttpClient.make((request) =>
-            Effect.succeed(HttpClientResponse.fromWeb(
-              request,
-              new Response(body, {
-                headers: { "content-type": method === "generateText" ? "application/json" : "text/event-stream" }
-              })
-            ))
+          const client = makeRawResponseClient(
+            body,
+            method === "generateText" ? "application/json" : "text/event-stream"
           )
           const options = { prompt: "Weather in London", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
           const parts = yield* Effect.gen(function*() {
@@ -83,6 +80,72 @@ describe("OpenAiLanguageModel", () => {
           deepStrictEqual(results.map((part) => part.result), [{ action, status: "completed" }])
         })
     )
+  })
+
+  describe("web search without an action", () => {
+    it.effect.each(
+      [
+        { method: "streamText", status: "incomplete", isFailure: true },
+        { method: "generateText", status: "incomplete", isFailure: true },
+        { method: "generateText", status: "completed", isFailure: false }
+      ] as const
+    )("preserves omitted actions for $status with $method", ({ method, status, isFailure }) =>
+      Effect.gen(function*() {
+        const item: Generated.WebSearchToolCall = { type: "web_search_call", id: "ws_123", status }
+        const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
+        const body = method === "generateText"
+          ? JSON.stringify(makeDefaultResponse({ output: [item] }))
+          : `data: ${JSON.stringify(event)}\n\n`
+        const client = makeRawResponseClient(body, method === "generateText" ? "application/json" : "text/event-stream")
+        const options = { prompt: "Search the web", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
+        const parts = yield* Effect.gen(function*() {
+          if (method === "generateText") return (yield* LanguageModel.generateText(options)).content
+          return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-6-luna")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call" || part.type === "tool-result")
+            .map((part) => ({
+              type: part.type,
+              id: part.id,
+              providerExecuted: part.providerExecuted,
+              ...(part.type === "tool-call"
+                ? { params: part.params }
+                : { result: part.result, isFailure: part.isFailure })
+            })),
+          [
+            { type: "tool-call", id: "ws_123", providerExecuted: true, params: {} },
+            { type: "tool-result", id: "ws_123", providerExecuted: true, result: { status }, isFailure }
+          ]
+        )
+      }))
+
+    it.effect("rejects null and malformed actions when present", () =>
+      Effect.forEach([null, { type: "find_in_page", url: "https://example.com" }], (action) => {
+        const event = {
+          type: "response.output_item.done",
+          sequence_number: 1,
+          output_index: 0,
+          item: { type: "web_search_call", id: "ws_123", status: "completed", action }
+        }
+        const client = makeRawResponseClient(`data: ${JSON.stringify(event)}\n\n`, "text/event-stream")
+        return LanguageModel.streamText({ prompt: "Search", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }).pipe(
+          Stream.runCollect,
+          Effect.flip,
+          Effect.tap((error) => {
+            assert(AiError.isAiError(error))
+            strictEqual(error.reason._tag, "InvalidOutputError")
+            return Effect.void
+          }),
+          Effect.provide(OpenAiLanguageModel.model("gpt-6-luna")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+      }))
   })
 
   describe("generateText", () => {
@@ -593,6 +656,37 @@ describe("OpenAiLanguageModel", () => {
               },
               { role: "user", content: [{ type: "input_text", text: "Continue" }] }
             ])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("replays web search history with an omitted action", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Search" },
+                {
+                  role: "assistant",
+                  content: [
+                    Prompt.toolCallPart({ id: "ws_1", name: "OpenAiWebSearch", params: {}, providerExecuted: true }),
+                    Prompt.toolResultPart({
+                      id: "ws_1",
+                      name: "OpenAiWebSearch",
+                      providerExecuted: true,
+                      isFailure: true,
+                      result: { status: "incomplete" }
+                    })
+                  ]
+                },
+                { role: "user", content: "Continue" }
+              ]),
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-6-luna", {
+              store: true,
+              useItemReferences: false
+            })))
+
+            const body = yield* getRequestBody((yield* MockHttpClient.requests)[0])
+            deepStrictEqual(body.input?.[1], { type: "web_search_call", id: "ws_1", status: "incomplete" })
           }).pipe(Effect.provide(makeTestLayer())))
 
         it.effect("fails locally when provider-executed history cannot be replayed inline", () =>
@@ -2310,6 +2404,14 @@ const makeHttpClient = Effect.gen(function*() {
 })
 
 const HttpClientLayer = Layer.effectContext(makeHttpClient)
+
+const makeRawResponseClient = (body: string, contentType: string) =>
+  HttpClient.make((request) =>
+    Effect.succeed(HttpClientResponse.fromWeb(
+      request,
+      new Response(body, { headers: { "content-type": contentType } })
+    ))
+  )
 
 const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>) => {
   const response = HttpClientResponse.fromWeb(
