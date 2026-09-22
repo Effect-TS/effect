@@ -1386,7 +1386,7 @@ const fnStackFrame = (self: FnRegion, parent: StackFrame | undefined): StackFram
 const FnProto = makePrimitiveProto({
   op: "Fn",
   [evaluate](this: FnRegion, fiber) {
-    pushSpanFrame(fiber, SpanFrameProto, undefined, undefined, false)
+    pushSpanFrame(fiber, SpanFrameProto, undefined, undefined)
     fiber.setContext(Context.add(fiber.context, CurrentStackFrame, fnStackFrame(this, fiber.cache.stackFrame)))
     return this.effect
   }
@@ -1397,10 +1397,9 @@ const FnSpanProto = makePrimitiveProto({
   op: "FnSpan",
   [evaluate](this: FnRegion, fiber) {
     const frame = fnStackFrame(this, fiber.cache.stackFrame)
-    const clock = fiber.getRef(ClockRef)
-    const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    const span = makeSpanWith(fiber, this.definition.name, this.definition.options, clock, timingEnabled)
-    pushSpanFrame(fiber, FnSpanFrameProto, span, clock, timingEnabled)
+    const clock = spanClock(fiber)
+    const span = makeSpanWith(fiber, this.definition.name, this.definition.options, clock)
+    pushSpanFrame(fiber, FnSpanFrameProto, span, clock)
     fiber.setContext(
       Context.add(Context.add(fiber.context, CurrentStackFrame, frame), Tracer.ParentSpan, span)
     )
@@ -5970,14 +5969,17 @@ export const makeSpanUnsafe = <XA, XE>(
   fiber: Fiber.Fiber<XA, XE>,
   name: string,
   options: Tracer.SpanOptionsNoTrace | undefined
-): Tracer.Span => makeSpanWith(fiber, name, options, fiber.getRef(ClockRef), fiber.getRef(TracerTimingEnabled))
+): Tracer.Span => makeSpanWith(fiber, name, options, spanClock(fiber))
+
+// The clock a region times its span with, or undefined when it does not time it
+const spanClock = <XA, XE>(fiber: Fiber.Fiber<XA, XE>): Clock.Clock | undefined =>
+  fiber.cache.tracerEnabled && fiber.getRef(TracerTimingEnabled) ? fiber.getRef(ClockRef) : undefined
 
 const makeSpanWith = <XA, XE>(
   fiber: Fiber.Fiber<XA, XE>,
   name: string,
   options: Tracer.SpanOptionsNoTrace | undefined,
-  clock: Clock.Clock,
-  timingEnabled: boolean
+  clock: Clock.Clock | undefined
 ): Tracer.Span => {
   // TracerEnabled and the tracer are cached per context by the fiber
   const disablePropagation = !fiber.cache.tracerEnabled ||
@@ -6017,7 +6019,7 @@ const makeSpanWith = <XA, XE>(
       parent,
       annotations: options?.annotations ?? Context.empty(),
       links,
-      startTime: timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0,
+      startTime: clock ? clock.currentTimeNanosUnsafe() : bigint0,
       kind: options?.kind ?? "internal",
       root: options?.root ?? Option.isNone(parent),
       sampled: options?.sampled ??
@@ -6141,7 +6143,6 @@ interface SpanFrame extends Primitive {
   span: Tracer.Span | undefined
   context: Context.Context<never>
   clock: Clock.Clock | undefined
-  timingEnabled: boolean
   readonly endsInRegionFrame: boolean
   [exitSpanFrame](
     fiber: FiberImpl,
@@ -6179,7 +6180,7 @@ const SpanFrameProto = {
     const span = this.span
     if (span === undefined || span.status._tag === "Ended") return exit
     try {
-      span.end(this.timingEnabled && this.clock ? this.clock.currentTimeNanosUnsafe() : bigint0, exit)
+      span.end(this.clock ? this.clock.currentTimeNanosUnsafe() : bigint0, exit)
     } catch (defect) {
       const cause = causeDie(defect)
       return combineFinalizerCause(
@@ -6201,14 +6202,12 @@ const pushSpanFrame = (
   fiber: FiberImpl,
   proto: typeof SpanFrameProto,
   span: Tracer.Span | undefined,
-  clock: Clock.Clock | undefined,
-  timingEnabled: boolean
+  clock: Clock.Clock | undefined
 ): void => {
   const frame: SpanFrame = Object.create(proto)
   frame.span = span
   frame.context = fiber.context
   frame.clock = clock
-  frame.timingEnabled = timingEnabled
   fiber._stack.push(frame)
 }
 
@@ -6239,10 +6238,9 @@ interface WithSpanRegion extends Primitive {
 const WithSpanProto = makePrimitiveProto({
   op: "WithSpan",
   [evaluate](this: WithSpanRegion, fiber) {
-    const clock = fiber.getRef(ClockRef)
-    const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    const span = makeSpanWith(fiber, this.name, this.options, clock, timingEnabled)
-    pushSpanFrame(fiber, SpanFrameProto, span, clock, timingEnabled)
+    const clock = spanClock(fiber)
+    const span = makeSpanWith(fiber, this.name, this.options, clock)
+    pushSpanFrame(fiber, SpanFrameProto, span, clock)
     provideSpan(fiber, span, this.stack)
     return this.effect
   }
@@ -6271,10 +6269,9 @@ interface UseSpanRegion extends Primitive {
 const UseSpanProto = makePrimitiveProto({
   op: "UseSpan",
   [evaluate](this: UseSpanRegion, fiber) {
-    const clock = fiber.getRef(ClockRef)
-    const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    const span = makeSpanWith(fiber, this.name, this.options, clock, timingEnabled)
-    pushSpanFrame(fiber, SpanFrameProto, span, clock, timingEnabled)
+    const clock = spanClock(fiber)
+    const span = makeSpanWith(fiber, this.name, this.options, clock)
+    pushSpanFrame(fiber, SpanFrameProto, span, clock)
     const f = this.f
     return internalCall(() => f(span))
   }
@@ -6311,7 +6308,7 @@ interface ParentSpanRegion extends Primitive {
 const ParentSpanProto = makePrimitiveProto({
   op: "WithParentSpan",
   [evaluate](this: ParentSpanRegion, fiber) {
-    pushSpanFrame(fiber, SpanFrameProto, undefined, undefined, false)
+    pushSpanFrame(fiber, SpanFrameProto, undefined, undefined)
     provideSpan(fiber, this.span, this.stack)
     return this.effect
   }
