@@ -394,6 +394,22 @@ describe("TxQueue", () => {
         assert.deepStrictEqual(items, [1, 2, 3])
       })))
 
+    it.effect("take() and takeAll() suspend on an empty queue until an item is offered", () =>
+      Effect.gen(function*() {
+        const takeQueue = yield* TxQueue.unbounded<number>()
+        const takeAllQueue = yield* TxQueue.unbounded<number>()
+        const taker = yield* Effect.forkChild(TxQueue.take(takeQueue), { startImmediately: true })
+        const allTaker = yield* Effect.forkChild(TxQueue.takeAll(takeAllQueue), { startImmediately: true })
+        yield* Effect.yieldNow
+        assert.isUndefined(taker.pollUnsafe())
+        assert.isUndefined(allTaker.pollUnsafe())
+
+        assert.strictEqual(yield* TxQueue.offer(takeQueue, 1), true)
+        assert.strictEqual(yield* TxQueue.offer(takeAllQueue, 2), true)
+        assert.strictEqual(yield* Fiber.join(taker), 1)
+        assert.deepStrictEqual(yield* Fiber.join(allTaker), [2])
+      }))
+
     it.effect("takeAll() during state transition handles race condition", () =>
       Effect.tx(Effect.gen(function*() {
         const queue = yield* TxQueue.bounded<number>(5)
