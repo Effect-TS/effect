@@ -3229,5 +3229,72 @@ export const withString: UploadRequestFormData = { files: ["upload.txt"] }
         ),
       compilationTimeout
     )
+
+    it.effect(
+      "compiles query array clients under strict optional property checking",
+      () =>
+        assertGeneratedClientsCompile(
+          {
+            openapi: "3.1.0",
+            info: { title: "Query array API", version: "1.0.0" },
+            paths: {
+              "/items": {
+                get: {
+                  operationId: "listItems",
+                  parameters: [
+                    {
+                      name: "tags",
+                      in: "query",
+                      required: false,
+                      style: "form",
+                      explode: false,
+                      schema: { type: "array", items: { type: "string" } }
+                    },
+                    {
+                      name: "ids",
+                      in: "query",
+                      required: false,
+                      style: "form",
+                      explode: false,
+                      schema: { type: "array", items: { type: "number" } }
+                    },
+                    {
+                      name: "colors",
+                      in: "query",
+                      required: false,
+                      style: "form",
+                      explode: false,
+                      schema: { type: "array", items: { type: "string", enum: ["red", "blue"] } }
+                    },
+                    {
+                      name: "names",
+                      in: "query",
+                      required: true,
+                      schema: { type: "array", items: { type: "string" } }
+                    }
+                  ],
+                  responses: { "204": { description: "No content" } },
+                  tags: ["Items"],
+                  security: []
+                }
+              }
+            },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [{ name: "Items" }]
+          } as unknown as OpenAPISpec,
+          {
+            usage: `declare const client: TestClient
+const tags: ReadonlyArray<string> = ["red", "blue"]
+const ids: ReadonlyArray<number> = [1, 2]
+const colors: ReadonlyArray<"red" | "blue"> = ["red"]
+const names: ReadonlyArray<string> = ["a"]
+export const callWithReadonlyArrays = client.listItems({ params: { tags, ids, colors, names } })
+export const callWithLiterals = client.listItems({ params: { tags: ["red"], names: ["a"], colors: ["blue"] } })
+`
+          }
+        ),
+      compilationTimeout
+    )
   })
 })

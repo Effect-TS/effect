@@ -295,7 +295,11 @@ const parseOpenApi = (
           in: parameter.in,
           required: parameter.required === true,
           description: Utils.nonEmptyString(parameter.description),
-          schema: parameter.schema
+          schema: parameter.schema,
+          ...effectiveParameterSerialization(parameter)
+        }
+        if (isCsvQueryArrayParameter(parameter, resolveRef)) {
+          op.urlParamsCsv.push(parameter.name)
         }
         switch (parameter.in) {
           case "path": {
@@ -697,6 +701,8 @@ interface OpenApiParameter {
   readonly required: boolean
   readonly schema: {}
   readonly description?: string | undefined
+  readonly style?: ParsedOperation.OpenApiParameterStyle | undefined
+  readonly explode?: boolean | undefined
 }
 
 const isOpenApiParameter = (parameter: unknown): parameter is OpenApiParameter => {
@@ -738,6 +744,58 @@ const resolveOperationParameters = (
 
   return [...resolved.values()]
 }
+
+/**
+ * Applies the OpenAPI serialization defaults recorded for a parameter.
+ *
+ * Query parameters default to `style: "form"`, which in turn defaults `explode`
+ * to `true`. Other locations keep the declared values untouched.
+ */
+const effectiveParameterSerialization = (parameter: OpenApiParameter): {
+  readonly style: ParsedOperation.OpenApiParameterStyle | undefined
+  readonly explode: boolean | undefined
+} => {
+  if (parameter.in !== "query") {
+    return { style: parameter.style, explode: parameter.explode }
+  }
+  const style = parameter.style ?? "form"
+  return { style, explode: parameter.explode ?? style === "form" }
+}
+
+/**
+ * Detects a top-level query array serialized as one comma-separated value.
+ *
+ * Only `style: "form"` with `explode: false` and scalar array items qualify.
+ * Other delimiter styles, object items, and nested arrays keep their existing
+ * repeated-parameter behavior.
+ */
+const isCsvQueryArrayParameter = (
+  parameter: OpenApiParameter,
+  resolveRef: (ref: string) => unknown
+): boolean => {
+  const serialization = effectiveParameterSerialization(parameter)
+  return parameter.in === "query" &&
+    serialization.style === "form" &&
+    serialization.explode === false &&
+    isScalarArraySchema(parameter.schema, resolveRef)
+}
+
+const isScalarArraySchema = (schema: unknown, resolveRef: (ref: string) => unknown): boolean => {
+  const resolved = resolveReference(schema, resolveRef)
+  const items = Predicate.isObject(resolved) && resolved.type === "array"
+    ? resolveReference(resolved.items, resolveRef)
+    : undefined
+  return Predicate.isObject(items) && isScalarArrayItems(items)
+}
+
+const scalarArrayItemTypes: ReadonlySet<unknown> = new Set(["string", "number", "integer", "boolean"])
+
+const isScalarArrayItems = (items: Record<string, unknown>): boolean =>
+  scalarArrayItemTypes.has(items.type) ||
+  (Array.isArray(items.enum) && items.enum.length > 0 && items.enum.every(isScalarValue))
+
+const isScalarValue = (value: unknown): boolean =>
+  value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean"
 
 const buildParameterSchema = <
   Parameter extends {
