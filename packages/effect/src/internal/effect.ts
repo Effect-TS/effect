@@ -65,7 +65,6 @@ import {
   exitSucceed,
   ExitTypeId,
   Fail,
-  identifier,
   InterruptorStackTrace,
   isCause,
   isDieReason,
@@ -1320,19 +1319,10 @@ const makeFn = (
   const body = typeof bodyOrOptions === "function"
     ? bodyOrOptions
     : (pipeables.shift()!).bind(bodyOrOptions.self)
-  // Fixed per definition, so shared by every call
-  const definition: FnDefinition = {
-    name,
-    options: spanOptions,
-    definitionName: `${name} (definition)`,
-    definitionStack: defError ? fnStackCleaner(defError) : constUndefined
-  }
-  const proto = addSpan ? FnSpanProto : FnProto
 
-  return defineFunctionLength(body.length, function(this: any) {
-    const args = arguments
+  return defineFunctionLength(body.length, function(this: any, ...args: Array<any>) {
     let result = suspend(() => {
-      const iter = body.apply(this, args)
+      const iter = body.apply(this, arguments)
       return isEffect(iter) ? iter : fromIteratorUnsafe(iter)
     })
     for (let i = 0; i < pipeables.length; i++) {
@@ -1348,64 +1338,23 @@ const makeFn = (
       callError = new globalThis.Error()
       setStackTraceLimit(prevLimit)
     }
-    const self: FnRegion = Object.create(proto)
-    self.effect = result
-    self.definition = definition
-    self.callError = callError
-    return self
+    return updateService(
+      addSpan ?
+        useSpan(name, spanOptions!, (span) => provideParentSpan(result, span)) :
+        result,
+      CurrentStackFrame,
+      (prev) => ({
+        name,
+        stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
+        parent: {
+          name: `${name} (definition)`,
+          stack: defError ? fnStackCleaner(() => defError.stack) : constUndefined,
+          parent: prev
+        }
+      })
+    )
   })
 }
-
-interface FnDefinition {
-  readonly name: string
-  readonly options: Tracer.SpanOptionsNoTrace | undefined
-  readonly definitionName: string
-  readonly definitionStack: () => string | undefined
-}
-
-interface FnRegion extends Primitive, Effect.Effect<any, any, any> {
-  effect: Effect.Effect<any, any, any>
-  definition: FnDefinition
-  callError: Error | undefined
-}
-
-const fnStackFrame = (self: FnRegion, parent: StackFrame | undefined): StackFrame => {
-  const definition = self.definition
-  return {
-    name: definition.name,
-    stack: self.callError ? fnStackCleaner(self.callError) : constUndefined,
-    parent: {
-      name: definition.definitionName,
-      stack: definition.definitionStack,
-      parent
-    }
-  }
-}
-
-// Effect.fn without a span: provides the call and definition stack frames
-const FnProto = makePrimitiveProto({
-  op: "Fn",
-  [evaluate](this: FnRegion, fiber) {
-    pushSpanFrame(fiber, SpanFrameProto, undefined, undefined)
-    fiber.setContext(Context.add(fiber.context, CurrentStackFrame, fnStackFrame(this, fiber.cache.stackFrame)))
-    return this.effect
-  }
-})
-
-// Effect.fn with a span: also starts the span and provides it as the parent
-const FnSpanProto = makePrimitiveProto({
-  op: "FnSpan",
-  [evaluate](this: FnRegion, fiber) {
-    const frame = fnStackFrame(this, fiber.cache.stackFrame)
-    const clock = spanClock(fiber)
-    const span = makeSpanWith(fiber, this.definition.name, this.definition.options, clock)
-    pushSpanFrame(fiber, FnSpanFrameProto, span, clock)
-    fiber.setContext(
-      Context.add(Context.add(fiber.context, CurrentStackFrame, frame), Tracer.ParentSpan, span)
-    )
-    return this.effect
-  }
-})
 
 /** @internal */
 export const fnUntracedEager: Effect.fn.Untraced = (
@@ -2258,10 +2207,11 @@ export const updateContext: {
       const nextContext = f(prevContext)
       if (prevContext === nextContext) return self as any
       fiber.setContext(nextContext)
-      return onExitPrimitive(self, () => {
+      onExitUnsafe(fiber, () => {
         fiber.setContext(prevContext)
         return undefined
       })
+      return self as any
     })
 )
 
@@ -4184,12 +4134,7 @@ export const addFinalizer = <R>(
       )
   )
 
-/** @internal */
-export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
-  self: Effect.Effect<A, E, R>,
-  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | undefined,
-  interruptible?: boolean
-) => Effect.Effect<A, E | XE, R | XR> = (function() {
+const OnExitImpl = (function() {
   const Proto = makePrimitiveProto({
     op: "OnExit",
     [evaluate](this: any, fiber: FiberImpl) {
@@ -4219,10 +4164,31 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
     this.interruptible = interruptible
   } as unknown as PrimitiveCtor<[effect: any, onExit: any, interruptible: any]>
   OnExitImpl.prototype = Proto
-  return function(effect: any, onExit: any, interruptible?: boolean) {
-    return new OnExitImpl(effect, onExit, interruptible)
-  } as any
+  return OnExitImpl
 })()
+
+/** @internal */
+export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
+  self: Effect.Effect<A, E, R>,
+  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | undefined,
+  interruptible?: boolean
+) => Effect.Effect<A, E | XE, R | XR> = (effect, onExit, interruptible) =>
+  new OnExitImpl(effect, onExit, interruptible) as any
+
+/**
+ * Runs `f` with the exit of the effect returned by the current `withFiber`
+ * evaluation. The frame is pushed immediately, so no scheduler yield or
+ * interruption can fall between a change to the fiber and the finalizer that
+ * reverts it. Call only within `withFiber`.
+ *
+ * @internal
+ */
+export const onExitUnsafe = <A = unknown, E = unknown>(
+  fiber: Fiber.Fiber<unknown, unknown>,
+  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, unknown, unknown> | undefined
+): void => {
+  ;(fiber as FiberImpl)._stack.push(new OnExitImpl(undefined, f, undefined))
+}
 
 /** @internal */
 export const onExit: {
@@ -5969,20 +5935,8 @@ export const makeSpanUnsafe = <XA, XE>(
   fiber: Fiber.Fiber<XA, XE>,
   name: string,
   options: Tracer.SpanOptionsNoTrace | undefined
-): Tracer.Span => makeSpanWith(fiber, name, options, spanClock(fiber))
-
-// The clock a region times its span with, or undefined when it does not time it
-const spanClock = <XA, XE>(fiber: Fiber.Fiber<XA, XE>): Clock.Clock | undefined =>
-  fiber.cache.tracerEnabled && fiber.getRef(TracerTimingEnabled) ? fiber.getRef(ClockRef) : undefined
-
-const makeSpanWith = <XA, XE>(
-  fiber: Fiber.Fiber<XA, XE>,
-  name: string,
-  options: Tracer.SpanOptionsNoTrace | undefined,
-  clock: Clock.Clock | undefined
-): Tracer.Span => {
-  // TracerEnabled and the tracer are cached per context by the fiber
-  const disablePropagation = !fiber.cache.tracerEnabled ||
+) => {
+  const disablePropagation = !fiber.getRef(TracerEnabled) ||
     (options?.annotations && Context.get(options.annotations, Tracer.DisablePropagation))
   const parent = options?.parent !== undefined
     ? Option.some(options.parent)
@@ -6003,7 +5957,9 @@ const makeSpanWith = <XA, XE>(
       )
     })
   } else {
-    const tracer = fiber.cache.tracer ?? Tracer.nativeTracer
+    const tracer = fiber.getRef(Tracer.Tracer)
+    const clock = fiber.getRef(ClockRef)
+    const timingEnabled = fiber.getRef(TracerTimingEnabled)
     const annotationsFromEnv = fiber.getRef(TracerSpanAnnotations)
     const linksFromEnv = fiber.getRef(TracerSpanLinks)
     const level = options?.level ?? fiber.getRef(Tracer.CurrentTraceLevel)
@@ -6019,7 +5975,7 @@ const makeSpanWith = <XA, XE>(
       parent,
       annotations: options?.annotations ?? Context.empty(),
       links,
-      startTime: clock ? clock.currentTimeNanosUnsafe() : bigint0,
+      startTime: timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0,
       kind: options?.kind ?? "internal",
       root: options?.root ?? Option.isNone(parent),
       sampled: options?.sampled ??
@@ -6094,6 +6050,15 @@ export const withSpanScoped: {
     )
 } as any
 
+const provideSpanStackFrame = (name: string, stack: (() => string | undefined) | undefined) => {
+  stack = typeof stack === "function" ? stack : constUndefined
+  return updateService(CurrentStackFrame, (parent) => ({
+    name,
+    stack,
+    parent
+  }))
+}
+
 /** @internal */
 export const spanAnnotations: Effect.Effect<Readonly<Record<string, unknown>>> = TracerSpanAnnotations
 
@@ -6133,150 +6098,6 @@ export const endSpan = <A, E>(
     span.end(timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0, exit)
   })
 
-// A traced region opens in one evaluation: it starts its span, provides the
-// parent span and stack frame, and pushes the frame that ends the span and
-// restores the context on every exit. No interruption or scheduler yield can
-// fall between the three, so a started span always ends and the enclosing
-// context always comes back.
-
-interface SpanFrame extends Primitive {
-  span: Tracer.Span | undefined
-  context: Context.Context<never>
-  clock: Clock.Clock | undefined
-  readonly endsInRegionFrame: boolean
-  [exitSpanFrame](
-    fiber: FiberImpl,
-    exit: Exit.Exit<unknown, unknown>
-  ): Exit.Exit<unknown, unknown> | Effect.Effect<void, unknown>
-}
-
-// Rendered stacks stop at the first `~effect/Effect` frame, so a defect thrown
-// by a tracer's `span.end` shows only the tracer's own frames
-const exitSpanFrame = "~effect/Effect/exitSpanFrame"
-
-// A frame only sits on the fiber stack, so it needs the continuations and
-// none of the Effect prototype
-const SpanFrameProto = {
-  [identifier]: "SpanFrame",
-  // Whether a defect thrown by `span.end` carries the region's own stack
-  // frame (Effect.fn) or the enclosing one (Effect.withSpan)
-  endsInRegionFrame: false,
-  [contAll](this: SpanFrame, fiber: FiberImpl) {
-    if (fiber.interruptible) {
-      fiber._stack.push(setInterruptibleTrue)
-      fiber.interruptible = false
-    }
-  },
-  [contA](this: SpanFrame, value: unknown, fiber: FiberImpl, exit?: Exit.Exit<unknown, unknown>) {
-    return this[exitSpanFrame](fiber, exit ?? exitSucceed(value))
-  },
-  [contE](this: SpanFrame, cause: Cause.Cause<unknown>, fiber: FiberImpl, exit?: Exit.Exit<unknown, unknown>) {
-    return this[exitSpanFrame](fiber, exit ?? exitFailCause(cause))
-  },
-  // Restores the context the region replaced, then ends its span
-  [exitSpanFrame](this: SpanFrame, fiber: FiberImpl, exit: Exit.Exit<unknown, unknown>) {
-    const regionFrame = fiber.cache.stackFrame
-    fiber.setContext(this.context)
-    const span = this.span
-    if (span === undefined || span.status._tag === "Ended") return exit
-    try {
-      span.end(this.clock ? this.clock.currentTimeNanosUnsafe() : bigint0, exit)
-    } catch (defect) {
-      const cause = causeDie(defect)
-      return combineFinalizerCause(
-        exit,
-        exitFailCause(
-          this.endsInRegionFrame && regionFrame
-            ? causeAnnotate(cause, Context.make(CauseStackTrace, regionFrame))
-            : cause
-        )
-      )
-    }
-    return exit
-  }
-}
-
-const FnSpanFrameProto = { ...SpanFrameProto, endsInRegionFrame: true }
-
-const pushSpanFrame = (
-  fiber: FiberImpl,
-  proto: typeof SpanFrameProto,
-  span: Tracer.Span | undefined,
-  clock: Clock.Clock | undefined
-): void => {
-  const frame: SpanFrame = Object.create(proto)
-  frame.span = span
-  frame.context = fiber.context
-  frame.clock = clock
-  fiber._stack.push(frame)
-}
-
-const provideSpan = (
-  fiber: FiberImpl,
-  span: Tracer.AnySpan,
-  stack: (() => string | undefined) | undefined
-): void => {
-  const context = Context.add(fiber.context, Tracer.ParentSpan, span)
-  fiber.setContext(
-    span._tag === "Span"
-      ? Context.add(context, CurrentStackFrame, {
-        name: span.name,
-        stack: typeof stack === "function" ? stack : constUndefined,
-        parent: fiber.cache.stackFrame
-      })
-      : context
-  )
-}
-
-interface WithSpanRegion extends Primitive {
-  effect: Effect.Effect<any, any, any>
-  name: string
-  options: Tracer.SpanOptionsNoTrace | undefined
-  stack: (() => string | undefined) | undefined
-}
-
-const WithSpanProto = makePrimitiveProto({
-  op: "WithSpan",
-  [evaluate](this: WithSpanRegion, fiber) {
-    const clock = spanClock(fiber)
-    const span = makeSpanWith(fiber, this.name, this.options, clock)
-    pushSpanFrame(fiber, SpanFrameProto, span, clock)
-    provideSpan(fiber, span, this.stack)
-    return this.effect
-  }
-})
-
-const makeWithSpan = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-  name: string,
-  options: Tracer.SpanOptionsNoTrace | undefined,
-  stack: Tracer.TraceOptions["captureStackTrace"]
-): Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>> => {
-  const self: WithSpanRegion & Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>> = Object.create(WithSpanProto)
-  self.effect = effect
-  self.name = name
-  self.options = options
-  self.stack = typeof stack === "function" ? stack : undefined
-  return self
-}
-
-interface UseSpanRegion extends Primitive {
-  name: string
-  options: Tracer.SpanOptionsNoTrace | undefined
-  f: (span: Tracer.Span) => Effect.Effect<any, any, any>
-}
-
-const UseSpanProto = makePrimitiveProto({
-  op: "UseSpan",
-  [evaluate](this: UseSpanRegion, fiber) {
-    const clock = spanClock(fiber)
-    const span = makeSpanWith(fiber, this.name, this.options, clock)
-    pushSpanFrame(fiber, SpanFrameProto, span, clock)
-    const f = this.f
-    return internalCall(() => f(span))
-  }
-})
-
 /** @internal */
 export const useSpan: {
   <A, E, R>(name: string, evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
@@ -6292,39 +6113,18 @@ export const useSpan: {
     evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>
   ]
 ): Effect.Effect<A, E, R> => {
-  const self: UseSpanRegion & Effect.Effect<A, E, R> = Object.create(UseSpanProto)
-  self.name = name
-  self.options = args.length === 1 ? undefined : args[0]
-  self.f = args[args.length - 1]
-  return self
+  const options = args.length === 1 ? undefined : args[0]
+  const evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R> = args[args.length - 1]
+  return withFiber((fiber) => {
+    const span = makeSpanUnsafe(fiber, name, options)
+    const clock = fiber.getRef(ClockRef)
+    const timingEnabled = fiber.getRef(TracerTimingEnabled)
+    onExitUnsafe(fiber, (exit) => endSpan(span, exit, clock, timingEnabled))
+    return internalCall(() => evaluate(span))
+  })
 }
 
-interface ParentSpanRegion extends Primitive {
-  effect: Effect.Effect<any, any, any>
-  span: Tracer.AnySpan
-  stack: (() => string | undefined) | undefined
-}
-
-const ParentSpanProto = makePrimitiveProto({
-  op: "WithParentSpan",
-  [evaluate](this: ParentSpanRegion, fiber) {
-    pushSpanFrame(fiber, SpanFrameProto, undefined, undefined)
-    provideSpan(fiber, this.span, this.stack)
-    return this.effect
-  }
-})
-
-const makeWithParentSpan = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-  span: Tracer.AnySpan,
-  stack: (() => string | undefined) | undefined
-): Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>> => {
-  const self: ParentSpanRegion & Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>> = Object.create(ParentSpanProto)
-  self.effect = effect
-  self.span = span
-  self.stack = stack
-  return self
-}
+const provideParentSpan = provideService(Tracer.ParentSpan)
 
 /** @internal */
 export const withParentSpan: {
@@ -6340,14 +6140,16 @@ export const withParentSpan: {
 } = function() {
   const dataFirst = isEffect(arguments[0])
   const span: Tracer.AnySpan = dataFirst ? arguments[1] : arguments[0]
-  const stack = span._tag === "Span"
-    ? addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])?.captureStackTrace
-    : undefined
-  const stackFn = typeof stack === "function" ? stack : undefined
-  if (dataFirst) {
-    return makeWithParentSpan(arguments[0], span, stackFn)
+  let options = dataFirst ? arguments[2] : arguments[1]
+  let provideStackFrame: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = identity
+  if (span._tag === "Span") {
+    options = addSpanStackTrace(options)
+    provideStackFrame = provideSpanStackFrame(span.name, options?.captureStackTrace)
   }
-  return (self: Effect.Effect<any, any, any>) => makeWithParentSpan(self, span, stackFn)
+  if (dataFirst) {
+    return provideParentSpan(provideStackFrame(arguments[0]), span)
+  }
+  return (self: Effect.Effect<any, any, any>) => provideParentSpan(provideStackFrame(self), span)
 } as any
 
 /** @internal */
@@ -6365,14 +6167,19 @@ export const withSpan: {
 } = function() {
   const dataFirst = typeof arguments[0] !== "string"
   const name = dataFirst ? arguments[1] : arguments[0]
-  const stack = addSpanStackTrace(arguments[2])?.captureStackTrace
+  const traceOptions = addSpanStackTrace(arguments[2])
   if (dataFirst) {
-    return makeWithSpan(arguments[0], name, arguments[2], stack)
+    const self = arguments[0]
+    return useSpan(name, arguments[2], (span) => withParentSpan(self, span, traceOptions))
   }
   const fnArg = typeof arguments[1] === "function" ? arguments[1] : undefined
   const options = fnArg ? undefined : arguments[1]
   return (self: Effect.Effect<any, any, any>, ...args: any) =>
-    makeWithSpan(self, name, fnArg ? fnArg(...args) : options, stack)
+    useSpan(
+      name,
+      fnArg ? fnArg(...args) : options,
+      (span) => withParentSpan(self, span, traceOptions)
+    )
 } as any
 
 /** @internal */

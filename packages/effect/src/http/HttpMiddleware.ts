@@ -22,7 +22,7 @@ import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
-import { nativeTracer, ParentSpan, type Span, Tracer } from "../Tracer.ts"
+import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
@@ -205,22 +205,14 @@ export const tracer: <E, R>(
       return httpApp
     }
     const nameGenerator = fiber.getRef(SpanNameGenerator)
-    const prevServices = fiber.context
-    // The span starts after its finalizer is on the stack, and the finalizer
-    // runs even when the fiber is interrupted, so a started span always ends
-    let started: Span | undefined
-    const start = Effect.withFiber((fiber) => {
-      started = internalEffect.makeSpanUnsafe(fiber, nameGenerator(request), {
-        parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
-        kind: "server"
-      })
-      fiber.setContext(Context.add(fiber.context, ParentSpan, started))
-      return httpApp
+    const span = internalEffect.makeSpanUnsafe(fiber, nameGenerator(request), {
+      parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
+      kind: "server"
     })
-    return Effect.onExitPrimitive(start, (exit) => {
+    const prevServices = fiber.context
+    fiber.setContext(Context.add(fiber.context, ParentSpan, span))
+    internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
-      const span = started
-      if (span === undefined) return undefined
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
         span.end(endTime, exit)
@@ -293,6 +285,7 @@ export const tracer: <E, R>(
       }, 0)
       return undefined
     })
+    return httpApp
   })
 )
 

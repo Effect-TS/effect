@@ -24,16 +24,16 @@ export const addSpanStackTrace = <A extends Tracer.TraceOptions>(
   setStackTraceLimit(limit)
   return {
     ...options,
-    captureStackTrace: spanCleaner(traceError)
+    captureStackTrace: spanCleaner(() => traceError.stack)
   } as A
 }
 
 /** @internal */
-export const makeStackCleaner = (line: number) => (error: Error): () => string | undefined => {
+export const makeStackCleaner = (line: number) => (stack: () => string | undefined): () => string | undefined => {
   let cache: string | undefined
   return () => {
     if (cache !== undefined) return cache
-    const trace = error.stack
+    const trace = stack()
     if (!trace) return undefined
     const lines = trace.split("\n")
     if (lines[line] !== undefined) {
