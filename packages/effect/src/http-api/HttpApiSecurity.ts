@@ -15,7 +15,7 @@ import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import type { Redacted } from "../Redacted.ts"
 import type { Covariant } from "../Types.ts"
 
-const TypeId = "~effect/httpapi/HttpApiSecurity"
+const TypeId = "~effect/http-api/HttpApiSecurity"
 
 /**
  * Union of security schemes supported by the HTTP API OpenAPI model.

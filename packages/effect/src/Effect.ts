@@ -14662,7 +14662,13 @@ const isTransactionConsistent = (state: Transaction["Service"]) => {
 }
 
 const awaitPendingTransaction = (state: Transaction["Service"]) =>
-  suspend(() => {
+  callback<void>((resume) => {
+    // Validate the read set and register the waiter in one synchronous step.
+    // A commit that landed after the reads has already signalled its waiters
+    // and will not signal this one, so a stale read set reruns immediately.
+    if (!isTransactionConsistent(state)) {
+      return resume(void_)
+    }
     const key = {}
     const refs = Array.from(state.journal.keys())
     const clearPending = () => {
@@ -14670,16 +14676,14 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
         clear.pending.delete(key)
       }
     }
-    return callback<void>((resume) => {
-      const onCall = () => {
-        clearPending()
-        resume(void_)
-      }
-      for (const ref of refs) {
-        ref.pending.set(key, onCall)
-      }
-      return sync(clearPending)
-    })
+    const onCall = () => {
+      clearPending()
+      resume(void_)
+    }
+    for (const ref of refs) {
+      ref.pending.set(key, onCall)
+    }
+    return sync(clearPending)
   })
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {

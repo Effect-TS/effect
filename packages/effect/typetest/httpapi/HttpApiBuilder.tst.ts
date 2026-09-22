@@ -1,11 +1,5 @@
 import { Context, Effect, Layer, Schema } from "effect"
 import type { FileSystem } from "effect/FileSystem"
-import type { Generator } from "effect/http/Etag"
-import type { HttpPlatform } from "effect/http/HttpPlatform"
-import * as HttpRouter from "effect/http/HttpRouter"
-import type { Request as HttpRouterRequest, RouteContext } from "effect/http/HttpRouter"
-import type { HttpServerRequest, ParsedSearchParams } from "effect/http/HttpServerRequest"
-import type { HttpServerResponse } from "effect/http/HttpServerResponse"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -14,7 +8,13 @@ import {
   HttpApiMiddleware,
   HttpApiSchema,
   HttpApiSecurity
-} from "effect/httpapi"
+} from "effect/http-api"
+import type { Generator } from "effect/http/Etag"
+import type { HttpPlatform } from "effect/http/HttpPlatform"
+import * as HttpRouter from "effect/http/HttpRouter"
+import type { Request as HttpRouterRequest, RouteContext } from "effect/http/HttpRouter"
+import type { HttpServerRequest, ParsedSearchParams } from "effect/http/HttpServerRequest"
+import type { HttpServerResponse } from "effect/http/HttpServerResponse"
 import type { Path } from "effect/Path"
 import { describe, expect, it } from "tstyche"
 

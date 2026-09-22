@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware } from "effect/httpapi"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware } from "effect/http-api"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpApiGroup", () => {

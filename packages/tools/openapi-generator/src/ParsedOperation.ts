@@ -10,13 +10,13 @@
  *
  * @since 4.0.0
  */
-import type { HttpMethod } from "effect/http/HttpMethod"
 import type {
   OpenAPISecurityRequirement,
   OpenAPISpecExternalDocs,
   OpenAPISpecLicense,
   OpenAPISpecServer
-} from "effect/httpapi/OpenApi"
+} from "effect/http-api/OpenApi"
+import type { HttpMethod } from "effect/http/HttpMethod"
 import type * as Types from "effect/Types"
 
 /**

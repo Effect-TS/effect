@@ -868,7 +868,7 @@ describe("fromJsonSchemaDocument", () => {
     })
 
     it("round-trips a closed Record with a patterned key", async () => {
-      const original = Schema.Record(Schema.String.check(Schema.isStartsWith("a")), Schema.Finite)
+      const original = Schema.Record(Schema.String.check(Schema.isStartingWith("a")), Schema.Finite)
       const document = Schema.toJsonSchemaDocument(original, { onExcessProperty: "error" })
       assert.deepStrictEqual(document.schema, {
         type: "object",

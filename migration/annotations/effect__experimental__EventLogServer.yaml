@@ -1,4 +1,5 @@
 "@effect/experimental/EventLogServer#layerStorageMemory":
+  include: true
   replacement: effect/eventlog/EventLogServerEncrypted#layerStorageMemory
   note: Use the encrypted server memory storage layer; storage is now storeId- and session-aware.
 "@effect/experimental/EventLogServer#makeHandler":
@@ -11,5 +12,6 @@
   replacement: effect/eventlog/EventLogServerEncrypted#makeStorageMemory
   note: Use the encrypted server memory storage constructor.
 "@effect/experimental/EventLogServer#Storage":
+  include: true
   replacement: effect/eventlog/EventLogServerEncrypted#Storage
   note: Use the encrypted server Storage service, which is storeId- and session-aware.

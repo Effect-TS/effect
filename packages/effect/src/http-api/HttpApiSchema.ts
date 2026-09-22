@@ -92,7 +92,7 @@ export type ResponseEncoding = {
   readonly contentType: string
 }
 
-const StreamSchemaTypeId = "~effect/httpapi/HttpApiSchema/Stream"
+const StreamSchemaTypeId = "~effect/http-api/HttpApiSchema/Stream"
 
 /**
  * Common HTTP status code literals accepted by {@link status}.
@@ -264,7 +264,7 @@ export type StreamSseMode = "events" | "data"
  *
  * **Gotchas**
  *
- * The client treats `effect/httpapi/stream/failure` as a stream failure only
+ * The client treats `effect/http-api/stream/failure` as a stream failure only
  * when its decoded `data` is a `Cause`. If an event schema accepts that name
  * dynamically but decodes `data` to another value, the client emits it as an
  * application event. Endpoint construction rejects event schemas that declare
@@ -460,7 +460,7 @@ function defaultStreamContentType(mode: StreamMode): string {
  * @category type IDs
  * @since 4.0.0
  */
-export const WithHeadersTypeId = "~effect/httpapi/HttpApiSchema/WithHeaders"
+export const WithHeadersTypeId = "~effect/http-api/HttpApiSchema/WithHeaders"
 
 /**
  * Type-level brand identifier used by `WithHeaders`.
@@ -478,7 +478,7 @@ export type WithHeadersTypeId = typeof WithHeadersTypeId
  * @category type IDs
  * @since 4.0.0
  */
-export const WithHeadersValueTypeId = "~effect/httpapi/HttpApiSchema/WithHeadersValue"
+export const WithHeadersValueTypeId = "~effect/http-api/HttpApiSchema/WithHeadersValue"
 
 /**
  * Type-level brand identifier used by `WithHeaders` response values.
@@ -575,7 +575,7 @@ const withHeadersValueSchema = Schema.declare(isWithHeadersValue)
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { HttpApiSchema } from "effect/httpapi"
+ * import { HttpApiSchema } from "effect/http-api"
  *
  * const schema = HttpApiSchema.WithHeaders(Schema.String, {
  *   "x-total-count": Schema.FiniteFromString
@@ -654,7 +654,7 @@ export const withHeaders = <A, H>(options: {
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { HttpApiSchema } from "effect/httpapi"
+ * import { HttpApiSchema } from "effect/http-api"
  *
  * const schema = HttpApiSchema.WithHeaders(Schema.String, {
  *   "x-request-id": Schema.String
@@ -730,7 +730,7 @@ export interface encodeToWithHeaders<
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { HttpApiSchema } from "effect/httpapi"
+ * import { HttpApiSchema } from "effect/http-api"
  *
  * class UserNotFound extends Schema.TaggedError<UserNotFound>()("UserNotFound", {
  *   userId: Schema.Int
@@ -802,7 +802,7 @@ export function encodeToWithHeaders<
  * @category type IDs
  * @since 4.0.0
  */
-export const MultipartTypeId = "~effect/httpapi/HttpApiSchema/Multipart"
+export const MultipartTypeId = "~effect/http-api/HttpApiSchema/Multipart"
 
 /**
  * Type-level brand identifier used by `asMultipart`.
@@ -850,7 +850,7 @@ export function asMultipart(options?: Multipart_.withLimits.Options) {
  * @category type IDs
  * @since 4.0.0
  */
-export const MultipartStreamTypeId = "~effect/httpapi/HttpApiSchema/MultipartStream"
+export const MultipartStreamTypeId = "~effect/http-api/HttpApiSchema/MultipartStream"
 
 /**
  * Type-level brand identifier used by `asMultipartStream`.

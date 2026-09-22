@@ -1,5 +1,5 @@
 import { Context, Schema } from "effect"
-import { HttpApiEndpoint, HttpApiError, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity } from "effect/httpapi"
+import { HttpApiEndpoint, HttpApiError, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity } from "effect/http-api"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpApiMiddleware", () => {

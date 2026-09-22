@@ -22,7 +22,7 @@ import {
   Multipart,
   UrlParams
 } from "effect/http"
-import * as HttpApiError from "effect/httpapi/HttpApiError"
+import * as HttpApiError from "effect/http-api/HttpApiError"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"

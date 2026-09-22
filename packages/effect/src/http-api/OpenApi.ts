@@ -41,7 +41,7 @@ import * as HttpApiPath from "./internal/path.ts"
  * @category services
  * @since 4.0.0
  */
-export class Identifier extends Context.Service<Identifier, string>()("effect/httpapi/OpenApi/Identifier") {}
+export class Identifier extends Context.Service<Identifier, string>()("effect/http-api/OpenApi/Identifier") {}
 
 /**
  * OpenAPI annotation for setting the API title or group tag name.
@@ -50,7 +50,7 @@ export class Identifier extends Context.Service<Identifier, string>()("effect/ht
  * @category services
  * @since 4.0.0
  */
-export class Title extends Context.Service<Title, string>()("effect/httpapi/OpenApi/Title") {}
+export class Title extends Context.Service<Title, string>()("effect/http-api/OpenApi/Title") {}
 
 /**
  * OpenAPI annotation for setting the generated API version.
@@ -59,7 +59,7 @@ export class Title extends Context.Service<Title, string>()("effect/httpapi/Open
  * @category services
  * @since 4.0.0
  */
-export class Version extends Context.Service<Version, string>()("effect/httpapi/OpenApi/Version") {}
+export class Version extends Context.Service<Version, string>()("effect/http-api/OpenApi/Version") {}
 
 /**
  * OpenAPI annotation for setting generated descriptions on APIs, groups, endpoints, or security schemes.
@@ -68,7 +68,7 @@ export class Version extends Context.Service<Version, string>()("effect/httpapi/
  * @category services
  * @since 4.0.0
  */
-export class Description extends Context.Service<Description, string>()("effect/httpapi/OpenApi/Description") {}
+export class Description extends Context.Service<Description, string>()("effect/http-api/OpenApi/Description") {}
 
 /**
  * OpenAPI annotation for setting the generated API license metadata.
@@ -77,7 +77,7 @@ export class Description extends Context.Service<Description, string>()("effect/
  * @category services
  * @since 4.0.0
  */
-export class License extends Context.Service<License, OpenAPISpecLicense>()("effect/httpapi/OpenApi/License") {}
+export class License extends Context.Service<License, OpenAPISpecLicense>()("effect/http-api/OpenApi/License") {}
 
 /**
  * OpenAPI annotation for adding external documentation metadata to groups or endpoints.
@@ -87,7 +87,7 @@ export class License extends Context.Service<License, OpenAPISpecLicense>()("eff
  * @since 4.0.0
  */
 export class ExternalDocs
-  extends Context.Service<ExternalDocs, OpenAPISpecExternalDocs>()("effect/httpapi/OpenApi/ExternalDocs")
+  extends Context.Service<ExternalDocs, OpenAPISpecExternalDocs>()("effect/http-api/OpenApi/ExternalDocs")
 {}
 
 /**
@@ -98,7 +98,7 @@ export class ExternalDocs
  * @since 4.0.0
  */
 export class Servers
-  extends Context.Service<Servers, ReadonlyArray<OpenAPISpecServer>>()("effect/httpapi/OpenApi/Servers")
+  extends Context.Service<Servers, ReadonlyArray<OpenAPISpecServer>>()("effect/http-api/OpenApi/Servers")
 {}
 
 /**
@@ -108,7 +108,7 @@ export class Servers
  * @category services
  * @since 4.0.0
  */
-export class Format extends Context.Service<Format, string>()("effect/httpapi/OpenApi/Format") {}
+export class Format extends Context.Service<Format, string>()("effect/http-api/OpenApi/Format") {}
 
 /**
  * OpenAPI annotation for setting generated summary text.
@@ -117,7 +117,7 @@ export class Format extends Context.Service<Format, string>()("effect/httpapi/Op
  * @category services
  * @since 4.0.0
  */
-export class Summary extends Context.Service<Summary, string>()("effect/httpapi/OpenApi/Summary") {}
+export class Summary extends Context.Service<Summary, string>()("effect/http-api/OpenApi/Summary") {}
 
 /**
  * OpenAPI annotation for marking a generated endpoint operation as deprecated.
@@ -126,7 +126,7 @@ export class Summary extends Context.Service<Summary, string>()("effect/httpapi/
  * @category services
  * @since 4.0.0
  */
-export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/httpapi/OpenApi/Deprecated") {}
+export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/http-api/OpenApi/Deprecated") {}
 
 /**
  * OpenAPI annotation for shallowly merging additional fields into a generated OpenAPI object.
@@ -135,7 +135,9 @@ export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/h
  * @category services
  * @since 4.0.0
  */
-export class Override extends Context.Service<Override, Record<string, unknown>>()("effect/httpapi/OpenApi/Override") {}
+export class Override
+  extends Context.Service<Override, Record<string, unknown>>()("effect/http-api/OpenApi/Override")
+{}
 
 /**
  * Annotation that excludes an annotated group or endpoint from the generated
@@ -150,7 +152,7 @@ export class Override extends Context.Service<Override, Record<string, unknown>>
  * @category services
  * @since 4.0.0
  */
-export const Exclude = Context.Reference<boolean>("effect/httpapi/OpenApi/Exclude", {
+export const Exclude = Context.Reference<boolean>("effect/http-api/OpenApi/Exclude", {
   defaultValue: constFalse
 })
 
@@ -169,7 +171,7 @@ export const Exclude = Context.Reference<boolean>("effect/httpapi/OpenApi/Exclud
 export class Transform extends Context.Service<
   Transform,
   (openApiSpec: Record<string, any>) => Record<string, any>
->()("effect/httpapi/OpenApi/Transform") {}
+>()("effect/http-api/OpenApi/Transform") {}
 
 const servicesPartial = <Tags extends Record<string, Context.Key<any, any> | Context.Key<never, any>>>(
   tags: Tags
@@ -764,7 +766,7 @@ type ResponseBodies = Map<
   }
 >
 
-const reservedStreamFailureEvent = "effect/httpapi/stream/failure"
+const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 
 function extractSuccessResponseBodies(endpoint: HttpApiEndpoint.Top): ResponseBodies {
   return extractResponseBodies(
@@ -1207,7 +1209,7 @@ export type OpenApiSpecEffectStream =
     encoding: "sse"
     causeSchema: JsonSchema.JsonSchema
     errorSchema: JsonSchema.JsonSchema
-    failureEvent: "effect/httpapi/stream/failure"
+    failureEvent: "effect/http-api/stream/failure"
   }
   | {
     encoding: "uint8array"

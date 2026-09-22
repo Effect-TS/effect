@@ -4477,7 +4477,7 @@ export function withArrayLengthConstraints<Item extends Constraint>(
   maximum: number | undefined
 ): $Array<Item> {
   if (minimum !== undefined && maximum !== undefined) {
-    return self.check(isLengthBetween(minimum, maximum))
+    return self.check(isBetweenLength(minimum, maximum))
   }
   if (minimum !== undefined) return self.check(isMinLength(minimum))
   if (maximum !== undefined) return self.check(isMaxLength(maximum))
@@ -6864,7 +6864,7 @@ export function isBase64Url(annotations?: Annotations.Filter) {
  * @category validation
  * @since 4.0.0
  */
-export function isStartsWith(startsWith: string, annotations?: Annotations.Filter) {
+export function isStartingWith(startsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(startsWith)
   const regExp = new globalThis.RegExp(`^${RegExp_.escape(startsWith)}`)
   return makeFilter(
@@ -6872,11 +6872,11 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
     {
       expected: `a string starting with ${formatted}`,
       representation: {
-        id: "effect/schema/isStartsWith",
+        id: "effect/schema/isStartingWith",
         payload: { startsWith }
       },
       toJsonSchema: () => ({ pattern: regExp.source }),
-      toCode: () => ({ runtime: `Schema.isStartsWith(${format(startsWith)})` }),
+      toCode: () => ({ runtime: `Schema.isStartingWith(${format(startsWith)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
       },
@@ -6895,7 +6895,7 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
  * @category validation
  * @since 4.0.0
  */
-export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
+export function isEndingWith(endsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(endsWith)
   const regExp = new globalThis.RegExp(`${RegExp_.escape(endsWith)}$`)
   return makeFilter(
@@ -6903,11 +6903,11 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
     {
       expected: `a string ending with ${formatted}`,
       representation: {
-        id: "effect/schema/isEndsWith",
+        id: "effect/schema/isEndingWith",
         payload: { endsWith }
       },
       toJsonSchema: () => ({ pattern: regExp.source }),
-      toCode: () => ({ runtime: `Schema.isEndsWith(${format(endsWith)})` }),
+      toCode: () => ({ runtime: `Schema.isEndingWith(${format(endsWith)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
       },
@@ -6927,7 +6927,7 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
  * @category validation
  * @since 4.0.0
  */
-export function isIncludes(includes: string, annotations?: Annotations.Filter) {
+export function isIncluding(includes: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(includes)
   const regExp = new globalThis.RegExp(RegExp_.escape(includes))
   return makeFilter(
@@ -6935,11 +6935,11 @@ export function isIncludes(includes: string, annotations?: Annotations.Filter) {
     {
       expected: `a string including ${formatted}`,
       representation: {
-        id: "effect/schema/isIncludes",
+        id: "effect/schema/isIncluding",
         payload: { includes }
       },
       toJsonSchema: () => ({ pattern: regExp.source }),
-      toCode: () => ({ runtime: `Schema.isIncludes(${format(includes)})` }),
+      toCode: () => ({ runtime: `Schema.isIncluding(${format(includes)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
       },
@@ -8147,7 +8147,7 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  * @category validation
  * @since 4.0.0
  */
-export function isLengthBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+export function isBetweenLength(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = Math.max(0, Math.floor(minimum))
   maximum = Math.max(0, Math.floor(maximum))
   return makeFilter<{ readonly length: number }>(
@@ -8158,14 +8158,14 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
         : `a value with a length between ${minimum} and ${maximum}`,
 
       representation: {
-        id: "effect/schema/isLengthBetween",
+        id: "effect/schema/isBetweenLength",
         payload: { minimum, maximum }
       },
       toJsonSchema: ({ type }) =>
         type === "array"
           ? { allOf: [{ minItems: minimum }, { maxItems: maximum }] }
           : { allOf: [{ minLength: minimum }, { maxLength: maximum }] },
-      toCode: () => ({ runtime: `Schema.isLengthBetween(${minimum}, ${maximum})` }),
+      toCode: () => ({ runtime: `Schema.isBetweenLength(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
         minLength: minimum,
@@ -8175,6 +8175,134 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
     }
   )
 }
+/**
+ * Validates that a string contains at least the specified number of Unicode code points.
+ *
+ * **Details**
+ *
+ * The bound is rounded down and clamped to zero. This check corresponds to
+ * `minLength` in JSON Schema and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isMinLength} for counting UTF-16 code units
+ * @see {@link isMaxCodePoints}
+ * @see {@link isBetweenCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isMinCodePoints(minCodePoints: number, annotations?: Annotations.Filter) {
+  minCodePoints = Math.max(0, Math.floor(minCodePoints))
+  return makeFilter<string>(
+    (input) => countCodePointsUpTo(input, minCodePoints) >= minCodePoints,
+    {
+      expected: `a string with at least ${minCodePoints} code points`,
+      representation: {
+        id: "effect/schema/isMinCodePoints",
+        payload: { minCodePoints }
+      },
+      toJsonSchema: () => ({ minLength: minCodePoints }),
+      toCode: () => ({ runtime: `Schema.isMinCodePoints(${minCodePoints})` }),
+      arbitraryConstraint: { minCodePoints },
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that a string contains at most the specified number of Unicode code points.
+ *
+ * **Details**
+ *
+ * The bound is rounded down and clamped to zero. This check corresponds to
+ * `maxLength` in JSON Schema and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isMaxLength} for counting UTF-16 code units
+ * @see {@link isMinCodePoints}
+ * @see {@link isBetweenCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations.Filter) {
+  maxCodePoints = Math.max(0, Math.floor(maxCodePoints))
+  return makeFilter<string>(
+    (input) => countCodePointsUpTo(input, maxCodePoints + 1) <= maxCodePoints,
+    {
+      expected: `a string with at most ${maxCodePoints} code points`,
+      representation: {
+        id: "effect/schema/isMaxCodePoints",
+        payload: { maxCodePoints }
+      },
+      toJsonSchema: () => ({ maxLength: maxCodePoints }),
+      toCode: () => ({ runtime: `Schema.isMaxCodePoints(${maxCodePoints})` }),
+      arbitraryConstraint: { maxCodePoints },
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that a string's Unicode code point count is within the specified inclusive range.
+ *
+ * **Details**
+ *
+ * Bounds are rounded down and clamped to zero. Equal bounds require an exact
+ * count. This check corresponds to `minLength` and `maxLength` in JSON Schema
+ * and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isBetweenLength} for counting UTF-16 code units
+ * @see {@link isMinCodePoints}
+ * @see {@link isMaxCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isBetweenCodePoints(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+  minimum = Math.max(0, Math.floor(minimum))
+  maximum = Math.max(0, Math.floor(maximum))
+  return makeFilter<string>(
+    (input) => {
+      const count = countCodePointsUpTo(input, maximum + 1)
+      return count >= minimum && count <= maximum
+    },
+    {
+      expected: minimum === maximum
+        ? `a string with ${minimum} code points`
+        : `a string with between ${minimum} and ${maximum} code points`,
+      representation: {
+        id: "effect/schema/isBetweenCodePoints",
+        payload: { minimum, maximum }
+      },
+      toJsonSchema: () => ({ allOf: [{ minLength: minimum }, { maxLength: maximum }] }),
+      toCode: () => ({ runtime: `Schema.isBetweenCodePoints(${minimum}, ${maximum})` }),
+      arbitraryConstraint: { minCodePoints: minimum, maxCodePoints: maximum },
+      ...annotations
+    }
+  )
+}
+
+function countCodePointsUpTo(input: string, limit: number): number {
+  if (limit === 0) return 0
+  let count = 0
+  for (const _ of input) {
+    if (++count >= limit) break
+  }
+  return count
+}
+
 /**
  * Validates that a value has at least the specified size. Works with values
  * that have a `size` property, such as `Set` or `Map`.
@@ -8269,7 +8397,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
  * @category validation
  * @since 4.0.0
  */
-export function isSizeBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+export function isBetweenSize(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = Math.max(0, Math.floor(minimum))
   maximum = Math.max(0, Math.floor(maximum))
   return makeFilter<{ readonly size: number }>(
@@ -8280,11 +8408,11 @@ export function isSizeBetween(minimum: number, maximum: number, annotations?: An
         : `a value with a size between ${minimum} and ${maximum}`,
 
       representation: {
-        id: "effect/schema/isSizeBetween",
+        id: "effect/schema/isBetweenSize",
         payload: { minimum, maximum }
       },
       toJsonSchema: () => ({}),
-      toCode: () => ({ runtime: `Schema.isSizeBetween(${minimum}, ${maximum})` }),
+      toCode: () => ({ runtime: `Schema.isBetweenSize(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
         minSize: minimum,
@@ -8395,7 +8523,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
  * @category validation
  * @since 4.0.0
  */
-export function isPropertiesLengthBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+export function isBetweenProperties(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = Math.max(0, Math.floor(minimum))
   maximum = Math.max(0, Math.floor(maximum))
   return makeFilter<object>(
@@ -8406,11 +8534,11 @@ export function isPropertiesLengthBetween(minimum: number, maximum: number, anno
         : `a value with between ${minimum} and ${maximum} entries`,
 
       representation: {
-        id: "effect/schema/isPropertiesLengthBetween",
+        id: "effect/schema/isBetweenProperties",
         payload: { minimum, maximum }
       },
       toJsonSchema: () => ({ minProperties: minimum, maxProperties: maximum }),
-      toCode: () => ({ runtime: `Schema.isPropertiesLengthBetween(${minimum}, ${maximum})` }),
+      toCode: () => ({ runtime: `Schema.isBetweenProperties(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
         minProperties: minimum,
@@ -8576,12 +8704,12 @@ export interface Char extends String {
  *
  * @see {@link String} for unconstrained string values
  * @see {@link NonEmptyString} for strings with length greater than zero
- * @see {@link isLengthBetween} for the underlying length check
+ * @see {@link isBetweenLength} for the underlying length check
  *
  * @category schemas
  * @since 3.10.0
  */
-export const Char: Char = String.check(isLengthBetween(1, 1))
+export const Char: Char = String.check(isBetweenLength(1, 1))
 /**
  * Type-level representation of {@link ErrorInstance}.
  *
@@ -16008,6 +16136,8 @@ export declare namespace Annotations {
       readonly exclusiveMaximum?: true | undefined
       readonly minLength?: number | undefined
       readonly maxLength?: number | undefined
+      readonly minCodePoints?: number | undefined
+      readonly maxCodePoints?: number | undefined
       readonly minSize?: number | undefined
       readonly maxSize?: number | undefined
       readonly minProperties?: number | undefined

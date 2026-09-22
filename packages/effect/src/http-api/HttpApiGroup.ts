@@ -21,7 +21,7 @@ import * as Record from "../Record.ts"
 import type * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 
-const TypeId = "~effect/httpapi/HttpApiGroup"
+const TypeId = "~effect/http-api/HttpApiGroup"
 
 /**
  * Returns `true` when a value is an `HttpApiGroup`, narrowing the value to the
@@ -395,7 +395,7 @@ const makeProto = <
 }): HttpApiGroup<Id, Endpoints, TopLevel> => {
   function HttpApiGroup() {}
   Object.setPrototypeOf(HttpApiGroup, Proto)
-  HttpApiGroup.key = `effect/httpapi/HttpApiGroup/${options.identifier}`
+  HttpApiGroup.key = `effect/http-api/HttpApiGroup/${options.identifier}`
   return Object.assign(HttpApiGroup, options) as any
 }
 

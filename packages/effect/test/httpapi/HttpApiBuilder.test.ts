@@ -22,7 +22,7 @@ import {
   HttpApiSchema,
   HttpApiSecurity,
   HttpApiTest
-} from "effect/httpapi"
+} from "effect/http-api"
 
 const textDecoder = new TextDecoder()
 
@@ -51,7 +51,7 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.events({ responseMode: "response-only" })
       const text = yield* response.text
-      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      assert.isTrue(text.startsWith("event: effect/http-api/stream/failure\ndata: "))
       const data = text.split("\n")[1]!.slice("data: ".length)
       const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
       const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
@@ -74,7 +74,7 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.events({ responseMode: "response-only" })
       const text = yield* response.text
-      assert.isTrue(text.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      assert.isTrue(text.startsWith("event: effect/http-api/stream/failure\ndata: "))
       const data = text.split("\n")[1]!.slice("data: ".length)
       const FailureSchema = Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(StreamError, Schema.Defect())))
       const cause = yield* Schema.decodeUnknownEffect(FailureSchema)(data)
@@ -1272,7 +1272,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
 
       assert.strictEqual(response.headers["content-type"], "text/event-stream")
       assert.strictEqual(rendered.length, 1)
-      assert.isTrue(rendered[0]!.startsWith("event: effect/httpapi/stream/failure\ndata: "))
+      assert.isTrue(rendered[0]!.startsWith("event: effect/http-api/stream/failure\ndata: "))
       assert.isTrue(rendered[0]!.endsWith("\n\n"))
 
       const data = rendered[0]!.split("\n")[1]!.slice("data: ".length)
