@@ -1,5 +1,20 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cache, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Latch, MutableHashMap, Option } from "effect"
+import {
+  Cache,
+  Cause,
+  Context,
+  Data,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Latch,
+  MutableHashMap,
+  Option,
+  Scheduler,
+  type Scope
+} from "effect"
 import { Persistable, PersistedCache, Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
 
@@ -1625,6 +1640,105 @@ describe("Cache", () => {
         assert.strictEqual(yield* Cache.get(cache, key2), "test-2")
         assert.strictEqual(yield* Cache.get(cache, key3), "test-1") // Uses cached value
       }))
+  })
+
+  describe("lookup ownership", () => {
+    // Callers only observe the shared lookup. These tests force a yield at
+    // every op budget so a window between two steps becomes deterministic.
+    const settle = Effect.gen(function*() {
+      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+    })
+    const atEveryBudget = <E>(
+      test: (
+        budget: <A, E2, R>(effect: Effect.Effect<A, E2, R>) => Effect.Effect<A, E2, R>
+      ) => Effect.Effect<boolean, E, Scope.Scope>
+    ): Effect.Effect<Array<number>, E> =>
+      Effect.gen(function*() {
+        const failed: Array<number> = []
+        for (let ops = 3; ops <= 64; ops++) {
+          const ok = yield* Effect.scoped(
+            test((effect) => Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, ops))
+          )
+          if (!ok) failed.push(ops)
+        }
+        return failed
+      })
+    const show = <A, E>(exit: Exit.Exit<A, E> | undefined): string =>
+      exit === undefined
+        ? "pending"
+        : Exit.isSuccess(exit)
+        ? `ok:${String(exit.value)}`
+        : Exit.hasInterrupts(exit)
+        ? "interrupted"
+        : Exit.hasDies(exit)
+        ? `die:${String(Cause.squash(exit.cause))}`
+        : "failed"
+
+    it.effect("a caller joining while the last caller leaves is not interrupted", () =>
+      Effect.gen(function*() {
+        const failed = yield* atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            const gate = yield* Deferred.make<number>()
+            const cache = yield* Cache.make({ capacity: 10, lookup: (_: number) => Deferred.await(gate) })
+            const first = yield* Effect.forkChild(budget(Cache.get(cache, 1)), { startImmediately: true })
+            yield* settle
+            yield* Effect.forkChild(Fiber.interrupt(first), { startImmediately: true })
+            const second = yield* Effect.forkChild(Cache.get(cache, 1), { startImmediately: true })
+            yield* settle
+            yield* Deferred.succeed(gate, 42)
+            yield* settle
+            return show(second.pollUnsafe()) === "ok:42"
+          })
+        )
+        assert.deepStrictEqual(failed, [])
+      }))
+
+    it.effect("interrupting the only caller at any step interrupts its lookup", () =>
+      Effect.gen(function*() {
+        const failed = yield* atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            let started = 0
+            let interrupted = 0
+            const cache = yield* Cache.make({
+              capacity: 10,
+              lookup: (_: number) =>
+                Effect.suspend(() => {
+                  started++
+                  return Effect.onInterrupt(Effect.never, () => Effect.sync(() => interrupted++))
+                })
+            })
+            const caller = yield* Effect.forkChild(budget(Cache.get(cache, 1)), { startImmediately: true })
+            yield* Fiber.interrupt(caller)
+            yield* settle
+            return started === interrupted
+          })
+        )
+        assert.deepStrictEqual(failed, [])
+      }))
+
+    it.effect.each(["get", "refresh"] as const)(
+      "a throwing timeToLive fails the shared lookup with a defect (%s)",
+      (op) =>
+        Effect.gen(function*() {
+          const gate = yield* Deferred.make<number>()
+          const cache = yield* Cache.makeWith((_: string) => Deferred.await(gate), {
+            capacity: 10,
+            timeToLive: () => {
+              throw "ttl"
+            }
+          })
+          const first = yield* Effect.forkChild(op === "get" ? Cache.get(cache, "k") : Cache.refresh(cache, "k"), {
+            startImmediately: true
+          })
+          const second = yield* Effect.forkChild(Cache.get(cache, "k"), { startImmediately: true })
+          const completer = yield* Effect.exit(Deferred.succeed(gate, 1))
+          yield* settle
+          assert.deepStrictEqual(
+            { completer: show(completer), first: show(first.pollUnsafe()), second: show(second.pollUnsafe()) },
+            { completer: "ok:true", first: "die:ttl", second: "die:ttl" }
+          )
+        })
+    )
   })
 })
 
