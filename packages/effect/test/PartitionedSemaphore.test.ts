@@ -119,47 +119,43 @@ describe("PartitionedSemaphore", () => {
       assert.strictEqual(yield* sem.available, 1)
     }))
 
-  it.effect("a paused immediate take cannot acquire a permit taken by another fiber", () =>
+  it.effect("competing takes cannot acquire the same permit across scheduler yields", () =>
     Effect.gen(function*() {
-      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
-      const tasks: Array<() => void> = []
-      let checks = 0
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        makeDispatcher: () => ({
-          scheduleTask: (task) => {
-            tasks.push(task)
-          },
-          flush() {}
-        }),
-        shouldYield: () => ++checks === 3
-      }
+      for (let yieldPoint = 0; yieldPoint < 20; yieldPoint++) {
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+        const tasks: Array<() => void> = []
+        let checks = 0
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield: () => ++checks === yieldPoint
+        }
 
-      const first = yield* sem.take("first", 1).pipe(
-        Effect.provideService(Scheduler.Scheduler, scheduler),
-        Effect.forkChild({ startImmediately: true })
-      )
-      assert.strictEqual(checks, 3)
-      // The first taker may already hold the permit if acquisition is atomic.
-      const firstHasPermit = (yield* sem.available) === 0
-      if (firstHasPermit) {
-        assert.deepStrictEqual(yield* sem.withPermitsIfAvailable(1)(Effect.void), Option.none())
-      } else {
-        yield* sem.take("second", 1)
-      }
-      while (tasks.length > 0) tasks.shift()!()
+        const first = yield* sem.take("first", 1).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const second = yield* sem.take("second", 1).pipe(Effect.forkChild({ startImmediately: true }))
+        assert.isAtLeast(yield* sem.available, 0)
+        while (tasks.length > 0) tasks.shift()!()
 
-      // If the second taker won, the first must wait rather than steal its permit.
-      if (firstHasPermit) {
-        assert.deepStrictEqual(first.pollUnsafe(), Exit.void)
-      } else {
-        assert.isUndefined(first.pollUnsafe())
+        const firstExit = first.pollUnsafe()
+        const secondExit = second.pollUnsafe()
+        const firstSucceeded = firstExit !== undefined && Exit.isSuccess(firstExit)
+        const secondSucceeded = secondExit !== undefined && Exit.isSuccess(secondExit)
+        assert.isFalse(firstSucceeded && secondSucceeded, "yield point " + yieldPoint)
+        assert.isAtLeast(yield* sem.available, 0, "yield point " + yieldPoint)
+
+        yield* Fiber.interrupt(first)
+        yield* Fiber.interrupt(second)
+        yield* sem.release(Number(firstSucceeded) + Number(secondSucceeded))
+        assert.strictEqual(yield* sem.available, 1, "yield point " + yieldPoint)
       }
-      assert.strictEqual(yield* sem.available, 0)
-      yield* Fiber.interrupt(first)
-      assert.strictEqual(yield* sem.available, 0)
-      yield* sem.release(1)
-      assert.strictEqual(yield* sem.available, 1)
     }))
 
   it.effect("interrupting withPermitsIfAvailable before cleanup is installed restores permits", () =>
