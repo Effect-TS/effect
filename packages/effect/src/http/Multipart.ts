@@ -307,6 +307,15 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
 }
 
 /**
+ * Returns `true` if the provided value is a `MultipartError`.
+ *
+ * @unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isMultipartError = (u: unknown): u is MultipartError => Predicate.hasProperty(u, MultipartErrorTypeId)
+
+/**
  * Schema type for persisted multipart files.
  *
  * @unstable

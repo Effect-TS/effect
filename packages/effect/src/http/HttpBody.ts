@@ -116,6 +116,15 @@ export class HttpBodyError extends Data.TaggedError("HttpBodyError")<{
 }
 
 /**
+ * Returns `true` if the provided value is an `HttpBodyError`.
+ *
+ * @unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isHttpBodyError = (u: unknown): u is HttpBodyError => Predicate.hasProperty(u, HttpBodyErrorTypeId)
+
+/**
  * Reason for an `HttpBodyError`.
  *
  * **Details**
