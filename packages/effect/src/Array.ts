@@ -4492,18 +4492,13 @@ export const dedupeWith: {
 } = dual(
   2,
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
-    const input = fromIterable(self)
-    if (isReadonlyArrayNonEmpty(input)) {
-      const out: NonEmptyArray<A> = [headNonEmpty(input)]
-      const rest = tailNonEmpty(input)
-      for (const r of rest) {
-        if (out.every((a) => !isEquivalent(r, a))) {
-          out.push(r)
-        }
+    const out: Array<A> = []
+    for (const r of fromIterable(self)) {
+      if (out.every((a) => !isEquivalent(r, a))) {
+        out.push(r)
       }
-      return out
     }
-    return []
+    return out
   }
 )
 
