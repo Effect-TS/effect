@@ -746,6 +746,24 @@ describe("Chunk", () => {
     )
   })
 
+  it("index-based combinators read the holes of a sparse backing array as undefined", () => {
+    const sparse: Array<number | undefined> = new Array(3)
+    sparse[0] = 1
+    sparse[2] = 3
+    const chunk = Chunk.fromArrayUnsafe(sparse)
+    const isUndefined = (a: unknown) => a === undefined
+    deepStrictEqual(Chunk.toArray(Chunk.filter(chunk, isUndefined)), [undefined])
+    deepStrictEqual(
+      Chunk.toArray(Chunk.filterMap(chunk, (a) => a === undefined ? Result.succeed("hole") : Result.failVoid)),
+      ["hole"]
+    )
+    deepStrictEqual(Chunk.toArray(Chunk.zipWith(chunk, chunk, (a, b) => [a, b])), [[1, 1], [undefined, undefined], [
+      3,
+      3
+    ]])
+    assertSome(Chunk.findLastIndex(chunk, isUndefined), 1)
+  })
+
   it("filterMap", () => {
     assertEquals(
       Chunk.filterMap(Chunk.make(1, 2, 3, 4), (n) => n % 2 === 0 ? Result.succeed(n * 2) : Result.failVoid),

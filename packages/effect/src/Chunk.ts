@@ -1015,7 +1015,7 @@ export const filterMap: {
 } = dual(
   2,
   <A, B, X>(self: Chunk<A>, f: (input: A, i: number) => Result<B, X>): Chunk<B> => {
-    const as = RA.fromIterable(self)
+    const as = toReadonlyArray(self)
     const out: Array<B> = []
     for (let i = 0; i < as.length; i++) {
       const result = f(as[i], i)
@@ -1055,7 +1055,7 @@ export const filter: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => fromArrayUnsafe(RA.filter(self, predicate))
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => fromArrayUnsafe(RA.filter(toReadonlyArray(self), predicate))
 )
 
 /**
@@ -2268,7 +2268,7 @@ export const dedupeAdjacent = <A>(self: Chunk<A>): Chunk<A> => fromArrayUnsafe(R
  * @since 2.0.0
  */
 export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] => {
-  const [left, right] = RA.unzip(self)
+  const [left, right] = RA.unzip(toReadonlyArray(self))
   return [fromArrayUnsafe(left), fromArrayUnsafe(right)]
 }
 
@@ -2299,7 +2299,7 @@ export const zipWith: {
 } = dual(
   3,
   <A, B, C>(self: Chunk<A>, that: Chunk<B>, f: (a: A, b: B) => C): Chunk<C> =>
-    fromArrayUnsafe(RA.zipWith(self, that, f))
+    fromArrayUnsafe(RA.zipWith(toReadonlyArray(self), toReadonlyArray(that), f))
 )
 
 /**
@@ -2651,7 +2651,7 @@ export const findLastIndex: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): O.Option<number>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): O.Option<number> => RA.findLastIndex(self, predicate)
+  <A>(self: Chunk<A>, predicate: Predicate<A>): O.Option<number> => RA.findLastIndex(toReadonlyArray(self), predicate)
 )
 
 /**
