@@ -8,7 +8,9 @@
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
+import * as Exit from "./Exit.ts"
 import { dual } from "./Function.ts"
+import * as internalEffect from "./internal/effect.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 
@@ -184,16 +186,20 @@ export const makeUnsafe = <K = unknown>(options: {
       return Effect.never
     }
 
-    return Effect.uninterruptibleMask((restore) => {
+    return Effect.withFiber((fiber) => {
       if (totalPermits >= permits) {
+        // Keep the capacity check, deduction, and interruption cleanup in one evaluation step.
         totalPermits -= permits
-        return Effect.onInterrupt(restore(Effect.void), () =>
-          Effect.sync(() => {
+        internalEffect.onExitUnsafe(fiber, (exit) => {
+          if (Exit.isFailure(exit)) {
             releaseUnsafe(permits)
-          }))
+          }
+          return undefined
+        })
+        return Effect.void
       }
 
-      return restore(Effect.callback<void>((resume) => {
+      return Effect.callback<void>((resume) => {
         if (totalPermits >= permits) {
           resume(take(key, permits))
           return
@@ -234,7 +240,7 @@ export const makeUnsafe = <K = unknown>(options: {
           waitingPermits -= entry.permits
           releaseUnsafe(permits - entry.permits)
         })
-      }))
+      })
     })
   }
 
@@ -286,17 +292,17 @@ export const makeUnsafe = <K = unknown>(options: {
           return Effect.asSome(effect)
         }
 
-        return Effect.uninterruptibleMask((restore) => {
+        return Effect.withFiber((fiber) => {
           if (!tryTake(permits)) {
             return Effect.succeed(Option.none())
           }
 
-          return Effect.ensuring(
-            restore(Effect.asSome(effect)),
-            Effect.sync(() => {
-              releaseUnsafe(permits)
-            })
-          )
+          // Register cleanup before the fiber can yield to the user effect.
+          internalEffect.onExitUnsafe(fiber, () => {
+            releaseUnsafe(permits)
+            return undefined
+          })
+          return Effect.asSome(effect)
         })
       }
   }
