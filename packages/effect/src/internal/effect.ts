@@ -6565,7 +6565,9 @@ export const loggerMake = <Message, Output>(
  *
  * @internal
  */
-export const formatLabel = (key: string) => key.replace(/[\s="]/g, "_")
+export const formatLabel = (key: string) => key.replace(labelCharacters, "_")
+
+const labelCharacters = /[\s="]/g
 
 /**
  * Formats a log span into a `<label>=<value>ms` string.

@@ -388,7 +388,9 @@ const textOnly = /^[^\s"=]*$/
 /**
  * Escapes double quotes in a string.
  */
-const escapeDoubleQuotes = (s: string) => `"${s.replace(/\\([\s\S])|(")/g, "\\$1$2")}"`
+const escapedCharacters = /\\([\s\S])|(")/g
+
+const escapeDoubleQuotes = (s: string) => `"${s.replace(escapedCharacters, "\\$1$2")}"`
 
 /**
  * Formats the identifier of a `Fiber` by prefixing it with a hash tag.
@@ -404,39 +406,41 @@ const formatFiberId = (fiberId: number) => `#${fiberId}`
 const format = (
   quoteValue: (s: string) => string,
   space?: number | string | undefined
-) =>
-({ cause, date, fiber, logLevel, message }: Options<unknown>): string => {
+) => {
+  const formatOptions = { space }
   const formatUnknown = (value: unknown): string =>
-    typeof value === "string" ? value : Formatter.format(value, { space })
-  const formatValue = (value: string): string => value.match(textOnly) ? value : quoteValue(value)
+    typeof value === "string" ? value : Formatter.format(value, formatOptions)
+  const formatValue = (value: string): string => textOnly.test(value) ? value : quoteValue(value)
   const format = (label: string, value: string): string => `${effect.formatLabel(label)}=${formatValue(value)}`
   const append = (label: string, value: string): string => " " + format(label, value)
 
-  let out = format("timestamp", date.toISOString())
-  out += append("level", logLevel.toUpperCase())
-  out += append("fiber", formatFiberId(fiber.id))
+  return ({ cause, date, fiber, logLevel, message }: Options<unknown>): string => {
+    let out = format("timestamp", date.toISOString())
+    out += append("level", logLevel.toUpperCase())
+    out += append("fiber", formatFiberId(fiber.id))
 
-  const messages = Array.ensure(message)
-  for (let i = 0; i < messages.length; i++) {
-    out += append("message", formatUnknown(messages[i]))
+    const messages = Array.ensure(message)
+    for (let i = 0; i < messages.length; i++) {
+      out += append("message", formatUnknown(messages[i]))
+    }
+
+    if (cause.reasons.length > 0) {
+      out += append("cause", effect.causePretty(cause))
+    }
+
+    const now = date.getTime()
+    const spans = fiber.getRef(CurrentLogSpans)
+    for (const span of spans) {
+      out += " " + effect.formatLogSpan(span, now)
+    }
+
+    const annotations = fiber.getRef(CurrentLogAnnotations)
+    for (const [label, value] of Object.entries(annotations)) {
+      out += append(label, formatUnknown(value))
+    }
+
+    return out
   }
-
-  if (cause.reasons.length > 0) {
-    out += append("cause", effect.causePretty(cause))
-  }
-
-  const now = date.getTime()
-  const spans = fiber.getRef(CurrentLogSpans)
-  for (const span of spans) {
-    out += " " + effect.formatLogSpan(span, now)
-  }
-
-  const annotations = fiber.getRef(CurrentLogAnnotations)
-  for (const [label, value] of Object.entries(annotations)) {
-    out += append(label, formatUnknown(value))
-  }
-
-  return out
 }
 
 /**
