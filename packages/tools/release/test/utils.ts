@@ -274,6 +274,12 @@ export const stageApprovalLayer = (calls: Calls, options?: {
   readonly items?: Array<StagedItem>
   /** Items `viewStaged` can see that `listStaged` no longer returns (left the queue). */
   readonly viewable?: ReadonlyArray<StagedItem> | undefined
+  /**
+   * When set, each `viewStaged` call asks again, so a test can change what the
+   * registry reports for an id between the pre-wait view and the post-wait recheck.
+   * `undefined` is a 404.
+   */
+  readonly viewStaged?: ((id: string) => StagedItem | undefined) | undefined
   readonly failing?: ReadonlySet<string> | undefined
   readonly onApproved?: (id: string) => void
 }) =>
@@ -283,7 +289,9 @@ export const stageApprovalLayer = (calls: Calls, options?: {
       viewStaged: (id) =>
         track(calls, "approval", "viewStaged", id).pipe(
           Effect.as(Option.fromUndefinedOr(
-            options?.items?.find((item) => item.id === id) ?? options?.viewable?.find((item) => item.id === id)
+            options?.viewStaged !== undefined
+              ? options.viewStaged(id)
+              : options?.items?.find((item) => item.id === id) ?? options?.viewable?.find((item) => item.id === id)
           ))
         ),
       approve: (id, otp) =>

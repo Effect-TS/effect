@@ -58,6 +58,8 @@ const app = (options: {
   readonly stageToken?: boolean
   /** Replaces the fixed queue. Called on every listStaged, so the queue can change during a wait. */
   readonly listStaged?: () => ReadonlyArray<StagedItem>
+  /** Replaces the fixed view. Called on every viewStaged, so a viewed upload can change during a wait. */
+  readonly viewStaged?: (id: string) => StagedItem | undefined
 }) => {
   const calls = makeCalls()
   const published = options.published ?? new Set<string>()
@@ -74,6 +76,7 @@ const app = (options: {
       stageApprovalLayer(calls, {
         items: staged,
         viewable: options.viewable,
+        viewStaged: options.viewStaged,
         failing: options.failing,
         onApproved: (id) => {
           const item = byId.get(id)
@@ -148,6 +151,27 @@ describe("Publication.readiness", () => {
         ])
       }
       assert.deepStrictEqual(mutationNames(calls), [])
+    }))
+
+  it.effect("does not replace a still-current manifest when its missing uploads were staged again", () =>
+    Effect.gen(function*() {
+      // A missing listing is also the serve window. A same-version replacement
+      // must not unpin the merged ids, or readiness can authorise a different tarball
+      // while an in-flight approval is still becoming public.
+      const { calls, layer } = app({
+        staged: [
+          stagedWithId(NEXT_EFFECT_STAGE_ID, "effect", "4.0.0-rc.117"),
+          stagedWithId(NEXT_VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")
+        ],
+        merged: manifest
+      })
+      const result = yield* Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
+      assert.strictEqual(result._tag, "InProgress")
+      if (result._tag === "InProgress") {
+        assert.strictEqual(result.identity, identity())
+      }
+      assert.deepStrictEqual(mutationNames(calls), [])
+      assert.deepStrictEqual(callsTo(calls, "github.findPullRequest"), [])
     }))
 
   it.effect("lets the next release proceed once a stalled manifest is no longer the workspace version", () =>
@@ -630,6 +654,132 @@ describe("Publication.publish", () => {
         names.lastIndexOf("approval.viewStaged"),
         "the queue is read again after the missing upload is confirmed"
       )
+    }))
+
+  it.effect("re-views an approvable upload after the wait and approves nothing that blocked", () =>
+    Effect.gen(function*() {
+      const seen = new Map<string, number>()
+      const { calls, layer, published } = app({
+        staged: [],
+        merged: manifest,
+        viewStaged: (id) => {
+          const count = (seen.get(id) ?? 0) + 1
+          seen.set(id, count)
+          if (id === VITEST_STAGE_ID) {
+            return stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "published")
+          }
+          return stagedWithId(
+            EFFECT_STAGE_ID,
+            "effect",
+            "4.0.0-rc.117",
+            count === 1 ? "staged" : "blocked"
+          )
+        }
+      })
+      const fiber = yield* Effect.forkChild(Effect.flip(Effect.provide(publish(), layer)))
+      yield* TestClock.adjust("15 seconds")
+      published.add(versionKey("@effect/vitest", "4.0.0-rc.117"))
+      yield* TestClock.adjust("15 seconds")
+      const settled = fiber.pollUnsafe() !== undefined
+      if (!settled) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const error = yield* Fiber.join(fiber)
+      assert.strictEqual(settled, true, "a blocked re-view fails at once, it does not start another wait")
+      assert.strictEqual(error._tag, "ReleaseError")
+      assert.include(error.message, "effect")
+      assert.include(error.message, "blocked")
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
+      const effectViews = callsTo(calls, "approval.viewStaged").filter((call) => call.args[0] === EFFECT_STAGE_ID)
+      assert.isAbove(effectViews.length, 1, "the pre-wait approvable snapshot is not reused")
+    }))
+
+  it.effect("does not approve a pre-wait snapshot once viewStaged no longer knows the upload", () =>
+    Effect.gen(function*() {
+      const seen = new Map<string, number>()
+      const { calls, layer, published } = app({
+        staged: [],
+        merged: manifest,
+        viewStaged: (id) => {
+          const count = (seen.get(id) ?? 0) + 1
+          seen.set(id, count)
+          if (id === VITEST_STAGE_ID) {
+            return stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "published")
+          }
+          return count === 1 ? stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "staged") : undefined
+        }
+      })
+      const fiber = yield* Effect.forkChild(Effect.flip(Effect.provide(publish(), layer)))
+      yield* TestClock.adjust("15 seconds")
+      published.add(versionKey("@effect/vitest", "4.0.0-rc.117"))
+      yield* TestClock.adjust("15 seconds")
+      const settled = fiber.pollUnsafe() !== undefined
+      if (!settled) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const error = yield* Fiber.join(fiber)
+      assert.strictEqual(settled, true)
+      assert.strictEqual(error._tag, "ReleaseError")
+      assert.include(error.message, "effect")
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
+    }))
+
+  it.effect("still approves a viewed upload that is approvable again after the wait", () =>
+    Effect.gen(function*() {
+      const { calls, layer, published } = app({
+        staged: [],
+        viewable: [
+          stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "published"),
+          stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "staged")
+        ],
+        merged: manifest
+      })
+      const fiber = yield* Effect.forkChild(Effect.provide(publish(), layer))
+      yield* TestClock.adjust("15 seconds")
+      published.add(versionKey("@effect/vitest", "4.0.0-rc.117"))
+      yield* TestClock.adjust("15 seconds")
+      const settled = fiber.pollUnsafe() !== undefined
+      if (!settled) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const result = yield* Fiber.join(fiber)
+      assert.strictEqual(settled, true)
+      assert.strictEqual(result._tag, "Published")
+      if (result._tag === "Published") {
+        assert.deepStrictEqual(result.approved.map((pkg) => pkg.name), ["effect"])
+        assert.deepStrictEqual(result.alreadyPublic.map((pkg) => pkg.name), ["@effect/vitest"])
+      }
+      assert.deepStrictEqual(callsTo(calls, "approval.approve").map((call) => call.args[0]), [EFFECT_STAGE_ID])
+    }))
+
+  it.effect("does not fail the release when a viewed upload becomes public during the wait", () =>
+    Effect.gen(function*() {
+      const seen = new Map<string, number>()
+      const { calls, layer, published } = app({
+        staged: [],
+        merged: manifest,
+        viewStaged: (id) => {
+          const count = (seen.get(id) ?? 0) + 1
+          seen.set(id, count)
+          if (id === VITEST_STAGE_ID) {
+            return stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "published")
+          }
+          return count === 1 ? stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "staged") : undefined
+        }
+      })
+      const fiber = yield* Effect.forkChild(Effect.provide(publish(), layer))
+      yield* TestClock.adjust("15 seconds")
+      published.add(versionKey("@effect/vitest", "4.0.0-rc.117"))
+      published.add(versionKey("effect", "4.0.0-rc.117"))
+      yield* TestClock.adjust("15 seconds")
+      const settled = fiber.pollUnsafe() !== undefined
+      if (!settled) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const result = yield* Fiber.join(fiber)
+      assert.strictEqual(settled, true)
+      assert.strictEqual(result._tag, "AlreadyPublished")
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
     }))
 
   it.effect("approves a pinned upload that the listing missed when viewStaged still reports it approvable", () =>
