@@ -159,6 +159,23 @@ export const make = <A>(): MutableList<A> => ({
   length: 0
 })
 
+// A bucket that is both head and tail keeps receiving appends while its
+// head is taken, so it is never drained and dropped: a list that never
+// empties would keep a slot for every element it ever held. Once 1024 or more
+// slots of such a bucket are taken and they outnumber the remaining elements,
+// copy the rest into a new bucket. The copy is no longer than the takes since
+// the last one, so taking stays amortized O(1).
+const compactHead = <A>(self: MutableList<A>, bucket: MutableList.Bucket<A>): void => {
+  if (bucket === self.tail && bucket.mutable && bucket.array.length - bucket.offset <= bucket.offset) {
+    self.head = self.tail = {
+      array: bucket.array.slice(bucket.offset),
+      mutable: true,
+      offset: 0,
+      next: undefined
+    }
+  }
+}
+
 const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
   array: [],
   mutable: true,
@@ -445,6 +462,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
         self.head = chunk.offset === chunk.array.length && chunk.next ? chunk.next : chunk
         self.length -= n
         if (self.length === 0) clear(self)
+        else if (self.head.offset >= 1024) compactHead(self, self.head)
         return array
       }
     }
@@ -492,6 +510,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
       chunk.offset += n - count
       self.head = chunk
       self.length -= n
+      if (chunk.offset >= 1024) compactHead(self, chunk)
       return
     }
     count += size
@@ -555,6 +574,9 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
     } else {
       clear(self)
     }
+  } else if ((self.head.offset & 1023) === 0) {
+    // Checked once per 1024 takes
+    compactHead(self, self.head)
   }
   return message
 }

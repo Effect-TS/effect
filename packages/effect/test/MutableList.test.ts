@@ -3,6 +3,31 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { MutableList } from "effect"
 
 describe("MutableList", () => {
+  it("bounds the retained slots of a list that never fully drains", () => {
+    const takes: Array<[string, (list: MutableList.MutableList<number>) => number | undefined]> = [
+      ["take", (list) => MutableList.take(list) as number],
+      ["takeN", (list) => MutableList.takeN(list, 1)[0]],
+      ["takeNVoid", (list) => {
+        MutableList.takeNVoid(list, 1)
+        return undefined
+      }]
+    ]
+    for (const [name, take] of takes) {
+      const list = MutableList.make<number>()
+      MutableList.append(list, 0)
+      for (let i = 1; i < 10_000; i++) {
+        MutableList.append(list, i)
+        const taken = take(list)
+        if (taken !== undefined) strictEqual(taken, i - 1)
+      }
+      strictEqual(list.length, 1)
+      let slots = 0
+      for (let bucket = list.head; bucket; bucket = bucket.next) slots += bucket.array.length
+      strictEqual(slots <= 2048, true, `${name} retained ${slots} slots for one element`)
+      deepStrictEqual(MutableList.takeAll(list), [9_999])
+    }
+  })
+
   it("keeps the next element after takeN ends at a bucket boundary", () => {
     const bulk = MutableList.make<number>()
     MutableList.appendAll(bulk, [1, 2])
