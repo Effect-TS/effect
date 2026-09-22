@@ -853,6 +853,13 @@ describe("Effect", () => {
         assert.deepStrictEqual(satisfying, [1, 3, 5])
       }))
 
+    it.effect("starts with fresh results on each run", () =>
+      Effect.gen(function*() {
+        const partition = Effect.partition([1, 2, 3], (n) => n % 2 === 0 ? Effect.succeed(n) : Effect.fail(n))
+        yield* partition
+        assert.deepStrictEqual(yield* partition, [[1, 3], [2]])
+      }))
+
     it.effect("supports concurrency option", () =>
       Effect.gen(function*() {
         const values = [0, 1, 2, 3, 4, 5]
