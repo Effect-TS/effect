@@ -14,7 +14,6 @@ import * as Data from "../Data.ts"
 import { dual } from "../Function.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
-import * as internal from "./internal/urlParams.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -47,11 +46,11 @@ export const make = (
   Result.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      for (let i = 0; i < params.params.length; i++) {
-        const [key, value] = params.params[i]
-        if (value !== undefined) {
-          urlInstance.searchParams.append(key, internal.unwrap(value))
-        }
+      const search = UrlParams.toString(params)
+      if (search !== "") {
+        // Preserve delimiters and escapes already present in the URL. Mutating
+        // searchParams would decode and re-encode the entire existing query.
+        urlInstance.search += (urlInstance.search === "" ? "" : "&") + search
       }
       if (hash !== undefined) {
         urlInstance.hash = hash
