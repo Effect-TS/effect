@@ -4176,11 +4176,7 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
   new OnExitImpl(effect, onExit, interruptible) as any
 
 /**
- * Runs `f` with the exit of the effect returned by the current `withFiber`
- * evaluation. The frame is pushed immediately, so no scheduler yield or
- * interruption can fall between a change to the fiber and the finalizer that
- * reverts it. Call only within `withFiber`.
- *
+ * Pushes an exit finalizer for the current `withFiber` evaluation. Only call inside `withFiber`.
  * @internal
  */
 export const onExitUnsafe = <A = unknown, E = unknown>(

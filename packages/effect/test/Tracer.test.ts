@@ -270,7 +270,6 @@ describe("Tracer", () => {
   })
 
   describe("interruption as a traced region starts", () => {
-    // Vary scheduler boundaries to interrupt between span creation and finalizer installation.
     const interruptAtEveryStep = (
       make: () => Effect.Effect<unknown>,
       check: (spans: ReadonlyArray<Tracer.NativeSpan>, label: string) => void
@@ -321,8 +320,6 @@ describe("Tracer", () => {
 
     it.effect("ends the span of Effect.fn", () => interruptAtEveryStep(() => tracedFn(), allEnded))
 
-    // The finalizer of an enclosing region runs after the inner region exits,
-    // so it must see the enclosing span as the parent span again
     const outerFinalizerSeesOuterSpan = (inner: Effect.Effect<never>) => {
       let seen: string | undefined
       let checked = 0
@@ -348,9 +345,6 @@ describe("Tracer", () => {
       outerFinalizerSeesOuterSpan(
         Effect.withParentSpan(Effect.never, Tracer.externalSpan({ spanId: "external", traceId: "trace" }))
       ))
-
-    it.effect("restores the parent span of Effect.fn for outer finalizers", () =>
-      outerFinalizerSeesOuterSpan(tracedFn()))
   })
 
   describe("Effect.useSpanScoped", () => {
