@@ -630,6 +630,28 @@ describe("Cause", () => {
         assert.doesNotMatch(rendered, /~effect\/Utils\/internal/)
       }
     })
+
+    const userCode = (): never => {
+      throw new Error("boom")
+    }
+    const assertCleanStack = (effect: Effect.Effect<unknown, unknown>): void => {
+      const exit = Effect.runSyncExit(effect)
+      assert.ok(Exit.isFailure(exit))
+      const rendered = Cause.pretty(exit.cause)
+      assert.match(rendered, /\buserCode \(/)
+      assert.doesNotMatch(rendered, /[\/]src[\/]internal[\/]|~effect\/Utils\/internal/)
+    }
+
+    it("does not render internal frames from match and matchCause handlers", () => {
+      for (const source of [Effect.succeed(1), Effect.fail("error")]) {
+        assertCleanStack(Effect.match(source, { onSuccess: userCode, onFailure: userCode }))
+        assertCleanStack(Effect.matchCause(source, { onSuccess: userCode, onFailure: userCode }))
+      }
+    })
+
+    it("does not render internal frames from map", () => {
+      assertCleanStack(Effect.map(Effect.succeed(1), userCode))
+    })
   })
 
   describe("annotate", () => {
