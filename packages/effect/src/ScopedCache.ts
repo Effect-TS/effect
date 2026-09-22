@@ -326,8 +326,8 @@ class EntryImpl<A, E> implements Entry<A, E> {
 /**
  * Starts the lookup of a new entry for the caller that created it. The lookup
  * runs on a fiber owned by the entry, so callers only observe its result.
- * `onDone` runs inside that fiber, before the result is published to the
- * entry's deferred, so a failure there becomes the shared result.
+ * Synchronous completion handling precedes publishing the result. Cleanup
+ * after publication cannot change the shared result if interrupted.
  */
 const startEntry = <K, A, E, R>(
   entry: EntryImpl<A, E>,
@@ -344,7 +344,11 @@ const startEntry = <K, A, E, R>(
     effect.onExitPrimitive(
       effect.onExitPrimitive(
         before === undefined ? produce : effect.flatMap(effect.uninterruptible(before), () => produce),
-        onDone
+        (exit) => {
+          const cleanup = onDone(exit)
+          Deferred.doneUnsafe(entry.deferred, exit)
+          return cleanup
+        }
       ),
       (exit) => {
         Deferred.doneUnsafe(entry.deferred, exit)
