@@ -1146,6 +1146,20 @@ export const mapLeftover: {
   f: (leftover: L) => L2
 ): Sink<A, In, L2, E, R> => mapEnd(self, ([a, l]) => [a, l && Arr.map(l, f)]))
 
+// A spread passes every element as a call argument, so spreading a large array
+// overflows the stack. Spread at most `maxSpread` elements per call.
+const maxSpread = 8192
+
+const appendAll = <A>(target: Array<A>, source: ReadonlyArray<A>): void => {
+  if (source.length <= maxSpread) {
+    target.push(...source)
+    return
+  }
+  for (let i = 0; i < source.length; i += maxSpread) {
+    target.push(...source.slice(i, i + maxSpread))
+  }
+}
+
 /**
  * Collects up to `n` input elements into an array.
  *
@@ -1170,7 +1184,7 @@ export const take = <In>(n: number): Sink<Array<In>, In, In> => {
     return upstream.pipe(
       Effect.flatMap((arr) => {
         if (taken.length + arr.length <= count) {
-          taken.push(...arr)
+          appendAll(taken, arr)
           if (taken.length === count) {
             return Cause.done()
           }
@@ -1584,7 +1598,7 @@ export const count: Sink<number, unknown> = reduceArray(() => 0, (s, arr) => s +
  */
 export const collect = <In>(): Sink<Array<In>, In> =>
   reduceArray(Arr.empty<In>, (s, arr) => {
-    s.push(...arr)
+    appendAll(s, arr)
     return s
   })
 

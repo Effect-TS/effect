@@ -1445,6 +1445,16 @@ describe("Stream", () => {
 
         assert.deepStrictEqual(result, [1, 2, 3])
       }))
+
+    it.effect("mapAccum emits more values per element than the engine's argument limit", () =>
+      Effect.gen(function*() {
+        const values = Array.makeBy(1_000_000, (i) => i)
+        const result = yield* Stream.make(1, 2).pipe(
+          Stream.mapAccum(() => 0, (sum, n) => [sum + n, n === 1 ? values : [sum + n]]),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [...values, 3])
+      }))
   })
 
   describe("grouping", () => {

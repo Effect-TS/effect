@@ -240,6 +240,22 @@ describe("Sink", () => {
         const result = yield* Stream.runCollect(stream)
         deepStrictEqual(result, [[]])
       }))
+
+    it.effect("takes a single chunk larger than the engine's argument limit", () =>
+      Effect.gen(function*() {
+        const input = Array.makeBy(1_000_000, (i) => i)
+        const result = yield* Stream.fromIterable(input).pipe(Stream.run(Sink.take(2_000_000)))
+        deepStrictEqual(result, input)
+      }))
+  })
+
+  describe("collect", () => {
+    it.effect("collects a single chunk larger than the engine's argument limit", () =>
+      Effect.gen(function*() {
+        const input = Array.makeBy(1_000_000, (i) => i)
+        const result = yield* Stream.fromIterable(input).pipe(Stream.run(Sink.collect()))
+        deepStrictEqual(result, input)
+      }))
   })
 
   describe("takeWhile", () => {
