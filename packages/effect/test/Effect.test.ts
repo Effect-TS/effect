@@ -156,44 +156,52 @@ describe("Effect", () => {
         cacheKind + " never strands a second caller when the owner yields before registering cleanup",
         () =>
           Effect.gen(function*() {
-            // The second check after arming is the cache's returned OnExit.
-            let armed = false
-            let seen = 0
-            let computed = 0
-            const tasks: Array<() => void> = []
-            const scheduler: Scheduler.Scheduler = {
-              executionMode: "async",
-              makeDispatcher: () => ({
-                scheduleTask: (task) => {
-                  tasks.push(task)
-                },
-                flush() {}
-              }),
-              shouldYield() {
-                if (armed && ++seen === 2) return true
-                return false
+            let interruptedBeforeSource = 0
+            // Sweep each scheduler boundary after entering the cache. A fixed
+            // step count can stop exercising the gap when the runtime adds an op.
+            for (let target = 1; target <= 32; target++) {
+              let armed = false
+              let seen = 0
+              let computed = 0
+              const tasks: Array<() => void> = []
+              const scheduler: Scheduler.Scheduler = {
+                executionMode: "async",
+                makeDispatcher: () => ({
+                  scheduleTask: (task) => {
+                    tasks.push(task)
+                  },
+                  flush() {}
+                }),
+                shouldYield() {
+                  return armed && ++seen === target
+                }
               }
+              const source = Effect.sync(() => ++computed)
+              const cached = cacheKind === "cached"
+                ? yield* Effect.cached(source)
+                : (yield* Effect.cachedInvalidateWithTTL(source, "1 minute"))[0]
+              const owner = yield* Effect.gen(function*() {
+                yield* Effect.sync(() => {
+                  armed = true
+                })
+                yield* cached
+              }).pipe(
+                Effect.provideService(Scheduler.Scheduler, scheduler),
+                Effect.forkChild({ startImmediately: true })
+              )
+              if (tasks.length === 0) continue // No boundary left before the source completed.
+              owner.interruptUnsafe()
+              while (tasks.length > 0) tasks.shift()!()
+              yield* Fiber.await(owner)
+              if (computed !== 0) continue
+              interruptedBeforeSource++
+              const waiter = yield* Effect.forkChild(cached, { startImmediately: true })
+              yield* Effect.yieldNow
+              const settled = waiter.pollUnsafe()
+              if (settled === undefined) waiter.interruptUnsafe()
+              assert.isDefined(settled, "cache waiter stuck after owner interruption at boundary " + target)
             }
-            const source = Effect.sync(() => ++computed)
-            const cached = cacheKind === "cached"
-              ? yield* Effect.cached(source)
-              : (yield* Effect.cachedInvalidateWithTTL(source, "1 minute"))[0]
-            const owner = yield* Effect.gen(function*() {
-              yield* Effect.sync(() => {
-                armed = true
-              })
-              yield* cached
-            }).pipe(Effect.provideService(Scheduler.Scheduler, scheduler), Effect.forkChild({ startImmediately: true }))
-            assert.isAbove(tasks.length, 0)
-            owner.interruptUnsafe()
-            while (tasks.length > 0) tasks.shift()!()
-            yield* Fiber.await(owner)
-            assert.strictEqual(computed, 0)
-            const waiter = yield* Effect.forkChild(cached, { startImmediately: true })
-            yield* Effect.yieldNow
-            const settled = waiter.pollUnsafe()
-            if (settled === undefined) waiter.interruptUnsafe()
-            assert.isDefined(settled, "cache waiter stuck after owner interruption")
+            assert.isAbove(interruptedBeforeSource, 0, "the sweep never interrupted before the source")
           })
       )
     }
