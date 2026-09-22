@@ -145,6 +145,24 @@ describe("Schema", () => {
       expect(schema.make).type.toBe<Make<string, string>>()
     })
 
+    it("StringWithAutocomplete", () => {
+      const schema = Schema.StringWithAutocomplete(["GET", "POST"])
+      expect(schema).type.toBe<Schema.StringWithAutocomplete<"GET" | "POST">>()
+      expect(schema.autocompleteOptions).type.toBe<ReadonlyArray<"GET" | "POST">>()
+      expect(schema.make).type.toBe<
+        Make<"GET" | "POST" | (string & {}), "GET" | "POST" | (string & {})>
+      >()
+    })
+
+    it("String.withAutocomplete", () => {
+      const schema = Schema.String.withAutocomplete(["GET", "POST"])
+      expect(schema).type.toBe<Schema.StringWithAutocomplete<"GET" | "POST">>()
+      expect(schema.autocompleteOptions).type.toBe<ReadonlyArray<"GET" | "POST">>()
+      expect(schema.make).type.toBe<
+        Make<"GET" | "POST" | (string & {}), "GET" | "POST" | (string & {})>
+      >()
+    })
+
     it("Number", () => {
       const schema = Schema.Number
       expect(schema.make).type.toBe<Make<number, number>>()
@@ -658,6 +676,25 @@ describe("Schema", () => {
       expect(Schema.revealCodec(schema)).type.toBe<Schema.Codec<string>>()
       expect(schema).type.toBe<Schema.String>()
       expect(schema.annotate({})).type.toBe<Schema.String>()
+    })
+
+    it("withAutocomplete", () => {
+      expect(schema.withAutocomplete(["GET", "POST"])).type.toBe<Schema.StringWithAutocomplete<"GET" | "POST">>()
+    })
+  })
+
+  describe("StringWithAutocomplete", () => {
+    const schema = Schema.StringWithAutocomplete(["GET", "POST"])
+
+    it("ast type", () => {
+      expect(schema.ast).type.toBe<SchemaAST.String>()
+    })
+
+    it("revealCodec + annotate", () => {
+      expect(schema.autocompleteOptions).type.toBe<ReadonlyArray<"GET" | "POST">>()
+      expect(Schema.revealCodec(schema)).type.toBe<Schema.Codec<"GET" | "POST" | (string & {})>>()
+      expect(schema).type.toBe<Schema.StringWithAutocomplete<"GET" | "POST">>()
+      expect(schema.annotate({})).type.toBe<Schema.StringWithAutocomplete<"GET" | "POST">>()
     })
   })
 

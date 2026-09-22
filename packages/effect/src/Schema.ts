@@ -2980,14 +2980,75 @@ export const Undefined: Undefined = make(SchemaAST.undefined)
  * @category models
  * @since 4.0.0
  */
-export interface String extends Bottom<string, string, never, never, SchemaAST.String, String> {}
+export interface String extends Bottom<string, string, never, never, SchemaAST.String, String> {
+  /**
+   * Returns a string schema that accepts any string while preserving editor
+   * autocomplete for the provided suggestions.
+   *
+   * @see {@link StringWithAutocomplete} for the standalone constructor
+   * @since 4.0.0
+   */
+  withAutocomplete: <const A extends string>(
+    autocompleteOptions: ReadonlyArray<A>
+  ) => StringWithAutocomplete<A>
+}
 /**
  * Schema for `string` values. Validates that the input is `typeof` `"string"`.
  *
  * @category schemas
  * @since 4.0.0
  */
-export const String: String = make(SchemaAST.string)
+export const String: String = make(SchemaAST.string, {
+  withAutocomplete: <const A extends string>(autocompleteOptions: ReadonlyArray<A>) =>
+    StringWithAutocomplete(autocompleteOptions)
+})
+/**
+ * Type-level representation returned by {@link StringWithAutocomplete}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StringWithAutocomplete<A extends string>
+  extends Bottom<A | (string & {}), A | (string & {}), never, never, SchemaAST.String, StringWithAutocomplete<A>>
+{
+  readonly autocompleteOptions: ReadonlyArray<A>
+}
+/**
+ * Creates a string schema that accepts any string while preserving editor
+ * autocomplete for the provided suggestions.
+ *
+ * **When to use**
+ *
+ * Use when a value is an open string at runtime but known literals should
+ * still appear in editor completions.
+ *
+ * **Details**
+ *
+ * The decoded and encoded types are `A | (string & {})`. That union keeps the
+ * suggested literals visible in TypeScript without excluding other strings.
+ * Runtime validation is identical to {@link String}.
+ *
+ * **Example** (Suggesting known HTTP methods)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const Method = Schema.StringWithAutocomplete(["GET", "POST"])
+ * Schema.decodeUnknownSync(Method)("GET") // => "GET"
+ * Schema.decodeUnknownSync(Method)("PATCH") // => "PATCH"
+ * ```
+ *
+ * @see {@link String} for a string schema without suggested literals.
+ * @see {@link String.withAutocomplete} for the method form on {@link String}.
+ * @see {@link Literals} for a schema that accepts only the listed values.
+ * @category constructors
+ * @since 4.0.0
+ */
+export function StringWithAutocomplete<const A extends string>(
+  autocompleteOptions: ReadonlyArray<A>
+): StringWithAutocomplete<A> {
+  return make(SchemaAST.string, { autocompleteOptions })
+}
 /**
  * Type-level representation of {@link Number}.
  *

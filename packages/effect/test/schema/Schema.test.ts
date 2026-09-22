@@ -405,6 +405,42 @@ Missing key
     await encoding.fail(1, `Expected string`)
   })
 
+  it("StringWithAutocomplete", async () => {
+    const schema = Schema.StringWithAutocomplete(["GET", "POST"])
+    const asserts = new TestSchema.Asserts(schema)
+
+    deepStrictEqual(schema.autocompleteOptions, ["GET", "POST"])
+    strictEqual(schema.ast, SchemaAST.string)
+
+    const make = asserts.make()
+    await make.succeed("GET")
+    await make.succeed("PATCH")
+    await make.fail(null, `Expected string`)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("GET")
+    await decoding.succeed("PATCH")
+    await decoding.fail(1, `Expected string`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed("GET")
+    await encoding.succeed("PATCH")
+    await encoding.fail(1, `Expected string`)
+  })
+
+  it("String.withAutocomplete", async () => {
+    const schema = Schema.String.withAutocomplete(["GET", "POST"])
+    const asserts = new TestSchema.Asserts(schema)
+
+    deepStrictEqual(schema.autocompleteOptions, ["GET", "POST"])
+    strictEqual(schema.ast, SchemaAST.string)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("GET")
+    await decoding.succeed("PATCH")
+    await decoding.fail(1, `Expected string`)
+  })
+
   it("Number", async () => {
     const schema = Schema.Number
     const asserts = new TestSchema.Asserts(schema)
