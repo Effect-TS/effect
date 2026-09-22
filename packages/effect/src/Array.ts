@@ -4493,10 +4493,11 @@ export const dedupeWith: {
   2,
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
     const out: Array<A> = []
-    for (const r of fromIterable(self)) {
-      if (out.every((a) => !isEquivalent(r, a))) {
-        out.push(r)
+    next: for (const r of fromIterable(self)) {
+      for (let i = 0; i < out.length; i++) {
+        if (isEquivalent(r, out[i])) continue next
       }
+      out.push(r)
     }
     return out
   }
