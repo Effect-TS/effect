@@ -72,6 +72,21 @@ describe("ScopedRef", () => {
       strictEqual(acquired, 3)
       strictEqual(released, 3)
     }))
+  it.effect("owner finalizers registered after the ref still see a live value after set", () =>
+    Effect.gen(function*() {
+      const log: Array<string> = []
+      const resource = (n: number) =>
+        Effect.acquireRelease(Effect.succeed(n), () => Effect.sync(() => log.push("release " + n)))
+      const owner = yield* Scope.make()
+      const ref = yield* ScopedRef.fromAcquire(resource(1)).pipe(Scope.provide(owner))
+      yield* Scope.addFinalizer(
+        owner,
+        Effect.flatMap(ScopedRef.get(ref), (n) => Effect.sync(() => log.push("use " + n)))
+      )
+      yield* ScopedRef.set(ref, resource(2))
+      yield* Scope.close(owner, Exit.void)
+      assert.deepStrictEqual(log, ["release 1", "use 2", "release 2"])
+    }))
   it.effect("keeps the current resource when replacement acquisition fails", () =>
     Effect.gen(function*() {
       let released = false
