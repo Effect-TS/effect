@@ -444,7 +444,8 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
  * @category getters
  * @since 2.0.0
  */
-export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> => leaseWith(self, leaseItem, undefined)
+export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
+  leaseWith(self, (item) => leaseItem(self, item))
 
 /**
  * Borrows an item while an effect runs and returns it when the effect exits.
@@ -485,14 +486,13 @@ export const use: {
 } = dual(2, <A, E, B, E2, R2>(
   self: Pool<A, E>,
   f: (item: A) => Effect.Effect<B, E2, R2>
-): Effect.Effect<B, E | E2, R2> => leaseWith(self, useItem, f))
+): Effect.Effect<B, E | E2, R2> => leaseWith(self, (item, restore) => useItem(self, item, f, restore)))
 
 const useItem = <A, E, B, E2, R2>(
   self: Pool<A, E>,
   item: PoolItem<A, E>,
-  _fiber: Fiber.Fiber<unknown, unknown>,
-  restore: Restore,
-  f: (item: A) => Effect.Effect<B, E2, R2>
+  f: (item: A) => Effect.Effect<B, E2, R2>,
+  restore: Restore
 ): Effect.Effect<B, E | E2, R2> => {
   if (!leaseItemBookkeeping(self, item)) {
     return item.exit as Exit.Exit<never, E>
@@ -508,69 +508,48 @@ const useItem = <A, E, B, E2, R2>(
 
 type Restore = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 
-type Lease<A, E, X, R, Arg> = (
+// Count the lease and register its release without an interruption between
+// them: only the wait for an item, and the body of `use`, are interruptible.
+const leaseWith = <A, E, X, R>(
   self: Pool<A, E>,
-  item: PoolItem<A, E>,
-  fiber: Fiber.Fiber<unknown, unknown>,
-  restore: Restore,
-  arg: Arg
-) => Effect.Effect<X, any, R>
-
-// Count the lease and register its release without an interruption between them.
-const leaseWith = <A, E, X, R, Arg>(
-  self: Pool<A, E>,
-  lease: Lease<A, E, X, R, Arg>,
-  arg: Arg
+  lease: (item: PoolItem<A, E>, restore: Restore) => Effect.Effect<X, any, R>
 ): Effect.Effect<X, any, R> =>
   internal.uninterruptibleMask((restore) => {
-    const fiber = Fiber.getCurrent()!
-    self.state.usage++
-    return leaseLoop(self, lease, arg, restore, fiber)
+    const state = self.state
+    state.usage++
+    const step = (): Effect.Effect<X, any, R> => {
+      if (state.isShuttingDown) {
+        state.usage--
+        return internal.interrupt
+      }
+      if (state.availableHead !== undefined) {
+        return lease(state.availableHead, restore)
+      }
+      return internal.flatMap(
+        internal.onInterrupt(
+          restore(waitForItem(self)),
+          () =>
+            internal.sync(() => {
+              state.usage--
+            })
+        ),
+        loop
+      )
+    }
+    // Growth is checked before the available items, so a lease that raises the
+    // target starts a resize even when an item is free now. A pool that is
+    // shutting down has a target size of 0.
+    const loop = (): Effect.Effect<X, any, R> =>
+      targetSize(self) > activeSize(self)
+        ? internal.flatMap(
+          state.resizeSemaphore.withPermitsIfAvailable(1)(
+            Effect.forkIn(Effect.interruptible(resize(self)), state.scope)
+          ),
+          step
+        )
+        : step()
+    return loop()
   })
-
-// a pool that is shutting down has a target size of 0
-const leaseLoop = <A, E, X, R, Arg>(
-  self: Pool<A, E>,
-  lease: Lease<A, E, X, R, Arg>,
-  arg: Arg,
-  restore: Restore,
-  fiber: Fiber.Fiber<unknown, unknown>
-): Effect.Effect<X, any, R> =>
-  targetSize(self) > activeSize(self)
-    ? internal.flatMap(
-      self.state.resizeSemaphore.withPermitsIfAvailable(1)(
-        Effect.forkIn(Effect.interruptible(resize(self)), self.state.scope)
-      ),
-      () => leaseAvailable(self, lease, arg, restore, fiber)
-    )
-    : leaseAvailable(self, lease, arg, restore, fiber)
-
-const leaseAvailable = <A, E, X, R, Arg>(
-  self: Pool<A, E>,
-  lease: Lease<A, E, X, R, Arg>,
-  arg: Arg,
-  restore: Restore,
-  fiber: Fiber.Fiber<unknown, unknown>
-): Effect.Effect<X, any, R> => {
-  const state = self.state
-  if (state.isShuttingDown) {
-    state.usage--
-    return internal.interrupt
-  }
-  if (state.availableHead !== undefined) {
-    return lease(self, state.availableHead, fiber, restore, arg)
-  }
-  return internal.flatMap(
-    internal.onInterrupt(
-      restore(waitForItem(self)),
-      () =>
-        internal.sync(() => {
-          state.usage--
-        })
-    ),
-    () => leaseLoop(self, lease, arg, restore, fiber)
-  )
-}
 
 const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boolean => {
   const state = self.state
@@ -588,15 +567,11 @@ const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boo
   return true
 }
 
-const leaseItem = <A, E>(
-  self: Pool<A, E>,
-  item: PoolItem<A, E>,
-  fiber: Fiber.Fiber<unknown, unknown>
-): Effect.Effect<A, E> => {
+const leaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effect<A, E> => {
   if (!leaseItemBookkeeping(self, item)) {
     return item.exit
   }
-  const scope = Context.getUnsafe(fiber.context, Scope.Scope)
+  const scope = Context.getUnsafe(Fiber.getCurrent()!.context, Scope.Scope)
   if (scope.state._tag === "Closed") {
     return internal.flatMap(item.release(item.exit), () => item.exit)
   }

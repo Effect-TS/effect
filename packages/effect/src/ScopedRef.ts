@@ -52,7 +52,9 @@ const Proto = {
 }
 
 interface ScopedRefImpl<A> extends ScopedRef<A> {
-  // The owner closes this scope and all its generations, including in-flight ones.
+  // The scope the ref was made in. Every generation is forked from it, so
+  // closing it closes the current generation and any that a `set` is still
+  // acquiring.
   readonly scope: Scope.Scope
 }
 
@@ -86,11 +88,11 @@ export const fromAcquire: <A, E, R>(
 ) => Effect.Effect<ScopedRef<A>, E, Scope.Scope | R> = Effect.fnUntraced(function*<A, E, R>(
   acquire: Effect.Effect<A, E, R>
 ) {
-  const scope = Scope.forkUnsafe(yield* Effect.scope)
+  const scope = yield* Effect.scope
   const generation = Scope.forkUnsafe(scope)
   const value = yield* acquire.pipe(
     Scope.provide(generation),
-    Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
+    Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
   )
   if (isClosed(generation)) return yield* Effect.interrupt
   return makeUnsafe(scope, generation, value)
