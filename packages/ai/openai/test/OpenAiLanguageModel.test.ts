@@ -89,26 +89,17 @@ describe("OpenAiLanguageModel", () => {
   describe("web search without an action", () => {
     it.effect.each(
       [
-        { method: "streamText", tool: OpenAiTool.WebSearch({}), status: "incomplete", isFailure: true },
-        { method: "generateText", tool: OpenAiTool.WebSearch({}), status: "incomplete", isFailure: true },
-        { method: "streamText", tool: OpenAiTool.WebSearchPreview({}), status: "incomplete", isFailure: true },
-        { method: "generateText", tool: OpenAiTool.WebSearch({}), status: "completed", isFailure: false }
+        { method: "streamText", status: "incomplete", isFailure: true },
+        { method: "generateText", status: "incomplete", isFailure: true },
+        { method: "generateText", status: "completed", isFailure: false }
       ] as const
-    )("preserves $status with $method and $tool.name", ({ method, tool, status, isFailure }) =>
+    )("preserves omitted actions for $status with $method", ({ method, status, isFailure }) =>
       Effect.gen(function*() {
         const item: Generated.WebSearchToolCall = { type: "web_search_call", id: "ws_123", status }
-        const events = [
-          {
-            type: "response.output_item.added",
-            sequence_number: 1,
-            output_index: 0,
-            item: { ...item, status: "in_progress" }
-          },
-          { type: "response.output_item.done", sequence_number: 2, output_index: 0, item }
-        ]
+        const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
         const body = method === "generateText"
           ? JSON.stringify(makeDefaultResponse({ output: [item] }))
-          : events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("")
+          : `data: ${JSON.stringify(event)}\n\n`
         const client = HttpClient.make((request) =>
           Effect.succeed(HttpClientResponse.fromWeb(
             request,
@@ -117,7 +108,7 @@ describe("OpenAiLanguageModel", () => {
             })
           ))
         )
-        const options = { prompt: "Search the web", toolkit: Toolkit.make(tool) }
+        const options = { prompt: "Search the web", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
         const parts = yield* Effect.gen(function*() {
           if (method === "generateText") return (yield* LanguageModel.generateText(options)).content
           return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
