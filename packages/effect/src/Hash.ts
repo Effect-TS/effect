@@ -10,7 +10,7 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"
-import { byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
+import { byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -108,12 +108,10 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       return string(self.toString(10))
     case "string":
       return string(self)
-    case "undefined":
-      return string("undefined")
     case "function":
     case "object": {
       if (self === null) {
-        return string("null")
+        break
       } else if (self instanceof Date) {
         if (Number.isNaN(self.getTime())) {
           return string("Invalid Date")
@@ -122,12 +120,12 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       } else if (self instanceof RegExp) {
         return string(self.toString())
       } else {
-        if (byReferenceInstances.has(self)) {
-          return random(self)
-        }
         const cached = hashCache.get(self)
         if (cached !== undefined) {
           return cached
+        }
+        if (byReferenceInstances.has(self)) {
+          return random(self)
         }
         if (visitedObjects.has(self)) {
           backEdges++
@@ -142,7 +140,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
           } else if (typeof self === "function") {
             h = random(self)
           } else if (self instanceof DataView) {
-            h = array(new Uint8Array(self.buffer, self.byteOffset, self.byteLength))
+            h = array(viewBytes(self))
           } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {
             h = array(self as any)
           } else if (self instanceof Map) {
@@ -162,10 +160,8 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         return h
       }
     }
-    default:
-      // The remaining primitive types are boolean and symbol.
-      return string(String(self))
   }
+  return optimize(mix(string(String(self))))
 }
 
 /**
@@ -199,7 +195,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
  */
 export const random: <A extends object>(self: A) => number = (self) => {
   if (!randomHashCache.has(self)) {
-    randomHashCache.set(self, number(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
+    randomHashCache.set(self, optimize((Math.random() * 0x100000000) | 0))
   }
   return randomHashCache.get(self)!
 }
