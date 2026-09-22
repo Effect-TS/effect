@@ -217,10 +217,8 @@ function compareObjects(self: object, that: object): boolean {
     if (!(that instanceof RegExp)) return false
     return self.toString() === that.toString()
   }
-  const selfIsEqual = isEqual(self)
-  const thatIsEqual = isEqual(that)
-  if (selfIsEqual !== thatIsEqual) return false
-  const bothEquals = selfIsEqual && thatIsEqual
+  const bothEquals = isEqual(self)
+  if (bothEquals !== isEqual(that)) return false
   if (typeof self === "function" && !bothEquals) {
     return false
   }
