@@ -14,6 +14,7 @@ import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import type { NoInfer } from "../Types.ts"
+import { backEdges } from "./hash.ts"
 
 /** @internal */
 export const HashMapTypeId = "~effect/HashMap"
@@ -113,8 +114,34 @@ abstract class Node<K, V> {
     key: K,
     removed: { value: boolean }
   ): Node<K, V> | undefined
+
   canEdit(edit: number): boolean {
     return this.edit === edit
+  }
+
+  /**
+   * The XOR of `Hash.combine(Hash.hash(key), Hash.hash(value))` over this
+   * subtree's entries, the fold `HashMap`'s hash is made of. XOR is associative
+   * and commutative, so subtrees are hashed independently and cached (a Merkle
+   * tree over the trie), and a new version of a map only hashes the nodes it
+   * does not share with an already hashed one. Nodes reset it when an edit
+   * session mutates them in place.
+   */
+  declare _hash: number | undefined
+
+  abstract computeHash(): number
+
+  subtreeHash(): number {
+    let h = this._hash
+    if (h === undefined) {
+      const seen = backEdges
+      h = this.computeHash()
+      // Like `Hash.hash`, do not cache a hash that met a cycle.
+      if (seen === backEdges) {
+        this._hash = h
+      }
+    }
+    return h
   }
 }
 
@@ -160,6 +187,10 @@ class EmptyNode<K, V> extends Node<K, V> {
 
   override canEdit(_edit: number): boolean {
     return false
+  }
+
+  computeHash(): number {
+    return 0
   }
 }
 
@@ -208,6 +239,7 @@ class LeafNode<K, V> extends Node<K, V> {
     value: V,
     added: { value: boolean }
   ): Node<K, V> {
+    if (this.canEdit(edit)) this._hash = undefined
     if (this.hash === hash && Equal_.equals(this.key, key)) {
       if (Equal_.equals(this.value, value)) {
         return this
@@ -257,6 +289,12 @@ class LeafNode<K, V> extends Node<K, V> {
       return undefined
     }
     return this
+  }
+
+  computeHash(): number {
+    // `Hash.hash(key)` rather than the stored hash, which `setHash` lets
+    // callers choose.
+    return Hash.combine(Hash.hash(this.key), Hash.hash(this.value))
   }
 }
 
@@ -317,6 +355,7 @@ class CollisionNode<K, V> extends Node<K, V> {
     value: V,
     added: { value: boolean }
   ): Node<K, V> {
+    if (this.canEdit(edit)) this._hash = undefined
     if (this.hash !== hash) {
       added.value = true
       // Need to merge this collision node with new leaf
@@ -361,6 +400,7 @@ class CollisionNode<K, V> extends Node<K, V> {
     key: K,
     removed: { value: boolean }
   ): Node<K, V> | undefined {
+    if (this.canEdit(edit)) this._hash = undefined
     if (this.hash !== hash) {
       return this
     }
@@ -389,6 +429,15 @@ class CollisionNode<K, V> extends Node<K, V> {
     const newEntries = [...this.entries]
     newEntries.splice(idx, 1)
     return new CollisionNode(edit, this.hash, newEntries)
+  }
+
+  computeHash(): number {
+    let h = 0
+    const entries = this.entries
+    for (let i = 0; i < entries.length; i++) {
+      h ^= Hash.combine(Hash.hash(entries[i][0]), Hash.hash(entries[i][1]))
+    }
+    return h
   }
 }
 
@@ -445,6 +494,7 @@ class IndexedNode<K, V> extends Node<K, V> {
     value: V,
     added: { value: boolean }
   ): Node<K, V> {
+    if (this.canEdit(edit)) this._hash = undefined
     const bit = bitpos(hash, shift)
     const idx = index(this.bitmap, bit)
 
@@ -499,6 +549,7 @@ class IndexedNode<K, V> extends Node<K, V> {
     key: K,
     removed: { value: boolean }
   ): Node<K, V> | undefined {
+    if (this.canEdit(edit)) this._hash = undefined
     const bit = bitpos(hash, shift)
     if ((this.bitmap & bit) === 0) {
       return this
@@ -561,6 +612,15 @@ class IndexedNode<K, V> extends Node<K, V> {
     }
     return new ArrayNode(edit, children.length, nodes)
   }
+
+  computeHash(): number {
+    let h = 0
+    const children = this.children
+    for (let i = 0; i < children.length; i++) {
+      h ^= children[i].subtreeHash()
+    }
+    return h
+  }
 }
 
 /** @internal */
@@ -610,6 +670,7 @@ class ArrayNode<K, V> extends Node<K, V> {
     value: V,
     added: { value: boolean }
   ): Node<K, V> {
+    if (this.canEdit(edit)) this._hash = undefined
     const idx = mask(hash, shift)
     const child = this.children[idx]
 
@@ -651,6 +712,7 @@ class ArrayNode<K, V> extends Node<K, V> {
     key: K,
     removed: { value: boolean }
   ): Node<K, V> | undefined {
+    if (this.canEdit(edit)) this._hash = undefined
     const idx = mask(hash, shift)
     const child = this.children[idx]
 
@@ -708,8 +770,20 @@ class ArrayNode<K, V> extends Node<K, V> {
 
     return new IndexedNode(edit, bitmap, children)
   }
+
+  computeHash(): number {
+    let h = 0
+    const children = this.children
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      if (child) h ^= child.subtreeHash()
+    }
+    return h
+  }
 }
 
+// Iterates the trie depth-first with one explicit stack, pushing children right
+// to left so entries come out in trie order, and projects each entry.
 class HashMapIterator<K, V, A> implements IterableIterator<A> {
   readonly stack: Array<Node<K, V> | undefined>
   readonly project: (key: K, value: V) => A
@@ -809,11 +883,7 @@ class HashMapImpl<K, V> implements HashMap<K, V> {
   }
 
   [Hash.symbol](): number {
-    let hash = Hash.string("HashMap")
-    for (const [key, value] of this) {
-      hash ^= Hash.combine(Hash.hash(key), Hash.hash(value))
-    }
-    return Hash.optimize(hash)
+    return Hash.optimize(Hash.string("HashMap") ^ this._root.subtreeHash())
   }
 
   [NodeInspectSymbol](): unknown {
@@ -982,6 +1052,14 @@ export const values = <K, V>(self: HashMap<K, V>): IterableIterator<V> =>
 /** @internal */
 export const entries = <K, V>(self: HashMap<K, V>): IterableIterator<[K, V]> =>
   (self as HashMapImpl<K, V>)[Symbol.iterator]()
+
+/**
+ * The XOR of `Hash.combine(Hash.hash(key), Hash.hash(value))` over the
+ * entries, cached per trie node.
+ *
+ * @internal
+ */
+export const entriesHash = <K, V>(self: HashMap<K, V>): number => (self as HashMapImpl<K, V>)._root.subtreeHash()
 
 /** @internal */
 export const size = <K, V>(self: HashMap<K, V>): number => (self as HashMapImpl<K, V>).size

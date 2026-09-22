@@ -25,12 +25,9 @@ export interface HashSet<out V> extends Iterable<V>, Equal.Equal, Pipeable, Insp
 
 const HashSetProto: Omit<HashSet<unknown>, HashSetTypeId> = {
   [Hash.symbol]<V>(this: HashSet<V>): number {
-    const seed = Hash.string(HashSetTypeId)
-    let hash = seed
-    for (const value of this) {
-      hash ^= Hash.combine(seed, Hash.hash(value))
-    }
-    return Hash.optimize(hash)
+    // The backing map's cached entries hash. Every value is `true`, so each
+    // element contributes a term mixed from its hash alone.
+    return Hash.optimize(Hash.string(HashSetTypeId) ^ HashMap.entriesHash(keyMap(this)))
   },
   [Equal.symbol]<V>(this: HashSet<V>, that: unknown): boolean {
     return isHashSet(that) && size(this) === size(that) && every(this, (value) => has(that, value))
