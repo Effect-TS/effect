@@ -2,6 +2,6 @@
 "effect": patch
 ---
 
-Fix the internal stack marker in rendered traces. On V8, drop the closure allocated per step by `map`, `andThen`, `tap`, `match`, `matchCause` and the `catch*` combinators. On engines without V8-style continuation frame labels, `map` retains a marker closure and `match` / `matchCause` retain a sync thunk to keep their rendered stacks clean. Other callback paths may still show internal frames on those engines.
+Clean up rendered error stacks for common Effect callbacks and avoid per-step closure allocations in several combinators on V8.
 
-`flatMap` callbacks now receive only the value, without internal runtime arguments or a receiver.
+`Effect.flatMap` callbacks now receive only the value, without internal fiber/exit arguments or an internal `this` receiver.
