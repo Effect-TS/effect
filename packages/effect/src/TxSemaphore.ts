@@ -14,6 +14,7 @@ import * as Effect from "./Effect.ts"
 import { dual } from "./Function.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { NodeInspectSymbol, toJson } from "./Inspectable.ts"
+import { txAcquireScoped, txAcquireUseRelease } from "./internal/txAcquire.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
@@ -294,7 +295,7 @@ export const acquireN: {
   (self: TxSemaphore, n: number): Effect.Effect<void>
 } = dual(2, (self: TxSemaphore, n: number): Effect.Effect<void> => {
   if (n <= 0) {
-    return Effect.die(new Error("Number of permits must be positive"))
+    return invalidPermits()
   }
   return Effect.gen(function*() {
     const permits = yield* TxRef.get(self.permitsRef)
@@ -304,6 +305,35 @@ export const acquireN: {
     yield* TxRef.set(self.permitsRef, permits - n)
   }).pipe(Effect.tx)
 })
+
+const invalidPermits = (): Effect.Effect<never> => Effect.die(new Error("Number of permits must be positive"))
+
+// Takes `n` permits without ever retrying, so the transaction that takes them
+// can run in the same uninterruptible step that installs the release.
+const tryAcquirePermits = (self: TxSemaphore, n: number): Effect.Effect<number | undefined> =>
+  TxRef.modify(self.permitsRef, (permits: number) => permits >= n ? [n, permits - n] : [undefined, permits])
+
+// Reads the permit count and retries until `n` of them look available. It
+// takes nothing, so a waiter parked here can be interrupted.
+const awaitPermits = (self: TxSemaphore, n: number): Effect.Effect<void> =>
+  Effect.gen(function*() {
+    const permits = yield* TxRef.get(self.permitsRef)
+    if (permits < n) {
+      return yield* Effect.txRetry
+    }
+  }).pipe(Effect.tx)
+
+const withPermitsImpl = <A, E, R>(
+  self: TxSemaphore,
+  n: number,
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  n <= 0 ? invalidPermits() : txAcquireUseRelease(
+    tryAcquirePermits(self, n),
+    awaitPermits(self, n),
+    () => effect,
+    () => releaseN(self, n)
+  )
 
 /**
  * Tries to acquire a single permit from the semaphore without blocking,
@@ -387,7 +417,7 @@ export const tryAcquireN: {
   (self: TxSemaphore, n: number): Effect.Effect<boolean>
 } = dual(2, (self: TxSemaphore, n: number): Effect.Effect<boolean> => {
   if (n <= 0) {
-    return Effect.die(new Error("Number of permits must be positive"))
+    return invalidPermits()
   }
   return TxRef.modify(self.permitsRef, (permits: number) => {
     if (permits >= n) {
@@ -487,7 +517,7 @@ export const releaseN: {
   (self: TxSemaphore, n: number): Effect.Effect<void>
 } = dual(2, (self: TxSemaphore, n: number): Effect.Effect<void> => {
   if (n <= 0) {
-    return Effect.die(new Error("Number of permits must be positive"))
+    return invalidPermits()
   }
   return TxRef.update(self.permitsRef, (permits: number) => {
     const newPermits = permits + n
@@ -551,19 +581,10 @@ export const withPermit: {
 } = ((...args: Array<any>) => {
   if (args.length === 1) {
     const [self] = args
-    return (effect: Effect.Effect<any, any, any>) =>
-      Effect.acquireUseRelease(
-        acquire(self),
-        () => effect,
-        () => release(self)
-      )
+    return (effect: Effect.Effect<any, any, any>) => withPermitsImpl(self, 1, effect)
   }
   const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquire(self),
-    () => effect,
-    () => release(self)
-  )
+  return withPermitsImpl(self, 1, effect)
 }) as any
 
 /**
@@ -625,19 +646,10 @@ export const withPermits: {
 } = ((...args: Array<any>) => {
   if (args.length === 2) {
     const [self, n] = args
-    return (effect: Effect.Effect<any, any, any>) =>
-      Effect.acquireUseRelease(
-        acquireN(self, n),
-        () => effect,
-        () => releaseN(self, n)
-      )
+    return (effect: Effect.Effect<any, any, any>) => withPermitsImpl(self, n, effect)
   }
   const [self, n, effect] = args
-  return Effect.acquireUseRelease(
-    acquireN(self, n),
-    () => effect,
-    () => releaseN(self, n)
-  )
+  return withPermitsImpl(self, n, effect)
 }) as any
 
 /**
@@ -692,10 +704,11 @@ export const withPermits: {
  * @since 2.0.0
  */
 export const withPermitScoped = (self: TxSemaphore): Effect.Effect<void, never, Scope.Scope> =>
-  Effect.acquireRelease(
-    acquire(self),
+  Effect.asVoid(txAcquireScoped(
+    tryAcquirePermits(self, 1),
+    awaitPermits(self, 1),
     () => release(self)
-  )
+  ))
 
 /**
  * Determines if the provided value is a TxSemaphore.

@@ -436,4 +436,60 @@ describe("TxReentrantLock", () => {
       yield* Scope.close(scope, Exit.void)
       assert.isFalse(yield* TxReentrantLock.writeLocked(lock))
     }))
+
+  describe("interruption while waiting", () => {
+    const settle = Effect.gen(function*() {
+      for (let i = 0; i < 50; i++) yield* Effect.yieldNow
+    })
+
+    it.effect("interrupting a withWriteLock waiter completes, and the lock stays usable", () =>
+      Effect.gen(function*() {
+        const lock = yield* TxReentrantLock.make()
+        const holderScope = yield* Scope.make()
+        yield* Scope.provide(TxReentrantLock.writeLock(lock), holderScope)
+        const waiter = yield* Effect.forkChild(TxReentrantLock.withWriteLock(lock, Effect.void), {
+          startImmediately: true
+        })
+        yield* settle
+        const interrupter = yield* Effect.forkChild(Fiber.interrupt(waiter), { startImmediately: true })
+        yield* settle
+        assert.isDefined(interrupter.pollUnsafe(), "the interrupt completes while the lock is held")
+        yield* Scope.close(holderScope, Exit.void)
+        assert.isFalse(yield* TxReentrantLock.locked(lock))
+        assert.strictEqual(yield* TxReentrantLock.withWriteLock(lock, Effect.succeed(1)), 1)
+      }))
+
+    it.effect("interrupting a readLock waiter completes", () =>
+      Effect.gen(function*() {
+        const lock = yield* TxReentrantLock.make()
+        const holderScope = yield* Scope.make()
+        yield* Scope.provide(TxReentrantLock.writeLock(lock), holderScope)
+        const scope = yield* Scope.make()
+        const waiter = yield* Effect.forkChild(Scope.provide(TxReentrantLock.readLock(lock), scope), {
+          startImmediately: true
+        })
+        yield* settle
+        const interrupter = yield* Effect.forkChild(Fiber.interrupt(waiter), { startImmediately: true })
+        yield* settle
+        assert.isDefined(interrupter.pollUnsafe())
+        yield* Scope.close(scope, Exit.void)
+        yield* Scope.close(holderScope, Exit.void)
+        assert.isFalse(yield* TxReentrantLock.locked(lock))
+      }))
+
+    it.effect("a waiter that is not interrupted still gets the write lock", () =>
+      Effect.gen(function*() {
+        const lock = yield* TxReentrantLock.make()
+        const holderScope = yield* Scope.make()
+        yield* Scope.provide(TxReentrantLock.writeLock(lock), holderScope)
+        const waiter = yield* Effect.forkChild(TxReentrantLock.withWriteLock(lock, Effect.succeed(7)), {
+          startImmediately: true
+        })
+        yield* settle
+        assert.isUndefined(waiter.pollUnsafe())
+        yield* Scope.close(holderScope, Exit.void)
+        assert.strictEqual(yield* Fiber.join(waiter), 7)
+        assert.isFalse(yield* TxReentrantLock.locked(lock))
+      }))
+  })
 })

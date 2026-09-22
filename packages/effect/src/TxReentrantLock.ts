@@ -14,6 +14,7 @@ import * as Effect from "./Effect.ts"
 import * as HashMap from "./HashMap.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { NodeInspectSymbol, toJson } from "./Inspectable.ts"
+import { txAcquireScoped, txAcquireUseRelease } from "./internal/txAcquire.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
@@ -148,23 +149,77 @@ export const acquireRead = (self: TxReentrantLock): Effect.Effect<number> =>
   Effect.withFiber((fiber) =>
     Effect.gen(function*() {
       const state = yield* TxRef.get(self.stateRef)
-      const fiberId = fiber.id
-
-      // If another fiber holds the write lock, retry
-      if (Option.isSome(state.writer) && state.writer.value[0] !== fiberId) {
+      if (!canRead(state, fiber.id)) {
         return yield* Effect.txRetry
       }
-
-      // Grant read lock
-      const currentCount = Option.getOrElse(HashMap.get(state.readers, fiberId), () => 0)
-      const newCount = currentCount + 1
-      yield* TxRef.set(self.stateRef, {
-        ...state,
-        readers: HashMap.set(state.readers, fiberId, newCount)
-      })
-      return newCount
+      return yield* grantRead(self, state, fiber.id)
     }).pipe(Effect.tx)
   )
+
+// A fiber may read unless another fiber holds the write lock, and may write
+// unless another fiber holds the write lock or a read lock.
+const canRead = (state: LockState, fiberId: number): boolean =>
+  Option.isNone(state.writer) || state.writer.value[0] === fiberId
+
+const canWrite = (state: LockState, fiberId: number): boolean => {
+  if (!canRead(state, fiberId)) {
+    return false
+  }
+  for (const [readerId, count] of state.readers) {
+    if (readerId !== fiberId && count > 0) {
+      return false
+    }
+  }
+  return true
+}
+
+const grantRead = (self: TxReentrantLock, state: LockState, fiberId: number): Effect.Effect<number> => {
+  const newCount = Option.getOrElse(HashMap.get(state.readers, fiberId), () => 0) + 1
+  return Effect.as(
+    TxRef.set(self.stateRef, { ...state, readers: HashMap.set(state.readers, fiberId, newCount) }),
+    newCount
+  )
+}
+
+const grantWrite = (self: TxReentrantLock, state: LockState, fiberId: number): Effect.Effect<number> => {
+  const newCount = Option.isSome(state.writer) ? state.writer.value[1] + 1 : 1
+  return Effect.as(
+    TxRef.set(self.stateRef, { ...state, writer: Option.some([fiberId, newCount] as const) }),
+    newCount
+  )
+}
+
+// Takes the lock without ever retrying, so the transaction that takes it can
+// run in the same uninterruptible step that installs the release.
+const tryAcquireRead = (self: TxReentrantLock, fiberId: number): Effect.Effect<number | undefined> =>
+  Effect.gen(function*() {
+    const state = yield* TxRef.get(self.stateRef)
+    return canRead(state, fiberId) ? yield* grantRead(self, state, fiberId) : undefined
+  }).pipe(Effect.tx)
+
+const tryAcquireWrite = (self: TxReentrantLock, fiberId: number): Effect.Effect<number | undefined> =>
+  Effect.gen(function*() {
+    const state = yield* TxRef.get(self.stateRef)
+    return canWrite(state, fiberId) ? yield* grantWrite(self, state, fiberId) : undefined
+  }).pipe(Effect.tx)
+
+// Reads the lock state and retries until it could be taken. It takes nothing,
+// so a waiter parked here can be interrupted.
+const awaitReadable = (self: TxReentrantLock, fiberId: number): Effect.Effect<void> =>
+  Effect.gen(function*() {
+    const state = yield* TxRef.get(self.stateRef)
+    if (!canRead(state, fiberId)) {
+      return yield* Effect.txRetry
+    }
+  }).pipe(Effect.tx)
+
+const awaitWritable = (self: TxReentrantLock, fiberId: number): Effect.Effect<void> =>
+  Effect.gen(function*() {
+    const state = yield* TxRef.get(self.stateRef)
+    if (!canWrite(state, fiberId)) {
+      return yield* Effect.txRetry
+    }
+  }).pipe(Effect.tx)
 
 /**
  * Acquires the write lock for the current fiber.
@@ -204,37 +259,10 @@ export const acquireWrite = (self: TxReentrantLock): Effect.Effect<number> =>
   Effect.withFiber((fiber) =>
     Effect.gen(function*() {
       const state = yield* TxRef.get(self.stateRef)
-      const fiberId = fiber.id
-
-      // If another fiber holds the write lock, retry
-      if (Option.isSome(state.writer) && state.writer.value[0] !== fiberId) {
+      if (!canWrite(state, fiber.id)) {
         return yield* Effect.txRetry
       }
-
-      // If other fibers hold read locks, retry
-      for (const [readerId] of state.readers) {
-        if (readerId !== fiberId && Option.getOrElse(HashMap.get(state.readers, readerId), () => 0) > 0) {
-          return yield* Effect.txRetry
-        }
-      }
-
-      // Grant write lock
-      if (Option.isSome(state.writer)) {
-        // Reentrant: increment write count
-        const newCount = state.writer.value[1] + 1
-        yield* TxRef.set(self.stateRef, {
-          ...state,
-          writer: Option.some([fiberId, newCount] as const)
-        })
-        return newCount
-      }
-
-      // First write lock acquisition
-      yield* TxRef.set(self.stateRef, {
-        ...state,
-        writer: Option.some([fiberId, 1] as const)
-      })
-      return 1
+      return yield* grantWrite(self, state, fiber.id)
     }).pipe(Effect.tx)
   )
 
@@ -390,8 +418,9 @@ export const releaseWrite = (self: TxReentrantLock): Effect.Effect<number> =>
  */
 export const readLock = (self: TxReentrantLock): Effect.Effect<number, never, Scope.Scope> =>
   Effect.withFiber((fiber) =>
-    Effect.acquireRelease(
-      acquireRead(self),
+    txAcquireScoped(
+      tryAcquireRead(self, fiber.id),
+      awaitReadable(self, fiber.id),
       () => releaseReadFor(self, fiber.id)
     )
   )
@@ -427,8 +456,9 @@ export const readLock = (self: TxReentrantLock): Effect.Effect<number, never, Sc
  */
 export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, Scope.Scope> =>
   Effect.withFiber((fiber) =>
-    Effect.acquireRelease(
-      acquireWrite(self),
+    txAcquireScoped(
+      tryAcquireWrite(self, fiber.id),
+      awaitWritable(self, fiber.id),
       () => releaseWriteFor(self, fiber.id)
     )
   )
@@ -462,20 +492,24 @@ export const withReadLock: {
 } = ((...args: Array<any>) => {
   if (args.length === 1) {
     const [effect] = args
-    return (self: TxReentrantLock) =>
-      Effect.acquireUseRelease(
-        acquireRead(self),
-        () => effect,
-        () => releaseRead(self)
-      )
+    return (self: TxReentrantLock) => withReadLockImpl(self, effect)
   }
   const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquireRead(self),
-    () => effect,
-    () => releaseRead(self)
-  )
+  return withReadLockImpl(self, effect)
 }) as any
+
+const withReadLockImpl = <A, E, R>(
+  self: TxReentrantLock,
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  Effect.withFiber((fiber) =>
+    txAcquireUseRelease(
+      tryAcquireRead(self, fiber.id),
+      awaitReadable(self, fiber.id),
+      () => effect,
+      () => releaseReadFor(self, fiber.id)
+    )
+  )
 
 /**
  * Runs the provided effect while holding a write lock. The lock is automatically
@@ -506,20 +540,24 @@ export const withWriteLock: {
 } = ((...args: Array<any>) => {
   if (args.length === 1) {
     const [effect] = args
-    return (self: TxReentrantLock) =>
-      Effect.acquireUseRelease(
-        acquireWrite(self),
-        () => effect,
-        () => releaseWrite(self)
-      )
+    return (self: TxReentrantLock) => withWriteLockImpl(self, effect)
   }
   const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquireWrite(self),
-    () => effect,
-    () => releaseWrite(self)
-  )
+  return withWriteLockImpl(self, effect)
 }) as any
+
+const withWriteLockImpl = <A, E, R>(
+  self: TxReentrantLock,
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  Effect.withFiber((fiber) =>
+    txAcquireUseRelease(
+      tryAcquireWrite(self, fiber.id),
+      awaitWritable(self, fiber.id),
+      () => effect,
+      () => releaseWriteFor(self, fiber.id)
+    )
+  )
 
 /**
  * Runs an effect while holding a write lock.

@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, TxSemaphore } from "effect"
+import { Effect, Exit, Fiber, Option, Scheduler, Scope, TxSemaphore } from "effect"
+import { TestClock } from "effect/testing"
 
 describe("TxSemaphore", () => {
   describe("constructors", () => {
@@ -279,5 +280,117 @@ describe("TxSemaphore", () => {
         const available = yield* TxSemaphore.available(semaphore)
         assert.strictEqual(available, 4) // Net effect: -1 permit
       })))
+  })
+
+  describe("interruption while waiting", () => {
+    const settle = Effect.gen(function*() {
+      for (let i = 0; i < 50; i++) yield* Effect.yieldNow
+    })
+
+    it.effect("interrupting a withPermit waiter completes, and leaks no permit", () =>
+      Effect.gen(function*() {
+        const semaphore = yield* TxSemaphore.make(1)
+        yield* TxSemaphore.acquire(semaphore)
+        const waiter = yield* Effect.forkChild(TxSemaphore.withPermit(semaphore, Effect.void), {
+          startImmediately: true
+        })
+        yield* settle
+        const interrupter = yield* Effect.forkChild(Fiber.interrupt(waiter), { startImmediately: true })
+        yield* settle
+        assert.isDefined(interrupter.pollUnsafe(), "the interrupt completes while no permit is free")
+        yield* TxSemaphore.release(semaphore)
+        yield* settle
+        assert.strictEqual(yield* TxSemaphore.available(semaphore), 1)
+      }))
+
+    it.effect("a timeout cancels a withPermits waiter", () =>
+      Effect.gen(function*() {
+        const semaphore = yield* TxSemaphore.make(2)
+        yield* TxSemaphore.acquireN(semaphore, 2)
+        const fiber = yield* Effect.forkChild(
+          Effect.timeoutOption(TxSemaphore.withPermits(semaphore, 2, Effect.void), "1 second"),
+          { startImmediately: true }
+        )
+        yield* settle
+        yield* TestClock.adjust("2 seconds")
+        yield* settle
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(Option.none()))
+        yield* TxSemaphore.releaseN(semaphore, 2)
+        assert.strictEqual(yield* TxSemaphore.available(semaphore), 2)
+      }))
+
+    it.effect("interrupting a withPermitScoped waiter completes", () =>
+      Effect.gen(function*() {
+        const semaphore = yield* TxSemaphore.make(1)
+        yield* TxSemaphore.acquire(semaphore)
+        const scope = yield* Scope.make()
+        const waiter = yield* Effect.forkChild(
+          Scope.provide(TxSemaphore.withPermitScoped(semaphore), scope),
+          { startImmediately: true }
+        )
+        yield* settle
+        const interrupter = yield* Effect.forkChild(Fiber.interrupt(waiter), { startImmediately: true })
+        yield* settle
+        assert.isDefined(interrupter.pollUnsafe())
+        yield* Scope.close(scope, Exit.void)
+        yield* TxSemaphore.release(semaphore)
+        assert.strictEqual(yield* TxSemaphore.available(semaphore), 1)
+      }))
+
+    // A small op budget makes the fiber yield at each point between the
+    // transaction that takes the permit and the release that returns it;
+    // interrupting it there must return the permit. (With a budget below 3 a
+    // fiber yields again before making progress.)
+    it.effect("an interrupted withPermit returns a free permit at every yield", () =>
+      Effect.gen(function*() {
+        const failed: Array<number> = []
+        for (let ops = 3; ops <= 64; ops++) {
+          const semaphore = yield* TxSemaphore.make(1)
+          const fiber = yield* Effect.forkChild(
+            Effect.provideService(
+              TxSemaphore.withPermit(semaphore, Effect.never),
+              Scheduler.MaxOpsBeforeYield,
+              ops
+            ),
+            { startImmediately: true }
+          )
+          yield* Fiber.interrupt(fiber)
+          yield* settle
+          if ((yield* TxSemaphore.available(semaphore)) !== 1) failed.push(ops)
+        }
+        assert.deepStrictEqual(failed, [])
+      }))
+
+    it.effect("withPermits rejects a non-positive count without running the effect", () =>
+      Effect.gen(function*() {
+        const semaphore = yield* TxSemaphore.make(2)
+        let ran = false
+        const exit = yield* Effect.exit(
+          TxSemaphore.withPermits(
+            semaphore,
+            0,
+            Effect.sync(() => {
+              ran = true
+            })
+          )
+        )
+        assert.isTrue(Exit.isFailure(exit))
+        assert.isFalse(ran)
+        assert.strictEqual(yield* TxSemaphore.available(semaphore), 2)
+      }))
+
+    it.effect("a waiter that is not interrupted still gets the permit", () =>
+      Effect.gen(function*() {
+        const semaphore = yield* TxSemaphore.make(1)
+        yield* TxSemaphore.acquire(semaphore)
+        const waiter = yield* Effect.forkChild(TxSemaphore.withPermit(semaphore, Effect.succeed(42)), {
+          startImmediately: true
+        })
+        yield* settle
+        assert.isUndefined(waiter.pollUnsafe())
+        yield* TxSemaphore.release(semaphore)
+        assert.strictEqual(yield* Fiber.join(waiter), 42)
+        assert.strictEqual(yield* TxSemaphore.available(semaphore), 1)
+      }))
   })
 })
