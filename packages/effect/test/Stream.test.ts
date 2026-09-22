@@ -1568,6 +1568,54 @@ describe("Stream", () => {
     )
   })
 
+  describe("mapEffect with concurrency", () => {
+    const boom = new Error("boom")
+    const run = (
+      options: { readonly concurrency: number; readonly unordered: boolean },
+      bad: () => Effect.Effect<never>
+    ) =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const upstream = Stream.unwrap(
+          Effect.acquireRelease(
+            Effect.sync(() => log.push("acquire")),
+            (_, exit) => Effect.sync(() => log.push(`release ${exit._tag}`))
+          ).pipe(Effect.as(Stream.make(1, 2, 3)))
+        )
+        const fiber = yield* upstream.pipe(
+          Stream.mapEffect(
+            (n) =>
+              n === 2
+                ? bad()
+                : Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => log.push(`interrupted ${n}`)))),
+            options
+          ),
+          Stream.runDrain,
+          Effect.timeoutOption("1 second"),
+          Effect.exit,
+          Effect.forkChild
+        )
+        yield* TestClock.adjust("1 second")
+        return { exit: yield* Fiber.join(fiber), log }
+      })
+
+    for (const unordered of [false, true]) {
+      it.effect(`a synchronous throw in f fails the stream like Effect.die (unordered: ${unordered})`, () =>
+        Effect.gen(function*() {
+          const options = { concurrency: 3, unordered }
+          const thrown = yield* run(options, () => {
+            throw boom
+          })
+          const died = yield* run(options, () => Effect.die(boom))
+          assertExitFailure(thrown.exit, Cause.die(boom))
+          assertExitFailure(died.exit, Cause.die(boom))
+          deepStrictEqual(thrown.log, died.log)
+          assertTrue(thrown.log.includes("interrupted 1"))
+          strictEqual(thrown.log[thrown.log.length - 1], "release Failure")
+        }))
+    }
+  })
+
   describe("switchMap", () => {
     it.effect(
       "interrupts a never-ending inner stream when the outer stream fails",
