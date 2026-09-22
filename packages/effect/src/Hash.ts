@@ -108,12 +108,10 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       return string(self.toString(10))
     case "string":
       return string(self)
-    case "undefined":
-      return string("undefined")
     case "function":
     case "object": {
       if (self === null) {
-        return string("null")
+        break
       } else if (self instanceof Date) {
         if (Number.isNaN(self.getTime())) {
           return string("Invalid Date")
@@ -162,10 +160,10 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         return h
       }
     }
-    default:
-      // The remaining primitive types are boolean and symbol.
-      return string(String(self))
   }
+  // null, undefined, booleans and symbols, mixed so that they do not hash like
+  // their names.
+  return optimize(mix(string(String(self))))
 }
 
 /**

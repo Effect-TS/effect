@@ -124,6 +124,12 @@ describe("Hash", () => {
       assert.notStrictEqual(Hash.hash([1, 2, 3]), Hash.hash([]))
     })
 
+    it("does not hash null, undefined, booleans and symbols like their names", () => {
+      for (const value of [null, undefined, true, false, Symbol.for("a")]) {
+        assert.notStrictEqual(Hash.hash(value), Hash.hash(String(value)))
+      }
+    })
+
     it("does not collide for 10k multiples of 0.1", () => {
       assertNoHashCollisions(range(10_000).map((i) => i * 0.1))
     })
