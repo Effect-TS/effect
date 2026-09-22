@@ -579,32 +579,41 @@ describe("OpenAiLanguageModel", () => {
             ])
           }).pipe(Effect.provide(makeTestLayer())))
 
-        it.effect("fails locally when a provider-executed call cannot be replayed inline", () =>
+        it.effect("fails locally when provider-executed history cannot be replayed inline", () =>
           Effect.gen(function*() {
-            const error = yield* LanguageModel.generateText({
-              prompt: Prompt.make([
-                { role: "user", content: "Search" },
-                {
-                  role: "assistant",
-                  content: [providerExecutedCall]
-                },
-                { role: "user", content: "Continue" }
-              ]),
-              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
-              disableToolCallResolution: true
-            }).pipe(
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
-                store: true,
-                useItemReferences: false
-              })),
-              Effect.flip
-            )
+            const cases = [
+              providerExecutedCall,
+              providerExecutedResult
+            ] as const
+            yield* Effect.forEach(cases, (part) =>
+              LanguageModel.generateText({
+                prompt: Prompt.make([
+                  { role: "user", content: "Search" },
+                  {
+                    role: "assistant",
+                    content: [part]
+                  },
+                  { role: "user", content: "Continue" }
+                ]),
+                toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+                disableToolCallResolution: true
+              }).pipe(
+                Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+                  store: true,
+                  useItemReferences: false
+                })),
+                Effect.flip,
+                Effect.tap((error) =>
+                  Effect.sync(() => {
+                    strictEqual(error.reason._tag, "InvalidRequestError")
+                    if (error.reason._tag === "InvalidRequestError") {
+                      assert.include(error.reason.description, "OpenAiWebSearch")
+                      assert.include(error.reason.description, "ws_1")
+                    }
+                  })
+                )
+              ))
 
-            strictEqual(error.reason._tag, "InvalidRequestError")
-            if (error.reason._tag === "InvalidRequestError") {
-              assert.include(error.reason.description, "OpenAiWebSearch")
-              assert.include(error.reason.description, "ws_1")
-            }
             strictEqual((yield* MockHttpClient.requests).length, 0)
           }).pipe(Effect.provide(makeTestLayer())))
 
@@ -2532,36 +2541,6 @@ const providerExecutedResult = Prompt.toolResultPart({
 const providerExecutedHistoryPrompt = Prompt.make([
   { role: "user", content: "Search" },
   { role: "assistant", content: [providerExecutedCall, providerExecutedResult] },
-  { role: "user", content: "Continue" }
-])
-
-const mcpHistoryPrompt = Prompt.make([
-  { role: "user", content: "Check the package" },
-  {
-    role: "assistant",
-    content: [
-      Prompt.toolCallPart({
-        id: "mcp_call_1",
-        name: "OpenAiMcp",
-        params: { packageName: "effect" },
-        providerExecuted: true
-      }),
-      Prompt.toolResultPart({
-        id: "mcp_call_1",
-        name: "OpenAiMcp",
-        isFailure: false,
-        result: {
-          type: "mcp_call",
-          name: "CheckPackage",
-          arguments: JSON.stringify({ packageName: "effect" }),
-          server_label: "npm",
-          output: "ok"
-        },
-        providerExecuted: true,
-        options: { openai: { itemId: "mcp_call_1" } }
-      })
-    ]
-  },
   { role: "user", content: "Continue" }
 ])
 

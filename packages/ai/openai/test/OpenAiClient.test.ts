@@ -557,7 +557,7 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result._tag, "Some")
       }))
 
-    it.live("replaces the WebSocket after a non-retryable error event", () =>
+    it.live("replaces the WebSocket after non-retryable error events", () =>
       Effect.gen(function*() {
         const server = yield* Effect.acquireRelease(
           Effect.sync(() => new WS("wss://socket-errors.test/v1/responses", { jsonProtocol: true })),
@@ -576,10 +576,25 @@ describe("OpenAiClient", () => {
                   Effect.sync(() =>
                     server.send({
                       type: "error",
-                      status: 500,
+                      code: "invalid_request_error",
+                      message: "bad",
+                      param: null
+                    })
+                  )
+                )
+              )
+            ], { concurrency: "unbounded" })
+
+            const [, secondFailedStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "second" })
+            yield* Effect.all([
+              Stream.runDrain(secondFailedStream).pipe(Effect.flip),
+              nextWebSocketCreate(server).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() =>
+                    server.send({
                       error: {
-                        code: "server_error",
-                        message: "Internal server error"
+                        message: "gRPC error: permission denied",
+                        type: "api_error"
                       }
                     })
                   )
@@ -587,11 +602,11 @@ describe("OpenAiClient", () => {
               )
             ], { concurrency: "unbounded" })
 
-            const [, nextStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "second" })
+            const [, nextStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "third" })
             yield* Effect.all([
               Stream.runDrain(nextStream),
               nextWebSocketCreate(server).pipe(
-                Effect.tap(() => Effect.sync(() => sendWebSocketCompleted(server, "resp_2", "msg_2", "ok")))
+                Effect.tap(() => Effect.sync(() => sendWebSocketCompleted(server, "resp_3", "msg_3", "ok")))
               )
             ], { concurrency: "unbounded" })
           })
@@ -608,7 +623,7 @@ describe("OpenAiClient", () => {
           Effect.timeout("5 seconds")
         )
 
-        assert.strictEqual(connections, 2)
+        assert.strictEqual(connections, 3)
       }))
 
     it.live("retries an untagged xAI response-not-found error with the full prompt", () =>
@@ -625,10 +640,7 @@ describe("OpenAiClient", () => {
           yield* chat.streamText({ prompt: "later" }).pipe(Stream.runDrain)
         }).pipe(
           OpenAiClient.withWebSocketMode,
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
-            store: true,
-            useItemReferences: false
-          })),
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
           Effect.provide(OpenAiClient.layer({
             apiKey: Redacted.make("sk-test"),
             apiUrl: "https://previous-response.test/v1"
