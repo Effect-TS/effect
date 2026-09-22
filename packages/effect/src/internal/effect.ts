@@ -5720,11 +5720,12 @@ export const runPromise: <A, E>(
 
 /** @internal */
 export const runSyncExitWith = <R>(context: Context.Context<R>) => {
-  const runFork = runForkWith(context)
+  // A scheduler keeps no state (each fiber makes its own dispatcher), so one
+  // instance serves every run, and so does the fiber cache of its context
+  const runFork = runForkWith(Context.add(context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
   return <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
     if (effectIsExit(effect)) return effect
-    const scheduler = new Scheduler.MixedScheduler("sync")
-    const fiber = runFork(effect, { scheduler }) as FiberImpl<A, E>
+    const fiber = runFork(effect) as FiberImpl<A, E>
     fiber._dispatcher?.flush()
     return fiber._exit ?? exitDie(new AsyncFiberError(fiber))
   }

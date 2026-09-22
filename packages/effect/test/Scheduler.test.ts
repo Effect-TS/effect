@@ -19,6 +19,21 @@ describe("Scheduler", () => {
     assert.deepStrictEqual(exit, Exit.succeed(1))
   })
 
+  it("nested runSyncExit calls do not run each other's pending work", async () => {
+    const log: Array<string> = []
+    const inner = Effect.andThen(Effect.yieldNow, Effect.sync(() => log.push("inner")))
+    const exit = Effect.runSyncExit(Effect.gen(function*() {
+      yield* Effect.forkDetach(Effect.andThen(Effect.yieldNow, Effect.sync(() => log.push("detached"))))
+      yield* Effect.sync(() => Effect.runSync(inner))
+      log.push("outer")
+    }))
+
+    assert.deepStrictEqual(exit, Exit.void)
+    assert.deepStrictEqual(log, ["inner", "outer"])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(log, ["inner", "outer", "detached"])
+  })
+
   it("runSyncExit does not schedule timers after yielding", () => {
     const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation(() => {
       throw new Error("setImmediate is not supported")

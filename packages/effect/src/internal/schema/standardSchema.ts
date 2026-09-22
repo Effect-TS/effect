@@ -1,4 +1,5 @@
 import * as Cause from "../../Cause.ts"
+import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
@@ -33,14 +34,17 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
   ) => Effect.Effect<S["Type"], SchemaIssue.Issue>
   const parseOptions: SchemaAST.ParseOptions = { errors: "all", ...options?.parseOptions }
   const formatter = SchemaIssue.makeFormatterStandardSchemaV1(options)
+  // A scheduler keeps no state (each fiber makes its own dispatcher), so one
+  // instance serves every validation, and so does the fiber cache of its context
+  const runFork = Effect.runForkWith(
+    Context.add(Context.empty(), Scheduler.Scheduler, new Scheduler.MixedScheduler("sync"))
+  )
   const validate: StandardSchemaV1<S["Encoded"], S["Type"]>["~standard"]["validate"] = (value: unknown) => {
-    const scheduler = new Scheduler.MixedScheduler("sync")
-    const fiber = Effect.runFork(
+    const fiber = runFork(
       Effect.match(decodeUnknownEffect(value, parseOptions), {
         onFailure: formatter,
         onSuccess: (value): StandardSchemaV1.Result<S["Type"]> => ({ value })
-      }),
-      { scheduler }
+      })
     )
     fiber.currentDispatcher?.flush()
     const exit = fiber.pollUnsafe()
