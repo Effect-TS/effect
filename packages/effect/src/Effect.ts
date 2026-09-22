@@ -72,7 +72,6 @@ import type {
   unassigned
 } from "./Types.ts"
 import type * as Unify from "./Unify.ts"
-import { internalCall } from "./Utils.ts"
 
 /**
  * Type-level identifier for `Effect` values.
@@ -14203,7 +14202,7 @@ export const track: {
     f: (exit: Exit.Exit<A, E>) => Input
   ): Effect<A, E, R> =>
     onExit(self, (exit) => {
-      const input = f === undefined ? exit : internalCall(() => f(exit))
+      const input = f === undefined ? exit : f(exit)
       return Metric.update(metric, input as any)
     })
 )
@@ -14355,7 +14354,7 @@ export const trackErrors: {
     f: ((error: E) => Input) | undefined
   ): Effect<A, E, R> =>
     tapError(self, (error) => {
-      const input = f === undefined ? error : internalCall(() => f(error))
+      const input = f === undefined ? error : f(error)
       return Metric.update(metric, input as any)
     })
 )
@@ -14429,7 +14428,7 @@ export const trackDefects: {
   (args) => isEffect(args[0]),
   (self, metric, f) =>
     tapDefect(self, (defect) => {
-      const input = f === undefined ? defect : internalCall(() => f(defect))
+      const input = f === undefined ? defect : f(defect)
       return Metric.update(metric, input)
     })
 )
@@ -14510,7 +14509,7 @@ export const trackDuration: {
           Duration.fromInputUnsafe(endTime),
           Duration.fromInputUnsafe(startTime)
         )
-        const input = f === undefined ? duration : internalCall(() => f(duration))
+        const input = f === undefined ? duration : f(duration)
         return Metric.update(metric, input as any)
       })
     })

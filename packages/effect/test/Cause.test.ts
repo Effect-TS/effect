@@ -1,6 +1,8 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
@@ -604,6 +606,26 @@ describe("Cause", () => {
     it("returns a string for empty cause", () => {
       const rendered = Cause.pretty(Cause.empty)
       assert.strictEqual(typeof rendered, "string")
+    })
+
+    it("cuts the stack of a defect at the internal frame that called user code", () => {
+      const userCode = (): number => {
+        throw new Error("boom")
+      }
+      const render = (effect: Effect.Effect<unknown, unknown>): string => {
+        const exit = Effect.runSyncExit(effect)
+        assert.ok(Exit.isFailure(exit))
+        return Cause.pretty(exit.cause)
+      }
+      for (
+        const rendered of [
+          render(Effect.map(Effect.succeed(1), userCode)),
+          render(Effect.try({ try: userCode, catch: userCode }))
+        ]
+      ) {
+        assert.match(rendered, /at userCode /)
+        assert.doesNotMatch(rendered, /~effect\/Utils\/internal/)
+      }
     })
   })
 
