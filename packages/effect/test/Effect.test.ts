@@ -3532,6 +3532,37 @@ describe("Effect", () => {
           assert.strictEqual(transactionValue, 20)
         }))
     })
+
+    describe("retry", () => {
+      it.effect("should rerun when a read ref changed while the transaction was suspended", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const read = yield* Deferred.make<void>()
+          const committed = yield* Deferred.make<void>()
+
+          const transaction = yield* Effect.tx(Effect.gen(function*() {
+            const value = yield* TxRef.get(ref)
+            if (value === 0) {
+              yield* Deferred.succeed(read, undefined)
+              yield* Deferred.await(committed)
+              return yield* Effect.txRetry
+            }
+            return value
+          })).pipe(Effect.forkChild)
+
+          yield* Deferred.await(read)
+          yield* Effect.tx(TxRef.set(ref, 1))
+          yield* Deferred.succeed(committed, undefined)
+
+          const joined = yield* Fiber.join(transaction).pipe(
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild
+          )
+          yield* TestClock.adjust("1 second")
+
+          assert.deepStrictEqual(yield* Fiber.join(joined), Option.some(1))
+        }))
+    })
   })
 
   describe("Effect.fn", () => {
