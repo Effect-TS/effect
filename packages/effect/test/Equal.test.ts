@@ -42,6 +42,40 @@ describe("Equal.equals", () => {
     expect(Equal.equals(p, q)).toBe(false)
   })
 
+  describe("cyclic values", () => {
+    // Graph nodes with one constant hash, so equality is decided structurally.
+    class GraphNode implements Hash.Hash {
+      v: number
+      a: unknown = undefined
+      b: unknown = undefined
+      constructor(v: number) {
+        this.v = v
+      }
+      [Hash.symbol](): number {
+        return 0
+      }
+    }
+
+    type Spec = ReadonlyArray<{ readonly v: number; readonly a: number; readonly b: number }>
+
+    const graph = (spec: Spec): Array<GraphNode> => {
+      const nodes = spec.map(({ v }) => new GraphNode(v))
+      spec.forEach(({ a, b }, i) => {
+        nodes[i].a = nodes[a]
+        nodes[i].b = nodes[b]
+      })
+      return nodes
+    }
+
+    it("does not let an earlier comparison change a later result", () => {
+      // Every node has v = 1 and points only at v = 1 nodes, so all of them are equal.
+      const [, n2] = graph([{ v: 1, a: 1, b: 0 }, { v: 1, a: 0, b: 0 }])
+      const [m0, m1] = graph([{ v: 1, a: 1, b: 1 }, { v: 1, a: 1, b: 0 }])
+      Equal.equals(n2, m1)
+      assert.isTrue(Equal.equals({ w: n2, k: 1 }, { w: m0, k: 1 }))
+    })
+  })
+
   describe("plain objects", () => {
     it("should return true for structurally identical objects (structural equality)", () => {
       const obj1 = { a: 1, b: 2 }

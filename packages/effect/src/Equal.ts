@@ -288,14 +288,14 @@ function compareObjects(self: object, that: object): boolean {
 }
 
 function withCache(self: object, that: object, f: (a: any, b: any) => boolean): boolean {
-  let selfMap = equalityCache.get(self)
-  if (selfMap?.has(that)) {
-    return selfMap.get(that)!
-  }
-
-  // Do not cache provisional cycle matches from nested comparisons.
+  // Nested results can rest on provisional cycle matches: neither read nor
+  // cache them.
   if (comparing) {
     return f(self, that)
+  }
+  let selfMap = equalityCache.get(self)
+  if (selfMap?.has(that)) {
+    return true
   }
   comparing = true
   let result: boolean
@@ -305,23 +305,27 @@ function withCache(self: object, that: object, f: (a: any, b: any) => boolean): 
     comparing = false
   }
 
-  if (!selfMap) {
-    selfMap = new WeakMap()
-    equalityCache.set(self, selfMap)
-  }
-  selfMap.set(that, result)
+  // Only a completed `true` is cached. A `false` can come from a cycle that
+  // was matched differently, and would override a later correct match.
+  if (result) {
+    if (!selfMap) {
+      selfMap = new WeakSet()
+      equalityCache.set(self, selfMap)
+    }
+    selfMap.add(that)
 
-  let thatMap = equalityCache.get(that)
-  if (!thatMap) {
-    thatMap = new WeakMap()
-    equalityCache.set(that, thatMap)
+    let thatMap = equalityCache.get(that)
+    if (!thatMap) {
+      thatMap = new WeakSet()
+      equalityCache.set(that, thatMap)
+    }
+    thatMap.add(self)
   }
-  thatMap.set(self, result)
 
   return result
 }
 
-const equalityCache = new WeakMap<object, WeakMap<object, boolean>>()
+const equalityCache = new WeakMap<object, WeakSet<object>>()
 let comparing = false
 
 function compareArrays(self: Array<unknown>, that: Array<unknown>): boolean {
