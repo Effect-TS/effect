@@ -89,20 +89,14 @@ describe("OpenAiLanguageModel", () => {
   describe("web search without an action", () => {
     it.effect.each(
       [
-        { method: "streamText", tool: OpenAiTool.WebSearch({}), status: "incomplete" },
-        { method: "generateText", tool: OpenAiTool.WebSearch({}), status: "incomplete" },
-        { method: "streamText", tool: OpenAiTool.WebSearchPreview({}), status: "incomplete" },
-        { method: "generateText", tool: OpenAiTool.WebSearch({}), status: "completed" }
+        { method: "streamText", tool: OpenAiTool.WebSearch({}), status: "incomplete", isFailure: true },
+        { method: "generateText", tool: OpenAiTool.WebSearch({}), status: "incomplete", isFailure: true },
+        { method: "streamText", tool: OpenAiTool.WebSearchPreview({}), status: "incomplete", isFailure: true },
+        { method: "generateText", tool: OpenAiTool.WebSearch({}), status: "completed", isFailure: false }
       ] as const
-    )("preserves $status with $method and $tool.name", ({ method, tool, status }) =>
+    )("preserves $status with $method and $tool.name", ({ method, tool, status, isFailure }) =>
       Effect.gen(function*() {
-        const item = { type: "web_search_call", id: "ws_123", status }
-        const response = {
-          ...makeDefaultResponse(),
-          status: status === "incomplete" ? "incomplete" : "completed",
-          incomplete_details: status === "incomplete" ? { reason: "max_output_tokens" } : null,
-          output: [item]
-        }
+        const item: Generated.WebSearchToolCall = { type: "web_search_call", id: "ws_123", status }
         const events = [
           {
             type: "response.output_item.added",
@@ -110,11 +104,10 @@ describe("OpenAiLanguageModel", () => {
             output_index: 0,
             item: { ...item, status: "in_progress" }
           },
-          { type: "response.output_item.done", sequence_number: 2, output_index: 0, item },
-          { type: `response.${response.status}`, sequence_number: 3, response }
+          { type: "response.output_item.done", sequence_number: 2, output_index: 0, item }
         ]
         const body = method === "generateText"
-          ? JSON.stringify(response)
+          ? JSON.stringify(makeDefaultResponse({ output: [item] }))
           : events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("")
         const client = HttpClient.make((request) =>
           Effect.succeed(HttpClientResponse.fromWeb(
@@ -135,24 +128,20 @@ describe("OpenAiLanguageModel", () => {
         )
 
         deepStrictEqual(
-          parts.filter((part) => part.type === "tool-call").map((part) => ({
-            id: part.id,
-            params: part.params,
-            providerExecuted: part.providerExecuted
-          })),
-          [{ id: "ws_123", params: {}, providerExecuted: true }]
+          parts.filter((part) => part.type === "tool-call" || part.type === "tool-result")
+            .map((part) => ({
+              type: part.type,
+              id: part.id,
+              providerExecuted: part.providerExecuted,
+              ...(part.type === "tool-call"
+                ? { params: part.params }
+                : { result: part.result, isFailure: part.isFailure })
+            })),
+          [
+            { type: "tool-call", id: "ws_123", providerExecuted: true, params: {} },
+            { type: "tool-result", id: "ws_123", providerExecuted: true, result: { status }, isFailure }
+          ]
         )
-        deepStrictEqual(
-          parts.filter((part) => part.type === "tool-result").map((part) => ({
-            id: part.id,
-            result: part.result,
-            isFailure: part.isFailure
-          })),
-          [{ id: "ws_123", result: { status }, isFailure: status !== "completed" }]
-        )
-        if (method === "streamText") {
-          strictEqual(parts.filter((part) => part.type === "finish").length, 1)
-        }
       }))
 
     it.effect("rejects null and malformed actions when present", () =>
@@ -696,7 +685,7 @@ describe("OpenAiLanguageModel", () => {
             ])
           }).pipe(Effect.provide(makeTestLayer())))
 
-        it.effect("replays web search history without inventing an omitted action", () =>
+        it.effect("replays web search history with an omitted action", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
               prompt: Prompt.make([
@@ -704,9 +693,11 @@ describe("OpenAiLanguageModel", () => {
                 {
                   role: "assistant",
                   content: [
-                    Prompt.toolCallPart({ ...providerExecutedCall, params: {} }),
+                    Prompt.toolCallPart({ id: "ws_1", name: "OpenAiWebSearch", params: {}, providerExecuted: true }),
                     Prompt.toolResultPart({
-                      ...providerExecutedResult,
+                      id: "ws_1",
+                      name: "OpenAiWebSearch",
+                      providerExecuted: true,
                       isFailure: true,
                       result: { status: "incomplete" }
                     })

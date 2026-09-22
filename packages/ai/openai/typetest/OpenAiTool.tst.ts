@@ -25,7 +25,6 @@ describe("OpenAiTool", () => {
     }
 
     expect<Tool.Failure<typeof webSearch>>().type.toBe<Failure>()
-    expect<Tool.Success<typeof webSearch>["status"]>().type.toBe<"completed">()
     expect<Tool.Parameters<typeof webSearch>>().type.toBe<Pick<Failure, "action">>()
     expect<Tool.Success<typeof webSearch>>().type.toBe<Pick<Failure, "action"> & { readonly status: "completed" }>()
   })
