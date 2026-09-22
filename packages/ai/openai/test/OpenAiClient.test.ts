@@ -557,6 +557,60 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result._tag, "Some")
       }))
 
+    it.live("replaces the WebSocket after a non-retryable error event", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://socket-errors.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+        let connections = 0
+
+        yield* OpenAiClient.withWebSocketMode(
+          Effect.gen(function*() {
+            const client = yield* OpenAiClient.OpenAiClient
+            const [, failedStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "first" })
+            yield* Effect.all([
+              Stream.runDrain(failedStream).pipe(Effect.flip),
+              nextWebSocketCreate(server).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() =>
+                    server.send({
+                      type: "error",
+                      status: 500,
+                      error: {
+                        code: "server_error",
+                        message: "Internal server error"
+                      }
+                    })
+                  )
+                )
+              )
+            ], { concurrency: "unbounded" })
+
+            const [, nextStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "second" })
+            yield* Effect.all([
+              Stream.runDrain(nextStream),
+              nextWebSocketCreate(server).pipe(
+                Effect.tap(() => Effect.sync(() => sendWebSocketCompleted(server, "resp_2", "msg_2", "ok")))
+              )
+            ], { concurrency: "unbounded" })
+          })
+        ).pipe(
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://socket-errors.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => {
+            connections++
+            return new globalThis.WebSocket(url)
+          }),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http"))),
+          Effect.timeout("5 seconds")
+        )
+
+        assert.strictEqual(connections, 2)
+      }))
+
     it.live("retries previous_response_not_found with the full prompt", () =>
       Effect.gen(function*() {
         const server = yield* Effect.acquireRelease(
