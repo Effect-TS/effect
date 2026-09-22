@@ -1508,9 +1508,20 @@ ContImpl.prototype = OnSuccessProto
 const returnPayload = function(this: { readonly payload: any }) {
   return this.payload
 }
+// V8 includes the property name of a stored continuation in its stack trace.
+// Other engines need an explicit frame for the stack cleaner to cut at.
+const continuationMarksStack = (() => {
+  const marker = "~effect/Effect/stackProbe"
+  const probe = {
+    [marker]: function stackProbe() {
+      return new Error().stack
+    }
+  }
+  return probe[marker]()?.includes("[as " + marker + "]") === true
+})()
 const mapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return succeed(f(value))
+  return succeed(continuationMarksStack ? f(value) : internalCall(() => f(value)))
 }
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
@@ -3610,8 +3621,14 @@ export const matchCause: {
     }
   ): Effect.Effect<A2 | A3, never, R> =>
     matchCauseEffect(self, {
-      onFailure: (cause) => succeed(options.onFailure(cause)),
-      onSuccess: (value) => succeed(options.onSuccess(value))
+      onFailure: (cause) =>
+        continuationMarksStack
+          ? succeed(options.onFailure(cause))
+          : sync(() => options.onFailure(cause)),
+      onSuccess: (value) =>
+        continuationMarksStack
+          ? succeed(options.onSuccess(value))
+          : sync(() => options.onSuccess(value))
     })
 )
 
@@ -3675,9 +3692,16 @@ export const match: {
     matchCauseEffect(self, {
       onFailure: (cause) => {
         const fail = cause.reasons.find(isFailReason)
-        return fail ? succeed(options.onFailure(fail.error)) : failCause(cause as Cause.Cause<never>)
+        return fail
+          ? continuationMarksStack
+            ? succeed(options.onFailure(fail.error))
+            : sync(() => options.onFailure(fail.error))
+          : failCause(cause as Cause.Cause<never>)
       },
-      onSuccess: (value) => succeed(options.onSuccess(value))
+      onSuccess: (value) =>
+        continuationMarksStack
+          ? succeed(options.onSuccess(value))
+          : sync(() => options.onSuccess(value))
     })
 )
 
