@@ -207,47 +207,46 @@ function compareObjects(self: object, that: object): boolean {
   for (let i = depth; i-- > 0;) {
     if (pathLeft[i] === self && pathRight[i] === that) return true
   }
-  let known = depth ? undefined : results.get(self)
-  let result = known?.get(that)
-  if (result !== undefined) return result
-  if (Hash.hash(self) !== Hash.hash(that)) {
-    result = false
-  } else if (self instanceof Date) {
-    if (!(that instanceof Date)) return false
-    const selfTime = self.getTime()
-    const thatTime = that.getTime()
-    result = selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
-  } else if (self instanceof RegExp) {
-    if (!(that instanceof RegExp)) return false
-    result = self.toString() === that.toString()
-  } else {
-    const bothEquals = isEqual(self)
-    if (bothEquals !== isEqual(that) || (typeof self === "function" && !bothEquals)) {
-      return false
-    }
-    pathLeft.push(self)
-    pathRight.push(that)
-    try {
-      result = compareStructure(self, that, bothEquals)
-    } finally {
-      pathLeft.pop()
-      pathRight.pop()
-    }
-  }
+  if (depth) return compareOnPath(self, that)
   // Only outermost results are independent of path assumptions.
-  if (!depth) {
-    if (!known) results.set(self, known = new WeakMap())
-    known.set(that, result)
-  }
+  let known = results.get(self)
+  if (!known) results.set(self, known = new WeakMap())
+  let result = known.get(that)
+  if (result === undefined) known.set(that, result = compareOnPath(self, that))
   return result
 }
 
+function compareOnPath(self: object, that: object): boolean {
+  pathLeft.push(self)
+  pathRight.push(that)
+  try {
+    return compareStructure(self, that)
+  } finally {
+    pathLeft.pop()
+    pathRight.pop()
+  }
+}
+
+// The pairs on the current comparison's path (the coinductive assumptions).
 const pathLeft: Array<object> = []
 const pathRight: Array<object> = []
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
-function compareStructure(self: object, that: object, bothEquals: boolean): boolean {
-  if (bothEquals) {
+function compareStructure(self: object, that: object): boolean {
+  if (Hash.hash(self) !== Hash.hash(that)) {
+    return false
+  } else if (self instanceof Date) {
+    if (!(that instanceof Date)) return false
+    const selfTime = self.getTime()
+    const thatTime = that.getTime()
+    return selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
+  } else if (self instanceof RegExp) {
+    return that instanceof RegExp && self.toString() === that.toString()
+  }
+  const bothEquals = isEqual(self)
+  if (bothEquals !== isEqual(that) || (typeof self === "function" && !bothEquals)) {
+    return false
+  } else if (bothEquals) {
     return (self as Equal)[symbol](that as Equal)
   } else if (Array.isArray(self)) {
     if (!Array.isArray(that) || self.length !== that.length) {
@@ -362,12 +361,9 @@ const sameGroup = (): number => 0
 
 /** @internal */
 export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquivalence: Equivalence<V>) {
-  const compareEntries = makeCompareSet<readonly [K, V]>((self, that) =>
+  return makeCompareSet<readonly [K, V]>((self, that) =>
     keyEquivalence(self[0], that[0]) && valueEquivalence(self[1], that[1])
   )
-  return function compareMaps(self: Iterable<[K, V]>, that: Iterable<[K, V]>): boolean {
-    return compareEntries(self, that)
-  }
 }
 
 /** @internal */

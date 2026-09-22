@@ -29,13 +29,15 @@ const trieVariance = {
   _Value: (_: never) => _
 }
 
+const trieSeed = Hash.string(TrieTypeId)
+
 const TrieProto: TR.Trie<unknown> = {
   [TrieTypeId]: trieVariance,
   [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[string, V]> {
     return new TrieIterator(this, (k, v) => [k, v], () => true)
   },
   [Hash.symbol](this: TR.Trie<unknown>): number {
-    let hash = Hash.string(TrieTypeId)
+    let hash = trieSeed
     for (const item of this) {
       hash ^= Hash.combine(Hash.hash(item[0]), Hash.hash(item[1]))
     }

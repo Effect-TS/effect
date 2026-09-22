@@ -23,10 +23,11 @@ export interface HashSet<out V> extends Iterable<V>, Equal.Equal, Pipeable, Insp
   readonly [HashSetTypeId]: HashSetTypeId
 }
 
+const hashSetSeed = Hash.string(HashSetTypeId)
+
 const HashSetProto: Omit<HashSet<unknown>, HashSetTypeId> = {
   [Hash.symbol]<V>(this: HashSet<V>): number {
-    // Every backing-map value is `true`, leaving only each element hash.
-    return Hash.optimize(Hash.string(HashSetTypeId) ^ HashMap.entriesHash(keyMap(this)))
+    return Hash.optimize(Hash.combine(hashSetSeed, Hash.hash(keyMap(this))))
   },
   [Equal.symbol]<V>(this: HashSet<V>, that: unknown): boolean {
     return isHashSet(that) && size(this) === size(that) && every(this, (value) => has(that, value))

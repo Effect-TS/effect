@@ -863,10 +863,7 @@ class EdgeIdentity<NI, EI> implements Equal.Equal {
     if (this.type === "directed") {
       return Hash.optimize(Hash.combine(Hash.combine(hash, Hash.hash(this.source)), Hash.hash(this.target)))
     }
-    // Addition is commutative and does not cancel self-loops.
-    return Hash.optimize(
-      Hash.combine(hash, Hash.combine(0, Hash.hash(this.source)) + Hash.combine(0, Hash.hash(this.target)))
-    )
+    return Hash.optimize(Hash.combine(hash, internal.endpointsHash(this.source, this.target)))
   }
 }
 

@@ -69,9 +69,15 @@ const edgeHash = (type: Graph.Kind, edge: Graph.Edge<any>): number =>
     ? Hash.hash(edge)
     : Hash.optimize(Hash.combine(Hash.hash(edge.data), endpointsHash(edge.source, edge.target)))
 
-// Addition is commutative and does not cancel self-loops.
-const endpointsHash = (source: number, target: number): number =>
+/**
+ * Addition is commutative and does not cancel self-loops.
+ *
+ * @internal
+ */
+export const endpointsHash = (source: unknown, target: unknown): number =>
   Hash.combine(0, Hash.hash(source)) + Hash.combine(0, Hash.hash(target))
+
+const graphSeed = Hash.string("Graph")
 
 const ProtoGraph = {
   [TypeId]: {
@@ -110,7 +116,7 @@ const ProtoGraph = {
     return false
   },
   [Hash.symbol](this: GraphImpl<any, any, any>): number {
-    let hash = Hash.string("Graph")
+    let hash = graphSeed
     hash = hash ^ Hash.string(this.type)
     hash = hash ^ Hash.number(this.nodes.size)
     hash = hash ^ Hash.number(this.edges.size)

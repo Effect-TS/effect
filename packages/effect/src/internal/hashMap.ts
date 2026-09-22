@@ -4,7 +4,7 @@
 
 import * as Equal_ from "../Equal.ts"
 import { format } from "../Formatter.ts"
-import { dual, pipe } from "../Function.ts"
+import { dual, identity, pipe } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import type { Inspectable } from "../Inspectable.ts"
 import { NodeInspectSymbol, toJson } from "../Inspectable.ts"
@@ -90,6 +90,19 @@ function mergeLeaves<K, V>(
     : [node2, node1]
 
   return new IndexedNode(edit, bitmap, children)
+}
+
+const hashMapSeed = Hash.string("HashMap")
+
+const entryHash = (key: unknown, value: unknown): number => Hash.combine(Hash.hash(key), Hash.hash(value))
+
+const childrenHash = <K, V>(children: ReadonlyArray<Node<K, V> | undefined>): number => {
+  let h = 0
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (child) h ^= child.subtreeHash()
+  }
+  return h
 }
 
 /** @internal */
@@ -286,7 +299,7 @@ class LeafNode<K, V> extends Node<K, V> {
 
   computeHash(): number {
     // `setHash` allows the stored hash to differ from `Hash.hash(key)`.
-    return Hash.combine(Hash.hash(this.key), Hash.hash(this.value))
+    return entryHash(this.key, this.value)
   }
 }
 
@@ -427,7 +440,7 @@ class CollisionNode<K, V> extends Node<K, V> {
     let h = 0
     const entries = this.entries
     for (let i = 0; i < entries.length; i++) {
-      h ^= Hash.combine(Hash.hash(entries[i][0]), Hash.hash(entries[i][1]))
+      h ^= entryHash(entries[i][0], entries[i][1])
     }
     return h
   }
@@ -606,12 +619,7 @@ class IndexedNode<K, V> extends Node<K, V> {
   }
 
   computeHash(): number {
-    let h = 0
-    const children = this.children
-    for (let i = 0; i < children.length; i++) {
-      h ^= children[i].subtreeHash()
-    }
-    return h
+    return childrenHash(this.children)
   }
 }
 
@@ -764,18 +772,12 @@ class ArrayNode<K, V> extends Node<K, V> {
   }
 
   computeHash(): number {
-    let h = 0
-    const children = this.children
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i]
-      if (child) h ^= child.subtreeHash()
-    }
-    return h
+    return childrenHash(this.children)
   }
 }
 
 class HashMapIterator<K, V, A> implements IterableIterator<A> {
-  readonly stack: Array<Node<K, V> | undefined>
+  readonly stack: Array<Node<K, V>>
   readonly project: (key: K, value: V) => A
   entries: Array<[K, V]> = []
   index = 0
@@ -794,8 +796,8 @@ class HashMapIterator<K, V, A> implements IterableIterator<A> {
       if (this.stack.length === 0) {
         return { done: true, value: undefined }
       }
-      const node = this.stack.pop()
-      switch (node?._tag) {
+      const node = this.stack.pop()!
+      switch (node._tag) {
         case "LeafNode": {
           const leaf = node as LeafNode<K, V>
           return { done: false, value: this.project(leaf.key, leaf.value) }
@@ -823,8 +825,7 @@ class HashMapIterator<K, V, A> implements IterableIterator<A> {
 }
 
 const toEntry = <K, V>(key: K, value: V): [K, V] => [key, value]
-const toKey = <K, V>(key: K, _: V): K => key
-const toValue = <K, V>(_: K, value: V): V => value
+const toValue = <V>(_: unknown, value: V): V => value
 
 /** @internal */
 class HashMapImpl<K, V> implements HashMap<K, V> {
@@ -873,7 +874,7 @@ class HashMapImpl<K, V> implements HashMap<K, V> {
   }
 
   [Hash.symbol](): number {
-    return Hash.optimize(Hash.string("HashMap") ^ this._root.subtreeHash())
+    return Hash.optimize(hashMapSeed ^ this._root.subtreeHash())
   }
 
   [NodeInspectSymbol](): unknown {
@@ -1033,7 +1034,7 @@ export const set = dual<
 
 /** @internal */
 export const keys = <K, V>(self: HashMap<K, V>): IterableIterator<K> =>
-  new HashMapIterator((self as HashMapImpl<K, V>)._root, toKey)
+  new HashMapIterator((self as HashMapImpl<K, V>)._root, identity)
 
 /** @internal */
 export const values = <K, V>(self: HashMap<K, V>): IterableIterator<V> =>
@@ -1042,9 +1043,6 @@ export const values = <K, V>(self: HashMap<K, V>): IterableIterator<V> =>
 /** @internal */
 export const entries = <K, V>(self: HashMap<K, V>): IterableIterator<[K, V]> =>
   (self as HashMapImpl<K, V>)[Symbol.iterator]()
-
-/** @internal */
-export const entriesHash = <K, V>(self: HashMap<K, V>): number => (self as HashMapImpl<K, V>)._root.subtreeHash()
 
 /** @internal */
 export const size = <K, V>(self: HashMap<K, V>): number => (self as HashMapImpl<K, V>).size
