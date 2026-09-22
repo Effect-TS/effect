@@ -213,6 +213,35 @@ describe("Hash", () => {
         }
       }
     })
+
+    it("invalidates CollisionNode hashes after in-place edits", () => {
+      const key = (id: number) => ({
+        id,
+        [Hash.symbol](): number {
+          return 0
+        }
+      })
+      const first = key(1)
+      const second = key(2)
+      const third = key(3)
+
+      HashMap.mutate(HashMap.empty<typeof first, number>(), (mutable) => {
+        HashMap.set(mutable, first, 1)
+        HashMap.set(mutable, second, 2)
+        mutable[Hash.symbol]()
+
+        HashMap.set(mutable, third, 3)
+        assert.strictEqual(mutable[Hash.symbol](), Hash.hash(HashMap.fromIterable(mutable)))
+
+        mutable[Hash.symbol]()
+        HashMap.set(mutable, second, 20)
+        assert.strictEqual(mutable[Hash.symbol](), Hash.hash(HashMap.fromIterable(mutable)))
+
+        mutable[Hash.symbol]()
+        HashMap.remove(mutable, first)
+        assert.strictEqual(mutable[Hash.symbol](), Hash.hash(HashMap.fromIterable(mutable)))
+      })
+    })
   })
 
   describe("cyclic values", () => {
