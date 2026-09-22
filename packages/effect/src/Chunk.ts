@@ -376,13 +376,7 @@ const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): voi
       break
     }
     case "ISlice": {
-      let i = 0
-      let j = initial
-      while (i < self.length) {
-        array[j] = getUnsafe(self, i)
-        i += 1
-        j += 1
-      }
+      copy(toReadonlyArray(self.backing.chunk), self.backing.offset, array, initial, self.length)
       break
     }
   }
