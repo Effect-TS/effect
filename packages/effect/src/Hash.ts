@@ -197,7 +197,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
  */
 export const random: <A extends object>(self: A) => number = (self) => {
   if (!randomHashCache.has(self)) {
-    randomHashCache.set(self, number(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
+    randomHashCache.set(self, optimize((Math.random() * 0x100000000) | 0))
   }
   return randomHashCache.get(self)!
 }
