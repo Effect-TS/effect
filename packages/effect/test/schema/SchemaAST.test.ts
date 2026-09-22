@@ -497,6 +497,63 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
     })
 
+    it("should reuse the candidates of a runtime type without literals", () => {
+      const schema = Schema.NullOr(Schema.Struct({ a: Schema.Number }))
+      const ast = schema.ast
+      const candidates = SchemaAST.getCandidates({ a: 1 }, ast.types)
+      deepStrictEqual(candidates, [ast.types[0]])
+      strictEqual(SchemaAST.getCandidates({ b: 2 }, ast.types), candidates)
+      Reflect.set(candidates, candidates.length, ast.types[1])
+      deepStrictEqual(SchemaAST.getCandidates({ a: 1 }, ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates(null, ast.types), [ast.types[1]])
+    })
+
+    it("should match literal candidates against the input of every runtime type that has them", () => {
+      const schema = Schema.Union([
+        Schema.Literal("a"),
+        Schema.String,
+        Schema.Literal(1),
+        Schema.Number,
+        Schema.Literal("b"),
+        Schema.Boolean
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [ast.types[0], ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates("b", ast.types), [ast.types[1], ast.types[4]])
+      deepStrictEqual(SchemaAST.getCandidates("c", ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [ast.types[2], ast.types[3]])
+      deepStrictEqual(SchemaAST.getCandidates(2, ast.types), [ast.types[3]])
+      deepStrictEqual(SchemaAST.getCandidates(true, ast.types), [ast.types[5]])
+    })
+
+    it("should match literal candidates that follow non-literal members", () => {
+      const schema = Schema.Union([Schema.Number, Schema.String, Schema.Literal("a")])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [ast.types[1], ast.types[2]])
+      deepStrictEqual(SchemaAST.getCandidates("b", ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [ast.types[0]])
+    })
+
+    it("should reuse the non-discriminated candidates of a union with discriminated members", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.tag("a"), a: Schema.String }),
+        Schema.Struct({ b: Schema.Number }),
+        Schema.String,
+        Schema.Literal(1)
+      ])
+      const ast = schema.ast
+      const strings = SchemaAST.getCandidates("x", ast.types)
+      deepStrictEqual(strings, [ast.types[2]])
+      strictEqual(SchemaAST.getCandidates("y", ast.types), strings)
+      deepStrictEqual(SchemaAST.getCandidates(2, ast.types), [ast.types[3]])
+      const objects = SchemaAST.getCandidates({ _tag: "c" }, ast.types)
+      deepStrictEqual(objects, [ast.types[1]])
+      strictEqual(SchemaAST.getCandidates({ _tag: "d" }, ast.types), objects)
+      Reflect.set(objects, objects.length, ast.types[0])
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: "c" }, ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: "a" }, ast.types), [ast.types[0], ast.types[1]])
+    })
+
     it("should handle candidates with different sentinel keys", () => {
       const schema = Schema.Union([
         Schema.Struct({
