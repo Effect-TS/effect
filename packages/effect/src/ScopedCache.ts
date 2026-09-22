@@ -277,8 +277,9 @@ export const get: {
         fiber,
         state.map,
         key,
-        checkCapacity(fiber, state.map, self.capacity).pipe(
-          Option.isSome(oentry) ? effect.flatMap(() => Scope.close(oentry.value.scope, effect.exitVoid)) : identity
+        andThen(
+          checkCapacity(fiber, state.map, self.capacity),
+          Option.isSome(oentry) ? Scope.close(oentry.value.scope, effect.exitVoid) : undefined
         ),
         (exit) => {
           if (effect.exitHasInterrupts(exit)) {
@@ -322,27 +323,28 @@ const startEntry = <K, A, E, R>(
   fiber: FiberImpl<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>> | undefined,
   key: K,
-  before: Effect.Effect<void>,
+  before: Effect.Effect<void> | undefined,
   onDone: (exit: Exit.Exit<A, E>) => Effect.Effect<void> | undefined,
   lookup: () => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E> => {
   const restore = enterMask(fiber)
+  const start = () => {
+    entry.fiber = effect.forkUnsafe(
+      fiber,
+      effect.onExitPrimitive(
+        effect.onExitPrimitive(Scope.provide(effect.suspend(lookup), entry.scope), onDone),
+        (exit) => {
+          Deferred.doneUnsafe(entry.deferred, exit)
+          return undefined
+        }
+      ),
+      true,
+      true
+    )
+    return entry.deferred.effect ?? restore(Deferred.await(entry.deferred))
+  }
   return effect.onExitPrimitive(
-    effect.flatMap(before, () => {
-      entry.fiber = effect.forkUnsafe(
-        fiber,
-        effect.onExitPrimitive(
-          effect.onExitPrimitive(Scope.provide(effect.suspend(lookup), entry.scope), onDone),
-          (exit) => {
-            Deferred.doneUnsafe(entry.deferred, exit)
-            return undefined
-          }
-        ),
-        true,
-        true
-      )
-      return entry.deferred.effect ?? restore(Deferred.await(entry.deferred))
-    }),
+    before === undefined ? start() : effect.flatMap(before, start),
     release(entry, fiber, map, key)
   )
 }
@@ -419,14 +421,21 @@ const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknow
   return fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() >= entry.expiresAt
 }
 
+// Sequences two optional steps; `undefined` is the step that does nothing.
+const andThen = (
+  first: Effect.Effect<void> | undefined,
+  second: Effect.Effect<void> | undefined
+): Effect.Effect<void> | undefined =>
+  first === undefined ? second : second === undefined ? first : effect.flatMap(first, () => second)
+
 const checkCapacity = <K, A, E>(
   parent: Fiber.Fiber<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>>,
   capacity: number
-): Effect.Effect<void> => {
-  if (!Number.isFinite(capacity)) return effect.void
+): Effect.Effect<void> | undefined => {
+  if (!Number.isFinite(capacity)) return undefined
   let diff = MutableHashMap.size(map) - capacity
-  if (diff <= 0) return effect.void
+  if (diff <= 0) return undefined
   // MutableHashMap has insertion order, so we can remove the oldest entries
   const fibers = Arr.empty<Fiber.Fiber<unknown, unknown>>()
   for (const [key, entry] of map) {
@@ -588,10 +597,10 @@ export const set: {
             ? fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
             : undefined
         })
-        const check = checkCapacity(fiber, state.map, self.capacity)
-        return Option.isSome(oentry)
-          ? effect.flatMap(Scope.close(oentry.value.scope, effect.exitVoid), () => check)
-          : check
+        return andThen(
+          Option.isSome(oentry) ? Scope.close(oentry.value.scope, effect.exitVoid) : undefined,
+          checkCapacity(fiber, state.map, self.capacity)
+        ) ?? effect.void
       })
     )
 )
@@ -760,7 +769,7 @@ export const refresh: {
         fiber,
         newEntry ? map : undefined,
         key,
-        newEntry ? checkCapacity(fiber, map, self.capacity) : effect.void,
+        newEntry ? checkCapacity(fiber, map, self.capacity) : undefined,
         (exit) => {
           if (effect.exitHasInterrupts(exit)) {
             if (newEntry) removeIfCurrent(self, key, entry)
@@ -776,10 +785,10 @@ export const refresh: {
           if (newEntry) return undefined
           const oentry = MutableHashMap.get(self.state.map, key)
           MutableHashMap.set(self.state.map, key, entry)
-          const check = checkCapacity(fiber, self.state.map, self.capacity)
-          return Option.isSome(oentry)
-            ? effect.flatMap(check, () => Scope.close(oentry.value.scope, effect.exitVoid))
-            : check
+          return andThen(
+            checkCapacity(fiber, self.state.map, self.capacity),
+            Option.isSome(oentry) ? Scope.close(oentry.value.scope, effect.exitVoid) : undefined
+          )
         },
         () => self.lookup(key)
       )
