@@ -20,6 +20,7 @@ import {
   References,
   Result,
   Schedule,
+  Scheduler,
   Scope,
   TxRef
 } from "effect"
@@ -52,6 +53,159 @@ const assertUnknownError = <A>(exit: Exit.Exit<A, Cause.UnknownError>, cause: un
 }
 
 describe("Effect", () => {
+  describe("interruption before cleanup registration", () => {
+    const interruptAfterContextChange = (changed: (context: Context.Context<never>) => boolean) => {
+      let yielded = false
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield(fiber) {
+          if (!yielded && changed(fiber.context)) {
+            yielded = true
+            return true
+          }
+          return false
+        }
+      }
+      return { scheduler, tasks, wasYielded: () => yielded }
+    }
+
+    it.effect("scoped closes its scope when interrupted after installing it", () =>
+      Effect.gen(function*() {
+        let finalized = 0
+        let original: Context.Context<never> | undefined
+        let observed: Context.Context<never> | undefined
+        let innerScope: Scope.Scope | undefined
+        const { scheduler, tasks, wasYielded } = interruptAfterContextChange((context) => {
+          const scope = Context.getOrUndefined(context, Scope.Scope)
+          if (original === undefined || scope === Context.getOrUndefined(original, Scope.Scope)) return false
+          innerScope = scope
+          return true
+        })
+        const child = yield* Effect.gen(function*() {
+          original = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+          yield* Effect.scoped(Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized++
+            })
+          ))
+        }).pipe(
+          Effect.onExit(() =>
+            Effect.withFiber((fiber) =>
+              Effect.sync(() => {
+                observed = fiber.context
+              })
+            )
+          ),
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.isTrue(wasYielded())
+        child.interruptUnsafe()
+        while (tasks.length > 0) tasks.shift()!()
+        yield* Fiber.await(child)
+        assert.isDefined(innerScope)
+        yield* Scope.addFinalizer(
+          innerScope!,
+          Effect.sync(() => {
+            finalized++
+          })
+        )
+        assert.strictEqual(finalized, 1)
+        assert.strictEqual(observed, original)
+      }))
+
+    it.effect("provideService restores the original context if interrupted before its body", () =>
+      Effect.gen(function*() {
+        class Value extends Context.Service<Value, number>()("InterruptedValue") {}
+        let original: Context.Context<never> | undefined
+        let observed: Context.Context<never> | undefined
+        const { scheduler, tasks, wasYielded } = interruptAfterContextChange((context) =>
+          original !== undefined && Context.getOrUndefined(context, Value) === 2
+        )
+        const child = yield* Effect.gen(function*() {
+          original = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+          yield* Effect.provideService(Effect.void, Value, 2)
+        }).pipe(
+          Effect.onExit(() =>
+            Effect.withFiber((fiber) =>
+              Effect.sync(() => {
+                observed = fiber.context
+              })
+            )
+          ),
+          Effect.provideService(Value, 1),
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.isTrue(wasYielded())
+        child.interruptUnsafe()
+        while (tasks.length > 0) tasks.shift()!()
+        yield* Fiber.await(child)
+        assert.strictEqual(observed, original)
+      }))
+
+    for (const cacheKind of ["cached", "cachedInvalidateWithTTL"] as const) {
+      it.effect(
+        cacheKind + " never strands a second caller when the owner yields before registering cleanup",
+        () =>
+          Effect.gen(function*() {
+            let interruptedBeforeSource = 0
+            // Sweep each scheduler boundary after entering the cache. A fixed
+            // step count can stop exercising the gap when the runtime adds an op.
+            for (let target = 1; target <= 32; target++) {
+              let armed = false
+              let seen = 0
+              let computed = 0
+              const tasks: Array<() => void> = []
+              const scheduler: Scheduler.Scheduler = {
+                executionMode: "async",
+                makeDispatcher: () => ({
+                  scheduleTask: (task) => {
+                    tasks.push(task)
+                  },
+                  flush() {}
+                }),
+                shouldYield() {
+                  return armed && ++seen === target
+                }
+              }
+              const source = Effect.sync(() => ++computed)
+              const cached = cacheKind === "cached"
+                ? yield* Effect.cached(source)
+                : (yield* Effect.cachedInvalidateWithTTL(source, "1 minute"))[0]
+              const owner = yield* Effect.gen(function*() {
+                yield* Effect.sync(() => {
+                  armed = true
+                })
+                yield* cached
+              }).pipe(
+                Effect.provideService(Scheduler.Scheduler, scheduler),
+                Effect.forkChild({ startImmediately: true })
+              )
+              if (tasks.length === 0) continue // No boundary left before the source completed.
+              owner.interruptUnsafe()
+              while (tasks.length > 0) tasks.shift()!()
+              yield* Fiber.await(owner)
+              if (computed !== 0) continue
+              interruptedBeforeSource++
+              const waiter = yield* Effect.forkChild(cached, { startImmediately: true })
+              yield* Effect.yieldNow
+              const settled = waiter.pollUnsafe()
+              if (settled === undefined) waiter.interruptUnsafe()
+              assert.isDefined(settled, "cache waiter stuck after owner interruption at boundary " + target)
+            }
+            assert.isAbove(interruptedBeforeSource, 0, "the sweep never interrupted before the source")
+          })
+      )
+    }
+  })
   it("isEffect", () => {
     assert.isTrue(Effect.isEffect(Effect.succeed(0)))
     assert.isFalse(Effect.isEffect([0]))

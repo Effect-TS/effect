@@ -4076,10 +4076,11 @@ export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, 
     const prev = fiber.context
     const scope = scopeMakeUnsafe()
     fiber.setContext(Context.add(fiber.context, scopeTag, scope))
-    return onExitPrimitive(self, (exit) => {
+    onExitUnsafe<A, E>(fiber, (exit) => {
       fiber.setContext(prev)
       return scopeCloseUnsafe(scope, exit)
     })
+    return self
   }) as any
 
 /** @internal */
@@ -4419,7 +4420,7 @@ export const cachedInvalidateWithTTL: {
         running = true
         latch.closeUnsafe()
         exit = undefined
-        return onExit(self, (exit_) =>
+        onExitUnsafe<A, E>(fiber, (exit_) =>
           sync(() => {
             try {
               const duration = ttlMillis(exit_)
@@ -4435,6 +4436,7 @@ export const cachedInvalidateWithTTL: {
               latch.openUnsafe()
             }
           }))
+        return self
       }),
       sync(() => {
         expiresAt = 0
@@ -4474,15 +4476,16 @@ export const cached = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Eff
     let started = false
     let exit: Exit.Exit<A, E> | undefined
     const wait = flatMap(latch.await, () => exit!)
-    return suspend(() => {
+    return withFiber((fiber) => {
       if (exit !== undefined) return exit
       if (started) return wait
       started = true
-      return onExit(self, (result) =>
+      onExitUnsafe<A, E>(fiber, (result) =>
         sync(() => {
           exit = result
           latch.openUnsafe()
         }))
+      return self
     })
   })
 

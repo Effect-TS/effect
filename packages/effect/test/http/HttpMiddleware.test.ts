@@ -11,6 +11,7 @@ import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
+import * as Scheduler from "effect/Scheduler"
 import * as Tracer from "effect/Tracer"
 
 describe("HttpMiddleware", () => {
@@ -163,6 +164,63 @@ describe("HttpMiddleware", () => {
   })
 
   describe("tracer", () => {
+    it.effect("restores ParentSpan and ends the span if interrupted before handler registration", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+        let span: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            span = new Tracer.NativeSpan(options)
+            return span
+          }
+        })
+        const tasks: Array<() => void> = []
+        let yielded = false
+        let original: Context.Context<never> | undefined
+        let observed: Context.Context<never> | undefined
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield(fiber) {
+            if (
+              !yielded && original !== undefined && span !== undefined &&
+              Context.getOrUndefined(fiber.context, Tracer.ParentSpan) === span
+            ) {
+              yielded = true
+              return true
+            }
+            return false
+          }
+        }
+        const child = yield* Effect.gen(function*() {
+          original = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+          yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty()))
+        }).pipe(
+          Effect.onExit(() =>
+            Effect.withFiber((fiber) =>
+              Effect.sync(() => {
+                observed = fiber.context
+              })
+            )
+          ),
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer),
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.isTrue(yielded)
+        child.interruptUnsafe()
+        while (tasks.length > 0) tasks.shift()!()
+        yield* Fiber.await(child)
+        assert.strictEqual(observed, original)
+        assert.strictEqual(span?.status._tag, "Ended")
+      }))
+
     it.effect("restores the ParentSpan context identity", () => {
       const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
       return Effect.gen(function*() {
