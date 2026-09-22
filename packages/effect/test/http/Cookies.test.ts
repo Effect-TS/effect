@@ -160,9 +160,9 @@ describe("Cookies", () => {
     assertNone(Cookies.get(Cookies.empty, "constructor"))
   })
 
-  it("isCookiesError identifies CookiesError values", () => {
+  it("identifies cookies errors", () => {
     assert.isTrue(Cookies.isCookiesError(Cookies.CookiesError.fromReason("InvalidCookieName")))
-    assert.isFalse(Cookies.isCookiesError(new Error("boom")))
+    assert.isFalse(Cookies.isCookiesError({ _tag: "CookiesError" }))
     assert.isFalse(Cookies.isCookiesError(null))
   })
 })

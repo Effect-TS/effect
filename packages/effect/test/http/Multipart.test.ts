@@ -514,9 +514,9 @@ describe("Multipart", () => {
     })
   })
 
-  it("isMultipartError identifies MultipartError values", () => {
+  it("identifies multipart errors", () => {
     strictEqual(Multipart.isMultipartError(Multipart.MultipartError.fromReason("Parse")), true)
-    strictEqual(Multipart.isMultipartError(new Error("boom")), false)
+    strictEqual(Multipart.isMultipartError({ _tag: "MultipartError" }), false)
     strictEqual(Multipart.isMultipartError(null), false)
   })
 })
