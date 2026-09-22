@@ -2875,9 +2875,35 @@ export const concat: {
   <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2> =>
-    flatten(fromArray<Stream<A | A2, E | E2, R | R2>>([self, that]))
+  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2> => {
+    const parts: Concat<A | A2, E | E2, R | R2>[typeof ConcatTypeId] = [self, that]
+    // concatenation is associative: run the leaves of a concat tree as one
+    // flat sequence instead of one nested flatten per concat
+    let flat: Stream<A | A2, E | E2, R | R2> | undefined
+    const stream = isConcat(self) || isConcat(that)
+      ? suspend(() => flat ??= flatten(fromArray(concatLeaves(parts))))
+      : flatten(fromArray(parts))
+    return Object.assign(stream, { [ConcatTypeId]: parts })
+  }
 )
+
+const ConcatTypeId = "~effect/Stream/Concat"
+
+interface Concat<A, E, R> extends Stream<A, E, R> {
+  readonly [ConcatTypeId]: readonly [Stream<A, E, R>, Stream<A, E, R>]
+}
+
+const isConcat = <A, E, R>(self: Stream<A, E, R>): self is Concat<A, E, R> => ConcatTypeId in self
+
+const concatLeaves = <A, E, R>(parts: Concat<A, E, R>[typeof ConcatTypeId]): Array<Stream<A, E, R>> => {
+  const leaves: Array<Stream<A, E, R>> = []
+  const stack: Array<Stream<A, E, R>> = [parts[1], parts[0]]
+  for (let stream = stack.pop(); stream !== undefined; stream = stack.pop()) {
+    if (isConcat(stream)) stack.push(stream[ConcatTypeId][1], stream[ConcatTypeId][0])
+    else leaves.push(stream)
+  }
+  return leaves
+}
 
 /**
  * Prepends the values from the provided iterable before the stream's elements.

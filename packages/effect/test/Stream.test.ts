@@ -1478,6 +1478,94 @@ describe("Stream", () => {
       }))
   })
 
+  describe("concat", () => {
+    const tracked = (log: Array<string>, id: number, fail = false): Stream.Stream<number, string> =>
+      Stream.unwrap(
+        Effect.acquireRelease(
+          Effect.sync(() => log.push(`acquire ${id}`)),
+          (_, exit) => Effect.sync(() => log.push(`release ${id} ${exit._tag}`))
+        ).pipe(Effect.as(fail ? Stream.fail(`error ${id}`) : Stream.make(id)))
+      )
+
+    const expectedLog = (ids: ReadonlyArray<number>) => ids.flatMap((id) => [`acquire ${id}`, `release ${id} Success`])
+
+    const ids = Array.makeBy(1_000, (i) => i)
+
+    it.effect("runs a deep left-nested concatenation in order", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const stream = ids.map((id) => tracked(log, id)).reduce((acc, s) => Stream.concat(acc, s))
+        const result = yield* Stream.runCollect(stream)
+        assert.deepStrictEqual(result, ids)
+        assert.deepStrictEqual(log, expectedLog(ids))
+      }))
+
+    it.effect("runs a deep right-nested concatenation in order", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const stream = ids.map((id) => tracked(log, id)).reduceRight((acc, s) => Stream.concat(s, acc))
+        const result = yield* Stream.runCollect(stream)
+        assert.deepStrictEqual(result, ids)
+        assert.deepStrictEqual(log, expectedLog(ids))
+      }))
+
+    it.effect("runs a balanced concatenation tree in order", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const build = (from: number, to: number): Stream.Stream<number, string> =>
+          to - from === 1
+            ? tracked(log, from)
+            : Stream.concat(build(from, (from + to) >> 1), build((from + to) >> 1, to))
+        const result = yield* Stream.runCollect(build(0, ids.length))
+        assert.deepStrictEqual(result, ids)
+        assert.deepStrictEqual(log, expectedLog(ids))
+      }))
+
+    it.effect("stops a deep concatenation at the first failure", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const stream = ids.map((id) => tracked(log, id, id === 500)).reduce((acc, s) => Stream.concat(acc, s))
+        const exit = yield* Stream.runCollect(stream).pipe(Effect.exit)
+        assertExitFailure(exit, Cause.fail("error 500"))
+        assert.deepStrictEqual(log, [...expectedLog(ids.slice(0, 500)), "acquire 500", "release 500 Failure"])
+      }))
+
+    it.effect("stops a deep concatenation early with take", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const stream = ids.map((id) => tracked(log, id)).reduce((acc, s) => Stream.concat(acc, s))
+        const result = yield* Stream.runCollect(Stream.take(stream, 3))
+        assert.deepStrictEqual(result, [0, 1, 2])
+        assert.deepStrictEqual(log, expectedLog([0, 1, 2]))
+      }))
+
+    it.effect("reruns a concatenation used more than once", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const shared = Stream.concat(tracked(log, 0), tracked(log, 1))
+        const stream = Stream.concat(shared, Stream.concat(shared, tracked(log, 2)))
+        assert.deepStrictEqual(yield* Stream.runCollect(stream), [0, 1, 0, 1, 2])
+        assert.deepStrictEqual(yield* Stream.runCollect(shared), [0, 1])
+        assert.deepStrictEqual(log, expectedLog([0, 1, 0, 1, 2, 0, 1]))
+      }))
+
+    it.effect("keeps a scoped concatenation's resources until it ends", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const resource = (id: number) =>
+          Stream.fromEffect(Effect.acquireRelease(
+            Effect.sync(() => {
+              log.push(`acquire ${id}`)
+              return id
+            }),
+            () => Effect.sync(() => log.push(`release ${id}`))
+          ))
+        const stream = Stream.concat(Stream.scoped(Stream.concat(resource(0), resource(1))), tracked(log, 2))
+        assert.deepStrictEqual(yield* Stream.runCollect(stream), [0, 1, 2])
+        assert.deepStrictEqual(log, ["acquire 0", "acquire 1", "release 1", "release 0", ...expectedLog([2])])
+      }))
+  })
+
   describe("flattening", () => {
     it.effect("flatten supports dropping parens in pipe", () =>
       Effect.gen(function*() {
