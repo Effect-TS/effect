@@ -891,6 +891,20 @@ describe("Chunk", () => {
     assertFalse(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4)))
   })
 
+  it("makeEquivalence is symmetric on a sparse backing array, whose holes read as undefined", () => {
+    const equivalence = Chunk.makeEquivalence(Equivalence.strictEqual<number | undefined>())
+    const holey: Array<number> = new Array(2)
+    holey[1] = 1
+    const sparse = Chunk.fromArrayUnsafe(holey)
+    assertFalse(equivalence(sparse, Chunk.make(5, 1)))
+    assertFalse(equivalence(Chunk.make(5, 1), sparse))
+    assertTrue(equivalence(sparse, Chunk.make(undefined, 1)))
+    assertTrue(equivalence(Chunk.make(undefined, 1), sparse))
+    const tree = Chunk.appendAll(Chunk.of(5), Chunk.of(1))
+    assertFalse(equivalence(sparse, tree))
+    assertFalse(equivalence(tree, sparse))
+  })
+
   it("differenceWith", () => {
     const eq = <E extends { id: number }>(a: E, b: E) => a.id === b.id
     const differenceWith = pipe(eq, Chunk.differenceWith)
