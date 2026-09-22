@@ -574,6 +574,81 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(body.useItemReferences, undefined)
           }).pipe(Effect.provide(makeTestLayer())))
 
+        it.effect("keeps item references for ordinary stored provider-executed history", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: providerExecutedHistoryPrompt,
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [
+              { role: "user", content: [{ type: "input_text", text: "Search" }] },
+              { type: "item_reference", id: "ws_1" },
+              { type: "item_reference", id: "ws_1" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("fails locally when a provider-executed call cannot be replayed inline", () =>
+          Effect.gen(function*() {
+            const error = yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Search" },
+                {
+                  role: "assistant",
+                  content: [providerExecutedCall]
+                },
+                { role: "user", content: "Continue" }
+              ]),
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            }).pipe(
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+                store: true,
+                useItemReferences: false
+              })),
+              Effect.flip
+            )
+
+            strictEqual(error.reason._tag, "InvalidRequestError")
+            if (error.reason._tag === "InvalidRequestError") {
+              assert.include(error.reason.description, "OpenAiWebSearch")
+              assert.include(error.reason.description, "ws_1")
+            }
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("fails locally when an assistant-side tool result cannot be replayed inline", () =>
+          Effect.gen(function*() {
+            const error = yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Search" },
+                {
+                  role: "assistant",
+                  content: [providerExecutedResult]
+                },
+                { role: "user", content: "Continue" }
+              ]),
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            }).pipe(
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
+                store: true,
+                useItemReferences: false
+              })),
+              Effect.flip
+            )
+
+            strictEqual(error.reason._tag, "InvalidRequestError")
+            if (error.reason._tag === "InvalidRequestError") {
+              assert.include(error.reason.description, "OpenAiWebSearch")
+              assert.include(error.reason.description, "ws_1")
+            }
+          }).pipe(Effect.provide(makeTestLayer())))
+
         it.effect("converts tool call parts to function_call", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -2470,6 +2545,34 @@ const storedHistoryPrompt = Prompt.make([
       providerExecuted: false
     })]
   },
+  { role: "user", content: "Continue" }
+])
+
+const providerExecutedCall = Prompt.toolCallPart({
+  id: "ws_1",
+  name: "OpenAiWebSearch",
+  params: {
+    action: { type: "search", query: "Effect TypeScript" }
+  },
+  providerExecuted: true,
+  options: { openai: { itemId: "ws_1", status: "completed" } }
+})
+
+const providerExecutedResult = Prompt.toolResultPart({
+  id: "ws_1",
+  name: "OpenAiWebSearch",
+  isFailure: false,
+  result: {
+    action: { type: "search", query: "Effect TypeScript" },
+    status: "completed"
+  },
+  providerExecuted: true,
+  options: { openai: { itemId: "ws_1", status: "completed" } }
+})
+
+const providerExecutedHistoryPrompt = Prompt.make([
+  { role: "user", content: "Search" },
+  { role: "assistant", content: [providerExecutedCall, providerExecutedResult] },
   { role: "user", content: "Continue" }
 ])
 
