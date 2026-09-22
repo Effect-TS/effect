@@ -128,7 +128,7 @@ export interface Equal extends Hash.Hash {
  * arrays compare element-by-element, Maps and Sets compare entries
  * order-independently, and plain objects compare enumerable keys recursively.
  * Functions without an `Equal` implementation compare by reference. Circular
- * structures are equal when every path through them meets equal values.
+ * structures use coinductive equality.
  *
  * Hash values are checked first as a fast-path rejection. The function also
  * supports dual data-last usage: call it with one argument to get a curried
@@ -136,7 +136,7 @@ export interface Equal extends Hash.Hash {
  *
  * **Gotchas**
  *
- * - Equal results are cached per object pair in a WeakMap. **Objects must not
+ * - Object-pair results are cached in a WeakMap. **Objects must not be
  *   be mutated after their first comparison.**
  * - Map and Set entries are matched within groups of equal hashes, so they
  *   are O(n) for well-distributed hashes and O(n²) when every hash collides.
@@ -203,10 +203,7 @@ function compareBoth(self: unknown, that: unknown): boolean {
 
 function compareObjects(self: object, that: object): boolean {
   const depth = pathLeft.length
-  // A pair already on the comparison's path is assumed equal, so a cycle that
-  // returns to it closes: every pair on the path then has related successors,
-  // which is a bisimulation (coinductive equality, as in Hopcroft–Karp
-  // equivalence checking).
+  // A repeated pair closes a cycle under coinductive equality.
   for (let i = depth; i-- > 0;) {
     if (pathLeft[i] === self && pathRight[i] === that) return true
   }
@@ -237,8 +234,7 @@ function compareObjects(self: object, that: object): boolean {
       pathRight.pop()
     }
   }
-  // An outermost result is final: a `true` has discharged every assumption it
-  // made, and assumptions only ever claim equality, so a `false` is too.
+  // Only outermost results are independent of path assumptions.
   if (!depth) {
     if (!known) results.set(self, known = new WeakMap())
     known.set(that, result)
@@ -246,10 +242,8 @@ function compareObjects(self: object, that: object): boolean {
   return result
 }
 
-// The pairs on the current comparison's path (the coinductive assumptions).
 const pathLeft: Array<object> = []
 const pathRight: Array<object> = []
-// Results of outermost comparisons. Weak on both sides.
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object, bothEquals: boolean): boolean {
@@ -329,9 +323,7 @@ function compareRecords(
   return true
 }
 
-// Matches items one-to-one within groups of equal keys' hashes: equal values
-// have equal hashes, so these are exactly the pairs a scan over all items could
-// match.
+// Match items one-to-one within equal-hash groups.
 function compareHashed<A>(
   self: Iterable<A>,
   that: Iterable<A>,
@@ -378,12 +370,7 @@ export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquiva
   }
 }
 
-/**
- * Matching without a hash: every item falls in one group, so `compareHashed`
- * reduces to scanning `that` for each item of `self`.
- *
- * @internal
- */
+/** @internal */
 export function makeCompareSet<A>(equivalence: Equivalence<A>) {
   return function compareSets(self: Iterable<A>, that: Iterable<A>): boolean {
     return compareHashed(self, that, sameGroup, equivalence)

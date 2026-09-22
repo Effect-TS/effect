@@ -25,8 +25,7 @@ export interface HashSet<out V> extends Iterable<V>, Equal.Equal, Pipeable, Insp
 
 const HashSetProto: Omit<HashSet<unknown>, HashSetTypeId> = {
   [Hash.symbol]<V>(this: HashSet<V>): number {
-    // The backing map's cached entries hash. Every value is `true`, so each
-    // element contributes a term mixed from its hash alone.
+    // Every backing-map value is `true`, leaving only each element hash.
     return Hash.optimize(Hash.string(HashSetTypeId) ^ HashMap.entriesHash(keyMap(this)))
   },
   [Equal.symbol]<V>(this: HashSet<V>, that: unknown): boolean {

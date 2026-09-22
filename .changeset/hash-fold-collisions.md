@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix hash composition collisions and non-integer number hashing. Use cyclic bisimulation for equality and hash-grouped matching for native maps and sets. Separate singleton hashes from their string names, prevent invalid caches, and fix referential key lookups in `MutableHashMap`. Hash values will change, including `HashSet` values now derived from cached backing-map summaries.
+Improve hash composition, number hashing, cyclic equality, native collection comparison, and `HashMap` hashing. Fix invalid caches and referential `MutableHashMap` lookups. Hash values may change.

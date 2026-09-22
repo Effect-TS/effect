@@ -119,14 +119,7 @@ abstract class Node<K, V> {
     return this.edit === edit
   }
 
-  /**
-   * The XOR of `Hash.combine(Hash.hash(key), Hash.hash(value))` over this
-   * subtree's entries, the fold `HashMap`'s hash is made of. XOR is associative
-   * and commutative, so subtrees are hashed independently and cached (a Merkle
-   * tree over the trie), and a new version of a map only hashes the nodes it
-   * does not share with an already hashed one. Nodes reset it when an edit
-   * session mutates them in place.
-   */
+  /** Cached XOR of this subtree's entry hashes. Cleared by in-place edits. */
   declare _hash: number | undefined
 
   abstract computeHash(): number
@@ -136,7 +129,7 @@ abstract class Node<K, V> {
     if (h === undefined) {
       const seen = backEdges
       h = this.computeHash()
-      // Like `Hash.hash`, do not cache a hash that met a cycle.
+      // Cycle hashes depend on the entry point.
       if (seen === backEdges) {
         this._hash = h
       }
@@ -292,8 +285,7 @@ class LeafNode<K, V> extends Node<K, V> {
   }
 
   computeHash(): number {
-    // `Hash.hash(key)` rather than the stored hash, which `setHash` lets
-    // callers choose.
+    // `setHash` allows the stored hash to differ from `Hash.hash(key)`.
     return Hash.combine(Hash.hash(this.key), Hash.hash(this.value))
   }
 }
@@ -782,8 +774,6 @@ class ArrayNode<K, V> extends Node<K, V> {
   }
 }
 
-// Iterates the trie depth-first with one explicit stack, pushing children right
-// to left so entries come out in trie order, and projects each entry.
 class HashMapIterator<K, V, A> implements IterableIterator<A> {
   readonly stack: Array<Node<K, V> | undefined>
   readonly project: (key: K, value: V) => A
@@ -1053,12 +1043,7 @@ export const values = <K, V>(self: HashMap<K, V>): IterableIterator<V> =>
 export const entries = <K, V>(self: HashMap<K, V>): IterableIterator<[K, V]> =>
   (self as HashMapImpl<K, V>)[Symbol.iterator]()
 
-/**
- * The XOR of `Hash.combine(Hash.hash(key), Hash.hash(value))` over the
- * entries, cached per trie node.
- *
- * @internal
- */
+/** @internal */
 export const entriesHash = <K, V>(self: HashMap<K, V>): number => (self as HashMapImpl<K, V>)._root.subtreeHash()
 
 /** @internal */

@@ -337,7 +337,6 @@ export const number = (n: number) => {
   if (h === n) {
     return optimize(h)
   }
-  // Canonicalize NaN before reading its bits.
   float64.setFloat64(0, n !== n ? NaN : n)
   return optimize(combine(float64.getInt32(0), float64.getInt32(4)))
 }

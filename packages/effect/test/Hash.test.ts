@@ -198,7 +198,6 @@ describe("Hash", () => {
               for (let i = random(20); i >= 0; i--) {
                 if (random(3) === 0) HashMap.remove(mutable, randomKey())
                 else HashMap.set(mutable, randomKey(), random(3))
-                // Hashes the nodes mid-session, before they are edited again.
                 if (random(4) === 0) mutable[Hash.symbol]()
               }
             })

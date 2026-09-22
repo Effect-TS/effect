@@ -69,7 +69,7 @@ const edgeHash = (type: Graph.Kind, edge: Graph.Edge<any>): number =>
     ? Hash.hash(edge)
     : Hash.optimize(Hash.combine(Hash.hash(edge.data), endpointsHash(edge.source, edge.target)))
 
-// Addition is order-independent and does not cancel self-loops.
+// Addition is commutative and does not cancel self-loops.
 const endpointsHash = (source: number, target: number): number =>
   Hash.combine(0, Hash.hash(source)) + Hash.combine(0, Hash.hash(target))
 

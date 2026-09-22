@@ -1,14 +1,8 @@
-/**
- * Cached `Hash.hash` results for objects.
- *
- * @internal
- */
+/** @internal */
 export const hashCache = new WeakMap<object, number>()
 
 /**
- * The number of back-edges `Hash.hash` has met. A hash computed while it
- * changed contains a circular sentinel and depends on where hashing started,
- * so it is never cached.
+ * Back-edge count used to avoid caching entry-point-dependent hashes.
  *
  * @internal
  */
