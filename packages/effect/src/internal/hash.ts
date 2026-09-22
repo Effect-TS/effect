@@ -1,6 +1,5 @@
 /**
- * `Hash.hash` results for objects, shared with `Equal` so it can read a cached
- * hash without the full dispatch.
+ * Cached `Hash.hash` results for objects.
  *
  * @internal
  */
