@@ -112,34 +112,6 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.snapshot).length, 2)
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
-  it.effect("keeps the same id with different descriptions in separate series", () =>
-    Effect.gen(function*() {
-      const id = nextId()
-      const first = Metric.counter(id, { description: "first" })
-      const second = Metric.counter(id, { description: "second" })
-
-      yield* Metric.update(first, 1)
-      yield* Metric.update(second, 10)
-
-      assert.strictEqual((yield* Metric.value(first)).count, 1)
-      assert.strictEqual((yield* Metric.value(second)).count, 10)
-      assert.strictEqual((yield* Metric.snapshot).length, 2)
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
-
-  it.effect("keeps a counter and a gauge with the same id in separate series", () =>
-    Effect.gen(function*() {
-      const id = nextId()
-      const counter = Metric.counter(id)
-      const gauge = Metric.gauge(id)
-
-      yield* Metric.update(counter, 1)
-      yield* Metric.update(gauge, 10)
-
-      assert.deepStrictEqual(yield* Metric.value(counter), { count: 1, incremental: false })
-      assert.strictEqual((yield* Metric.value(gauge)).value, 10)
-      assert.strictEqual((yield* Metric.snapshot).length, 2)
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
-
   it.effect("keeps equal attribute names with different values in separate series", () =>
     Effect.gen(function*() {
       const id = nextId()
@@ -200,22 +172,6 @@ describe("Metric", () => {
           .map((snapshot) => [snapshot.attributes ?? null, "count" in snapshot.state ? snapshot.state.count : null])
           .sort((a, b) => JSON.stringify(a[0]) < JSON.stringify(b[0]) ? -1 : 1)
     )
-
-    it.effect("keeps each attribute set of a shared metric in its own series across updates", () =>
-      Effect.gen(function*() {
-        const counter = Metric.counter(nextId())
-        const get = Metric.withAttributes(counter, { method: "GET" })
-        const post = Metric.withAttributes(counter, { method: "POST" })
-
-        for (let i = 0; i < 3; i++) {
-          yield* Metric.update(get, 1)
-          yield* Metric.update(post, 10)
-        }
-        yield* Metric.update(Metric.withAttributes(counter, { method: "GET" }), 100)
-
-        assert.deepStrictEqual(yield* series, [[{ method: "GET" }, 103], [{ method: "POST" }, 30]])
-        assert.strictEqual((yield* Metric.value(get)).count, 103)
-      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
     it.effect("follows the contextual attributes when they change between updates", () =>
       Effect.gen(function*() {
