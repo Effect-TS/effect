@@ -1245,6 +1245,29 @@ describe("OpenAiLanguageModel", () => {
           deepStrictEqual(result.toolCalls[0]?.params, params)
         }))
 
+      it.effect("decodes Effect Schema dynamic tool call params with the OpenAI codec", () =>
+        Effect.gen(function*() {
+          const DynamicTool = Tool.dynamic("DynamicTool", {
+            parameters: Schema.Struct({
+              env: Schema.Record(Schema.String, Schema.String)
+            })
+          })
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the dynamic tool",
+            toolkit: Toolkit.make(DynamicTool),
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(makeTestLayer({
+              body: {
+                output: [makeFunctionCall("DynamicTool", { env: [{ 0: "PATH", 1: "/usr/bin" }] })]
+              }
+            }))
+          )
+
+          deepStrictEqual(result.toolCalls[0]?.params, { env: { PATH: "/usr/bin" } })
+        }))
+
       it.effect("routes invalid tool call params through failureMode: return without failing the effect", () =>
         Effect.gen(function*() {
           const toolkit = Toolkit.make(ReturnModeTool)
