@@ -1882,12 +1882,31 @@ export const mapEffect: {
     readonly unordered?: boolean | undefined
   } | undefined
 ): Stream<A2, E | E2, R | R2> =>
-  self.channel.pipe(
-    Channel.flattenArray,
-    Channel.mapEffect(f, options),
-    Channel.map(Arr.of),
-    fromChannel
-  ))
+  Count.isSequential(options?.concurrency) ?
+    fromChannel(Channel.transformPull(self.channel, (pull) =>
+      Effect.sync(() => {
+        let chunk: Arr.NonEmptyReadonlyArray<A> | undefined
+        let index = 0
+        let i = 0
+        const next = (): Effect.Effect<A2, E | E2 | Cause.Done, R2> => {
+          if (chunk === undefined) return refill
+          const a = chunk[index]
+          if (++index === chunk.length) chunk = undefined
+          return f(a, i++)
+        }
+        const refill = Effect.flatMap(pull, (arr) => {
+          chunk = arr
+          index = 0
+          return next()
+        })
+        return Effect.map(Effect.suspend(next), Arr.of)
+      }))) :
+    self.channel.pipe(
+      Channel.flattenArray,
+      Channel.mapEffect(f, options),
+      Channel.map(Arr.of),
+      fromChannel
+    ))
 
 /**
  * Flattens a stream of `Effect` values into a stream of their results.

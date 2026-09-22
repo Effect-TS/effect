@@ -1,3 +1,5 @@
+import type { Concurrency } from "../Types.ts"
+
 /**
  * Normalizes a collection count to a non-negative integer. `NaN` and
  * non-positive values become `0`; positive infinity is preserved.
@@ -12,3 +14,11 @@ export const normalize = (n: number): number => n > 0 ? Math.floor(n) : 0
  * @internal
  */
 export const normalizeNonEmpty = (n: number): number => Math.max(1, normalize(n))
+
+/**
+ * Whether a concurrency option runs effects one at a time.
+ *
+ * @internal
+ */
+export const isSequential = (concurrency: Concurrency | undefined): boolean =>
+  concurrency === undefined || (concurrency !== "unbounded" && concurrency <= 1)

@@ -1457,6 +1457,119 @@ describe("Stream", () => {
       }))
   })
 
+  describe("mapEffect", () => {
+    const pulled = (log: Array<string>, ...chunks: ReadonlyArray<ReadonlyArray<number>>) =>
+      Stream.fromArrays(...chunks).pipe(Stream.mapArray((chunk) => {
+        log.push(`pull ${chunk.join(",")}`)
+        return chunk
+      }))
+
+    it.effect("runs effects one at a time, in order, pulling each chunk when the previous one is used up", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const result = yield* pulled(log, [1, 2], [3], [4, 5]).pipe(
+          Stream.mapEffect((n, i) =>
+            Effect.sync(() => {
+              log.push(`f ${n} ${i}`)
+              return n * 10
+            })
+          ),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [10, 20, 30, 40, 50])
+        assert.deepStrictEqual(log, ["pull 1,2", "f 1 0", "f 2 1", "pull 3", "f 3 2", "pull 4,5", "f 4 3", "f 5 4"])
+      }))
+
+    it.effect("emits one element per chunk", () =>
+      Effect.gen(function*() {
+        const chunks = yield* Stream.fromArrays([1, 2], [3]).pipe(
+          Stream.mapEffect((n) => Effect.succeed(n + 1)),
+          Stream.chunks,
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(chunks, [[2], [3], [4]])
+      }))
+
+    it.effect("restarts the index on every run", () =>
+      Effect.gen(function*() {
+        const stream = Stream.fromArrays([1, 2], [3]).pipe(Stream.mapEffect((_, i) => Effect.succeed(i)))
+        assert.deepStrictEqual(yield* Stream.runCollect(stream), [0, 1, 2])
+        assert.deepStrictEqual(yield* Stream.runCollect(stream), [0, 1, 2])
+      }))
+
+    it.effect("stops at the first failure without running later effects", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const exit = yield* pulled(log, [1, 2, 3], [4]).pipe(
+          Stream.mapEffect((n) =>
+            Effect.suspend(() => {
+              log.push(`f ${n}`)
+              return n === 2 ? Effect.fail("boom") : Effect.succeed(n)
+            })
+          ),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("boom"))
+        assert.deepStrictEqual(log, ["pull 1,2,3", "f 1", "f 2"])
+      }))
+
+    it.effect("runs only the effects of the elements taken", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const result = yield* pulled(log, [1, 2, 3, 4, 5], [6]).pipe(
+          Stream.mapEffect((n) =>
+            Effect.sync(() => {
+              log.push(`f ${n}`)
+              return n
+            })
+          ),
+          Stream.take(3),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [1, 2, 3])
+        assert.deepStrictEqual(log, ["pull 1,2,3,4,5", "f 1", "f 2", "f 3"])
+      }))
+
+    it.effect("interrupts the running effect and releases upstream resources", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const started = yield* Deferred.make<void>()
+        const upstream = Stream.unwrap(
+          Effect.acquireRelease(
+            Effect.sync(() => log.push("acquire")),
+            (_, exit) => Effect.sync(() => log.push(`release ${exit._tag}`))
+          ).pipe(Effect.as(Stream.fromArrays([1, 2, 3])))
+        )
+        const fiber = yield* upstream.pipe(
+          Stream.mapEffect((n) =>
+            n === 2
+              ? Deferred.succeed(started, void 0).pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() => Effect.sync(() => log.push(`interrupted ${n}`)))
+              )
+              : Effect.sync(() => log.push(`f ${n}`))
+          ),
+          Stream.runCollect,
+          Effect.forkChild
+        )
+        yield* Deferred.await(started)
+        yield* Fiber.interrupt(fiber)
+        assert.deepStrictEqual(log, ["acquire", "f 1", "interrupted 2", "release Failure"])
+      }))
+
+    it.effect("tap runs effects in order and keeps the elements", () =>
+      Effect.gen(function*() {
+        const log: Array<number> = []
+        const result = yield* Stream.fromArrays([1, 2], [3]).pipe(
+          Stream.tap((n) => Effect.sync(() => log.push(n))),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [1, 2, 3])
+        assert.deepStrictEqual(log, [1, 2, 3])
+      }))
+  })
+
   describe("grouping", () => {
     it.effect("groupBy", () =>
       Effect.gen(function*() {

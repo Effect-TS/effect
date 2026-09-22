@@ -2042,10 +2042,6 @@ export const mapDoneEffect: {
       )))
 )
 
-const concurrencyIsSequential = (
-  concurrency: Types.Concurrency | undefined
-) => concurrency === undefined || (concurrency !== "unbounded" && concurrency <= 1)
-
 /**
  * Maps each output element with an effectful function, preserving the source
  * channel's done value.
@@ -2106,7 +2102,7 @@ export const mapEffect: {
       readonly unordered?: boolean | undefined
     }
   ): Channel<OutElem1, OutErr | OutErr1, OutDone, InElem, InErr, InDone, Env | Env1> =>
-    concurrencyIsSequential(options?.concurrency)
+    Count.isSequential(options?.concurrency)
       ? mapEffectSequential(self, f)
       : mapEffectConcurrent(self, f, options as any)
 )
@@ -2474,7 +2470,7 @@ export const flatMap: {
     InDone & InDone1,
     Env | Env1
   > =>
-    concurrencyIsSequential(options?.concurrency)
+    Count.isSequential(options?.concurrency)
       ? flatMapSequential(self, f)
       : flatMapConcurrent(self, f, options as any)
 )
