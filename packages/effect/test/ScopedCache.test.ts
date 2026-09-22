@@ -2384,6 +2384,45 @@ describe("ScopedCache", () => {
   })
 
   describe("concurrency tests", () => {
+    it.effect("interrupting the only caller during eviction releases its lookup", () =>
+      Effect.gen(function*() {
+        const closing = yield* Latch.make()
+        const close = yield* Latch.make()
+        const acquired = yield* Latch.make()
+        let acquisitions = 0
+        let releases = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 1,
+          lookup: (key: string) =>
+            Effect.gen(function*() {
+              if (key === "a") {
+                yield* Effect.acquireRelease(Effect.void, () =>
+                  Effect.gen(function*() {
+                    yield* closing.open
+                    yield* close.await
+                  }))
+                return 1
+              }
+              yield* Effect.acquireRelease(Effect.sync(() => acquisitions++), () => Effect.sync(() => releases++))
+              yield* acquired.open
+              return yield* Effect.never
+            })
+        })
+
+        yield* ScopedCache.get(cache, "a")
+        const caller = yield* ScopedCache.get(cache, "b").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* closing.await
+        const interrupt = yield* Fiber.interrupt(caller).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        yield* close.open
+        yield* acquired.await
+        yield* Fiber.join(interrupt)
+
+        assert.strictEqual(acquisitions, 1)
+        assert.strictEqual(releases, 1)
+        assert.strictEqual(yield* ScopedCache.size(cache), 0)
+      }))
+
     it.effect("an interrupt during eviction does not strand a pending lookup", () =>
       Effect.gen(function*() {
         const closing = yield* Latch.make()
