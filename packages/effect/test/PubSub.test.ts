@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scope, Stream } from "effect"
+import { Array, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scheduler, Scope, Stream } from "effect"
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
@@ -683,6 +683,88 @@ describe("PubSub", () => {
       assert.isTrue(yield* PubSub.publish(pubsub, 42))
       assert.strictEqual(yield* PubSub.take(subscription), 42)
     }))
+
+  it.effect("an interrupted backpressured publisher does not publish later", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<number>(1)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publish(pubsub, 1)
+      const fiber = yield* Effect.forkChild(PubSub.publish(pubsub, 2), { startImmediately: true })
+
+      yield* Fiber.interrupt(fiber)
+
+      assert.strictEqual(yield* PubSub.take(subscription), 1)
+      assert.isTrue(yield* PubSub.publish(pubsub, 3))
+      assert.strictEqual(yield* PubSub.take(subscription), 3)
+    }))
+
+  // A small op budget makes the fiber yield at each point between starting a
+  // wait and suspending on it; interrupting it there must leave nothing behind.
+  // (With a budget below 3 a fiber yields again before making progress.)
+  const interruptAtEveryYield = (
+    test: (
+      budget: (effect: Effect.Effect<unknown>) => Effect.Effect<unknown>
+    ) => Effect.Effect<boolean, never, Scope.Scope>
+  ) =>
+    Effect.gen(function*() {
+      const failed: Array<number> = []
+      for (let ops = 3; ops <= 64; ops++) {
+        const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
+        if (!ok) failed.push(ops)
+      }
+      assert.deepStrictEqual(failed, [])
+    })
+
+  it.effect("an interrupted take never leaves a poller that swallows a message", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(budget(PubSub.take(subscription)), { startImmediately: true })
+        yield* Fiber.interrupt(fiber)
+        yield* PubSub.publish(pubsub, 1)
+        return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
+      })
+    ))
+
+  it.effect("an interrupted takeAll never leaves a poller that swallows a message", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(4)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(budget(PubSub.takeAll(subscription)), { startImmediately: true })
+        yield* Fiber.interrupt(fiber)
+        yield* PubSub.publish(pubsub, 1)
+        return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
+      })
+    ))
+
+  it.effect("a take that starts waiting after unsubscribe is interrupted", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const scope = yield* Scope.make()
+        const subscription = yield* PubSub.subscribe(pubsub).pipe(Scope.provide(scope))
+        const fiber = yield* Effect.forkChild(budget(PubSub.take(subscription)), { startImmediately: true })
+        yield* Scope.close(scope, Exit.void)
+        for (let i = 0; i < 100 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+        const exit = fiber.pollUnsafe()
+        return exit !== undefined && Exit.hasInterrupts(exit)
+      })
+    ))
+
+  it.effect("an interrupted backpressured publisher never publishes later", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        const fiber = yield* Effect.forkChild(budget(PubSub.publish(pubsub, 2)), { startImmediately: true })
+        yield* Fiber.interrupt(fiber)
+        yield* PubSub.takeUpTo(subscription, 1)
+        return (yield* PubSub.takeUpTo(subscription, 1)).length === 0
+      })
+    ))
 
   it.effect("shutdown interrupts suspended takeAll subscribers", () =>
     Effect.gen(function*() {
