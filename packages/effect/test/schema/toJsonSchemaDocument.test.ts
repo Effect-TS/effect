@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import type { Options as AjvOptions } from "ajv"
 import { Effect, JsonSchema, Option, Predicate, Schema, SchemaGetter } from "effect"
 import { describe, it } from "vitest"
@@ -1185,6 +1186,24 @@ describe("toJsonSchemaDocument", () => {
             }
           )
         })
+      })
+
+      it("exports code point checks with matching JSON Schema validation", () => {
+        for (
+          const [check, keywords] of [
+            [Schema.isMinCodePoints(2), { minLength: 2 }],
+            [Schema.isMaxCodePoints(1), { maxLength: 1 }],
+            [Schema.isCodePointsBetween(1, 2), { allOf: [{ minLength: 1 }, { maxLength: 2 }] }]
+          ] as const
+        ) {
+          const schema = Schema.String.check(check)
+          const jsonSchema = { type: "string", ...keywords } as const
+          assertJsonSchemaDocument(schema, { schema: jsonSchema })
+          const validate = ajvDraft2020_12.compile(jsonSchema)
+          for (const value of ["", "a", "😀", "😀a", "😀😀😀", "e\u0301", "\uD800", "\uDC00"]) {
+            assert.strictEqual(validate(value), Schema.is(schema)(value))
+          }
+        }
       })
 
       describe("isMinLength", () => {

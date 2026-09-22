@@ -8176,6 +8176,134 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
   )
 }
 /**
+ * Validates that a string contains at least the specified number of Unicode code points.
+ *
+ * **Details**
+ *
+ * The bound is rounded down and clamped to zero. This check corresponds to
+ * `minLength` in JSON Schema and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isMinLength} for counting UTF-16 code units
+ * @see {@link isMaxCodePoints}
+ * @see {@link isCodePointsBetween}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isMinCodePoints(minCodePoints: number, annotations?: Annotations.Filter) {
+  minCodePoints = Math.max(0, Math.floor(minCodePoints))
+  return makeFilter<string>(
+    (input) => countCodePointsUpTo(input, minCodePoints) >= minCodePoints,
+    {
+      expected: `a string with at least ${minCodePoints} code points`,
+      representation: {
+        id: "effect/schema/isMinCodePoints",
+        payload: { minCodePoints }
+      },
+      toJsonSchema: () => ({ minLength: minCodePoints }),
+      toCode: () => ({ runtime: `Schema.isMinCodePoints(${minCodePoints})` }),
+      arbitraryConstraint: { minCodePoints },
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that a string contains at most the specified number of Unicode code points.
+ *
+ * **Details**
+ *
+ * The bound is rounded down and clamped to zero. This check corresponds to
+ * `maxLength` in JSON Schema and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isMaxLength} for counting UTF-16 code units
+ * @see {@link isMinCodePoints}
+ * @see {@link isCodePointsBetween}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations.Filter) {
+  maxCodePoints = Math.max(0, Math.floor(maxCodePoints))
+  return makeFilter<string>(
+    (input) => countCodePointsUpTo(input, maxCodePoints + 1) <= maxCodePoints,
+    {
+      expected: `a string with at most ${maxCodePoints} code points`,
+      representation: {
+        id: "effect/schema/isMaxCodePoints",
+        payload: { maxCodePoints }
+      },
+      toJsonSchema: () => ({ maxLength: maxCodePoints }),
+      toCode: () => ({ runtime: `Schema.isMaxCodePoints(${maxCodePoints})` }),
+      arbitraryConstraint: { maxCodePoints },
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that a string's Unicode code point count is within the specified inclusive range.
+ *
+ * **Details**
+ *
+ * Bounds are rounded down and clamped to zero. Equal bounds require an exact
+ * count. This check corresponds to `minLength` and `maxLength` in JSON Schema
+ * and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isLengthBetween} for counting UTF-16 code units
+ * @see {@link isMinCodePoints}
+ * @see {@link isMaxCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isCodePointsBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+  minimum = Math.max(0, Math.floor(minimum))
+  maximum = Math.max(0, Math.floor(maximum))
+  return makeFilter<string>(
+    (input) => {
+      const count = countCodePointsUpTo(input, maximum + 1)
+      return count >= minimum && count <= maximum
+    },
+    {
+      expected: minimum === maximum
+        ? `a string with ${minimum} code points`
+        : `a string with between ${minimum} and ${maximum} code points`,
+      representation: {
+        id: "effect/schema/isCodePointsBetween",
+        payload: { minimum, maximum }
+      },
+      toJsonSchema: () => ({ allOf: [{ minLength: minimum }, { maxLength: maximum }] }),
+      toCode: () => ({ runtime: `Schema.isCodePointsBetween(${minimum}, ${maximum})` }),
+      arbitraryConstraint: { minCodePoints: minimum, maxCodePoints: maximum },
+      ...annotations
+    }
+  )
+}
+
+function countCodePointsUpTo(input: string, limit: number): number {
+  if (limit === 0) return 0
+  let count = 0
+  for (const _ of input) {
+    if (++count >= limit) break
+  }
+  return count
+}
+
+/**
  * Validates that a value has at least the specified size. Works with values
  * that have a `size` property, such as `Set` or `Map`.
  *
@@ -16008,6 +16136,8 @@ export declare namespace Annotations {
       readonly exclusiveMaximum?: true | undefined
       readonly minLength?: number | undefined
       readonly maxLength?: number | undefined
+      readonly minCodePoints?: number | undefined
+      readonly maxCodePoints?: number | undefined
       readonly minSize?: number | undefined
       readonly maxSize?: number | undefined
       readonly minProperties?: number | undefined
