@@ -444,12 +444,12 @@ const startLookup = <Key, A, E, R>(
   key: Key,
   fiber: FiberImpl<unknown, unknown>
 ): EntryImpl<A, E> => {
-  const lookup = self.lookup(key)
   return new EntryImpl<A, E>((entry) => {
     MutableHashMap.set(self.map, key, entry)
     if (Number.isFinite(self.capacity)) {
       checkCapacity(self)
     }
+    const lookup = lookupOrDie(self, key)
     return effect.forkUnsafe(
       fiber,
       effect.onExitPrimitive(lookup, (exit) => {
@@ -466,24 +466,37 @@ const startLookup = <Key, A, E, R>(
       true,
       true
     )
-  })
+  }, (entry) => removeIfCurrent(self.map, key, entry))
+}
+
+const lookupOrDie = <K, A, E, R>(self: Cache<K, A, E, R>, key: K): Effect.Effect<A, E, R> => {
+  try {
+    return self.lookup(key)
+  } catch (error) {
+    return effect.die(error)
+  }
 }
 
 class EntryImpl<A, E> implements Entry<A, E> {
   expiresAt: number | undefined
   awaiters: number
   readonly fiber: Fiber.Fiber<A, E>
+  readonly unpublish: ((entry: Entry<A, E>) => void) | undefined
 
-  constructor(start: (entry: EntryImpl<A, E>) => Fiber.Fiber<A, E>) {
+  constructor(
+    start: (entry: EntryImpl<A, E>) => Fiber.Fiber<A, E>,
+    unpublish?: (entry: Entry<A, E>) => void
+  ) {
     this.expiresAt = undefined
     this.awaiters = 0
+    this.unpublish = unpublish
     this.fiber = start(this)
   }
 
   await(): Effect.Effect<A, E> {
     const exit = this.fiber.pollUnsafe()
     if (exit) return exit
-    return core.withFiber((fiber) => awaitEntry(this, fiber, undefined, undefined))
+    return core.withFiber((fiber) => awaitEntry(this, fiber, undefined, undefined, this.unpublish))
   }
 }
 
@@ -499,7 +512,8 @@ const awaitEntry = <K, A, E>(
   entry: Entry<A, E>,
   fiber: FiberImpl<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>> | undefined,
-  key: K
+  key: K,
+  unpublish?: (entry: Entry<A, E>) => void
 ): Effect.Effect<A, E> => {
   const exit = entry.fiber.pollUnsafe()
   if (exit) return exit
@@ -509,6 +523,7 @@ const awaitEntry = <K, A, E>(
   return effect.onExitPrimitive(restore(effect.fiberJoin(entry.fiber)), () => {
     if (--entry.awaiters > 0 || entry.fiber.pollUnsafe() !== undefined) return undefined
     if (map !== undefined) removeIfCurrent(map, key, entry)
+    else unpublish?.(entry)
     entry.fiber.interruptUnsafe(fiber.id)
     return effect.fiberAwait(entry.fiber)
   })
@@ -1205,13 +1220,13 @@ export const refresh: {
   2,
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     core.withFiber((fiber) => {
-      const lookup = self.lookup(key)
       const existing = getImpl(self, key, fiber, false) !== undefined
       const entry = new EntryImpl<A, E>((entry) => {
         if (!existing) {
           MutableHashMap.set(self.map, key, entry)
           checkCapacity(self)
         }
+        const lookup = lookupOrDie(self, key)
         return effect.forkUnsafe(
           fiber,
           effect.onExitPrimitive(lookup, (exit) => {
@@ -1239,7 +1254,7 @@ export const refresh: {
           true,
           true
         )
-      })
+      }, (entry) => removeIfCurrent(self.map, key, entry))
       return awaitEntry(entry, fiber, self.map, key)
     })
 )
