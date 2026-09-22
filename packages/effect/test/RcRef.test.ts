@@ -349,6 +349,20 @@ describe("RcRef", () => {
       assert.strictEqual(released, 1)
     }))
 
+  it.effect("invalidating a resource while a get revives it releases the resource", () =>
+    Effect.gen(function*() {
+      let released = 0
+      const ref = yield* RcRef.make({
+        acquire: Effect.acquireRelease(Effect.void, () => Effect.sync(() => released++)),
+        idleTimeToLive: "1 minute"
+      }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 4))
+      yield* Effect.scoped(RcRef.get(ref))
+      const getter = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+      yield* RcRef.invalidate(ref)
+      yield* Fiber.join(getter)
+      assert.strictEqual(released, 1)
+    }))
+
   it.effect("closing the ref while an idle resource is being released runs every finalizer", () =>
     Effect.gen(function*() {
       const gate = yield* Deferred.make<void>()
