@@ -20,7 +20,7 @@
 import * as Arr from "../Array.ts"
 import * as Crypto from "../Crypto.ts"
 import * as Effect from "../Effect.ts"
-import * as Encoding from "../Encoding.ts"
+import * as Hex from "../encoding/Hex.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as PlatformError from "../PlatformError.ts"
@@ -107,7 +107,7 @@ export const makeEncoded: (options?: {
   const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
     primaryKey.length <= 255
       ? Effect.succeed(primaryKey)
-      : Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Encoding.encodeHex)
+      : Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Hex.encode)
 
   const messageIdEnforcesWidth = sql.onDialectOrElse({
     mssql: () => true,

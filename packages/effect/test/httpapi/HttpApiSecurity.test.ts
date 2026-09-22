@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Encoding, Redacted } from "effect"
+import { Effect, Redacted } from "effect"
+import * as Base64 from "effect/encoding/Base64"
 import { HttpClientRequest, HttpServerRequest } from "effect/http"
 import { HttpApiBuilder, HttpApiSecurity } from "effect/httpapi"
 
@@ -63,7 +64,7 @@ describe("HttpApiSecurity", () => {
 
     it.effect("decodes Basic credentials using the first colon separator", () =>
       Effect.gen(function*() {
-        const encoded = Encoding.encodeBase64("alice:secret:with:colons")
+        const encoded = Base64.encode("alice:secret:with:colons")
         const credential = yield* decode(`Basic ${encoded}`, HttpApiSecurity.basic)
 
         assert.strictEqual(credential.username, "alice")
@@ -72,7 +73,7 @@ describe("HttpApiSecurity", () => {
 
     it.effect("rejects Basic credentials from a different scheme", () =>
       Effect.gen(function*() {
-        const encoded = Encoding.encodeBase64("alice:secret")
+        const encoded = Base64.encode("alice:secret")
         const credential = yield* decode(`Bearer ${encoded}`, HttpApiSecurity.basic)
 
         assert.strictEqual(credential.username, "")

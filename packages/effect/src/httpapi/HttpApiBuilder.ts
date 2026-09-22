@@ -13,7 +13,7 @@ import type { NonEmptyReadonlyArray } from "../Array.ts"
 import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import * as Encoding from "../Encoding.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import * as Sse from "../encoding/Sse.ts"
 import * as Fiber from "../Fiber.ts"
 import type { FileSystem } from "../FileSystem.ts"
@@ -587,7 +587,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
       return Effect.map(HttpServerRequest, (request) => {
         const encoded = getAuthorizationCredential(request.headers.authorization, basicScheme)
         if (encoded === undefined) return empty
-        const decoded = Result.getOrUndefined(Encoding.decodeBase64String(encoded))
+        const decoded = Result.getOrUndefined(Base64.decodeString(encoded))
         if (decoded === undefined) return empty
         // RFC 7617, Section 2: only the first colon separates the user-id from the password.
         // https://www.rfc-editor.org/rfc/rfc7617.html#section-2

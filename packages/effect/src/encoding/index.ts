@@ -6,6 +6,26 @@
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
+ * @since 4.0.0
+ */
+export * as Base64 from "./Base64.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as Base64Url from "./Base64Url.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as EncodingError from "./EncodingError.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as Hex from "./Hex.ts"
+
+/**
  * @unstable
  * @since 4.0.0
  */

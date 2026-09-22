@@ -2,7 +2,7 @@
  * @internal
  */
 import * as Effect from "../../../Effect.ts"
-import * as Encoding from "../../../Encoding.ts"
+import * as Base64 from "../../../encoding/Base64.ts"
 import * as Match from "../../../Match.ts"
 import * as Schema from "../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
@@ -68,7 +68,7 @@ const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.Cont
       McpSchema.ImageContent.make({
         type: "image",
         mimeType: content.mimeType,
-        data: Encoding.encodeBase64(content.data),
+        data: Base64.encode(content.data),
         annotations: content.annotations
       })),
     Match.when({ type: "resource" }, (content) => {
@@ -89,7 +89,7 @@ const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.Cont
         resource: {
           uri: resource.uri,
           mimeType: resource.mimeType,
-          blob: Encoding.encodeBase64(resource.blob)
+          blob: Base64.encode(resource.blob)
         },
         annotations: content.annotations
       })
@@ -176,7 +176,7 @@ export const protocol = McpProtocol.make({
               : {
                 uri: content.uri,
                 mimeType: content.mimeType,
-                blob: Encoding.encodeBase64(content.blob)
+                blob: Base64.encode(content.blob)
               }
           ),
           _meta: result._meta

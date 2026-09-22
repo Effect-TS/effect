@@ -12,7 +12,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
-import * as Encoding from "../Encoding.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import { dual } from "../Function.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
@@ -2226,7 +2226,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       // File Parts
       case "file": {
         assistantParts.push(makePart("file", {
-          data: Encoding.encodeBase64(part.data),
+          data: Base64.encode(part.data),
           mediaType: part.mediaType,
           options: part.metadata
         }))

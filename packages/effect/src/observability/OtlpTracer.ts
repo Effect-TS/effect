@@ -16,7 +16,7 @@ import * as Config from "../Config.ts"
 import type * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Encoding from "../Encoding.ts"
+import * as Hex from "../encoding/Hex.ts"
 import type * as Exit from "../Exit.ts"
 import { flow } from "../Function.ts"
 import type * as Headers from "../http/Headers.ts"
@@ -234,11 +234,11 @@ class SpanImpl implements Tracer.Span {
   }
 
   get traceId(): string {
-    return this._traceId ??= Option.isSome(this.parent) ? this.parent.value.traceId : Encoding.randomHex(32)
+    return this._traceId ??= Option.isSome(this.parent) ? this.parent.value.traceId : Hex.random(32)
   }
 
   get spanId(): string {
-    return this._spanId ??= Encoding.randomHex(16)
+    return this._spanId ??= Hex.random(16)
   }
 
   get attributes(): Map<string, unknown> {
