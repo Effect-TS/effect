@@ -29,10 +29,17 @@ const unstableDomain = (module: string): string | undefined => {
   return domain !== undefined && segments[0] === "effect" && unstableDomains.has(domain) ? domain : undefined
 }
 
-const isUnstableChange = (change: ApiChange): boolean => {
-  const labels = [change.baseApiId, change.headApiId].filter((label): label is string => label !== undefined)
-  return labels.some((label) => unstableDomain(label.split("#")[0]) !== undefined)
+const changeModule = (change: ApiChange): string => {
+  const id = change.headApiId ?? change.baseApiId
+  const delta = change.delta as {
+    readonly packageName?: string
+    readonly from?: string
+    readonly to?: ReadonlyArray<string>
+  } | undefined
+  return id?.split("#")[0] ?? delta?.packageName ?? delta?.from ?? delta?.to?.[0] ?? "<package>"
 }
+
+const isUnstableChange = (change: ApiChange): boolean => unstableDomain(changeModule(change)) !== undefined
 
 const escapeCell = (value: string): string => value.replaceAll("|", "\\|").replaceAll("\n", " ")
 
@@ -95,13 +102,7 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
   const suggested = diff.changes.filter((change) => !change.authoritative)
   const moduleCounts = new Map<string, number>()
   for (const change of diff.changes) {
-    const id = change.headApiId ?? change.baseApiId
-    const delta = change.delta as {
-      readonly packageName?: string
-      readonly from?: string
-      readonly to?: ReadonlyArray<string>
-    } | undefined
-    const module = id?.split("#")[0] ?? delta?.packageName ?? delta?.from ?? delta?.to?.[0] ?? "<package>"
+    const module = changeModule(change)
     moduleCounts.set(module, (moduleCounts.get(module) ?? 0) + 1)
   }
   const lines: Array<string> = [
