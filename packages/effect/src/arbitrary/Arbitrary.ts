@@ -201,6 +201,13 @@ export interface CheckOptions {
   readonly replay?: Replay | undefined
 }
 
+export interface GlobalOptions {
+  readonly check?: Omit<CheckOptions, "replay"> | undefined
+  readonly sample?: SampleOptions | undefined
+}
+
+export const configureGlobal = Internal.configureGlobal
+
 /**
  * Identifies a property that returned `false`.
  *
