@@ -3,6 +3,21 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { MutableList } from "effect"
 
 describe("MutableList", () => {
+  it("keeps the next element after takeN ends at a bucket boundary", () => {
+    const bulk = MutableList.make<number>()
+    MutableList.appendAll(bulk, [1, 2])
+    MutableList.appendAll(bulk, [3])
+    deepStrictEqual(MutableList.takeN(bulk, 2), [1, 2])
+    strictEqual(MutableList.take(bulk), 3)
+
+    const list = MutableList.make<number>()
+    for (let i = 0; i < 1025; i++) MutableList.append(list, i)
+    strictEqual(MutableList.takeN(list, 1024).length, 1024)
+    strictEqual(list.head?.array[list.head.offset], 1024)
+    strictEqual(MutableList.take(list), 1024)
+    strictEqual(list.length, 0)
+  })
+
   it("preserves a prepended element when appending to the list", () => {
     const list = MutableList.make<number>()
     MutableList.prepend(list, 1)
