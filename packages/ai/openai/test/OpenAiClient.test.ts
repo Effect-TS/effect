@@ -602,11 +602,29 @@ describe("OpenAiClient", () => {
               )
             ], { concurrency: "unbounded" })
 
-            const [, nextStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "third" })
+            const [, thirdFailedStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "third" })
+            const [error] = yield* Effect.all([
+              Stream.runDrain(thirdFailedStream).pipe(Effect.flip),
+              nextWebSocketCreate(server).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() =>
+                    server.send({
+                      error: {
+                        message: "bad request",
+                        type: "invalid_request_error"
+                      }
+                    })
+                  )
+                )
+              )
+            ], { concurrency: "unbounded" })
+            assert.strictEqual(error.reason._tag, "InvalidRequestError")
+
+            const [, nextStream] = yield* client.createResponseStream({ model: "gpt-4o", input: "fourth" })
             yield* Effect.all([
               Stream.runDrain(nextStream),
               nextWebSocketCreate(server).pipe(
-                Effect.tap(() => Effect.sync(() => sendWebSocketCompleted(server, "resp_3", "msg_3", "ok")))
+                Effect.tap(() => Effect.sync(() => sendWebSocketCompleted(server, "resp_4", "msg_4", "ok")))
               )
             ], { concurrency: "unbounded" })
           })
@@ -623,7 +641,7 @@ describe("OpenAiClient", () => {
           Effect.timeout("5 seconds")
         )
 
-        assert.strictEqual(connections, 3)
+        assert.strictEqual(connections, 4)
       }))
 
     it.live("retries an untagged xAI response-not-found error with the full prompt", () =>
@@ -699,10 +717,7 @@ describe("OpenAiClient", () => {
           yield* chat.streamText({ prompt: "continue" }).pipe(Stream.runDrain)
         }).pipe(
           OpenAiClient.withWebSocketMode,
-          Effect.provide(OpenAiLanguageModel.model("o3-mini", {
-            store: true,
-            useItemReferences: false
-          })),
+          Effect.provide(OpenAiLanguageModel.model("o3-mini", { store: true })),
           Effect.provide(OpenAiClient.layer({
             apiKey: Redacted.make("sk-test"),
             apiUrl: "https://reasoning-recovery.test/v1"

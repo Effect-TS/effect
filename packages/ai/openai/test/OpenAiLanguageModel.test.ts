@@ -506,8 +506,14 @@ describe("OpenAiLanguageModel", () => {
             })
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
-        it.effect("serializes stored assistant history inline when item references are disabled", () =>
+        it.effect("serializes stored assistant history according to item reference config", () =>
           Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: storedHistoryPrompt,
+              toolkit: TestToolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })))
+
             yield* LanguageModel.generateText({
               prompt: storedHistoryPrompt,
               toolkit: TestToolkit,
@@ -518,9 +524,19 @@ describe("OpenAiLanguageModel", () => {
             })))
 
             const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
+            const referencedBody = yield* getRequestBody(requests[0])
+            const inlineBody = yield* getRequestBody(requests[1])
 
-            assert.deepStrictEqual(body.input, [
+            assert.deepStrictEqual(referencedBody.input, [
+              { role: "user", content: [{ type: "input_text", text: "Question" }] },
+              { type: "item_reference", id: "msg_1" },
+              { type: "item_reference", id: "rs_1" },
+              { type: "item_reference", id: "fc_1" },
+              { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+
+            assert.deepStrictEqual(inlineBody.input, [
               { role: "user", content: [{ type: "input_text", text: "Question" }] },
               {
                 id: "msg_1",
@@ -550,7 +566,7 @@ describe("OpenAiLanguageModel", () => {
               { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
               { role: "user", content: [{ type: "input_text", text: "Continue" }] }
             ])
-            strictEqual(body.useItemReferences, undefined)
+            strictEqual(inlineBody.useItemReferences, undefined)
           }).pipe(Effect.provide(makeTestLayer())))
 
         it.effect("replays matched provider-executed history inline", () =>
