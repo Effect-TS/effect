@@ -3,7 +3,7 @@ import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 class Key implements Equal.Equal, Hash.Hash {
   constructor(readonly group: string) {}
@@ -988,6 +988,21 @@ describe("Equal.equals", () => {
   })
 
   describe("byReferenceUnsafe", () => {
+    it("uses reference hashing after a structural hash was cached", () => {
+      const obj = { value: 1 }
+      const structuralHash = Hash.structure(obj)
+      assert.notStrictEqual(structuralHash, 0)
+      assert.strictEqual(Hash.hash(obj), structuralHash)
+
+      const random = vi.spyOn(Math, "random").mockReturnValue(0)
+      try {
+        Equal.byReferenceUnsafe(obj)
+        assert.strictEqual(Hash.hash(obj), 0)
+      } finally {
+        random.mockRestore()
+      }
+    })
+
     it("should allow objects to opt out of structural equality without proxy", () => {
       const obj1 = { a: 1, b: 2 }
       const obj2 = { a: 1, b: 2 }
