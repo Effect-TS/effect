@@ -35,7 +35,7 @@ const SomeProto = Object.defineProperty(
       )
     },
     [Hash.symbol]<A>(this: Option.Some<A>) {
-      return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.value))
+      return Hash.combine(Hash.hash(this.value), SomeHash)
     },
     toString<A>(this: Option.Some<A>) {
       return `some(${format(this.value)})`
@@ -56,7 +56,9 @@ const SomeProto = Object.defineProperty(
   }
 )
 
-const NoneHash = Hash.hash("None")
+// Tag hashes are precomputed: `Hash.string("Some")` and `Hash.string("None")`.
+const SomeHash = 1013679921
+const NoneHash = 1013678959
 const NoneProto = Object.assign(Object.create(CommonProto), {
   _tag: "None",
   _op: "None",

@@ -12,6 +12,9 @@ import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as HashMap from "./hashMap.ts"
 
+// `Hash.string(HashSetTypeId)`, precomputed.
+const HashSetSeed = -1011776909
+
 /** @internal */
 export const HashSetTypeId = "~effect/HashSet"
 
@@ -27,7 +30,7 @@ const HashSetProto: Omit<HashSet<unknown>, HashSetTypeId> = {
   [Hash.symbol]<V>(this: HashSet<V>): number {
     // The backing map's cached entries hash. Every value is `true`, so each
     // element contributes a term mixed from its hash alone.
-    return Hash.optimize(Hash.string(HashSetTypeId) ^ HashMap.entriesHash(keyMap(this)))
+    return Hash.optimize(HashSetSeed ^ HashMap.entriesHash(keyMap(this)))
   },
   [Equal.symbol]<V>(this: HashSet<V>, that: unknown): boolean {
     return isHashSet(that) && size(this) === size(that) && every(this, (value) => has(that, value))

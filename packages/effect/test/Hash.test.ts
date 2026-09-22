@@ -1,5 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Chunk, Equal, Graph, Hash, HashMap, HashSet, Trie } from "effect"
+import { Cause, Chunk, DateTime, Equal, Exit, Graph, Hash, HashMap, HashSet, Option, Result, Trie } from "effect"
+import * as NetAddress from "effect/net/NetAddress"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 
 const range = (length: number): ReadonlyArray<number> => Array.from({ length }, (_, index) => index)
 
@@ -264,6 +266,59 @@ describe("Hash", () => {
           assert.strictEqual(Hash.hash(map), Hash.hash(rebuilt))
         }
       }
+    })
+  })
+
+  describe("precomputed tag hashes", () => {
+    // Tag hashes are written as numeric literals; each must equal the hash of
+    // the name it stands for.
+    it("match the hashes of their tag names", () => {
+      const s = Hash.string
+      assert.strictEqual(Hash.hash(Option.some(1)), Hash.combine(Hash.hash(1), s("Some")))
+      assert.strictEqual(Hash.hash(Option.none()), s("None"))
+      assert.strictEqual(Hash.hash(Result.succeed(1)), Hash.combine(Hash.hash(1), s("Success")))
+      assert.strictEqual(Hash.hash(Result.fail(1)), Hash.combine(Hash.hash(1), s("Failure")))
+      assert.strictEqual(Hash.hash(Exit.succeed(1)), Hash.combine(s("Success"), Hash.hash(1)))
+      const cause = Cause.fail(1)
+      assert.strictEqual(Hash.hash(Exit.failCause(cause)), Hash.combine(s("Failure"), Hash.hash(cause)))
+      const fail = Cause.fail(1).reasons[0]
+      assert.strictEqual(
+        Hash.hash(fail),
+        Hash.combine(Hash.combine(Hash.hash(fail.annotations), Hash.hash(1)), s("Fail"))
+      )
+      const die = Cause.die(1).reasons[0]
+      assert.strictEqual(
+        Hash.hash(die),
+        Hash.combine(Hash.combine(Hash.hash(die.annotations), Hash.hash(1)), s("Die"))
+      )
+      const interrupt = Cause.interrupt(7).reasons[0]
+      assert.strictEqual(
+        Hash.hash(interrupt),
+        Hash.combine(Hash.random(interrupt.annotations), Hash.combine(s("Interrupt"), Hash.hash(7)))
+      )
+      assert.strictEqual(
+        Hash.hash(DateTime.zoneMakeNamedUnsafe("Europe/Rome")),
+        Hash.combine(s("Named"), s("Europe/Rome"))
+      )
+      assert.strictEqual(Hash.hash(DateTime.zoneMakeOffset(3600000)), Hash.combine(s("Offset"), Hash.number(3600000)))
+      assert.strictEqual(Hash.hash(HashMap.empty()), Hash.optimize(s("HashMap")))
+      assert.strictEqual(Hash.hash(HashSet.empty()), Hash.optimize(s("~effect/HashSet")))
+      assert.strictEqual(Hash.hash(Trie.empty()), Hash.optimize(s("~effect/Trie")))
+      assert.strictEqual(Hash.hash(Graph.directed()), Hash.optimize(s("Graph") ^ s("directed")))
+      assert.strictEqual(Hash.hash(Graph.undirected()), Hash.optimize(s("Graph") ^ s("undirected")))
+      assert.strictEqual(Hash.hash(new Map()), Hash.optimize(s("Map")))
+      assert.strictEqual(Hash.hash(new Set()), Hash.optimize(s("Set")))
+      assert.strictEqual(Hash.hash(new Date(Number.NaN)), s("Invalid Date"))
+      for (const waiting of [false, true]) {
+        assert.strictEqual(Hash.hash(AsyncResult.initial(waiting)), s(`Initial:${waiting}`))
+        assert.strictEqual(
+          Hash.hash(AsyncResult.success(1, { waiting })),
+          Hash.combine(Hash.hash(1), s(`Success:${waiting}`))
+        )
+      }
+      const bytes = [127, 0, 0, 1]
+      const ipv4 = NetAddress.ipv4FromBytesUnsafe(new Uint8Array(bytes))
+      assert.strictEqual(Hash.hash(ipv4), Hash.combine(s("Ipv4Address"), Hash.array(new Uint8Array(bytes))))
     })
   })
 

@@ -16,6 +16,9 @@ import * as Result from "../Result.ts"
 import type { NoInfer } from "../Types.ts"
 import { backEdges } from "./hash.ts"
 
+// `Hash.string("HashMap")`, precomputed.
+const HashMapSeed = -720468853
+
 /** @internal */
 export const HashMapTypeId = "~effect/HashMap"
 
@@ -883,7 +886,7 @@ class HashMapImpl<K, V> implements HashMap<K, V> {
   }
 
   [Hash.symbol](): number {
-    return Hash.optimize(Hash.string("HashMap") ^ this._root.subtreeHash())
+    return Hash.optimize(HashMapSeed ^ this._root.subtreeHash())
   }
 
   [NodeInspectSymbol](): unknown {

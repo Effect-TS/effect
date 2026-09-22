@@ -16,6 +16,10 @@ import * as Predicate from "../Predicate.ts"
 import type { Mutable } from "../Types.ts"
 import * as effect from "./effect.ts"
 
+// Tag hashes are precomputed: `Hash.string("Named")` and `Hash.string("Offset")`.
+const NamedZoneHash = 164128934
+const OffsetZoneHash = 672921672
+
 /** @internal */
 export const TypeId = "~effect/DateTime"
 
@@ -75,7 +79,7 @@ const ProtoTimeZoneNamed = {
   ...ProtoTimeZone,
   _tag: "Named",
   [Hash.symbol](this: DateTime.TimeZone.Named) {
-    return Hash.string(`Named:${this.id}`)
+    return Hash.combine(NamedZoneHash, Hash.string(this.id))
   },
   [Equal.symbol](this: DateTime.TimeZone.Named, that: unknown) {
     return isTimeZone(that) && that._tag === "Named" && this.id === that.id
@@ -96,7 +100,7 @@ const ProtoTimeZoneOffset = {
   ...ProtoTimeZone,
   _tag: "Offset",
   [Hash.symbol](this: DateTime.TimeZone.Offset) {
-    return Hash.string(`Offset:${this.offset}`)
+    return Hash.combine(OffsetZoneHash, Hash.number(this.offset))
   },
   [Equal.symbol](this: DateTime.TimeZone.Offset, that: unknown) {
     return isTimeZone(that) && that._tag === "Offset" && this.offset === that.offset

@@ -6,6 +6,11 @@ import * as Option from "../Option.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 
+// Precomputed: `Hash.string("Graph")`, `Hash.string("directed")` and `Hash.string("undirected")`.
+const GraphSeed = 178746281
+const DirectedHash = 287633033
+const UndirectedHash = 773503186
+
 /** @internal */
 export const TypeId = "~effect/Graph"
 
@@ -110,8 +115,7 @@ const ProtoGraph = {
     return false
   },
   [Hash.symbol](this: GraphImpl<any, any, any>): number {
-    let hash = Hash.string("Graph")
-    hash = hash ^ Hash.string(this.type)
+    let hash = GraphSeed ^ (this.type === "directed" ? DirectedHash : UndirectedHash)
     hash = hash ^ Hash.number(this.nodes.size)
     hash = hash ^ Hash.number(this.edges.size)
     for (const [nodeIndex, nodeData] of this.nodes) {

@@ -115,7 +115,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         break
       } else if (self instanceof Date) {
         if (Number.isNaN(self.getTime())) {
-          return string("Invalid Date")
+          return 420856832 // string("Invalid Date")
         }
         return string(self.toISOString())
       } else if (self instanceof RegExp) {
@@ -132,7 +132,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         }
         if (visitedObjects.has(self)) {
           addBackEdge()
-          return string("[Circular]")
+          return 231365426 // string("[Circular]")
         }
         visitedObjects.add(self)
         const seen = backEdges
@@ -507,10 +507,10 @@ export const array = <A>(arr: Iterable<A>): number => {
 }
 
 const hashMap: <K, V>(map: Iterable<readonly [K, V]>) => number = unordered(
-  string("Map"),
+  193426137, // string("Map")
   ([k, v]) => combine(hash(k), hash(v))
 )
-const setSeed = string("Set")
+const setSeed = 193421895 // string("Set")
 const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) => combine(setSeed, hash(element)))
 
 const randomHashCache = new WeakMap<any, number>()

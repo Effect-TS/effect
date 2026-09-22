@@ -14,7 +14,8 @@ import type { NoInfer } from "../Types.ts"
 /** @internal */
 export const TrieTypeId = "~effect/Trie"
 
-const TrieSeed = Hash.string(TrieTypeId)
+// `Hash.string(TrieTypeId)`, precomputed.
+const TrieSeed = -657033431
 
 // FNV-1a over UTF-16 code units: a forward key hash that can be extended one
 // character at a time along a path.

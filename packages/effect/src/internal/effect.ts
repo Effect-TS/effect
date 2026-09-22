@@ -99,6 +99,9 @@ import {
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 
+// `Hash.string("Interrupt")`, precomputed.
+const InterruptHash = 1067989506
+
 // ----------------------------------------------------------------------------
 // Cause
 // ----------------------------------------------------------------------------
@@ -130,9 +133,7 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
+    return Hash.combine(Hash.random(this.annotations), Hash.combine(InterruptHash, Hash.hash(this.fiberId)))
   }
 }
 

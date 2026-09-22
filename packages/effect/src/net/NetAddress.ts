@@ -494,7 +494,7 @@ const Ipv4Proto = {
     return isIpv4Address(that) && bytesEqual(getBytes(this), getBytes(that))
   },
   [Hash.symbol](this: Ipv4Address): number {
-    return hashBytes("Ipv4Address", getBytes(this))
+    return hashBytes(Ipv4AddressHash, getBytes(this))
   },
   toString(this: Ipv4Address): string {
     return formatIp(this)
@@ -514,7 +514,7 @@ const Ipv6Proto = {
     return isIpv6Address(that) && bytesEqual(getBytes(this), getBytes(that))
   },
   [Hash.symbol](this: Ipv6Address): number {
-    return hashBytes("Ipv6Address", getBytes(this))
+    return hashBytes(Ipv6AddressHash, getBytes(this))
   },
   toString(this: Ipv6Address): string {
     return formatIp(this)
@@ -534,7 +534,7 @@ const MacProto = {
     return isMacAddress(that) && bytesEqual(getBytes(this), getBytes(that))
   },
   [Hash.symbol](this: MacAddress): number {
-    return hashBytes("MacAddress", getBytes(this))
+    return hashBytes(MacAddressHash, getBytes(this))
   },
   toString(this: MacAddress): string {
     return formatMacAddress(this)
@@ -555,9 +555,13 @@ const bytesEqual = (self: Uint8Array, that: Uint8Array): boolean => {
   return true
 }
 
-const hashBytes = (tag: string, bytes: Uint8Array): number => {
-  return Hash.combine(Hash.string(tag), Hash.array(bytes))
-}
+// Tag hashes are precomputed: `Hash.string(<tag name>)`.
+const Ipv4AddressHash = -999650968
+const Ipv6AddressHash = -999858006
+const MacAddressHash = 750552796
+const UnixPathAddressHash = 73700852
+
+const hashBytes = (tagHash: number, bytes: Uint8Array): number => Hash.combine(tagHash, Hash.array(bytes))
 
 const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
   const self = Object.assign(Object.create(Ipv4Proto), { bytes: new Uint8Array(bytes) })
@@ -1691,7 +1695,7 @@ const UnixPathProto = {
     return isUnixPathAddress(that) && this.path === that.path
   },
   [Hash.symbol](this: UnixPathAddress): number {
-    return Hash.combine(Hash.string("UnixPathAddress"), Hash.string(this.path))
+    return Hash.combine(UnixPathAddressHash, Hash.string(this.path))
   },
   toString(this: UnixPathAddress): string {
     return this.path

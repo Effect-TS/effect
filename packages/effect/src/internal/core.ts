@@ -15,6 +15,10 @@ import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
 import * as InternalRecord from "./record.ts"
 
+// Tag hashes are precomputed: `Hash.string("Fail")` and `Hash.string("Die")`.
+const FailHash = 1013914439
+const DieHash = 193405581
+
 /** @internal */
 export const EffectTypeId = `~effect/Effect` as const
 
@@ -268,9 +272,7 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.error))(Hash.hash(this.annotations))
-    )
+    return Hash.combine(Hash.combine(Hash.hash(this.annotations), Hash.hash(this.error)), FailHash)
   }
 }
 
@@ -312,9 +314,7 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
-    )
+    return Hash.combine(Hash.combine(Hash.hash(this.annotations), Hash.hash(this.defect)), DieHash)
   }
 }
 
@@ -477,6 +477,8 @@ export const makeExit = <
     fiber: FiberImpl<unknown, unknown>
   ) => Primitive | Yield
 }): Fn => {
+  // `Hash.string(options.op)`, precomputed.
+  const opHash = options.op === "Success" ? 1042737350 : -105424443
   const Proto = {
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
@@ -502,7 +504,7 @@ export const makeExit = <
       )
     },
     [Hash.symbol](this: any): number {
-      return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
+      return Hash.combine(opHash, Hash.hash(this[args]))
     }
   }
   const ExitPrimitive = function(this: any, value: unknown) {

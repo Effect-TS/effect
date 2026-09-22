@@ -30,6 +30,13 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as Types from "../Types.ts"
 
+// `Hash.string(`${tag}:${waiting}`)`, precomputed for every tag and flag.
+const tagHashes = {
+  Initial: [439809948, 17546615],
+  Success: [-236047807, -693584470],
+  Failure: [-1025213374, -889327703]
+} as const
+
 /**
  * Type-level identifier used to recognize `AsyncResult` values.
  *
@@ -141,7 +148,7 @@ const ResultProto = {
     }
   },
   [Hash.symbol](this: AsyncResult<any, any>): number {
-    const tagHash = Hash.string(`${this._tag}:${this.waiting}`)
+    const tagHash = tagHashes[this._tag][this.waiting ? 1 : 0]
     if (this._tag === "Initial") {
       return tagHash
     }
