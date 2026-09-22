@@ -239,8 +239,7 @@ type MemoMapEntry = {
   readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<void>
 }
 
-// Built outside `getOrElseMemoize` so the finalizer, which lives as long as
-// the entry, captures only what it releases.
+// The finalizer must not retain the caller of `getOrElseMemoize`.
 const makeMemoMapEntry = (memoMap: MemoMapImpl, layer: Layer<any, any, any>): MemoMapEntry => {
   const entry: MemoMapEntry = {
     observers: 0,
@@ -256,13 +255,8 @@ const makeMemoMapEntry = (memoMap: MemoMapImpl, layer: Layer<any, any, any>): Me
   return entry
 }
 
-/**
- * Counts `scope` as an observer of `entry` and registers its finalizer in the
- * same synchronous step, so no interrupt can land between the two. Returns
- * `false` for a scope that is already closed, which observes nothing: a
- * published entry always has an observer, so counting this one and releasing
- * it again would cancel out.
- */
+// Count and register synchronously so interruption cannot strand an observer.
+// A closed scope cannot own an entry.
 const memoMapObserve = (entry: MemoMapEntry, scope: Scope.Scope): boolean => {
   if (scope.state._tag === "Closed") return false
   entry.observers++
@@ -409,15 +403,17 @@ export const fromBuildMemo = <ROut, E, RIn>(
 }
 
 class MemoMapImpl implements MemoMap {
-  readonly [MemoMapTypeId] = MemoMapTypeId
-
-  readonly map = new Map<Layer<any, any, any>, MemoMapEntry>()
+  get [MemoMapTypeId](): typeof MemoMapTypeId {
+    return MemoMapTypeId
+  }
 
   readonly parent: MemoMap | undefined
 
   constructor(parent?: MemoMap) {
     this.parent = parent
   }
+
+  readonly map = new Map<Layer<any, any, any>, MemoMapEntry>()
 
   get<RIn, E, ROut>(
     layer: Layer<ROut, E, RIn>,
@@ -437,16 +433,15 @@ class MemoMapImpl implements MemoMap {
     build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
   ): Effect<Context.Context<ROut>, E, RIn> {
     return internalEffect.suspend(() => {
-      // The exit handler is in place before the lookup, so an entry is only
-      // published once the handler that completes it exists.
+      // Install the exit handler before publishing an entry: it must complete
+      // the Deferred even if the first requester is interrupted.
       let deferred: Deferred.Deferred<Context.Context<ROut>, E> | undefined
       return internalEffect.onExitPrimitive(
         internalEffect.suspend(() => {
           const existing = this.get(layer, scope)
           if (existing) return existing
           const entry = makeMemoMapEntry(this, layer)
-          // A requester whose scope is closed has already left, so there is
-          // nothing to share: its build releases as it acquires.
+          // A closed scope cannot own a shared entry; build in that scope instead.
           if (!memoMapObserve(entry, scope)) return build(this, scope)
           deferred = entry.deferred
           this.map.set(layer, entry)
