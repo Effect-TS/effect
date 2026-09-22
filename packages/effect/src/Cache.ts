@@ -432,34 +432,42 @@ export const get: {
         MutableHashMap.set(self.map, key, oentry.value)
         return awaitEntry(oentry.value, fiber, self.map, key)
       }
-      const lookup = self.lookup(key)
-      const entry = new EntryImpl<A, E>((entry) => {
-        // Publish the entry before its lookup starts, so the lookup's own
-        // completion finds it in the map.
-        MutableHashMap.set(self.map, key, entry)
-        if (Number.isFinite(self.capacity)) {
-          checkCapacity(self)
-        }
-        return effect.forkUnsafe(
-          fiber,
-          effect.onExitPrimitive(lookup, (exit) => {
-            if (effect.exitHasInterrupts(exit)) {
-              removeIfCurrent(self.map, key, entry)
-            } else {
-              const ttl = self.timeToLive(exit, key)
-              if (Duration.isFinite(ttl)) {
-                entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-              }
-            }
-            return undefined
-          }),
-          true,
-          true
-        )
-      })
-      return awaitEntry(entry, fiber, self.map, key)
+      return awaitEntry(startLookup(self, key, fiber), fiber, self.map, key)
     })
 )
+
+// Creates, publishes and starts the entry for a missing key. The lookup's own
+// completion, inside the lookup fiber, sets the TTL or removes an interrupted
+// entry, so the entry is published before the lookup starts.
+const startLookup = <Key, A, E, R>(
+  self: Cache<Key, A, E, R>,
+  key: Key,
+  fiber: FiberImpl<unknown, unknown>
+): EntryImpl<A, E> => {
+  const lookup = self.lookup(key)
+  return new EntryImpl<A, E>((entry) => {
+    MutableHashMap.set(self.map, key, entry)
+    if (Number.isFinite(self.capacity)) {
+      checkCapacity(self)
+    }
+    return effect.forkUnsafe(
+      fiber,
+      effect.onExitPrimitive(lookup, (exit) => {
+        if (effect.exitHasInterrupts(exit)) {
+          removeIfCurrent(self.map, key, entry)
+        } else {
+          const ttl = self.timeToLive(exit, key)
+          if (Duration.isFinite(ttl)) {
+            entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+          }
+        }
+        return undefined
+      }),
+      true,
+      true
+    )
+  })
+}
 
 class EntryImpl<A, E> implements Entry<A, E> {
   expiresAt: number | undefined

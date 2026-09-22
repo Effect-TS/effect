@@ -270,32 +270,43 @@ export const get: {
         MutableHashMap.set(state.map, key, oentry.value)
         return awaitEntry(oentry.value, fiber, state.map, key)
       }
-      const entry = new EntryImpl<A, E>()
-      MutableHashMap.set(state.map, key, entry)
-      return startEntry(
-        entry,
-        fiber,
-        state.map,
-        key,
-        andThen(
-          checkCapacity(fiber, state.map, self.capacity),
-          Option.isSome(oentry) ? Scope.close(oentry.value.scope, effect.exitVoid) : undefined
-        ),
-        (exit) => {
-          if (effect.exitHasInterrupts(exit)) {
-            removeIfCurrent(self, key, entry)
-            return Scope.close(entry.scope, effect.exitVoid)
-          }
-          const ttl = self.timeToLive(exit, key)
-          if (Duration.isFinite(ttl)) {
-            entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-          }
-          return undefined
-        },
-        () => self.lookup(key)
-      )
+      return getMiss(self, key, fiber, state.map, oentry)
     })
 )
+
+// Creates, publishes and starts the entry for a missing or expired key.
+const getMiss = <Key, A, E, R>(
+  self: ScopedCache<Key, A, E, R>,
+  key: Key,
+  fiber: FiberImpl<unknown, unknown>,
+  map: MutableHashMap.MutableHashMap<Key, Entry<A, E>>,
+  expired: Option.Option<Entry<A, E>>
+): Effect.Effect<A, E> => {
+  const entry = new EntryImpl<A, E>()
+  MutableHashMap.set(map, key, entry)
+  return startEntry(
+    entry,
+    fiber,
+    map,
+    key,
+    andThen(
+      checkCapacity(fiber, map, self.capacity),
+      Option.isSome(expired) ? Scope.close(expired.value.scope, effect.exitVoid) : undefined
+    ),
+    (exit) => {
+      if (effect.exitHasInterrupts(exit)) {
+        removeIfCurrent(self, key, entry)
+        return Scope.close(entry.scope, effect.exitVoid)
+      }
+      const ttl = self.timeToLive(exit, key)
+      if (Duration.isFinite(ttl)) {
+        entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+      }
+      return undefined
+    },
+    () => self.lookup(key)
+  )
+}
 
 class EntryImpl<A, E> implements Entry<A, E> {
   expiresAt: number | undefined
