@@ -154,8 +154,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         } finally {
           visitedObjects.delete(self)
         }
-        // A walk that hit a back-edge produced an entry-point dependent hash,
-        // so only cache when no cycle was seen below this object.
+        // Hashes containing a back-edge depend on the entry point.
         if (seen === backEdges) {
           hashCache.set(self, h)
         }
@@ -204,9 +203,7 @@ export const random: <A extends object>(self: A) => number = (self) => {
   return randomHashCache.get(self)!
 }
 
-/**
- * The 32-bit MurmurHash3 finalizer.
- */
+// 32-bit MurmurHash3 finalizer.
 const mix = (h: number): number => {
   h ^= h >>> 16
   h = Math.imul(h, 0x85ebca6b)
@@ -225,9 +222,7 @@ const mix = (h: number): number => {
  *
  * **Details**
  *
- * Supports both direct and pipeable usage. The combination is ordered:
- * `combine(a, b)` and `combine(b, a)` generally differ, so folding a sequence
- * through `combine` keeps element order in the result.
+ * Supports direct and pipeable usage. Argument order affects the result.
  *
  * **Example** (Combining hash values)
  *
@@ -321,10 +316,8 @@ const float64 = new DataView(new ArrayBuffer(8))
  *
  * **Details**
  *
- * Integers that fit in 32 bits hash to themselves, so `0` and `-0` share a
- * hash. Every other number, including `NaN`, `Infinity`, and `-Infinity`, is
- * hashed from its IEEE-754 bit pattern, and every `NaN` payload hashes the
- * same.
+ * Int32 values hash to themselves. Other numbers hash from their IEEE-754 bits,
+ * with a canonical representation for `NaN`.
  *
  * **Example** (Hashing numbers)
  *
@@ -343,11 +336,10 @@ const float64 = new DataView(new ArrayBuffer(8))
  */
 export const number = (n: number) => {
   const h = n | 0
-  // `-0 === 0`, so both share the int32 path.
   if (h === n) {
     return optimize(h)
   }
-  // Collapse every NaN payload before dumping the IEEE-754 bits.
+  // Canonicalize NaN before reading its bits.
   float64.setFloat64(0, n !== n ? NaN : n)
   return optimize(combine(float64.getInt32(0), float64.getInt32(4)))
 }
@@ -479,9 +471,8 @@ const unordered = (seed: number, f: (el: any) => number) => (iter: Iterable<any>
  *
  * **Details**
  *
- * The implementation folds element hashes from the seed `6151` with
- * {@link combine} and then optimizes the final hash, so both element order and
- * length contribute to the result.
+ * Folds element hashes with {@link combine}, so order and length affect the
+ * result.
  *
  * **Gotchas**
  *

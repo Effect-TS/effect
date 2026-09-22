@@ -288,15 +288,12 @@ function compareObjects(self: object, that: object): boolean {
 }
 
 function withCache(self: object, that: object, f: (a: any, b: any) => boolean): boolean {
-  // Check cache first
   let selfMap = equalityCache.get(self)
   if (selfMap?.has(that)) {
     return selfMap.get(that)!
   }
 
-  // Only the outermost comparison writes the cache. An inner pair may resolve
-  // to the provisional `true` of a circular walk that the outer result then
-  // rejects, so caching it would make later lookups of that pair wrong.
+  // Do not cache provisional cycle matches from nested comparisons.
   if (comparing) {
     return f(self, that)
   }
@@ -308,7 +305,6 @@ function withCache(self: object, that: object, f: (a: any, b: any) => boolean): 
     comparing = false
   }
 
-  // Cache the result bidirectionally
   if (!selfMap) {
     selfMap = new WeakMap()
     equalityCache.set(self, selfMap)

@@ -69,10 +69,7 @@ const edgeHash = (type: Graph.Kind, edge: Graph.Edge<any>): number =>
     ? Hash.hash(edge)
     : Hash.optimize(Hash.combine(Hash.hash(edge.data), endpointsHash(edge.source, edge.target)))
 
-/**
- * Order-independent hash of an undirected edge's endpoints. The mixed endpoint
- * terms are added rather than XORed so a self-loop does not cancel to zero.
- */
+// Addition is order-independent and does not cancel self-loops.
 const endpointsHash = (source: number, target: number): number =>
   Hash.combine(0, Hash.hash(source)) + Hash.combine(0, Hash.hash(target))
 
