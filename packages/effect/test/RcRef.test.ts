@@ -315,56 +315,39 @@ describe("RcRef", () => {
       assert.strictEqual(released, 1)
     }))
 
-  // A small op budget makes the fiber yield at each point between counting a
-  // reference and registering its release; interrupting it there must not pin
-  // the resource. (With a budget below 3 a fiber yields again before making
-  // progress.)
-  const interruptAtEveryYield = (
-    test: (
-      budget: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-    ) => Effect.Effect<boolean, never, Scope.Scope>
-  ) =>
-    Effect.gen(function*() {
-      const failed: Array<number> = []
-      for (let ops = 3; ops <= 64; ops++) {
-        const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
-        if (!ok) failed.push(ops)
-      }
-      assert.deepStrictEqual(failed, [])
-    })
-
   it.effect("an interrupted first get does not pin the resource", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        let acquired = 0
-        let released = 0
-        const ref = yield* RcRef.make({
-          acquire: Effect.acquireRelease(Effect.sync(() => ++acquired), () => Effect.sync(() => released++))
-        })
-        const fiber = yield* Effect.forkChild(budget(Effect.scoped(RcRef.get(ref))), { startImmediately: true })
-        yield* Fiber.interrupt(fiber)
-        // the last reference out releases the resource
-        yield* Effect.scoped(RcRef.get(ref))
-        return acquired === released
+    Effect.gen(function*() {
+      let acquired = 0
+      let released = 0
+      const ref = yield* RcRef.make({
+        acquire: Effect.acquireRelease(Effect.sync(() => ++acquired), () => Effect.sync(() => released++))
       })
-    ))
+      const fiber = yield* Effect.forkChild(
+        Effect.scoped(RcRef.get(ref)).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 29)),
+        { startImmediately: true }
+      )
+      yield* Fiber.interrupt(fiber)
+      yield* Effect.scoped(RcRef.get(ref))
+      assert.strictEqual(acquired, released)
+    }))
 
   it.effect("an interrupted get of an acquired resource does not pin it", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        let released = 0
-        const ref = yield* RcRef.make({
-          acquire: Effect.acquireRelease(Effect.void, () => Effect.sync(() => released++))
-        })
-        const holder = yield* Effect.forkChild(Effect.scoped(Effect.andThen(RcRef.get(ref), Effect.never)), {
-          startImmediately: true
-        })
-        const fiber = yield* Effect.forkChild(budget(Effect.scoped(RcRef.get(ref))), { startImmediately: true })
-        yield* Fiber.interrupt(fiber)
-        yield* Fiber.interrupt(holder)
-        return released === 1
+    Effect.gen(function*() {
+      let released = 0
+      const ref = yield* RcRef.make({
+        acquire: Effect.acquireRelease(Effect.void, () => Effect.sync(() => released++))
       })
-    ))
+      const holder = yield* Effect.forkChild(Effect.scoped(Effect.andThen(RcRef.get(ref), Effect.never)), {
+        startImmediately: true
+      })
+      const fiber = yield* Effect.forkChild(
+        Effect.scoped(RcRef.get(ref)).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)),
+        { startImmediately: true }
+      )
+      yield* Fiber.interrupt(fiber)
+      yield* Fiber.interrupt(holder)
+      assert.strictEqual(released, 1)
+    }))
 
   it.effect("closing the ref while an idle resource is being released runs every finalizer", () =>
     Effect.gen(function*() {

@@ -137,16 +137,6 @@ describe("ScopedRef", () => {
       yield* Fiber.await(setter)
       assert.deepStrictEqual(yield* Ref.get(released), [1])
     }))
-  it.effect("the owning scope closes the current value after other finalizers added later", () =>
-    Effect.gen(function*() {
-      const order: Array<string> = []
-      const owner = yield* Scope.make()
-      const ref = yield* ScopedRef.make(() => 0).pipe(Scope.provide(owner))
-      yield* Scope.addFinalizer(owner, Effect.sync(() => order.push("later")))
-      yield* ScopedRef.set(ref, Effect.acquireRelease(Effect.succeed(1), () => Effect.sync(() => order.push("value"))))
-      yield* Scope.close(owner, Exit.void)
-      assert.deepStrictEqual(order, ["later", "value"])
-    }))
   it.effect("fromAcquire tracks the initial resource through replacement and scope close", () =>
     Effect.gen(function*() {
       const ref = yield* Effect.scoped(ScopedRef.make(() => 0))

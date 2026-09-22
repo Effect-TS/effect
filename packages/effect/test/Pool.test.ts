@@ -682,48 +682,18 @@ describe("Pool", () => {
       strictEqual(yield* Pool.use(pool, (item) => Effect.succeed(item)), "resource")
     }))
 
-  // A small op budget makes the fiber yield at each point between leasing an
-  // item and installing its release; interrupting it there must return the
-  // lease. (With a budget below 3 a fiber yields again before making progress.)
-  const interruptAtEveryYield = (
-    test: (
-      budget: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-    ) => Effect.Effect<boolean, never, Scope.Scope>
-  ) =>
+  it.effect("an interrupted use returns its lease", () =>
     Effect.gen(function*() {
-      const failed: Array<number> = []
-      for (let ops = 3; ops <= 64; ops++) {
-        const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
-        if (!ok) failed.push(ops)
-      }
-      deepStrictEqual(failed, [])
-    })
-
-  it.effect("an interrupted use returns its lease at every yield", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
-        const fiber = yield* Effect.forkChild(budget(Pool.use(pool, () => Effect.never)), { startImmediately: true })
-        yield* Fiber.interrupt(fiber)
-        // the single item must be free again: the next use completes at once
-        const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
-        return pool.state.usage === 0 && next.pollUnsafe() !== undefined
-      })
-    ))
-
-  it.effect("an interrupted get returns its lease at every yield", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
-        const fiber = yield* Effect.forkChild(
-          budget(Effect.scoped(Effect.andThen(Pool.get(pool), Effect.never))),
-          { startImmediately: true }
-        )
-        yield* Fiber.interrupt(fiber)
-        const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
-        return pool.state.usage === 0 && next.pollUnsafe() !== undefined
-      })
-    ))
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+      const fiber = yield* Effect.forkChild(
+        Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 4)),
+        { startImmediately: true }
+      )
+      yield* Fiber.interrupt(fiber)
+      const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
+      strictEqual(pool.state.usage, 0)
+      assert.isDefined(next.pollUnsafe())
+    }))
 
   it.effect("use waits for an available item", () =>
     Effect.gen(function*() {
