@@ -21,6 +21,7 @@ import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
 import * as effect from "./internal/effect.ts"
+import type { FiberImpl } from "./internal/effect.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -257,45 +258,42 @@ export const get: {
 } = dual(
   2,
   <Key, A, E, R>(self: ScopedCache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
-    effect.uninterruptibleMask((restore) =>
-      core.withFiber((fiber) => {
-        const state = self.state
-        if (state._tag === "Closed") {
-          return effect.interrupt
-        }
-        const oentry = MutableHashMap.get(state.map, key)
-        if (Option.isSome(oentry) && !hasExpired(oentry.value, fiber)) {
-          // Move the entry to the end of the map to keep it fresh
-          MutableHashMap.remove(state.map, key)
-          MutableHashMap.set(state.map, key, oentry.value)
-          return awaitEntry(oentry.value, fiber, restore, state.map, key)
-        }
-        const entry = new EntryImpl<A, E>()
-        MutableHashMap.set(state.map, key, entry)
-        return startEntry(
-          entry,
-          fiber,
-          restore,
-          state.map,
-          key,
-          checkCapacity(fiber, state.map, self.capacity).pipe(
-            Option.isSome(oentry) ? effect.flatMap(() => Scope.close(oentry.value.scope, effect.exitVoid)) : identity
-          ),
-          (exit) => {
-            if (effect.exitHasInterrupts(exit)) {
-              removeIfCurrent(self, key, entry)
-              return Scope.close(entry.scope, effect.exitVoid)
-            }
-            const ttl = self.timeToLive(exit, key)
-            if (Duration.isFinite(ttl)) {
-              entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-            }
-            return undefined
-          },
-          () => self.lookup(key)
-        )
-      })
-    )
+    core.withFiber((fiber) => {
+      const state = self.state
+      if (state._tag === "Closed") {
+        return effect.interrupt
+      }
+      const oentry = MutableHashMap.get(state.map, key)
+      if (Option.isSome(oentry) && !hasExpired(oentry.value, fiber)) {
+        // Move the entry to the end of the map to keep it fresh
+        MutableHashMap.remove(state.map, key)
+        MutableHashMap.set(state.map, key, oentry.value)
+        return awaitEntry(oentry.value, fiber, state.map, key)
+      }
+      const entry = new EntryImpl<A, E>()
+      MutableHashMap.set(state.map, key, entry)
+      return startEntry(
+        entry,
+        fiber,
+        state.map,
+        key,
+        checkCapacity(fiber, state.map, self.capacity).pipe(
+          Option.isSome(oentry) ? effect.flatMap(() => Scope.close(oentry.value.scope, effect.exitVoid)) : identity
+        ),
+        (exit) => {
+          if (effect.exitHasInterrupts(exit)) {
+            removeIfCurrent(self, key, entry)
+            return Scope.close(entry.scope, effect.exitVoid)
+          }
+          const ttl = self.timeToLive(exit, key)
+          if (Duration.isFinite(ttl)) {
+            entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+          }
+          return undefined
+        },
+        () => self.lookup(key)
+      )
+    })
 )
 
 class EntryImpl<A, E> implements Entry<A, E> {
@@ -321,15 +319,15 @@ class EntryImpl<A, E> implements Entry<A, E> {
  */
 const startEntry = <K, A, E, R>(
   entry: EntryImpl<A, E>,
-  fiber: Fiber.Fiber<unknown, unknown>,
-  restore: <X, XE, XR>(effect: Effect.Effect<X, XE, XR>) => Effect.Effect<X, XE, XR>,
+  fiber: FiberImpl<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>> | undefined,
   key: K,
   before: Effect.Effect<void>,
   onDone: (exit: Exit.Exit<A, E>) => Effect.Effect<void> | undefined,
   lookup: () => Effect.Effect<A, E, R>
-): Effect.Effect<A, E> =>
-  effect.onExitPrimitive(
+): Effect.Effect<A, E> => {
+  const restore = enterMask(fiber)
+  return effect.onExitPrimitive(
     effect.flatMap(before, () => {
       entry.fiber = effect.forkUnsafe(
         fiber,
@@ -343,10 +341,23 @@ const startEntry = <K, A, E, R>(
         true,
         true
       )
-      return restore(Deferred.await(entry.deferred))
+      return entry.deferred.effect ?? restore(Deferred.await(entry.deferred))
     }),
     release(entry, fiber, map, key)
   )
+}
+
+/**
+ * Masks the current fiber for the rest of the step, without an extra
+ * primitive, and returns the matching `restore`. Call only within `withFiber`.
+ */
+const enterMask = (
+  fiber: FiberImpl<unknown, unknown>
+): <X, XE, XR>(effect: Effect.Effect<X, XE, XR>) => Effect.Effect<X, XE, XR> => {
+  const restore = fiber.interruptible ? effect.interruptible : identity
+  effect.fiberEnterUninterruptibleUnsafe(fiber)
+  return restore
+}
 
 /**
  * Joins an entry. Call with the fiber masked, in the same step that found the
@@ -355,31 +366,34 @@ const startEntry = <K, A, E, R>(
  */
 const awaitEntry = <K, A, E>(
   entry: Entry<A, E>,
-  fiber: Fiber.Fiber<unknown, unknown>,
-  restore: <X, XE, XR>(effect: Effect.Effect<X, XE, XR>) => Effect.Effect<X, XE, XR>,
+  fiber: FiberImpl<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>>,
   key: K
 ): Effect.Effect<A, E> => {
   if (entry.deferred.effect !== undefined) return entry.deferred.effect
-  if (!(entry instanceof EntryImpl)) return restore(Deferred.await(entry.deferred))
+  if (!(entry instanceof EntryImpl)) return Deferred.await(entry.deferred)
+  const restore = enterMask(fiber)
   entry.awaiters++
   return effect.onExitPrimitive(restore(Deferred.await(entry.deferred)), release(entry, fiber, map, key))
 }
 
 /**
- * The last caller to leave a pending entry unpublishes it and interrupts its
- * lookup in one step, so no later caller can join a cancelled lookup. Having
- * removed the entry, it closes the entry's scope.
+ * The last caller to leave an entry drops its handle on the lookup fiber. If
+ * the lookup is still pending, that caller also unpublishes the entry and
+ * interrupts the lookup in the same step, so no later caller can join a
+ * cancelled lookup. Having removed the entry, it closes the entry's scope.
  */
 const release = <K, A, E>(
   entry: EntryImpl<A, E>,
-  fiber: Fiber.Fiber<unknown, unknown>,
+  fiber: FiberImpl<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>> | undefined,
   key: K
 ) =>
 (): Effect.Effect<void> | undefined => {
   const lookup = entry.fiber
-  if (--entry.awaiters > 0 || lookup === undefined || entry.deferred.effect !== undefined) return undefined
+  if (--entry.awaiters > 0 || lookup === undefined) return undefined
+  entry.fiber = undefined
+  if (entry.deferred.effect !== undefined) return undefined
   if (map !== undefined) {
     const current = MutableHashMap.get(map, key)
     if (Option.isSome(current) && current.value === entry) {
@@ -450,15 +464,13 @@ export const getOption: {
 } = dual(
   2,
   <Key, A, E, R>(self: ScopedCache<Key, A, E, R>, key: Key): Effect.Effect<Option.Option<A>, E> =>
-    effect.uninterruptibleMask((restore) =>
-      core.withFiber((fiber) =>
-        getImpl(
-          self,
-          key,
-          fiber,
-          true,
-          (entry, map) => entry ? effect.asSome(awaitEntry(entry, fiber, restore, map, key)) : effect.succeedNone
-        )
+    core.withFiber((fiber) =>
+      getImpl(
+        self,
+        key,
+        fiber,
+        true,
+        (entry, map) => entry ? effect.asSome(awaitEntry(entry, fiber, map, key)) : effect.succeedNone
       )
     )
 )
@@ -466,7 +478,7 @@ export const getOption: {
 const getImpl = <Key, A, E, R, X, XE>(
   self: ScopedCache<Key, A, E, R>,
   key: Key,
-  fiber: Fiber.Fiber<any, any>,
+  fiber: FiberImpl<unknown, unknown>,
   isRead: boolean,
   f: (
     entry: Entry<A, E> | undefined,
@@ -483,7 +495,7 @@ const getImpl = <Key, A, E, R, X, XE>(
   } else if (hasExpired(oentry.value, fiber)) {
     MutableHashMap.remove(state.map, key)
     return effect.flatMap(
-      Scope.close(oentry.value.scope, effect.exitVoid),
+      effect.uninterruptible(Scope.close(oentry.value.scope, effect.exitVoid)),
       () => f(undefined, state.map)
     )
   } else if (isRead) {
@@ -685,30 +697,28 @@ export const invalidateWhen: {
 } = dual(
   3,
   <Key, A, E, R>(self: ScopedCache<Key, A, E, R>, key: Key, f: Predicate.Predicate<A>): Effect.Effect<boolean> =>
-    effect.uninterruptibleMask((restore) =>
-      core.withFiber((fiber) =>
-        getImpl(self, key, fiber, false, (entry, map) => {
-          if (entry === undefined) {
-            return effect.succeed(false)
-          }
-          return awaitEntry(entry, fiber, restore, map, key).pipe(
-            effect.flatMap((value) => {
-              if (self.state._tag === "Closed") {
-                return effect.succeed(false)
-              } else if (f(value)) {
-                const current = MutableHashMap.get(self.state.map, key)
-                if (Option.isNone(current) || current.value !== entry) {
-                  return effect.succeed(false)
-                }
-                MutableHashMap.remove(self.state.map, key)
-                return effect.as(Scope.close(entry.scope, effect.exitVoid), true)
-              }
+    core.withFiber((fiber) =>
+      getImpl(self, key, fiber, false, (entry, map) => {
+        if (entry === undefined) {
+          return effect.succeed(false)
+        }
+        return awaitEntry(entry, fiber, map, key).pipe(
+          effect.flatMap((value) => {
+            if (self.state._tag === "Closed") {
               return effect.succeed(false)
-            }),
-            effect.catch_(() => effect.succeed(false))
-          )
-        })
-      )
+            } else if (f(value)) {
+              const current = MutableHashMap.get(self.state.map, key)
+              if (Option.isNone(current) || current.value !== entry) {
+                return effect.succeed(false)
+              }
+              MutableHashMap.remove(self.state.map, key)
+              return effect.as(Scope.close(entry.scope, effect.exitVoid), true)
+            }
+            return effect.succeed(false)
+          }),
+          effect.catch_(() => effect.succeed(false))
+        )
+      })
     )
 )
 
@@ -737,50 +747,47 @@ export const refresh: {
 } = dual(
   2,
   <Key, A, E, R>(self: ScopedCache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
-    effect.uninterruptibleMask((restore) =>
-      core.withFiber((fiber) => {
-        if (self.state._tag === "Closed") return effect.interrupt
-        const map = self.state.map
-        const newEntry = !MutableHashMap.has(map, key)
-        const entry = new EntryImpl<A, E>()
-        if (newEntry) {
-          MutableHashMap.set(map, key, entry)
-        }
-        const result = startEntry(
-          entry,
-          fiber,
-          restore,
-          newEntry ? map : undefined,
-          key,
-          newEntry ? checkCapacity(fiber, map, self.capacity) : effect.void,
-          (exit) => {
-            if (effect.exitHasInterrupts(exit)) {
-              if (newEntry) removeIfCurrent(self, key, entry)
-              return Scope.close(entry.scope, effect.exitVoid)
-            }
-            if (self.state._tag === "Closed") {
-              return newEntry ? undefined : Scope.close(entry.scope, effect.exitVoid)
-            }
-            const ttl = self.timeToLive(exit, key)
-            entry.expiresAt = Duration.isFinite(ttl)
-              ? fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-              : undefined
-            if (newEntry) return undefined
-            const oentry = MutableHashMap.get(self.state.map, key)
-            MutableHashMap.set(self.state.map, key, entry)
-            const check = checkCapacity(fiber, self.state.map, self.capacity)
-            return Option.isSome(oentry)
-              ? effect.flatMap(check, () => Scope.close(oentry.value.scope, effect.exitVoid))
-              : check
-          },
-          () => self.lookup(key)
-        )
-        return effect.flatMap(
-          effect.exit(result),
-          (exit) => self.state._tag === "Closed" ? effect.interrupt : exit
-        )
-      })
-    )
+    core.withFiber((fiber) => {
+      if (self.state._tag === "Closed") return effect.interrupt
+      const map = self.state.map
+      const newEntry = !MutableHashMap.has(map, key)
+      const entry = new EntryImpl<A, E>()
+      if (newEntry) {
+        MutableHashMap.set(map, key, entry)
+      }
+      const result = startEntry(
+        entry,
+        fiber,
+        newEntry ? map : undefined,
+        key,
+        newEntry ? checkCapacity(fiber, map, self.capacity) : effect.void,
+        (exit) => {
+          if (effect.exitHasInterrupts(exit)) {
+            if (newEntry) removeIfCurrent(self, key, entry)
+            return Scope.close(entry.scope, effect.exitVoid)
+          }
+          if (self.state._tag === "Closed") {
+            return newEntry ? undefined : Scope.close(entry.scope, effect.exitVoid)
+          }
+          const ttl = self.timeToLive(exit, key)
+          entry.expiresAt = Duration.isFinite(ttl)
+            ? fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+            : undefined
+          if (newEntry) return undefined
+          const oentry = MutableHashMap.get(self.state.map, key)
+          MutableHashMap.set(self.state.map, key, entry)
+          const check = checkCapacity(fiber, self.state.map, self.capacity)
+          return Option.isSome(oentry)
+            ? effect.flatMap(check, () => Scope.close(oentry.value.scope, effect.exitVoid))
+            : check
+        },
+        () => self.lookup(key)
+      )
+      return effect.flatMap(
+        effect.exit(result),
+        (exit) => self.state._tag === "Closed" ? effect.interrupt : exit
+      )
+    })
 )
 
 /**
