@@ -2566,6 +2566,36 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(rebuilds, 1)
     })
 
+    it("tracks dependencies after hydrating a wrapped atom", () => {
+      const dependency = Atom.make(1).pipe(Atom.keepAlive)
+      let reads = 0
+      const atom = Atom.make((get) => {
+        reads++
+        return get(dependency) * 2
+      }).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated-dependency", schema: Schema.Number }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "hydrated-dependency",
+        value: 10,
+        dehydratedAt: 0
+      }]
+      Hydration.hydrate(r, dehydratedState)
+      r.mount(atom)
+
+      assert.strictEqual(r.get(atom), 10)
+      assert.strictEqual(reads, 0)
+
+      r.set(dependency, 7)
+
+      assert.strictEqual(r.get(atom), 14)
+      assert.strictEqual(reads, 1)
+    })
+
     it("does not run a hydrated effect until invalidated", () => {
       let runs = 0
       const atom = counterRuntime.atom(Effect.sync(() => ++runs)).pipe(
