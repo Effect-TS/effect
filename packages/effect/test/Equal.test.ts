@@ -74,6 +74,62 @@ describe("Equal.equals", () => {
       Equal.equals(n2, m1)
       assert.isTrue(Equal.equals({ w: n2, k: 1 }, { w: m0, k: 1 }))
     })
+
+    it("assumes cycles equal pair by pair", () => {
+      // A self-loop equals a node that points into an identical self-loop.
+      const [loop] = graph([{ v: 0, a: 0, b: 0 }])
+      const [, entry] = graph([{ v: 0, a: 0, b: 0 }, { v: 0, a: 0, b: 0 }])
+      assert.isTrue(Equal.equals(loop, entry))
+      // p0 only ever reaches v = 1, q0 reaches q1 with v = 0: visiting p0 and
+      // q1 at the same time is not an assumption that p0 equals q1.
+      const [, p1] = graph([{ v: 1, a: 0, b: 0 }, { v: 0, a: 0, b: 0 }])
+      const [, q1] = graph([{ v: 1, a: 1, b: 0 }, { v: 0, a: 0, b: 0 }])
+      assert.isFalse(Equal.equals(p1, q1))
+    })
+
+    it("agrees with bisimilarity on random cyclic graphs", () => {
+      // Greatest fixpoint: relate the nodes with equal `v`, then drop related
+      // pairs whose successors are not related until nothing changes.
+      const bisimilar = (left: Spec, right: Spec): ReadonlyArray<ReadonlyArray<boolean>> => {
+        const related = left.map((l) => right.map((r) => l.v === r.v))
+        let changed = true
+        while (changed) {
+          changed = false
+          left.forEach((l, i) =>
+            right.forEach((r, j) => {
+              if (related[i][j] && !(related[l.a][r.a] && related[l.b][r.b])) {
+                related[i][j] = false
+                changed = true
+              }
+            })
+          )
+        }
+        return related
+      }
+      let seed = 1
+      const random = (n: number): number => {
+        seed = (Math.imul(seed, 1103515245) + 12345) >>> 0
+        return (seed >>> 16) % n
+      }
+      const randomSpec = (): Spec => {
+        const size = 1 + random(4)
+        return Array.from({ length: size }, () => ({ v: random(2), a: random(size), b: random(size) }))
+      }
+      const disagreements: Array<string> = []
+      for (let run = 0; run < 500; run++) {
+        const left = randomSpec()
+        const right = randomSpec()
+        const expected = bisimilar(left, right)
+        for (let x = 0; x < left.length; x++) {
+          for (let y = 0; y < right.length; y++) {
+            if (Equal.equals(graph(left)[x], graph(right)[y]) !== expected[x][y]) {
+              disagreements.push(`${JSON.stringify(left)}[${x}] vs ${JSON.stringify(right)}[${y}]`)
+            }
+          }
+        }
+      }
+      assert.deepStrictEqual(disagreements, [])
+    })
   })
 
   describe("plain objects", () => {

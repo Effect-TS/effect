@@ -128,7 +128,7 @@ export interface Equal extends Hash.Hash {
  * arrays compare element-by-element, Maps and Sets compare entries
  * order-independently, and plain objects compare enumerable keys recursively.
  * Functions without an `Equal` implementation compare by reference. Circular
- * references are handled when both structures are circular at the same depth.
+ * structures are equal when every path through them meets equal values.
  *
  * Hash values are checked first as a fast-path rejection. The function also
  * supports dual data-last usage: call it with one argument to get a curried
@@ -136,8 +136,8 @@ export interface Equal extends Hash.Hash {
  *
  * **Gotchas**
  *
- * - Results are cached per object pair in a WeakMap. **Objects must not be
- *   mutated after their first comparison.**
+ * - Equal results are cached per object pair in a WeakMap. **Objects must not
+ *   be mutated after their first comparison.**
  * - Map and Set comparisons are O(n²) in size.
  *
  * **Example** (Comparing values)
@@ -197,40 +197,14 @@ function compareBoth(self: unknown, that: unknown): boolean {
     return false
   }
 
-  // For objects and functions, use cached comparison
-  return withCache(self, that, compareObjects)
+  return compareObjects(self, that)
 }
 
-/** Helper to run comparison with proper visited tracking */
-function withVisitedTracking(
-  self: object,
-  that: object,
-  fn: () => boolean
-): boolean {
-  const hasLeft = visitedLeft.has(self)
-  const hasRight = visitedRight.has(that)
-  // Check for circular references before adding
-  if (hasLeft && hasRight) {
-    return true // Both are circular at the same level
-  }
-  if (hasLeft || hasRight) {
-    return false // Only one is circular
-  }
-  visitedLeft.add(self)
-  visitedRight.add(that)
-  try {
-    return fn()
-  } finally {
-    visitedLeft.delete(self)
-    visitedRight.delete(that)
-  }
-}
-
-const visitedLeft = new WeakSet<object>()
-const visitedRight = new WeakSet<object>()
-
-/** Helper to perform cached object comparison */
 function compareObjects(self: object, that: object): boolean {
+  let assumed = pairs.get(self)
+  if (assumed?.has(that)) {
+    return true
+  }
   if (Hash.hash(self) !== Hash.hash(that)) {
     return false
   } else if (self instanceof Date) {
@@ -249,86 +223,70 @@ function compareObjects(self: object, that: object): boolean {
   if (typeof self === "function" && !bothEquals) {
     return false
   }
-  return withVisitedTracking(self, that, () => {
-    if (bothEquals) {
-      return (self as any)[symbol](that)
-    } else if (Array.isArray(self)) {
-      if (!Array.isArray(that) || self.length !== that.length) {
-        return false
-      }
-      return compareArrays(self, that)
-    } else if (ArrayBuffer.isView(self)) {
-      const selfIsDataView = self instanceof DataView
-      if (
-        !ArrayBuffer.isView(that) ||
-        self.byteLength !== that.byteLength ||
-        selfIsDataView !== (that instanceof DataView)
-      ) {
-        return false
-      }
-      if (selfIsDataView) {
-        const thatDataView = that as DataView
-        return compareTypedArrays(
-          new Uint8Array(self.buffer, self.byteOffset, self.byteLength),
-          new Uint8Array(thatDataView.buffer, thatDataView.byteOffset, thatDataView.byteLength)
-        )
-      }
-      return compareTypedArrays(self as Uint8Array, that as Uint8Array)
-    } else if (self instanceof Map) {
-      if (!(that instanceof Map) || self.size !== that.size) {
-        return false
-      }
-      return compareMaps(self, that)
-    } else if (self instanceof Set) {
-      if (!(that instanceof Set) || self.size !== that.size) {
-        return false
-      }
-      return compareSets(self, that)
-    }
-    return compareRecords(self as any, that as any)
-  })
-}
-
-function withCache(self: object, that: object, f: (a: any, b: any) => boolean): boolean {
-  // Nested results can rest on provisional cycle matches: neither read nor
-  // cache them.
-  if (comparing) {
-    return f(self, that)
+  // Assume the pair equal while comparing it, so a cycle that returns to it
+  // closes: every pair on the comparison's path then has related successors,
+  // which is a bisimulation (coinductive equality, as in Hopcroft–Karp
+  // equivalence checking). The assumption is dropped when the comparison
+  // ends, except for an outermost `true`, which has discharged all of its
+  // assumptions and stays as a cached result.
+  if (!assumed) {
+    pairs.set(self, assumed = new WeakSet())
   }
-  let selfMap = equalityCache.get(self)
-  if (selfMap?.has(that)) {
-    return true
-  }
+  assumed.add(that)
+  const outermost = !comparing
   comparing = true
-  let result: boolean
+  let result = false
   try {
-    result = f(self, that)
+    return result = compareStructure(self, that, bothEquals)
   } finally {
-    comparing = false
+    if (outermost) comparing = false
+    if (!(outermost && result)) assumed.delete(that)
   }
-
-  // Only a completed `true` is cached. A `false` can come from a cycle that
-  // was matched differently, and would override a later correct match.
-  if (result) {
-    if (!selfMap) {
-      selfMap = new WeakSet()
-      equalityCache.set(self, selfMap)
-    }
-    selfMap.add(that)
-
-    let thatMap = equalityCache.get(that)
-    if (!thatMap) {
-      thatMap = new WeakSet()
-      equalityCache.set(that, thatMap)
-    }
-    thatMap.add(self)
-  }
-
-  return result
 }
 
-const equalityCache = new WeakMap<object, WeakSet<object>>()
+// `pairs.get(a).has(b)`: `a` and `b` are being compared, or were found equal
+// by an outermost comparison. Weak on both sides.
+const pairs = new WeakMap<object, WeakSet<object>>()
 let comparing = false
+
+function compareStructure(self: object, that: object, bothEquals: boolean): boolean {
+  if (bothEquals) {
+    return (self as Equal)[symbol](that as Equal)
+  } else if (Array.isArray(self)) {
+    if (!Array.isArray(that) || self.length !== that.length) {
+      return false
+    }
+    return compareArrays(self, that)
+  } else if (ArrayBuffer.isView(self)) {
+    const selfIsDataView = self instanceof DataView
+    if (
+      !ArrayBuffer.isView(that) ||
+      self.byteLength !== that.byteLength ||
+      selfIsDataView !== (that instanceof DataView)
+    ) {
+      return false
+    }
+    if (selfIsDataView) {
+      const thatDataView = that as DataView
+      return compareTypedArrays(
+        new Uint8Array(self.buffer, self.byteOffset, self.byteLength),
+        new Uint8Array(thatDataView.buffer, thatDataView.byteOffset, thatDataView.byteLength)
+      )
+    }
+    return compareTypedArrays(self as Uint8Array, that as Uint8Array)
+  } else if (self instanceof Map) {
+    if (!(that instanceof Map) || self.size !== that.size) {
+      return false
+    }
+    return compareMaps(self, that)
+  } else if (self instanceof Set) {
+    if (!(that instanceof Set) || self.size !== that.size) {
+      return false
+    }
+    return compareSets(self, that)
+  }
+  return compareRecords(self as any, that as any)
+}
 
 function compareArrays(self: Array<unknown>, that: Array<unknown>): boolean {
   for (let i = 0; i < self.length; i++) {
