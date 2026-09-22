@@ -119,6 +119,41 @@ describe("PartitionedSemaphore", () => {
       assert.strictEqual(yield* sem.available, 1)
     }))
 
+  it.effect("a paused immediate take cannot acquire a permit taken by another fiber", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      const tasks: Array<() => void> = []
+      let checks = 0
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield: () => ++checks === 3
+      }
+
+      const first = yield* sem.take("first", 1).pipe(
+        Effect.provideService(Scheduler.Scheduler, scheduler),
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.strictEqual(checks, 3)
+      assert.strictEqual(yield* sem.available, 1)
+
+      yield* sem.take("second", 1)
+      while (tasks.length > 0) tasks.shift()!()
+
+      // The first taker must wait rather than consume the second taker's permit.
+      assert.isUndefined(first.pollUnsafe())
+      assert.strictEqual(yield* sem.available, 0)
+      yield* Fiber.interrupt(first)
+      assert.strictEqual(yield* sem.available, 0)
+      yield* sem.release(1)
+      assert.strictEqual(yield* sem.available, 1)
+    }))
+
   it.effect("interrupting withPermitsIfAvailable before cleanup is installed restores permits", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
