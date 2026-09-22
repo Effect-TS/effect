@@ -47,6 +47,8 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
     case "Arrays": {
       const elements = ast.elements.map(recur)
       const rest = ast.rest.map(recur)
+      // The rest element and the elements after it are fixed per schema, not per value.
+      const [head, ...tail] = rest
       return Equivalence.make((a, b) => {
         if (!Array.isArray(a) || !Array.isArray(b)) {
           return false
@@ -68,7 +70,6 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
         // handle rest element
         // ---------------------------------------------
         if (rest.length > 0) {
-          const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             if (!head(a[i], b[i])) {
               return false

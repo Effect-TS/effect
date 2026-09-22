@@ -160,6 +160,8 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       case "Arrays": {
         const elements = ast.elements.map((element) => recur(element))
         const rest = ast.rest.map(recur)
+        // The rest element and the elements after it are fixed per schema, not per value.
+        const [head, ...tail] = rest
         return (value) => {
           const out: Array<string> = []
           let i = 0
@@ -173,7 +175,6 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
             }
           }
           if (rest.length > 0) {
-            const [head, ...tail] = rest
             for (; i < value.length - tail.length; i++) {
               out.push(head(value[i]))
             }
