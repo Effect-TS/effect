@@ -139,6 +139,10 @@ export const make = (
     report(options) {
       if (reported.has(options.cause)) return
       reported.add(options.cause)
+      // each reason is its own report: a throw skips only that reason, and the
+      // first error is rethrown once every reason has been reported
+      let failed = false
+      let failure: unknown
       for (let i = 0; i < options.cause.reasons.length; i++) {
         const reason = options.cause.reasons[i]
         if (reason._tag === "Interrupt") continue
@@ -148,15 +152,23 @@ export const make = (
           if (reported.has(original)) continue
           reported.add(original)
         }
-        if (isIgnored(original)) continue
-        const pretty = effect.causePrettyError(original as any, reason.annotations)
-        report({
-          ...options,
-          error: pretty,
-          severity: isObject ? getSeverity(original) : "Info",
-          attributes: isObject ? getAttributes(original) : emptyAttributes
-        })
+        try {
+          if (isIgnored(original)) continue
+          const pretty = effect.causePrettyError(original as any, reason.annotations)
+          report({
+            ...options,
+            error: pretty,
+            severity: isObject ? getSeverity(original) : "Info",
+            attributes: isObject ? getAttributes(original) : emptyAttributes
+          })
+        } catch (error) {
+          if (!failed) {
+            failed = true
+            failure = error
+          }
+        }
       }
+      if (failed) throw failure
     }
   }
 }

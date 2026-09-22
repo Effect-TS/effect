@@ -6931,11 +6931,25 @@ export const withErrorReporting: <
 export const reportCauseUnsafe = (
   fiber: Fiber.Fiber<unknown, unknown>,
   cause: Cause.Cause<unknown>,
-  defectsOnly?: boolean
+  defectsOnly?: boolean,
+  // a reporter that throws is itself reported, to every reporter; errors raised
+  // while reporting that error are dropped
+  reportFailures = true
 ) => {
   const reporters = fiber.getRef(CurrentErrorReporters)
   if (reporters.size === 0) return
   if (defectsOnly && !hasDies(cause)) return
   const opts = { cause, fiber, timestamp: fiber.getRef(ClockRef).currentTimeNanosUnsafe() }
-  reporters.forEach((reporter) => reporter.report(opts))
+  let defects: Array<unknown> | undefined
+  for (const reporter of reporters) {
+    try {
+      reporter.report(opts)
+    } catch (defect) {
+      if (reportFailures) (defects ??= []).push(defect)
+    }
+  }
+  if (defects === undefined) return
+  for (let i = 0; i < defects.length; i++) {
+    reportCauseUnsafe(fiber, causeDie(defects[i]), false, false)
+  }
 }
