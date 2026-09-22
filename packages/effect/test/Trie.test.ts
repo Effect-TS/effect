@@ -11,7 +11,7 @@ describe("Trie", () => {
   it("equality rejects tries with different numbers of entries after a hash collision", () => {
     // Makes the "a" entry collide with the empty trie.
     const value = {
-      [Hash.symbol]: () => -1520130700
+      [Hash.symbol]: () => -1453276484
     }
     const empty = Trie.empty<typeof value>()
     const nonEmpty = Trie.make(["a", value])

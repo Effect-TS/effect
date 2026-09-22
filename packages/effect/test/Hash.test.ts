@@ -188,6 +188,28 @@ describe("Hash", () => {
       }
     })
 
+    it("hashes and compares Tries independently of insertion order", () => {
+      const alphabet = ["a", "b", "ab", "ba", "abc", ""]
+      const randomTrieKey = (): string =>
+        range(1 + random(3)).map(() => alphabet[random(alphabet.length)]).join("") || "a"
+      for (let run = 0; run < 300; run++) {
+        const byKey = new Map(range(random(40)).map(() => [randomTrieKey(), random(3)] as const))
+        const entries = Array.from(byKey)
+        const trie = Trie.fromIterable(entries)
+        const reordered = Trie.fromIterable(shuffle(entries))
+        assertNoHashCollisions(Array.from(byKey.keys(), (key) => Trie.make([key, 0])))
+        assert.isTrue(Equal.equals(trie, reordered))
+        assert.strictEqual(Hash.hash(trie), Hash.hash(reordered))
+        if (entries.length > 0) {
+          const [key, value] = entries[random(entries.length)]
+          const changed = Trie.insert(trie, key, value + 1)
+          assert.isFalse(Equal.equals(trie, changed))
+          assert.isFalse(Equal.equals(changed, trie))
+          assert.isFalse(Equal.equals(trie, Trie.remove(trie, key)))
+        }
+      }
+    })
+
     it("hashes a Chunk independently of how it was built", () => {
       const grouped = (values: ReadonlyArray<unknown>): Chunk.Chunk<unknown> => {
         if (values.length <= 2) return Chunk.fromIterable(values)
