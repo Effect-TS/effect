@@ -1,6 +1,6 @@
 import * as Node from "@effect/platform-node/NodeMultipartParser"
 import * as ByteSize from "effect/ByteSize"
-import * as Multipart from "effect/unstable/http/MultipartParser"
+import * as Multipart from "effect/http/MultipartParser"
 import { assert, describe, expectTypeOf, test } from "vitest"
 
 type Expected = Array<

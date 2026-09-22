@@ -30,7 +30,7 @@ import {
   HttpServerRequest,
   HttpServerResponse,
   Multipart
-} from "effect/unstable/http"
+} from "effect/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -43,7 +43,7 @@ import {
   HttpApiSecurity,
   HttpApiTest,
   OpenApi
-} from "effect/unstable/httpapi"
+} from "effect/httpapi"
 
 function* assertServerText(res: HttpClientResponse.HttpClientResponse, status: number, text: string) {
   assert.strictEqual(res.status, status)

@@ -11,6 +11,7 @@
  */
 import * as assert from "node:assert"
 import { isDeepStrictEqual } from "node:util"
+import * as Arbitrary from "../arbitrary/Arbitrary.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import { pipe } from "../Function.ts"
@@ -19,7 +20,6 @@ import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
-import * as Arbitrary from "../unstable/arbitrary/Arbitrary.ts"
 
 function assertPropertyPassed<A, E>(result: Arbitrary.CheckResult<A, E>): void {
   const failure = Arbitrary.formatCheckFailure(result)

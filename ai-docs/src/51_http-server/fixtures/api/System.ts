@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/httpapi"
 
 // Top level groups are added to the root of the derived HttpApiClient.
 //

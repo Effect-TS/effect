@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { ResourceMap } from "effect/unstable/cluster/internal/resourceMap"
+import { ResourceMap } from "effect/cluster/internal/resourceMap"
 
 describe("ResourceMap", () => {
   it.effect("closes a failed lookup scope", () =>

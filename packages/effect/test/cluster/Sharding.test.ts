@@ -19,7 +19,6 @@ import {
   Schema,
   Stream
 } from "effect"
-import { TestClock } from "effect/testing"
 import {
   ClusterError,
   ClusterMetrics,
@@ -41,10 +40,11 @@ import {
   Sharding,
   ShardingConfig,
   Snowflake
-} from "effect/unstable/cluster"
-import * as ActiveTeardown from "effect/unstable/cluster/internal/interruptors"
-import { Headers } from "effect/unstable/http"
-import { Rpc } from "effect/unstable/rpc"
+} from "effect/cluster"
+import * as ActiveTeardown from "effect/cluster/internal/interruptors"
+import { Headers } from "effect/http"
+import { Rpc } from "effect/rpc"
+import { TestClock } from "effect/testing"
 import {
   CallerId,
   ContextBleedEntity,

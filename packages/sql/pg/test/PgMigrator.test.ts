@@ -1,9 +1,9 @@
 import { PgClient, PgMigrator } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Path, Redacted, Stream } from "effect"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
-import { Reactivity } from "effect/unstable/reactivity"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
+import { ChildProcess, ChildProcessSpawner } from "effect/process"
+import { Reactivity } from "effect/reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
 
 const makeMigrator = (password: PgClient.PgClientConfig["password"]) =>
   Effect.gen(function*() {

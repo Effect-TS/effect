@@ -1,10 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Tracer } from "effect"
+import { HttpClient, HttpClientResponse } from "effect/http"
+import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
-import { HttpClient, HttpClientResponse } from "effect/unstable/http"
-import { OtlpSerialization, OtlpTracer } from "effect/unstable/observability"
 
 const getParent = (span: Tracer.Span): Tracer.AnySpan => {
   if (span.parent._tag === "None") {

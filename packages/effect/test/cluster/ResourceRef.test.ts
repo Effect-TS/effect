@@ -1,8 +1,8 @@
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Option, Scope } from "effect"
-import { EntityAddress, EntityId, EntityType, ShardId } from "effect/unstable/cluster"
-import { isActive } from "effect/unstable/cluster/internal/interruptors"
-import { ResourceRef } from "effect/unstable/cluster/internal/resourceRef"
+import { EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
+import { isActive } from "effect/cluster/internal/interruptors"
+import { ResourceRef } from "effect/cluster/internal/resourceRef"
 
 it.live("does not wedge await after a failed rebuild", () =>
   Effect.scoped(Effect.gen(function*() {

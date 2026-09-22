@@ -1,7 +1,7 @@
 import { TypeSafeClient, TypeSafeDecisionModel } from "@effect/ai-typesafe"
 import { type Config, Effect, type Layer, Redacted, Schema } from "effect"
-import { Decision, DecisionModel, type Model } from "effect/unstable/ai"
-import type { HttpClient } from "effect/unstable/http"
+import { Decision, DecisionModel, type Model } from "effect/ai"
+import type { HttpClient } from "effect/http"
 import { describe, expect, it } from "tstyche"
 
 declare const acceptsKnownModel: (model: TypeSafeDecisionModel.Model) => void

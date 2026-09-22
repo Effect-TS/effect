@@ -1,10 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
-import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
-import * as NetAddress from "effect/unstable/net/NetAddress"
-import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import * as RpcMessage from "effect/unstable/rpc/RpcMessage"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import * as NetAddress from "effect/net/NetAddress"
+import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
+import * as RpcMessage from "effect/rpc/RpcMessage"
+import { Socket, SocketServer } from "effect/socket"
 
 const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
   streamBufferSize?: number | "unbounded"

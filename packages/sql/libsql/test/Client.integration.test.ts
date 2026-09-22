@@ -1,7 +1,7 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, it, layer } from "@effect/vitest"
 import { Effect, Exit, Layer } from "effect"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import { LibsqlContainer } from "./util.ts"
 
 const Migrations = Layer.effectDiscard(

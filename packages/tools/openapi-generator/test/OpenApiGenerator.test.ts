@@ -1,8 +1,8 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/httpapi/OpenApi"
 import type * as JsonSchema from "effect/JsonSchema"
-import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/unstable/httpapi/OpenApi"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -704,10 +704,10 @@ describe("OpenApiGenerator", { concurrent: false }, () => {
 import * as Effect from "effect/Effect"
 import type { SchemaError } from "effect/Schema"
 import * as Schema from "effect/Schema"
-import type * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientError from "effect/unstable/http/HttpClientError"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+import type * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 // schemas
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 export const GetUser200 = Schema.Struct({ "id": Schema.String, "name": Schema.String }).annotate({ "description": "User object" })
@@ -956,7 +956,7 @@ export const TestClientError = <Tag extends string, E>(
           tags: []
         },
         [
-          `import * as Sse from "effect/unstable/encoding/Sse"`,
+          `import * as Sse from "effect/encoding/Sse"`,
           `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get("/events").pipe(`,
           `sseRequest(StreamEvents200Sse)`,
@@ -1187,10 +1187,10 @@ export const TestClientError = <Tag extends string, E>(
         },
         `import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import type * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientError from "effect/unstable/http/HttpClientError"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+import type * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 // schemas
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 
@@ -1370,7 +1370,7 @@ export const TestClientError = <Tag extends string, E>(
         `"downloadAvatar": (options) => HttpClientRequest.get("/avatar").pipe(
       onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
-        `import * as HttpClient from "effect/unstable/http/HttpClient"`,
+        `import * as HttpClient from "effect/http/HttpClient"`,
         `onRequest(options?.config)([], {"400":"DownloadMixedContent400"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadMixedContent": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
@@ -1478,7 +1478,7 @@ export const TestClientError = <Tag extends string, E>(
           ]
         },
         [
-          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/unstable/httpapi"`,
+          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/httpapi"`,
           `export type GetUserPathParams = { readonly "id": string }`,
           `export const GetUserPathParams = Schema.Struct({ "id": Schema.String })`,
           `class UsersGroup extends HttpApiGroup.make("Users")`,
@@ -1745,7 +1745,7 @@ export const TestClientError = <Tag extends string, E>(
           tags: [{ name: "Payload" }]
         },
         [
-          `import { Multipart } from "effect/unstable/http"`,
+          `import { Multipart } from "effect/http"`,
           `export type __HttpApiMultipartSingleFile = Multipart.PersistedFile
 export const __HttpApiMultipartSingleFile = Multipart.SingleFileSchema`,
           `export type __HttpApiMultipartFiles = ReadonlyArray<Multipart.PersistedFile>
@@ -2193,7 +2193,7 @@ export const CreatePayloadRequestText = Schema.String`,
           tags: [{ name: "Payload" }]
         },
         [
-          `import { Multipart } from "effect/unstable/http"`,
+          `import { Multipart } from "effect/http"`,
           `export type __HttpApiMultipartSingleFile = Multipart.PersistedFile
 export const __HttpApiMultipartSingleFile = Multipart.SingleFileSchema`,
           `export type __HttpApiMultipartFiles = ReadonlyArray<Multipart.PersistedFile>
@@ -2400,7 +2400,7 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           tags: [{ name: "Payload" }]
         },
         [
-          `import { Multipart } from "effect/unstable/http"`,
+          `import { Multipart } from "effect/http"`,
           `export type UploadWithContentEncodingRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`,
           `export const UploadWithContentEncodingRequestFormData = Schema.Struct({ "file": __HttpApiMultipartSingleFile, "files": __HttpApiMultipartFiles })`,
           `HttpApiEndpoint.post("uploadWithContentEncoding", "/upload-content-encoding", { payload: UploadWithContentEncodingRequestFormData.pipe(HttpApiSchema.asMultipart()), success: HttpApiSchema.Empty(200) })`

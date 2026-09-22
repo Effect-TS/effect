@@ -1,6 +1,6 @@
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
-import type { SqlError } from "effect/unstable/sql/SqlError"
+import type { SqlError } from "effect/sql/SqlError"
 
 /** @internal */
 export const internalsKey = "~@effect/sql-pg/PgConnection/internals" as const

@@ -3,6 +3,15 @@ import { Array, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scope, Stream }
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
+  it.effect("isPubSub type guard", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<string>(10)
+
+      assert.isTrue(PubSub.isPubSub(pubsub))
+      assert.isFalse(PubSub.isPubSub({}))
+      assert.isFalse(PubSub.isPubSub(null))
+    }))
+
   for (const batch of [false, true]) {
     it.effect.each([1, 2, 3])(
       `sliding capacity %s delivers each retained message once per subscriber (batch: ${batch})`,

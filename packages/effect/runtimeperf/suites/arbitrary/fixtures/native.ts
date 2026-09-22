@@ -1,8 +1,8 @@
+import * as Arbitrary from "effect/arbitrary/Arbitrary"
 import * as Effect from "effect/Effect"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as TestSchema from "effect/testing/TestSchema"
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
 import assert from "node:assert/strict"
 import {
   makeBigDecimalSchema,

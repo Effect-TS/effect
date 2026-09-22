@@ -44,4 +44,4 @@ The `effect` package is a collection of modules. Some of the core ones:
 | Scope    | Manages the lifecycle of resources, ensuring proper acquisition and release.                                               |
 | Schema   | A powerful library for defining, validating, and transforming structured data with type-safe encoding and decoding.        |
 
-In v4, functionality that previously lived in separate packages ships inside `effect` under the `effect/unstable/*` namespaces, including `http`, `httpapi`, `rpc`, `cluster`, `workflow`, `cli`, `ai`, `sql`, and `reactivity`.
+In v4, functionality that previously lived in separate packages ships inside `effect` under the `effect/*` namespaces, including `http`, `httpapi`, `rpc`, `cluster`, `workflow`, `cli`, `ai`, `sql`, and `reactivity`.

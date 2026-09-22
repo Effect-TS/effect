@@ -6,12 +6,6 @@ import { ByteSize, Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
-import * as Latch from "effect/Latch"
-import * as Layer from "effect/Layer"
-import * as ManagedRuntime from "effect/ManagedRuntime"
-import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
-import * as Tracer from "effect/Tracer"
 import {
   Cookies,
   FetchHttpClient,
@@ -27,10 +21,16 @@ import {
   HttpServerResponse,
   Multipart,
   UrlParams
-} from "effect/unstable/http"
-import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
-import * as NetAddress from "effect/unstable/net/NetAddress"
-import { Socket } from "effect/unstable/socket"
+} from "effect/http"
+import * as HttpApiError from "effect/httpapi/HttpApiError"
+import * as Latch from "effect/Latch"
+import * as Layer from "effect/Layer"
+import * as ManagedRuntime from "effect/ManagedRuntime"
+import * as NetAddress from "effect/net/NetAddress"
+import * as Schema from "effect/Schema"
+import { Socket } from "effect/socket"
+import * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"

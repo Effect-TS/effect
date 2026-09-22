@@ -556,7 +556,7 @@ const serializeDeclaration = (node: ts.Declaration, context: SerializationContex
 const declarationKind = (declarations: ReadonlyArray<DeclarationModel>): string =>
   [...new Set(declarations.map((declaration) => declaration.kind))].sort().join("+")
 
-const documentation = (symbol: ts.Symbol, checker: ts.TypeChecker, module: string): Documentation => {
+const documentation = (symbol: ts.Symbol, checker: ts.TypeChecker): Documentation => {
   const tags = new Map(
     symbol.getJsDocTags(checker).map((tag) => [
       tag.name,
@@ -569,7 +569,7 @@ const documentation = (symbol: ts.Symbol, checker: ts.TypeChecker, module: strin
     deprecated: tags.get("deprecated"),
     since: tags.get("since"),
     category: tags.get("category"),
-    stability: module.includes("/unstable/") ? "unstable" : "stable"
+    stability: tags.has("unstable") ? "unstable" : "stable"
   }
 }
 
@@ -832,7 +832,7 @@ const extractSnapshot = (
       declarations: serialized,
       displaySignature: displayDeclarations(pendingEntity.declarations),
       fingerprint: fingerprintDeclarations(serialized),
-      documentation: documentation(pendingEntity.symbol, checker, route.module),
+      documentation: documentation(pendingEntity.symbol, checker),
       source: sourceLocation(path, options.repoRoot, declaration)
     })
   }

@@ -7,14 +7,14 @@
  *
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
+import * as EmbeddingModel from "effect/ai/EmbeddingModel"
+import * as AiModel from "effect/ai/Model"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Simplify } from "effect/Types"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as EmbeddingModel from "effect/unstable/ai/EmbeddingModel"
-import * as AiModel from "effect/unstable/ai/Model"
 import type { CreateEmbedding200, CreateEmbeddingRequestJson } from "./OpenAiClient.ts"
 import { OpenAiClient } from "./OpenAiClient.ts"
 

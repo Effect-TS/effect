@@ -1,6 +1,5 @@
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Layer, Option, PubSub, Queue, Schema, Scope, Stream } from "effect"
-import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
   Entity,
@@ -17,9 +16,10 @@ import {
   Sharding,
   ShardingConfig,
   Snowflake
-} from "effect/unstable/cluster"
-import { Headers } from "effect/unstable/http"
-import { Rpc, RpcMessage, type RpcSerialization, RpcServer, RpcTest } from "effect/unstable/rpc"
+} from "effect/cluster"
+import { Headers } from "effect/http"
+import { Rpc, RpcMessage, type RpcSerialization, RpcServer, RpcTest } from "effect/rpc"
+import { TestClock } from "effect/testing"
 
 const ReproEntity = Entity.make("ReproRunnerServer", [
   Rpc.make("ReproStream", { success: Schema.Int, payload: { id: Schema.Number }, stream: true })
