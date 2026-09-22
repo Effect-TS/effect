@@ -456,7 +456,7 @@ describe("OpenAiLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
       }))
 
-    it.effect("passes through tool call params for dynamic tools backed by raw JSON Schema", () =>
+    it.effect("preserves raw JSON Schema dynamic tool call params", () =>
       Effect.gen(function*() {
         const params = { query: "effect" }
         const client = makeHttpClient((request) =>
@@ -480,7 +480,12 @@ describe("OpenAiLanguageModel", () => {
           ))
         )
         const DynamicTool = Tool.dynamic("DynamicTool", {
-          parameters: { type: "object" } as const
+          parameters: {
+            type: "object",
+            properties: { query: { type: "string" } },
+            required: ["query"],
+            additionalProperties: false
+          } as const
         })
         const result = yield* LanguageModel.generateText({
           prompt: "use the dynamic tool",

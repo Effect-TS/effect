@@ -1220,10 +1220,15 @@ describe("OpenAiLanguageModel", () => {
           ])
         ))
 
-      it.effect("passes through tool call params for dynamic tools backed by raw JSON Schema", () =>
+      it.effect("preserves raw JSON Schema dynamic tool call params", () =>
         Effect.gen(function*() {
           const DynamicTool = Tool.dynamic("DynamicTool", {
-            parameters: { type: "object" } as const
+            parameters: {
+              type: "object",
+              properties: { query: { type: "string" } },
+              required: ["query"],
+              additionalProperties: false
+            } as const
           })
           const params = { query: "effect" }
           const result = yield* LanguageModel.generateText({
