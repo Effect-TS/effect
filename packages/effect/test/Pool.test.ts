@@ -684,15 +684,17 @@ describe("Pool", () => {
 
   it.effect("an interrupted use returns its lease", () =>
     Effect.gen(function*() {
-      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
-      const fiber = yield* Effect.forkChild(
-        Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 4)),
-        { startImmediately: true }
-      )
-      yield* Fiber.interrupt(fiber)
-      const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
-      strictEqual(pool.state.usage, 0)
-      assert.isDefined(next.pollUnsafe())
+      for (let budget = 2; budget <= 10; budget++) {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+        const fiber = yield* Effect.forkChild(
+          Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)),
+          { startImmediately: true }
+        )
+        yield* Fiber.interrupt(fiber)
+        strictEqual(pool.state.usage, 0, `MaxOpsBeforeYield ${budget}`)
+        const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
+        assert.isDefined(next.pollUnsafe(), `MaxOpsBeforeYield ${budget}`)
+      }
     }))
 
   it.effect("use waits for an available item", () =>
