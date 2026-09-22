@@ -40,3 +40,10 @@ export let backEdges = 0
 export const addBackEdge = (): void => {
   backEdges++
 }
+
+/**
+ * The bytes a `DataView` views: `Hash` and `Equal` treat a `DataView` as them.
+ *
+ * @internal
+ */
+export const viewBytes = (view: DataView): Uint8Array => new Uint8Array(view.buffer, view.byteOffset, view.byteLength)

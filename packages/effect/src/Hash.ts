@@ -10,7 +10,7 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"
-import { addBackEdge, backEdges, byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
+import { addBackEdge, backEdges, byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -140,7 +140,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
           } else if (typeof self === "function") {
             h = random(self)
           } else if (self instanceof DataView) {
-            h = array(new Uint8Array(self.buffer, self.byteOffset, self.byteLength))
+            h = array(viewBytes(self))
           } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {
             h = array(self as any)
           } else if (self instanceof Map) {

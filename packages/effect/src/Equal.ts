@@ -11,7 +11,7 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import { byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
+import { byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -268,11 +268,7 @@ function compareStructure(self: object, that: object, bothEquals: boolean): bool
       return false
     }
     if (selfIsDataView) {
-      const thatDataView = that as DataView
-      return compareTypedArrays(
-        new Uint8Array(self.buffer, self.byteOffset, self.byteLength),
-        new Uint8Array(thatDataView.buffer, thatDataView.byteOffset, thatDataView.byteLength)
-      )
+      return compareTypedArrays(viewBytes(self), viewBytes(that as DataView))
     }
     return compareTypedArrays(self as Uint8Array, that as Uint8Array)
   } else if (self instanceof Map) {
