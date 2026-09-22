@@ -131,6 +131,29 @@ describe("Logger", () => {
       assert.strictEqual(json[0].level, "ERROR")
     }))
 
+  it.effect("formatJson emits valid JSON for messages and annotations with throwing getters", () =>
+    Effect.gen(function*() {
+      const json: Array<{ readonly message: unknown; readonly annotations: unknown }> = []
+      const logger = Logger.formatJson.pipe(Logger.map((output) => void json.push(JSON.parse(output))))
+      const hostile = Object.defineProperty({ safe: 1 }, "unsafe", {
+        enumerable: true,
+        get() {
+          throw new Error("getter defect")
+        }
+      })
+
+      yield* Effect.log(hostile).pipe(
+        Effect.annotateLogs("key", hostile),
+        Effect.provide(Logger.layer([logger]))
+      )
+
+      assert.deepStrictEqual(json, [{
+        ...json[0],
+        message: { safe: 1, unsafe: "[property access threw]" },
+        annotations: { key: { safe: 1, unsafe: "[property access threw]" } }
+      }])
+    }))
+
   it.effect("annotateLogsScoped applies annotations only while scoped", () =>
     Effect.gen(function*() {
       const annotations: Array<Record<string, unknown>> = []

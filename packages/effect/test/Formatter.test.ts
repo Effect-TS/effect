@@ -13,6 +13,7 @@ import {
   SchemaParser
 } from "effect"
 import { format, formatJson } from "effect/Formatter"
+import { runInNewContext } from "node:vm"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "./utils/assert.ts"
 
 class SensitiveData implements Redactable.Redactable {
@@ -383,6 +384,77 @@ describe("Formatter", () => {
       strictEqual(formatJson([data]), `[{"secret":"[REDACTED]"}]`)
       strictEqual(formatJson(date), `"[REDACTED]"`)
     })
+
+    it("handles throwing property getters", () => {
+      const value = Object.defineProperty({ safe: 1 }, "unsafe", {
+        enumerable: true,
+        get() {
+          throw new Error("getter defect")
+        }
+      })
+
+      strictEqual(formatJson(value), `{"safe":1,"unsafe":"[property access threw]"}`)
+      strictEqual(formatJson([value]), `[{"safe":1,"unsafe":"[property access threw]"}]`)
+    })
+
+    it("handles hostile Proxies", () => {
+      const { proxy, revoke } = Proxy.revocable({}, {})
+      revoke()
+      const ownKeys = new Proxy({}, {
+        ownKeys() {
+          throw new Error("ownKeys defect")
+        }
+      })
+
+      strictEqual(formatJson(proxy), `"[inspection threw]"`)
+      strictEqual(
+        formatJson({ a: [1, proxy], b: ownKeys, c: 2 }),
+        `{"a":[1,"[inspection threw]"],"b":"[inspection threw]","c":2}`
+      )
+    })
+
+    it("unboxes primitive wrappers from another realm", () => {
+      const foreign = runInNewContext(
+        "({ n: new Number(7), s: new String('x'), b: new Boolean(false), big: Object(1n), nested: [new Number(1)] })"
+      )
+
+      strictEqual(formatJson(foreign), `{"n":7,"s":"x","b":false,"big":"1n","nested":[1]}`)
+      strictEqual(
+        formatJson({
+          n: new Number(7),
+          s: new String("x"),
+          b: new Boolean(false),
+          big: Object(1n),
+          nested: [new Number(1)]
+        }),
+        `{"n":7,"s":"x","b":false,"big":"1n","nested":[1]}`
+      )
+    })
+
+    it("handles a throwing toJSON", () => {
+      const value = {
+        a: 1,
+        b: {
+          toJSON() {
+            throw new Error("toJSON defect")
+          }
+        }
+      }
+
+      strictEqual(formatJson(value), `{"a":1,"b":"[inspection threw]"}`)
+    })
+
+    it("omits a circular reference reached through toJSON", () => {
+      const value: { readonly _tag: "Tagged"; self?: unknown; toJSON(): unknown } = {
+        _tag: "Tagged",
+        toJSON() {
+          return { _tag: this._tag, self: this.self }
+        }
+      }
+      value.self = value
+
+      strictEqual(formatJson(value), `{"_tag":"Tagged"}`)
+    })
   })
 
   describe("Inspectable.toJson", () => {
@@ -402,6 +474,12 @@ describe("Formatter", () => {
   })
 
   describe("Inspectable.toStringUnknown", () => {
+    it("does not throw on a whitespace value String.repeat rejects", () => {
+      strictEqual(Inspectable.toStringUnknown(42, -1), `42`)
+      strictEqual(Inspectable.toStringUnknown(42, 1e10), `42`)
+      strictEqual(Inspectable.toStringUnknown({ a: 1 }, -1), `{"a":1}`)
+    })
+
     it("should stringify BigInt values", () => {
       strictEqual(Inspectable.toStringUnknown(123n), `123n`)
       strictEqual(

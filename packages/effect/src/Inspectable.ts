@@ -178,8 +178,7 @@ export const toJson = (input: unknown): unknown => {
  * **Details**
  *
  * Strings are returned unchanged. Objects are formatted as JSON using the
- * provided whitespace setting when possible, and values that cannot be
- * formatted are converted with `String`.
+ * provided whitespace setting, and other values with `format`.
  *
  * @category converting
  * @since 2.0.0
@@ -188,11 +187,7 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
   if (typeof u === "string") {
     return u
   }
-  try {
-    return typeof u === "object" ? formatJson(u, { space: whitespace }) : format(u, { space: whitespace })
-  } catch {
-    return String(u)
-  }
+  return typeof u === "object" ? formatJson(u, { space: whitespace }) : format(u, { space: whitespace })
 }
 
 /**

@@ -9,8 +9,9 @@
  *
  * @since 4.0.0
  */
+import { assignProperty } from "./internal/record.ts"
 import * as Predicate from "./Predicate.ts"
-import { getRedacted, redact, symbolRedactable } from "./Redactable.ts"
+import { getRedacted, isRedactable, redact, symbolRedactable } from "./Redactable.ts"
 
 /**
  * A callable interface representing a function that converts a `Value` into a `Format`, which defaults to `string`.
@@ -111,7 +112,8 @@ export function format(input: unknown, options?: {
 }): string {
   const space = options?.space ?? 0
   const ancestors = new WeakSet<object>()
-  const gap = !space ? "" : (typeof space === "number" ? " ".repeat(space) : space)
+  // the indent `JSON.stringify` accepts: at most ten, never negative
+  const gap = typeof space === "number" ? " ".repeat(space > 0 ? Math.min(space, 10) : 0) : space.slice(0, 10)
   const ind = (d: number) => gap.repeat(d)
 
   const wrap = (v: unknown, body: string): string => {
@@ -254,10 +256,10 @@ function safeGet(input: object, key: PropertyKey): unknown {
  *
  * **Details**
  *
- * Uses `JSON.stringify` internally with a replacer that tracks the current
- * object ancestry. Circular references are replaced with `undefined`, which
- * omits them from object output. `Redactable` values are automatically redacted
- * before serialization. `BigInt` values are stringified with an `n` suffix.
+ * Converts the input to plain JSON data while tracking the current object
+ * ancestry, then serializes it with `JSON.stringify`. Circular references are
+ * replaced with `undefined`, which omits them from object output. `Redactable`
+ * values are automatically redacted before serialization. `BigInt` values are stringified with an `n` suffix.
  * `Error` instances without a `toJSON` property include their enumerable
  * properties plus `name` and `message`. Errors with `toJSON` keep their custom
  * representation. Other values follow standard `JSON.stringify` behavior. The
@@ -268,6 +270,10 @@ function safeGet(input: object, key: PropertyKey): unknown {
  * When the root input is `undefined`, a symbol, or a function, `formatJson`
  * returns `"null"` instead of the `undefined` returned by `JSON.stringify`.
  * Nested values retain standard `JSON.stringify` behavior.
+ *
+ * `formatJson` does not throw on hostile values: a property getter that throws
+ * becomes `"[property access threw]"`, and a value whose `toJSON`, redaction or
+ * Proxy trap throws becomes `"[inspection threw]"`, as in {@link format}.
  *
  * **Example** (Formatting compact JSON)
  *
@@ -304,35 +310,66 @@ function safeGet(input: object, key: PropertyKey): unknown {
 export function formatJson(input: unknown, options?: {
   readonly space?: number | string | undefined
 }): string {
-  const ancestors: Array<object> = []
-  return JSON.stringify(
-    input,
-    function(this: object, key: string, value: unknown) {
-      const original = Object.getOwnPropertyDescriptor(this, key)?.value
-      const redacted = Predicate.hasProperty(original, symbolRedactable)
-        ? redact(original)
-        : redact(value)
-      if (typeof redacted === "bigint") {
-        return format(redacted)
+  const ancestors = new Set<object>()
+
+  // the JSON form of `raw` as plain data, so `JSON.stringify` never reads a
+  // user getter, `toJSON` or Proxy trap itself
+  function toPlain(key: string, raw: unknown): unknown {
+    // `raw` joins the path too, so a `toJSON` that returns a fresh object
+    // holding `raw` again is a circular reference rather than endless recursion
+    const rawObject = typeof raw === "object" && raw !== null ? raw : undefined
+    if (rawObject !== undefined && ancestors.has(rawObject)) return undefined
+    let value = raw
+    let path: object | undefined
+    try {
+      if (isRedactable(value)) {
+        value = getRedacted(value)
+      } else {
+        if (typeof value === "object" && value !== null || typeof value === "function" || typeof value === "bigint") {
+          const toJSON = Reflect.get(Object(value), "toJSON")
+          if (typeof toJSON === "function") value = toJSON.call(value, key)
+        }
+        value = redact(value)
       }
-      if (typeof redacted !== "object" || redacted === null) {
-        return redacted
+      if (typeof value === "bigint") return format(value)
+      if (typeof value === "function" || typeof value === "symbol") return undefined
+      if (typeof value !== "object" || value === null) return value
+      // `JSON.stringify` unboxes primitive wrappers by internal slot, which
+      // `Object.prototype.toString` reads, in this realm and in any other
+      switch (Object.prototype.toString.call(value)) {
+        case "[object Number]":
+        case "[object String]":
+        case "[object Boolean]":
+        case "[object BigInt]": {
+          const primitive = value.valueOf()
+          if (primitive !== value) return toPlain(key, primitive)
+        }
       }
-      const current = redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")
-        ? { ...redacted, name: redacted.name, message: redacted.message }
-        : redacted
-      while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
-        ancestors.pop()
+      if (ancestors.has(value)) return undefined // circular reference
+      path = value
+      ancestors.add(value)
+      if (rawObject !== undefined) ancestors.add(rawObject)
+      if (Array.isArray(value)) {
+        const array = new Array(value.length)
+        for (let i = 0; i < array.length; i++) array[i] = toPlain(String(i), safeGet(value, i))
+        return array
       }
-      if (ancestors.includes(redacted)) {
-        return undefined // circular reference
+      const object: Record<string, unknown> = {}
+      for (const k of Object.keys(value)) assignProperty(object, k, toPlain(k, safeGet(value, k)))
+      if (value instanceof Error && !Predicate.hasProperty(value, "toJSON")) {
+        assignProperty(object, "name", toPlain("name", safeGet(value, "name")))
+        assignProperty(object, "message", toPlain("message", safeGet(value, "message")))
       }
-      ancestors.push(redacted)
-      if (current !== redacted) {
-        ancestors.push(current)
+      return object
+    } catch {
+      return "[inspection threw]"
+    } finally {
+      if (path !== undefined) {
+        ancestors.delete(path)
+        if (rawObject !== undefined) ancestors.delete(rawObject)
       }
-      return current
-    },
-    options?.space
-  ) ?? "null"
+    }
+  }
+
+  return JSON.stringify(toPlain("", input), undefined, options?.space) ?? "null"
 }
