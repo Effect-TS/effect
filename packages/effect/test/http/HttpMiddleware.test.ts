@@ -3,6 +3,7 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Headers from "effect/http/Headers"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
@@ -251,6 +252,39 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.sampled, false)
         assert.strictEqual(serverSpan.attributes.size, 0)
         assert.strictEqual(serverSpan.status._tag, "Ended")
+      }))
+
+    it.effect("ends the span and restores the context when the app is interrupted", () =>
+      Effect.gen(function*() {
+        const spans: Array<Tracer.NativeSpan> = []
+        const tracer = Tracer.make({
+          span(options) {
+            const span = new Tracer.NativeSpan(options)
+            spans.push(span)
+            return span
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/slow"))
+        let parentInFinalizer: Tracer.AnySpan | undefined
+        const fiber = yield* Effect.forkChild(
+          Effect.ensuring(
+            HttpMiddleware.tracer(Effect.never),
+            Effect.withFiber((fiber) => {
+              parentInFinalizer = Context.getOrUndefined(fiber.context, Tracer.ParentSpan)
+              return Effect.void
+            })
+          ).pipe(
+            Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+            Effect.provideService(Tracer.Tracer, tracer)
+          )
+        )
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(fiber)
+        yield* Effect.yieldNow
+
+        assert.strictEqual(spans.length, 1)
+        assert.strictEqual(spans[0].status._tag, "Ended")
+        assert.strictEqual(parentInFinalizer, undefined)
       }))
 
     it.effect("excludes the sent response from a failed stream span", () =>
