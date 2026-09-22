@@ -477,7 +477,10 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
     entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
     if (entry.fiber) return Effect.void
 
-    entry.fiber = Effect.interruptibleMask(function loop(restore): Effect.Effect<void> {
+    // Once the idle fiber removes the entry from the map it is the entry's only
+    // owner, so it closes the entry uninterruptibly: an interrupt from the map's
+    // scope closing waits for the close instead of cutting it short.
+    entry.fiber = Effect.uninterruptibleMask(function loop(restore): Effect.Effect<void> {
       const now = clock.currentTimeMillisUnsafe()
       const remaining = entry.expiresAt - now
       if (remaining <= 0) {
@@ -485,9 +488,9 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
         const o = MutableHashMap.get(self.state.map, key)
         if (o._tag === "None" || o.value !== entry) return Effect.void
         MutableHashMap.remove(self.state.map, key)
-        return restore(Scope.close(entry.scope, Exit.void))
+        return Scope.close(entry.scope, Exit.void)
       }
-      return Effect.flatMap(clock.sleep(Duration.millis(remaining)), () => loop(restore))
+      return Effect.flatMap(restore(clock.sleep(Duration.millis(remaining))), () => loop(restore))
     }).pipe(
       Effect.ensuring(Effect.sync(() => {
         entry.fiber = undefined

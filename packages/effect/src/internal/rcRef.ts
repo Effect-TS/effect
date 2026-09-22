@@ -173,14 +173,18 @@ const release = <A, E>(self: RcRefImpl<A, E>, state: State.Acquired<A>): Effect.
   } else if (!Duration.isFinite(idleTimeToLive)) {
     return Effect.void
   }
-  state.fiber = Effect.sleep(idleTimeToLive).pipe(
-    Effect.flatMap(() => {
+  // Once the idle fiber takes the state out of the ref it is the resource's
+  // only owner, so it closes the resource uninterruptibly: an interrupt from
+  // the ref's scope closing waits for the close instead of cutting it short.
+  state.fiber = Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(restore(Effect.sleep(idleTimeToLive)), () => {
       if (self.state === state && state.refCount === 0) {
         self.state = stateEmpty
         return Scope.close(state.scope, Exit.void)
       }
       return Effect.void
-    }),
+    })
+  ).pipe(
     Effect.ensuring(Effect.sync(() => {
       state.fiber = undefined
     })),

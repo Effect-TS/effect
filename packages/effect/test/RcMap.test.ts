@@ -547,4 +547,27 @@ describe("RcMap", () => {
       yield* TestClock.adjust(250)
       assert.deepStrictEqual(released, ["short:a"])
     }))
+
+  it.effect("closing the map while an idle entry is being released runs every finalizer", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      let released = 0
+      const scope = yield* Scope.make()
+      const map = yield* RcMap.make({
+        lookup: (_: string) =>
+          Effect.gen(function*() {
+            yield* Effect.addFinalizer(() => Effect.sync(() => released++))
+            yield* Effect.addFinalizer(() => Effect.andThen(Deferred.await(gate), Effect.sync(() => released++)))
+          }),
+        idleTimeToLive: "1 second"
+      }).pipe(Scope.provide(scope))
+      yield* Effect.scoped(RcMap.get(map, "a"))
+      yield* TestClock.adjust("1 second")
+      // the idle fiber has removed the entry and is releasing it, suspended on the gate
+      assert.isFalse(yield* RcMap.has(map, "a"))
+      const close = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      yield* Deferred.succeed(gate, void 0)
+      yield* Fiber.join(close)
+      assert.strictEqual(released, 2)
+    }))
 })

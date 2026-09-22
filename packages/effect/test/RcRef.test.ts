@@ -365,4 +365,25 @@ describe("RcRef", () => {
         return released === 1
       })
     ))
+
+  it.effect("closing the ref while an idle resource is being released runs every finalizer", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      let released = 0
+      const scope = yield* Scope.make()
+      const ref = yield* RcRef.make({
+        acquire: Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Effect.sync(() => released++))
+          yield* Effect.addFinalizer(() => Effect.andThen(Deferred.await(gate), Effect.sync(() => released++)))
+        }),
+        idleTimeToLive: "1 second"
+      }).pipe(Scope.provide(scope))
+      yield* Effect.scoped(RcRef.get(ref))
+      yield* TestClock.adjust("1 second")
+      // the idle fiber is now releasing the resource, suspended on the gate
+      const close = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      yield* Deferred.succeed(gate, void 0)
+      yield* Fiber.join(close)
+      assert.strictEqual(released, 2)
+    }))
 })
