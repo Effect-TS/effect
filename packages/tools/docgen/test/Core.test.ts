@@ -89,7 +89,9 @@ const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, run
   }).pipe(Effect.provide(NodeServices.layer))
 
 describe("Core", () => {
-  describe("class property examples", () => {
+  describe("class property examples", { timeout: 20_000 }, () => {
+    // These tests run the full docgen program (including ts-morph and Prettier) in parallel.
+    // Under Bun with other CI projects running, that can exceed Vitest's 5s default.
     for (const runExamples of [true, false]) {
       it.effect(`collects property-only examples with runExamples: ${runExamples}`, () =>
         assertExampleFiles(
