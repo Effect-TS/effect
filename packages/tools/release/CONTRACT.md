@@ -175,10 +175,18 @@ npm CLI fixtures and pnpm's renderer; the live probe may amend the sets.
 1. lists the workspace, the queue and the published state; the release set is
    every public package whose manifest version is not published. Empty →
    `Idle`;
-2. reads the manifest from `origin/main`; if it pins approvable or pending
-   items, that release is authorised and unfinished → `InProgress`, no new
-   PR. If its remaining items are blocked, rejected, missing or unknown →
-   `Stalled`, with the blockers reported;
+2. reads the manifest from `origin/main`. Approvable or pending uploads are
+   an authorised unfinished release → `InProgress`, no new PR. A pinned
+   upload that has left the queue is also `InProgress` while that version is
+   still the workspace version. `Stalled` is only a blocked, rejected,
+   deleted or unknown upload that is still current, including when a missing
+   item sits beside one; the blockers are reported and no PR is opened.
+   A still-current stalled release is recovered by rejecting the bad upload,
+   or by bumping versions and clearing the queue. Once every remaining
+   version has left the workspace, and nothing left is approvable or pending,
+   readiness continues with the next release. Merging the next publish PR
+   replaces the old manifest. A still-listed upload at an older version is
+   still a stale-version failure;
 3. any release-set package with no upload at its version → `Incomplete`;
 4. otherwise builds the manifest (`fromStaged` fails on a stale upload at
    another version, exactly like `Routing`), assesses readiness and calls
@@ -227,12 +235,17 @@ not on argv) and:
 
 Packages already public are verified, never re-approved, so running the
 command again with the same identity and a fresh OTP finishes a partially
-published release. If an approved item has left the queue but its version is
-not served yet, the command verifies that exact staged item still exists and
-waits for the version to become public before approving anything else. It
-never infers approval from a missing queue entry. When everything is already
-public it returns `AlreadyPublished` with the same website revision, so a
-failed website dispatch is retried by running it again. The specified workflow writes
+published release. If a pinned item has left the queue, `viewStaged` is
+consulted. An approvable status is approved with the rest of the release. A
+pending or blocked status fails at once and names that state. Any other
+status, including one the contract does not classify, keeps the existing
+wait: the command checks that the exact staged item still exists and waits
+for the version to become public before approving anything else. After that
+wait the queue is listed again, and an item that blocked during the wait
+fails the release with nothing approved. It never infers approval from a
+missing queue entry. When everything is already public it returns
+`AlreadyPublished` with the same website revision, so a failed website dispatch
+is retried by running it again. The specified workflow writes
 `published=true` and `revision=<sourceSha>` to its outputs and runs the
 website step only on `published == 'true'` with channel `v4` and that
 revision; until it exists, the website is dispatched by hand with the
