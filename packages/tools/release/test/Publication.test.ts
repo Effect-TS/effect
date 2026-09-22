@@ -35,6 +35,10 @@ import {
 /** Computed lazily so that an unimplemented member fails the test that needs it, not the whole file. */
 const identity = () => ReleaseManifest.identity(manifest)
 
+const NEXT_EFFECT_STAGE_ID = "9b5a2d3f-4c7e-4f80-8b2c-3d4e5f607181"
+const NEXT_VITEST_STAGE_ID = "2a3b4c5d-6e7f-4081-9a2b-3c4d5e6f7081"
+const bumpedPackages = packages.map((pkg) => pkg.private ? pkg : { ...pkg, version: "4.0.0-rc.118" })
+
 /** The real orchestrator over stubbed git, GitHub, registry, approval, workspace and file system. */
 const app = (options: {
   readonly staged?: Array<StagedItem>
@@ -52,6 +56,8 @@ const app = (options: {
   readonly publishOnApprove?: boolean
   /** Whether `NPM_STAGE_TOKEN` is configured (default: yes). */
   readonly stageToken?: boolean
+  /** Replaces the fixed queue. Called on every listStaged, so the queue can change during a wait. */
+  readonly listStaged?: () => ReadonlyArray<StagedItem>
 }) => {
   const calls = makeCalls()
   const published = options.published ?? new Set<string>()
@@ -64,7 +70,7 @@ const app = (options: {
     Layer.provideMerge(Layer.mergeAll(
       gitLayer(calls, { headSha: "abc123", onMain }),
       githubLayer(calls, options.existing === undefined ? undefined : { existing: options.existing }),
-      registryLayer(calls, { published, staged }),
+      registryLayer(calls, { published, staged, listStaged: options.listStaged }),
       stageApprovalLayer(calls, {
         items: staged,
         viewable: options.viewable,
@@ -106,6 +112,96 @@ describe("Publication.readiness", () => {
       })
       const result = yield* Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
       assert.strictEqual(result._tag, "Idle")
+      assert.deepStrictEqual(mutationNames(calls), [])
+      assert.deepStrictEqual(callsTo(calls, "github.findPullRequest"), [])
+    }))
+
+  it.effect("reports a merged release as unfinished, not stalled, when a pinned upload has left the queue", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")],
+        published: new Set([versionKey("@effect/vitest", "4.0.0-rc.117")]),
+        merged: manifest
+      })
+      const result = yield* Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
+      assert.strictEqual(result._tag, "InProgress")
+      if (result._tag === "InProgress") {
+        assert.strictEqual(result.identity, identity())
+        assert.deepStrictEqual(result.remaining.map((pkg) => pkg.name), ["effect"])
+      }
+      assert.deepStrictEqual(mutationNames(calls), [])
+      assert.deepStrictEqual(callsTo(calls, "github.findPullRequest"), [])
+    }))
+
+  it.effect("stays stalled when a missing pinned upload sits next to a blocked one", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "blocked")],
+        merged: manifest
+      })
+      const result = yield* Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
+      assert.strictEqual(result._tag, "Stalled")
+      if (result._tag === "Stalled") {
+        assert.deepStrictEqual(result.blockers.map((pkg) => [pkg.name, pkg.state]), [
+          ["@effect/vitest", "blocked"],
+          ["effect", "missing"]
+        ])
+      }
+      assert.deepStrictEqual(mutationNames(calls), [])
+    }))
+
+  it.effect("lets the next release proceed once a stalled manifest is no longer the workspace version", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [
+          stagedWithId(NEXT_EFFECT_STAGE_ID, "effect", "4.0.0-rc.118"),
+          stagedWithId(NEXT_VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.118")
+        ],
+        merged: manifest,
+        workspace: bumpedPackages
+      })
+      const result = yield* Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
+      assert.strictEqual(result._tag, "Ready")
+      if (result._tag === "Ready") {
+        assert.deepStrictEqual(result.manifest.packages.map((pkg) => pkg.version), ["4.0.0-rc.118", "4.0.0-rc.118"])
+        assert.strictEqual(result.pullRequest._tag, "Created")
+      }
+      assert.lengthOf(callsTo(calls, "github.createPullRequest"), 1)
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
+    }))
+
+  it.effect("does not stall a later release that has not been staged yet", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({ staged: [], merged: manifest, workspace: bumpedPackages })
+      const result = yield* Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
+      assert.strictEqual(result._tag, "Incomplete")
+      if (result._tag === "Incomplete") {
+        assert.deepStrictEqual(result.missing, [
+          { name: "effect", version: "4.0.0-rc.118" },
+          { name: "@effect/vitest", version: "4.0.0-rc.118" }
+        ])
+      }
+      assert.deepStrictEqual(mutationNames(calls), [])
+      assert.deepStrictEqual(callsTo(calls, "github.findPullRequest"), [])
+    }))
+
+  it.effect("still refuses a later release while the superseded uploads remain listed", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [
+          stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "blocked"),
+          stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "rejected"),
+          stagedWithId(NEXT_EFFECT_STAGE_ID, "effect", "4.0.0-rc.118"),
+          stagedWithId(NEXT_VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.118")
+        ],
+        merged: manifest,
+        workspace: bumpedPackages
+      })
+      const error = yield* Effect.flip(
+        Effect.provide(Effect.flatMap(Publication, (p) => p.readiness({ tag: "rc" })), layer)
+      )
+      assert.strictEqual(error._tag, "ReleaseError")
+      assert.include(error.message, "4.0.0-rc.117")
       assert.deepStrictEqual(mutationNames(calls), [])
       assert.deepStrictEqual(callsTo(calls, "github.findPullRequest"), [])
     }))
@@ -499,6 +595,105 @@ describe("Publication.publish", () => {
       assert.strictEqual(error._tag, "ReleaseError")
       assert.include(error.message, "@effect/vitest")
       assert.include(error.message, "validating")
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
+    }))
+
+  it.effect("rechecks the queue after the missing-upload wait and approves nothing that blocked during it", () =>
+    Effect.gen(function*() {
+      let listed = 0
+      const open = [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")]
+      const blocked = [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117", "blocked")]
+      const { calls, layer, published } = app({
+        staged: open,
+        viewable: [stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "published")],
+        merged: manifest,
+        listStaged: () => {
+          listed += 1
+          return listed === 1 ? open : blocked
+        }
+      })
+      const fiber = yield* Effect.forkChild(Effect.flip(Effect.provide(publish(), layer)))
+      yield* TestClock.adjust("15 seconds")
+      published.add(versionKey("effect", "4.0.0-rc.117"))
+      yield* TestClock.adjust("15 seconds")
+      if (fiber.pollUnsafe() === undefined) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const error = yield* Fiber.join(fiber)
+      assert.strictEqual(error._tag, "ReleaseError")
+      assert.include(error.message, "@effect/vitest")
+      assert.include(error.message, "blocked")
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
+      const names = callNames(calls)
+      assert.isAbove(
+        names.lastIndexOf("registry.listStaged"),
+        names.lastIndexOf("approval.viewStaged"),
+        "the queue is read again after the missing upload is confirmed"
+      )
+    }))
+
+  it.effect("approves a pinned upload that the listing missed when viewStaged still reports it approvable", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")],
+        viewable: [stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "staged")],
+        merged: manifest
+      })
+      const fiber = yield* Effect.forkChild(Effect.provide(publish(), layer))
+      yield* TestClock.adjust("1 second")
+      const settledEarly = fiber.pollUnsafe() !== undefined
+      if (!settledEarly) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const result = yield* Fiber.join(fiber)
+      assert.strictEqual(settledEarly, true)
+      assert.strictEqual(result._tag, "Published")
+      if (result._tag === "Published") {
+        assert.deepStrictEqual(result.approved.map((pkg) => pkg.name), ["@effect/vitest", "effect"])
+      }
+      assert.deepStrictEqual(callsTo(calls, "approval.approve").map((call) => call.args[0]), [
+        VITEST_STAGE_ID,
+        EFFECT_STAGE_ID
+      ])
+    }))
+
+  it.effect("fails at once when a missing pinned upload is still validating", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")],
+        viewable: [stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "validating")],
+        merged: manifest
+      })
+      const fiber = yield* Effect.forkChild(Effect.flip(Effect.provide(publish(), layer)))
+      yield* TestClock.adjust("1 second")
+      const settledEarly = fiber.pollUnsafe() !== undefined
+      if (!settledEarly) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const error = yield* Fiber.join(fiber)
+      assert.strictEqual(settledEarly, true)
+      assert.include(error.message, "effect")
+      assert.include(error.message, "validating")
+      assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
+    }))
+
+  it.effect("fails at once when a missing pinned upload is blocked", () =>
+    Effect.gen(function*() {
+      const { calls, layer } = app({
+        staged: [stagedWithId(VITEST_STAGE_ID, "@effect/vitest", "4.0.0-rc.117")],
+        viewable: [stagedWithId(EFFECT_STAGE_ID, "effect", "4.0.0-rc.117", "blocked")],
+        merged: manifest
+      })
+      const fiber = yield* Effect.forkChild(Effect.flip(Effect.provide(publish(), layer)))
+      yield* TestClock.adjust("1 second")
+      const settledEarly = fiber.pollUnsafe() !== undefined
+      if (!settledEarly) {
+        yield* TestClock.adjust("11 minutes")
+      }
+      const error = yield* Fiber.join(fiber)
+      assert.strictEqual(settledEarly, true)
+      assert.include(error.message, "effect")
+      assert.include(error.message, "blocked")
       assert.deepStrictEqual(callsTo(calls, "approval.approve"), [])
     }))
 

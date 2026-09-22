@@ -240,6 +240,8 @@ export const githubLayer = (calls: Calls, options?: { readonly existing?: PullRe
 export const registryLayer = (calls: Calls, options: {
   readonly published: ReadonlySet<string>
   readonly staged?: ReadonlyArray<StagedItem> | undefined
+  /** When set, each listStaged call asks again, so a test can move the queue between calls. */
+  readonly listStaged?: (() => ReadonlyArray<StagedItem>) | undefined
 }) =>
   Layer.succeed(
     Registry,
@@ -248,7 +250,9 @@ export const registryLayer = (calls: Calls, options: {
         track(calls, "registry", "isPublished", name, version).pipe(
           Effect.as(options.published.has(`${name}@${version}`))
         ),
-      listStaged: track(calls, "registry", "listStaged").pipe(Effect.as(options.staged ?? []))
+      listStaged: track(calls, "registry", "listStaged").pipe(
+        Effect.map(() => options.listStaged?.() ?? options.staged ?? [])
+      )
     })
   )
 
