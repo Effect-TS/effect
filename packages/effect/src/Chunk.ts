@@ -2686,8 +2686,15 @@ export const every: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): boolean
 } = dual(
   2,
-  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): self is Chunk<B> =>
-    RA.fromIterable(self).every(refinement)
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): self is Chunk<B> => {
+    const as = toReadonlyArray(self)
+    for (let i = 0; i < as.length; i++) {
+      if (!refinement(as[i])) {
+        return false
+      }
+    }
+    return true
+  }
 )
 
 /**
@@ -2718,7 +2725,15 @@ export const some: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A> => RA.fromIterable(self).some(predicate)
+  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A> => {
+    const as = toReadonlyArray(self)
+    for (let i = 0; i < as.length; i++) {
+      if (predicate(as[i])) {
+        return true
+      }
+    }
+    return false
+  }
 )
 
 /**

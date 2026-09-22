@@ -762,6 +762,8 @@ describe("Chunk", () => {
       3
     ]])
     assertSome(Chunk.findLastIndex(chunk, isUndefined), 1)
+    assertTrue(Chunk.some(chunk, isUndefined))
+    assertFalse(Chunk.every(chunk, (a) => a !== undefined))
   })
 
   it("filterMap", () => {
