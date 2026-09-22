@@ -100,6 +100,29 @@ const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, stre
 }
 
 /**
+ * Renders the query parameter pipeline shared by every generated request path.
+ *
+ * Array query parameters recorded as comma-separated are converted to a single
+ * value before URL encoding. Every other parameter keeps the repeated-parameter
+ * behavior produced by `HttpClientRequest.setUrlParams`.
+ */
+const queryParamsPipelineSource = (operation: ParsedOperation, paramsAccessor: string): string | undefined => {
+  if (operation.urlParams.length === 0) {
+    return undefined
+  }
+  const csvParams = new Set(operation.urlParamsCsv)
+  const props = operation.urlParams.map((param) =>
+    csvParams.has(param)
+      ? `"${param}": __encodeFormQueryArray(${paramsAccessor}["${param}"])`
+      : `"${param}": ${paramsAccessor}["${param}"] as any`
+  )
+  return `HttpClientRequest.setUrlParams({ ${props.join(", ")} })`
+}
+
+const hasCsvUrlParams = (operations: ReadonlyArray<ParsedOperation>): boolean =>
+  operations.some((operation) => operation.urlParamsCsv.length > 0)
+
+/**
  * Create the transformer used for schema-backed HttpClient output.
  *
  * **Details**
@@ -264,6 +287,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (hasCsvUrlParams(operations)) {
+      helpers.push(formQueryArraySource)
+    }
     if (operations.some((operation) => operation.pathIds.length > 0)) {
       helpers.push(pathRequestSource)
     }
@@ -343,12 +369,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -409,11 +432,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -451,11 +472,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -689,6 +708,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (hasCsvUrlParams(operations)) {
+      helpers.push(formQueryArraySource)
+    }
     if (operations.some((operation) => operation.pathIds.length > 0)) {
       helpers.push(pathRequestSource)
     }
@@ -773,12 +795,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -838,11 +857,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -880,11 +897,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -984,6 +999,20 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
     }
     return Effect.succeed(method(path))
   })`
+
+const formQueryArraySource =
+  `const __encodeFormQueryArray = (value: ReadonlyArray<unknown> | undefined): string | undefined => {
+    if (value === undefined || value.length === 0) {
+      return undefined
+    }
+    const parts: Array<string> = []
+    for (const element of value) {
+      if (element !== undefined) {
+        parts.push(String(element))
+      }
+    }
+    return parts.length === 0 ? undefined : parts.join(",")
+  }`
 
 const commonSource = `const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
