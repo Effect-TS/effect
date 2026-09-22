@@ -14,6 +14,7 @@ import * as ChannelSchema from "../ChannelSchema.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { dual, identity } from "../Function.ts"
+import * as Predicate from "../Predicate.ts"
 import type * as Schema from "../Schema.ts"
 
 const NdjsonErrorTypeId = "~effect/encoding/Ndjson/NdjsonError"
@@ -54,6 +55,15 @@ export class NdjsonError extends Data.TaggedError("NdjsonError")<{
     return this.kind
   }
 }
+
+/**
+ * Checks whether a value is an `NdjsonError`.
+ *
+ * @unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isNdjsonError = (u: unknown): u is NdjsonError => Predicate.hasProperty(u, NdjsonErrorTypeId)
 
 /**
  * Creates a channel that encodes chunks of values as NDJSON strings.

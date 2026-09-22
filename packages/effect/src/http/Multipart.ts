@@ -214,8 +214,8 @@ export interface Persisted {
 const MultipartErrorTypeId = "~effect/http/Multipart/MultipartError"
 
 const toMultipartError = (cause: unknown): MultipartError =>
-  Predicate.hasProperty(cause, MultipartErrorTypeId)
-    ? cause as MultipartError
+  isMultipartError(cause)
+    ? cause
     : MultipartError.fromReason("InternalError", cause)
 
 /**
@@ -305,6 +305,15 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
     return this.reason._tag
   }
 }
+
+/**
+ * Checks whether a value is a `MultipartError`.
+ *
+ * @unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isMultipartError = (u: unknown): u is MultipartError => Predicate.hasProperty(u, MultipartErrorTypeId)
 
 /**
  * Schema type for persisted multipart files.

@@ -145,6 +145,15 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
   }
 }
 
+/**
+ * Checks whether a value is a `CookiesError`.
+ *
+ * @unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isCookiesError = (u: unknown): u is CookiesError => Predicate.hasProperty(u, CookieErrorTypeId)
+
 const Proto: Omit<Cookies, "cookies"> = {
   [TypeId]: TypeId,
   ...Inspectable.BaseProto,

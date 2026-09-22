@@ -108,3 +108,9 @@ it("fileFromInfo preserves a small selected range and stream options", async () 
   assert.strictEqual(body.contentLength, bytes.length)
   assert.strictEqual(body.contentType, "text/plain")
 })
+
+it("identifies HTTP body errors", () => {
+  assert.isTrue(HttpBody.isHttpBodyError(new HttpBody.HttpBodyError({ reason: { _tag: "JsonError" } })))
+  assert.isFalse(HttpBody.isHttpBodyError({ _tag: "HttpBodyError" }))
+  assert.isFalse(HttpBody.isHttpBodyError(null))
+})

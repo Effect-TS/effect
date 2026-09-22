@@ -31,4 +31,10 @@ describe("Ndjson", () => {
 
       assert.deepStrictEqual([...messages], [{ foo: "bar" }])
     }))
+
+  it("identifies Ndjson errors", () => {
+    assert.isTrue(Ndjson.isNdjsonError(new Ndjson.NdjsonError({ kind: "Pack", cause: new Error("boom") })))
+    assert.isFalse(Ndjson.isNdjsonError({ _tag: "NdjsonError" }))
+    assert.isFalse(Ndjson.isNdjsonError(null))
+  })
 })
