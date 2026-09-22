@@ -588,6 +588,7 @@ describe("OpenAiLanguageModel", () => {
             assert.deepStrictEqual(body.input, [
               { role: "user", content: [{ type: "input_text", text: "Search" }] },
               { type: "item_reference", id: "ws_1" },
+              { type: "item_reference", id: "ws_1" },
               { role: "user", content: [{ type: "input_text", text: "Continue" }] }
             ])
           }).pipe(Effect.provide(makeTestLayer())))
