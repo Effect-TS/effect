@@ -456,6 +456,93 @@ describe("OpenAiLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
       }))
 
+    it.effect("preserves raw JSON Schema dynamic tool call params", () =>
+      Effect.gen(function*() {
+        const params = { query: "effect" }
+        const client = makeHttpClient((request) =>
+          Effect.succeed(jsonResponse(
+            request,
+            makeChatCompletion({
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                message: {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [{
+                    id: "call_dynamic_1",
+                    type: "function",
+                    function: { name: "DynamicTool", arguments: JSON.stringify(params) }
+                  }]
+                }
+              }]
+            })
+          ))
+        )
+        const DynamicTool = Tool.dynamic("DynamicTool", {
+          parameters: {
+            type: "object",
+            properties: { query: { type: "string" } },
+            required: ["query"],
+            additionalProperties: false
+          } as const
+        })
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the dynamic tool",
+          toolkit: Toolkit.make(DynamicTool),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls[0]?.params, params)
+      }))
+
+    it.effect("decodes Effect Schema dynamic tool call params with the OpenAI codec", () =>
+      Effect.gen(function*() {
+        const DynamicTool = Tool.dynamic("DynamicTool", {
+          parameters: Schema.Struct({
+            env: Schema.Record(Schema.String, Schema.String)
+          })
+        })
+        const client = makeHttpClient((request) =>
+          Effect.succeed(jsonResponse(
+            request,
+            makeChatCompletion({
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                message: {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [{
+                    id: "call_dynamic_1",
+                    type: "function",
+                    function: {
+                      name: "DynamicTool",
+                      arguments: JSON.stringify({ env: [{ 0: "PATH", 1: "/usr/bin" }] })
+                    }
+                  }]
+                }
+              }]
+            })
+          ))
+        )
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the dynamic tool",
+          toolkit: Toolkit.make(DynamicTool),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls[0]?.params, { env: { PATH: "/usr/bin" } })
+      }))
+
     it.effect("groups parallel tool calls into one assistant message", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
