@@ -16,7 +16,7 @@ import type * as Brand from "../Brand.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import * as Encoding from "../Encoding.ts"
+import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Exit from "../Exit.ts"
 import * as Filter from "../Filter.ts"
 import { dual } from "../Function.ts"
@@ -370,7 +370,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
    * @since 4.0.0
    */
   get asToken(): Token {
-    return Encoding.encodeBase64Url(
+    return Base64Url.encode(
       JSON.stringify([this.workflowName, this.executionId, this.deferredName])
     ) as Token
   }

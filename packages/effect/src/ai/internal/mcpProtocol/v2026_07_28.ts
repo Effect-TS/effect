@@ -5,7 +5,7 @@
  */
 import * as Deferred from "../../../Deferred.ts"
 import * as Effect from "../../../Effect.ts"
-import * as Encoding from "../../../Encoding.ts"
+import * as Base64 from "../../../encoding/Base64.ts"
 import { appendPreResponseHandlerUnsafe } from "../../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../../../http/HttpServerResponse.ts"
@@ -179,7 +179,7 @@ const projectResourceContents = (
     uri: resource.uri,
     mimeType: resource.mimeType,
     _meta: resource._meta,
-    ...("text" in resource ? { text: resource.text } : { blob: Encoding.encodeBase64(resource.blob) })
+    ...("text" in resource ? { text: resource.text } : { blob: Base64.encode(resource.blob) })
   })
 
 const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
@@ -188,7 +188,7 @@ const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
     omitUndefined({
       type: content.type,
       mimeType: content.mimeType,
-      data: Encoding.encodeBase64(content.data),
+      data: Base64.encode(content.data),
       annotations: content.annotations,
       _meta: content._meta
     })),

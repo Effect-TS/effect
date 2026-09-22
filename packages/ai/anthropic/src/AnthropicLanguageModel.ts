@@ -20,7 +20,7 @@ import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import * as Encoding from "effect/Encoding"
+import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
@@ -899,7 +899,7 @@ const prepareMessages = Effect.fnUntraced(
                             media_type: mediaType,
                             data: typeof part.data === "string"
                               ? part.data.replace(/^data:[^;]+;base64,/, "")
-                              : Encoding.encodeBase64(part.data)
+                              : Base64.encode(part.data)
                           } as const
 
                         content.push({ type: "image", source, cache_control: cacheControl })
@@ -918,7 +918,7 @@ const prepareMessages = Effect.fnUntraced(
                           ? {
                             type: "base64",
                             media_type: "application/pdf",
-                            data: typeof part.data === "string" ? part.data : Encoding.encodeBase64(part.data)
+                            data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
                           } as const
                           : {
                             type: "text",

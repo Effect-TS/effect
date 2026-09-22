@@ -14,7 +14,7 @@
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
-import * as Encoding from "../Encoding.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import * as FileSystem from "../FileSystem.ts"
 import { dual, identity, type LazyArg } from "../Function.ts"
 import * as Layer from "../Layer.ts"
@@ -283,7 +283,7 @@ export const makeStringOnly = (
     getUint8Array: (key) =>
       options.get(key).pipe(
         Effect.map(UndefinedOr.map((value) =>
-          Result.match(Encoding.decodeBase64(value), {
+          Result.match(Base64.decode(value), {
             onFailure: () => encoder.encode(value),
             onSuccess: identity
           })
@@ -292,7 +292,7 @@ export const makeStringOnly = (
     set: (key, value) =>
       typeof value === "string"
         ? options.set(key, value)
-        : Effect.suspend(() => options.set(key, Encoding.encodeBase64(value)))
+        : Effect.suspend(() => options.set(key, Base64.encode(value)))
   })
 }
 
@@ -333,7 +333,7 @@ export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(KeyValueStore)
     get: (key: string) =>
       Effect.sync(() => {
         const value = store.get(key)
-        return value === undefined ? undefined : typeof value === "string" ? value : Encoding.encodeBase64(value)
+        return value === undefined ? undefined : typeof value === "string" ? value : Base64.encode(value)
       }),
     getUint8Array: (key: string) =>
       Effect.sync(() => {
@@ -615,7 +615,7 @@ export const layerSql = (
                 case ValueTypeString:
                   return Effect.succeed(decoder.decode(row.value))
                 case ValueTypeUint8Array:
-                  return Effect.succeed(Encoding.encodeBase64(row.value))
+                  return Effect.succeed(Base64.encode(row.value))
                 default:
                   return Effect.fail(
                     new KeyValueStoreError({

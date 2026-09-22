@@ -162,11 +162,6 @@ export * as Effect from "./Effect.ts"
 export * as Effectable from "./Effectable.ts"
 
 /**
- * @since 4.0.0
- */
-export * as Encoding from "./Encoding.ts"
-
-/**
  * @since 2.0.0
  */
 export * as Equal from "./Equal.ts"

@@ -1,6 +1,6 @@
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
-import * as Encoding from "../../Encoding.ts"
+import * as Base64 from "../../encoding/Base64.ts"
 import type * as Headers from "../../http/Headers.ts"
 import type * as LogLevel from "../../LogLevel.ts"
 import * as Match from "../../Match.ts"
@@ -52,7 +52,7 @@ export const decodeRoutingHeader = (value: string): string | undefined => {
   if (!startsWithSentinel || !endsWithSentinel) {
     return /^[\t\x20-\x7e]*$/.test(value) ? value : undefined
   }
-  const decoded = Encoding.decodeBase64(
+  const decoded = Base64.decode(
     value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
   )
   if (Result.isFailure(decoded)) return undefined
