@@ -5,7 +5,6 @@
  * the dated JSON-RPC method payloads and results only.
  *
  * @internal
- * @unstable
  */
 import * as Option from "../../../Option.ts"
 import * as Rpc from "../../../rpc/Rpc.ts"
@@ -15,13 +14,11 @@ import * as SchemaGetter from "../../../SchemaGetter.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const protocolVersion = "2024-11-05"
 
 /**
  * @internal
- * @unstable
  */
 export const optional = <S extends Schema.Constraint>(
   schema: S
@@ -36,22 +33,18 @@ const JsonObject = Schema.JsonObject
 
 /**
  * @internal
- * @unstable
  */
 export const RequestId = Schema.Union([Schema.String, Schema.Finite])
 /**
  * @internal
- * @unstable
  */
 export const ProgressToken = Schema.Union([Schema.String, Schema.Finite])
 /**
  * @internal
- * @unstable
  */
 export const Role = Schema.Literals(["user", "assistant"])
 /**
  * @internal
- * @unstable
  */
 export const LoggingLevel = Schema.Literals([
   "debug",
@@ -66,7 +59,6 @@ export const LoggingLevel = Schema.Literals([
 
 /**
  * @internal
- * @unstable
  */
 export const RequestMeta = Schema.Struct({
   _meta: optional(Schema.StructWithRest(
@@ -79,7 +71,6 @@ export const RequestMeta = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const NotificationMeta = Schema.Struct({
   _meta: optional(JsonObject)
@@ -87,7 +78,6 @@ export const NotificationMeta = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResultMeta = Schema.Struct({
   _meta: optional(JsonObject)
@@ -95,7 +85,6 @@ export const ResultMeta = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PaginatedRequest = Schema.Struct({
   ...RequestMeta.fields,
@@ -104,7 +93,6 @@ export const PaginatedRequest = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PaginatedResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -113,7 +101,6 @@ export const PaginatedResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Implementation = Schema.Struct({
   name: Schema.String,
@@ -122,7 +109,6 @@ export const Implementation = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ClientCapabilities = Schema.Struct({
   experimental: optional(Schema.Record(Schema.String, JsonObject)),
@@ -134,7 +120,6 @@ export const ClientCapabilities = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ServerCapabilities = Schema.Struct({
   experimental: optional(Schema.Record(Schema.String, JsonObject)),
@@ -153,7 +138,6 @@ export const ServerCapabilities = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const McpError = Schema.Struct({
   code: Schema.Int,
@@ -162,13 +146,11 @@ export const McpError = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export type McpError = typeof McpError.Type
 
 /**
  * @internal
- * @unstable
  */
 export const Annotation = Schema.Struct({
   audience: optional(Schema.Array(Role)),
@@ -177,7 +159,6 @@ export const Annotation = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const TextResourceContents = Schema.Struct({
   uri: Schema.String,
@@ -187,7 +168,6 @@ export const TextResourceContents = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const BlobResourceContents = Schema.Struct({
   uri: Schema.String,
@@ -197,7 +177,6 @@ export const BlobResourceContents = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceContents = Schema.Union([
   TextResourceContents,
@@ -206,7 +185,6 @@ export const ResourceContents = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const TextContent = Schema.Struct({
   type: Schema.Literal("text"),
@@ -216,7 +194,6 @@ export const TextContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ImageContent = Schema.Struct({
   type: Schema.Literal("image"),
@@ -227,7 +204,6 @@ export const ImageContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const EmbeddedResource = Schema.Struct({
   type: Schema.Literal("resource"),
@@ -237,7 +213,6 @@ export const EmbeddedResource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PromptOrToolContent = Schema.Union([
   TextContent,
@@ -247,7 +222,6 @@ export const PromptOrToolContent = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingContent = Schema.Union([
   TextContent,
@@ -256,7 +230,6 @@ export const SamplingContent = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const Resource = Schema.Struct({
   uri: Schema.String,
@@ -269,7 +242,6 @@ export const Resource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceTemplate = Schema.Struct({
   uriTemplate: Schema.String,
@@ -281,7 +253,6 @@ export const ResourceTemplate = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PromptArgument = Schema.Struct({
   name: Schema.String,
@@ -291,7 +262,6 @@ export const PromptArgument = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Prompt = Schema.Struct({
   name: Schema.String,
@@ -301,7 +271,6 @@ export const Prompt = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PromptMessage = Schema.Struct({
   role: Role,
@@ -310,7 +279,6 @@ export const PromptMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ToolInputSchema = Schema.Struct({
   type: Schema.Literal("object"),
@@ -320,7 +288,6 @@ export const ToolInputSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Tool = Schema.Struct({
   name: Schema.String,
@@ -330,7 +297,6 @@ export const Tool = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ModelHint = Schema.Struct({
   name: optional(Schema.String)
@@ -338,7 +304,6 @@ export const ModelHint = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ModelPreferences = Schema.Struct({
   hints: optional(Schema.Array(ModelHint)),
@@ -349,7 +314,6 @@ export const ModelPreferences = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessage = Schema.Struct({
   role: Role,
@@ -358,7 +322,6 @@ export const SamplingMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceReference = Schema.Struct({
   type: Schema.Literal("ref/resource"),
@@ -367,7 +330,6 @@ export const ResourceReference = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PromptReference = Schema.Struct({
   type: Schema.Literal("ref/prompt"),
@@ -376,7 +338,6 @@ export const PromptReference = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Root = Schema.Struct({
   uri: Schema.String,
@@ -385,7 +346,6 @@ export const Root = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const InitializeResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -397,7 +357,6 @@ export const InitializeResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourcesResult = Schema.Struct({
   ...PaginatedResult.fields,
@@ -406,7 +365,6 @@ export const ListResourcesResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourceTemplatesResult = Schema.Struct({
   ...PaginatedResult.fields,
@@ -415,7 +373,6 @@ export const ListResourceTemplatesResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ReadResourceResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -424,7 +381,6 @@ export const ReadResourceResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListPromptsResult = Schema.Struct({
   ...PaginatedResult.fields,
@@ -433,7 +389,6 @@ export const ListPromptsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const GetPromptResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -443,7 +398,6 @@ export const GetPromptResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListToolsResult = Schema.Struct({
   ...PaginatedResult.fields,
@@ -452,7 +406,6 @@ export const ListToolsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CallToolResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -462,7 +415,6 @@ export const CallToolResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CreateMessageResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -474,7 +426,6 @@ export const CreateMessageResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CompleteResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -487,7 +438,6 @@ export const CompleteResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListRootsResult = Schema.Struct({
   ...ResultMeta.fields,
@@ -496,7 +446,6 @@ export const ListRootsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class Ping extends Rpc.make("ping", {
   success: ResultMeta,
@@ -506,7 +455,6 @@ export class Ping extends Rpc.make("ping", {
 
 /**
  * @internal
- * @unstable
  */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
@@ -521,7 +469,6 @@ export class Initialize extends Rpc.make("initialize", {
 
 /**
  * @internal
- * @unstable
  */
 export class Complete extends Rpc.make("completion/complete", {
   success: CompleteResult,
@@ -538,7 +485,6 @@ export class Complete extends Rpc.make("completion/complete", {
 
 /**
  * @internal
- * @unstable
  */
 export class SetLevel extends Rpc.make("logging/setLevel", {
   success: ResultMeta,
@@ -551,7 +497,6 @@ export class SetLevel extends Rpc.make("logging/setLevel", {
 
 /**
  * @internal
- * @unstable
  */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
@@ -565,7 +510,6 @@ export class GetPrompt extends Rpc.make("prompts/get", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
@@ -575,7 +519,6 @@ export class ListPrompts extends Rpc.make("prompts/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
@@ -585,7 +528,6 @@ export class ListResources extends Rpc.make("resources/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
@@ -595,7 +537,6 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 
 /**
  * @internal
- * @unstable
  */
 export class ReadResource extends Rpc.make("resources/read", {
   success: ReadResourceResult,
@@ -608,7 +549,6 @@ export class ReadResource extends Rpc.make("resources/read", {
 
 /**
  * @internal
- * @unstable
  */
 export class Subscribe extends Rpc.make("resources/subscribe", {
   success: ResultMeta,
@@ -621,7 +561,6 @@ export class Subscribe extends Rpc.make("resources/subscribe", {
 
 /**
  * @internal
- * @unstable
  */
 export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
   success: ResultMeta,
@@ -634,7 +573,6 @@ export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
 
 /**
  * @internal
- * @unstable
  */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
@@ -648,7 +586,6 @@ export class CallTool extends Rpc.make("tools/call", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
@@ -658,7 +595,6 @@ export class ListTools extends Rpc.make("tools/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
@@ -678,7 +614,6 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListRoots extends Rpc.make("roots/list", {
   success: ListRootsResult,
@@ -688,7 +623,6 @@ export class ListRoots extends Rpc.make("roots/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class CancelledNotification extends Rpc.make("notifications/cancelled", {
   payload: {
@@ -700,7 +634,6 @@ export class CancelledNotification extends Rpc.make("notifications/cancelled", {
 
 /**
  * @internal
- * @unstable
  */
 export class ProgressNotification extends Rpc.make("notifications/progress", {
   payload: {
@@ -713,7 +646,6 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
 
 /**
  * @internal
- * @unstable
  */
 export class InitializedNotification extends Rpc.make("notifications/initialized", {
   payload: Schema.UndefinedOr(NotificationMeta)
@@ -721,7 +653,6 @@ export class InitializedNotification extends Rpc.make("notifications/initialized
 
 /**
  * @internal
- * @unstable
  */
 export class RootsListChangedNotification extends Rpc.make("notifications/roots/list_changed", {
   payload: Schema.UndefinedOr(NotificationMeta)
@@ -729,7 +660,6 @@ export class RootsListChangedNotification extends Rpc.make("notifications/roots/
 
 /**
  * @internal
- * @unstable
  */
 export class LoggingMessageNotification extends Rpc.make("notifications/message", {
   payload: {
@@ -742,7 +672,6 @@ export class LoggingMessageNotification extends Rpc.make("notifications/message"
 
 /**
  * @internal
- * @unstable
  */
 export class ResourceUpdatedNotification extends Rpc.make("notifications/resources/updated", {
   payload: {
@@ -753,7 +682,6 @@ export class ResourceUpdatedNotification extends Rpc.make("notifications/resourc
 
 /**
  * @internal
- * @unstable
  */
 export class ResourceListChangedNotification extends Rpc.make("notifications/resources/list_changed", {
   payload: Schema.UndefinedOr(NotificationMeta)
@@ -761,7 +689,6 @@ export class ResourceListChangedNotification extends Rpc.make("notifications/res
 
 /**
  * @internal
- * @unstable
  */
 export class ToolListChangedNotification extends Rpc.make("notifications/tools/list_changed", {
   payload: Schema.UndefinedOr(NotificationMeta)
@@ -769,7 +696,6 @@ export class ToolListChangedNotification extends Rpc.make("notifications/tools/l
 
 /**
  * @internal
- * @unstable
  */
 export class PromptListChangedNotification extends Rpc.make("notifications/prompts/list_changed", {
   payload: Schema.UndefinedOr(NotificationMeta)
@@ -777,7 +703,6 @@ export class PromptListChangedNotification extends Rpc.make("notifications/promp
 
 /**
  * @internal
- * @unstable
  */
 export class ClientRequestRpcs extends RpcGroup.make(
   Ping,
@@ -797,7 +722,6 @@ export class ClientRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ClientNotificationRpcs extends RpcGroup.make(
   CancelledNotification,
@@ -808,7 +732,6 @@ export class ClientNotificationRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerRequestRpcs extends RpcGroup.make(
   Ping,
@@ -818,7 +741,6 @@ export class ServerRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerNotificationRpcs extends RpcGroup.make(
   CancelledNotification,

@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Context from "../../Context.ts"
 import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
@@ -11,7 +8,6 @@ import * as Scope from "../../Scope.ts"
 
 /**
  * @internal
- * @unstable
  */
 export class ResourceMap<K, A, E> {
   readonly lookup: (key: K, scope: Scope.Scope) => Effect.Effect<A, E>

@@ -6,21 +6,16 @@
  * transport codec rather than Effect RPC payload schemas.
  *
  * @internal
- * @unstable
  */
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
 import * as Schema from "../../../Schema.ts"
 import * as Previous from "./v2024_11_05.ts"
 
-/**
- * @unstable
- */
 export * from "./v2024_11_05.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const protocolVersion = "2025-03-26"
 
@@ -28,7 +23,6 @@ const optional = Previous.optional
 
 /**
  * @internal
- * @unstable
  */
 export const ServerCapabilities = Schema.Struct({
   ...Previous.ServerCapabilities.fields,
@@ -37,7 +31,6 @@ export const ServerCapabilities = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const AudioContent = Schema.Struct({
   type: Schema.Literal("audio"),
@@ -48,7 +41,6 @@ export const AudioContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const PromptOrToolContent = Schema.Union([
   Previous.TextContent,
@@ -59,7 +51,6 @@ export const PromptOrToolContent = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingContent = Schema.Union([
   Previous.TextContent,
@@ -69,7 +60,6 @@ export const SamplingContent = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const PromptMessage = Schema.Struct({
   role: Previous.Role,
@@ -78,7 +68,6 @@ export const PromptMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessage = Schema.Struct({
   role: Previous.Role,
@@ -87,7 +76,6 @@ export const SamplingMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ToolAnnotations = Schema.Struct({
   title: optional(Schema.String),
@@ -99,7 +87,6 @@ export const ToolAnnotations = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Tool = Schema.Struct({
   ...Previous.Tool.fields,
@@ -108,7 +95,6 @@ export const Tool = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const InitializeResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -120,7 +106,6 @@ export const InitializeResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const GetPromptResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -130,7 +115,6 @@ export const GetPromptResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListToolsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -139,7 +123,6 @@ export const ListToolsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CallToolResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -149,7 +132,6 @@ export const CallToolResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CreateMessageResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -161,7 +143,6 @@ export const CreateMessageResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
@@ -176,7 +157,6 @@ export class Initialize extends Rpc.make("initialize", {
 
 /**
  * @internal
- * @unstable
  */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
@@ -190,7 +170,6 @@ export class GetPrompt extends Rpc.make("prompts/get", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
@@ -200,7 +179,6 @@ export class ListTools extends Rpc.make("tools/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
@@ -214,7 +192,6 @@ export class CallTool extends Rpc.make("tools/call", {
 
 /**
  * @internal
- * @unstable
  */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
@@ -234,7 +211,6 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
 
 /**
  * @internal
- * @unstable
  */
 export class ProgressNotification extends Rpc.make("notifications/progress", {
   payload: {
@@ -248,7 +224,6 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
 
 /**
  * @internal
- * @unstable
  */
 export class ClientRequestRpcs extends RpcGroup.make(
   Previous.Ping,
@@ -268,7 +243,6 @@ export class ClientRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
@@ -279,7 +253,6 @@ export class ClientNotificationRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerRequestRpcs extends RpcGroup.make(
   Previous.Ping,
@@ -289,7 +262,6 @@ export class ServerRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,

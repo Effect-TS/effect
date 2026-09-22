@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import type * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
@@ -13,7 +10,6 @@ import { acquireEntity, releaseEntity } from "./interruptors.ts"
 
 /**
  * @internal
- * @unstable
  */
 export type State<A, E> = {
   readonly _tag: "Closed"
@@ -32,7 +28,6 @@ export type State<A, E> = {
 
 /**
  * @internal
- * @unstable
  */
 export class ResourceRef<A, E = never> {
   static from = Effect.fnUntraced(function*<A, E>(

@@ -5,7 +5,6 @@
  * no re-invocation of the CLI at runtime.
  *
  * @internal
- * @unstable
  */
 import type * as Completions from "../../Completions.ts"
 
@@ -199,7 +198,6 @@ const generateFunction = (
 
 /**
  * @internal
- * @unstable
  */
 export const generate = (
   executableName: string,

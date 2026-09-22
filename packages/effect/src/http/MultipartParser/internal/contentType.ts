@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 // taken from https://github.com/fastify/fast-content-type-parse
 // under the MIT license
 
@@ -42,9 +39,6 @@ const mediaTypeRENoSlash = /^[!#$%&'*+.^\w|~-]+$/u
 // default ContentType to prevent repeated object creation
 const defaultContentType = { value: "", parameters: Object.create(null) }
 
-/**
- * @unstable
- */
 export function parse(
   header: string | undefined,
   withoutSlash = false

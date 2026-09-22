@@ -1,13 +1,9 @@
-/**
- * @unstable
- */
 const ESCAPE_SCRIPT_DATA = /</g
 
 const ESCAPE_LINE_TERMS = /[\u2028\u2029]/g
 
 /**
  * @internal
- * @unstable
  */
 export function escapeJson(spec: unknown): string {
   return JSON.stringify(spec)
@@ -17,7 +13,6 @@ export function escapeJson(spec: unknown): string {
 
 /**
  * @internal
- * @unstable
  */
 export function escape(str: string): string {
   return str
@@ -28,7 +23,6 @@ export function escape(str: string): string {
 
 /**
  * @internal
- * @unstable
  */
 export function escapeAttribute(str: string): string {
   return escape(str)

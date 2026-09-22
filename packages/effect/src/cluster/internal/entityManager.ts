@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import { Clock } from "../../Clock.ts"
@@ -48,7 +45,6 @@ import { ResourceRef } from "./resourceRef.ts"
 
 /**
  * @internal
- * @unstable
  */
 export interface EntityManager {
   readonly sendLocal: <R extends Rpc.Any>(
@@ -80,7 +76,6 @@ export interface EntityManager {
 // `ShardingConfig.maxResidentEntities`.
 /**
  * @internal
- * @unstable
  */
 export interface Residency {
   /**
@@ -94,7 +89,6 @@ export interface Residency {
 // Represents the entities managed by this entity manager
 /**
  * @internal
- * @unstable
  */
 export type EntityState = {
   readonly address: EntityAddress
@@ -117,7 +111,6 @@ export type EntityState = {
 
 /**
  * @internal
- * @unstable
  */
 export const make = Effect.fnUntraced(function*<
   Type extends string,

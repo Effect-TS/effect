@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as Encoding from "../../Encoding.ts"
@@ -29,7 +26,6 @@ const routingHeaderDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: 
 
 /**
  * @internal
- * @unstable
  */
 export const mcpLogLevels: Readonly<
   Record<
@@ -49,7 +45,6 @@ export const mcpLogLevels: Readonly<
 
 /**
  * @internal
- * @unstable
  */
 export const decodeRoutingHeader = (value: string): string | undefined => {
   const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
@@ -70,7 +65,6 @@ export const decodeRoutingHeader = (value: string): string | undefined => {
 
 /**
  * @internal
- * @unstable
  */
 export const profileFromClient = (
   request: PublicMcpSchema.McpServerClient["Service"]
@@ -83,7 +77,6 @@ export const profileFromClient = (
 
 /**
  * @internal
- * @unstable
  */
 export const invocationFromClient = (
   request: PublicMcpSchema.McpServerClient["Service"]
@@ -102,7 +95,6 @@ export const invocationFromClient = (
 
 /**
  * @internal
- * @unstable
  */
 export const invocationFromRequestContext = (
   request: PublicMcpSchema.McpRequestContext["Service"]
@@ -119,7 +111,6 @@ export const invocationFromRequestContext = (
 
 /**
  * @internal
- * @unstable
  */
 export const requireCompleteOperation = <A>(
   protocolVersion: PublicMcpProtocol.ProtocolVersion,
@@ -134,7 +125,6 @@ const isSamplingToolContent = (content: unknown): boolean =>
 
 /**
  * @internal
- * @unstable
  */
 export const samplingRequestRequiresTools = (request: unknown): boolean => {
   if (!Predicate.isReadonlyObject(request)) return false
@@ -154,7 +144,6 @@ export const samplingRequestRequiresTools = (request: unknown): boolean => {
 
 /**
  * @internal
- * @unstable
  */
 export interface LifecycleRuntime {
   readonly initialize: (
@@ -178,7 +167,6 @@ export interface LifecycleRuntime {
 
 /**
  * @internal
- * @unstable
  */
 export class ProtocolError extends Data.TaggedError("ProtocolError")<{
   readonly code: number
@@ -242,7 +230,6 @@ const isReverseOperationUnsupported = (cause: unknown): cause is PublicMcpSchema
 
 /**
  * @internal
- * @unstable
  */
 export const reverseError = (
   operation: PublicMcpSchema.McpReverseOperationError["operation"]
@@ -254,7 +241,6 @@ export const reverseError = (
 
 /**
  * @internal
- * @unstable
  */
 export const transcode = <
   From extends Schema.Constraint,
@@ -270,7 +256,6 @@ export const transcode = <
 
 /**
  * @internal
- * @unstable
  */
 export const transcodeStrict = <
   From extends Schema.Constraint,
@@ -286,7 +271,6 @@ export const transcodeStrict = <
 
 /**
  * @internal
- * @unstable
  */
 export const makeNotificationProjector = Effect.fn(function*(
   options: {
@@ -353,7 +337,6 @@ export const makeNotificationProjector = Effect.fn(function*(
 
 /**
  * @internal
- * @unstable
  */
 export interface HandlerInstallationTarget {
   readonly context: HandlerInstallationContext
@@ -371,7 +354,6 @@ export interface HandlerInstallationTarget {
 
 /**
  * @internal
- * @unstable
  */
 export interface HandlerInstallationContext {
   readonly subscribeServerNotifications: Effect.Effect<
@@ -413,7 +395,6 @@ export interface HandlerInstallationContext {
 
 /**
  * @internal
- * @unstable
  */
 export interface CanonicalServerNotification {
   readonly notification: SubscriptionServerNotification
@@ -422,7 +403,6 @@ export interface CanonicalServerNotification {
 
 /**
  * @internal
- * @unstable
  */
 export type SubscriptionServerNotification = Extract<
   McpCore.ServerNotification,
@@ -431,7 +411,6 @@ export type SubscriptionServerNotification = Extract<
 
 /**
  * @internal
- * @unstable
  */
 export const isSubscriptionServerNotification = (
   notification: McpCore.ServerNotification
@@ -449,7 +428,6 @@ export const isSubscriptionServerNotification = (
 
 /**
  * @internal
- * @unstable
  */
 export interface ProtocolAdapter<
   out Version extends string = string,
@@ -496,7 +474,6 @@ type HandlerLifecycle<Runtime extends PublicMcpProtocol.RuntimeDescriptor> = Run
 
 /**
  * @internal
- * @unstable
  */
 export const make = <
   const Version extends string,

@@ -34,7 +34,6 @@ export function isStreamSchema(schema: Schema.Constraint): schema is Stream<Sche
 
 /**
  * @internal
- * @unstable
  */
 export function getStreamSchemas(schema: Schema.Constraint): Option.Option<{
   readonly success: Schema.Top

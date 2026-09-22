@@ -10,7 +10,6 @@
  * cursor operations must account for one-based terminal coordinates, and line
  * clearing usually needs to preserve the cursor position expected by the next
  * frame.
- * @unstable
  */
 const ESC = "\x1B["
 const BEL = "\x07"
@@ -18,128 +17,103 @@ const SEP = ";"
 
 /**
  * @internal
- * @unstable
  */
 export const reset = `${ESC}0m`
 
 /**
  * @internal
- * @unstable
  */
 export const bold = `${ESC}1m`
 
 /**
  * @internal
- * @unstable
  */
 export const italicized = `${ESC}3m`
 
 /**
  * @internal
- * @unstable
  */
 export const underlined = `${ESC}4m`
 
 /**
  * @internal
- * @unstable
  */
 export const strikethrough = `${ESC}9m`
 
 /**
  * @internal
- * @unstable
  */
 export const cursorShow = `${ESC}?25h`
 
 /**
  * @internal
- * @unstable
  */
 export const cursorHide = `${ESC}?25l`
 
 /**
  * @internal
- * @unstable
  */
 export const cursorLeft = `${ESC}G`
 
 /**
  * @internal
- * @unstable
  */
 export const cursorSavePosition = `${ESC}s`
 
 /**
  * @internal
- * @unstable
  */
 export const cursorRestorePosition = `${ESC}u`
 
 /**
  * @internal
- * @unstable
  */
 export const eraseLine = `${ESC}2K`
 
 /**
  * @internal
- * @unstable
  */
 export const beep = BEL
 
 /**
  * @internal
- * @unstable
  */
 export const red = `${ESC}31m`
 
 /**
  * @internal
- * @unstable
  */
 export const green = `${ESC}32m`
 
 /**
  * @internal
- * @unstable
  */
 export const magenta = `${ESC}35m`
 
 /**
  * @internal
- * @unstable
  */
 export const white = `${ESC}37m`
 
 /**
  * @internal
- * @unstable
  */
 export const blackBright = `${ESC}90m`
 
 /**
  * @internal
- * @unstable
  */
 export const cyanBright = `${ESC}96m`
 
-/**
- * @unstable
- */
 export const annotate = (text: string, ...styles: Array<string | Array<string>>) => {
   const flat = styles.flat()
   return `${flat.join("")}${text}${reset}`
 }
 
-/**
- * @unstable
- */
 export const combine = (...styles: Array<string>): Array<string> => styles
 
 /**
  * @internal
- * @unstable
  */
 export const cursorTo = (column: number, row?: number): string => {
   if (row === undefined) {
@@ -150,7 +124,6 @@ export const cursorTo = (column: number, row?: number): string => {
 
 /**
  * @internal
- * @unstable
  */
 export const cursorDown = (lines: number = 1): string => {
   return `${ESC}${lines}B`
@@ -158,7 +131,6 @@ export const cursorDown = (lines: number = 1): string => {
 
 /**
  * @internal
- * @unstable
  */
 export const cursorMove = (column: number, row: number = 0): string => {
   let command = ""
@@ -180,7 +152,6 @@ export const cursorMove = (column: number, row: number = 0): string => {
 
 /**
  * @internal
- * @unstable
  */
 export const eraseLines = (rows: number): string => {
   let command = ""

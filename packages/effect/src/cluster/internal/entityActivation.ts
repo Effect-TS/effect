@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Context from "../../Context.ts"
 import type * as Scope from "../../Scope.ts"
 

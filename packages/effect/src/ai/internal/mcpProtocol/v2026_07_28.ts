@@ -2,7 +2,6 @@
  * MCP v2026-07-28 wire projections.
  *
  * @internal
- * @unstable
  */
 import * as Deferred from "../../../Deferred.ts"
 import * as Effect from "../../../Effect.ts"
@@ -70,7 +69,6 @@ const parameterHeaderMatches = (header: string | undefined, argument: unknown): 
 
 /**
  * @internal
- * @unstable
  */
 export interface StatelessRequestProfile {
   readonly protocolVersion: typeof McpSchema.protocolVersion
@@ -81,7 +79,6 @@ export interface StatelessRequestProfile {
 
 /**
  * @internal
- * @unstable
  */
 export const profileFromRequestMetadata = Effect.fnUntraced(function*(metadata: unknown) {
   const requestMetadata = yield* decodeRequestMetadata(metadata)
@@ -122,7 +119,6 @@ const decodeCallToolOutcome = Schema.decodeUnknownEffect(Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const projectCallToolOutcome = Effect.fnUntraced(function*(
   outcome: McpCore.OperationOutcome<ObjectWithUndefined>,
@@ -281,7 +277,6 @@ const failWithHttpStatus = Effect.fnUntraced(function*(status: number, error: Mc
 
 /**
  * @internal
- * @unstable
  */
 export const normalizeCancellation = (payload: unknown) =>
   decodeCancellation(payload).pipe(
@@ -303,13 +298,11 @@ const unsupported = (
 
 /**
  * @internal
- * @unstable
  */
 export const handlerRpcs = McpSchema.ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
 /**
  * @internal
- * @unstable
  */
 export const makeHandlers = (
   core: McpCore.McpCore,
@@ -691,7 +684,6 @@ const runtime = {
 
 /**
  * @internal
- * @unstable
  */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,

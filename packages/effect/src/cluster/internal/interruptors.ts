@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Effect from "../../Effect.ts"
 import type { EntityAddress } from "../EntityAddress.ts"
 import type { ShardId } from "../ShardId.ts"
@@ -33,31 +30,26 @@ const entityTypeKey = (entityType: string): string => `type:${entityType}`
 
 /**
  * @internal
- * @unstable
  */
 export const acquireEntity = (address: EntityAddress): void => acquire(entityKey(address))
 
 /**
  * @internal
- * @unstable
  */
 export const releaseEntity = (address: EntityAddress): void => release(entityKey(address))
 
 /**
  * @internal
- * @unstable
  */
 export const acquireEntityType = (entityType: string): void => acquire(entityTypeKey(entityType))
 
 /**
  * @internal
- * @unstable
  */
 export const releaseEntityType = (entityType: string): void => release(entityTypeKey(entityType))
 
 /**
  * @internal
- * @unstable
  */
 export const aroundShard = <A, E, R>(
   shardId: ShardId,
@@ -66,7 +58,6 @@ export const aroundShard = <A, E, R>(
 
 /**
  * @internal
- * @unstable
  */
 export const aroundEntityType = <A, E, R>(
   entityType: string,
@@ -75,7 +66,6 @@ export const aroundEntityType = <A, E, R>(
 
 /**
  * @internal
- * @unstable
  */
 export const isActive = (address: EntityAddress): boolean =>
   counts.has(entityKey(address)) ||

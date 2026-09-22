@@ -235,7 +235,6 @@ const invalidEncoding = (
 
 /**
  * @internal
- * @unstable
  */
 export const runtime = {
   decode,

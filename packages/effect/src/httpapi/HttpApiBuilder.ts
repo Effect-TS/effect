@@ -234,7 +234,6 @@ interface HandlerOptions {
 
 /**
  * @internal
- * @unstable
  */
 export interface HandlerRuntime {
   readonly endpoint: HttpApiEndpoint.Top
@@ -327,12 +326,10 @@ export interface Handlers<
   readonly "~HandledIdentifiers": HandledIdentifiers
   /**
    * @internal
-   * @unstable
    */
   readonly group: HttpApiGroup.Top
   /**
    * @internal
-   * @unstable
    */
   readonly handlers: Map<string, HandlerRuntime>
 
@@ -914,7 +911,6 @@ function handlerToHttpEffect(
 
 /**
  * @internal
- * @unstable
  */
 export function handlerToRoute(
   api: Pick<HttpApi.Top, "annotations">,

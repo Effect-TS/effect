@@ -268,7 +268,6 @@ type UrlBuilderTopLevelMethods<Groups extends HttpApiGroup.Constraint> = {
 
 /**
  * @internal
- * @unstable
  */
 export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Constraint, E, R>(
   api: HttpApi.HttpApi<ApiId, Groups>,

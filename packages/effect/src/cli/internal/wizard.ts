@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Console from "../../Console.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
@@ -14,17 +11,11 @@ import * as Prompt from "../Prompt.ts"
 import * as Ansi from "./ansi.ts"
 import { toImpl } from "./command.ts"
 
-/**
- * @unstable
- */
 export interface Options {
   readonly commandPath?: ReadonlyArray<string> | undefined
   readonly prefix?: ReadonlyArray<string> | undefined
 }
 
-/**
- * @unstable
- */
 export interface Result {
   readonly args: Array<string>
   readonly displayArgs: Array<string>
@@ -35,9 +26,6 @@ interface CommandLineArg {
   readonly displayValue: string
 }
 
-/**
- * @unstable
- */
 export const run: (
   command: Command.Command.Any,
   options?: Options
@@ -264,9 +252,6 @@ const renderSection = (commandName: string, section: string): string =>
     Ansi.annotate(section, Ansi.bold, Ansi.white)
   }`
 
-/**
- * @unstable
- */
 export const renderIntroduction = (name: string, version: string, summary: string | undefined): string => {
   const title = `${Ansi.annotate(name, Ansi.bold, Ansi.cyanBright)} ${Ansi.annotate(`v${version}`, Ansi.white)} ${
     Ansi.annotate("· Command wizard", Ansi.bold, Ansi.white)
@@ -279,15 +264,9 @@ export const renderIntroduction = (name: string, version: string, summary: strin
   ].join("\n")
 }
 
-/**
- * @unstable
- */
 export const renderCompletion = (commandLine: ReadonlyArray<string>): string =>
   renderCommandBlock("Command ready", commandLine, Ansi.cyanBright, Ansi.green)
 
-/**
- * @unstable
- */
 export const renderQuit = (): string => `\n${Ansi.annotate("Wizard cancelled.", Ansi.red)}`
 
 const renderCommandBlock = (

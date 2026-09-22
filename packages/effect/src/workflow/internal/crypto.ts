@@ -1,11 +1,7 @@
-/**
- * @unstable
- */
 import * as Effect from "../../Effect.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const makeHashDigest = (original: string) =>
   Effect.map(

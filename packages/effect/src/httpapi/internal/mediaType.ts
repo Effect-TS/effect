@@ -1,6 +1,5 @@
 /**
  * @internal
- * @unstable
  */
 export function normalize(contentType: string): string {
   const normalized = contentType.toLowerCase().trim()

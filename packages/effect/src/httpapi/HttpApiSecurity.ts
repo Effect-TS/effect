@@ -69,7 +69,6 @@ export interface Http extends HttpApiSecurity.Proto<Redacted> {
   readonly scheme: string
   /**
    * @internal
-   * @unstable
    */
   readonly schemeLength: number
 }

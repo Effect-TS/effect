@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 /*
  * MIT License
  *
@@ -26,7 +23,6 @@
  */
 
 /**
- * @unstable
  * @since 1.0.0
  */
 // Taken from https://github.com/anonrig/fast-querystring under MIT License
@@ -35,7 +31,6 @@ const Empty: new() => Record<string, any> = function() {} as any
 Empty.prototype = Object.create(null)
 
 /**
- * @unstable
  * @category parsing
  * @since 1.0.0
  */
@@ -168,7 +163,6 @@ function getAsPrimitive(value: any) {
 }
 
 /**
- * @unstable
  * @category encoding
  * @since 1.0.0
  */

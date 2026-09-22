@@ -279,7 +279,6 @@ export interface RecordInsertHelper {
   readonly value: ReadonlyArray<Record<string, unknown>>
   /**
    * @internal
-   * @unstable
    */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordInsertHelper
@@ -325,7 +324,6 @@ export interface RecordUpdateHelper {
   readonly alias: string
   /**
    * @internal
-   * @unstable
    */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelper
@@ -368,7 +366,6 @@ export interface RecordUpdateHelperSingle {
   readonly omit: ReadonlyArray<string>
   /**
    * @internal
-   * @unstable
    */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelperSingle

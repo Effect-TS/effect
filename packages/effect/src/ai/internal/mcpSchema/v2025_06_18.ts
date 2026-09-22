@@ -5,21 +5,16 @@
  * surface and is frozen as a dated delta from v2025-03-26.
  *
  * @internal
- * @unstable
  */
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
 import * as Schema from "../../../Schema.ts"
 import * as Previous from "./v2025_03_26.ts"
 
-/**
- * @unstable
- */
 export * from "./v2025_03_26.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const protocolVersion = "2025-06-18"
 
@@ -29,7 +24,6 @@ const Meta = optional(JsonObject)
 
 /**
  * @internal
- * @unstable
  */
 export const Implementation = Schema.Struct({
   name: Schema.String,
@@ -39,7 +33,6 @@ export const Implementation = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ClientCapabilities = Schema.Struct({
   ...Previous.ClientCapabilities.fields,
@@ -48,7 +41,6 @@ export const ClientCapabilities = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Annotations = Schema.Struct({
   audience: optional(Schema.Array(Previous.Role)),
@@ -57,7 +49,6 @@ export const Annotations = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Resource = Schema.Struct({
   ...Previous.Resource.fields,
@@ -68,7 +59,6 @@ export const Resource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceTemplate = Schema.Struct({
   ...Previous.ResourceTemplate.fields,
@@ -79,7 +69,6 @@ export const ResourceTemplate = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const TextResourceContents = Schema.Struct({
   ...Previous.TextResourceContents.fields,
@@ -88,7 +77,6 @@ export const TextResourceContents = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const BlobResourceContents = Schema.Struct({
   ...Previous.BlobResourceContents.fields,
@@ -97,13 +85,11 @@ export const BlobResourceContents = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceContents = Schema.Union([TextResourceContents, BlobResourceContents])
 
 /**
  * @internal
- * @unstable
  */
 export const PromptArgument = Schema.Struct({
   ...Previous.PromptArgument.fields,
@@ -112,7 +98,6 @@ export const PromptArgument = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Prompt = Schema.Struct({
   ...Previous.Prompt.fields,
@@ -123,7 +108,6 @@ export const Prompt = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const EmbeddedResource = Schema.Struct({
   type: Schema.Literal("resource"),
@@ -134,7 +118,6 @@ export const EmbeddedResource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceLink = Schema.Struct({
   ...Resource.fields,
@@ -143,7 +126,6 @@ export const ResourceLink = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const TextContent = Schema.Struct({
   ...Previous.TextContent.fields,
@@ -153,7 +135,6 @@ export const TextContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ImageContent = Schema.Struct({
   ...Previous.ImageContent.fields,
@@ -163,7 +144,6 @@ export const ImageContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const AudioContent = Schema.Struct({
   ...Previous.AudioContent.fields,
@@ -173,7 +153,6 @@ export const AudioContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ContentBlock = Schema.Union([
   TextContent,
@@ -185,13 +164,11 @@ export const ContentBlock = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingContent = Schema.Union([TextContent, ImageContent, AudioContent])
 
 /**
  * @internal
- * @unstable
  */
 export const PromptMessage = Schema.Struct({
   role: Previous.Role,
@@ -200,7 +177,6 @@ export const PromptMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessage = Schema.Struct({
   role: Previous.Role,
@@ -209,7 +185,6 @@ export const SamplingMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ServerCapabilities = Schema.Struct({
   ...Previous.ServerCapabilities.fields
@@ -217,7 +192,6 @@ export const ServerCapabilities = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const InitializeResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -229,7 +203,6 @@ export const InitializeResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
@@ -253,7 +226,6 @@ const ToolJsonSchema = Schema.StructWithRest(
 
 /**
  * @internal
- * @unstable
  */
 export const Tool = Schema.Struct({
   name: Schema.String,
@@ -267,7 +239,6 @@ export const Tool = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CallToolResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -278,7 +249,6 @@ export const CallToolResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CreateMessageResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -290,7 +260,6 @@ export const CreateMessageResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
@@ -310,7 +279,6 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
 
 /**
  * @internal
- * @unstable
  */
 export const PromptReference = Schema.Struct({
   ...Previous.PromptReference.fields,
@@ -319,7 +287,6 @@ export const PromptReference = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceTemplateReference = Schema.Struct({
   type: Schema.Literal("ref/resource"),
@@ -328,13 +295,11 @@ export const ResourceTemplateReference = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CompleteResult = Previous.CompleteResult
 
 /**
  * @internal
- * @unstable
  */
 export class Complete extends Rpc.make("completion/complete", {
   success: CompleteResult,
@@ -354,7 +319,6 @@ export class Complete extends Rpc.make("completion/complete", {
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourcesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -363,7 +327,6 @@ export const ListResourcesResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourceTemplatesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -372,7 +335,6 @@ export const ListResourceTemplatesResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ReadResourceResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -381,7 +343,6 @@ export const ReadResourceResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListPromptsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -390,7 +351,6 @@ export const ListPromptsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const GetPromptResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -400,7 +360,6 @@ export const GetPromptResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListToolsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -409,7 +368,6 @@ export const ListToolsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
@@ -419,7 +377,6 @@ export class ListResources extends Rpc.make("resources/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
@@ -429,7 +386,6 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 
 /**
  * @internal
- * @unstable
  */
 export class ReadResource extends Rpc.make("resources/read", {
   success: ReadResourceResult,
@@ -439,7 +395,6 @@ export class ReadResource extends Rpc.make("resources/read", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
@@ -449,7 +404,6 @@ export class ListPrompts extends Rpc.make("prompts/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
@@ -463,7 +417,6 @@ export class GetPrompt extends Rpc.make("prompts/get", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
@@ -473,7 +426,6 @@ export class ListTools extends Rpc.make("tools/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
@@ -487,7 +439,6 @@ export class CallTool extends Rpc.make("tools/call", {
 
 /**
  * @internal
- * @unstable
  */
 export const ElicitResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -537,7 +488,6 @@ const RequestedSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class Elicit extends Rpc.make("elicitation/create", {
   success: ElicitResult,
@@ -551,7 +501,6 @@ export class Elicit extends Rpc.make("elicitation/create", {
 
 /**
  * @internal
- * @unstable
  */
 export class ClientRequestRpcs extends RpcGroup.make(
   Previous.Ping,
@@ -571,7 +520,6 @@ export class ClientRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
@@ -582,7 +530,6 @@ export class ClientNotificationRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerRequestRpcs extends RpcGroup.make(
   Previous.Ping,
@@ -593,7 +540,6 @@ export class ServerRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,

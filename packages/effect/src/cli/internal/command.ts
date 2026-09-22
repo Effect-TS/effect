@@ -4,7 +4,6 @@
  *
  * Internal implementation details for CLI commands.
  * Public API is in ../Command.ts
- * @unstable
  */
 import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"

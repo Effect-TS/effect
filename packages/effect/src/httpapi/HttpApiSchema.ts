@@ -428,21 +428,18 @@ export const StreamUint8Array = (options?: {
 
 /**
  * @internal
- * @unstable
  */
 export const isStreamSchema = (u: unknown): u is StreamSchema =>
   Schema.isSchema(u) && Predicate.hasProperty(u, StreamSchemaTypeId)
 
 /**
  * @internal
- * @unstable
  */
 export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.Top, unknown> =>
   isStreamSchema(u) && u._tag === "StreamSse"
 
 /**
  * @internal
- * @unstable
  */
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
@@ -560,7 +557,6 @@ export interface withHeaders<A, H> {
 
 /**
  * @internal
- * @unstable
  */
 export const isWithHeadersValue = (u: unknown): u is withHeaders<unknown, unknown> =>
   Predicate.hasProperty(u, WithHeadersValueTypeId)
@@ -677,7 +673,6 @@ export const isWithHeaders = (u: unknown): u is WithHeaders<Schema.Top, Schema.T
 
 /**
  * @internal
- * @unstable
  */
 export function rebuildWithHeaders(
   self: WithHeaders<Schema.Top, Schema.Top>,
@@ -1015,7 +1010,6 @@ const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
 
 /**
  * @internal
- * @unstable
  */
 export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
@@ -1036,7 +1030,6 @@ function getEncoding(ast: SchemaAST.AST): Encoding {
 
 /**
  * @internal
- * @unstable
  */
 export function getPayloadEncoding(ast: SchemaAST.AST, method: HttpMethod): PayloadEncoding {
   const encoding = resolveHttpApiEncoding(ast)
@@ -1046,7 +1039,6 @@ export function getPayloadEncoding(ast: SchemaAST.AST, method: HttpMethod): Payl
 
 /**
  * @internal
- * @unstable
  */
 export function getResponseEncoding(ast: SchemaAST.AST): ResponseEncoding {
   const out = getEncoding(ast)
@@ -1058,7 +1050,6 @@ export function getResponseEncoding(ast: SchemaAST.AST): ResponseEncoding {
 
 /**
  * @internal
- * @unstable
  */
 export function getStatusSuccess(self: SchemaAST.AST): number {
   return resolveHttpApiStatus(self) ?? 200
@@ -1066,7 +1057,6 @@ export function getStatusSuccess(self: SchemaAST.AST): number {
 
 /**
  * @internal
- * @unstable
  */
 export function getStatusSuccessSchema(schema: Schema.Constraint): number {
   if (isWithHeaders(schema)) {
@@ -1077,7 +1067,6 @@ export function getStatusSuccessSchema(schema: Schema.Constraint): number {
 
 /**
  * @internal
- * @unstable
  */
 export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEncoding {
   if (isWithHeaders(schema) && resolveHttpApiEncoding(schema.ast) === undefined) {
@@ -1088,7 +1077,6 @@ export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEn
 
 /**
  * @internal
- * @unstable
  */
 export function getStatusError(self: SchemaAST.AST): number {
   return resolveHttpApiStatus(self) ?? 500
@@ -1096,7 +1084,6 @@ export function getStatusError(self: SchemaAST.AST): number {
 
 /**
  * @internal
- * @unstable
  */
 export function getStatusErrorSchema(schema: Schema.Constraint): number {
   if (isWithHeaders(schema)) {

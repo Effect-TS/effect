@@ -2,7 +2,6 @@
  * Version-neutral MCP server records and semantic operations.
  *
  * @internal
- * @unstable
  */
 
 import * as Arr from "../../Array.ts"
@@ -14,7 +13,6 @@ import * as McpSchema from "../McpSchema.ts"
 
 /**
  * @internal
- * @unstable
  */
 export interface InputRequiredFields {
   readonly inputRequests?: Readonly<Record<string, McpSchema.McpInputRequest>> | undefined
@@ -23,7 +21,6 @@ export interface InputRequiredFields {
 
 /**
  * @internal
- * @unstable
  */
 export type OperationOutcome<A> = Data.TaggedEnum<{
   Complete: { readonly value: A }
@@ -32,7 +29,6 @@ export type OperationOutcome<A> = Data.TaggedEnum<{
 
 /**
  * @internal
- * @unstable
  */
 export const OperationOutcome = {
   Complete: <A>(value: A): OperationOutcome<A> => ({ _tag: "Complete", value }),
@@ -44,7 +40,6 @@ export const OperationOutcome = {
 
 /**
  * @internal
- * @unstable
  */
 export type CanonicalRequestMetadata = NonNullable<
   typeof McpSchema.Initialize.payloadSchema.Type["_meta"]
@@ -52,7 +47,6 @@ export type CanonicalRequestMetadata = NonNullable<
 
 /**
  * @internal
- * @unstable
  */
 export interface NegotiatedProtocolProfile<out Version extends string = McpProtocol.StatefulProtocolVersion> {
   // Core decisions receive negotiated facts rather than dated wire requests.
@@ -70,7 +64,6 @@ export interface NegotiatedProtocolProfile<out Version extends string = McpProto
 // advertise different fields and encode capability presence differently.
 /**
  * @internal
- * @unstable
  */
 export interface CanonicalServerCapabilities {
   readonly experimental?: Readonly<Record<string, Schema.JsonObject>> | undefined
@@ -89,7 +82,6 @@ export interface CanonicalServerCapabilities {
 
 /**
  * @internal
- * @unstable
  */
 export interface CanonicalInitializeResult {
   readonly capabilities: CanonicalServerCapabilities
@@ -99,7 +91,6 @@ export interface CanonicalInitializeResult {
 
 /**
  * @internal
- * @unstable
  */
 export interface McpInvocation {
   readonly clientId: number
@@ -113,7 +104,6 @@ export interface McpInvocation {
 
 /**
  * @internal
- * @unstable
  */
 export class ResourceNotFound extends Data.TaggedError("ResourceNotFound")<{
   readonly uri: string
@@ -123,7 +113,6 @@ export class ResourceNotFound extends Data.TaggedError("ResourceNotFound")<{
 // them to dated MCP error codes and messages.
 /**
  * @internal
- * @unstable
  */
 export class ToolNotFound extends Data.TaggedError("ToolNotFound")<{
   readonly name: string
@@ -131,7 +120,6 @@ export class ToolNotFound extends Data.TaggedError("ToolNotFound")<{
 
 /**
  * @internal
- * @unstable
  */
 export class InvalidToolInput extends Data.TaggedError("InvalidToolInput")<{
   readonly name: string
@@ -140,7 +128,6 @@ export class InvalidToolInput extends Data.TaggedError("InvalidToolInput")<{
 
 /**
  * @internal
- * @unstable
  */
 export class InvalidToolContinuation extends Data.TaggedError("InvalidToolContinuation")<{
   readonly name: string
@@ -149,7 +136,6 @@ export class InvalidToolContinuation extends Data.TaggedError("InvalidToolContin
 
 /**
  * @internal
- * @unstable
  */
 export class ToolExecutionError extends Data.TaggedError("ToolExecutionError")<{
   readonly name: string
@@ -158,7 +144,6 @@ export class ToolExecutionError extends Data.TaggedError("ToolExecutionError")<{
 
 /**
  * @internal
- * @unstable
  */
 export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtocol")<{
   readonly protocolVersion: McpProtocol.ProtocolVersion
@@ -167,7 +152,6 @@ export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtoc
 
 /**
  * @internal
- * @unstable
  */
 export type ToolError =
   | ToolNotFound
@@ -177,7 +161,6 @@ export type ToolError =
 
 /**
  * @internal
- * @unstable
  */
 export interface ToolRegistration {
   // The canonical Tool copy normalizes its top-level title from
@@ -196,7 +179,6 @@ export interface ToolRegistration {
 
 /**
  * @internal
- * @unstable
  */
 export interface Tools {
   readonly register: (
@@ -213,7 +195,6 @@ export interface Tools {
 
 /**
  * @internal
- * @unstable
  */
 export interface ResourceRegistration {
   readonly descriptor: McpSchema.Resource
@@ -225,7 +206,6 @@ export interface ResourceRegistration {
 
 /**
  * @internal
- * @unstable
  */
 export interface ResourceTemplateRegistration {
   readonly descriptor: McpSchema.ResourceTemplate
@@ -240,7 +220,6 @@ export interface ResourceTemplateRegistration {
 
 /**
  * @internal
- * @unstable
  */
 export interface Resources {
   readonly register: (registration: ResourceRegistration) => Effect.Effect<void>
@@ -262,7 +241,6 @@ export interface Resources {
 
 /**
  * @internal
- * @unstable
  */
 export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
   readonly name: string
@@ -270,7 +248,6 @@ export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
 
 /**
  * @internal
- * @unstable
  */
 export interface PromptRegistration {
   readonly descriptor: McpSchema.Prompt
@@ -283,7 +260,6 @@ export interface PromptRegistration {
 
 /**
  * @internal
- * @unstable
  */
 export interface Prompts {
   readonly register: (registration: PromptRegistration) => Effect.Effect<void>
@@ -302,7 +278,6 @@ export interface Prompts {
 
 /**
  * @internal
- * @unstable
  */
 export type CompletionReference =
   | { readonly type: "prompt"; readonly name: string; readonly title?: string | undefined }
@@ -313,7 +288,6 @@ export type CompletionReference =
 
 /**
  * @internal
- * @unstable
  */
 export interface CompletionRequest {
   readonly reference: CompletionReference
@@ -324,7 +298,6 @@ export interface CompletionRequest {
 
 /**
  * @internal
- * @unstable
  */
 export interface CompletionResult {
   readonly values: ReadonlyArray<string>
@@ -335,7 +308,6 @@ export interface CompletionResult {
 
 /**
  * @internal
- * @unstable
  */
 export interface Completions {
   readonly register: (
@@ -353,7 +325,6 @@ export interface Completions {
 
 /**
  * @internal
- * @unstable
  */
 export type ClientNotification = Data.TaggedEnum<{
   Initialized: {}
@@ -369,13 +340,11 @@ export type ClientNotification = Data.TaggedEnum<{
 
 /**
  * @internal
- * @unstable
  */
 export const ClientNotification = Data.taggedEnum<ClientNotification>()
 
 /**
  * @internal
- * @unstable
  */
 export interface Cancellation {
   readonly requestId: string | number
@@ -385,7 +354,6 @@ export interface Cancellation {
 
 /**
  * @internal
- * @unstable
  */
 export type ServerNotification = Data.TaggedEnum<{
   Cancelled: {
@@ -415,13 +383,11 @@ export type ServerNotification = Data.TaggedEnum<{
 
 /**
  * @internal
- * @unstable
  */
 export const ServerNotification = Data.taggedEnum<ServerNotification>()
 
 /**
  * @internal
- * @unstable
  */
 export interface McpCore {
   readonly tools: Tools
@@ -437,7 +403,6 @@ export interface McpCore {
 
 /**
  * @internal
- * @unstable
  */
 export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const registrations = new Map<string, ToolRegistration>()

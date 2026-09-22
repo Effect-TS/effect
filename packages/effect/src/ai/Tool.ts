@@ -2136,7 +2136,6 @@ export const EmptyParams: EmptyParams = Schema.Record(Schema.String, Schema.Neve
 
 /**
  * @internal
- * @unstable
  */
 export function isEmptyParamsRecord(indexSignature: SchemaAST.IndexSignature): boolean {
   return indexSignature.parameter === SchemaAST.string && SchemaAST.isNever(indexSignature.type)

@@ -1469,7 +1469,6 @@ interface Loop extends
 
 /**
  * @internal
- * @unstable
  */
 export interface OnSuccess extends
   Op<"OnSuccess", {

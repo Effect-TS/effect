@@ -2,7 +2,6 @@
  * Runtime descriptors for MCP protocol adapters.
  *
  * @internal
- * @unstable
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
@@ -45,7 +44,6 @@ const protocolVersionClaim = (input: unknown): { readonly present: boolean; read
 
 /**
  * @internal
- * @unstable
  */
 export const hasRequestProtocolVersion = (input: unknown): boolean =>
   protocolVersionClaim(asRecord(asRecord(input)?.params)?._meta).present
@@ -72,7 +70,6 @@ const PingRpcs = RpcGroup.make(PublicMcpSchema.Ping).middleware(PublicMcpSchema.
 
 /**
  * @internal
- * @unstable
  */
 export interface RequestBinding {
   readonly initializePayload: typeof PublicMcpSchema.Initialize.payloadSchema.Type
@@ -82,7 +79,6 @@ export interface RequestBinding {
 
 /**
  * @internal
- * @unstable
  */
 export interface PreparedRequest {
   readonly protocol: PublicMcpProtocol.AnyProtocolAdapter
@@ -109,7 +105,6 @@ type HttpProtocolSelection =
 
 /**
  * @internal
- * @unstable
  */
 export type HttpAdmission =
   | {
@@ -124,7 +119,6 @@ export type HttpAdmission =
 
 /**
  * @internal
- * @unstable
  */
 export interface HandlerInstallationOptions {
   readonly core: McpCore.McpCore
@@ -148,7 +142,6 @@ export interface HandlerInstallationOptions {
 
 /**
  * @internal
- * @unstable
  */
 export const stateful = (
   transport: PublicMcpProtocol.TransportPolicy
@@ -159,7 +152,6 @@ export const stateful = (
 
 /**
  * @internal
- * @unstable
  */
 export interface ServerRuntimeShape {
   readonly protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>
@@ -197,7 +189,6 @@ export interface ServerRuntimeShape {
 
 /**
  * @internal
- * @unstable
  */
 export class ServerRuntime extends Context.Service<ServerRuntime, ServerRuntimeShape>()(
   "effect/ai/McpRuntime/ServerRuntime"
@@ -205,7 +196,6 @@ export class ServerRuntime extends Context.Service<ServerRuntime, ServerRuntimeS
 
 /**
  * @internal
- * @unstable
  */
 export const selectStatefulProtocol = <Protocol extends PublicMcpProtocol.AnyProtocolAdapter>(
   protocols: ReadonlyArray<Protocol>,
@@ -216,7 +206,6 @@ export const selectStatefulProtocol = <Protocol extends PublicMcpProtocol.AnyPro
 
 /**
  * @internal
- * @unstable
  */
 export const make = Effect.fnUntraced(function*(
   protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>
@@ -574,7 +563,6 @@ export const make = Effect.fnUntraced(function*(
 
 /**
  * @internal
- * @unstable
  */
 export const layer = (
   protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>

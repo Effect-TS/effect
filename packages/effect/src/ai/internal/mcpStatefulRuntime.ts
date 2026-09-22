@@ -2,7 +2,6 @@
  * Stateful lifecycle storage for MCP revisions before v2026-07-28.
  *
  * @internal
- * @unstable
  */
 import * as Effect from "../../Effect.ts"
 import type * as Headers from "../../http/Headers.ts"
@@ -20,7 +19,6 @@ type SessionLogLevel =
 
 /**
  * @internal
- * @unstable
  */
 export interface Binding {
   readonly initializePayload: typeof PublicMcpSchema.Initialize.payloadSchema.Type
@@ -35,7 +33,6 @@ interface Session extends Binding {
 
 /**
  * @internal
- * @unstable
  */
 export interface Registration extends Binding {
   readonly supportsResourceSubscriptions: boolean
@@ -44,7 +41,6 @@ export interface Registration extends Binding {
 
 /**
  * @internal
- * @unstable
  */
 export interface StatefulRuntime {
   readonly registerHttp: (sessionId: string, registration: Registration) => Binding
@@ -92,7 +88,6 @@ const makeSession = (registration: Registration): Session => ({
 
 /**
  * @internal
- * @unstable
  */
 export const make = (): StatefulRuntime => {
   const bySessionId = new Map<string, Session>()

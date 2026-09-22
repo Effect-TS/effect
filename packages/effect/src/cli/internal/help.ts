@@ -4,7 +4,6 @@
  *
  * Internal helpers for generating help documentation.
  * Extracted from command.ts to avoid circular dependencies.
- * @unstable
  */
 import * as Effect from "../../Effect.ts"
 import type { Command } from "../Command.ts"

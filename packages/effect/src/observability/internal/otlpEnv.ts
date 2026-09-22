@@ -1,12 +1,6 @@
-/**
- * @unstable
- */
 import * as Config from "../../Config.ts"
 import * as Schema from "../../Schema.ts"
 
-/**
- * @unstable
- */
 export type Signal = "LOGS" | "METRICS" | "TRACES"
 
 const exporterList = (path: string) =>
@@ -16,18 +10,12 @@ const exporterList = (path: string) =>
 
 const headersRecord = (path: string) => Config.Record(Schema.String, Schema.StringFromUriComponent, path)
 
-/**
- * @unstable
- */
 export const headers = (signal: Signal) =>
   headersRecord(`OTEL_EXPORTER_OTLP_${signal}_HEADERS`).pipe(
     Config.orElse(() => headersRecord("OTEL_EXPORTER_OTLP_HEADERS")),
     Config.withDefault(undefined)
   )
 
-/**
- * @unstable
- */
 export const endpoint = (signal: Signal) =>
   Config.URL(`OTEL_EXPORTER_OTLP_${signal}_ENDPOINT`).pipe(
     Config.orElse(() =>
@@ -42,9 +30,6 @@ export const endpoint = (signal: Signal) =>
     Config.withDefault(undefined)
   )
 
-/**
- * @unstable
- */
 export const exporters = (signal: Signal) =>
   exporterList(`OTEL_${signal}_EXPORTER`).pipe(
     Config.withDefault<ReadonlyArray<string>>([])

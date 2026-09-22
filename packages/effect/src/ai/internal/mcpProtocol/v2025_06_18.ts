@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Effect from "../../../Effect.ts"
 import * as Encoding from "../../../Encoding.ts"
 import * as Match from "../../../Match.ts"
@@ -131,7 +128,6 @@ const isJsonObject = (value: Schema.Json): value is Schema.JsonObject => Predica
 
 /**
  * @internal
- * @unstable
  */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,

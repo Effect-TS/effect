@@ -155,7 +155,6 @@ export const mutate: {
 
 /**
  * @internal
- * @unstable
  */
 const immutableURLSetter = <P extends keyof URL, A = never>(property: P): {
   (value: URL[P] | A): (url: URL) => URL

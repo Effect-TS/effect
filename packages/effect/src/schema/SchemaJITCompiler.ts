@@ -17,7 +17,6 @@ let supported = false
 
 /**
  * @internal
- * @unstable
  */
 export const compiler: Registry.CompileSource = (ast, resolve) => {
   if (!shouldCompileParser(ast)) return undefined

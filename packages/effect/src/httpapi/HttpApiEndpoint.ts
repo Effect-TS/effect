@@ -272,7 +272,6 @@ export interface HttpApiEndpoint<
 
 /**
  * @internal
- * @unstable
  */
 export function getPayloadSchemas(endpoint: Top): Array<Schema.Top> {
   const result: Array<Schema.Top> = []
@@ -284,7 +283,6 @@ export function getPayloadSchemas(endpoint: Top): Array<Schema.Top> {
 
 /**
  * @internal
- * @unstable
  */
 export function getSuccessSchemas(endpoint: Top): [Schema.Top, ...Array<Schema.Top>] {
   const schemas = Array.from(endpoint.success)
@@ -293,7 +291,6 @@ export function getSuccessSchemas(endpoint: Top): [Schema.Top, ...Array<Schema.T
 
 /**
  * @internal
- * @unstable
  */
 export function getErrorSchemas(endpoint: Top): Array<Schema.Top> {
   const schemas = new Set<Schema.Top>(endpoint.error)

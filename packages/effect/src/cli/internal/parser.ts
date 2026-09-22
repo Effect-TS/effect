@@ -23,7 +23,6 @@
  * - Inherited parent flags may appear before OR after the subcommand name (npm-style)
  * - Only the first Value token can open a subcommand
  * - Errors accumulate rather than throwing exceptions
- * @unstable
  */
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
@@ -41,7 +40,6 @@ import type { LexResult, Token } from "./lexer.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const getCommandPath = (parsedInput: ParsedTokens): ReadonlyArray<string> =>
   Option.match(parsedInput.subcommand, {
@@ -51,7 +49,6 @@ export const getCommandPath = (parsedInput: ParsedTokens): ReadonlyArray<string>
 
 /**
  * @internal
- * @unstable
  */
 export const parseArgs = (
   lexResult: LexResult,

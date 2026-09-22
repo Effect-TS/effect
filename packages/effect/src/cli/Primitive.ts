@@ -103,19 +103,16 @@ const Proto = {
 
 /**
  * @internal
- * @unstable
  */
 export const isTrueLiteral = Schema.is(Schema.TrueLiterals)
 
 /**
  * @internal
- * @unstable
  */
 export const isFalseLiteral = Schema.is(Schema.FalseLiterals)
 
 /**
  * @internal
- * @unstable
  */
 export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> => p._tag === "Boolean"
 
@@ -1014,14 +1011,12 @@ export const getTypeName = <A>(primitive: Primitive<A>): string => {
 
 /**
  * @internal
- * @unstable
  */
 export const getChoiceKeys = (primitive: Primitive<unknown>): ReadonlyArray<string> | undefined =>
   primitive._tag === "Choice" ? (primitive as any).choiceKeys : undefined
 
 /**
  * @internal
- * @unstable
  */
 export const getPathType = (primitive: Primitive<unknown>): PathType | undefined =>
   primitive._tag === "Path" ? (primitive as any).pathType : undefined

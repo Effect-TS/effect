@@ -1,12 +1,8 @@
-/**
- * @unstable
- */
 import * as Headers from "../Headers.ts"
 import type * as HttpBody from "../HttpBody.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const updateHeaders = (headers: Headers.Headers, body: HttpBody.HttpBody): Headers.Headers => {
   if (body._tag === "Empty" || body._tag === "FormData") {
@@ -22,7 +18,6 @@ export const updateHeaders = (headers: Headers.Headers, body: HttpBody.HttpBody)
 
 /**
  * @internal
- * @unstable
  */
 export const parseContentLength = (contentLength: string | null | undefined): number | undefined => {
   if (contentLength === null || contentLength === undefined || !/^\d+$/.test(contentLength)) {

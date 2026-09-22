@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Schema from "../../Schema.ts"
 import type { CodecTransformer } from "../LanguageModel.ts"
@@ -21,6 +18,5 @@ const makeDefaultCodecTransformer = (
 
 /**
  * @internal
- * @unstable
  */
 export const defaultCodecTransformer = makeDefaultCodecTransformer(Schema.toJsonSchemaDocument)

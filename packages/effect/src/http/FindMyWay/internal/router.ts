@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 /*
  * MIT License
  *
@@ -47,7 +44,6 @@ interface Route<A = unknown> {
 
 /**
  * @internal
- * @unstable
  */
 export const make = <A>(
   options: Partial<Router.RouterConfig> = {}

@@ -3,7 +3,6 @@
  *
  * Implements the protobuf wire format according to:
  * https://github.com/open-telemetry/opentelemetry-proto
- * @unstable
  */
 
 import type { AnyValue, KeyValue, Resource } from "../OtlpResource.ts"

@@ -5,21 +5,16 @@
  * part of the supported vocabulary for this adapter.
  *
  * @internal
- * @unstable
  */
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
 import * as Schema from "../../../Schema.ts"
 import * as Previous from "./v2025_06_18.ts"
 
-/**
- * @unstable
- */
 export * from "./v2025_06_18.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const protocolVersion = "2025-11-25"
 
@@ -29,7 +24,6 @@ const Meta = optional(JsonObject)
 
 /**
  * @internal
- * @unstable
  */
 export const Icon = Schema.Struct({
   src: Schema.String,
@@ -40,7 +34,6 @@ export const Icon = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Implementation = Schema.Struct({
   ...Previous.Implementation.fields,
@@ -51,7 +44,6 @@ export const Implementation = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ClientCapabilities = Schema.Struct({
   ...Previous.ClientCapabilities.fields,
@@ -67,7 +59,6 @@ export const ClientCapabilities = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Annotations = Schema.Struct({
   ...Previous.Annotations.fields,
@@ -76,7 +67,6 @@ export const Annotations = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Resource = Schema.Struct({
   ...Previous.Resource.fields,
@@ -86,7 +76,6 @@ export const Resource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceTemplate = Schema.Struct({
   ...Previous.ResourceTemplate.fields,
@@ -96,7 +85,6 @@ export const ResourceTemplate = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Prompt = Schema.Struct({
   ...Previous.Prompt.fields,
@@ -105,7 +93,6 @@ export const Prompt = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const TextContent = Schema.Struct({
   ...Previous.TextContent.fields,
@@ -114,7 +101,6 @@ export const TextContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ImageContent = Schema.Struct({
   ...Previous.ImageContent.fields,
@@ -123,7 +109,6 @@ export const ImageContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const AudioContent = Schema.Struct({
   ...Previous.AudioContent.fields,
@@ -132,7 +117,6 @@ export const AudioContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const EmbeddedResource = Schema.Struct({
   ...Previous.EmbeddedResource.fields,
@@ -141,7 +125,6 @@ export const EmbeddedResource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceLink = Schema.Struct({
   ...Resource.fields,
@@ -150,7 +133,6 @@ export const ResourceLink = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ContentBlock = Schema.Union([
   TextContent,
@@ -162,7 +144,6 @@ export const ContentBlock = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const PromptMessage = Schema.Struct({
   role: Previous.Role,
@@ -171,7 +152,6 @@ export const PromptMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Tool = Schema.Struct({
   ...Previous.Tool.fields,
@@ -180,7 +160,6 @@ export const Tool = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CallToolResult = Schema.Struct({
   ...Previous.CallToolResult.fields,
@@ -189,7 +168,6 @@ export const CallToolResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
@@ -199,7 +177,6 @@ export class CallTool extends Rpc.make("tools/call", {
 
 /**
  * @internal
- * @unstable
  */
 export const ToolUseContent = Schema.Struct({
   type: Schema.Literal("tool_use"),
@@ -211,7 +188,6 @@ export const ToolUseContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ToolResultContent = Schema.Struct({
   type: Schema.Literal("tool_result"),
@@ -224,7 +200,6 @@ export const ToolResultContent = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessageContentBlock = Schema.Union([
   TextContent,
@@ -236,7 +211,6 @@ export const SamplingMessageContentBlock = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessage = Schema.Struct({
   role: Previous.Role,
@@ -249,7 +223,6 @@ export const SamplingMessage = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ToolChoice = Schema.Struct({
   mode: optional(Schema.Literals(["auto", "required", "none"]))
@@ -257,7 +230,6 @@ export const ToolChoice = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const CreateMessageResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -268,7 +240,6 @@ export const CreateMessageResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
@@ -284,7 +255,6 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
 
 /**
  * @internal
- * @unstable
  */
 export const Root = Schema.Struct({
   ...Previous.Root.fields,
@@ -293,7 +263,6 @@ export const Root = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListRootsResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -302,7 +271,6 @@ export const ListRootsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class ListRoots extends Rpc.make("roots/list", {
   success: ListRootsResult,
@@ -312,7 +280,6 @@ export class ListRoots extends Rpc.make("roots/list", {
 
 /**
  * @internal
- * @unstable
  */
 export const StringSchema = Schema.Struct({
   type: Schema.Literal("string"),
@@ -326,7 +293,6 @@ export const StringSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const NumberSchema = Schema.Struct({
   type: Schema.Literals(["number", "integer"]),
@@ -339,7 +305,6 @@ export const NumberSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const BooleanSchema = Schema.Struct({
   type: Schema.Literal("boolean"),
@@ -355,7 +320,6 @@ const EnumOption = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const UntitledSingleSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
@@ -367,7 +331,6 @@ export const UntitledSingleSelectEnumSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const TitledSingleSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
@@ -379,7 +342,6 @@ export const TitledSingleSelectEnumSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const SingleSelectEnumSchema = Schema.Union([
   UntitledSingleSelectEnumSchema,
@@ -388,7 +350,6 @@ export const SingleSelectEnumSchema = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const UntitledMultiSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("array"),
@@ -405,7 +366,6 @@ export const UntitledMultiSelectEnumSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const TitledMultiSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("array"),
@@ -421,7 +381,6 @@ export const TitledMultiSelectEnumSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const MultiSelectEnumSchema = Schema.Union([
   UntitledMultiSelectEnumSchema,
@@ -430,7 +389,6 @@ export const MultiSelectEnumSchema = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const LegacyTitledEnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
@@ -443,7 +401,6 @@ export const LegacyTitledEnumSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const EnumSchema = Schema.Union([
   LegacyTitledEnumSchema,
@@ -453,7 +410,6 @@ export const EnumSchema = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const PrimitiveSchemaDefinition = Schema.Union([
   EnumSchema,
@@ -464,7 +420,6 @@ export const PrimitiveSchemaDefinition = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const RequestedSchema = Schema.Struct({
   $schema: optional(Schema.String),
@@ -475,7 +430,6 @@ export const RequestedSchema = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequestFormParams = Schema.Struct({
   ...Previous.RequestMeta.fields,
@@ -486,7 +440,6 @@ export const ElicitRequestFormParams = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequestURLParams = Schema.Struct({
   ...Previous.RequestMeta.fields,
@@ -498,7 +451,6 @@ export const ElicitRequestURLParams = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequestParams = Schema.Union([
   ElicitRequestFormParams,
@@ -507,7 +459,6 @@ export const ElicitRequestParams = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const ElicitResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
@@ -520,7 +471,6 @@ export const ElicitResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class Elicit extends Rpc.make("elicitation/create", {
   success: ElicitResult,
@@ -530,7 +480,6 @@ export class Elicit extends Rpc.make("elicitation/create", {
 
 /**
  * @internal
- * @unstable
  */
 export class ElicitationCompleteNotification extends Rpc.make("notifications/elicitation/complete", {
   payload: {
@@ -540,7 +489,6 @@ export class ElicitationCompleteNotification extends Rpc.make("notifications/eli
 
 /**
  * @internal
- * @unstable
  */
 export const InitializeResult = Schema.Struct({
   ...Previous.InitializeResult.fields,
@@ -549,7 +497,6 @@ export const InitializeResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
@@ -563,7 +510,6 @@ export class Initialize extends Rpc.make("initialize", {
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourcesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -572,7 +518,6 @@ export const ListResourcesResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourceTemplatesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -581,7 +526,6 @@ export const ListResourceTemplatesResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListPromptsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -590,7 +534,6 @@ export const ListPromptsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const GetPromptResult = Schema.Struct({
   ...Previous.GetPromptResult.fields,
@@ -599,7 +542,6 @@ export const GetPromptResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ListToolsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
@@ -608,7 +550,6 @@ export const ListToolsResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
@@ -618,7 +559,6 @@ export class ListResources extends Rpc.make("resources/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
@@ -628,7 +568,6 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 
 /**
  * @internal
- * @unstable
  */
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
@@ -638,7 +577,6 @@ export class ListPrompts extends Rpc.make("prompts/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
@@ -652,7 +590,6 @@ export class GetPrompt extends Rpc.make("prompts/get", {
 
 /**
  * @internal
- * @unstable
  */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
@@ -662,7 +599,6 @@ export class ListTools extends Rpc.make("tools/list", {
 
 /**
  * @internal
- * @unstable
  */
 export class ClientRequestRpcs extends RpcGroup.make(
   Previous.Ping,
@@ -682,7 +618,6 @@ export class ClientRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
@@ -693,7 +628,6 @@ export class ClientNotificationRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerRequestRpcs extends RpcGroup.make(
   Previous.Ping,
@@ -704,7 +638,6 @@ export class ServerRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ServerNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,

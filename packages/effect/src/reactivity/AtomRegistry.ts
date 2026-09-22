@@ -1087,7 +1087,6 @@ class WriteContextImpl<A> implements Atom.WriteContext<A> {
 
 /**
  * @internal
- * @unstable
  */
 export const BatchPhase = {
   disabled: 0,
@@ -1097,13 +1096,11 @@ export const BatchPhase = {
 
 /**
  * @internal
- * @unstable
  */
 export type BatchPhase = typeof BatchPhase[keyof typeof BatchPhase]
 
 /**
  * @internal
- * @unstable
  */
 export const batchState = {
   phase: BatchPhase.disabled as BatchPhase,
@@ -1114,7 +1111,6 @@ export const batchState = {
 
 /**
  * @internal
- * @unstable
  */
 export function batch(f: () => void): void {
   batchState.phase = BatchPhase.collect

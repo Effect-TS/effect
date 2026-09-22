@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 interface SearchState {
   readonly needle: Uint8Array
   readonly needleLength: number
@@ -34,9 +31,6 @@ function makeState(needle_: string): SearchState {
   }
 }
 
-/**
- * @unstable
- */
 export function make(
   needle: string,
   callback: (index: number, chunk: Uint8Array) => void,

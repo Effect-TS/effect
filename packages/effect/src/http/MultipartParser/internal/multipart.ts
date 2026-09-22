@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as ByteSize from "../../../ByteSize.ts"
 import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
 import * as CT from "./contentType.ts"
@@ -31,9 +28,6 @@ const errMaxFieldSize: MultipartError = {
 
 const constCR = new TextEncoder().encode("\r\n")
 
-/**
- * @unstable
- */
 export function defaultIsFile(info: PartInfo) {
   return (
     info.filename !== undefined ||
@@ -51,9 +45,6 @@ function noopOnChunk(_chunk: Uint8Array | null) {}
 const toLimit = (input: ByteSize.Input): number =>
   input === Infinity ? Infinity : Number(ByteSize.fromInputUnsafe(input))
 
-/**
- * @unstable
- */
 export function make({
   headers,
   onFile: onPart,
@@ -290,9 +281,6 @@ function getDecoder(charset: string) {
   }
 }
 
-/**
- * @unstable
- */
 export function decodeField(info: PartInfo, value: Uint8Array): string {
   return getDecoder(info.contentTypeParameters.charset ?? "utf-8").decode(value)
 }

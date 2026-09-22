@@ -45,7 +45,6 @@
  * This separation allows:
  * 1. Flat iteration over all params for parsing/validation
  * 2. Reconstruction of original nested shape for handler input
- * @unstable
  */
 import * as InternalRecord from "../../internal/record.ts"
 import * as Param from "../Param.ts"
@@ -82,7 +81,6 @@ export interface ConfigInternal {
  * Namespace containing the tree and node types used to reconstruct parsed
  * command configuration values.
  *
- * @unstable
  * @since 4.0.0
  */
 export declare namespace ConfigInternal {
@@ -183,7 +181,6 @@ export const parseConfig = (config: Config): ConfigInternal => {
 
 /**
  * @internal
- * @unstable
  */
 export const emptyConfig: ConfigInternal = parseConfig({})
 
@@ -217,7 +214,6 @@ const shiftTreeIndexes = (tree: ConfigInternal.Tree, offset: number): ConfigInte
 
 /**
  * @internal
- * @unstable
  */
 export const mergeConfig = (
   left: ConfigInternal,

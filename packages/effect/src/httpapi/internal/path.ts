@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 
@@ -8,7 +5,6 @@ const emptyParamNames: ReadonlySet<string> = new Set()
 
 /**
  * @internal
- * @unstable
  */
 export function getParamNames(schema: Schema.Constraint | undefined): ReadonlySet<string> | undefined {
   if (schema === undefined) return emptyParamNames
@@ -20,7 +16,6 @@ export function getParamNames(schema: Schema.Constraint | undefined): ReadonlySe
 
 /**
  * @internal
- * @unstable
  */
 export function toRouterPath(path: string, schema: Schema.Constraint | undefined): string {
   // Preserve undeclared params for raw RouteContext consumers.

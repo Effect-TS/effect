@@ -42,12 +42,10 @@ export interface Struct<in out A extends Field.Fields> extends Pipeable {
   readonly [TypeId]: A
   /**
    * @internal
-   * @unstable
    */
   [cacheSymbol]?: Record<string, Schema.Top>
   /**
    * @internal
-   * @unstable
    */
   [defaultCacheSymbol]?: Record<string, Schema.Top>
 }

@@ -2,21 +2,16 @@
  * MCP v2026-07-28 wire schemas.
  *
  * @internal
- * @unstable
  */
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
 import * as Schema from "../../../Schema.ts"
 import * as Previous from "./v2025_11_25.ts"
 
-/**
- * @unstable
- */
 export * from "./v2025_11_25.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const protocolVersion = "2026-07-28"
 
@@ -25,33 +20,27 @@ const Meta = optional(Schema.JsonObject)
 
 /**
  * @internal
- * @unstable
  */
 export const RequestId = Schema.Union([Schema.String, Schema.Int])
 /**
  * @internal
- * @unstable
  */
 export const ProgressToken = RequestId
 /**
  * @internal
- * @unstable
  */
 export const Role = Previous.Role
 /**
  * @internal
- * @unstable
  */
 export const LoggingLevel = Previous.LoggingLevel
 /**
  * @internal
- * @unstable
  */
 export const Implementation = Previous.Implementation
 
 /**
  * @internal
- * @unstable
  */
 export const ClientCapabilities = Schema.StructWithRest(
   Schema.Struct({
@@ -72,7 +61,6 @@ export const ClientCapabilities = Schema.StructWithRest(
 
 /**
  * @internal
- * @unstable
  */
 export const ServerCapabilities = Schema.StructWithRest(
   Schema.Struct({
@@ -92,7 +80,6 @@ export const ServerCapabilities = Schema.StructWithRest(
 
 /**
  * @internal
- * @unstable
  */
 export const RequestMetaObject = Schema.StructWithRest(
   Schema.Struct({
@@ -107,13 +94,11 @@ export const RequestMetaObject = Schema.StructWithRest(
 
 /**
  * @internal
- * @unstable
  */
 export const RequestParams = Schema.Struct({ _meta: RequestMetaObject })
 
 /**
  * @internal
- * @unstable
  */
 export const NotificationMetaObject = Schema.StructWithRest(
   Schema.Struct({
@@ -123,13 +108,11 @@ export const NotificationMetaObject = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export const NotificationParams = Schema.Struct({ _meta: optional(NotificationMetaObject) })
 
 /**
  * @internal
- * @unstable
  */
 export const ResultMetaObject = Schema.StructWithRest(
   Schema.Struct({
@@ -139,7 +122,6 @@ export const ResultMetaObject = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export const ResultMeta = {
   _meta: ResultMetaObject,
@@ -147,7 +129,6 @@ export const ResultMeta = {
 }
 /**
  * @internal
- * @unstable
  */
 export const McpError = Schema.Struct({
   code: Schema.Int,
@@ -156,35 +137,29 @@ export const McpError = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export type McpError = typeof McpError.Type
 
 /**
  * @internal
- * @unstable
  */
 export const METHOD_NOT_FOUND = -32601
 /**
  * @internal
- * @unstable
  */
 export const INVALID_PARAMS = -32602
 /**
  * @internal
- * @unstable
  */
 export const MISSING_REQUIRED_CLIENT_CAPABILITY = -32021
 
 /**
  * @internal
- * @unstable
  */
 export const Annotations = Previous.Annotations
 
 /**
  * @internal
- * @unstable
  */
 export const Resource = Schema.Struct({
   ...Previous.Resource.fields,
@@ -194,42 +169,34 @@ export const Resource = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ResourceTemplate = Previous.ResourceTemplate
 /**
  * @internal
- * @unstable
  */
 export const ResourceContents = Previous.ResourceContents
 /**
  * @internal
- * @unstable
  */
 export const TextContent = Previous.TextContent
 /**
  * @internal
- * @unstable
  */
 export const ImageContent = Previous.ImageContent
 /**
  * @internal
- * @unstable
  */
 export const AudioContent = Previous.AudioContent
 /**
  * @internal
- * @unstable
  */
 export const ResourceLink = Schema.Struct({ ...Resource.fields, type: Schema.Literal("resource_link") })
 /**
  * @internal
- * @unstable
  */
 export const EmbeddedResource = Previous.EmbeddedResource
 /**
  * @internal
- * @unstable
  */
 export const ContentBlock = Schema.Union([
   TextContent,
@@ -241,12 +208,10 @@ export const ContentBlock = Schema.Union([
 
 /**
  * @internal
- * @unstable
  */
 export const Prompt = Previous.Prompt
 /**
  * @internal
- * @unstable
  */
 export const PromptMessage = Schema.Struct({ role: Role, content: ContentBlock })
 
@@ -263,12 +228,10 @@ const ToolOutputSchema = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export const ToolAnnotations = Previous.ToolAnnotations
 /**
  * @internal
- * @unstable
  */
 export const Tool = Schema.Struct({
   ...Previous.Tool.fields,
@@ -279,12 +242,10 @@ export const Tool = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const ToolUseContent = Previous.ToolUseContent
 /**
  * @internal
- * @unstable
  */
 export const ToolResultContent = Schema.Struct({
   type: Schema.Literal("tool_result"),
@@ -296,7 +257,6 @@ export const ToolResultContent = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessageContentBlock = Schema.Union([
   TextContent,
@@ -307,7 +267,6 @@ export const SamplingMessageContentBlock = Schema.Union([
 ])
 /**
  * @internal
- * @unstable
  */
 export const SamplingMessage = Schema.Struct({
   role: Role,
@@ -316,7 +275,6 @@ export const SamplingMessage = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ModelHint = Schema.StructWithRest(
   Schema.Struct({ name: optional(Schema.String) }),
@@ -325,7 +283,6 @@ export const ModelHint = Schema.StructWithRest(
 const ModelPriority = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))
 /**
  * @internal
- * @unstable
  */
 export const ModelPreferences = Schema.Struct({
   ...Previous.ModelPreferences.fields,
@@ -336,13 +293,11 @@ export const ModelPreferences = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ToolChoice = Previous.ToolChoice
 
 /**
  * @internal
- * @unstable
  */
 export const CreateMessageRequest = Schema.Struct({
   method: Schema.Literal("sampling/createMessage"),
@@ -361,7 +316,6 @@ export const CreateMessageRequest = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const CreateMessageResult = Schema.Struct({
   ...SamplingMessage.fields,
@@ -371,12 +325,10 @@ export const CreateMessageResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const Root = Previous.Root
 /**
  * @internal
- * @unstable
  */
 export const ListRootsRequest = Schema.Struct({
   method: Schema.Literal("roots/list"),
@@ -384,43 +336,35 @@ export const ListRootsRequest = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ListRootsResult = Schema.Struct({ roots: Schema.Array(Root) })
 
 /**
  * @internal
- * @unstable
  */
 export const StringSchema = Previous.StringSchema
 /**
  * @internal
- * @unstable
  */
 export const NumberSchema = Previous.NumberSchema
 /**
  * @internal
- * @unstable
  */
 export const BooleanSchema = Previous.BooleanSchema
 /**
  * @internal
- * @unstable
  */
 export const SingleSelectEnumSchema = Previous.SingleSelectEnumSchema
 /**
  * @internal
- * @unstable
  */
 export const MultiSelectEnumSchema = Previous.MultiSelectEnumSchema
 /**
  * @internal
- * @unstable
  */
 export const LegacyTitledEnumSchema = Previous.LegacyTitledEnumSchema
 /**
  * @internal
- * @unstable
  */
 export const EnumSchema = Schema.Union([
   LegacyTitledEnumSchema,
@@ -429,7 +373,6 @@ export const EnumSchema = Schema.Union([
 ])
 /**
  * @internal
- * @unstable
  */
 export const PrimitiveSchemaDefinition = Schema.Union([
   EnumSchema,
@@ -439,7 +382,6 @@ export const PrimitiveSchemaDefinition = Schema.Union([
 ])
 /**
  * @internal
- * @unstable
  */
 export const RequestedSchema = Schema.Struct({
   $schema: optional(Schema.String),
@@ -449,7 +391,6 @@ export const RequestedSchema = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequestFormParams = Schema.Struct({
   mode: optional(Schema.Literal("form")),
@@ -458,7 +399,6 @@ export const ElicitRequestFormParams = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequestURLParams = Schema.Struct({
   mode: Schema.Literal("url"),
@@ -467,12 +407,10 @@ export const ElicitRequestURLParams = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequestParams = Schema.Union([ElicitRequestFormParams, ElicitRequestURLParams])
 /**
  * @internal
- * @unstable
  */
 export const ElicitRequest = Schema.Struct({
   method: Schema.Literal("elicitation/create"),
@@ -480,7 +418,6 @@ export const ElicitRequest = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const ElicitResult = Schema.Struct({
   action: Schema.Literals(["accept", "decline", "cancel"]),
@@ -492,22 +429,18 @@ export const ElicitResult = Schema.Struct({
 
 /**
  * @internal
- * @unstable
  */
 export const InputRequest = Schema.Union([CreateMessageRequest, ListRootsRequest, ElicitRequest])
 /**
  * @internal
- * @unstable
  */
 export const InputResponse = Schema.Union([CreateMessageResult, ListRootsResult, ElicitResult])
 /**
  * @internal
- * @unstable
  */
 export const InputRequests = Schema.Record(Schema.String, InputRequest)
 /**
  * @internal
- * @unstable
  */
 export const InputResponses = Schema.Record(Schema.String, InputResponse)
 const InputRequiredResultMeta = {
@@ -516,7 +449,6 @@ const InputRequiredResultMeta = {
 }
 /**
  * @internal
- * @unstable
  */
 export const InputRequiredResult = Schema.Union([
   Schema.StructWithRest(
@@ -538,7 +470,6 @@ export const InputRequiredResult = Schema.Union([
 ])
 /**
  * @internal
- * @unstable
  */
 export const InputResponseRequestParams = {
   ...RequestParams.fields,
@@ -548,7 +479,6 @@ export const InputResponseRequestParams = {
 
 /**
  * @internal
- * @unstable
  */
 export const CacheableResult = {
   ...ResultMeta,
@@ -557,7 +487,6 @@ export const CacheableResult = {
 }
 /**
  * @internal
- * @unstable
  */
 export const PaginatedRequestParams = {
   ...RequestParams.fields,
@@ -565,7 +494,6 @@ export const PaginatedRequestParams = {
 }
 /**
  * @internal
- * @unstable
  */
 export const PaginatedResult = {
   ...ResultMeta,
@@ -574,7 +502,6 @@ export const PaginatedResult = {
 
 /**
  * @internal
- * @unstable
  */
 export const DiscoverResult = Schema.StructWithRest(
   Schema.Struct({
@@ -587,7 +514,6 @@ export const DiscoverResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class Discover extends Rpc.make("server/discover", {
   success: DiscoverResult,
@@ -597,7 +523,6 @@ export class Discover extends Rpc.make("server/discover", {
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourcesResult = Schema.StructWithRest(
   Schema.Struct({
@@ -609,7 +534,6 @@ export const ListResourcesResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
@@ -619,7 +543,6 @@ export class ListResources extends Rpc.make("resources/list", {
 
 /**
  * @internal
- * @unstable
  */
 export const ListResourceTemplatesResult = Schema.StructWithRest(
   Schema.Struct({
@@ -631,7 +554,6 @@ export const ListResourceTemplatesResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
@@ -641,7 +563,6 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 
 /**
  * @internal
- * @unstable
  */
 export const ReadResourceResult = Schema.StructWithRest(
   Schema.Struct({
@@ -652,7 +573,6 @@ export const ReadResourceResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class ReadResource extends Rpc.make("resources/read", {
   success: Schema.Union([ReadResourceResult, InputRequiredResult]),
@@ -662,7 +582,6 @@ export class ReadResource extends Rpc.make("resources/read", {
 
 /**
  * @internal
- * @unstable
  */
 export const ListPromptsResult = Schema.StructWithRest(
   Schema.Struct({
@@ -674,7 +593,6 @@ export const ListPromptsResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
@@ -684,7 +602,6 @@ export class ListPrompts extends Rpc.make("prompts/list", {
 
 /**
  * @internal
- * @unstable
  */
 export const GetPromptResult = Schema.StructWithRest(
   Schema.Struct({
@@ -696,7 +613,6 @@ export const GetPromptResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: Schema.Union([GetPromptResult, InputRequiredResult]),
@@ -710,7 +626,6 @@ export class GetPrompt extends Rpc.make("prompts/get", {
 
 /**
  * @internal
- * @unstable
  */
 export const ListToolsResult = Schema.StructWithRest(
   Schema.Struct({
@@ -722,7 +637,6 @@ export const ListToolsResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
@@ -732,7 +646,6 @@ export class ListTools extends Rpc.make("tools/list", {
 
 /**
  * @internal
- * @unstable
  */
 export const CallToolResult = Schema.StructWithRest(
   Schema.Struct({
@@ -745,7 +658,6 @@ export const CallToolResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class CallTool extends Rpc.make("tools/call", {
   success: Schema.Union([CallToolResult, InputRequiredResult]),
@@ -759,17 +671,14 @@ export class CallTool extends Rpc.make("tools/call", {
 
 /**
  * @internal
- * @unstable
  */
 export const PromptReference = Previous.PromptReference
 /**
  * @internal
- * @unstable
  */
 export const ResourceTemplateReference = Previous.ResourceTemplateReference
 /**
  * @internal
- * @unstable
  */
 export const CompleteResult = Schema.StructWithRest(
   Schema.Struct({
@@ -784,7 +693,6 @@ export const CompleteResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class Complete extends Rpc.make("completion/complete", {
   success: CompleteResult,
@@ -801,7 +709,6 @@ export class Complete extends Rpc.make("completion/complete", {
 
 /**
  * @internal
- * @unstable
  */
 export const SubscriptionFilter = Schema.Struct({
   toolsListChanged: optional(Schema.Boolean),
@@ -811,7 +718,6 @@ export const SubscriptionFilter = Schema.Struct({
 })
 /**
  * @internal
- * @unstable
  */
 export const SubscriptionsListenResultMetaObject = Schema.StructWithRest(
   Schema.Struct({
@@ -822,7 +728,6 @@ export const SubscriptionsListenResultMetaObject = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export const SubscriptionsListenResult = Schema.StructWithRest(
   Schema.Struct({
@@ -833,7 +738,6 @@ export const SubscriptionsListenResult = Schema.StructWithRest(
 )
 /**
  * @internal
- * @unstable
  */
 export class SubscriptionsListen extends Rpc.make("subscriptions/listen", {
   success: SubscriptionsListenResult,
@@ -843,7 +747,6 @@ export class SubscriptionsListen extends Rpc.make("subscriptions/listen", {
 
 /**
  * @internal
- * @unstable
  */
 export class CancelledNotification extends Rpc.make("notifications/cancelled", {
   payload: {
@@ -854,7 +757,6 @@ export class CancelledNotification extends Rpc.make("notifications/cancelled", {
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class ProgressNotification extends Rpc.make("notifications/progress", {
   payload: {
@@ -867,7 +769,6 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class LoggingMessageNotification extends Rpc.make("notifications/message", {
   payload: {
@@ -879,35 +780,30 @@ export class LoggingMessageNotification extends Rpc.make("notifications/message"
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class ResourceUpdatedNotification extends Rpc.make("notifications/resources/updated", {
   payload: { ...NotificationParams.fields, uri: Schema.String }
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class ResourceListChangedNotification extends Rpc.make("notifications/resources/list_changed", {
   payload: Schema.UndefinedOr(NotificationParams)
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class ToolListChangedNotification extends Rpc.make("notifications/tools/list_changed", {
   payload: Schema.UndefinedOr(NotificationParams)
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class PromptListChangedNotification extends Rpc.make("notifications/prompts/list_changed", {
   payload: Schema.UndefinedOr(NotificationParams)
 }) {}
 /**
  * @internal
- * @unstable
  */
 export class SubscriptionsAcknowledgedNotification extends Rpc.make(
   "notifications/subscriptions/acknowledged",
@@ -916,7 +812,6 @@ export class SubscriptionsAcknowledgedNotification extends Rpc.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ClientRequestRpcs extends RpcGroup.make(
   Discover,
@@ -933,12 +828,10 @@ export class ClientRequestRpcs extends RpcGroup.make(
 
 /**
  * @internal
- * @unstable
  */
 export class ClientNotificationRpcs extends RpcGroup.make(CancelledNotification) {}
 /**
  * @internal
- * @unstable
  */
 export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) {}
 
@@ -946,13 +839,11 @@ export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) 
 // being sent as independent JSON-RPC requests.
 /**
  * @internal
- * @unstable
  */
 export class ServerRequestRpcs extends RpcGroup.make() {}
 
 /**
  * @internal
- * @unstable
  */
 export class ServerNotificationRpcs extends RpcGroup.make(
   CancelledNotification,

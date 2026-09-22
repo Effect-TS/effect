@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Arr from "../../Array.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
@@ -23,7 +20,6 @@ const TUPLE_TAIL_DESCRIPTION = `${TUPLE_DESCRIPTION}. Post-rest elements use '__
 
 /**
  * @internal
- * @unstable
  */
 export function resolveReference($ref: string, definitions: JsonSchema.Definitions): JsonSchema.JsonSchema {
   const key = JsonSchema.getReferenceKey($ref)
@@ -38,7 +34,6 @@ export function resolveReference($ref: string, definitions: JsonSchema.Definitio
 
 /**
  * @internal
- * @unstable
  */
 export function resolveTopLevelReference(
   document: JsonSchema.Document<"draft-2020-12">
@@ -52,7 +47,6 @@ export function resolveTopLevelReference(
 
 /**
  * @internal
- * @unstable
  */
 export function toCodec<T, E, RD, RE>(
   schema: Schema.ConstraintCodec<T, E, RD, RE>
@@ -422,7 +416,6 @@ type JsonSchemaVisitor = (schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchem
 
 /**
  * @internal
- * @unstable
  */
 export function walkJsonSchema(
   schema: JsonSchema.JsonSchema,
@@ -477,7 +470,6 @@ export function walkJsonSchema(
 
 /**
  * @internal
- * @unstable
  */
 export function appendDescription(schema: JsonSchema.JsonSchema, description: string): void {
   if (typeof schema.description === "string") {
@@ -490,7 +482,6 @@ export function appendDescription(schema: JsonSchema.JsonSchema, description: st
 
 /**
  * @internal
- * @unstable
  */
 export function isJsonSchema(input: unknown): input is JsonSchema.JsonSchema {
   return typeof input === "object" && input !== null && !Array.isArray(input)

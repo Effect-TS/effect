@@ -2454,7 +2454,6 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
 
 /**
  * @internal
- * @unstable
  */
 export const getObjectName = <StructuredOutputSchema extends Schema.Constraint>(
   objectName: string | undefined,

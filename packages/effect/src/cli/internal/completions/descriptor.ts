@@ -3,7 +3,6 @@
  * shell completion generation.
  *
  * @internal
- * @unstable
  */
 import * as Option from "../../../Option.ts"
 import type { Command } from "../../Command.ts"
@@ -72,7 +71,6 @@ const toArgumentType = (single: Param.Single<"argument", unknown>): Completions.
 
 /**
  * @internal
- * @unstable
  */
 export const fromCommand = (
   cmd: Command.Any,

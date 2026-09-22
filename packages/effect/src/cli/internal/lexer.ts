@@ -8,11 +8,9 @@
  * returned as trailing operands so values that look like options are preserved
  * exactly. A lone `-` is also preserved as a value instead of being interpreted
  * as an option.
- * @unstable
  */
 /**
  * @internal
- * @unstable
  */
 export type Token =
   | { _tag: "LongOption"; name: string; raw: string; value?: string }
@@ -21,7 +19,6 @@ export type Token =
 
 /**
  * @internal
- * @unstable
  */
 export interface LexResult {
   readonly tokens: ReadonlyArray<Token>
@@ -30,7 +27,6 @@ export interface LexResult {
 
 /**
  * @internal
- * @unstable
  */
 export function lex(argv: ReadonlyArray<string>): LexResult {
   const endIndex = argv.indexOf("--")

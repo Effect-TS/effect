@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Effect from "../../Effect.ts"
 import * as Redacted from "../../Redacted.ts"
 import type { Identity } from "../EventLog.ts"
@@ -30,19 +27,16 @@ const Ed25519Pkcs8SeedPrefix = Uint8Array.from([
 
 /**
  * @internal
- * @unstable
  */
 export const EncryptionDerivationLabelV1 = "effect/eventlog/identity/v1/encryption"
 
 /**
  * @internal
- * @unstable
  */
 export const SigningDerivationLabelV1 = "effect/eventlog/identity/v1/signing"
 
 /**
  * @internal
- * @unstable
  */
 export interface IdentityRootSecretMaterial {
   readonly encryptionKeyMaterial: Uint8Array<ArrayBuffer>
@@ -94,7 +88,6 @@ const deriveSecretBytes = Effect.fnUntraced(function*(options: {
 
 /**
  * @internal
- * @unstable
  */
 export const deriveIdentityRootSecretMaterial = Effect.fnUntraced(function*(options: {
   readonly crypto: Crypto
@@ -146,7 +139,6 @@ export const deriveIdentityRootSecretMaterial = Effect.fnUntraced(function*(opti
 
 /**
  * @internal
- * @unstable
  */
 export const makeGetIdentityRootSecretMaterial = (crypto: Crypto) => {
   const cache = new WeakMap<Identity["Service"], IdentityRootSecretMaterial>()

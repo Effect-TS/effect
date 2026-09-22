@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import type { Continue, FailureReason, ReturnValue } from "../HeadersParser.ts"
 
 const constMaxPairs = 100
@@ -33,9 +30,6 @@ for (let i = 128; i <= 255; i++) {
   constValueChars[i] = 1
 }
 
-/**
- * @unstable
- */
 export function make() {
   const decoder = new TextDecoder()
   const state = {

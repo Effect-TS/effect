@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
@@ -18,7 +15,6 @@ const prefix = (protocol: {
 
 /**
  * @internal
- * @unstable
  */
 export interface ProtocolRegistry<
   Protocol extends McpProtocol.AnyProtocolAdapter = McpProtocol.AnyProtocolAdapter
@@ -42,7 +38,6 @@ export interface ProtocolRegistry<
 // introduce a shared permissive decode-first path.
 /**
  * @internal
- * @unstable
  */
 export const make = Effect.fnUntraced(function*<
   const Protocols extends NonEmptyReadonlyArray<McpProtocol.AnyProtocolAdapter>

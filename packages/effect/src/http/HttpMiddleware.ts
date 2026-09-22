@@ -183,7 +183,6 @@ export const logger: <E, R>(
 
 /**
  * @internal
- * @unstable
  */
 export const isTracerDisabledUnsafe = (
   fiber: Fiber.Fiber<unknown, unknown>,

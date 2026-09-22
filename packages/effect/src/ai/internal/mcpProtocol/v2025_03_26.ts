@@ -1,6 +1,5 @@
 /**
  * @internal
- * @unstable
  */
 import * as Effect from "../../../Effect.ts"
 import * as Encoding from "../../../Encoding.ts"
@@ -113,7 +112,6 @@ const projectResourceContents = (
 
 /**
  * @internal
- * @unstable
  */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,

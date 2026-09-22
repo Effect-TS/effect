@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
@@ -13,7 +10,6 @@ import type { ResourceMap } from "./resourceMap.ts"
 
 /**
  * @internal
- * @unstable
  */
 export class EntityReaper extends Context.Service<EntityReaper>()("effect/cluster/EntityReaper", {
   make: Effect.gen(function*() {

@@ -1,6 +1,3 @@
-/**
- * @unstable
- */
 import * as Effect from "../../Effect.ts"
 import { identity } from "../../Function.ts"
 import * as Stream from "../../Stream.ts"
@@ -11,7 +8,6 @@ import * as Response from "../HttpServerResponse.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const varyWith = (headers: Headers.Headers, dimension: string): string => {
   const vary = headers["vary"]
@@ -24,7 +20,6 @@ export const varyWith = (headers: Headers.Headers, dimension: string): string =>
 
 /**
  * @internal
- * @unstable
  */
 export const wrapCompression = (impl: Compression): Compression => ({
   algorithms: impl.algorithms,
@@ -48,7 +43,6 @@ export const wrapCompression = (impl: Compression): Compression => ({
 
 /**
  * @internal
- * @unstable
  */
 export const compressionTransformWeb =
   (format: string) => (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> =>
@@ -58,7 +52,6 @@ export const compressionTransformWeb =
 
 /**
  * @internal
- * @unstable
  */
 export const setBodyWithoutLength = (
   response: Response.HttpServerResponse,
@@ -67,7 +60,6 @@ export const setBodyWithoutLength = (
 
 /**
  * @internal
- * @unstable
  */
 export const makeCompressionWeb = (options: {
   readonly algorithms: Iterable<CompressionAlgorithm>
@@ -144,7 +136,6 @@ const rawReadableStream = (raw: unknown): ReadableStream<Uint8Array> | undefined
 
 /**
  * @internal
- * @unstable
  */
 export const compressionWeb: Compression = makeCompressionWeb({
   algorithms: ["gzip", "deflate"],
@@ -153,7 +144,6 @@ export const compressionWeb: Compression = makeCompressionWeb({
 
 /**
  * @internal
- * @unstable
  */
 export const defaultCompressible = (contentType: string): boolean => {
   const semi = contentType.indexOf(";")
@@ -177,7 +167,6 @@ const acceptMember = /^([a-z0-9!#$%&'*+.^_`|~-]+)(?:;q=(0(?:\.[0-9]{0,3})?|1(?:\
 
 /**
  * @internal
- * @unstable
  */
 export const parseAcceptEncoding = (header: string): ReadonlyMap<string, number> | undefined => {
   const trimmed = header.trim()
@@ -198,7 +187,6 @@ export const parseAcceptEncoding = (header: string): ReadonlyMap<string, number>
 
 /**
  * @internal
- * @unstable
  */
 export const negotiate = (
   header: string | undefined,

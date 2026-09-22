@@ -1,19 +1,14 @@
-/**
- * @unstable
- */
 import * as Effect from "../../Effect.ts"
 import type { PreResponseHandler } from "../HttpEffect.ts"
 import type { HttpServerRequest } from "../HttpServerRequest.ts"
 
 /**
  * @internal
- * @unstable
  */
 export const requestPreResponseHandlers = new WeakMap<object, PreResponseHandler>()
 
 /**
  * @internal
- * @unstable
  */
 export const appendPreResponseHandlerUnsafe = (request: HttpServerRequest, handler: PreResponseHandler): void => {
   const prev = requestPreResponseHandlers.get(request.source)

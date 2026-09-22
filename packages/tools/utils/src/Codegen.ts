@@ -5,8 +5,9 @@
  * find files annotated with `@barrel` comments and rewrite the generated export
  * section beneath each annotation. The generator resolves matching modules
  * relative to each annotated barrel file, copies each module's top-level
- * `@since` and `@unstable` tags into a minimal JSDoc block, and normalizes export paths so the
- * produced TypeScript is stable across platforms.
+ * `@since` tag into a minimal JSDoc block, and copies `@unstable` unless the module
+ * lives under `internal/` or its header is `@internal`. Export paths are normalized
+ * so the produced TypeScript is stable across platforms.
  *
  * @since 4.0.0
  */
@@ -102,9 +103,12 @@ const extractModuleMetadata = (file: string, content: string): Effect.Effect<Mod
   }
   return Effect.succeed({
     since,
-    unstable: /^\s*\*\s*@unstable\s*$/m.test(block)
+    unstable: !isInternalModule(file, block) && /^\s*\*\s*@unstable\s*$/m.test(block)
   })
 }
+
+const isInternalModule = (file: string, block: string): boolean =>
+  file.split(/[/\\]/).includes("internal") || /^\s*\*\s*@internal\s*$/m.test(block)
 
 const renderExportJSDoc = ({ since, unstable }: ModuleMetadata): string =>
   `/**

@@ -1,6 +1,5 @@
 /**
  * Simple Levenshtein distance implementation (small N, no perf worries)
- * @unstable
  */
 const levenshtein = (a: string, b: string): number => {
   const m = a.length

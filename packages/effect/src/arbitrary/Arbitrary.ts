@@ -55,7 +55,6 @@ export interface Arbitrary<out A> extends Pipeable {
   readonly "~A": Types.Covariant<A>
   /**
    * @internal
-   * @unstable
    */
   readonly gen: Model.Generator<A>
 }
