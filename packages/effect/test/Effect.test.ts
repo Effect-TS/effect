@@ -3268,6 +3268,24 @@ describe("Effect", () => {
         assert.deepStrictEqual(finalized, ["value:42:success:42"])
         assert.deepStrictEqual(result, 42)
       }))
+    it("delivers an interruption raised while deciding to skip the finalizer", () => {
+      const run = (decide: (interrupt: () => void) => Effect.Effect<number>) =>
+        Effect.runSyncExit(Effect.withFiber((fiber) => decide(() => fiber.interruptUnsafe(fiber.id))))
+      const ifExit = run((interrupt) =>
+        Effect.onExitIf(Effect.succeed(1), () => {
+          interrupt()
+          return false
+        }, () => Effect.void)
+      )
+      const filterExit = run((interrupt) =>
+        Effect.onExitFilter(Effect.succeed(1), (exit) => {
+          interrupt()
+          return Result.fail(exit)
+        }, () => Effect.void)
+      )
+      assert.isTrue(Exit.hasInterrupts(ifExit))
+      assert.isTrue(Exit.hasInterrupts(filterExit))
+    })
   })
 
   describe("filter with predicate/refinement", () => {

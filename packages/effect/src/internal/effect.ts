@@ -4130,7 +4130,8 @@ export const addFinalizer = <R>(
 /** @internal */
 export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
   self: Effect.Effect<A, E, R>,
-  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | undefined,
+  // A falsy result means there is nothing to run on exit
+  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | false | undefined,
   interruptible?: boolean
 ) => Effect.Effect<A, E | XE, R | XR> = (function() {
   const Proto = makePrimitiveProto({
@@ -4212,13 +4213,7 @@ export const onExitIf: {
     self: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<Exit.Exit<NoInfer<A>, NoInfer<E>>>,
     f: (exit: Exit.Exit<NoInfer<A>, NoInfer<E>>) => Effect.Effect<void, XE, XR>
-  ): Effect.Effect<A, E | XE, R | XR> =>
-    onExit(self, (exit) => {
-      if (!predicate(exit)) {
-        return void_
-      }
-      return f(exit)
-    })
+  ): Effect.Effect<A, E | XE, R | XR> => onExitPrimitive(self, (exit) => predicate(exit) && f(exit))
 )
 
 /** @internal */
@@ -4239,9 +4234,9 @@ export const onExitFilter: {
     filter: Filter.Filter<Exit.Exit<NoInfer<A>, NoInfer<E>>, B, X>,
     f: (b: B, exit: Exit.Exit<NoInfer<A>, NoInfer<E>>) => Effect.Effect<void, XE, XR>
   ): Effect.Effect<A, E | XE, R | XR> =>
-    onExit(self, (exit) => {
+    onExitPrimitive(self, (exit) => {
       const b = filter(exit)
-      return Result.isFailure(b) ? void_ : f(b.success, exit)
+      return !Result.isFailure(b) && f(b.success, exit)
     })
 )
 
@@ -4310,12 +4305,11 @@ export const onErrorFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (failure: EB, cause: Cause.Cause<E>) => Effect.Effect<void, XE, XR>
   ): Effect.Effect<A, E | XE, R | XR> =>
-    onExit(self, (exit) => {
-      if (exit._tag !== "Failure") {
-        return void_
+    onExitPrimitive(self, (exit) => {
+      if (exit._tag === "Failure") {
+        const result = filter(exit.cause)
+        return !Result.isFailure(result) && f(result.success, exit.cause)
       }
-      const result = filter(exit.cause)
-      return Result.isFailure(result) ? void_ : f(result.success, exit.cause)
     })
 )
 
@@ -5506,7 +5500,7 @@ export const awaitAllChildren = <A, E, R>(
       (_) => {
         let children = fiber._children
         if (children === undefined || children.size === 0) {
-          return void_
+          return
         } else if (initialChildren) {
           children = Iterable.filter(
             children,
