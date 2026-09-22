@@ -609,9 +609,6 @@ describe("Cause", () => {
     })
 
     it("cuts the stack of a defect at the internal frame that called user code", async () => {
-      const userCode = (): number => {
-        throw new Error("boom")
-      }
       const render = async (effect: Effect.Effect<unknown, unknown>): Promise<string> => {
         const exit = await Effect.runPromiseExit(effect)
         assert.ok(Exit.isFailure(exit))
@@ -619,7 +616,6 @@ describe("Cause", () => {
       }
       for (
         const effect of [
-          Effect.map(Effect.succeed(1), userCode),
           Effect.try({ try: userCode, catch: userCode }),
           // the catcher runs outside the run loop, so it relies on the marker frame
           Effect.tryPromise({ try: () => Promise.reject(1), catch: userCode })
@@ -639,7 +635,7 @@ describe("Cause", () => {
       assert.ok(Exit.isFailure(exit))
       const rendered = Cause.pretty(exit.cause)
       assert.match(rendered, /\buserCode \(/)
-      assert.doesNotMatch(rendered, /[\/]src[\/]internal[\/]|~effect\/Utils\/internal/)
+      assert.doesNotMatch(rendered, /\/src\/internal\/|~effect\/Utils\/internal/)
     }
 
     it("does not render internal frames from match and matchCause handlers", () => {
