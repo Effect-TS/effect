@@ -65,8 +65,17 @@ export const toSqlError = (cause: unknown, operation: string): SqlError => {
   if (server.code === 497) {
     return SqlError.make({ reason: AuthorizationError.make(fields) })
   }
-  if ([242, 36, 60, 62].includes(server.code)) {
+  if ([36, 60, 62].includes(server.code)) {
     return SqlError.make({ reason: SqlSyntaxError.make(fields) })
+  }
+  if (server.code === 242) {
+    return SqlError.make({ reason: UnknownError.make(fields) })
+  }
+  if (server.code === 469) {
+    return SqlError.make({ reason: ConstraintError.make(fields) })
+  }
+  if (server.code === 473) {
+    return SqlError.make({ reason: DeadlockError.make(fields) })
   }
   if ([159, 160, 469].includes(server.code)) {
     return SqlError.make({ reason: StatementTimeoutError.make(fields) })
