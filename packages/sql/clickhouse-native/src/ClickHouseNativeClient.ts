@@ -1,6 +1,7 @@
 import type { Scope } from "effect"
 import type { Socket } from "node:net"
 
+import * as Array from "effect/Array"
 import * as Crypto from "effect/Crypto"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -24,7 +25,7 @@ import { createConnection } from "node:net"
 
 import type { ClickHouseConfig } from "./ClickHouseNativeConfig.ts"
 
-const CLIENT_PROTOCOL_VERSION = 54_000
+const CLIENT_PROTOCOL_VERSION = BigInt("54000")
 
 class ClickHouseNativeError extends Data.TaggedError("ClickHouseNativeError")<{
   readonly cause: unknown
@@ -300,7 +301,6 @@ const decimalType = (type: string): readonly [number, number] | undefined => {
 const integerBuffer = (value: bigint, bytes: number): Buffer => {
   const bits = BigInt(bytes * 8)
   const encoded = value < BigInt("0") ? (BigInt("1") << bits) + value : value
-
   if (bytes === 1) {
     return Buffer.from([Number(encoded)])
   }
@@ -308,15 +308,13 @@ const integerBuffer = (value: bigint, bytes: number): Buffer => {
     return Buffer.from([Number(encoded & BigInt("255")), Number((encoded >> BigInt("8")) & BigInt("255"))])
   }
   if (bytes === 4) {
-    return Buffer.from(Array.from({ length: 4 }, (_, index) => Number((encoded >> BigInt(index * 8)) & BigInt("255"))))
+    return Buffer.from(Array.makeBy(4, (index) => Number((encoded >> BigInt(index * 8)) & BigInt("255"))))
   }
   if (bytes === 8) {
-    return Buffer.from(Array.from({ length: 8 }, (_, index) => Number((encoded >> BigInt(index * 8)) & BigInt("255"))))
+    return Buffer.from(Array.makeBy(8, (index) => Number((encoded >> BigInt(index * 8)) & BigInt("255"))))
   }
 
-  return Buffer.from(
-    Array.from({ length: bytes }, (_, index) => Number((encoded >> BigInt(index * 8)) & BigInt("255")))
-  )
+  return Buffer.from(Array.makeBy(bytes, (index) => Number((encoded >> BigInt(index * 8)) & BigInt("255"))))
 }
 
 const integerValue = (value: unknown, type: string): bigint => {
@@ -338,7 +336,9 @@ const integerValue = (value: unknown, type: string): bigint => {
 }
 
 const decimalValue = (value: unknown, precision: number, scale: number, type: string): bigint => {
-  const text = typeof value === "bigint" || typeof value === "number" || typeof value === "string" ? String(value) : ""
+  const text = typeof value === "bigint" || typeof value === "number" || typeof value === "string"
+    ? String(value)
+    : ""
   const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text)
   if (match === null || (match[3]?.length ?? 0) > scale) {
     throw new Error(`Expected a decimal with scale at most ${scale} for ClickHouse ${type}, received ${String(value)}`)
@@ -398,15 +398,7 @@ const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): Reado
   }
   const lowCardinality = lowCardinalityType(type)
   if (lowCardinality !== undefined) {
-    const dictionary = values.reduce<Array<unknown>>(
-      (entries, value) => {
-        if (!entries.some((entry) => Object.is(entry, value))) {
-          entries.push(value)
-        }
-        return entries
-      },
-      []
-    )
+    const dictionary = Array.dedupeWith(values, Object.is)
     const keyBytes = dictionary.length <= 0x100 ? 1 : dictionary.length <= 0x1_0000 ? 2 : 4
     const keyType = keyBytes === 1 ? BigInt("0") : keyBytes === 2 ? BigInt("1") : BigInt("2")
     const keys = Buffer.concat(
@@ -525,7 +517,7 @@ const readNumberColumn = (
 ): Effect.Effect<ReadonlyArray<unknown>, ClickHouseNativeError> =>
   reader.bytes(rows * bytes).pipe(
     Effect.map((data) =>
-      Array.from({ length: rows }, (_, index) => {
+      Array.makeBy(rows, (index) => {
         const offset = index * bytes
         if (floating) {
           return bytes === 4 ? data.readFloatLE(offset) : data.readDoubleLE(offset)
@@ -555,7 +547,7 @@ const readValues = <A>(
 ): Effect.Effect<ReadonlyArray<A>, ClickHouseNativeError> =>
   rows === 0
     ? Effect.succeed(values)
-    : read.pipe(Effect.flatMap((value) => readValues(rows - 1, read, [...values, value])))
+    : read.pipe(Effect.flatMap((value) => readValues(rows - 1, read, Array.append(values, value))))
 
 const readColumn = (
   reader: NativeReader,
@@ -571,7 +563,7 @@ const readColumn = (
 
       return reader.bytes(rows * length).pipe(
         Effect.map((data) =>
-          Array.from({ length: rows }, (_, index) => data.subarray(index * length, (index + 1) * length).toString())
+          Array.makeBy(rows, (index) => data.subarray(index * length, (index + 1) * length).toString())
         )
       )
     }
@@ -624,7 +616,9 @@ const readColumns = (
         reader.string.pipe(
           Effect.flatMap((type) =>
             readColumn(reader, type, rows).pipe(
-              Effect.flatMap((values) => readColumns(reader, remaining - 1, rows, [...columns, { name, type, values }]))
+              Effect.flatMap((values) =>
+                readColumns(reader, remaining - 1, rows, Array.append(columns, { name, type, values }))
+              )
             )
           )
         )
@@ -652,10 +646,7 @@ const readBlock = (reader: NativeReader): Effect.Effect<ReadonlyArray<NativeColu
 const rowsFromBlock = (columns: ReadonlyArray<NativeColumn>): ReadonlyArray<Record<string, unknown>> => {
   const rows = columns[0]?.values.length ?? 0
 
-  return Array.from(
-    { length: rows },
-    (_, index) => Object.fromEntries(columns.map((column) => [column.name, column.values[index]]))
-  )
+  return Array.makeBy(rows, (index) => Object.fromEntries(columns.map((column) => [column.name, column.values[index]])))
 }
 
 const readException = (reader: NativeReader): Effect.Effect<ClickHouseServerError, ClickHouseNativeError> =>
@@ -702,7 +693,7 @@ const handshake = (
         ...encodeString("effect-rapid-order"),
         encodeVarUInt(BigInt("1")),
         encodeVarUInt(BigInt("0")),
-        encodeVarUInt(BigInt(CLIENT_PROTOCOL_VERSION)),
+        encodeVarUInt(CLIENT_PROTOCOL_VERSION),
         ...encodeString(config.database),
         ...encodeString(config.user),
         ...encodeString(config.password)
@@ -721,7 +712,7 @@ const handshake = (
     yield* reader.varUInt
     yield* reader.varUInt
     const serverRevision = yield* reader.varUInt
-    if (serverRevision < BigInt("54000")) {
+    if (serverRevision < CLIENT_PROTOCOL_VERSION) {
       return yield* new ClickHouseNativeError({
         cause: new Error(`ClickHouse server protocol ${serverRevision} is too old`)
       })
@@ -762,7 +753,7 @@ const readResults = (
       if (packet === BigInt("1")) {
         return reader.string.pipe(
           Effect.andThen(readBlock(reader)),
-          Effect.flatMap((block) => readResults(reader, [...rows, ...rowsFromBlock(block)]))
+          Effect.flatMap((block) => readResults(reader, Array.appendAll(rows, rowsFromBlock(block))))
         )
       }
       if (packet === BigInt("3")) {
