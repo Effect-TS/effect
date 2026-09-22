@@ -20,6 +20,7 @@ import * as Hash from "./Hash.ts"
 import type { TypeLambda } from "./HKT.ts"
 import { type Inspectable, NodeInspectSymbol, toJson } from "./Inspectable.ts"
 import * as Count from "./internal/count.ts"
+import { backEdges } from "./internal/equal.ts"
 import type { NonEmptyIterable } from "./NonEmptyIterable.ts"
 import type { Option } from "./Option.ts"
 import * as O from "./Option.ts"
@@ -195,7 +196,7 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
     return isChunk(that) && _equivalence(this, that)
   },
   [Hash.symbol]<A>(this: Chunk<A>): number {
-    return Hash.array(toReadonlyArray(this))
+    return Hash.optimize(Hash.combine(sequenceHash(this), this.length))
   },
   [Symbol.iterator]<A>(this: Chunk<A>): Iterator<A> {
     switch (this.backing._tag) {
@@ -215,8 +216,74 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
   }
 }
 
+// Chunks hash as a polynomial (Rabin–Karp) over mixed element terms tᵢ,
+//   h(xs) = Σ tᵢ·Bⁿ⁻¹⁻ⁱ (mod 2³²), so h(L ++ R) = h(L)·B^|R| + h(R),
+// which is associative: a concatenation is hashed from its halves whatever the
+// tree's shape. Every chunk caches its own, and chunks share nodes across
+// versions, so hashing a chunk built by appending, concatenating or slicing
+// only visits the nodes it does not share.
+const sequenceBase = 0x9e3779b1 | 0
+
+const basePower = (n: number): number => {
+  let result = 1
+  let base = sequenceBase
+  for (; n > 0; n >>>= 1) {
+    if (n & 1) result = Math.imul(result, base)
+    base = Math.imul(base, base)
+  }
+  return result
+}
+
+const concatHash = (left: number, right: number, rightLength: number): number =>
+  (Math.imul(left, basePower(rightLength)) + right) | 0
+
+const elementTerm = (element: unknown): number => Hash.combine(sequenceBase, Hash.hash(element))
+
+const arrayHash = <A>(array: ReadonlyArray<A>, from: number, to: number): number => {
+  let h = 0
+  for (let i = from; i < to; i++) {
+    h = (Math.imul(h, sequenceBase) + elementTerm(array[i])) | 0
+  }
+  return h
+}
+
+interface HashedChunk<A> extends Chunk<A> {
+  _hash: number | undefined
+}
+
+const sequenceHash = <A>(self: Chunk<A>): number => {
+  let h = (self as HashedChunk<A>)._hash
+  if (h === undefined) {
+    const seen = backEdges
+    const backing = self.backing
+    switch (backing._tag) {
+      case "IEmpty":
+        h = 0
+        break
+      case "ISingleton":
+        h = elementTerm(backing.a)
+        break
+      case "IArray":
+        h = arrayHash(backing.array, 0, backing.array.length)
+        break
+      case "IConcat":
+        h = concatHash(sequenceHash(self.left), sequenceHash(self.right), self.right.length)
+        break
+      case "ISlice":
+        h = arrayHash(toReadonlyArray_(backing.chunk), backing.offset, backing.offset + backing.length)
+        break
+    }
+    // Like `Hash.hash`, do not cache a hash that met a cycle.
+    if (seen === backEdges) {
+      ;(self as HashedChunk<A>)._hash = h
+    }
+  }
+  return h
+}
+
 const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
   const chunk = Object.create(ChunkProto)
+  chunk._hash = undefined
   chunk.backing = backing
   switch (backing._tag) {
     case "IEmpty": {

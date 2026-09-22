@@ -188,6 +188,36 @@ describe("Hash", () => {
       }
     })
 
+    it("hashes a Chunk independently of how it was built", () => {
+      const grouped = (values: ReadonlyArray<unknown>): Chunk.Chunk<unknown> => {
+        if (values.length <= 2) return Chunk.fromIterable(values)
+        const cut = 1 + random(values.length - 1)
+        return Chunk.appendAll(grouped(values.slice(0, cut)), grouped(values.slice(cut)))
+      }
+      for (let run = 0; run < 300; run++) {
+        const values = range(random(60)).map(randomKey)
+        const flat = Chunk.fromIterable(values)
+        const from = random(values.length + 1)
+        const to = from + random(values.length - from + 1)
+        const slice = Chunk.fromIterable(values.slice(from, to))
+        const variants = [
+          [values.reduce<Chunk.Chunk<unknown>>(Chunk.append, Chunk.empty()), flat],
+          [
+            values.reduceRight<Chunk.Chunk<unknown>>((chunk, value) => Chunk.prepend(chunk, value), Chunk.empty()),
+            flat
+          ],
+          [grouped(values), flat],
+          [Chunk.drop(Chunk.take(Chunk.fromIterable(["first", ...values, "last"]), values.length + 1), 1), flat],
+          [Chunk.take(Chunk.drop(grouped(values), from), to - from), slice],
+          [Chunk.drop(Chunk.take(grouped(values), to), from), slice]
+        ] as const
+        for (const [chunk, expected] of variants) {
+          assert.isTrue(Equal.equals(chunk, expected))
+          assert.strictEqual(Hash.hash(chunk), Hash.hash(expected))
+        }
+      }
+    })
+
     it("hashes a HashMap like a fresh build after persistent and in-place edits", () => {
       for (let run = 0; run < 100; run++) {
         let map = HashMap.empty<unknown, number>()
@@ -244,6 +274,19 @@ describe("Hash", () => {
       const first = make()
       const second = make()
       Hash.hash(first.map)
+      assert.strictEqual(Hash.hash(first.holder), Hash.hash(second.holder))
+    })
+
+    it("does not cache a Chunk hash computed from a circular sentinel", () => {
+      const make = () => {
+        const holder: { chunk?: unknown; tag: number } = { tag: 1 }
+        const chunk = Chunk.make({ holder })
+        holder.chunk = chunk
+        return { holder, chunk }
+      }
+      const first = make()
+      const second = make()
+      Hash.hash(first.chunk)
       assert.strictEqual(Hash.hash(first.holder), Hash.hash(second.holder))
     })
 
