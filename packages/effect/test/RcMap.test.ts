@@ -563,7 +563,6 @@ describe("RcMap", () => {
       }).pipe(Scope.provide(scope))
       yield* Effect.scoped(RcMap.get(map, "a"))
       yield* TestClock.adjust("1 second")
-      // the idle fiber has removed the entry and is releasing it, suspended on the gate
       assert.isFalse(yield* RcMap.has(map, "a"))
       const close = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
       yield* Deferred.succeed(gate, void 0)

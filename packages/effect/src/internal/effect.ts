@@ -4539,9 +4539,8 @@ export const fiberEnterUninterruptibleUnsafe = (fiber: Fiber.Fiber<unknown, unkn
 }
 
 /**
- * Enters an uninterruptible region like `fiberEnterUninterruptibleUnsafe`, and
- * returns the `restore` of that region, as `uninterruptibleMask` would pass
- * it. Call only within `withFiber`.
+ * Enters an uninterruptible region and returns a restore function for the
+ * fiber's prior interruptibility. Call only within `withFiber`.
  *
  * @internal
  */

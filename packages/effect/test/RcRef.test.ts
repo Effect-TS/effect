@@ -377,7 +377,6 @@ describe("RcRef", () => {
       }).pipe(Scope.provide(scope))
       yield* Effect.scoped(RcRef.get(ref))
       yield* TestClock.adjust("1 second")
-      // the idle fiber is now releasing the resource, suspended on the gate
       const close = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
       yield* Deferred.succeed(gate, void 0)
       yield* Fiber.join(close)

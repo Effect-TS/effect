@@ -52,9 +52,7 @@ const Proto = {
 }
 
 interface ScopedRefImpl<A> extends ScopedRef<A> {
-  // Parent of every generation's scope, and itself a child of the scope the ref
-  // was made in. Closing that scope therefore closes the current generation,
-  // including one that a concurrent `set` is still acquiring.
+  // The owner closes this scope and all its generations, including in-flight ones.
   readonly scope: Scope.Scope
 }
 
@@ -192,8 +190,7 @@ export const set: {
       yield* Scope.close(self.backing.backing.ref.current[0], Exit.void).pipe(
         Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
       )
-      // The owner may have closed while the value was acquired or the old one
-      // released; the ref's scope then closed this generation already.
+      // Do not publish a generation closed during acquisition or replacement.
       if (isClosed(generation)) return yield* Effect.interrupt
       self.backing.backing.ref.current = [generation, value]
     },

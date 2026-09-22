@@ -516,10 +516,7 @@ type Lease<A, E, X, R, Arg> = (
   arg: Arg
 ) => Effect.Effect<X, any, R>
 
-// A lease and the release that returns it are one fact: `lease` counts the
-// item and installs its release in the same uninterruptible step. Only the
-// wait for an item is interruptible, and an item that is available now is
-// leased in the same step that entered the region.
+// Count the lease and register its release without an interruption between them.
 const leaseWith = <A, E, X, R, Arg>(
   self: Pool<A, E>,
   lease: Lease<A, E, X, R, Arg>,
@@ -531,8 +528,6 @@ const leaseWith = <A, E, X, R, Arg>(
     return leaseLoop(self, lease, arg, restore, fiber)
   })
 
-// Growth is checked before the available list, so a lease that raises the
-// target above the active size starts a resize even when an item is free now.
 const leaseLoop = <A, E, X, R, Arg>(
   self: Pool<A, E>,
   lease: Lease<A, E, X, R, Arg>,
@@ -540,7 +535,6 @@ const leaseLoop = <A, E, X, R, Arg>(
   restore: Restore,
   fiber: Fiber.Fiber<unknown, unknown>
 ): Effect.Effect<X, any, R> =>
-  // a pool that is shutting down has a target size of 0
   targetSize(self) > activeSize(self)
     ? internal.flatMap(
       self.state.resizeSemaphore.withPermitsIfAvailable(1)(

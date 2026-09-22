@@ -95,9 +95,6 @@ export const make = <A, E, R>(options: {
     )
   })
 
-// A reference and the finalizer that returns it are one fact: `get` counts the
-// reference and registers its release in one uninterruptible step. Only the
-// acquisition itself runs interruptibly.
 const getState = <A, E>(
   self: RcRefImpl<A, E>,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
@@ -109,8 +106,7 @@ const getState = <A, E>(
     case "Acquired": {
       const state = self.state
       state.refCount++
-      // The idle fiber checks the count again after its sleep, so it is only
-      // ever asleep here; interrupting it clears `state.fiber`.
+      // The idle fiber checks the count before closing, so this state is still live.
       return state.fiber
         ? Effect.as(Fiber.interrupt(state.fiber), state)
         : Effect.succeed(state)
@@ -149,6 +145,7 @@ const getState = <A, E>(
   }
 }
 
+// Count the reference and register its release without an interruption between them.
 /** @internal */
 export const get = <A, E>(self_: RcRef.RcRef<A, E>): Effect.Effect<A, E, Scope.Scope> => {
   const self = self_ as RcRefImpl<A, E>
@@ -176,9 +173,7 @@ const release = <A, E>(self: RcRefImpl<A, E>, state: State.Acquired<A>): Effect.
   } else if (!Duration.isFinite(idleTimeToLive)) {
     return Effect.void
   }
-  // Once the idle fiber takes the state out of the ref it is the resource's
-  // only owner, so it closes the resource uninterruptibly: an interrupt from
-  // the ref's scope closing waits for the close instead of cutting it short.
+  // After eviction, the idle fiber must finish closing the resource even if interrupted.
   state.fiber = Effect.uninterruptibleMask((restore) =>
     Effect.flatMap(restore(Effect.sleep(idleTimeToLive)), () => {
       if (self.state === state && state.refCount === 0) {
