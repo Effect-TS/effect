@@ -1748,6 +1748,38 @@ describe("Cache", () => {
         })
         assert.deepStrictEqual(show(yield* Effect.exit(Cache.get(cache, 1))), "ok:1")
       }))
+
+    it.effect("caches a synchronous lookup defect across gets", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        const cache = yield* Cache.make({
+          capacity: 10,
+          lookup: (_: string): Effect.Effect<number> => {
+            lookups++
+            throw "lookup defect"
+          }
+        })
+        assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "key")), Exit.die("lookup defect"))
+        assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "key")), Exit.die("lookup defect"))
+        assert.strictEqual(lookups, 1)
+        assert.strictEqual(yield* Cache.size(cache), 1)
+      }))
+
+    it.effect("a synchronous lookup defect on refresh replaces the cached value", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        const cache = yield* Cache.make({
+          capacity: 10,
+          lookup: (_: string): Effect.Effect<number> => {
+            if (++lookups === 2) throw "lookup defect"
+            return Effect.succeed(1)
+          }
+        })
+        assert.strictEqual(yield* Cache.get(cache, "key"), 1)
+        assert.deepStrictEqual(yield* Effect.exit(Cache.refresh(cache, "key")), Exit.die("lookup defect"))
+        assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "key")), Exit.die("lookup defect"))
+        assert.strictEqual(lookups, 2)
+      }))
   })
 })
 

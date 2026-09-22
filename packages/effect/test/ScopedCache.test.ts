@@ -1054,6 +1054,28 @@ describe("ScopedCache", () => {
           assert.strictEqual(cleanupTracker.cleanedUp.length, 1)
           assert.deepStrictEqual(cleanupTracker.cleanedUp, ["test"])
         }))
+
+      it.effect("reports a replaced entry cleanup defect to the refresh caller", () =>
+        Effect.gen(function*() {
+          let lookups = 0
+          let released = 0
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_: string) =>
+              Effect.acquireRelease(
+                Effect.sync(() => ++lookups),
+                (value) => Effect.sync(() => {
+                  released++
+                  if (value === 1) throw "cleanup defect"
+                })
+              )
+          })
+          assert.strictEqual(yield* ScopedCache.get(cache, "key"), 1)
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.refresh(cache, "key")), Exit.die("cleanup defect"))
+          assert.strictEqual(yield* ScopedCache.get(cache, "key"), 2)
+          assert.strictEqual(lookups, 2)
+          assert.strictEqual(released, 1)
+        }))
     })
 
     describe("invalidateAll", () => {
