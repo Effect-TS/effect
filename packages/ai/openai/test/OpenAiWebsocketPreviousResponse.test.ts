@@ -1,9 +1,9 @@
 import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted, Stream } from "effect"
-import { Chat } from "effect/unstable/ai"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as Socket from "effect/unstable/socket/Socket"
+import { Chat } from "effect/ai"
+import * as HttpClient from "effect/http/HttpClient"
+import * as Socket from "effect/socket/Socket"
 import { WS } from "vitest-websocket-mock"
 
 const socketUrl = "wss://api.openai.com/v1/responses"
