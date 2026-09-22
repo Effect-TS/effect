@@ -465,12 +465,12 @@ describe("Layer", () => {
     // A small MaxOpsBeforeYield budget makes a fiber yield before each op, so
     // sweeping the budget moves an interrupt through every step of a build.
     const failingBudgets = <E>(
-      test: (ops: number) => Effect.Effect<boolean, E, Scope.Scope>
+      test: (ops: number) => Effect.Effect<boolean, E>
     ): Effect.Effect<Array<number>, E> =>
       Effect.gen(function*() {
         const failed: Array<number> = []
         for (let ops = 3; ops <= 64; ops++) {
-          if (!(yield* Effect.scoped(test(ops)))) failed.push(ops)
+          if (!(yield* test(ops))) failed.push(ops)
         }
         return failed
       })
