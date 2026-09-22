@@ -8345,13 +8345,10 @@ export const runFoldEffect: {
       (pull) =>
         Effect.whileLoop({
           while: constTrue,
-          body: constant(pull.pipe(
-            Effect.flatMap((o) => f(state, o)),
-            Effect.map((s) => {
-              state = s
-            })
-          )),
-          step: constVoid
+          body: constant(Effect.flatMap(pull, (o) => f(state, o))),
+          step: (s: Z) => {
+            state = s
+          }
         }),
       () => Effect.succeed(state)
     )

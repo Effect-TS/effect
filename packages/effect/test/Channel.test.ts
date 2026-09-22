@@ -230,6 +230,28 @@ describe("Channel", () => {
         assert.strictEqual(result, "done")
       }))
 
+    it.effect("runFoldEffect folds in order and stops at a failure or interruption", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const fold = (failAt: number, neverAt: number) =>
+          Channel.fromArray([1, 2, 3]).pipe(
+            Channel.runFoldEffect(() => "", (acc, n) => {
+              log.push(`${acc}+${n}`)
+              if (n === failAt) return Effect.fail("boom")
+              if (n === neverAt) return Effect.never
+              return Effect.succeed(`${acc}${n}`)
+            })
+          )
+        assert.strictEqual(yield* fold(0, 0), "123")
+        assert.deepStrictEqual(log.splice(0), ["+1", "1+2", "12+3"])
+        assertExitFailure(yield* Effect.exit(fold(2, 0)), Cause.fail("boom"))
+        assert.deepStrictEqual(log.splice(0), ["+1", "1+2"])
+        const fiber = yield* Effect.forkChild(fold(0, 2))
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(fiber)
+        assert.deepStrictEqual(log.splice(0), ["+1", "1+2"])
+      }))
+
     it.effect("mkUint8Array", () =>
       Effect.gen(function*() {
         const bytes = yield* Channel.fromArray(
