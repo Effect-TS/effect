@@ -120,12 +120,12 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       } else if (self instanceof RegExp) {
         return string(self.toString())
       } else {
+        if (byReferenceInstances.has(self)) {
+          return random(self)
+        }
         const cached = hashCache.get(self)
         if (cached !== undefined) {
           return cached
-        }
-        if (byReferenceInstances.has(self)) {
-          return random(self)
         }
         if (visitedObjects.has(self)) {
           backEdges++
