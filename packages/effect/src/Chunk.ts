@@ -169,9 +169,19 @@ const emptyArray: ReadonlyArray<never> = []
  * @since 4.0.0
  */
 export const makeEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Chunk<A>> =>
-  Equivalence.make((self, that) =>
-    self.length === that.length && toReadonlyArray(self).every((value, i) => isEquivalent(value, getUnsafe(that, i)))
-  )
+  Equivalence.make((self, that) => {
+    if (self.length !== that.length) {
+      return false
+    }
+    const as = toReadonlyArray(self)
+    const bs = toReadonlyArray(that)
+    for (let i = 0; i < as.length; i++) {
+      if (!isEquivalent(as[i], bs[i])) {
+        return false
+      }
+    }
+    return true
+  })
 
 const _equivalence = makeEquivalence(Equal.equals)
 
@@ -366,13 +376,7 @@ const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): voi
       break
     }
     case "ISlice": {
-      let i = 0
-      let j = initial
-      while (i < self.length) {
-        array[j] = getUnsafe(self, i)
-        i += 1
-        j += 1
-      }
+      copy(toReadonlyArray(self.backing.chunk), self.backing.offset, array, initial, self.length)
       break
     }
   }
@@ -1011,7 +1015,7 @@ export const filterMap: {
 } = dual(
   2,
   <A, B, X>(self: Chunk<A>, f: (input: A, i: number) => Result<B, X>): Chunk<B> => {
-    const as = RA.fromIterable(self)
+    const as = toReadonlyArray(self)
     const out: Array<B> = []
     for (let i = 0; i < as.length; i++) {
       const result = f(as[i], i)
@@ -1051,7 +1055,7 @@ export const filter: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => fromArrayUnsafe(RA.filter(self, predicate))
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => fromArrayUnsafe(RA.filter(toReadonlyArray(self), predicate))
 )
 
 /**
@@ -1156,12 +1160,17 @@ export const flatMap: {
   if (self.backing._tag === "ISingleton") {
     return f(self.backing.a, 0)
   }
-  let out: Chunk<B> = _empty
-  let i = 0
-  for (const k of self) {
-    out = appendAll(out, f(k, i++))
+  const as = toReadonlyArray(self)
+  const chunks = new Array<Chunk<B>>(as.length)
+  for (let i = 0; i < as.length; i++) {
+    chunks[i] = f(as[i], i)
   }
-  return out
+  for (let step = 1; step < chunks.length; step *= 2) {
+    for (let i = 0; i + step < chunks.length; i += 2 * step) {
+      chunks[i] = appendAll(chunks[i], chunks[i + step])
+    }
+  }
+  return chunks.length === 0 ? _empty : chunks[0]
 })
 
 /**
@@ -2264,7 +2273,7 @@ export const dedupeAdjacent = <A>(self: Chunk<A>): Chunk<A> => fromArrayUnsafe(R
  * @since 2.0.0
  */
 export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] => {
-  const [left, right] = RA.unzip(self)
+  const [left, right] = RA.unzip(toReadonlyArray(self))
   return [fromArrayUnsafe(left), fromArrayUnsafe(right)]
 }
 
@@ -2295,7 +2304,7 @@ export const zipWith: {
 } = dual(
   3,
   <A, B, C>(self: Chunk<A>, that: Chunk<B>, f: (a: A, b: B) => C): Chunk<C> =>
-    fromArrayUnsafe(RA.zipWith(self, that, f))
+    fromArrayUnsafe(RA.zipWith(toReadonlyArray(self), toReadonlyArray(that), f))
 )
 
 /**
@@ -2619,7 +2628,7 @@ export const findLast: {
   <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Option<A>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
-} = RA.findLast
+} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A> => RA.findLast(toReadonlyArray(self), predicate))
 
 /**
  * Returns the last index for which a predicate holds.
@@ -2647,7 +2656,7 @@ export const findLastIndex: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): O.Option<number>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): O.Option<number> => RA.findLastIndex(self, predicate)
+  <A>(self: Chunk<A>, predicate: Predicate<A>): O.Option<number> => RA.findLastIndex(toReadonlyArray(self), predicate)
 )
 
 /**
@@ -2682,8 +2691,15 @@ export const every: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): boolean
 } = dual(
   2,
-  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): self is Chunk<B> =>
-    RA.fromIterable(self).every(refinement)
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): self is Chunk<B> => {
+    const as = toReadonlyArray(self)
+    for (let i = 0; i < as.length; i++) {
+      if (!refinement(as[i])) {
+        return false
+      }
+    }
+    return true
+  }
 )
 
 /**
@@ -2714,7 +2730,15 @@ export const some: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A> => RA.fromIterable(self).some(predicate)
+  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A> => {
+    const as = toReadonlyArray(self)
+    for (let i = 0; i < as.length; i++) {
+      if (predicate(as[i])) {
+        return true
+      }
+    }
+    return false
+  }
 )
 
 /**
@@ -2744,7 +2768,7 @@ export const some: {
 export const join: {
   (sep: string): (self: Chunk<string>) => string
   (self: Chunk<string>, sep: string): string
-} = RA.join
+} = dual(2, (self: Chunk<string>, sep: string): string => toReadonlyArray(self).join(sep))
 
 /**
  * Reduces the elements of a chunk from left to right.
@@ -2874,5 +2898,5 @@ export const difference: {
   <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A> => fromArrayUnsafe(RA.difference(self, that))
+  <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A> => fromArrayUnsafe(RA.difference(self, toReadonlyArray(that)))
 )
