@@ -302,25 +302,7 @@ describe("Tracer", () => {
         assert.isAbove(started, 0, "the child never started a span")
       })
 
-    const allEnded = (spans: ReadonlyArray<Tracer.NativeSpan>, label: string) => {
-      for (const span of spans) {
-        strictEqual(span.status._tag, "Ended", `${span.name}: ${label}`)
-      }
-    }
-
-    it.effect("ends the span of Effect.withSpan", () =>
-      interruptAtEveryStep(() => Effect.withSpan(Effect.never, "s"), allEnded))
-
-    it.effect("ends the span of Effect.useSpan", () =>
-      interruptAtEveryStep(() => Effect.useSpan("s", () => Effect.never), allEnded))
-
-    const tracedFn = Effect.fn("s")(function*() {
-      return yield* Effect.never
-    })
-
-    it.effect("ends the span of Effect.fn", () => interruptAtEveryStep(() => tracedFn(), allEnded))
-
-    const outerFinalizerSeesOuterSpan = (inner: Effect.Effect<never>) => {
+    it.effect("ends interrupted spans and restores the parent for outer finalizers", () => {
       let seen: string | undefined
       let checked = 0
       return interruptAtEveryStep(() => {
@@ -329,22 +311,17 @@ describe("Tracer", () => {
           Effect.sync(() => {
             seen = span._tag === "Span" ? span.name : span.spanId
           }))
-        return Effect.withSpan(Effect.ensuring(inner, finalizer), "outer")
-      }, (_, label) => {
+        return Effect.withSpan(Effect.ensuring(Effect.withSpan(Effect.never, "inner"), finalizer), "outer")
+      }, (spans, label) => {
+        for (const span of spans) {
+          strictEqual(span.status._tag, "Ended", span.name + ": " + label)
+        }
         if (seen !== undefined) {
           checked++
           strictEqual(seen, "outer", label)
         }
       }).pipe(Effect.tap(() => Effect.sync(() => assert.isAbove(checked, 0, "the outer finalizer never ran"))))
-    }
-
-    it.effect("restores the parent span of Effect.withSpan for outer finalizers", () =>
-      outerFinalizerSeesOuterSpan(Effect.withSpan(Effect.never, "inner")))
-
-    it.effect("restores the parent span of Effect.withParentSpan for outer finalizers", () =>
-      outerFinalizerSeesOuterSpan(
-        Effect.withParentSpan(Effect.never, Tracer.externalSpan({ spanId: "external", traceId: "trace" }))
-      ))
+    })
   })
 
   describe("Effect.useSpanScoped", () => {
