@@ -7,7 +7,32 @@ import * as Result from "../Result.ts"
 import { EncodingError } from "./EncodingError.ts"
 
 /**
- * Encodes text or bytes as standard padded Base64.
+ * Encodes the given value into a Base64 (RFC 4648) string.
+ *
+ * **When to use**
+ *
+ * Use to encode text or bytes as a standard padded Base64 string for storage or
+ * transport.
+ *
+ * **Details**
+ *
+ * String inputs are encoded as UTF-8 bytes before Base64 encoding.
+ * `Uint8Array` inputs are encoded directly. The output uses the standard
+ * RFC 4648 alphabet with `=` padding.
+ *
+ * **Example** (Encoding Base64 strings and bytes)
+ *
+ * ```ts import.meta.vitest
+ * import * as Base64 from "effect/encoding/Base64"
+ *
+ * Base64.encode("hello") // => "aGVsbG8="
+ *
+ * const bytes = new Uint8Array([72, 101, 108, 108, 111])
+ * Base64.encode(bytes) // => "SGVsbG8="
+ * ```
+ *
+ * @see {@link decode} for decoding standard Base64 to bytes
+ * @see {@link decodeString} for decoding standard Base64 to UTF-8 text
  *
  * @category encoding
  * @since 4.0.0
@@ -16,7 +41,26 @@ export const encode: (input: Uint8Array | string) => string = (input) =>
   encodeBytes(typeof input === "string" ? encoder.encode(input) : input)
 
 /**
- * Decodes standard padded Base64 into bytes.
+ * Decodes a Base64 (RFC 4648) string into bytes safely.
+ *
+ * **When to use**
+ *
+ * Use to decode a standard padded Base64 string into bytes without throwing on
+ * invalid input.
+ *
+ * **Details**
+ *
+ * Returns `Result.succeed` with a `Uint8Array` when decoding succeeds, or
+ * `Result.fail` with an `EncodingError` when the input is not valid Base64.
+ *
+ * **Example** (Decoding Base64 bytes)
+ *
+ * ```ts import.meta.vitest
+ * import * as Base64 from "effect/encoding/Base64"
+ * import * as Result from "effect/Result"
+ *
+ * Base64.decode("SGVsbG8=") // => Result.succeed(new Uint8Array([72, 101, 108, 108, 111]))
+ * ```
  *
  * @category decoding
  * @since 4.0.0
@@ -73,7 +117,26 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
 }
 
 /**
- * Decodes standard padded Base64 into UTF-8 text.
+ * Decodes a Base64 (RFC 4648) string into UTF-8 text safely.
+ *
+ * **When to use**
+ *
+ * Use to decode a standard padded Base64 string into UTF-8 text without
+ * throwing on invalid input.
+ *
+ * **Details**
+ *
+ * Returns `Result.succeed` with the decoded text when decoding succeeds, or
+ * `Result.fail` with an `EncodingError` when the input is not valid Base64.
+ *
+ * **Example** (Decoding Base64 strings)
+ *
+ * ```ts import.meta.vitest
+ * import * as Base64 from "effect/encoding/Base64"
+ * import * as Result from "effect/Result"
+ *
+ * Base64.decodeString("aGVsbG8=") // => Result.succeed("hello")
+ * ```
  *
  * @category decoding
  * @since 4.0.0
