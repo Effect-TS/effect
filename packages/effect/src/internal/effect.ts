@@ -6136,7 +6136,7 @@ export const useSpan: {
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
     onExitUnsafe(fiber, (exit) => endSpan(span, exit, clock, timingEnabled))
-    return suspend(() => evaluate(span))
+    return evaluate(span)
   })
 }
 
