@@ -1660,8 +1660,6 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   declare readonly Input: Contravariant<Input>
   declare readonly State: Covariant<State>
 
-  // The last contextual attribute set seen and the key of the series it
-  // selects; the first call always sets both.
   #extraAttributes: Metric.AttributeSet | undefined
   #key = ""
 
@@ -1703,16 +1701,10 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
     return this.series(Context.get(context, MetricRegistry), this.#key, extraAttributes).hooks
   }
 
-  /**
-   * The registry key of the series that a contextual attribute set selects.
-   */
   seriesKey(extraAttributes: Metric.AttributeSet): string {
     return makeKey(this, mergeAttributes(this.attributes, extraAttributes))
   }
 
-  /**
-   * The series `key` that `extraAttributes` selects, registered on first use.
-   */
   series(
     registry: MetricRegistry,
     key: string,
@@ -2023,10 +2015,8 @@ class AttributedMetric<in out Input, in out State> extends Metric$<Input, State>
   readonly type: Metric.Type
   readonly metric: Metric<Input, State>
   readonly extraAttributes: Metric.Attributes
-  // Set when `metric` resolves its own series from the context attributes.
+  // Direct series resolution must not bypass overridden *Unsafe methods.
   readonly resolver: Metric$<Input, State> | undefined
-  // The contextual attribute set changes rarely, so the merged set, and the
-  // series key it selects, are derived once per contextual set.
   #current: Metric.AttributeSet | undefined = undefined
   #merged: Metric.AttributeSet = {}
   #key: string | undefined = undefined
@@ -3545,8 +3535,7 @@ function makeKey<Input, State>(
   metric: Metric<Input, State>,
   attributes: Metric.AttributeSet
 ): string {
-  // Every part is JSON-encoded so that no id, description or attribute value
-  // can spell another metric's key.
+  // Tuple encoding keeps ids, descriptions and attributes unambiguous.
   const entries = Object.entries(attributes).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
   return JSON.stringify([metric.type, metric.id, metric.description, entries])
 }
