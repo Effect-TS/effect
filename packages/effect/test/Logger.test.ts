@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
+import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 
 describe("Logger", () => {
@@ -164,6 +165,34 @@ describe("Logger", () => {
 
       assert.match(result[1] as string, /cyclic/)
     }))
+
+  it.effect("batched keeps flushing after a flush dies", () =>
+    Effect.gen(function*() {
+      let flushes = 0
+      const flushed: Array<ReadonlyArray<string>> = []
+      const records: Array<string> = []
+      const recording = Logger.make((options): void => {
+        records.push(`${options.logLevel} ${(options.message as ReadonlyArray<unknown>).join(" ")}`)
+      })
+      // the flush fiber logs to the loggers present when the batched logger is built
+      const logger = yield* Logger.batched(Logger.formatSimple, {
+        window: "1 second",
+        flush: (messages) =>
+          Effect.sync(() => {
+            if (flushes++ === 0) throw new Error("flush defect")
+            flushed.push(messages.map((message) => message.slice(message.indexOf("message="))))
+          })
+      }).pipe(Effect.provide(Logger.layer([recording])))
+      const log = (message: string) => Effect.log(message).pipe(Effect.provide(Logger.layer([logger])))
+
+      yield* log("a")
+      yield* TestClock.adjust("1 second")
+      yield* log("b")
+      yield* TestClock.adjust("1 second")
+
+      assert.deepStrictEqual(records, ["Error Unhandled error in Logger.batched flush"])
+      assert.deepStrictEqual(flushed, [["message=b"]])
+    }).pipe(Effect.scoped))
 
   it.effect("annotateLogsScoped applies annotations only while scoped", () =>
     Effect.gen(function*() {

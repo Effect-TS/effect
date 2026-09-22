@@ -731,10 +731,18 @@ export const batched = dual<
       return options.flush(arr)
     })
 
+    // each periodic flush is its own delivery: a defect is logged and the
+    // next window still flushes
+    const flushPeriodic = effect.catchDefect(flush, (defect) =>
+      withFiber((fiber) => {
+        effect.logUnhandledUnsafe(fiber, "Unhandled error in Logger.batched flush", [defect])
+        return effect.void
+      }))
+
     return effect.uninterruptibleMask((restore) =>
       restore(
         effect.sleep(options.window).pipe(
-          effect.andThen(flush),
+          effect.andThen(flushPeriodic),
           effect.forever
         )
       ).pipe(

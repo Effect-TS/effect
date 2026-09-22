@@ -6648,7 +6648,8 @@ const logUnsafe = (
   if (defects !== undefined) logUnhandledUnsafe(fiber, "Unhandled error in Logger", defects)
 }
 
-const logUnhandledUnsafe = (
+/** @internal */
+export const logUnhandledUnsafe = (
   fiber: Fiber.Fiber<unknown, unknown>,
   message: string,
   defects: ReadonlyArray<unknown>
