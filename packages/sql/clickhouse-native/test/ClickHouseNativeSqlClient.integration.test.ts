@@ -1,8 +1,8 @@
 import { NodeCrypto } from "@effect/platform-node"
 import { it } from "@effect/vitest"
 import { Effect, Layer, Result } from "effect"
-import { SqlClient } from "effect/unstable/sql"
-import { SqlError } from "effect/unstable/sql/SqlError"
+import { SqlClient } from "effect/sql"
+import { SqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
 import { clickhouseConfig } from "../src/ClickHouseNativeConfig.js"

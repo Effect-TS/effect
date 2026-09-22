@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import * as Statement from "effect/unstable/sql/Statement"
+import * as Statement from "effect/sql/Statement"
 import { describe, expect, it } from "vitest"
 
 import { makeCompiler } from "../src/ClickHouseNativeSqlConnection.js"

@@ -1,5 +1,5 @@
 import { Array, Effect, Layer, Order } from "effect"
-import { ConstraintError, SqlError, UniqueViolation } from "effect/unstable/sql/SqlError"
+import { ConstraintError, SqlError, UniqueViolation } from "effect/sql/SqlError"
 
 import { ClickHouseNativeSqlClient } from "./ClickHouseNativeSqlClient.js"
 

@@ -1,7 +1,7 @@
 import type { Crypto, Scope } from "effect"
 
 import { Effect, Pool } from "effect"
-import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
+import { SqlError, UnknownError } from "effect/sql/SqlError"
 
 import type { ClickHouseNativeClient } from "./ClickHouseNativeClient.js"
 import type { ClickHouseConfig } from "./ClickHouseNativeConfig.js"

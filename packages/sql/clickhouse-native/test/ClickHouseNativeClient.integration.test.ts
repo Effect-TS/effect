@@ -15,10 +15,10 @@ import {
   StatementTimeoutError,
   UniqueViolation,
   UnknownError
-} from "effect/unstable/sql/SqlError"
+} from "effect/sql/SqlError"
 import { createConnection } from "node:net"
 
-import type { ClickHouseConfig } from "./ClickHouseNativeConfig.js"
+import type { ClickHouseConfig } from "../src/ClickHouseNativeConfig.ts"
 
 const CLIENT_PROTOCOL_VERSION = 54_000
 

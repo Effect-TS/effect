@@ -1,9 +1,9 @@
 import type { Scope } from "effect"
 
 import { Context, Crypto, Effect, Layer } from "effect"
-import { Reactivity } from "effect/unstable/reactivity"
-import { SqlClient } from "effect/unstable/sql"
-import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
+import { SqlError, UnknownError } from "effect/sql/SqlError"
 
 import type { ClickHouseConfig } from "./ClickHouseNativeConfig.js"
 

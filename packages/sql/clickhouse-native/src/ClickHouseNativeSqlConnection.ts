@@ -1,8 +1,8 @@
-import type { Connection } from "effect/unstable/sql/SqlConnection"
-import type { SqlError } from "effect/unstable/sql/SqlError"
+import type { Connection } from "effect/sql/SqlConnection"
+import type { SqlError } from "effect/sql/SqlError"
 
 import { Crypto, Effect, Stream } from "effect"
-import * as Statement from "effect/unstable/sql/Statement"
+import * as Statement from "effect/sql/Statement"
 
 import type { ClickHouseNativeClient } from "./ClickHouseNativeClient.js"
 import type { ClickHouseNativePool } from "./ClickHouseNativePool.js"

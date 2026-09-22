@@ -1,6 +1,6 @@
 import { it } from "@effect/vitest"
 import { Effect, Result } from "effect"
-import { isSqlError } from "effect/unstable/sql/SqlError"
+import { isSqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
 import { run } from "../src/ClickHouseNativeMigrator.js"
