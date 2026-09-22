@@ -69,6 +69,8 @@ const makeUnsafe = <A>(
   return self
 }
 
+const isClosed = (scope: Scope.Scope): boolean => scope.state._tag === "Closed"
+
 /**
  * Creates a new `ScopedRef` from an effect that acquires the initial value.
  *
@@ -92,6 +94,7 @@ export const fromAcquire: <A, E, R>(
     Scope.provide(generation),
     Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
   )
+  if (isClosed(generation)) return yield* Effect.interrupt
   return makeUnsafe(scope, generation, value)
 }, Effect.uninterruptible)
 
@@ -190,9 +193,11 @@ export const set: {
         Scope.provide(generation),
         Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
       )
+      if (isClosed(generation)) return yield* Effect.interrupt
       yield* Scope.close(self.backing.backing.ref.current[0], Exit.void).pipe(
         Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
       )
+      if (isClosed(generation)) return yield* Effect.interrupt
       self.backing.backing.ref.current = [generation, value]
     },
     Effect.uninterruptible,

@@ -107,10 +107,17 @@ const getState = <A, E>(
       return Effect.interrupt
     }
     case "Acquired": {
-      self.state.refCount++
-      return self.state.fiber
-        ? Effect.as(Fiber.interrupt(self.state.fiber), self.state)
-        : Effect.succeed(self.state)
+      const state = self.state
+      state.refCount++
+      if (!state.fiber) return Effect.succeed(state)
+      return Effect.flatMap(Fiber.interrupt(state.fiber), () => {
+        // The expiry fiber may have passed its last ref-count check and
+        // started closing the scope before we interrupted it. In that case
+        // the old value is no longer usable; acquire from the current state.
+        if (self.state === state) return Effect.succeed(state)
+        state.refCount--
+        return getState(self, restore)
+      })
     }
     case "Empty": {
       const scope = Scope.makeUnsafe()
