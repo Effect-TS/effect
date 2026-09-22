@@ -307,7 +307,7 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
 }
 
 /**
- * Returns `true` if the provided value is a `MultipartError`.
+ * Checks whether a value is a `MultipartError`.
  *
  * @unstable
  * @category guards

@@ -146,7 +146,7 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
 }
 
 /**
- * Returns `true` if the provided value is a `CookiesError`.
+ * Checks whether a value is a `CookiesError`.
  *
  * @unstable
  * @category guards

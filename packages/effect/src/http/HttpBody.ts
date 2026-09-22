@@ -116,7 +116,7 @@ export class HttpBodyError extends Data.TaggedError("HttpBodyError")<{
 }
 
 /**
- * Returns `true` if the provided value is an `HttpBodyError`.
+ * Checks whether a value is an `HttpBodyError`.
  *
  * @unstable
  * @category guards

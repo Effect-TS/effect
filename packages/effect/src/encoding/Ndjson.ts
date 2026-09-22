@@ -57,7 +57,7 @@ export class NdjsonError extends Data.TaggedError("NdjsonError")<{
 }
 
 /**
- * Returns `true` if the provided value is an `NdjsonError`.
+ * Checks whether a value is an `NdjsonError`.
  *
  * @unstable
  * @category guards
