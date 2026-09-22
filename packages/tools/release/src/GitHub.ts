@@ -5,7 +5,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
-import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 import { findWorkspaceRoot, runCommandOk } from "./Process.ts"
 
@@ -64,15 +66,21 @@ export class GitHub extends Context.Service<GitHub, {
     readonly body: string
   }) => Effect.Effect<PullRequest, ReleaseError>
 }>()("@effect/release/GitHub") {
-  static readonly layer: Layer.Layer<GitHub, never, ChildProcessSpawner | FileSystem.FileSystem | Path.Path> = Layer
+  static readonly layer: Layer.Layer<
+    GitHub,
+    never,
+    ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
+  > = Layer
     .effect(
       GitHub,
       Effect.gen(function*() {
         const fs = yield* FileSystem.FileSystem
         const root = yield* findWorkspaceRoot.pipe(Effect.orDie)
-        const spawner = yield* ChildProcessSpawner
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
         const gh = (args: ReadonlyArray<string>) =>
-          runCommandOk("gh", args, { cwd: root }).pipe(Effect.provideService(ChildProcessSpawner, spawner))
+          runCommandOk("gh", args, { cwd: root }).pipe(
+            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner)
+          )
 
         const unexpected = (what: string) => (cause: unknown) =>
           new ReleaseError({ message: `Unexpected output from gh ${what}`, cause })

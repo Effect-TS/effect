@@ -4,7 +4,9 @@ import type * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
-import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 import { findWorkspaceRoot, runCommandOk } from "./Process.ts"
 
@@ -38,16 +40,20 @@ const decodeListOutput = Schema.decodeUnknownEffect(ListOutput)
 export class Workspace extends Context.Service<Workspace, {
   readonly packages: Effect.Effect<ReadonlyArray<WorkspacePackage>, ReleaseError>
 }>()("@effect/release/Workspace") {
-  static readonly layer: Layer.Layer<Workspace, never, FileSystem.FileSystem | Path.Path | ChildProcessSpawner> = Layer
+  static readonly layer: Layer.Layer<
+    Workspace,
+    never,
+    FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner
+  > = Layer
     .effect(
       Workspace,
       Effect.gen(function*() {
         const path = yield* Path.Path
         const root = yield* findWorkspaceRoot.pipe(Effect.orDie)
-        const spawner = yield* ChildProcessSpawner
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
 
         const packages = runCommandOk("pnpm", ["-r", "ls", "--depth", "-1", "--json"], { cwd: root }).pipe(
-          Effect.provideService(ChildProcessSpawner, spawner),
+          Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
           Effect.flatMap((stdout) =>
             decodeListOutput(stdout).pipe(
               Effect.mapError((cause) =>

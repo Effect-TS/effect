@@ -2,8 +2,9 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
 import * as Stream from "effect/Stream"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
-import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 
 export interface CommandResult {
@@ -21,7 +22,7 @@ export const runCommand = Effect.fn("runCommand")(function*(
   args: ReadonlyArray<string>,
   options: { readonly cwd: string; readonly env?: Record<string, string> | undefined }
 ) {
-  const spawner = yield* ChildProcessSpawner
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
   const spec = ChildProcess.make(command, args, {
     cwd: options.cwd,
     env: options.env ?? {},

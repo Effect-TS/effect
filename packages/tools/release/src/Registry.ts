@@ -5,8 +5,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { ReleaseError } from "./Errors.ts"
 import { versionKey } from "./Routing.ts"
 import { optionalSecret } from "./Secrets.ts"

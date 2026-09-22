@@ -4,7 +4,9 @@ import type * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
-import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 import { findWorkspaceRoot, runCommand, runCommandOk } from "./Process.ts"
 
@@ -46,14 +48,20 @@ export class Git extends Context.Service<Git, {
     paths: ReadonlyArray<string>
   ) => Effect.Effect<Option.Option<string>, ReleaseError>
 }>()("@effect/release/Git") {
-  static readonly layer: Layer.Layer<Git, never, ChildProcessSpawner | FileSystem.FileSystem | Path.Path> = Layer
+  static readonly layer: Layer.Layer<
+    Git,
+    never,
+    ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
+  > = Layer
     .effect(
       Git,
       Effect.gen(function*() {
         const root = yield* findWorkspaceRoot.pipe(Effect.orDie)
-        const spawner = yield* ChildProcessSpawner
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
         const git = (args: ReadonlyArray<string>) =>
-          runCommandOk("git", args, { cwd: root }).pipe(Effect.provideService(ChildProcessSpawner, spawner))
+          runCommandOk("git", args, { cwd: root }).pipe(
+            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner)
+          )
 
         const headSha = git(["rev-parse", "HEAD"]).pipe(Effect.map((stdout) => stdout.trim()))
 
@@ -62,7 +70,7 @@ export class Git extends Context.Service<Git, {
           function*(message: string, paths: ReadonlyArray<string> = []) {
             const scope = paths.length === 0 ? [] : ["--", ...paths]
             const staged = yield* runCommand("git", ["diff", "--cached", "--quiet", ...scope], { cwd: root }).pipe(
-              Effect.provideService(ChildProcessSpawner, spawner)
+              Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner)
             )
             if (staged.exitCode === 0) return Option.none<string>()
             if (staged.exitCode !== 1) {
@@ -98,7 +106,7 @@ export class Git extends Context.Service<Git, {
               // mistaken for a missing manifest.
               yield* git(["rev-parse", "--verify", `${ref}^{commit}`])
               const shown = yield* runCommand("git", ["show", `${ref}:${path}`], { cwd: root }).pipe(
-                Effect.provideService(ChildProcessSpawner, spawner)
+                Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner)
               )
               if (shown.exitCode === 0) return Option.some(shown.stdout)
               if (

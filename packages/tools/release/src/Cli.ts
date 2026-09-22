@@ -1,8 +1,9 @@
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Command from "effect/unstable/cli/Command"
-import * as Flag from "effect/unstable/cli/Flag"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { Command, Flag } from "effect/unstable/cli"
 import { OTP, Publication } from "./Publication.ts"
 import { Release } from "./Release.ts"
 import { requireSecret } from "./Secrets.ts"

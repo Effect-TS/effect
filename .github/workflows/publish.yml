@@ -1,0 +1,71 @@
+name: Publish Packages (rc)
+
+on:
+  workflow_dispatch:
+    inputs:
+      identity:
+        description: Identity from the merged publish manifest
+        required: true
+        type: string
+      otp:
+        description: One-time password for npm stage approval
+        required: true
+        type: string
+
+concurrency:
+  group: publish-packages-rc
+  cancel-in-progress: false
+
+permissions: {}
+
+# A maintainer dispatches this workflow from main after the matching publish PR
+# is merged. The release command reads the merged manifest, verifies its
+# identity, rechecks every package, and approves only the pinned staged uploads.
+# Safe retries skip versions that are already public. The website dispatch runs
+# only after every expected version has been confirmed public.
+jobs:
+  publish:
+    if: github.repository_owner == 'Effect-Ts' && github.ref == 'refs/heads/main'
+    name: Publish the approved staged release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Publish the pinned release
+        id: publish
+        env:
+          IDENTITY: ${{ inputs.identity }}
+          NPM_APPROVE_TOKEN: ${{ secrets.NPM_APPROVE_TOKEN }}
+          NPM_OTP: ${{ inputs.otp }}
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
+        run: |
+          result="$(pnpm --silent release publish --expect-identity "$IDENTITY")"
+          printf '%s\n' "$result"
+
+          outcome="$(printf '%s' "$result" | jq -er '._tag')"
+          case "$outcome" in
+            Published|AlreadyPublished) ;;
+            *)
+              echo "::error::Release command did not confirm publication"
+              exit 1
+              ;;
+          esac
+
+          revision="$(printf '%s' "$result" | jq -er '.websiteRevision')"
+          {
+            echo "published=true"
+            echo "revision=$revision"
+          } >> "$GITHUB_OUTPUT"
+      - name: Deploy the website
+        if: steps.publish.outputs.published == 'true'
+        uses: ./.github/actions/deploy-website
+        with:
+          channel: v4
+          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+          revision: ${{ steps.publish.outputs.revision }}

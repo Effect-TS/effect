@@ -5,7 +5,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
-import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
+// The published effect package exports this public barrel, not its source modules.
+// oxlint-disable-next-line effect/no-import-from-barrel-package
+import { ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 import { findWorkspaceRoot, runCommandOk } from "./Process.ts"
 import { type AppliedVersion, parseApplied, parseDryRun, type ReleasePlan } from "./ReleasePlan.ts"
@@ -51,14 +53,20 @@ export class Pnpm extends Context.Service<Pnpm, {
     readonly dryRun?: boolean | undefined
   }) => Effect.Effect<ReadonlyArray<StagedPackage>, ReleaseError>
 }>()("@effect/release/Pnpm") {
-  static readonly layer: Layer.Layer<Pnpm, never, ChildProcessSpawner | FileSystem.FileSystem | Path.Path> = Layer
+  static readonly layer: Layer.Layer<
+    Pnpm,
+    never,
+    ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
+  > = Layer
     .effect(
       Pnpm,
       Effect.gen(function*() {
         const root = yield* findWorkspaceRoot.pipe(Effect.orDie)
-        const spawner = yield* ChildProcessSpawner
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
         const pnpm = (args: ReadonlyArray<string>) =>
-          runCommandOk("pnpm", args, { cwd: root }).pipe(Effect.provideService(ChildProcessSpawner, spawner))
+          runCommandOk("pnpm", args, { cwd: root }).pipe(
+            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner)
+          )
 
         const dryRunPlan = pnpm(["version", "-r", "--dry-run"]).pipe(Effect.flatMap(parseDryRun))
 
