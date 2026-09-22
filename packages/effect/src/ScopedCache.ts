@@ -105,6 +105,8 @@ export interface Entry<A, E> {
   expiresAt: number | undefined
   readonly deferred: Deferred.Deferred<A, E>
   readonly scope: Scope.Closeable
+  fiber?: Fiber.Fiber<A, E>
+  awaiters?: number
 }
 
 /**
@@ -268,7 +270,7 @@ export const get: {
           // Move the entry to the end of the map to keep it fresh
           MutableHashMap.remove(state.map, key)
           MutableHashMap.set(state.map, key, oentry.value)
-          return restore(Deferred.await(oentry.value.deferred))
+          return restore(awaitEntry(oentry.value))
         }
         const scope = Scope.makeUnsafe()
         const deferred = Deferred.makeUnsafe<A, E>()
@@ -280,19 +282,44 @@ export const get: {
         MutableHashMap.set(state.map, key, entry)
         return checkCapacity(fiber, state.map, self.capacity).pipe(
           Option.isSome(oentry) ? effect.flatMap(() => Scope.close(oentry.value.scope, effect.exitVoid)) : identity,
-          effect.flatMap(() => Scope.provide(restore(self.lookup(key)), scope)),
-          effect.onExit((exit) => {
-            Deferred.doneUnsafe(deferred, exit)
-            const ttl = self.timeToLive(exit, key)
-            if (Duration.isFinite(ttl)) {
-              entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-            }
-            return effect.void
+          effect.flatMap(() => {
+            entry.awaiters = 0
+            entry.fiber = effect.forkUnsafe(
+              fiber,
+              effect.onExit(Scope.provide(self.lookup(key), scope), (exit) => {
+                Deferred.doneUnsafe(deferred, exit)
+                if (effect.exitHasInterrupts(exit)) {
+                  if (self.state._tag === "Open") {
+                    const current = MutableHashMap.get(self.state.map, key)
+                    if (Option.isSome(current) && current.value === entry) MutableHashMap.remove(self.state.map, key)
+                  }
+                  return Scope.close(scope, exit)
+                }
+                const ttl = self.timeToLive(exit, key)
+                if (Duration.isFinite(ttl)) {
+                  entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+                }
+                return effect.void
+              }),
+              true,
+              true
+            )
+            return restore(awaitEntry(entry))
           })
         )
       })
     )
 )
+
+const awaitEntry = <A, E>(entry: Entry<A, E>): Effect.Effect<A, E> => {
+  if (entry.deferred.effect !== undefined || !entry.fiber) return Deferred.await(entry.deferred)
+  entry.awaiters = (entry.awaiters ?? 0) + 1
+  return effect.onExit(Deferred.await(entry.deferred), () => {
+    entry.awaiters!--
+    if (entry.awaiters !== 0 || entry.deferred.effect !== undefined) return effect.void
+    return effect.asVoid(effect.fiberInterrupt(entry.fiber!))
+  })
+}
 
 const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknown>): boolean => {
   if (entry.expiresAt === undefined) {
@@ -646,6 +673,14 @@ export const refresh: {
       }
       const exit = yield* effect.exit(effect.suspend(() => restore(Scope.provide(self.lookup(key), scope))))
       Deferred.doneUnsafe(deferred, exit)
+      if (effect.exitHasInterrupts(exit)) {
+        if (newEntry && self.state._tag === "Open") {
+          const current = MutableHashMap.get(self.state.map, key)
+          if (Option.isSome(current) && current.value === entry) MutableHashMap.remove(self.state.map, key)
+        }
+        yield* Scope.close(scope, exit)
+        return yield* exit
+      }
       // @ts-ignore async gap
       if (self.state._tag === "Closed") {
         if (!newEntry) {
