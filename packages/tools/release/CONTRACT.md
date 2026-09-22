@@ -185,12 +185,14 @@ npm CLI fixtures and pnpm's renderer; the live probe may amend the sets.
    id is gone, so the package is missing while that version is still current,
    and readiness holds as `InProgress`. Re-staging the same version gets a
    new id, which cannot enter the merged manifest. The recovery that works
-   is a version bump that clears those versions from the workspace. Once every
+   is a version bump that clears those versions from the workspace, and a
+   reject of any leftover upload still listed at the old version. The bump
+   alone is not enough: a still-listed older upload is a stale-version
+   failure, and readiness stays red until those leftovers are gone. Once every
    remaining version has left the workspace, and nothing left is approvable or
    pending,
    readiness continues with the next release. Merging the next publish PR
-   replaces the old manifest. A still-listed upload at an older version is
-   still a stale-version failure;
+   replaces the old manifest;
 3. any release-set package with no upload at its version → `Incomplete`;
 4. otherwise builds the manifest (`fromStaged` fails on a stale upload at
    another version, exactly like `Routing`), assesses readiness and calls
@@ -250,15 +252,18 @@ and an item in that listing that blocked during the wait fails the release
 with nothing approved. An upload that was approvable only because the listing
 missed it is viewed again. It is kept for approval only when that view is
 still approvable and the fresh listing does not contain it. If the version
-became public during the wait, it is skipped and not approved. Pending,
-blocked, unknown, or a 404 fails the release at once with nothing approved.
+became public during the wait, it is skipped before another view and not
+approved. Pending, blocked, unknown, or a 404 fails the release at once with
+nothing approved.
 It never infers approval from a missing queue entry. When everything is
 already public it returns
 `AlreadyPublished` with the same website revision, so a failed website dispatch
-is retried by running it again. The specified workflow writes
-`published=true` and `revision=<sourceSha>` to its outputs and runs the
-website step only on `published == 'true'` with channel `v4` and that
-revision; until it exists, the website is dispatched by hand with the
+is retried by running it again. Both `Published` and `AlreadyPublished` are a
+successful publication for that gate. The specified workflow writes
+`published=true` for either result, not only for `Published`, and writes
+`revision=<sourceSha>`. It runs the website step only on `published == 'true'`
+with channel `v4` and that revision; until it exists, the website is
+dispatched by hand with the
 `websiteRevision` the command prints.
 
 ### Credentials and what is still unverified

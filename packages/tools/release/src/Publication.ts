@@ -47,12 +47,13 @@ export type ReadinessResult =
   | { readonly _tag: "InProgress"; readonly identity: string; readonly remaining: ReadonlyArray<ManifestPackage> }
   /**
    * The merged manifest still pins a blocked or unknown upload at a version
-   * the workspace is on. No PR is opened. Rejecting the upload does not
-   * recover it: the pinned id is gone, so the package is missing while that
-   * version is still current, and readiness holds as `InProgress`. A version
-   * bump that clears those versions from the workspace is what lets the next
-   * release proceed. Once every remaining version has left the workspace,
-   * this no longer applies: readiness continues with the next release, and
+   * the workspace is on. No PR is opened. Rejecting the upload turns that
+   * hold into `InProgress`: the pinned id is gone, so the package is missing
+   * while that version is still current. The recovery that works is a version
+   * bump that clears those versions from the workspace, and a reject of any
+   * leftover upload still listed at the old version. The bump alone leaves
+   * readiness failing the stale-version check. Once every remaining version
+   * has left the workspace, this no longer applies: readiness continues, and
    * merging its publish PR replaces this manifest.
    */
   | { readonly _tag: "Stalled"; readonly identity: string; readonly blockers: ReadonlyArray<PackageReadiness> }
@@ -140,11 +141,12 @@ const describe = (pkg: ManifestPackage): string => `${pkg.name}@${pkg.version}`
  *    pending or blocked fails at once. Any other status must become public
  *    inside the bounded confirmation window. After that wait the queue is
  *    read again. A fresh listing wins for ids it contains. An upload that
- *    was approvable only because the listing missed it is viewed again and
- *    kept only when that view is still approvable. A version that became
- *    public is skipped. Pending, blocked, unknown, or a 404 fails before
- *    anything is approved. Any other `NotReady` result fails naming every
- *    blocker; nothing is approved. Packages already `public` are verified,
+ *    was approvable only because the listing missed it is viewed again,
+ *    unless that version is already public, and kept only when that view is
+ *    still approvable. A version that became public is skipped and not
+ *    viewed again. Pending, blocked, unknown, or a 404 fails before anything
+ *    is approved. Any other `NotReady` result fails naming every blocker;
+ *    nothing is approved. Packages already `public` are verified,
  *    not approved, which lets a retry finish the same release.
  * 3. Nothing left to approve → `AlreadyPublished`. `dryRun` → `PublishDryRun`.
  * 4. `StageApproval.approve(stageId, otp)` for each approvable package in
@@ -153,8 +155,9 @@ const describe = (pkg: ManifestPackage): string => `${pkg.name}@${pkg.version}`
  *    with the approved and remaining packages named.
  * 5. Poll `Registry.isPublished` for every approved package every
  *    `CONFIRM_INTERVAL` until all are served or `CONFIRM_TIMEOUT` elapses;
- *    on timeout fail naming the unconfirmed packages. Only then `Published`,
- *    which is the website gate.
+ *    on timeout fail naming the unconfirmed packages. Only then `Published`.
+ *    `Published` and `AlreadyPublished` are both a successful publication
+ *    for the website gate.
  *
  * Neither half runs `pnpm version`, `pnpm build` or `pnpm stage publish`.
  */
@@ -308,6 +311,89 @@ export class Publication extends Context.Service<Publication, {
         }
       })
 
+      /**
+       * A missing pinned upload is not a reason to approve the rest of the
+       * release from the listing alone. View it. An approvable view is carried
+       * into the queue the recheck uses; pending or blocked fails at once;
+       * anything else must become public before another approval. After that
+       * wait, a fresh listing wins. An id the listing still misses is viewed
+       * again, except when no wait ran (the pre-wait view is still current)
+       * or the version is already public (skipped before the view, not approved).
+       */
+      const recoverMissing = Effect.fn("Publication.recoverMissing")(function*(
+        identity: string,
+        manifest: ReleaseManifest.ReleaseManifest,
+        missing: ReadonlyArray<PackageReadiness>,
+        published: ReadonlySet<string>
+      ) {
+        const fail = (subject: string, detail: string) =>
+          new ReleaseError({
+            message: `Release ${identity} is not ready; nothing was approved: ${subject} (${detail})`
+          })
+        const viewedApprovable: Array<StagedItem> = []
+        const waiting: Array<ManifestPackage> = []
+        for (const pkg of missing) {
+          const viewed = yield* approval.viewStaged(pkg.stageId)
+          if (
+            Option.isNone(viewed) || viewed.value.id !== pkg.stageId || viewed.value.packageName !== pkg.name ||
+            viewed.value.version !== pkg.version
+          ) {
+            return yield* fail(describe(pkg), pkg.detail)
+          }
+          const classified = Readiness.assessPackage(pkg, { manifest, staged: [viewed.value], published })
+          if (classified.state === "approvable") {
+            viewedApprovable.push(viewed.value)
+          } else if (classified.state === "pending" || classified.state === "blocked") {
+            return yield* fail(describe(classified), `${classified.state}: ${classified.detail}`)
+          } else {
+            waiting.push(pkg)
+          }
+        }
+        if (waiting.length > 0) {
+          yield* confirmPublic(waiting, "Staged upload left the queue but was not served by the registry")
+        }
+        const freshPublished = yield* publishedKeys(manifest.packages)
+        // The wait can be minutes long. A fresh listing wins for ids it
+        // contains. An upload the listing still misses was never refreshed
+        // by that list, so it is viewed again; the pre-wait snapshot is not
+        // reused. Without a wait the snapshot is still current. A version
+        // that became public is skipped before that view.
+        const listed = yield* registry.listStaged
+        const listedIds = new Set(listed.map((item) => item.id))
+        const carried: Array<StagedItem> = []
+        for (const item of viewedApprovable) {
+          if (listedIds.has(item.id)) continue
+          if (waiting.length === 0) {
+            carried.push(item)
+            continue
+          }
+          const subject = `${item.packageName}@${item.version}`
+          if (freshPublished.has(versionKey(item.packageName, item.version))) continue
+          const viewed = yield* approval.viewStaged(item.id)
+          if (
+            Option.isNone(viewed) || viewed.value.id !== item.id ||
+            viewed.value.packageName !== item.packageName || viewed.value.version !== item.version
+          ) {
+            return yield* fail(subject, "not in the stage queue")
+          }
+          const pinned = manifest.packages.find((candidate) => candidate.stageId === item.id)
+          if (pinned === undefined) {
+            return yield* fail(subject, "missing: not in the stage queue")
+          }
+          const classified = Readiness.assessPackage(pinned, {
+            manifest,
+            staged: [viewed.value],
+            published: freshPublished
+          })
+          if (classified.state === "approvable") {
+            carried.push(viewed.value)
+            continue
+          }
+          return yield* fail(subject, `${classified.state}: ${classified.detail}`)
+        }
+        return { staged: [...listed, ...carried], published: freshPublished }
+      })
+
       const publish = Effect.fn("Publication.publish")(function*(options: PublishOptions) {
         const merged = yield* mergedManifest
         if (Option.isNone(merged)) {
@@ -331,86 +417,9 @@ export class Publication extends Context.Service<Publication, {
           const missing = assessed.blockers.filter((pkg) => pkg.state === "missing")
           const otherBlockers = assessed.blockers.filter((pkg) => pkg.state !== "missing")
           if (missing.length > 0 && otherBlockers.length === 0) {
-            const viewedApprovable: Array<StagedItem> = []
-            const waiting: Array<ManifestPackage> = []
-            for (const pkg of missing) {
-              const viewed = yield* approval.viewStaged(pkg.stageId)
-              if (
-                Option.isNone(viewed) || viewed.value.id !== pkg.stageId || viewed.value.packageName !== pkg.name ||
-                viewed.value.version !== pkg.version
-              ) {
-                return yield* new ReleaseError({
-                  message: `Release ${identity} is not ready; nothing was approved: ${describe(pkg)} (${pkg.detail})`
-                })
-              }
-              const classified = Readiness.assess({
-                manifest,
-                staged: [viewed.value],
-                published
-              }).packages.find((item) => item.stageId === pkg.stageId)
-              if (classified === undefined) {
-                return yield* new ReleaseError({
-                  message: `Release ${identity} is not ready; nothing was approved: ${describe(pkg)} (${pkg.detail})`
-                })
-              }
-              if (classified.state === "approvable") {
-                viewedApprovable.push(viewed.value)
-              } else if (classified.state === "pending" || classified.state === "blocked") {
-                return yield* new ReleaseError({
-                  message: `Release ${identity} is not ready; nothing was approved: ${
-                    describe(classified)
-                  } (${classified.state}: ${classified.detail})`
-                })
-              } else {
-                waiting.push(pkg)
-              }
-            }
-            if (waiting.length > 0) {
-              yield* confirmPublic(waiting, "Staged upload left the queue but was not served by the registry")
-            }
-            published = yield* publishedKeys(manifest.packages)
-            // The wait can be minutes long. A fresh listing wins for ids it
-            // contains. An upload the listing still misses was never refreshed
-            // by that list, so it is viewed again; the pre-wait snapshot is not
-            // reused. Without a wait the snapshot is still current.
-            const listed = yield* registry.listStaged
-            const listedIds = new Set(listed.map((item) => item.id))
-            const carried: Array<StagedItem> = []
-            for (const item of viewedApprovable) {
-              if (listedIds.has(item.id)) continue
-              if (waiting.length === 0) {
-                carried.push(item)
-                continue
-              }
-              const key = versionKey(item.packageName, item.version)
-              const viewed = yield* approval.viewStaged(item.id)
-              if (published.has(key)) continue
-              if (
-                Option.isNone(viewed) || viewed.value.id !== item.id ||
-                viewed.value.packageName !== item.packageName || viewed.value.version !== item.version
-              ) {
-                return yield* new ReleaseError({
-                  message:
-                    `Release ${identity} is not ready; nothing was approved: ${item.packageName}@${item.version} (not in the stage queue)`
-                })
-              }
-              const classified = Readiness.assess({
-                manifest,
-                staged: [viewed.value],
-                published
-              }).packages.find((candidate) => candidate.stageId === item.id)
-              if (classified?.state === "approvable") {
-                carried.push(viewed.value)
-                continue
-              }
-              const state = classified?.state ?? "missing"
-              const detail = classified?.detail ?? "not in the stage queue"
-              return yield* new ReleaseError({
-                message:
-                  `Release ${identity} is not ready; nothing was approved: ${item.packageName}@${item.version} (${state}: ${detail})`
-              })
-            }
-            staged = [...listed, ...carried]
+            const recovered = yield* recoverMissing(identity, manifest, missing, published)
+            staged = recovered.staged
+            published = recovered.published
             assessed = Readiness.assess({ manifest, staged, published })
           }
         }

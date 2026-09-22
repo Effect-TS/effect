@@ -53,7 +53,8 @@ export interface ReadinessInput {
   readonly published: ReadonlySet<string>
 }
 
-const assessPackage = (pkg: ManifestPackage, input: ReadinessInput): PackageReadiness => {
+/** One manifest package against the given queue and published set. `assess` maps this over the manifest. */
+export const assessPackage = (pkg: ManifestPackage, input: ReadinessInput): PackageReadiness => {
   const classify = (state: PackageState, detail: string): PackageReadiness => ({ ...pkg, state, detail })
   if (input.published.has(versionKey(pkg.name, pkg.version))) {
     return classify("public", "published")
