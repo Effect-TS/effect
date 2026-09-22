@@ -1,5 +1,5 @@
 import { hole, pipe, Struct } from "effect"
-import { describe, expect, it, when } from "tstyche"
+import { describe, expect, it } from "tstyche"
 
 const asym = Symbol.for("effect/dtslint/a")
 const bsym = Symbol.for("effect/dtslint/b")
@@ -71,19 +71,22 @@ describe("Struct", () => {
         hole<{ a: "a"; b: 1 }>(),
         hole<Record<string, (s: string) => null>>()
       )
-      when(pipe).isCalledWith(
+      pipe(
         { a: "a", b: 1 },
-        expect(Struct.evolve).type.not.toBeCallableWith({ a: (n: number) => n })
+        // @ts-expect-error Type
+        Struct.evolve({ a: (n: number) => n })
       )
 
-      when(pipe).isCalledWith(
+      pipe(
         hole<{ a: "a"; b: 1 }>(),
-        expect(Struct.evolve).type.not.toBeCallableWith(hole<Record<string, string>>())
+        // @ts-expect-error Argument of type
+        Struct.evolve(hole<Record<string, string>>())
       )
 
-      when(pipe).isCalledWith(
+      pipe(
         hole<{ a: "a"; b: 1 }>(),
-        expect(Struct.evolve).type.not.toBeCallableWith(hole<Record<string, (s: string) => null>>())
+        // @ts-expect-error Argument of type
+        Struct.evolve(hole<Record<string, (s: string) => null>>())
       )
     })
   })
@@ -143,34 +146,38 @@ describe("Struct", () => {
     it("struct + record", () => {
       expect(pipe(hole<Record<string, number> & { a: boolean }>(), Struct.get("a")))
         .type.toBe<boolean>()
-      when(pipe).isCalledWith(
+      pipe(
         hole<Record<string, number> & { a: boolean }>(),
-        expect(Struct.get).type.not.toBeCallableWith("b")
+        // @ts-expect-error Argument of type
+        Struct.get("b")
       )
     })
   })
 
   describe("pick", () => {
     it("errors when picking a non-existent key", () => {
-      when(pipe).isCalledWith(
+      pipe(
         stringStruct,
-        expect(Struct.pick).type.not.toBeCallableWith("d")
+        // @ts-expect-error Argument of type
+        Struct.pick("d")
       )
       expect(Struct.pick("d")).type.not.toBeCallableWith(
         stringStruct
       )
 
-      when(pipe).isCalledWith(
+      pipe(
         symbolStruct,
-        expect(Struct.pick).type.not.toBeCallableWith(dsym)
+        // @ts-expect-error Argument of type
+        Struct.pick(dsym)
       )
       expect(Struct.pick(dsym)).type.not.toBeCallableWith(
         symbolStruct
       )
 
-      when(pipe).isCalledWith(
+      pipe(
         numberStruct,
-        expect(Struct.pick).type.not.toBeCallableWith(4)
+        // @ts-expect-error Argument of type
+        Struct.pick(4)
       )
       expect(Struct.pick(4)).type.not.toBeCallableWith(
         numberStruct
@@ -248,9 +255,10 @@ describe("Struct", () => {
       // @tstyche fixme -- This doesn't work but it should
       expect(Struct.pick).type.not.toBeCallableWith(sr, "b")
 
-      when(pipe).isCalledWith(
+      pipe(
         sr,
-        expect(Struct.pick).type.not.toBeCallableWith("b")
+        // @ts-expect-error Argument of type
+        Struct.pick("b")
       )
     })
 
@@ -264,25 +272,28 @@ describe("Struct", () => {
 
   describe("omit", () => {
     it("errors when omitting a non-existent key", () => {
-      when(pipe).isCalledWith(
+      pipe(
         stringStruct,
-        expect(Struct.omit).type.not.toBeCallableWith("d")
+        // @ts-expect-error Argument of type
+        Struct.omit("d")
       )
       expect(Struct.omit("d")).type.not.toBeCallableWith(
         stringStruct
       )
 
-      when(pipe).isCalledWith(
+      pipe(
         symbolStruct,
-        expect(Struct.omit).type.not.toBeCallableWith(dsym)
+        // @ts-expect-error Argument of type
+        Struct.omit(dsym)
       )
       expect(Struct.omit(dsym)).type.not.toBeCallableWith(
         symbolStruct
       )
 
-      when(pipe).isCalledWith(
+      pipe(
         numberStruct,
-        expect(Struct.omit).type.not.toBeCallableWith(4)
+        // @ts-expect-error Argument of type
+        Struct.omit(4)
       )
       expect(Struct.omit(4)).type.not.toBeCallableWith(
         numberStruct

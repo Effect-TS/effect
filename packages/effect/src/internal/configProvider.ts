@@ -236,6 +236,18 @@ const appendConfigPath = (path: ReadonlyArray<string>, config: Config.Config<unk
   return path
 }
 
+const RedactedConfigErrorReducer: ConfigError.ConfigErrorReducer<unknown, ConfigError.ConfigError> = {
+  andCase: (_, left, right) => configError.And(left, right),
+  orCase: (_, left, right) => configError.Or(left, right),
+  invalidDataCase: (_, path) => configError.InvalidData(path, "<redacted>"),
+  missingDataCase: (_, path) => configError.MissingData(path, "<redacted>"),
+  sourceUnavailableCase: (_, path, _message, cause) => configError.SourceUnavailable(path, "<redacted>", cause),
+  unsupportedCase: (_, path) => configError.Unsupported(path, "<redacted>")
+}
+
+const redactConfigError = (error: ConfigError.ConfigError): ConfigError.ConfigError =>
+  configError.reduceWithContext(error, void 0, RedactedConfigErrorReducer)
+
 const fromFlatLoop = <A>(
   flat: ConfigProvider.ConfigProvider.Flat,
   prefix: ReadonlyArray<string>,
@@ -317,6 +329,15 @@ const fromFlatLoop = <A>(
               return core.succeed(values)
             })
           )
+        )
+      ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
+    }
+    case OpCodes.OP_REDACTED: {
+      return core.suspend(() =>
+        pipe(
+          fromFlatLoop(flat, prefix, op.original, split),
+          core.mapError(redactConfigError),
+          core.map(Arr.map(op.redact))
         )
       ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
     }
@@ -719,7 +740,9 @@ interface JsonArray extends Array<string | number | boolean | null | JsonArray |
 export const fromJson = (json: unknown): ConfigProvider.ConfigProvider => {
   const hiddenDelimiter = "\ufeff"
   const indexedEntries = Arr.map(
-    getIndexedEntries(json as JsonMap),
+    getIndexedEntries(json as JsonMap).filter(([path]) =>
+      path.every((component) => component._tag === "KeyIndex" || !component.name.includes(hiddenDelimiter))
+    ),
     ([key, value]): [string, string] => [configPathToString(key).join(hiddenDelimiter), value]
   )
   return fromMap(new Map(indexedEntries), {

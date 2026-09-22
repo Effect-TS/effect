@@ -3,7 +3,7 @@ import { Array as Arr, Context, Effect, hole, Option, pipe, Predicate, Schedule 
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, NoSuchElementException, UnknownException } from "effect/Cause"
 import type { Exit } from "effect/Exit"
-import { describe, expect, it, when } from "tstyche"
+import { describe, expect, it } from "tstyche"
 
 class TestError1 {
   readonly _tag = "TestError1"
@@ -524,11 +524,13 @@ describe("Effect", () => {
   })
 
   it("tap", () => {
-    when(Effect.succeed("a" as const).pipe).isCalledWith(
-      expect(Effect.tap).type.not.toBeCallableWith(tacitStringError, { onlyEffect: true })
+    Effect.succeed("a" as const).pipe(
+      // @ts-expect-error No overload matches this call
+      Effect.tap(tacitStringError, { onlyEffect: true })
     )
-    when(Effect.succeed("a" as const).pipe).isCalledWith(
-      expect(Effect.tap).type.not.toBeCallableWith("a", { onlyEffect: true })
+    Effect.succeed("a" as const).pipe(
+      // @ts-expect-error No overload matches this call
+      Effect.tap("a", { onlyEffect: true })
     )
 
     expect(Effect.succeed("a" as const).pipe(Effect.tap(tacitString))).type.toBe<Effect.Effect<"a">>()
@@ -650,9 +652,10 @@ describe("Effect", () => {
       "wrong",
       () => Effect.succeed(1)
     )
-    when(pipe).isCalledWith(
+    pipe(
       hole<Effect.Effect<number, TestError1>>(),
-      expect(Effect.catchTag).type.not.toBeCallableWith("wrong", () => Effect.succeed(1))
+      // @ts-expect-error No overload matches this call
+      Effect.catchTag("wrong", () => Effect.succeed(1))
     )
 
     expect(Effect.catchTag).type.not.toBeCallableWith(
@@ -660,9 +663,10 @@ describe("Effect", () => {
       "wrong",
       () => Effect.succeed(1)
     )
-    when(pipe).isCalledWith(
+    pipe(
       hole<Effect.Effect<number, Error | TestError1>>(),
-      expect(Effect.catchTag).type.not.toBeCallableWith("wrong", () => Effect.succeed(1))
+      // @ts-expect-error No overload matches this call
+      Effect.catchTag("wrong", () => Effect.succeed(1))
     )
 
     expect(Effect.catchTag(
@@ -750,10 +754,11 @@ describe("Effect", () => {
       })
     )).type.toBe<Effect.Effect<number, Error>>()
 
-    when(pipe).isCalledWith(
+    pipe(
       Effect.fail(new TestError1()),
-      expect(Effect.catchTags).type.not.toBeCallableWith({
+      Effect.catchTags({
         TestError1: () => Effect.succeed(1),
+        // @ts-expect-error Type
         Other: () => Effect.succeed(1)
       })
     )
@@ -763,10 +768,11 @@ describe("Effect", () => {
       Other: () => Effect.succeed(1)
     })
 
-    when(pipe).isCalledWith(
+    pipe(
       Effect.fail(new TestError1() as TestError1 | string),
-      expect(Effect.catchTags).type.not.toBeCallableWith({
+      Effect.catchTags({
         TestError1: () => Effect.succeed(1),
+        // @ts-expect-error Type
         Other: () => Effect.succeed(1)
       })
     )

@@ -236,7 +236,7 @@ export const make = (names: string[], cursor: string) =>
       sql.in("name", names),
       sql`created_at < ${cursor}`
     ])}`
-    // SELECT * FROM people WHERE ("name" IN (?,?,?) AND created_at < ?)
+    // SELECT * FROM people WHERE ("name" IN ($1,$2,$3) AND created_at < $4)
   })
 ```
 
@@ -254,7 +254,7 @@ export const make = (names: string[], cursor: Date) =>
       sql.in("name", names),
       sql`created_at < ${cursor}`
     ])}`
-    // SELECT * FROM people WHERE ("name" IN (?,?,?) OR created_at < ?)
+    // SELECT * FROM people WHERE ("name" IN ($1,$2,$3) OR created_at < $4)
   })
 ```
 
@@ -270,9 +270,9 @@ export const make = (names: string[], afterCursor: Date, beforeCursor: Date) =>
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
       sql.in("name", names),
-      sql.and([`created_at > ${afterCursor}`, `created_at < ${beforeCursor}`])
+      sql.and([sql`created_at > ${afterCursor}`, sql`created_at < ${beforeCursor}`])
     ])}`
-    // SELECT * FROM people WHERE ("name" IN (?,?,?) OR (created_at > ? AND created_at < ?))
+    // SELECT * FROM people WHERE ("name" IN ($1,$2,$3) OR (created_at > $4 AND created_at < $5))
   })
 ```
 

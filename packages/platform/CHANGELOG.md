@@ -1,5 +1,47 @@
 # @effect/platform
 
+## 0.97.2
+
+### Patch Changes
+
+- [#7998](https://github.com/Effect-TS/effect/pull/7998) [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be) Thanks @javascript-unsafe! - Fix multipart limit failures being silently ignored.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+
+## 0.97.1
+
+### Patch Changes
+
+- [#6652](https://github.com/Effect-TS/effect/pull/6652) [`e5dfd78`](https://github.com/Effect-TS/effect/commit/e5dfd78b252d9314bc3e1dddb9271e1148c22988) Thanks @IMax153! - Add an `extendEnv` option to `Command.env` for spawning commands with a clean environment.
+
+- [#6774](https://github.com/Effect-TS/effect/pull/6774) [`4b03605`](https://github.com/Effect-TS/effect/commit/4b03605cf0e0ade67fbf0397c99c14ddf4c6ed23) Thanks @tim-smart! - Reject empty, `.` and `..` keys in file-backed key-value stores.
+
+- [#6311](https://github.com/Effect-TS/effect/pull/6311) [`8a405fd`](https://github.com/Effect-TS/effect/commit/8a405fd8bdd48b741ad928fb66c8f1c009058bdf) Thanks @tim-smart! - update multipasta
+
+- [#6756](https://github.com/Effect-TS/effect/pull/6756) [`8ee801d`](https://github.com/Effect-TS/effect/commit/8ee801d1ef2ad11f961ad156226cf69ad139334b) Thanks @tim-smart! - Fix a security issue in HTML escaping for generated Scalar and Swagger API documentation.
+
+- [#6765](https://github.com/Effect-TS/effect/pull/6765) [`5859b37`](https://github.com/Effect-TS/effect/commit/5859b373b9be04d5037a594196b4743ad80379bd) Thanks @tim-smart! - Reject invalid cookie names and cookie attribute separators in domains and paths.
+
+- Updated dependencies [[`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac), [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245), [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3), [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547), [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25), [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67)]:
+  - effect@3.22.1
+
+## 0.97.0
+
+### Patch Changes
+
+- Updated dependencies [[`fffdee0`](https://github.com/Effect-TS/effect/commit/fffdee0cc55bf72bd233fdf3e6894cdae7e29560)]:
+  - effect@3.22.0
+
+## 0.96.3
+
+### Patch Changes
+
+- [#6244](https://github.com/Effect-TS/effect/pull/6244) [`99d5575`](https://github.com/Effect-TS/effect/commit/99d5575a1401b375b5a73f87fb5bf7e46c372f2f) Thanks @spokodev! - Fix `HttpLayerRouter.addHttpApi` so two registered APIs no longer share error encoders. Previously each call's middleware was added to a shared context map and applied to every route, so a 500 response from one API was sometimes encoded against the other API's error schema. The fix scopes each API's middleware to its own endpoints (matched by method + path) and wraps each route handler directly.
+
+- Updated dependencies [[`307d54a`](https://github.com/Effect-TS/effect/commit/307d54a54beb3407b8bcf50c943523433267e33b), [`d95868a`](https://github.com/Effect-TS/effect/commit/d95868a1c92dc8ea4b203ee56c29ac209e507634), [`95c7d2e`](https://github.com/Effect-TS/effect/commit/95c7d2ed435cf4cc954cf015304952a0fffbebc7), [`d24511f`](https://github.com/Effect-TS/effect/commit/d24511fee929d4cb98ab2a86387de4ea290f11ff)]:
+  - effect@3.21.5
+
 ## 0.96.2
 
 ### Patch Changes

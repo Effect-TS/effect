@@ -46,6 +46,7 @@ import { joinAllDiscard } from "./internal/fiber.js"
 import { hashString } from "./internal/hash.js"
 import { internalInterruptors } from "./internal/interruptors.js"
 import { ResourceMap } from "./internal/resourceMap.js"
+import { effectiveInterval } from "./internal/shardLock.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
@@ -199,6 +200,7 @@ interface EntityManagerState {
 
 const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
+  const shardLockInterval = effectiveInterval(config)
   const shardGroups = shardGroupConfig(config)
   const clock = yield* Effect.clock
 
@@ -220,6 +222,8 @@ const make = Effect.gen(function*() {
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
+  const shardLocksHealthyLatch = Effect.unsafeMakeLatch(true)
+  let shardLocksHealthy = true
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
@@ -256,6 +260,7 @@ const make = Effect.gen(function*() {
   // allow them to move to another runner.
 
   const releasingShards = MutableHashSet.empty<ShardId>()
+  const forceReleasingShards = MutableHashSet.empty<ShardId>()
   if (Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
     yield* Scope.addFinalizerExit(shardingScope, () => {
@@ -264,38 +269,81 @@ const make = Effect.gen(function*() {
     })
 
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
-    const releaseShard = Effect.fnUntraced(
-      function*(shardId: ShardId) {
-        const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+    let forcedShardReleaseRunning = false
+    const runShardRelease = Effect.fnUntraced(function*<E>(
+      shardIds: ReadonlyArray<ShardId>,
+      force: boolean,
+      release: Effect.Effect<void, E>
+    ) {
+      const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+      for (const shardId of shardIds) {
         for (const state of entityManagers.values()) {
           if (state.status === "closed") continue
-          fibers.push(yield* Effect.fork(state.manager.interruptShard(shardId)))
+          fibers.push(yield* Effect.fork(state.manager.interruptShard(shardId, { force })))
         }
-        yield* joinAllDiscard(fibers)
-        yield* runnerStorage.release(selfAddress, shardId)
+      }
+      yield* joinAllDiscard(fibers)
+      yield* shardLocksHealthyLatch.await
+      yield* release
+      for (const shardId of shardIds) {
         MutableHashSet.remove(releasingShards, shardId)
+        MutableHashSet.remove(forceReleasingShards, shardId)
         yield* storage.unregisterShardReplyHandlers(shardId)
-      },
-      Effect.sandbox,
-      (effect, shardId) =>
+      }
+    })
+    const retryShardRelease =
+      (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
+      <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         effect.pipe(
+          Effect.sandbox,
           Effect.tapError((cause) =>
-            Effect.logDebug(`Could not release shard, retrying`, cause).pipe(
+            Effect.logDebug(`Could not release shards, retrying`, cause).pipe(
               Effect.annotateLogs({
                 package: "@effect/cluster",
                 module: "Sharding",
-                fiber: "releaseShard",
                 runner: selfAddress,
-                shardId
-              })
+                ...annotations
+              }),
+              Effect.andThen(Effect.sleep(50))
             )
           ),
-          Effect.eventually,
+          Effect.eventually
+        )
+    const releaseShard = Effect.fnUntraced(
+      function*(shardId: ShardId) {
+        yield* runShardRelease(
+          [shardId],
+          MutableHashSet.has(forceReleasingShards, shardId),
+          runnerStorage.release(selfAddress, shardId)
+        )
+      },
+      (effect, shardId) =>
+        effect.pipe(
+          retryShardRelease({ fiber: "releaseShard", shardId }),
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )
+    const forcedShardReleasePending = () => forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) > 0
+    const releaseForcedShards = Effect.suspend(() => {
+      if (forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) === 0) {
+        return Effect.void
+      }
+      forcedShardReleaseRunning = true
+      const shardIds = [...forceReleasingShards]
+      return runShardRelease(shardIds, true, runnerStorage.releaseAll(selfAddress)).pipe(
+        retryShardRelease({ fiber: "releaseForcedShards" }),
+        Effect.ensuring(Effect.sync(() => {
+          forcedShardReleaseRunning = false
+          activeShardsLatch.unsafeOpen()
+        })),
+        Effect.forkIn(shardingScope),
+        Effect.asVoid
+      )
+    })
     const releaseShards = Effect.gen(function*() {
+      yield* releaseForcedShards
       for (const shardId of releasingShards) {
+        if (MutableHashSet.has(forceReleasingShards, shardId)) continue
         if (FiberMap.unsafeHas(releaseShardsMap, shardId)) continue
         yield* releaseShard(shardId)
       }
@@ -315,9 +363,13 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
         }
 
-        if (MutableHashSet.size(releasingShards) > 0) {
+        if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
           yield* releaseShards
+        }
+
+        if (!shardLocksHealthy || forcedShardReleasePending()) {
+          continue
         }
 
         // if a shard has been assigned to this runner, we acquire it
@@ -332,7 +384,7 @@ const make = Effect.gen(function*() {
         }
 
         const oacquired = yield* runnerStorage.acquire(selfAddress, unacquiredShards).pipe(
-          Effect.timeoutOption(config.shardLockRefreshInterval)
+          Effect.timeoutOption(shardLockInterval)
         )
         if (Option.isNone(oacquired)) {
           activeShardsLatch.unsafeOpen()
@@ -342,10 +394,17 @@ const make = Effect.gen(function*() {
         const acquired = oacquired.value
         yield* storage.resetShards(acquired).pipe(
           Effect.ignore,
-          Effect.timeoutOption(config.shardLockRefreshInterval)
+          Effect.timeoutOption(shardLockInterval)
         )
+        const forcedReleasePending = forcedShardReleasePending()
         for (const shardId of acquired) {
-          if (MutableHashSet.has(releasingShards, shardId) || !MutableHashSet.has(selfShards, shardId)) {
+          if (
+            !shardLocksHealthy ||
+            forcedReleasePending ||
+            MutableHashSet.has(releasingShards, shardId) ||
+            !MutableHashSet.has(selfShards, shardId)
+          ) {
+            MutableHashSet.add(releasingShards, shardId)
             continue
           }
           MutableHashSet.add(acquiredShards, shardId)
@@ -373,8 +432,52 @@ const make = Effect.gen(function*() {
       Effect.interruptible
     )
 
-    // refresh the shard locks every `shardLockRefreshInterval`
-    yield* Effect.suspend(() =>
+    const markShardLocksUnhealthy = (cause: Cause.Cause<unknown>) =>
+      Effect.suspend(() => {
+        if (!shardLocksHealthy) return Effect.void
+        shardLocksHealthy = false
+        shardLocksHealthyLatch.unsafeClose()
+
+        const affectedShards = MutableHashSet.fromIterable([...acquiredShards, ...releasingShards])
+        MutableHashSet.clear(selfShards)
+        MutableHashSet.clear(acquiredShards)
+        for (const shardId of affectedShards) {
+          MutableHashSet.add(releasingShards, shardId)
+          MutableHashSet.add(forceReleasingShards, shardId)
+        }
+        ClusterMetrics.shards.unsafeUpdate(BigInt(0), [])
+        activeShardsLatch.unsafeOpen()
+
+        return Effect.gen(function*() {
+          yield* Effect.logError("Shard lock storage is unhealthy", cause)
+          yield* Effect.forkIn(syncSingletons, shardingScope)
+
+          for (const shardId of affectedShards) {
+            for (const state of entityManagers.values()) {
+              if (state.status === "closed") continue
+              yield* Effect.forkIn(state.manager.interruptShard(shardId, { force: true }), shardingScope)
+            }
+          }
+          activeShardsLatch.unsafeOpen()
+        })
+      })
+
+    const markShardLocksHealthy = Effect.suspend(() => {
+      if (shardLocksHealthy) return Effect.void
+      shardLocksHealthy = true
+      shardLocksHealthyLatch.unsafeOpen()
+
+      MutableHashSet.clear(selfShards)
+      MutableHashMap.forEach(shardAssignments, (runner, shardId) => {
+        if (isLocalRunner(runner)) {
+          MutableHashSet.add(selfShards, shardId)
+        }
+      })
+      activeShardsLatch.unsafeOpen()
+      return Effect.logInfo("Shard lock storage has recovered")
+    })
+
+    const refreshShardLocks = Effect.suspend(() =>
       runnerStorage.refresh(selfAddress, [
         ...acquiredShards,
         ...releasingShards
@@ -402,12 +505,18 @@ const make = Effect.gen(function*() {
         times: 5,
         schedule: Schedule.spaced(50)
       }),
-      Effect.catchAllCause((cause) =>
-        Effect.logError("Could not refresh shard locks", cause).pipe(
-          Effect.andThen(clearSelfShards)
-        )
-      ),
-      Effect.repeat(Schedule.fixed(config.shardLockRefreshInterval)),
+      Effect.timeout(shardLockInterval),
+      Effect.catchAllCause(markShardLocksUnhealthy)
+    )
+
+    const probeShardLocks = runnerStorage.refresh(selfAddress, []).pipe(
+      Effect.timeout(shardLockInterval),
+      Effect.andThen(markShardLocksHealthy),
+      Effect.catchAllCause(() => Effect.void)
+    )
+
+    yield* Effect.suspend(() => shardLocksHealthy ? refreshShardLocks : probeShardLocks).pipe(
+      Effect.repeat(Schedule.fixed(shardLockInterval)),
       Effect.forever,
       Effect.forkIn(shardingScope),
       Effect.interruptible
@@ -421,11 +530,6 @@ const make = Effect.gen(function*() {
       Effect.interruptible
     )
   }
-
-  const clearSelfShards = Effect.sync(() => {
-    MutableHashSet.clear(selfShards)
-    activeShardsLatch.unsafeOpen()
-  })
 
   // --- Storage inbox ---
   //
@@ -959,7 +1063,7 @@ const make = Effect.gen(function*() {
             if (newAssignments) {
               const runner = newAssignments[i]
               MutableHashMap.set(shardAssignments, shard, runner)
-              if (isLocalRunner(runner)) {
+              if (shardLocksHealthy && isLocalRunner(runner)) {
                 MutableHashSet.add(selfShards, shard)
               }
             } else {
@@ -1017,144 +1121,147 @@ const make = Effect.gen(function*() {
       MailboxFull | AlreadyProcessingMessage
     >,
     never
-  > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<string, any>) {
-    const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
-      spanPrefix: `${entity.type}.client`,
-      disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
-      supportsAck: true,
-      generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
-      flatten: true,
-      onFromClient(options): Effect.Effect<
-        void,
-        MailboxFull | AlreadyProcessingMessage | PersistenceError
-      > {
-        const address = Context.unsafeGet(options.context, ClientAddressTag)
-        switch (options.message._tag) {
-          case "Request": {
-            const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
-            const id = Snowflake.Snowflake(options.message.id)
-            const rpc = entity.protocol.requests.get(options.message.tag)!
-            let respond: (reply: Reply.Reply<any>) => Effect.Effect<void>
-            if (!options.discard) {
-              const entry: ClientRequestEntry = {
-                rpc: rpc as any,
-                services: fiber.currentContext
+  > = yield* ResourceMap.make(
+    Effect.fnUntraced(function*(entity: Entity<string, any>) {
+      const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
+        spanPrefix: `${entity.type}.client`,
+        disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
+        supportsAck: true,
+        generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
+        flatten: true,
+        onFromClient(options): Effect.Effect<
+          void,
+          MailboxFull | AlreadyProcessingMessage | PersistenceError
+        > {
+          const address = Context.unsafeGet(options.context, ClientAddressTag)
+          switch (options.message._tag) {
+            case "Request": {
+              const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+              const id = Snowflake.Snowflake(options.message.id)
+              const rpc = entity.protocol.requests.get(options.message.tag)!
+              let respond: (reply: Reply.Reply<any>) => Effect.Effect<void>
+              if (!options.discard) {
+                const entry: ClientRequestEntry = {
+                  rpc: rpc as any,
+                  services: fiber.currentContext
+                }
+                clientRequests.set(id, entry)
+                respond = makeClientRespond(entry, client.write)
+              } else {
+                respond = clientRespondDiscard
               }
-              clientRequests.set(id, entry)
-              respond = makeClientRespond(entry, client.write)
-            } else {
-              respond = clientRespondDiscard
-            }
-            return sendOutgoing(
-              new Message.OutgoingRequest({
-                envelope: Envelope.makeRequest({
-                  requestId: id,
-                  address,
-                  tag: options.message.tag,
-                  payload: options.message.payload,
-                  headers: options.message.headers,
-                  traceId: options.message.traceId,
-                  spanId: options.message.spanId,
-                  sampled: options.message.sampled
+              return sendOutgoing(
+                new Message.OutgoingRequest({
+                  envelope: Envelope.makeRequest({
+                    requestId: id,
+                    address,
+                    tag: options.message.tag,
+                    payload: options.message.payload,
+                    headers: options.message.headers,
+                    traceId: options.message.traceId,
+                    spanId: options.message.spanId,
+                    sampled: options.message.sampled
+                  }),
+                  lastReceivedReply: Option.none(),
+                  rpc,
+                  context: fiber.currentContext as Context.Context<any>,
+                  respond
                 }),
-                lastReceivedReply: Option.none(),
-                rpc,
-                context: fiber.currentContext as Context.Context<any>,
-                respond
-              }),
-              options.discard
-            )
-          }
-          case "Ack": {
-            const requestId = Snowflake.Snowflake(options.message.requestId)
-            const entry = clientRequests.get(requestId)
-            if (!entry) return Effect.void
-            return sendOutgoing(
-              new Message.OutgoingEnvelope({
-                envelope: new Envelope.AckChunk({
-                  id: snowflakeGen.unsafeNext(),
-                  address,
-                  requestId,
-                  replyId: entry.lastChunkId!
-                }),
-                rpc: entry.rpc
-              }),
-              false
-            )
-          }
-          case "Interrupt": {
-            const requestId = Snowflake.Snowflake(options.message.requestId)
-            const entry = clientRequests.get(requestId)!
-            if (!entry) return Effect.void
-            clientRequests.delete(requestId)
-            if (Uninterruptible.forClient(entry.rpc.annotations)) {
-              return Effect.void
+                options.discard
+              )
             }
-            // for durable messages, we ignore interrupts on shutdown or as a
-            // result of a shard being resassigned
-            const isTransientInterrupt = MutableRef.get(isShutdown) ||
-              options.message.interruptors.some((id) => internalInterruptors.has(id))
-            if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
-              return Effect.void
-            }
-            return Effect.ignore(sendOutgoing(
-              new Message.OutgoingEnvelope({
-                envelope: new Envelope.Interrupt({
-                  id: snowflakeGen.unsafeNext(),
-                  address,
-                  requestId
+            case "Ack": {
+              const requestId = Snowflake.Snowflake(options.message.requestId)
+              const entry = clientRequests.get(requestId)
+              if (!entry) return Effect.void
+              return sendOutgoing(
+                new Message.OutgoingEnvelope({
+                  envelope: new Envelope.AckChunk({
+                    id: snowflakeGen.unsafeNext(),
+                    address,
+                    requestId,
+                    replyId: entry.lastChunkId!
+                  }),
+                  rpc: entry.rpc
                 }),
-                rpc: entry.rpc
-              }),
-              false,
-              3
-            ))
+                false
+              )
+            }
+            case "Interrupt": {
+              const requestId = Snowflake.Snowflake(options.message.requestId)
+              const entry = clientRequests.get(requestId)!
+              if (!entry) return Effect.void
+              clientRequests.delete(requestId)
+              if (Uninterruptible.forClient(entry.rpc.annotations)) {
+                return Effect.void
+              }
+              // for durable messages, we ignore interrupts on shutdown or as a
+              // result of a shard being resassigned
+              const isTransientInterrupt = MutableRef.get(isShutdown) ||
+                options.message.interruptors.some((id) => internalInterruptors.has(id))
+              if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
+                return Effect.void
+              }
+              return Effect.ignore(sendOutgoing(
+                new Message.OutgoingEnvelope({
+                  envelope: new Envelope.Interrupt({
+                    id: snowflakeGen.unsafeNext(),
+                    address,
+                    requestId
+                  }),
+                  rpc: entry.rpc
+                }),
+                false,
+                3
+              ))
+            }
           }
+          return Effect.void
         }
-        return Effect.void
-      }
-    })
-
-    yield* Scope.addFinalizer(
-      yield* Effect.scope,
-      Effect.fiberIdWith((fiberId) => {
-        internalInterruptors.add(fiberId)
-        return Effect.void
       })
-    )
 
-    return (entityId: string) => {
-      const id = makeEntityId(entityId)
-      const address = ClientAddressTag.context(makeEntityAddress({
-        shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
-        entityId: id,
-        entityType: entity.type
-      }))
-      const clientFn = function(tag: string, payload: any, options?: {
-        readonly context?: Context.Context<never>
-      }) {
-        const context = options?.context ? Context.merge(options.context, address) : address
-        return client.client(tag, payload, {
-          ...options,
-          context
+      yield* Scope.addFinalizer(
+        yield* Effect.scope,
+        Effect.fiberIdWith((fiberId) => {
+          internalInterruptors.add(fiberId)
+          return Effect.void
+        })
+      )
+
+      return (entityId: string) => {
+        const id = makeEntityId(entityId)
+        const address = ClientAddressTag.context(makeEntityAddress({
+          shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
+          entityId: id,
+          entityType: entity.type
+        }))
+        const clientFn = function(tag: string, payload: any, options?: {
+          readonly context?: Context.Context<never>
+        }) {
+          const context = options?.context ? Context.merge(options.context, address) : address
+          return client.client(tag, payload, {
+            ...options,
+            context
+          })
+        }
+        const proxyClient: any = {}
+        return new Proxy(proxyClient, {
+          has(_, p) {
+            return entity.protocol.requests.has(p as string)
+          },
+          get(target, p) {
+            if (p in target) {
+              return target[p]
+            } else if (!entity.protocol.requests.has(p as string)) {
+              return undefined
+            }
+            return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+          }
         })
       }
-      const proxyClient: any = {}
-      return new Proxy(proxyClient, {
-        has(_, p) {
-          return entity.protocol.requests.has(p as string)
-        },
-        get(target, p) {
-          if (p in target) {
-            return target[p]
-          } else if (!entity.protocol.requests.has(p as string)) {
-            return undefined
-          }
-          return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
-        }
-      })
-    }
-  }))
+    }),
+    { referential: true }
+  )
 
   const makeClient = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Effect.Effect<
     (

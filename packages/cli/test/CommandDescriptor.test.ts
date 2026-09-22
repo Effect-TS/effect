@@ -431,10 +431,13 @@ describe("Command", () => {
         Descriptor.make(
           "cache",
           Options.boolean("verbose").pipe(
-            Options.withDescription("Output in verbose mode")
+            Options.withDescription("Output the cache's status")
+          ),
+          Args.file({ name: "file" }).pipe(
+            Args.withDescription("The user's file")
           )
         ).pipe(
-          Descriptor.withDescription("The cache command does cache things"),
+          Descriptor.withDescription("The project's cache command"),
           Descriptor.withSubcommands([
             ["clean", Descriptor.make("clean")],
             ["ls", Descriptor.make("ls")]

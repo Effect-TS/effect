@@ -1,5 +1,45 @@
 # @effect/cli
 
+## 0.77.2
+
+### Patch Changes
+
+- [#8142](https://github.com/Effect-TS/effect/pull/8142) [`1af4232`](https://github.com/Effect-TS/effect/commit/1af4232fea7bc613e1dc68db9bec7b1f596d9e68) Thanks @thewilkybarkid! - Update TOML dependency to remove a vulnerability notice
+
+## 0.77.1
+
+### Patch Changes
+
+- [#7173](https://github.com/Effect-TS/effect/pull/7173) [`2059606`](https://github.com/Effect-TS/effect/commit/20596061bd24dd7f18c5b5c839111310d730d6e9) Thanks @dv-waynehaffenden! - Escape quotes in generated shell completion descriptions.
+
+  Single-quoted zsh and fish completion descriptions are escaped to preserve apostrophes in subcommands, options, and arguments.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+  - @effect/platform@0.97.2
+
+## 0.77.0
+
+### Patch Changes
+
+- [#6755](https://github.com/Effect-TS/effect/pull/6755) [`ec2d75d`](https://github.com/Effect-TS/effect/commit/ec2d75d3a36918646d006f0a2a9478f7ba5bd810) Thanks @tim-smart! - Reject path separators and `..` segments in `ConfigFile` file names.
+
+- Updated dependencies [[`e5dfd78`](https://github.com/Effect-TS/effect/commit/e5dfd78b252d9314bc3e1dddb9271e1148c22988), [`fcbe828`](https://github.com/Effect-TS/effect/commit/fcbe828dda11e0e32866364e691a50a31bab1d43), [`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac), [`4b03605`](https://github.com/Effect-TS/effect/commit/4b03605cf0e0ade67fbf0397c99c14ddf4c6ed23), [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245), [`8a405fd`](https://github.com/Effect-TS/effect/commit/8a405fd8bdd48b741ad928fb66c8f1c009058bdf), [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3), [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547), [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25), [`8ee801d`](https://github.com/Effect-TS/effect/commit/8ee801d1ef2ad11f961ad156226cf69ad139334b), [`5859b37`](https://github.com/Effect-TS/effect/commit/5859b373b9be04d5037a594196b4743ad80379bd), [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67)]:
+  - @effect/platform@0.97.1
+  - @effect/printer@0.51.0
+  - @effect/printer-ansi@0.51.0
+  - effect@3.22.1
+
+## 0.76.0
+
+### Patch Changes
+
+- Updated dependencies [[`fffdee0`](https://github.com/Effect-TS/effect/commit/fffdee0cc55bf72bd233fdf3e6894cdae7e29560)]:
+  - effect@3.22.0
+  - @effect/platform@0.97.0
+  - @effect/printer@0.50.0
+  - @effect/printer-ansi@0.50.0
+
 ## 0.75.2
 
 ### Patch Changes

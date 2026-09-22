@@ -264,6 +264,11 @@ export const eraseScreen: AnsiDoc = InternalAnsiDoc.eraseScreen
 // -----------------------------------------------------------------------------
 
 /**
+ * Text leaves are rendered verbatim, including control characters. Apply
+ * `sanitize` to untrusted subtrees before writing the result to a terminal.
+ * Use the raw document when embedded terminal sequences are trusted and
+ * intentional.
+ *
  * @since 1.0.0
  * @category destructors
  */
@@ -753,6 +758,11 @@ export {
    * @category primitives
    */
   rparen,
+  /**
+   * @since 1.0.0
+   * @category utilities
+   */
+  sanitize,
   /**
    * @since 1.0.0
    * @category primitives

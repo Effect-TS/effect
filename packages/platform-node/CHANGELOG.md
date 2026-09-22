@@ -1,5 +1,37 @@
 # @effect/platform-node
 
+## 0.108.2
+
+### Patch Changes
+
+- [#7457](https://github.com/Effect-TS/effect/pull/7457) [`365156a`](https://github.com/Effect-TS/effect/commit/365156a741806e9b5ebb8a0369c4934e368c1b17) Thanks @musawirali! - Prevent NodeHttpServer from writing the route's HTTP response onto a connection that was upgraded to a WebSocket connection because stricter clients will interpret those bytes as WebSocket frames, logging "Invalid frame header" and failing the connection with an untyped 1006 error instead of the actual close code that the server sent.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+  - @effect/platform@0.97.2
+
+## 0.108.1
+
+### Patch Changes
+
+- [#6803](https://github.com/Effect-TS/effect/pull/6803) [`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a) Thanks @tim-smart! - Allow configuring cluster RPC serialization buffer limits.
+
+- Updated dependencies [[`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c)]:
+  - @effect/rpc@0.76.2
+  - @effect/cluster@0.60.2
+
+## 0.108.0
+
+### Patch Changes
+
+- Updated dependencies [[`fffdee0`](https://github.com/Effect-TS/effect/commit/fffdee0cc55bf72bd233fdf3e6894cdae7e29560)]:
+  - effect@3.22.0
+  - @effect/cluster@0.60.0
+  - @effect/platform@0.97.0
+  - @effect/platform-node-shared@0.61.0
+  - @effect/rpc@0.76.0
+  - @effect/sql@0.52.0
+
 ## 0.107.0
 
 ### Patch Changes

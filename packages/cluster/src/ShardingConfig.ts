@@ -62,7 +62,11 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly shardsPerGroup: number
   /**
-   * Shard lock refresh interval.
+   * The maximum interval between shard lock refreshes.
+   *
+   * The runner may shorten this interval to one third of
+   * `shardLockExpiration` to preserve enough time to stop entities safely if
+   * lock storage becomes unavailable.
    */
   readonly shardLockRefreshInterval: DurationInput
   /**

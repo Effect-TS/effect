@@ -8,7 +8,7 @@ import * as HttpRouter from "@effect/platform/HttpRouter"
 import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import type * as Socket from "@effect/platform/Socket"
+import * as Socket from "@effect/platform/Socket"
 import * as SocketServer from "@effect/platform/SocketServer"
 import * as Transferable from "@effect/platform/Transferable"
 import type { WorkerError } from "@effect/platform/WorkerError"
@@ -653,7 +653,7 @@ export const make: <Rpcs extends Rpc.Any>(
 
     switch (request._tag) {
       case "Request": {
-        const tag = Predicate.hasProperty(request, "tag") ? request.tag as string : ""
+        const tag = Object.hasOwn(request, "tag") ? request.tag as string : ""
         const rpc = group.requests.get(tag)
         if (!rpc) {
           return sendDefect(client, `Unknown request tag: ${tag}`)
@@ -1485,6 +1485,9 @@ const makeSocketProtocol = Effect.gen(function*() {
           step: constVoid
         })
       } catch (cause) {
+        if (Predicate.isTagged(cause, "RpcSerializationError")) {
+          return writeRaw(new Socket.CloseEvent(1009, (cause as RpcSerialization.RpcSerializationError).message))
+        }
         return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
       }
     }).pipe(

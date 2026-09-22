@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-node",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -28,6 +28,9 @@
     "provenance": true,
     "directory": "dist",
     "linkDirectory": false
+  },
+  "engines": {
+    "node": ">=22"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -60,6 +63,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2"
+    "better-sqlite3": "^13.0.3"
   }
 }

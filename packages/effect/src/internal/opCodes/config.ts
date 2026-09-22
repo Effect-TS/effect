@@ -47,6 +47,12 @@ export type OP_PRIMITIVE = typeof OP_PRIMITIVE
 export const OP_PRIMITIVE = "Primitive" as const
 
 /** @internal */
+export type OP_REDACTED = typeof OP_REDACTED
+
+/** @internal */
+export const OP_REDACTED = "Redacted" as const
+
+/** @internal */
 export type OP_SEQUENCE = typeof OP_SEQUENCE
 
 /** @internal */

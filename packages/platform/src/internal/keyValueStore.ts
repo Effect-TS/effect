@@ -197,7 +197,20 @@ export const layerFileSystem = (directory: string) =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
-      const keyPath = (key: string) => path.join(directory, encodeURIComponent(key))
+      const withKeyPath = <A>(
+        method: string,
+        key: string,
+        f: (path: string) => Effect.Effect<A, PlatformError.PlatformError>
+      ): Effect.Effect<A, PlatformError.PlatformError> =>
+        key.length === 0 || key === "." || key === ".."
+          ? Effect.fail(
+            new PlatformError.BadArgument({
+              module: "KeyValueStore",
+              method,
+              description: "Key must not be empty, . or .."
+            })
+          )
+          : f(path.join(directory, encodeURIComponent(key)))
 
       if (!(yield* fs.exists(directory))) {
         yield* fs.makeDirectory(directory, { recursive: true })
@@ -205,25 +218,30 @@ export const layerFileSystem = (directory: string) =>
 
       return make({
         get: (key: string) =>
-          pipe(
-            Effect.map(fs.readFileString(keyPath(key)), Option.some),
-            Effect.catchTag(
-              "SystemError",
-              (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
-            )
-          ),
+          withKeyPath("get", key, (path) =>
+            pipe(
+              Effect.map(fs.readFileString(path), Option.some),
+              Effect.catchTag(
+                "SystemError",
+                (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
+              )
+            )),
         getUint8Array: (key: string) =>
-          pipe(
-            Effect.map(fs.readFile(keyPath(key)), Option.some),
-            Effect.catchTag(
-              "SystemError",
-              (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
-            )
-          ),
+          withKeyPath("getUint8Array", key, (path) =>
+            pipe(
+              Effect.map(fs.readFile(path), Option.some),
+              Effect.catchTag(
+                "SystemError",
+                (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
+              )
+            )),
         set: (key: string, value: string | Uint8Array) =>
-          typeof value === "string" ? fs.writeFileString(keyPath(key), value) : fs.writeFile(keyPath(key), value),
-        remove: (key: string) => fs.remove(keyPath(key)),
-        has: (key: string) => fs.exists(keyPath(key)),
+          withKeyPath("set", key, (path) =>
+            typeof value === "string" ? fs.writeFileString(path, value) : fs.writeFile(path, value)),
+        remove: (key: string) =>
+          withKeyPath("remove", key, fs.remove),
+        has: (key: string) =>
+          withKeyPath("has", key, fs.exists),
         clear: Effect.zipRight(
           fs.remove(directory, { recursive: true }),
           fs.makeDirectory(directory, { recursive: true })

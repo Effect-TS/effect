@@ -184,6 +184,18 @@ export class PrimaryKeyTest extends Schema.TaggedRequest<PrimaryKeyTest>()("Prim
   }
 }
 
+export class LongKeyTest extends Schema.TaggedRequest<LongKeyTest>()("LongKeyTest", {
+  success: Schema.Void,
+  failure: Schema.Never,
+  payload: { id: Schema.String }
+}) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
+}
+
+export const LongKeyRpc = Rpc.fromTaggedRequest(LongKeyTest)
+
 export class StreamTest extends Schema.TaggedRequest<StreamTest>()("StreamTest", {
   success: RpcSchema.Stream({
     success: Schema.Void,

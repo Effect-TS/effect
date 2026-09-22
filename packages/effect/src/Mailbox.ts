@@ -9,6 +9,7 @@ import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/mailbox.js"
+import * as internalStream from "./internal/stream.js"
 import type { Option } from "./Option.js"
 import { hasProperty } from "./Predicate.js"
 import type { Scope } from "./Scope.js"
@@ -242,7 +243,7 @@ export const toChannel: <A, E>(self: ReadonlyMailbox<A, E>) => Channel<Chunk<A>,
  * @experimental
  * @category conversions
  */
-export const toStream: <A, E>(self: ReadonlyMailbox<A, E>) => Stream<A, E> = internal.toStream
+export const toStream: <A, E>(self: ReadonlyMailbox<A, E>) => Stream<A, E> = internalStream.mailboxToStream
 
 /**
  * Create a `ReadonlyMailbox` from a `Stream`.
@@ -265,4 +266,4 @@ export const fromStream: {
       readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
     }
   ): Effect<ReadonlyMailbox<A, E>, never, R | Scope>
-} = internal.fromStream
+} = internalStream.mailboxFromStream

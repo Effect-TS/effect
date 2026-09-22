@@ -618,6 +618,39 @@ describe("Config", () => {
       const config = Config.redacted(Config.integer("NUM"))
       assertConfig(config, [["NUM", "2"]], Redacted.make(2))
     })
+
+    it.effect("redacts port parsing errors", () =>
+      Effect.gen(function*() {
+        const secret = "secret-port-value"
+        const configProvider = ConfigProvider.fromMap(new Map([["PORT", secret]]))
+        const error = yield* configProvider.load(Config.redacted(Config.port("PORT"))).pipe(Effect.flip)
+
+        deepStrictEqual(error, ConfigError.InvalidData(["PORT"], "<redacted>"))
+        assertTrue(!String(error).includes(secret))
+      }))
+
+    it.effect("redacts integer parsing errors", () =>
+      Effect.gen(function*() {
+        const secret = "secret-integer-value"
+        const configProvider = ConfigProvider.fromMap(new Map([["INTEGER", secret]]))
+        const error = yield* configProvider.load(Config.redacted(Config.integer("INTEGER"))).pipe(Effect.flip)
+
+        deepStrictEqual(error, ConfigError.InvalidData(["INTEGER"], "<redacted>"))
+        assertTrue(!String(error).includes(secret))
+      }))
+
+    it.effect("does not redact errors outside the wrapper", () =>
+      Effect.gen(function*() {
+        const value = "visible-port-value"
+        const configProvider = ConfigProvider.fromMap(new Map([["PORT", value]]))
+        const error = yield* configProvider.load(Config.port("PORT")).pipe(Effect.flip)
+
+        deepStrictEqual(
+          error,
+          ConfigError.InvalidData(["PORT"], `Expected a network port value but received "${value}"`)
+        )
+        assertTrue(String(error).includes(value))
+      }))
   })
 
   describe("Secret", () => {

@@ -39,6 +39,7 @@ export type ConfigPrimitive =
   | MapOrFail
   | Nested
   | Primitive
+  | RedactedConfig
   | Sequence
   | Table
   | Zipped
@@ -122,6 +123,14 @@ export interface Primitive extends
   Op<OpCodes.OP_PRIMITIVE, {
     readonly description: string
     parse(text: string): Either.Either<unknown, ConfigError.ConfigError>
+  }>
+{}
+
+/** @internal */
+export interface RedactedConfig extends
+  Op<OpCodes.OP_REDACTED, {
+    readonly original: Config.Config<unknown>
+    redact(value: unknown): Redacted.Redacted<unknown>
   }>
 {}
 
@@ -475,7 +484,11 @@ export const redacted = <A>(
   nameOrConfig?: string | Config.Config<A>
 ): Config.Config<Redacted.Redacted<A | string>> => {
   const config: Config.Config<A | string> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
-  return map(config, redacted_.make)
+  const redacted = Object.create(proto)
+  redacted._tag = OpCodes.OP_REDACTED
+  redacted.original = config
+  redacted.redact = redacted_.make
+  return redacted
 }
 
 /** @internal */

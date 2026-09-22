@@ -1,5 +1,47 @@
 # effect
 
+## 3.22.2
+
+### Patch Changes
+
+- [#6233](https://github.com/Effect-TS/effect/pull/6233) [`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f) Thanks @mvanhorn! - Fix TMap.remove and removeAll erroneously clearing entire bucket on hash collision.
+
+- [#7170](https://github.com/Effect-TS/effect/pull/7170) [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae) Thanks @thewilkybarkid! - Fix use of Schema.NonEmptyArrayEnsure with strings
+
+## 3.22.1
+
+### Patch Changes
+
+- [#6443](https://github.com/Effect-TS/effect/pull/6443) [`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac) Thanks @coyaSONG! - Clarify that `Context.GenericTag` requires a key.
+
+- [#6673](https://github.com/Effect-TS/effect/pull/6673) [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245) Thanks @tim-smart! - Fix zero-capacity `Mailbox` rendezvous behavior for `take` and `takeN`.
+
+- [#6761](https://github.com/Effect-TS/effect/pull/6761) [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3) Thanks @tim-smart! - Use a linear matcher when decoding template literals containing only string spans.
+
+- [#6507](https://github.com/Effect-TS/effect/pull/6507) [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547) Thanks @tim-smart! - Disable unhandled error logging for fibers spawned by `Effect.timeout`.
+
+- [#6762](https://github.com/Effect-TS/effect/pull/6762) [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25) Thanks @tim-smart! - Redact errors from wrapped config parsers and avoid JSON key path collisions.
+
+- [#6669](https://github.com/Effect-TS/effect/pull/6669) [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67) Thanks @tim-smart! - Fix `Stream.asyncPush` termination with bounded dropping and sliding buffers.
+
+## 3.22.0
+
+### Minor Changes
+
+- [#6286](https://github.com/Effect-TS/effect/pull/6286) [`fffdee0`](https://github.com/Effect-TS/effect/commit/fffdee0cc55bf72bd233fdf3e6894cdae7e29560) Thanks @effect-bot! - Add `Graph.successors` and `Graph.predecessors`, deprecate `Graph.neighborsDirected`, and fix graph algorithm edge cases around reversal, undirected edge queries, shortest-path weight validation, topological sort initials, and strongly connected components.
+
+## 3.21.5
+
+### Patch Changes
+
+- [#6302](https://github.com/Effect-TS/effect/pull/6302) [`307d54a`](https://github.com/Effect-TS/effect/commit/307d54a54beb3407b8bcf50c943523433267e33b) Thanks @fubhy! - Allow cron fields like `5/15` to expand from the starting value through the field maximum.
+
+- [#6303](https://github.com/Effect-TS/effect/pull/6303) [`d95868a`](https://github.com/Effect-TS/effect/commit/d95868a1c92dc8ea4b203ee56c29ac209e507634) Thanks @fubhy! - Fix `Schedule.cron` when the test clock is adjusted to infinity.
+
+- [#6285](https://github.com/Effect-TS/effect/pull/6285) [`95c7d2e`](https://github.com/Effect-TS/effect/commit/95c7d2ed435cf4cc954cf015304952a0fffbebc7) Thanks @chatman-media! - Fix `Cron.next` skipping earlier matching days when the upcoming day-of-month does not exist in the current month. For an expression like `0 0 1,16,31 * *`, advancing from a date past the 16th selected day 31; in a month without 31 days this overflowed into the following month and landed on a later matching day (e.g. the 16th), silently skipping the 1st. `Cron.next` now wraps to the first matching day of the next month in that case, matching the behaviour of `Cron.prev` and other cron implementations.
+
+- [#6305](https://github.com/Effect-TS/effect/pull/6305) [`d24511f`](https://github.com/Effect-TS/effect/commit/d24511fee929d4cb98ab2a86387de4ea290f11ff) Thanks @fubhy! - Fix cron parsing and scheduling edge cases for whitespace, Sunday `7`, strict numeric tokens, explicit full day ranges, and month-constrained day-of-month / weekday matching.
+
 ## 3.21.4
 
 ### Patch Changes

@@ -1,7 +1,7 @@
 import { Entity, ShardingConfig } from "@effect/cluster"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { TestEntity, TestEntityLayer, User } from "./TestEntity.js"
+import { CallerId, ContextBleedEntity, ContextBleedLayer, TestEntity, TestEntityLayer, User } from "./TestEntity.js"
 
 describe.concurrent("Entity", () => {
   describe("makeTestClient", () => {
@@ -11,6 +11,15 @@ describe.concurrent("Entity", () => {
         const client = yield* makeClient("123")
         const user = yield* client.GetUser({ id: 1 })
         assert.deepEqual(user, new User({ id: 1, name: "User 1" }))
+      }).pipe(Effect.provide(TestShardingConfig)))
+
+    it.scoped("does not freeze the acquiring fiber's context into the entity server", () =>
+      Effect.gen(function*() {
+        const makeClient = yield* Entity.makeTestClient(ContextBleedEntity, ContextBleedLayer)
+        const client = yield* makeClient("1").pipe(Effect.provideService(CallerId, "A"))
+
+        const observed = yield* client.ReadCaller()
+        assert.strictEqual(observed, "none")
       }).pipe(Effect.provide(TestShardingConfig)))
   })
 })

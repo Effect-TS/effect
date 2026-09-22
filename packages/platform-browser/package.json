@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-browser",
   "type": "module",
-  "version": "0.76.0",
+  "version": "0.77.1",
   "license": "MIT",
   "description": "Platform specific implementations for the browser",
   "homepage": "https://effect.website",
@@ -59,6 +59,6 @@
     "mock-xmlhttprequest": "^8.4.1"
   },
   "dependencies": {
-    "multipasta": "^0.2.7"
+    "multipasta": "^0.2.8"
   }
 }

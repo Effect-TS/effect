@@ -66,7 +66,7 @@ For detailed information and usage examples, visit the [Effect website](https://
 
 ## API Reference
 
-For a complete API reference of the core package `effect`, see the [Effect API documentation](https://effect-ts.github.io/effect/).
+For a complete API reference of the core package `effect`, see the [Effect API documentation]({{ "/" | relative_url }}).
 
 ## Introduction to Effect
 

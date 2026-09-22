@@ -127,7 +127,7 @@ export const make = <
 
 const interruptRetryPolicy = Schedule.exponential(100, 1.5).pipe(
   Schedule.union(Schedule.spaced("10 seconds")),
-  Schedule.union(Schedule.recurs(10)),
+  Schedule.intersect(Schedule.recurs(10)),
   Schedule.whileInput((cause: Cause.Cause<unknown>) => Cause.isInterrupted(cause))
 )
 

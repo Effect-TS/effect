@@ -39,7 +39,8 @@
   "                '--help[Show the help documentation for a command.]' \",
   "                '--wizard[Start wizard mode for a command.]' \",
   "                '--version[Show the version of the application.]' \",
-  "                '--verbose[Output in verbose mode]' \",
+  "                '--verbose[Output the cache'\''s status]' \",
+  "                ':<file> -- The user'\''s file:PATH:_files' \",
   "                ":: :_forge__cache_commands" \",
   "                "*::: :->cache" \",
   "                && ret=0",
@@ -81,7 +82,7 @@
   "(( $+functions[_forge_commands] )) ||",
   "_forge_commands() {",
   "    local commands; commands=(
-        'cache:The cache command does cache things' \
+        'cache:The project'\''s cache command' \
     )",
   "    _describe -t commands 'forge commands' commands "$@"",
   "}",

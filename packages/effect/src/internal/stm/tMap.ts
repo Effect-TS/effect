@@ -305,7 +305,7 @@ export const remove = dual<
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
     const index = indexOf(key, buckets.chunk.length)
     const bucket = tRef.unsafeGet(buckets.chunk[index], journal)
-    const [toRemove, toRetain] = Chunk.partition(bucket, (entry) => Equal.equals(entry[1], key))
+    const [toRetain, toRemove] = Chunk.partition(bucket, (entry) => Equal.equals(entry[0], key))
     if (Chunk.isNonEmpty(toRemove)) {
       const currentSize = tRef.unsafeGet(self.tSize, journal)
       tRef.unsafeSet(buckets.chunk[index], toRetain, journal)
@@ -325,7 +325,7 @@ export const removeAll = dual<
       const buckets = tRef.unsafeGet(self.tBuckets, journal)
       const index = indexOf(next.value, buckets.chunk.length)
       const bucket = tRef.unsafeGet(buckets.chunk[index], journal)
-      const [toRemove, toRetain] = Chunk.partition(bucket, (entry) => Equal.equals(next.value)(entry[0]))
+      const [toRetain, toRemove] = Chunk.partition(bucket, (entry) => Equal.equals(next.value)(entry[0]))
       if (Chunk.isNonEmpty(toRemove)) {
         const currentSize = tRef.unsafeGet(self.tSize, journal)
         tRef.unsafeSet(buckets.chunk[index], toRetain, journal)

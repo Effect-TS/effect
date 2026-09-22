@@ -222,7 +222,7 @@ export const raceAll = <
     const engine = yield* EngineTag
     const exit = yield* Workflow.wrapActivityResult(engine.deferredResult(deferred), Predicate.isUndefined)
     if (exit) {
-      return yield* (Effect.flatten(exit) as Effect.Effect<any, any, any>)
+      return yield* exit
     }
     return yield* into(Effect.raceAll(options.effects), deferred)
   })

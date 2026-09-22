@@ -28,6 +28,7 @@ import * as InternalArgs from "./args.js"
 import * as InternalBuiltInOptions from "./builtInOptions.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommandDirective from "./commandDirective.js"
+import * as InternalCompletion from "./completion.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalOptions from "./options.js"
@@ -1190,7 +1191,7 @@ const getFishCompletionsInternal = (
           Arr.appendAll(
             description.length === 0
               ? Arr.empty()
-              : Arr.make("-d", `'${description}'`)
+              : Arr.make("-d", `'${InternalCompletion.escapeSingleQuoted(description)}'`)
           ),
           Arr.join(" ")
         )
@@ -1246,7 +1247,7 @@ const getZshCompletionsInternal = (
       info.subcommands,
       Arr.map(([name, subcommand]) => {
         const desc = getShortDescription(subcommand)
-        return `'${name}:${desc}' \\`
+        return `'${name}:${InternalCompletion.escapeSingleQuoted(desc)}' \\`
       })
     )
     const commands = Arr.isEmptyReadonlyArray(subcommands)

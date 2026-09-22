@@ -21,6 +21,14 @@ const complex = Doc.hsep([
 const render = (doc: Doc.AnsiDoc): string => Doc.render(doc, { style: "pretty" })
 
 describe("Terminal", () => {
+  describe("Sanitization", () => {
+    it("preserves generated ANSI sequences", () => {
+      const doc = Doc.sanitize(Doc.annotate(Doc.text("\u001bfoo\u0007"), Ansi.red))
+
+      expect(render(doc)).toBe("\u001b[0;31mfoo\u001b[0m")
+    })
+  })
+
   describe("Colors", () => {
     it("black", () => {
       expect(render(Doc.annotate(simple, Ansi.black))).toBe(
