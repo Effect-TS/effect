@@ -1081,16 +1081,15 @@ const prepareMessages = Effect.fnUntraced(
                   switch (part.name) {
                     case "OpenAiWebSearch":
                     case "OpenAiWebSearchPreview": {
-                      if (
-                        !Predicate.hasProperty(result.result, "action") ||
-                        !Predicate.hasProperty(result.result, "status")
-                      ) {
+                      if (!Predicate.hasProperty(result.result, "status")) {
                         return yield* unreplayableProviderItem(part.name, part.id)
                       }
                       messages.push({
                         type: "web_search_call",
                         id: itemId,
-                        action: result.result.action,
+                        ...(Predicate.hasProperty(result.result, "action")
+                          ? { action: result.result.action }
+                          : undefined),
                         status: result.result.status as string
                       })
                       break
@@ -1787,7 +1786,7 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-call",
             id: part.id,
             name: toolName,
-            params: webSearchTool?.name === "OpenAiWebSearchPreview"
+            params: webSearchTool?.name === "OpenAiWebSearchPreview" || Predicate.isUndefined(part.action)
               ? {}
               : { action: part.action },
             providerExecuted: true
@@ -1797,7 +1796,10 @@ const makeResponse = Effect.fnUntraced(
             id: part.id,
             name: toolName,
             isFailure: part.status !== "completed",
-            result: { action: part.action, status: part.status },
+            result: {
+              ...(Predicate.isUndefined(part.action) ? undefined : { action: part.action }),
+              status: part.status
+            },
             providerExecuted: true
           })
           break
@@ -2486,7 +2488,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     type: "tool-call",
                     id: event.item.id,
                     name: toolName,
-                    params: { action: event.item.action },
+                    params: Predicate.isUndefined(event.item.action) ? {} : { action: event.item.action },
                     providerExecuted: true
                   })
                 }
@@ -2495,7 +2497,10 @@ const makeStreamResponse = Effect.fnUntraced(
                   id: event.item.id,
                   name: toolName,
                   isFailure: event.item.status !== "completed",
-                  result: { action: event.item.action, status: event.item.status },
+                  result: {
+                    ...(Predicate.isUndefined(event.item.action) ? undefined : { action: event.item.action }),
+                    status: event.item.status
+                  },
                   providerExecuted: true
                 })
                 break
