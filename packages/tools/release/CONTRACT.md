@@ -181,9 +181,13 @@ npm CLI fixtures and pnpm's renderer; the live probe may amend the sets.
    still the workspace version. `Stalled` is only a blocked, rejected,
    deleted or unknown upload that is still current, including when a missing
    item sits beside one; the blockers are reported and no PR is opened.
-   A still-current stalled release is recovered by rejecting the bad upload,
-   or by bumping versions and clearing the queue. Once every remaining
-   version has left the workspace, and nothing left is approvable or pending,
+   Rejecting a still-current upload does not recover the release. The pinned
+   id is gone, so the package is missing while that version is still current,
+   and readiness holds as `InProgress`. Re-staging the same version gets a
+   new id, which cannot enter the merged manifest. The recovery that works
+   is a version bump that clears those versions from the workspace. Once every
+   remaining version has left the workspace, and nothing left is approvable or
+   pending,
    readiness continues with the next release. Merging the next publish PR
    replaces the old manifest. A still-listed upload at an older version is
    still a stale-version failure;
@@ -241,9 +245,15 @@ pending or blocked status fails at once and names that state. Any other
 status, including one the contract does not classify, keeps the existing
 wait: the command checks that the exact staged item still exists and waits
 for the version to become public before approving anything else. After that
-wait the queue is listed again, and an item that blocked during the wait
-fails the release with nothing approved. It never infers approval from a
-missing queue entry. When everything is already public it returns
+wait the queue is listed again. A fresh listing wins for any id it contains,
+and an item in that listing that blocked during the wait fails the release
+with nothing approved. An upload that was approvable only because the listing
+missed it is viewed again. It is kept for approval only when that view is
+still approvable and the fresh listing does not contain it. If the version
+became public during the wait, it is skipped and not approved. Pending,
+blocked, unknown, or a 404 fails the release at once with nothing approved.
+It never infers approval from a missing queue entry. When everything is
+already public it returns
 `AlreadyPublished` with the same website revision, so a failed website dispatch
 is retried by running it again. The specified workflow writes
 `published=true` and `revision=<sourceSha>` to its outputs and runs the
