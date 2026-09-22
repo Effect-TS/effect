@@ -104,7 +104,6 @@ describe("OpenAiClient websocket", () => {
             WS.clean()
           })
       )
-      const messages: Array<ResponseCreate> = []
 
       const drive = Effect.gen(function*() {
         const chat = yield* Chat.empty
@@ -121,19 +120,16 @@ describe("OpenAiClient websocket", () => {
 
       const respond = Effect.gen(function*() {
         const first = yield* nextCreate(server)
-        messages.push(first)
         assert.isUndefined(first.previous_response_id)
         assert.deepStrictEqual(first.input, [userInput("hello")])
         sendCompleted(server, "resp_1", "msg_1", "ok")
 
         const incremental = yield* nextCreate(server)
-        messages.push(incremental)
         assert.strictEqual(incremental.previous_response_id, "resp_1")
         assert.deepStrictEqual(incremental.input, [userInput("again")])
         server.send(previousResponseNotFound)
 
         const retried = yield* nextCreate(server)
-        messages.push(retried)
         assert.isUndefined(retried.previous_response_id)
         assert.deepStrictEqual(retried.input, [
           userInput("hello"),
@@ -143,7 +139,6 @@ describe("OpenAiClient websocket", () => {
         sendCompleted(server, "resp_2", "msg_2", "retried")
 
         const later = yield* nextCreate(server)
-        messages.push(later)
         assert.strictEqual(later.previous_response_id, "resp_2")
         assert.deepStrictEqual(later.input, [userInput("later")])
         sendCompleted(server, "resp_3", "msg_3", "later")
@@ -152,7 +147,6 @@ describe("OpenAiClient websocket", () => {
       yield* Effect.all([drive, respond], { concurrency: "unbounded" }).pipe(
         Effect.timeout("5 seconds")
       )
-      assert.strictEqual(messages.length, 4)
     }))
 })
 

@@ -497,20 +497,12 @@ const makeSocket = Effect.gen(function*() {
   const decoder = new TextDecoder()
 
   type SocketConnection = {
-    readonly send: (
-      message: typeof OpenAiSchema.CreateResponse.Encoded
-    ) => Effect.Effect<void, AiError.AiError>
+    readonly send: (message: typeof OpenAiSchema.CreateResponse.Encoded) => Effect.Effect<void, AiError.AiError>
+    // Replaced when the provider fails a single turn without closing the socket
     incoming: Queue.Queue<ResponseStreamEvent, AiError.AiError>
-    /**
-     * `previous_response_not_found` fails the turn, not the socket. The next
-     * request on this connection must not treat that failure as a disconnect.
-     */
-    retain: boolean
   }
 
-  const queueRef: RcRef.RcRef<
-    SocketConnection
-  > = yield* RcRef.make({
+  const queueRef: RcRef.RcRef<SocketConnection> = yield* RcRef.make({
     idleTimeToLive: 60_000,
     acquire: Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -528,10 +520,8 @@ const makeSocket = Effect.gen(function*() {
         return Effect.void
       })
 
-      const incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
       const connection: SocketConnection = {
-        incoming,
-        retain: false,
+        incoming: yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>(),
         send: (message) =>
           writer.write(JSON.stringify({
             type: "response.create",
@@ -557,69 +547,49 @@ const makeSocket = Effect.gen(function*() {
           )
       }
 
-      const streamError = (
-        status: number,
-        error: { readonly type?: string | undefined }
-      ) => {
-        const json = JSON.stringify(error)
-        const errorType = error.type
-        return AiError.make({
-          module: "OpenAiClient",
-          method: "createResponseStream",
-          reason: AiError.reasonFromHttpStatus({
-            description: json,
-            status: isNaN(status) ?
-              errorType !== undefined && Object.hasOwn(errorTypeToStatus, errorType)
-                ? errorTypeToStatus[errorType]
-                : 500 :
-              status,
-            metadata: error as any,
-            http: {
-              body: json,
-              request: {
-                method: "POST",
-                url: request.url,
-                urlParams: [],
-                hash: undefined,
-                headers: request.headers
-              }
-            }
-          })
-        })
-      }
-
-      // Fail the current turn and keep reading. A shared queue cannot be reused
-      // after Queue.fail, so the next turn gets a fresh queue on the same socket.
-      const retainSocket = (error: AiError.AiError) =>
+      // A failed queue cannot be reused, so the next turn gets a fresh one on
+      // the same socket.
+      const failTurn = (error: AiError.AiError) =>
         Effect.gen(function*() {
           const failed = connection.incoming
-          connection.retain = true
           connection.incoming = yield* Queue.unbounded<ResponseStreamEvent, AiError.AiError>()
           yield* Queue.fail(failed, error)
         })
 
       const handleMessage = (msg: Uint8Array | string): Effect.Effect<void, AiError.AiError> | undefined => {
         const text = typeof msg === "string" ? msg : decoder.decode(msg)
-        let parsed: unknown
-        try {
-          parsed = JSON.parse(text)
-        } catch {
-          return undefined
-        }
-        if (isPreviousResponseNotFound(parsed)) {
-          const record = parsed as Record<string, unknown>
-          const status = Number(record.status)
-          const error = "error" in record && typeof record.error === "object" && record.error !== null
-            ? record.error as { readonly type?: string | undefined }
-            : record as { readonly type?: string | undefined }
-          return retainSocket(streamError(isNaN(status) ? 400 : status, error))
-        }
         try {
           const event = decodeEvent(text)
           if (event.type === "error" && "status" in event) {
             const status = Number(event.status)
             const error = "error" in event ? event.error as typeof ErrorEvent.Type.error : event
-            return Effect.fail(streamError(status, error))
+            const json = JSON.stringify(error)
+            const aiError = AiError.make({
+              module: "OpenAiClient",
+              method: "createResponseStream",
+              reason: AiError.reasonFromHttpStatus({
+                description: json,
+                status: isNaN(status) ?
+                  error.type !== undefined && Object.hasOwn(errorTypeToStatus, error.type)
+                    ? errorTypeToStatus[error.type]
+                    : 500 :
+                  status,
+                metadata: error as any,
+                http: {
+                  body: json,
+                  request: {
+                    method: "POST",
+                    url: request.url,
+                    urlParams: [],
+                    hash: undefined,
+                    headers: request.headers
+                  }
+                }
+              })
+            })
+            // The stale `previous_response_id` fails only this turn, not the
+            // socket. LanguageModel retries it with the full prompt.
+            return error.code === "previous_response_not_found" ? failTurn(aiError) : Effect.fail(aiError)
           }
           Queue.offerUnsafe(connection.incoming, event)
         } catch {}
@@ -686,15 +656,11 @@ const makeSocket = Effect.gen(function*() {
         const incoming = connection.incoming
         let done = false
 
+        // A replaced queue means the provider failed only this turn and the
+        // socket is still usable.
         yield* Scope.addFinalizerExit(
           scope,
-          () => {
-            if (done || connection.retain) {
-              connection.retain = false
-              return Effect.void
-            }
-            return RcRef.invalidate(queueRef)
-          }
+          () => done || connection.incoming !== incoming ? Effect.void : RcRef.invalidate(queueRef)
         )
 
         yield* connection.send(options).pipe(
@@ -724,8 +690,10 @@ const ErrorEvent = Schema.Struct({
   status: Schema.Int.pipe(
     Schema.withDecodingDefault(Effect.succeed(500))
   ),
+  // xAI sends `code` in place of `type`, e.g. `previous_response_not_found`
   error: Schema.Struct({
-    type: Schema.String,
+    type: Schema.optional(Schema.String),
+    code: Schema.optional(Schema.String),
     message: Schema.String
   })
 })
@@ -740,20 +708,6 @@ const errorTypeToStatus: Record<string, number> = {
 
 const AllEvents = Schema.Union([ErrorEvent, OpenAiSchema.ResponseStreamEvent])
 const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
-
-const isPreviousResponseNotFound = (value: unknown): boolean => {
-  if (typeof value !== "object" || value === null || !("type" in value) || value.type !== "error") {
-    return false
-  }
-  if ("code" in value && value.code === "previous_response_not_found") {
-    return true
-  }
-  return "error" in value &&
-    typeof value.error === "object" &&
-    value.error !== null &&
-    "code" in value.error &&
-    value.error.code === "previous_response_not_found"
-}
 
 /**
  * Uses OpenAI's WebSocket mode for response streams within the provided effect.
