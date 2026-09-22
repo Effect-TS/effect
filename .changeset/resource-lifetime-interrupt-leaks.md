@@ -2,8 +2,8 @@
 "effect": patch
 ---
 
-Fix resource leaks caused by interruption during leasing, acquisition, expiry and replacement:
+Fix interrupt-time resource leaks:
 
-- `Pool.get` / `Pool.use` and `RcRef.get` register release before interruption can strand a lease or reference count.
+- `Pool.get`, `Pool.use` and `RcRef.get` register cleanup before they can be interrupted.
 - `RcRef` and `RcMap` finish closing expired resources even if their idle fibers are interrupted.
-- `ScopedRef` generations close with their owner, including replacements still acquiring. `ScopedRef.make`, `ScopedRef.fromAcquire` and `ScopedRef.set` now interrupt instead of returning a value if the owning scope has closed.
+- `ScopedRef` closes in-flight replacements with their owner. `make`, `fromAcquire` and `set` now interrupt if the owning scope has closed.

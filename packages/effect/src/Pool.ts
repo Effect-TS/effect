@@ -511,8 +511,7 @@ export const use: {
     return getSlowWith(self, (self, item, fiber, restore) => useItem(self, item, f, fiber, restore))
   }))
 
-// The lease is counted and its release installed in the same step, so an
-// interruption cannot land between them.
+// Count the lease and install its release in the same step.
 const useItem = <A, E, B, E2, R2>(
   self: Pool<A, E>,
   item: PoolItem<A, E>,

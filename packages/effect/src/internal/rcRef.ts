@@ -106,7 +106,6 @@ const getState = <A, E>(
     case "Acquired": {
       const state = self.state
       state.refCount++
-      // The idle fiber checks the count before closing, so this state is still live.
       return state.fiber
         ? Effect.as(Fiber.interrupt(state.fiber), state)
         : Effect.succeed(state)
@@ -145,10 +144,7 @@ const getState = <A, E>(
   }
 }
 
-/**
- * Count the reference and register its release without an interruption between them.
- * @internal
- */
+/** @internal */
 export const get = <A, E>(self_: RcRef.RcRef<A, E>): Effect.Effect<A, E, Scope.Scope> => {
   const self = self_ as RcRefImpl<A, E>
   return Effect.uninterruptibleMask((restore) =>
@@ -175,7 +171,6 @@ const release = <A, E>(self: RcRefImpl<A, E>, state: State.Acquired<A>): Effect.
   } else if (!Duration.isFinite(idleTimeToLive)) {
     return Effect.void
   }
-  // After eviction, the idle fiber must finish closing the resource even if interrupted.
   state.fiber = Effect.uninterruptibleMask((restore) =>
     Effect.flatMap(restore(Effect.sleep(idleTimeToLive)), () => {
       if (self.state === state && state.refCount === 0) {

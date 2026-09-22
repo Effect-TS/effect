@@ -52,10 +52,7 @@ const Proto = {
 }
 
 interface ScopedRefImpl<A> extends ScopedRef<A> {
-  // Forked from the owner when the ref is made, and the parent of every
-  // generation. It anchors the value's release at the ref's creation slot in
-  // the owner's finalizer order regardless of later `set` calls, and closing it
-  // closes the current generation and any that a `set` is still acquiring.
+  // Keep every generation at the ref's creation slot in the owner's finalizer order.
   readonly scope: Scope.Scope
 }
 
@@ -193,7 +190,6 @@ export const set: {
       yield* Scope.close(self.backing.backing.ref.current[0], Exit.void).pipe(
         Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
       )
-      // Do not publish a generation closed during acquisition or replacement.
       if (isClosed(generation)) return yield* Effect.interrupt
       self.backing.backing.ref.current = [generation, value]
     },

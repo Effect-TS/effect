@@ -477,7 +477,6 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
     entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
     if (entry.fiber) return Effect.void
 
-    // After eviction, the idle fiber must finish closing the entry even if interrupted.
     entry.fiber = Effect.uninterruptibleMask(function loop(restore): Effect.Effect<void> {
       const now = clock.currentTimeMillisUnsafe()
       const remaining = entry.expiresAt - now
