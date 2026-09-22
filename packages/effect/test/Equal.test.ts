@@ -865,8 +865,8 @@ describe("Equal.equals", () => {
       right.self = right
 
       expect(Equal.equals(
-        new Map([[new Key("x"), left], [new Key("y"), 1]]),
-        new Map([[new Key("y"), 1], [new Key("x"), right]])
+        new Map<Key, unknown>([[new Key("x"), left], [new Key("y"), 1]]),
+        new Map<Key, unknown>([[new Key("y"), 1], [new Key("x"), right]])
       )).toBe(true)
     })
 
