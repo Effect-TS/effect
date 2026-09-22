@@ -192,6 +192,103 @@ describe("Metric", () => {
       assert.deepStrictEqual(Object.keys(snapshot[0].attributes ?? {}), ["route", "method"])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
+  describe("withAttributes", () => {
+    const series = Effect.map(
+      Metric.snapshot,
+      (snapshots) =>
+        snapshots
+          .map((snapshot) => [snapshot.attributes ?? null, "count" in snapshot.state ? snapshot.state.count : null])
+          .sort((a, b) => JSON.stringify(a[0]) < JSON.stringify(b[0]) ? -1 : 1)
+    )
+
+    it.effect("keeps each attribute set of a shared metric in its own series across updates", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter(nextId())
+        const get = Metric.withAttributes(counter, { method: "GET" })
+        const post = Metric.withAttributes(counter, { method: "POST" })
+
+        for (let i = 0; i < 3; i++) {
+          yield* Metric.update(get, 1)
+          yield* Metric.update(post, 10)
+        }
+        yield* Metric.update(Metric.withAttributes(counter, { method: "GET" }), 100)
+
+        assert.deepStrictEqual(yield* series, [[{ method: "GET" }, 103], [{ method: "POST" }, 30]])
+        assert.strictEqual((yield* Metric.value(get)).count, 103)
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("follows the contextual attributes when they change between updates", () =>
+      Effect.gen(function*() {
+        const counter = Metric.withAttributes(Metric.counter(nextId()), { route: "/users" })
+
+        yield* Metric.update(counter, 1)
+        yield* Metric.update(counter, 10).pipe(Effect.provideService(Metric.CurrentMetricAttributes, { tenant: "a" }))
+        yield* Metric.update(counter, 100).pipe(Effect.provideService(Metric.CurrentMetricAttributes, { tenant: "b" }))
+        yield* Metric.update(counter, 1000)
+
+        assert.deepStrictEqual(yield* series, [
+          [{ route: "/users" }, 1001],
+          [{ tenant: "a", route: "/users" }, 10],
+          [{ tenant: "b", route: "/users" }, 100]
+        ])
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("applies inner attributes over outer, contextual and metric attributes", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter(nextId(), { attributes: { a: "own", b: "own", c: "own", d: "own" } }).pipe(
+          Metric.withAttributes({ a: "inner" }),
+          Metric.withAttributes({ a: "outer", b: "outer" })
+        )
+
+        yield* Metric.update(counter, 1).pipe(
+          Effect.provideService(Metric.CurrentMetricAttributes, { a: "context", b: "context", c: "context" })
+        )
+        yield* Metric.update(counter, 10)
+
+        assert.deepStrictEqual(yield* series, [
+          [{ a: "inner", b: "outer", c: "context", d: "own" }, 1],
+          [{ a: "inner", b: "outer", c: "own", d: "own" }, 10]
+        ])
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("registers the series again after the registry is cleared", () => {
+      const registry: Metric.MetricRegistry = new Map()
+      return Effect.gen(function*() {
+        const counter = Metric.withAttributes(Metric.counter(nextId()), { route: "/users" })
+
+        yield* Metric.update(counter, 1)
+        registry.clear()
+        yield* Metric.update(counter, 10)
+
+        assert.deepStrictEqual(yield* series, [[{ route: "/users" }, 10]])
+      }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
+    })
+
+    it.effect("uses the unattributed series for empty attributes", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter(nextId())
+
+        yield* Metric.update(Metric.withAttributes(counter, {}), 10)
+        yield* Metric.update(Metric.withAttributes(counter, []), 100)
+        yield* Metric.update(counter, 1)
+
+        assert.deepStrictEqual(yield* series, [[null, 111]])
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("modifies and reads the attributed series", () =>
+      Effect.gen(function*() {
+        const gauge = Metric.gauge(nextId())
+        const tagged = Metric.withAttributes(gauge, [["route", "/users"]])
+
+        yield* Metric.update(tagged, 5)
+        yield* Metric.modify(tagged, 2)
+        yield* Metric.update(gauge, 1)
+
+        assert.strictEqual((yield* Metric.value(tagged)).value, 7)
+        assert.strictEqual((yield* Metric.value(gauge)).value, 1)
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+  })
+
   it.effect.each([
     { name: "counter", makeUpdate: () => Metric.update(Metric.counter(nextId()), 1) },
     {

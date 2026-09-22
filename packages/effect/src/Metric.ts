@@ -1692,33 +1692,43 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
 
   hook(context: Context.Context<never>): Metric.Hooks<Input, State> {
     const extraAttributes = Context.get(context, CurrentMetricAttributes)
+    const registry = Context.get(context, MetricRegistry)
     if (Object.keys(extraAttributes).length > 0) {
-      return this.getOrCreate(context, mergeAttributes(this.attributes, extraAttributes)).hooks
+      return this.series(registry, this.seriesKey(extraAttributes), extraAttributes).hooks
     }
     // The registry owns the series, so it is looked up on every update; only
     // the key, which is fixed per metric, is cached.
-    const key = this.#key ??= makeKey(this, this.attributes)
-    return (Context.get(context, MetricRegistry).get(key) ?? this.getOrCreate(context, this.attributes, key)).hooks
+    return this.series(registry, this.#key ??= makeKey(this, this.attributes)).hooks
   }
 
-  getOrCreate(
-    context: Context.Context<never>,
-    attributes: Metric.Attributes | undefined,
-    key = makeKey(this, attributes)
+  /**
+   * The registry key of the series that a non-empty contextual attribute set
+   * selects.
+   */
+  seriesKey(extraAttributes: Metric.AttributeSet): string {
+    return makeKey(this, mergeAttributes(this.attributes, extraAttributes))
+  }
+
+  /**
+   * The series `key`, which `extraAttributes` selects when present, registered
+   * on first use.
+   */
+  series(
+    registry: MetricRegistry,
+    key: string,
+    extraAttributes?: Metric.AttributeSet
   ): Metric.Metadata<Input, State> {
-    const registry = Context.get(context, MetricRegistry)
-    if (registry.has(key)) {
-      return registry.get(key)!
+    let meta = registry.get(key)
+    if (Predicate.isUndefined(meta)) {
+      meta = {
+        id: this.id,
+        type: this.type,
+        description: this.description,
+        attributes: extraAttributes ? mergeAttributes(this.attributes, extraAttributes) : this.attributes,
+        hooks: this.createHooks()
+      }
+      registry.set(key, meta)
     }
-    const hooks = this.createHooks()
-    const meta: Metric.Metadata<Input, State> = {
-      id: this.id,
-      type: this.type,
-      description: this.description,
-      attributes: attributesToRecord(attributes),
-      hooks
-    }
-    registry.set(key, meta)
     return meta
   }
 
@@ -2006,6 +2016,75 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
     return (this.metric as any).createHooks()
   }
 }
+
+class AttributedMetric<in out Input, in out State> extends Metric$<Input, State> {
+  readonly type: Metric.Type
+  readonly metric: Metric<Input, State>
+  readonly extraAttributes: Metric.Attributes
+  // Set when `metric` resolves its own series from the context attributes.
+  readonly resolver: Metric$<Input, State> | undefined
+  // The contextual attribute set changes rarely, so the merged set, and the
+  // series key it selects, are derived once per contextual set.
+  #current: Metric.AttributeSet | undefined = undefined
+  #merged: Metric.AttributeSet = noAttributes
+  #key: string | undefined = undefined
+
+  constructor(metric: Metric<Input, State>, extraAttributes: Metric.Attributes) {
+    super(metric.id, metric.description, metric.attributes)
+    this.type = metric.type
+    this.metric = metric
+    this.extraAttributes = extraAttributes
+    this.resolver =
+      metric instanceof Metric$ && !(metric instanceof MetricTransform || metric instanceof AttributedMetric)
+        ? metric
+        : undefined
+  }
+
+  createHooks(): Metric.Hooks<Input, State> {
+    return makeHooks(
+      (context) => this.valueUnsafe(context),
+      (input, context) => this.updateUnsafe(input, context),
+      (input, context) => this.modifyUnsafe(input, context)
+    )
+  }
+
+  override valueUnsafe(context: Context.Context<never>): State {
+    const attributed = this.attributed(context)
+    return this.resolver ? this.resolve(this.resolver, attributed).get(attributed) : this.metric.valueUnsafe(attributed)
+  }
+
+  override updateUnsafe(input: Input, context: Context.Context<never>): void {
+    const attributed = this.attributed(context)
+    if (this.resolver) this.resolve(this.resolver, attributed).update(input, attributed)
+    else this.metric.updateUnsafe(input, attributed)
+  }
+
+  override modifyUnsafe(input: Input, context: Context.Context<never>): void {
+    const attributed = this.attributed(context)
+    if (this.resolver) this.resolve(this.resolver, attributed).modify(input, attributed)
+    else this.metric.modifyUnsafe(input, attributed)
+  }
+
+  attributed(context: Context.Context<never>): Context.Context<never> {
+    const current = Context.get(context, CurrentMetricAttributes)
+    if (current !== this.#current) {
+      this.#current = current
+      this.#merged = mergeAttributes(current, this.extraAttributes)
+      this.#key = undefined
+    }
+    return Context.add(context, CurrentMetricAttributes, this.#merged)
+  }
+
+  resolve(resolver: Metric$<Input, State>, attributed: Context.Context<never>): Metric.Hooks<Input, State> {
+    if (Predicate.isUndefined(this.#key)) {
+      if (Object.keys(this.#merged).length === 0) return resolver.hook(attributed)
+      this.#key = resolver.seriesKey(this.#merged)
+    }
+    return resolver.series(Context.get(attributed, MetricRegistry), this.#key, this.#merged).hooks
+  }
+}
+
+const noAttributes: Metric.AttributeSet = {}
 
 /**
  * Returns `true` if the specified value is a `Metric`, otherwise returns `false`.
@@ -2880,13 +2959,7 @@ export const withAttributes: {
 >(2, <Input, State>(
   self: Metric<Input, State>,
   attributes: Metric.Attributes
-): Metric<Input, State> =>
-  new MetricTransform(
-    self,
-    (context) => self.valueUnsafe(addAttributesToContext(context, attributes)),
-    (input, context) => self.updateUnsafe(input, addAttributesToContext(context, attributes)),
-    (input, context) => self.modifyUnsafe(input, addAttributesToContext(context, attributes))
-  ))
+): Metric<Input, State> => new AttributedMetric(self, attributes))
 
 // Metric Snapshots
 
@@ -3510,13 +3583,4 @@ function attributesToRecord(attributes?: Metric.Attributes): Metric.AttributeSet
     }, {} as Metric.AttributeSet)
   }
   return attributes as Metric.AttributeSet | undefined
-}
-
-function addAttributesToContext(
-  context: Context.Context<never>,
-  attributes: Metric.Attributes
-): Context.Context<never> {
-  const current = Context.get(context, CurrentMetricAttributes)
-  const updated = mergeAttributes(current, attributes)
-  return Context.add(context, CurrentMetricAttributes, updated)
 }
