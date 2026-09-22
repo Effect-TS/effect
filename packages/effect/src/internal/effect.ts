@@ -6630,17 +6630,17 @@ const logUnsafe = (
   if (isLogLevelGreaterThan(fiber.cache.minimumLogLevel, logLevel)) return
   const loggers = fiber.getRef(CurrentLoggers)
   if (loggers.size === 0) return
-  const date = new Date(fiber.getRef(ClockRef).currentTimeMillisUnsafe())
+  const options: Logger.Options<ReadonlyArray<any>> = {
+    cause,
+    fiber,
+    date: new Date(fiber.getRef(ClockRef).currentTimeMillisUnsafe()),
+    logLevel,
+    message
+  }
   let defects: Array<unknown> | undefined
   for (const logger of loggers) {
     try {
-      logger.log({
-        cause,
-        fiber,
-        date,
-        logLevel,
-        message
-      })
+      logger.log(options)
     } catch (defect) {
       if (reportFailures) (defects ??= []).push(defect)
     }
