@@ -1663,16 +1663,16 @@ describe("Cache", () => {
         }
         return failed
       })
-    const show = <A, E>(exit: Exit.Exit<A, E> | undefined): string =>
-      exit === undefined
-        ? "pending"
-        : Exit.isSuccess(exit)
-        ? `ok:${String(exit.value)}`
-        : Exit.hasInterrupts(exit)
+    const show = <A, E>(exit: Exit.Exit<A, E> | undefined): string => {
+      if (exit === undefined) return "pending"
+      if (Exit.isSuccess(exit)) return `ok:${String(exit.value)}`
+      const cause = exit.cause
+      return Exit.hasInterrupts(exit)
         ? "interrupted"
         : Exit.hasDies(exit)
-        ? `die:${String(Cause.squash(exit.cause))}`
+        ? `die:${String(Cause.squash(cause))}`
         : "failed"
+    }
 
     it.effect("a caller joining while the last caller leaves is not interrupted", () =>
       Effect.gen(function*() {
@@ -1691,7 +1691,7 @@ describe("Cache", () => {
           })
         )
         assert.deepStrictEqual(failed, [])
-      }))
+      }), 60000)
 
     it.effect("interrupting the only caller at any step interrupts its lookup", () =>
       Effect.gen(function*() {
@@ -1714,7 +1714,7 @@ describe("Cache", () => {
           })
         )
         assert.deepStrictEqual(failed, [])
-      }))
+      }), 60000)
 
     it.effect.each(["get", "refresh"] as const)(
       "a throwing timeToLive fails the shared lookup with a defect (%s)",

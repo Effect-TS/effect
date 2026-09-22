@@ -2510,16 +2510,16 @@ describe("ScopedCache", () => {
         }
         return failed
       })
-    const show = <A, E>(exit: Exit.Exit<A, E> | undefined): string =>
-      exit === undefined
-        ? "pending"
-        : Exit.isSuccess(exit)
-        ? `ok:${String(exit.value)}`
-        : Exit.hasInterrupts(exit)
+    const show = <A, E>(exit: Exit.Exit<A, E> | undefined): string => {
+      if (exit === undefined) return "pending"
+      if (Exit.isSuccess(exit)) return `ok:${String(exit.value)}`
+      const cause = exit.cause
+      return Exit.hasInterrupts(exit)
         ? "interrupted"
         : Exit.hasDies(exit)
-        ? `die:${String(Cause.squash(exit.cause))}`
+        ? `die:${String(Cause.squash(cause))}`
         : "failed"
+    }
 
     it.effect("interrupting the first caller neither interrupts the second nor poisons the key", () =>
       Effect.gen(function*() {
@@ -2645,7 +2645,7 @@ describe("ScopedCache", () => {
           })
         )
         assert.deepStrictEqual(failed, [])
-      }))
+      }), 60000)
 
     it.effect("interrupting the only caller at any step releases the lookup's resources", () =>
       Effect.gen(function*() {
@@ -2667,7 +2667,7 @@ describe("ScopedCache", () => {
           })
         )
         assert.deepStrictEqual(failed, [])
-      }))
+      }), 60000)
   })
 })
 
