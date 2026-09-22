@@ -2028,7 +2028,7 @@ class AttributedMetric<in out Input, in out State> extends Metric$<Input, State>
   // The contextual attribute set changes rarely, so the merged set, and the
   // series key it selects, are derived once per contextual set.
   #current: Metric.AttributeSet | undefined = undefined
-  #merged: Metric.AttributeSet = noAttributes
+  #merged: Metric.AttributeSet = {}
   #key: string | undefined = undefined
 
   constructor(metric: Metric<Input, State>, extraAttributes: Metric.Attributes) {
@@ -2082,8 +2082,6 @@ class AttributedMetric<in out Input, in out State> extends Metric$<Input, State>
     return resolver.series(Context.get(attributed, MetricRegistry), key, this.#merged).hooks
   }
 }
-
-const noAttributes: Metric.AttributeSet = {}
 
 /**
  * Returns `true` if the specified value is a `Metric`, otherwise returns `false`.
