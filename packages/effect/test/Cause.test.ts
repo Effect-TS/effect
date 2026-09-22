@@ -523,6 +523,21 @@ describe("Cause", () => {
       assert.strictEqual(Cause.combine(combined, Cause.fromReasons([duplicate])), combined)
     })
 
+    it("returns self only when all of its reasons are kept and none are added", () => {
+      const a = Cause.makeFailReason("a")
+      const b = Cause.makeFailReason("b")
+      const self = Cause.fromReasons([a, b])
+      assert.strictEqual(Cause.combine(self, Cause.fromReasons([Cause.makeFailReason("b")])), self)
+
+      // The duplicate in self is dropped and b is added: same length, other reasons
+      const withDuplicate = Cause.fromReasons([a, Cause.makeFailReason("a")])
+      const combined = Cause.combine(withDuplicate, Cause.fromReasons([b]))
+      assert.notStrictEqual(combined, withDuplicate)
+      assert.strictEqual(combined.reasons.length, 2)
+      assert.strictEqual(combined.reasons[0], a)
+      assert.strictEqual(combined.reasons[1], b)
+    })
+
     it("merges two causes (data-first)", () => {
       const combined = Cause.combine(Cause.fail("a"), Cause.fail("b"))
       assert.strictEqual(combined.reasons.length, 2)
