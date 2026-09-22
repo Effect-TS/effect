@@ -279,7 +279,7 @@ function compareStructure(self: object, that: object, bothEquals: boolean): bool
     if (!(that instanceof Map) || self.size !== that.size) {
       return false
     }
-    return compareHashed(self, that, entryKey, compareEntries)
+    return compareHashed(self, that, entryKey, equalEntries)
   } else if (self instanceof Set) {
     if (!(that instanceof Set) || self.size !== that.size) {
       return false
@@ -365,32 +365,18 @@ function compareHashed<A>(
 
 const entryKey = <K>(entry: readonly [K, unknown]): K => entry[0]
 
-const compareEntries = <K, V>(self: readonly [K, V], that: readonly [K, V]): boolean =>
+const equalEntries = <K, V>(self: readonly [K, V], that: readonly [K, V]): boolean =>
   compareBoth(self[0], that[0]) && compareBoth(self[1], that[1])
 
 const itself = <A>(a: A): A => a
 
 /** @internal */
 export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquivalence: Equivalence<V>) {
+  const compareEntries = makeCompareSet<readonly [K, V]>((self, that) =>
+    keyEquivalence(self[0], that[0]) && valueEquivalence(self[1], that[1])
+  )
   return function compareMaps(self: Iterable<[K, V]>, that: Iterable<[K, V]>): boolean {
-    const thatEntries = Array.from(that)
-    for (const [selfKey, selfValue] of self) {
-      let found = false
-      for (let i = 0; i < thatEntries.length; i++) {
-        const [thatKey, thatValue] = thatEntries[i]
-        if (keyEquivalence(selfKey, thatKey) && valueEquivalence(selfValue, thatValue)) {
-          thatEntries[i] = thatEntries[thatEntries.length - 1]
-          thatEntries.pop()
-          found = true
-          break
-        }
-      }
-      if (!found) {
-        return false
-      }
-    }
-
-    return true
+    return compareEntries(self, that)
   }
 }
 
