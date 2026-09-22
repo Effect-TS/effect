@@ -324,7 +324,8 @@ export const size = <A>(self: TxPubSub<A>): Effect.Effect<number> =>
 export const isEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.map(size(self), (s) => s === 0)
 
 /**
- * Checks whether the TxPubSub is non-empty.
+ * Checks whether any subscriber queue has pending messages.
+ * A pub/sub with no subscribers is empty, even if values have been published.
  *
  * **Example** (Checking whether a pub/sub is non-empty)
  *
@@ -333,22 +334,23 @@ export const isEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.
  *
  * const program = Effect.gen(function*() {
  *   const hub = yield* TxPubSub.unbounded<number>()
- *   yield* TxPubSub.isNonEmpty(hub) // => false
+ *   const empty = yield* TxPubSub.isNonEmpty(hub)
  *
- *   yield* Effect.scoped(Effect.gen(function*() {
+ *   const nonEmpty = yield* Effect.scoped(Effect.gen(function*() {
  *     yield* TxPubSub.subscribe(hub)
  *     yield* TxPubSub.publish(hub, 1)
- *     yield* TxPubSub.isNonEmpty(hub) // => true
+ *     return yield* TxPubSub.isNonEmpty(hub)
  *   }))
+ *   return [empty, nonEmpty] as const
  * })
  *
- * await Effect.runPromise(program)
+ * await Effect.runPromise(program) // => [false, true]
  * ```
  *
  * @category predicates
  * @since 4.0.0
  */
-export const isNonEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.map(isEmpty(self), (empty) => !empty)
+export const isNonEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.map(size(self), (s) => s > 0)
 
 /**
  * Checks whether any subscriber queue is at capacity.
