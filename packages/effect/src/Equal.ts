@@ -202,51 +202,52 @@ function compareBoth(self: unknown, that: unknown): boolean {
 }
 
 function compareObjects(self: object, that: object): boolean {
-  let assumed = pairs.get(self)
-  if (assumed?.has(that)) {
-    return true
-  }
-  if (Hash.hash(self) !== Hash.hash(that)) {
-    return false
-  } else if (self instanceof Date) {
-    if (!(that instanceof Date)) return false
-    const selfTime = self.getTime()
-    const thatTime = that.getTime()
-    return selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
-  } else if (self instanceof RegExp) {
-    if (!(that instanceof RegExp)) return false
-    return self.toString() === that.toString()
-  }
-  const bothEquals = isEqual(self)
-  if (bothEquals !== isEqual(that)) return false
-  if (typeof self === "function" && !bothEquals) {
-    return false
-  }
-  // Assume the pair equal while comparing it, so a cycle that returns to it
-  // closes: every pair on the comparison's path then has related successors,
+  const depth = pathLeft.length
+  // A pair already on the comparison's path is assumed equal, so a cycle that
+  // returns to it closes: every pair on the path then has related successors,
   // which is a bisimulation (coinductive equality, as in Hopcroft–Karp
-  // equivalence checking). The assumption is dropped when the comparison
-  // ends, except for an outermost `true`, which has discharged all of its
-  // assumptions and stays as a cached result.
-  if (!assumed) {
-    pairs.set(self, assumed = new WeakSet())
+  // equivalence checking).
+  for (let i = depth; i-- > 0;) {
+    if (pathLeft[i] === self && pathRight[i] === that) return true
   }
-  assumed.add(that)
-  const outermost = !comparing
-  comparing = true
-  let result = false
-  try {
-    return result = compareStructure(self, that, bothEquals)
-  } finally {
-    if (outermost) comparing = false
-    if (!(outermost && result)) assumed.delete(that)
+  let known = depth ? undefined : results.get(self)
+  let result = known?.get(that)
+  if (result !== undefined) return result
+  if (Hash.hash(self) !== Hash.hash(that)) {
+    result = false
+  } else if (self instanceof Date) {
+    // Dates and regular expressions are equal when their primitive values are.
+    return that instanceof Date && compareBoth(self.getTime(), that.getTime())
+  } else if (self instanceof RegExp) {
+    return that instanceof RegExp && String(self) === String(that)
+  } else {
+    const bothEquals = isEqual(self)
+    if (bothEquals !== isEqual(that) || (typeof self === "function" && !bothEquals)) {
+      return false
+    }
+    pathLeft.push(self)
+    pathRight.push(that)
+    try {
+      result = compareStructure(self, that, bothEquals)
+    } finally {
+      pathLeft.pop()
+      pathRight.pop()
+    }
   }
+  // An outermost result is final: a `true` has discharged every assumption it
+  // made, and assumptions only ever claim equality, so a `false` is too.
+  if (!depth) {
+    if (!known) results.set(self, known = new WeakMap())
+    known.set(that, result)
+  }
+  return result
 }
 
-// `pairs.get(a).has(b)`: `a` and `b` are being compared, or were found equal
-// by an outermost comparison. Weak on both sides.
-const pairs = new WeakMap<object, WeakSet<object>>()
-let comparing = false
+// The pairs on the current comparison's path (the coinductive assumptions).
+const pathLeft: Array<object> = []
+const pathRight: Array<object> = []
+// Results of outermost comparisons. Weak on both sides.
+const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object, bothEquals: boolean): boolean {
   if (bothEquals) {
@@ -273,12 +274,12 @@ function compareStructure(self: object, that: object, bothEquals: boolean): bool
     if (!(that instanceof Map) || self.size !== that.size) {
       return false
     }
-    return compareHashed(self, that, entryKey, equalEntries)
+    return compareHashed(self, that, entryHash, equalEntries)
   } else if (self instanceof Set) {
     if (!(that instanceof Set) || self.size !== that.size) {
       return false
     }
-    return compareHashed(self, that, itself, compareBoth)
+    return compareHashed(self, that, Hash.hash, compareBoth)
   }
   return compareRecords(self as any, that as any)
 }
@@ -331,18 +332,18 @@ function compareRecords(
 function compareHashed<A>(
   self: Iterable<A>,
   that: Iterable<A>,
-  keyOf: (item: A) => unknown,
+  hashOf: (item: A) => number,
   equivalent: (self: A, that: A) => boolean
 ): boolean {
   const groups = new Map<number, Array<A>>()
   for (const item of that) {
-    const h = Hash.hash(keyOf(item))
+    const h = hashOf(item)
     const group = groups.get(h)
     if (group) group.push(item)
     else groups.set(h, [item])
   }
   outer: for (const item of self) {
-    const group = groups.get(Hash.hash(keyOf(item)))
+    const group = groups.get(hashOf(item))
     if (group) {
       for (let i = 0; i < group.length; i++) {
         if (equivalent(item, group[i])) {
@@ -357,12 +358,12 @@ function compareHashed<A>(
   return true
 }
 
-const entryKey = <K>(entry: readonly [K, unknown]): K => entry[0]
+const entryHash = (entry: readonly [unknown, unknown]): number => Hash.hash(entry[0])
 
 const equalEntries = <K, V>(self: readonly [K, V], that: readonly [K, V]): boolean =>
   compareBoth(self[0], that[0]) && compareBoth(self[1], that[1])
 
-const itself = <A>(a: A): A => a
+const sameGroup = (): number => 0
 
 /** @internal */
 export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquivalence: Equivalence<V>) {
@@ -374,27 +375,15 @@ export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquiva
   }
 }
 
-/** @internal */
+/**
+ * Matching without a hash: every item falls in one group, so `compareHashed`
+ * reduces to scanning `that` for each item of `self`.
+ *
+ * @internal
+ */
 export function makeCompareSet<A>(equivalence: Equivalence<A>) {
   return function compareSets(self: Iterable<A>, that: Iterable<A>): boolean {
-    const thatValues = Array.from(that)
-    for (const selfValue of self) {
-      let found = false
-      for (let i = 0; i < thatValues.length; i++) {
-        const thatValue = thatValues[i]
-        if (equivalence(selfValue, thatValue)) {
-          thatValues[i] = thatValues[thatValues.length - 1]
-          thatValues.pop()
-          found = true
-          break
-        }
-      }
-      if (!found) {
-        return false
-      }
-    }
-
-    return true
+    return compareHashed(self, that, sameGroup, equivalence)
   }
 }
 
