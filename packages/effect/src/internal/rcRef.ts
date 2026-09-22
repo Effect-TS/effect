@@ -109,23 +109,19 @@ const getState = <A, E>(
     case "Acquired": {
       const state = self.state
       state.refCount++
-      if (!state.fiber) return Effect.succeed(state)
-      return Effect.flatMap(Fiber.interrupt(state.fiber), () => {
-        // The expiry fiber may have passed its last ref-count check and
-        // started closing the scope before we interrupted it. In that case
-        // the old value is no longer usable; acquire from the current state.
-        if (self.state === state) return Effect.succeed(state)
-        state.refCount--
-        return getState(self, restore)
-      })
+      // The idle fiber checks the count again after its sleep, so it is only
+      // ever asleep here; interrupting it clears `state.fiber`.
+      return state.fiber
+        ? Effect.as(Fiber.interrupt(state.fiber), state)
+        : Effect.succeed(state)
     }
     case "Empty": {
-      const scope = Scope.makeUnsafe()
       return self.semaphore.withPermit(
         Effect.suspend(() => {
           if (self.state._tag !== "Empty") {
             return getState(self, restore)
           }
+          const scope = Scope.makeUnsafe()
           return restore(Effect.provideContext(
             self.acquire as Effect.Effect<A, E>,
             Context.add(self.context, Scope.Scope, scope)

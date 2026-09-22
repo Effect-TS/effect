@@ -4584,13 +4584,7 @@ export const uninterruptibleMask = <A, E, R>(
       effect: Effect.Effect<A, E, R>
     ) => Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> =>
-  withFiber((fiber) => {
-    if (!fiber.interruptible) return f(identity)
-    fiber.interruptible = false
-    fiber._stack.push(setInterruptibleTrue)
-    return f(interruptible)
-  })
+): Effect.Effect<A, E, R> => withFiber((fiber) => f(fiberUninterruptibleMaskUnsafe(fiber)))
 
 /** @internal */
 export const interruptibleMask = <A, E, R>(

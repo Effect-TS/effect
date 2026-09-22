@@ -154,11 +154,7 @@ export const get = <A>(self: ScopedRef<A>): Effect.Effect<A> => Effect.sync(() =
  * @since 2.0.0
  */
 export const make = <A>(evaluate: LazyArg<A>): Effect.Effect<ScopedRef<A>, never, Scope.Scope> =>
-  Effect.map(Effect.scope, (owner) => {
-    const value = evaluate()
-    const scope = Scope.forkUnsafe(owner)
-    return makeUnsafe(scope, Scope.forkUnsafe(scope), value)
-  })
+  fromAcquire(Effect.sync(evaluate))
 
 /**
  * Sets the value of this reference to a newly acquired scoped value, releasing
@@ -193,10 +189,11 @@ export const set: {
         Scope.provide(generation),
         Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
       )
-      if (isClosed(generation)) return yield* Effect.interrupt
       yield* Scope.close(self.backing.backing.ref.current[0], Exit.void).pipe(
         Effect.tapCause((cause) => Scope.close(generation, Exit.failCause(cause)))
       )
+      // The owner may have closed while the value was acquired or the old one
+      // released; the ref's scope then closed this generation already.
       if (isClosed(generation)) return yield* Effect.interrupt
       self.backing.backing.ref.current = [generation, value]
     },

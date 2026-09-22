@@ -519,7 +519,7 @@ type Lease<A, E, X, R, Arg> = (
 // A lease and the release that returns it are one fact: `lease` counts the
 // item and installs its release in the same uninterruptible step. Only the
 // wait for an item is interruptible, and an item that is available now is
-// leased by the first turn of the loop, in the same step that entered it.
+// leased in the same step that entered the region.
 const leaseWith = <A, E, X, R, Arg>(
   self: Pool<A, E>,
   lease: Lease<A, E, X, R, Arg>,
@@ -528,10 +528,12 @@ const leaseWith = <A, E, X, R, Arg>(
   core.withFiber((fiber) => {
     const restore = internal.fiberUninterruptibleMaskUnsafe(fiber)
     self.state.usage++
-    return leaseTurn(self, lease, arg, restore, fiber)
+    return leaseLoop(self, lease, arg, restore, fiber)
   })
 
-const leaseTurn = <A, E, X, R, Arg>(
+// Growth is checked before the available list, so a lease that raises the
+// target above the active size starts a resize even when an item is free now.
+const leaseLoop = <A, E, X, R, Arg>(
   self: Pool<A, E>,
   lease: Lease<A, E, X, R, Arg>,
   arg: Arg,
@@ -544,11 +546,11 @@ const leaseTurn = <A, E, X, R, Arg>(
       self.state.resizeSemaphore.withPermitsIfAvailable(1)(
         Effect.forkIn(Effect.interruptible(resize(self)), self.state.scope)
       ),
-      () => core.withFiber((fiber) => leaseStep(self, lease, arg, restore, fiber))
+      () => leaseAvailable(self, lease, arg, restore, fiber)
     )
-    : leaseStep(self, lease, arg, restore, fiber)
+    : leaseAvailable(self, lease, arg, restore, fiber)
 
-const leaseStep = <A, E, X, R, Arg>(
+const leaseAvailable = <A, E, X, R, Arg>(
   self: Pool<A, E>,
   lease: Lease<A, E, X, R, Arg>,
   arg: Arg,
@@ -571,7 +573,7 @@ const leaseStep = <A, E, X, R, Arg>(
           state.usage--
         })
     ),
-    () => core.withFiber((fiber) => leaseTurn(self, lease, arg, restore, fiber))
+    () => leaseLoop(self, lease, arg, restore, fiber)
   )
 }
 
