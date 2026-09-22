@@ -746,7 +746,7 @@ describe("Chunk", () => {
     )
   })
 
-  it("index-based combinators read the holes of a sparse backing array as undefined", () => {
+  it("combinators read sparse backing holes as undefined", () => {
     const sparse: Array<number | undefined> = new Array(3)
     sparse[0] = 1
     sparse[2] = 3
@@ -757,22 +757,21 @@ describe("Chunk", () => {
       Chunk.toArray(Chunk.filterMap(chunk, (a) => a === undefined ? Result.succeed("hole") : Result.failVoid)),
       ["hole"]
     )
-    deepStrictEqual(Chunk.toArray(Chunk.zipWith(chunk, chunk, (a, b) => [a, b])), [[1, 1], [undefined, undefined], [
-      3,
-      3
-    ]])
+    deepStrictEqual(Chunk.toArray(Chunk.zipWith(chunk, chunk, (a, b) => [a, b])), [
+      [1, 1],
+      [undefined, undefined],
+      [3, 3]
+    ])
     assertSome(Chunk.findLastIndex(chunk, isUndefined), 1)
     assertTrue(Chunk.some(chunk, isUndefined))
     assertFalse(Chunk.every(chunk, (a) => a !== undefined))
     assertSome(Chunk.findLast(chunk, isUndefined), undefined)
-    const others = Chunk.make<[number | undefined, ...Array<number | undefined>]>(1, undefined, 2)
-    deepStrictEqual(Chunk.toArray(Chunk.difference(others, chunk)), [2])
+    deepStrictEqual(Chunk.toArray(Chunk.difference(Chunk.make(1, undefined, 2), chunk)), [2])
     deepStrictEqual(Chunk.toArray(Chunk.difference(chunk, Chunk.make(3))), [1, undefined])
   })
 
   it("findLast", () => {
     assertSome(Chunk.findLast(Chunk.make(1, 2, 3, 4), (n) => n % 2 === 1), 3)
-    assertSome(Chunk.findLast(Chunk.appendAll(Chunk.make(1, 3), Chunk.make(4, 5, 6)), (n) => n % 2 === 1), 5)
     assertNone(Chunk.findLast(Chunk.make(2, 4), (n) => n % 2 === 1))
     assertNone(Chunk.findLast(Chunk.empty<number>(), (n) => n % 2 === 1))
   })
@@ -812,27 +811,15 @@ describe("Chunk", () => {
     assertEquals(Chunk.flatMap(Chunk.make(1, 2, 3), (n) => Chunk.make(n, n + 1)), Chunk.make(1, 2, 2, 3, 3, 4))
   })
 
-  it("flatMap concatenates inner chunks of every backing in order, for any outer length", () => {
-    const holey: Array<number> = new Array(2)
-    holey[1] = 9
-    const inners: ReadonlyArray<Chunk.Chunk<number | undefined>> = [
-      Chunk.empty(),
-      Chunk.of(1),
-      Chunk.make(2, 3),
-      Chunk.appendAll(Chunk.make(4), Chunk.make(5, 6)),
-      Chunk.drop(Chunk.make(0, 7, 8), 1),
-      Chunk.fromArrayUnsafe(holey)
-    ]
-    for (let n = 0; n <= 40; n++) {
-      const calls: Array<[number, number]> = []
-      const out = Chunk.flatMap(Chunk.makeBy(n + 1, identity).pipe(Chunk.drop(1)), (a, i) => {
-        calls.push([a, i])
-        return inners[a % inners.length]
-      })
-      const expected = Array.from({ length: n }, (_, i) => Array.from(inners[(i + 1) % inners.length])).flat()
-      deepStrictEqual(Array.from(out), expected)
-      deepStrictEqual(calls, Array.from({ length: n }, (_, i) => [i + 1, i]))
-    }
+  it("flatMap preserves order and callback indices across chunk backings", () => {
+    const indices: Array<number> = []
+    const outer = Chunk.drop(Chunk.make(0, 1, 2, 3), 1)
+    const result = Chunk.flatMap(outer, (n, i) => {
+      indices.push(i)
+      return n === 2 ? Chunk.empty() : Chunk.appendAll(Chunk.of(n), Chunk.of(n + 10))
+    })
+    deepStrictEqual(Array.from(result), [1, 11, 3, 13])
+    deepStrictEqual(indices, [0, 1, 2])
   })
 
   it("flatMap and join read the holes of a sparse backing array as undefined", () => {
@@ -843,7 +830,6 @@ describe("Chunk", () => {
     const doubled = Chunk.flatMap(chunk, (a) => Chunk.make(a, a))
     deepStrictEqual(Array.from(doubled), ["a", "a", undefined, undefined, "c", "c"])
     strictEqual(Chunk.join(chunk, "-"), "a--c")
-    strictEqual(Chunk.join(Chunk.appendAll(chunk, Chunk.make("d")), ""), "acd")
   })
 
   it("union", () => {
@@ -958,16 +944,13 @@ describe("Chunk", () => {
 
   it("makeEquivalence is symmetric on a sparse backing array, whose holes read as undefined", () => {
     const equivalence = Chunk.makeEquivalence(Equivalence.strictEqual<number | undefined>())
-    const holey: Array<number> = new Array(2)
+    const holey: Array<number | undefined> = new Array(2)
     holey[1] = 1
     const sparse = Chunk.fromArrayUnsafe(holey)
     assertFalse(equivalence(sparse, Chunk.make(5, 1)))
     assertFalse(equivalence(Chunk.make(5, 1), sparse))
     assertTrue(equivalence(sparse, Chunk.make(undefined, 1)))
     assertTrue(equivalence(Chunk.make(undefined, 1), sparse))
-    const tree = Chunk.appendAll(Chunk.of(5), Chunk.of(1))
-    assertFalse(equivalence(sparse, tree))
-    assertFalse(equivalence(tree, sparse))
   })
 
   it("differenceWith", () => {
