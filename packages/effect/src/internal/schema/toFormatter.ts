@@ -36,7 +36,18 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<T> {
-  return recur(ast)
+  // Formatters of the root and of suspended targets, shared by every level of a recursive schema.
+  const shared = new Map<SchemaAST.AST, Formatter<any>>()
+  return recurShared(ast)
+
+  function recurShared(ast: SchemaAST.AST): Formatter<any> {
+    let formatter = shared.get(ast)
+    if (formatter === undefined) {
+      formatter = recur(ast)
+      shared.set(ast, formatter)
+    }
+    return formatter
+  }
 
   function recur(ast: SchemaAST.AST): Formatter<any> {
     const annotation = InternalAnnotations.resolve(ast)?.["toFormatter"]
@@ -223,7 +234,7 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       }
       case "Suspend": {
         let formatter: Formatter<any>
-        return (value) => (formatter ??= recur(ast.thunk()))(value)
+        return (value) => (formatter ??= recurShared(ast.thunk()))(value)
       }
     }
   }

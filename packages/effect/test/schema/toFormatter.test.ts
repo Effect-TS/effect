@@ -340,6 +340,58 @@ describe("toFormatter", () => {
   })
 
   describe("suspend", () => {
+    it("compiles a recursive body once, not once per level of the formatted value", () => {
+      interface A {
+        readonly a: number
+        readonly as: ReadonlyArray<A>
+      }
+      let compiled = 0
+      const Counted = Schema.Number.annotate({
+        toFormatter: () => {
+          compiled++
+          return (n: number) => `#${n}`
+        }
+      })
+      const schema = Schema.Struct({
+        a: Counted,
+        as: Schema.Array(Schema.suspend((): Schema.Codec<A> => schema))
+      })
+      const make = (depth: number): A => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
+      const format = Schema.toFormatter(schema)
+      strictEqual(format(make(2)), `{ "a": #2, "as": [{ "a": #1, "as": [{ "a": #0, "as": [] }] }] }`)
+      format(make(8))
+      strictEqual(compiled, 1)
+    })
+
+    it("shares a suspended body per AST node, not per node tag", () => {
+      interface EvenValue {
+        readonly tag: "even"
+        readonly n: number
+        readonly odd: OddValue | null
+      }
+      interface OddValue {
+        readonly tag: "odd"
+        readonly s: string
+        readonly even: EvenValue | null
+      }
+      // Two DISTINCT suspended targets that share the same AST tag.
+      const Even = Schema.Struct({
+        tag: Schema.Literal("even"),
+        n: Schema.Number,
+        odd: Schema.NullOr(Schema.suspend((): Schema.Codec<OddValue> => Odd))
+      })
+      const Odd = Schema.Struct({
+        tag: Schema.Literal("odd"),
+        s: Schema.String,
+        even: Schema.NullOr(Schema.suspend((): Schema.Codec<EvenValue> => Even))
+      })
+      const format = Schema.toFormatter(Even)
+      strictEqual(
+        format({ tag: "even", n: 2, odd: { tag: "odd", s: "a", even: { tag: "even", n: 0, odd: null } } }),
+        `{ "tag": "even", "n": 2, "odd": { "tag": "odd", "s": "a", "even": { "tag": "even", "n": 0, "odd": null } } }`
+      )
+    })
+
     it("Tuple", () => {
       const Rec = Schema.suspend((): Schema.Codec<unknown> => schema)
       const schema = Schema.Tuple([
