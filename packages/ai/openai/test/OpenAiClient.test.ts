@@ -557,6 +557,46 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result._tag, "Some")
       }))
 
+    it.live("terminates a WebSocket stream for a flat error without status", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://flat-errors.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+
+        const result = yield* OpenAiClient.withWebSocketMode(
+          Effect.gen(function*() {
+            const client = yield* OpenAiClient.OpenAiClient
+            const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+            yield* Effect.all([
+              Stream.runDrain(stream).pipe(Effect.exit),
+              nextWebSocketCreate(server).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() =>
+                    server.send({
+                      type: "error",
+                      code: "invalid_request_error",
+                      message: "bad",
+                      param: null
+                    })
+                  )
+                )
+              )
+            ], { concurrency: "unbounded" })
+          })
+        ).pipe(
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://flat-errors.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http"))),
+          Effect.timeoutOption("100 millis")
+        )
+
+        assert.strictEqual(result._tag, "Some")
+      }))
+
     it.live("replaces the WebSocket after a non-retryable error event", () =>
       Effect.gen(function*() {
         const server = yield* Effect.acquireRelease(
@@ -723,6 +763,115 @@ describe("OpenAiClient", () => {
         yield* Effect.all([drive, respond], { concurrency: "unbounded" }).pipe(
           Effect.timeout("5 seconds")
         )
+      }))
+
+    it.live("does not retry with stale item references under the default config", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://default-recovery.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+
+        const drive = Effect.gen(function*() {
+          const chat = yield* Chat.empty
+          yield* chat.streamText({ prompt: "hello" }).pipe(Stream.runDrain)
+          yield* chat.streamText({ prompt: "again" }).pipe(Stream.runDrain)
+        }).pipe(
+          OpenAiClient.withWebSocketMode,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://default-recovery.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http")))
+        )
+
+        const respond = Effect.gen(function*() {
+          yield* nextWebSocketCreate(server)
+          sendWebSocketCompleted(server, "resp_1", "msg_1", "ok")
+
+          yield* nextWebSocketCreate(server)
+          server.send({
+            error: {
+              message: "gRPC error: Response with id=resp_1 not found",
+              type: "api_error"
+            }
+          })
+
+          const retried = yield* nextWebSocketCreate(server)
+          assert.isUndefined(retried.previous_response_id)
+          assert.deepStrictEqual(retried.input, [
+            webSocketUserInput("hello"),
+            webSocketAssistantInput("msg_1", "ok"),
+            webSocketUserInput("again")
+          ])
+          sendWebSocketCompleted(server, "resp_2", "msg_2", "retried")
+        })
+
+        yield* Effect.all([drive, respond], { concurrency: "unbounded" }).pipe(
+          Effect.timeout("5 seconds")
+        )
+      }))
+
+    it.live("round-trips streamed encrypted reasoning in a full-prompt retry", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://reasoning-recovery.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+        const requests: Array<WebSocketResponseCreate> = []
+
+        const drive = Effect.gen(function*() {
+          const chat = yield* Chat.empty
+          yield* chat.streamText({ prompt: "think" }).pipe(Stream.runDrain)
+          yield* chat.streamText({ prompt: "continue" }).pipe(Stream.runDrain)
+        }).pipe(
+          OpenAiClient.withWebSocketMode,
+          Effect.provide(OpenAiLanguageModel.model("o3-mini", {
+            store: true,
+            useItemReferences: false
+          })),
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://reasoning-recovery.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http")))
+        )
+
+        const respond = Effect.gen(function*() {
+          requests.push(yield* nextWebSocketCreate(server))
+          sendWebSocketReasoningCompleted(server, "resp_1", "rs_1", "thinking", "encrypted-reasoning")
+
+          requests.push(yield* nextWebSocketCreate(server))
+          server.send({
+            error: {
+              message: "gRPC error: Response with id=resp_1 not found",
+              type: "api_error"
+            }
+          })
+
+          requests.push(yield* nextWebSocketCreate(server))
+          sendWebSocketCompleted(server, "resp_2", "msg_2", "done")
+        })
+
+        yield* Effect.all([drive, respond], { concurrency: "unbounded" }).pipe(
+          Effect.timeout("5 seconds")
+        )
+
+        assert.deepStrictEqual({
+          include: requests[0]?.include,
+          reasoning: requests[2]?.input.find((item) => item.type === "reasoning")
+        }, {
+          include: ["reasoning.encrypted_content"],
+          reasoning: {
+            type: "reasoning",
+            id: "rs_1",
+            summary: [{ type: "summary_text", text: "thinking" }],
+            encrypted_content: "encrypted-reasoning"
+          }
+        })
       }))
 
     it.effect("accepts keepalive stream events", () =>
@@ -933,14 +1082,8 @@ describe("OpenAiClient", () => {
 type WebSocketResponseCreate = {
   readonly type: "response.create"
   readonly previous_response_id?: string | undefined
-  readonly input: ReadonlyArray<{
-    readonly role?: string | undefined
-    readonly id?: string | undefined
-    readonly type?: string | undefined
-    readonly content?:
-      | ReadonlyArray<{ readonly type?: string | undefined; readonly text?: string | undefined }>
-      | undefined
-  }>
+  readonly include?: ReadonlyArray<string> | undefined
+  readonly input: ReadonlyArray<Record<string, unknown>>
 }
 
 const nextWebSocketCreate = (server: WS) =>
@@ -1008,6 +1151,72 @@ const sendWebSocketCompleted = (server: WS, id: string, itemId: string, text: st
       }
     },
     { type: "response.completed", response }
+  ]
+  for (const event of events) {
+    server.send(event)
+  }
+}
+
+const sendWebSocketReasoningCompleted = (
+  server: WS,
+  id: string,
+  itemId: string,
+  summary: string,
+  encryptedContent: string
+) => {
+  const response = {
+    id,
+    object: "response",
+    model: "o3-mini",
+    created_at: 1,
+    output: [],
+    error: null,
+    incomplete_details: null
+  }
+  const events = [
+    { type: "response.created", sequence_number: 1, response },
+    {
+      type: "response.output_item.added",
+      sequence_number: 2,
+      output_index: 0,
+      item: { type: "reasoning", id: itemId, summary: [], encrypted_content: null }
+    },
+    {
+      type: "response.reasoning_summary_part.added",
+      sequence_number: 3,
+      output_index: 0,
+      item_id: itemId,
+      summary_index: 0,
+      part: { type: "summary_text", text: summary }
+    },
+    {
+      type: "response.reasoning_summary_text.delta",
+      sequence_number: 4,
+      output_index: 0,
+      item_id: itemId,
+      summary_index: 0,
+      delta: summary
+    },
+    {
+      type: "response.reasoning_summary_part.done",
+      sequence_number: 5,
+      output_index: 0,
+      item_id: itemId,
+      summary_index: 0,
+      part: { type: "summary_text", text: summary }
+    },
+    {
+      type: "response.output_item.done",
+      sequence_number: 6,
+      output_index: 0,
+      item: {
+        type: "reasoning",
+        id: itemId,
+        summary: [{ type: "summary_text", text: summary }],
+        encrypted_content: encryptedContent
+      }
+    },
+    { type: "response.completed", sequence_number: 7, response }
   ]
   for (const event of events) {
     server.send(event)
