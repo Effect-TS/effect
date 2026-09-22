@@ -1,12 +1,12 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-// The published effect package exports this public barrel, not its source modules.
-// oxlint-disable-next-line effect/no-import-from-barrel-package
-import { HttpClient, HttpClientRequest, type HttpClientResponse } from "effect/unstable/http"
 import { ReleaseError } from "./Errors.ts"
 import { REGISTRY, type StagedItem, StagedItemSchema, stageRequest } from "./Registry.ts"
 import { optionalSecret } from "./Secrets.ts"

@@ -2,11 +2,9 @@
 import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
+import * as Command from "effect/cli/Command"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-// The published effect package exports this public barrel, not its source modules.
-// oxlint-disable-next-line effect/no-import-from-barrel-package
-import { Command } from "effect/unstable/cli"
 import PackageJson from "../package.json" with { type: "json" }
 import { cli } from "./Cli.ts"
 import { Git } from "./Git.ts"

@@ -4,10 +4,8 @@ import type * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Schema from "effect/Schema"
-// The published effect package exports this public barrel, not its source modules.
-// oxlint-disable-next-line effect/no-import-from-barrel-package
-import { ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 import { findWorkspaceRoot, runCommandOk } from "./Process.ts"
 import { type AppliedVersion, parseApplied, parseDryRun, type ReleasePlan } from "./ReleasePlan.ts"

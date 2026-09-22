@@ -1,10 +1,9 @@
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
+import * as ChildProcess from "effect/process/ChildProcess"
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Stream from "effect/Stream"
-// The published effect package exports this public barrel, not its source modules.
-// oxlint-disable-next-line effect/no-import-from-barrel-package
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { ReleaseError } from "./Errors.ts"
 
 export interface CommandResult {
