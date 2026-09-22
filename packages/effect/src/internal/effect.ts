@@ -6902,10 +6902,10 @@ export const defaultLogger = loggerMake<unknown, void>(({ cause, date, fiber, lo
 
 /** @internal */
 export const tracerLogger = loggerMake<unknown, void>(({ cause, fiber, logLevel, message }) => {
-  const clock = fiber.getRef(ClockRef)
-  const annotations = fiber.getRef(CurrentLogAnnotations)
   const span = fiber.cache.span
   if (span === undefined || span._tag === "ExternalSpan") return
+  const clock = fiber.getRef(ClockRef)
+  const annotations = fiber.getRef(CurrentLogAnnotations)
   const attributes: Record<string, unknown> = {}
   for (const key of Object.keys(annotations)) {
     InternalRecord.assignProperty(attributes, key, annotations[key])
