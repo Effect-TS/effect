@@ -4,8 +4,8 @@ import { Effect, Result } from "effect"
 import { isSqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "../src/ClickHouseNativeConfig.js"
-import { makeClickHouseNativePool, withClickHouseNativePool } from "../src/ClickHouseNativePool.js"
+import { clickhouseConfig } from "../src/ClickHouseNativeConfig.ts"
+import { makeClickHouseNativePool, withClickHouseNativePool } from "../src/ClickHouseNativePool.ts"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))

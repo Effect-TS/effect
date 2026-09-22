@@ -3,8 +3,8 @@ import { Effect, Result } from "effect"
 import { isSqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { run } from "../src/ClickHouseNativeMigrator.js"
-import { ClickHouseNativeSqlClient } from "../src/ClickHouseNativeSqlClient.js"
+import { run } from "../src/ClickHouseNativeMigrator.ts"
+import { ClickHouseNativeSqlClient } from "../src/ClickHouseNativeSqlClient.ts"
 
 const client = ClickHouseNativeSqlClient.of({
   execute: () => Effect.die("The client must not run when migrations are invalid"),

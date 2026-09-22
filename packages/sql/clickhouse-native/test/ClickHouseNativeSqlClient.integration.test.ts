@@ -5,13 +5,13 @@ import { SqlClient } from "effect/sql"
 import { SqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "../src/ClickHouseNativeConfig.js"
+import { clickhouseConfig } from "../src/ClickHouseNativeConfig.ts"
 import {
   ClickHouseNativeSqlClient,
   layer,
   make,
   withClickHouseNativeSqlClient
-} from "../src/ClickHouseNativeSqlClient.js"
+} from "../src/ClickHouseNativeSqlClient.ts"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))

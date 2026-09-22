@@ -380,8 +380,13 @@ const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): Reado
   }
   const lowCardinality = lowCardinalityType(type)
   if (lowCardinality !== undefined) {
-    const dictionary = values.reduce<ReadonlyArray<unknown>>(
-      (entries, value) => entries.some((entry) => Object.is(entry, value)) ? entries : [...entries, value],
+    const dictionary = values.reduce<Array<unknown>>(
+      (entries, value) => {
+        if (!entries.some((entry) => Object.is(entry, value))) {
+          entries.push(value)
+        }
+        return entries
+      },
       []
     )
     const keyBytes = dictionary.length <= 0x100 ? 1 : dictionary.length <= 0x1_0000 ? 2 : 4

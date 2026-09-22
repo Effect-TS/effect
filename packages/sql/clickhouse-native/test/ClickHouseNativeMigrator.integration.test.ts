@@ -3,9 +3,9 @@ import { it } from "@effect/vitest"
 import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "../src/ClickHouseNativeConfig.js"
-import { run } from "../src/ClickHouseNativeMigrator.js"
-import { ClickHouseNativeSqlClient, withClickHouseNativeSqlClient } from "../src/ClickHouseNativeSqlClient.js"
+import { clickhouseConfig } from "../src/ClickHouseNativeConfig.ts"
+import { run } from "../src/ClickHouseNativeMigrator.ts"
+import { ClickHouseNativeSqlClient, withClickHouseNativeSqlClient } from "../src/ClickHouseNativeSqlClient.ts"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))

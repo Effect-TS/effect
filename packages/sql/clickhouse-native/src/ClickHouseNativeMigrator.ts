@@ -1,7 +1,10 @@
-import { Array, Effect, Layer, Order } from "effect"
+import * as Array from "effect/Array"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Order from "effect/Order"
 import { ConstraintError, SqlError, UniqueViolation } from "effect/sql/SqlError"
 
-import { ClickHouseNativeSqlClient } from "./ClickHouseNativeSqlClient.js"
+import { ClickHouseNativeSqlClient } from "./ClickHouseNativeSqlClient.ts"
 
 export interface ClickHouseNativeMigration {
   readonly id: number

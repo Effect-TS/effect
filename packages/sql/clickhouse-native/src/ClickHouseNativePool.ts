@@ -1,12 +1,13 @@
 import type { Crypto, Scope } from "effect"
 
-import { Effect, Pool } from "effect"
+import * as Effect from "effect/Effect"
+import * as Pool from "effect/Pool"
 import { SqlError, UnknownError } from "effect/sql/SqlError"
 
-import type { ClickHouseNativeClient } from "./ClickHouseNativeClient.js"
-import type { ClickHouseConfig } from "./ClickHouseNativeConfig.js"
+import type { ClickHouseNativeClient } from "./ClickHouseNativeClient.ts"
+import type { ClickHouseConfig } from "./ClickHouseNativeConfig.ts"
 
-import { makeClickHouseNativeClient } from "./ClickHouseNativeClient.js"
+import { makeClickHouseNativeClient } from "./ClickHouseNativeClient.ts"
 
 export interface ClickHouseNativePool {
   readonly execute: (

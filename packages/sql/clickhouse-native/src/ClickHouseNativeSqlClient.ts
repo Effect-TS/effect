@@ -1,14 +1,17 @@
 import type { Scope } from "effect"
 
-import { Context, Crypto, Effect, Layer } from "effect"
+import * as Context from "effect/Context"
+import * as Crypto from "effect/Crypto"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import { SqlError, UnknownError } from "effect/sql/SqlError"
 
-import type { ClickHouseConfig } from "./ClickHouseNativeConfig.js"
+import type { ClickHouseConfig } from "./ClickHouseNativeConfig.ts"
 
-import { makeClickHouseNativePool } from "./ClickHouseNativePool.js"
-import { makeCompiler, makeConnection, makeReservedConnection } from "./ClickHouseNativeSqlConnection.js"
+import { makeClickHouseNativePool } from "./ClickHouseNativePool.ts"
+import { makeCompiler, makeConnection, makeReservedConnection } from "./ClickHouseNativeSqlConnection.ts"
 
 export interface ClickHouseNativeSqlClientOptions {
   readonly poolSize: number

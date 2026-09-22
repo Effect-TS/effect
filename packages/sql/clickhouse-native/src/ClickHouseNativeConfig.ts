@@ -1,6 +1,6 @@
 import type { Effect } from "effect"
 
-import { Config } from "effect"
+import * as Config from "effect/Config"
 
 export const clickhouseConfig = Config.nested(
   Config.all({

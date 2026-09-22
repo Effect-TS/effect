@@ -1,11 +1,13 @@
 import type { Connection } from "effect/sql/SqlConnection"
 import type { SqlError } from "effect/sql/SqlError"
 
-import { Crypto, Effect, Stream } from "effect"
+import * as Crypto from "effect/Crypto"
+import * as Effect from "effect/Effect"
 import * as Statement from "effect/sql/Statement"
+import * as Stream from "effect/Stream"
 
-import type { ClickHouseNativeClient } from "./ClickHouseNativeClient.js"
-import type { ClickHouseNativePool } from "./ClickHouseNativePool.js"
+import type { ClickHouseNativeClient } from "./ClickHouseNativeClient.ts"
+import type { ClickHouseNativePool } from "./ClickHouseNativePool.ts"
 
 const literal = (value: unknown): string => {
   if (value === null || value === undefined) {

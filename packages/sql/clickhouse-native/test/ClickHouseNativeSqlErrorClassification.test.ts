@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { toSqlError } from "../src/ClickHouseNativeClient.js"
+import { toSqlError } from "../src/ClickHouseNativeClient.ts"
 
 const serverFailure = (code: number, name: string) => ({
   _tag: "ClickHouseServerError",
