@@ -608,21 +608,24 @@ describe("Cause", () => {
       assert.strictEqual(typeof rendered, "string")
     })
 
-    it("cuts the stack of a defect at the internal frame that called user code", () => {
+    it("cuts the stack of a defect at the internal frame that called user code", async () => {
       const userCode = (): number => {
         throw new Error("boom")
       }
-      const render = (effect: Effect.Effect<unknown, unknown>): string => {
-        const exit = Effect.runSyncExit(effect)
+      const render = async (effect: Effect.Effect<unknown, unknown>): Promise<string> => {
+        const exit = await Effect.runPromiseExit(effect)
         assert.ok(Exit.isFailure(exit))
         return Cause.pretty(exit.cause)
       }
       for (
-        const rendered of [
-          render(Effect.map(Effect.succeed(1), userCode)),
-          render(Effect.try({ try: userCode, catch: userCode }))
+        const effect of [
+          Effect.map(Effect.succeed(1), userCode),
+          Effect.try({ try: userCode, catch: userCode }),
+          // the catcher runs outside the run loop, so it relies on the marker frame
+          Effect.tryPromise({ try: () => Promise.reject(1), catch: userCode })
         ]
       ) {
+        const rendered = await render(effect)
         assert.match(rendered, /at userCode /)
         assert.doesNotMatch(rendered, /~effect\/Utils\/internal/)
       }
