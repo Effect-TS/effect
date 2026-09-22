@@ -336,7 +336,8 @@ const startEntry = <K, A, E, R>(
   key: K,
   before: Effect.Effect<void> | undefined,
   onDone: (exit: Exit.Exit<A, E>) => Effect.Effect<void> | undefined,
-  lookup: () => Effect.Effect<A, E, R>
+  lookup: () => Effect.Effect<A, E, R>,
+  awaitCleanup = false
 ): Effect.Effect<A, E> => {
   const produce = Scope.provide(effect.suspend(lookup), entry.scope)
   entry.fiber = effect.forkUnsafe(
@@ -358,19 +359,26 @@ const startEntry = <K, A, E, R>(
     true,
     true
   )
+  const lookupFiber = entry.fiber
+  // A refresh replacing an entry observes cleanup failures through the lookup
+  // fiber; readers still return as soon as the replacement is available.
+  const finish = (result: Effect.Effect<A, E>): Effect.Effect<A, E> =>
+    awaitCleanup
+      ? effect.flatMap(effect.exit(result), (exit) =>
+        effect.exitHasInterrupts(exit) ? exit : effect.fiberJoin(lookupFiber))
+      : result
   const result = entry.deferred.effect
   if (result !== undefined) {
-    // The entry finished within this step, so there is nothing to wait for and
-    // nothing to release.
+    // The result is already available, so there is no deferred waiter to release.
     entry.awaiters--
     entry.fiber = undefined
-    return result
+    return finish(result)
   }
   const restore = enterMask(fiber)
-  return effect.onExitPrimitive(
+  return finish(effect.onExitPrimitive(
     restore(Deferred.await(entry.deferred)),
     release(entry, entry.fiber, fiber, map, key)
-  )
+  ))
 }
 
 /**
@@ -825,7 +833,8 @@ export const refresh: {
             Option.isSome(oentry) ? Scope.close(oentry.value.scope, effect.exitVoid) : undefined
           )
         },
-        () => self.lookup(key)
+        () => self.lookup(key),
+        !newEntry
       )
       return effect.flatMap(
         effect.exit(result),
