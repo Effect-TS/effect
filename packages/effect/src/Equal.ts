@@ -138,7 +138,8 @@ export interface Equal extends Hash.Hash {
  *
  * - Equal results are cached per object pair in a WeakMap. **Objects must not
  *   be mutated after their first comparison.**
- * - Map and Set comparisons are O(n²) in size.
+ * - Map and Set entries are matched within groups of equal hashes, so they
+ *   are O(n) for well-distributed hashes and O(n²) when every hash collides.
  *
  * **Example** (Comparing values)
  *
@@ -278,12 +279,12 @@ function compareStructure(self: object, that: object, bothEquals: boolean): bool
     if (!(that instanceof Map) || self.size !== that.size) {
       return false
     }
-    return compareMaps(self, that)
+    return compareHashed(self, that, entryKey, compareEntries)
   } else if (self instanceof Set) {
     if (!(that instanceof Set) || self.size !== that.size) {
       return false
     }
-    return compareSets(self, that)
+    return compareHashed(self, that, itself, compareBoth)
   }
   return compareRecords(self as any, that as any)
 }
@@ -330,6 +331,45 @@ function compareRecords(
   return true
 }
 
+// Matches items one-to-one within groups of equal keys' hashes: equal values
+// have equal hashes, so these are exactly the pairs a scan over all items could
+// match.
+function compareHashed<A>(
+  self: Iterable<A>,
+  that: Iterable<A>,
+  keyOf: (item: A) => unknown,
+  equivalent: (self: A, that: A) => boolean
+): boolean {
+  const groups = new Map<number, Array<A>>()
+  for (const item of that) {
+    const h = Hash.hash(keyOf(item))
+    const group = groups.get(h)
+    if (group) group.push(item)
+    else groups.set(h, [item])
+  }
+  outer: for (const item of self) {
+    const group = groups.get(Hash.hash(keyOf(item)))
+    if (group) {
+      for (let i = 0; i < group.length; i++) {
+        if (equivalent(item, group[i])) {
+          group[i] = group[group.length - 1]
+          group.pop()
+          continue outer
+        }
+      }
+    }
+    return false
+  }
+  return true
+}
+
+const entryKey = <K>(entry: readonly [K, unknown]): K => entry[0]
+
+const compareEntries = <K, V>(self: readonly [K, V], that: readonly [K, V]): boolean =>
+  compareBoth(self[0], that[0]) && compareBoth(self[1], that[1])
+
+const itself = <A>(a: A): A => a
+
 /** @internal */
 export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquivalence: Equivalence<V>) {
   return function compareMaps(self: Iterable<[K, V]>, that: Iterable<[K, V]>): boolean {
@@ -354,8 +394,6 @@ export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquiva
   }
 }
 
-const compareMaps = makeCompareMap(compareBoth, compareBoth)
-
 /** @internal */
 export function makeCompareSet<A>(equivalence: Equivalence<A>) {
   return function compareSets(self: Iterable<A>, that: Iterable<A>): boolean {
@@ -379,8 +417,6 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
     return true
   }
 }
-
-const compareSets = makeCompareSet(compareBoth)
 
 /**
  * Checks whether a value implements the {@link Equal} interface.
