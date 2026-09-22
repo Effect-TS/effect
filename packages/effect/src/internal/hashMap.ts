@@ -852,9 +852,9 @@ class HashMapImpl<K, V> implements HashMap<K, V> {
   [Hash.symbol](): number {
     let hash = Hash.string("HashMap")
     for (const [key, value] of this) {
-      hash = hash ^ (Hash.hash(key) + Hash.hash(value))
+      hash ^= Hash.combine(Hash.hash(key), Hash.hash(value))
     }
-    return hash
+    return Hash.optimize(hash)
   }
 
   [NodeInspectSymbol](): unknown {

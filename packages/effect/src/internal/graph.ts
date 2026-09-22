@@ -67,7 +67,14 @@ const edgeEquals = (type: Graph.Kind, self: Graph.Edge<any>, that: Graph.Edge<an
 const edgeHash = (type: Graph.Kind, edge: Graph.Edge<any>): number =>
   type === "directed"
     ? Hash.hash(edge)
-    : Hash.optimize(Hash.hash(edge.data) ^ (Hash.hash(edge.source) + Hash.hash(edge.target)))
+    : Hash.optimize(Hash.combine(Hash.hash(edge.data), endpointsHash(edge.source, edge.target)))
+
+/**
+ * Order-independent hash of an undirected edge's endpoints. The mixed endpoint
+ * terms are added rather than XORed so a self-loop does not cancel to zero.
+ */
+const endpointsHash = (source: number, target: number): number =>
+  Hash.combine(0, Hash.hash(source)) + Hash.combine(0, Hash.hash(target))
 
 const ProtoGraph = {
   [TypeId]: {
@@ -111,12 +118,12 @@ const ProtoGraph = {
     hash = hash ^ Hash.number(this.nodes.size)
     hash = hash ^ Hash.number(this.edges.size)
     for (const [nodeIndex, nodeData] of this.nodes) {
-      hash = hash ^ (Hash.hash(nodeIndex) + Hash.hash(nodeData))
+      hash ^= Hash.combine(Hash.hash(nodeIndex), Hash.hash(nodeData))
     }
     for (const [edgeIndex, edgeData] of this.edges) {
-      hash = hash ^ (Hash.hash(edgeIndex) + edgeHash(this.type, edgeData))
+      hash ^= Hash.combine(Hash.hash(edgeIndex), edgeHash(this.type, edgeData))
     }
-    return hash
+    return Hash.optimize(hash)
   },
   toJSON(this: GraphImpl<any, any, any>) {
     return {

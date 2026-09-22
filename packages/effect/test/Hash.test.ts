@@ -123,6 +123,37 @@ describe("Hash", () => {
       assert.notStrictEqual(Hash.hash([1, 2]), Hash.hash([2, 1]))
       assert.notStrictEqual(Hash.hash([1, 2, 3]), Hash.hash([]))
     })
+
+    it("does not collide for 10k multiples of 0.1", () => {
+      assertNoHashCollisions(range(10_000).map((i) => i * 0.1))
+    })
+
+    it("does not collide for 10k multiples of 0.001", () => {
+      assertNoHashCollisions(range(10_000).map((i) => i * 0.001))
+    })
+  })
+
+  describe("floats", () => {
+    it("hashes 0 and -0 the same", () => {
+      assert.strictEqual(Hash.hash(0), Hash.hash(-0))
+    })
+
+    it("hashes every NaN the same", () => {
+      const bytes = new Uint32Array(2)
+      const view = new Float64Array(bytes.buffer)
+      bytes[0] = 1
+      bytes[1] = 0x7ff80000
+      const quietPayload = view[0]
+      bytes[0] = 0
+      bytes[1] = 0xfff00001
+      const signalingNegative = view[0]
+      assert.isNaN(quietPayload)
+      assert.isNaN(signalingNegative)
+      assert.strictEqual(Hash.hash(NaN), Hash.hash(0 / 0))
+      assert.strictEqual(Hash.hash(NaN), Hash.hash(quietPayload))
+      assert.strictEqual(Hash.hash(NaN), Hash.hash(signalingNegative))
+      assert.notStrictEqual(Hash.hash(Infinity), Hash.hash(-Infinity))
+    })
   })
 
   describe("cyclic values", () => {

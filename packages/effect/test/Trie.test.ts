@@ -9,8 +9,10 @@ import * as Trie from "effect/Trie"
 
 describe("Trie", () => {
   it("equality rejects tries with different numbers of entries after a hash collision", () => {
+    // Chosen so that `Hash.combine(Hash.hash("a"), value)` is `0`, which
+    // makes the single entry vanish from the trie's hash fold.
     const value = {
-      [Hash.symbol]: () => Hash.hash("a") * 53
+      [Hash.symbol]: () => -1520130700
     }
     const empty = Trie.empty<typeof value>()
     const nonEmpty = Trie.make(["a", value])

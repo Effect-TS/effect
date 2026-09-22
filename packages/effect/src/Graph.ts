@@ -860,9 +860,14 @@ class EdgeIdentity<NI, EI> implements Equal.Equal {
 
   [Hash.symbol](): number {
     const hash = Hash.hash(this.identity)
-    return this.type === "directed"
-      ? Hash.combine(Hash.hash(this.target))(Hash.combine(Hash.hash(this.source))(hash))
-      : Hash.optimize(hash ^ (Hash.hash(this.source) + Hash.hash(this.target)))
+    if (this.type === "directed") {
+      return Hash.optimize(Hash.combine(Hash.combine(hash, Hash.hash(this.source)), Hash.hash(this.target)))
+    }
+    // Undirected endpoints are order-independent. The mixed endpoint terms are
+    // added rather than XORed so a self-loop does not cancel to zero.
+    return Hash.optimize(
+      Hash.combine(hash, Hash.combine(0, Hash.hash(this.source)) + Hash.combine(0, Hash.hash(this.target)))
+    )
   }
 }
 

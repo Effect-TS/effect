@@ -269,9 +269,9 @@ export const get: {
   } else if (isSimpleKey(key)) {
     return Option.none()
   }
-  const refKey = referentialKeysCache.get(self)
-  if (refKey !== undefined) {
-    return self.backing.has(refKey) ? Option.some(self.backing.get(refKey)!) : Option.none()
+  const refKey = referentialKeysCache.get(key)
+  if (refKey !== undefined && self.backing.has(refKey)) {
+    return Option.some(self.backing.get(refKey)!)
   }
   const hash = Hash.hash(key)
   const bucket = self.buckets.get(hash)
@@ -447,7 +447,7 @@ export const set: {
     self.backing.set(key, value)
     return self
   }
-  let refKey = referentialKeysCache.get(self)
+  let refKey = referentialKeysCache.get(key)
   if (refKey !== undefined && self.backing.has(refKey)) {
     self.backing.set(refKey, value)
     return self
@@ -535,7 +535,7 @@ export const modify: {
     }
     return self
   }
-  let refKey = referentialKeysCache.get(self)
+  let refKey = referentialKeysCache.get(key)
   if (refKey !== undefined && self.backing.has(refKey)) {
     self.backing.set(refKey, f(self.backing.get(refKey)!))
     return self
@@ -686,7 +686,7 @@ export const remove: {
     return self
   }
 
-  const key = referentialKeysCache.get(self) ?? key_
+  const key = referentialKeysCache.get(key_) ?? key_
   const hash = Hash.hash(key)
   const bucket = self.buckets.get(hash)
   if (bucket === undefined) {

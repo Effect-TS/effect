@@ -290,17 +290,29 @@ function compareObjects(self: object, that: object): boolean {
 function withCache(self: object, that: object, f: (a: any, b: any) => boolean): boolean {
   // Check cache first
   let selfMap = equalityCache.get(self)
-  if (!selfMap) {
-    selfMap = new WeakMap()
-    equalityCache.set(self, selfMap)
-  } else if (selfMap.has(that)) {
+  if (selfMap?.has(that)) {
     return selfMap.get(that)!
   }
 
-  // Perform the comparison
-  const result = f(self, that)
+  // Only the outermost comparison writes the cache. An inner pair may resolve
+  // to the provisional `true` of a circular walk that the outer result then
+  // rejects, so caching it would make later lookups of that pair wrong.
+  if (comparing) {
+    return f(self, that)
+  }
+  comparing = true
+  let result: boolean
+  try {
+    result = f(self, that)
+  } finally {
+    comparing = false
+  }
 
   // Cache the result bidirectionally
+  if (!selfMap) {
+    selfMap = new WeakMap()
+    equalityCache.set(self, selfMap)
+  }
   selfMap.set(that, result)
 
   let thatMap = equalityCache.get(that)
@@ -314,6 +326,7 @@ function withCache(self: object, that: object, f: (a: any, b: any) => boolean): 
 }
 
 const equalityCache = new WeakMap<object, WeakMap<object, boolean>>()
+let comparing = false
 
 function compareArrays(self: Array<unknown>, that: Array<unknown>): boolean {
   for (let i = 0; i < self.length; i++) {

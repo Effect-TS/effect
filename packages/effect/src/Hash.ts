@@ -128,23 +128,37 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         if (hashCache.has(self)) {
           return hashCache.get(self)!
         }
-        const h = withVisitedTracking(self, () => {
+        if (visitedObjects.has(self)) {
+          backEdges++
+          return string("[Circular]")
+        }
+        visitedObjects.add(self)
+        const seen = backEdges
+        let h: number
+        try {
           if (isHash(self)) {
-            return self[symbol]()
+            h = self[symbol]()
           } else if (typeof self === "function") {
-            return random(self)
+            h = random(self)
           } else if (self instanceof DataView) {
-            return array(new Uint8Array(self.buffer, self.byteOffset, self.byteLength))
+            h = array(new Uint8Array(self.buffer, self.byteOffset, self.byteLength))
           } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {
-            return array(self as any)
+            h = array(self as any)
           } else if (self instanceof Map) {
-            return hashMap(self)
+            h = hashMap(self)
           } else if (self instanceof Set) {
-            return hashSet(self)
+            h = hashSet(self)
+          } else {
+            h = structure(self)
           }
-          return structure(self)
-        })
-        hashCache.set(self, h)
+        } finally {
+          visitedObjects.delete(self)
+        }
+        // A walk that hit a back-edge produced an entry-point dependent hash,
+        // so only cache when no cycle was seen below this object.
+        if (seen === backEdges) {
+          hashCache.set(self, h)
+        }
         return h
       }
     }
@@ -191,6 +205,17 @@ export const random: <A extends object>(self: A) => number = (self) => {
 }
 
 /**
+ * The 32-bit MurmurHash3 finalizer.
+ */
+const mix = (h: number): number => {
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  return h ^ (h >>> 16)
+}
+
+/**
  * Combines two hash values into a single hash value.
  *
  * **When to use**
@@ -200,8 +225,9 @@ export const random: <A extends object>(self: A) => number = (self) => {
  *
  * **Details**
  *
- * Supports both direct and pipeable usage. The implementation combines two
- * hash values with `(self * 53) ^ b`.
+ * Supports both direct and pipeable usage. The combination is ordered:
+ * `combine(a, b)` and `combine(b, a)` generally differ, so folding a sequence
+ * through `combine` keeps element order in the result.
  *
  * **Example** (Combining hash values)
  *
@@ -224,7 +250,7 @@ export const random: <A extends object>(self: A) => number = (self) => {
 export const combine: {
   (b: number): (self: number) => number
   (self: number, b: number): number
-} = dual(2, (self: number, b: number): number => (self * 53) ^ b)
+} = dual(2, (self: number, b: number): number => mix(Math.imul(self, 0x9e3779b1) + Math.imul(b, 0x85ebca6b)))
 
 /**
  * Applies bit manipulation techniques to optimize a hash value.
@@ -284,6 +310,8 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  */
 export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
 
+const float64 = new DataView(new ArrayBuffer(8))
+
 /**
  * Computes a hash value for a number.
  *
@@ -293,9 +321,10 @@ export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
  *
  * **Details**
  *
- * This function creates a hash value for numeric inputs, handling special cases
- * like NaN, Infinity, and -Infinity with distinct hash values. It uses bitwise operations to ensure good distribution
- * of hash values across different numeric inputs.
+ * Integers that fit in 32 bits hash to themselves, so `0` and `-0` share a
+ * hash. Every other number, including `NaN`, `Infinity`, and `-Infinity`, is
+ * hashed from its IEEE-754 bit pattern, and every `NaN` payload hashes the
+ * same.
  *
  * **Example** (Hashing numbers)
  *
@@ -313,17 +342,14 @@ export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
  * @since 2.0.0
  */
 export const number = (n: number) => {
-  if (n !== n || n === Infinity || n === -Infinity) {
-    return string(String(n))
+  const h = n | 0
+  // `-0 === 0`, so both share the int32 path.
+  if (h === n) {
+    return optimize(h)
   }
-  let h = n | 0
-  if (h !== n) {
-    h ^= n * 0xffffffff
-  }
-  while (n > 0xffffffff) {
-    h ^= n /= 0xffffffff
-  }
-  return optimize(h)
+  // Collapse every NaN payload before dumping the IEEE-754 bits.
+  float64.setFloat64(0, n !== n ? NaN : n)
+  return optimize(combine(float64.getInt32(0), float64.getInt32(4)))
 }
 
 /**
@@ -385,8 +411,8 @@ export const string = (str: string) => {
  * const hash1 = Hash.structureKeys(person, ["name", "age"])
  * const hash2 = Hash.structureKeys(person, ["name", "city"])
  *
- * hash1 // => -590673747
- * hash2 // => 284850673
+ * hash1 // => -731887653
+ * hash2 // => 148523102
  *
  * const person2 = { name: "John", age: 30, city: "Boston" }
  * const hash3 = Hash.structureKeys(person2, ["name", "age"])
@@ -425,9 +451,9 @@ export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
  * const obj2 = { name: "Jane", age: 25 }
  * const obj3 = { name: "John", age: 30 }
  *
- * Hash.structure(obj1) // => -590673747
- * Hash.structure(obj2) // => -590160631
- * Hash.structure(obj3) // => -590673747
+ * Hash.structure(obj1) // => -731887653
+ * Hash.structure(obj2) // => -222100417
+ * Hash.structure(obj3) // => -731887653
  * Hash.structure(obj1) === Hash.structure(obj3) // => true
  * ```
  *
@@ -436,7 +462,7 @@ export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
  */
 export const structure = <A extends object>(o: A) => structureKeys(o, getAllObjectKeys(o))
 
-const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<any>) => {
+const unordered = (seed: number, f: (el: any) => number) => (iter: Iterable<any>) => {
   let h = seed
   for (const element of iter) {
     h ^= f(element)
@@ -453,13 +479,13 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  *
  * **Details**
  *
- * The implementation folds element hashes from the seed `6151` with XOR and
- * then optimizes the final hash.
+ * The implementation folds element hashes from the seed `6151` with
+ * {@link combine} and then optimizes the final hash, so both element order and
+ * length contribute to the result.
  *
  * **Gotchas**
  *
- * A hash is not an equality proof. Because this implementation uses XOR,
- * reordered inputs can produce the same hash.
+ * A hash is not an equality proof. Distinct inputs can still share a hash.
  *
  * **Example** (Hashing arrays)
  *
@@ -470,11 +496,8 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  * const arr2 = [1, 2, 3]
  * const arr3 = [3, 2, 1]
  *
- * Hash.array(arr1) // => 6151
- * Hash.array(arr2) // => 6151
- * Hash.array(arr3) // => 6151
  * Hash.array(arr1) === Hash.array(arr2) // => true
- * Hash.array(arr1) === Hash.array(arr3) // => true
+ * Hash.array(arr1) === Hash.array(arr3) // => false
  * ```
  *
  * @see {@link hash} for the general-purpose hash dispatcher
@@ -482,24 +505,22 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  * @category hashing
  * @since 2.0.0
  */
-export const array: <A>(arr: Iterable<A>) => number = iterableWith(6151, hash)
+export const array = <A>(arr: Iterable<A>): number => {
+  let h = 6151
+  for (const element of arr) {
+    h = combine(h, hash(element))
+  }
+  return optimize(h)
+}
 
-const hashMap: <K, V>(map: Iterable<readonly [K, V]>) => number = iterableWith(
+const hashMap: <K, V>(map: Iterable<readonly [K, V]>) => number = unordered(
   string("Map"),
   ([k, v]) => combine(hash(k), hash(v))
 )
-const hashSet: <A>(set: Iterable<A>) => number = iterableWith(string("Set"), hash)
+const setSeed = string("Set")
+const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) => combine(setSeed, hash(element)))
 
 const randomHashCache = new WeakMap<any, number>()
 const hashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()
-
-function withVisitedTracking<T>(obj: object, fn: () => T): T {
-  if (visitedObjects.has(obj)) {
-    return string("[Circular]") as T
-  }
-  visitedObjects.add(obj)
-  const result = fn()
-  visitedObjects.delete(obj)
-  return result
-}
+let backEdges = 0
