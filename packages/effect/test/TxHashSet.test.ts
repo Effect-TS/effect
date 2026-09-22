@@ -146,6 +146,15 @@ describe("TxHashSet", () => {
         assert.strictEqual(yield* TxHashSet.isEmpty(nonEmpty), false)
       })))
 
+    it.effect("isNonEmpty checks if set is non-empty", () =>
+      Effect.tx(Effect.gen(function*() {
+        const empty = yield* TxHashSet.empty<string>()
+        assert.strictEqual(yield* TxHashSet.isNonEmpty(empty), false)
+
+        const nonEmpty = yield* TxHashSet.make("a")
+        assert.strictEqual(yield* TxHashSet.isNonEmpty(nonEmpty), true)
+      })))
+
     it.effect("clear removes all values", () =>
       Effect.tx(Effect.gen(function*() {
         const txSet = yield* TxHashSet.make("a", "b", "c")

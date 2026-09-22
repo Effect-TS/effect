@@ -502,6 +502,31 @@ export const isEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
   })
 
 /**
+ * Checks whether the TxHashSet is non-empty.
+ *
+ * **Example** (Checking whether a set is non-empty)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, TxHashSet } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const empty = yield* TxHashSet.empty<string>()
+ *   yield* TxHashSet.isNonEmpty(empty) // => false
+ *
+ *   const nonEmpty = yield* TxHashSet.make("a")
+ *   yield* TxHashSet.isNonEmpty(nonEmpty) // => true
+ * })
+ *
+ * await Effect.runPromise(program)
+ * ```
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isNonEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
+  Effect.map(isEmpty(self), (empty) => !empty)
+
+/**
  * Removes all values from the TxHashSet.
  *
  * **Details**
