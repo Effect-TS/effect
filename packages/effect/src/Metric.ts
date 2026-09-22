@@ -1660,7 +1660,10 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   declare readonly Input: Contravariant<Input>
   declare readonly State: Covariant<State>
 
-  #key: string | undefined
+  // The last contextual attribute set seen and the key of the series it
+  // selects; the first call always sets both.
+  #extraAttributes: Metric.AttributeSet | undefined
+  #key = ""
 
   readonly id: string
   readonly description: string | undefined
@@ -1692,31 +1695,28 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
 
   hook(context: Context.Context<never>): Metric.Hooks<Input, State> {
     const extraAttributes = Context.get(context, CurrentMetricAttributes)
-    const registry = Context.get(context, MetricRegistry)
-    if (Object.keys(extraAttributes).length > 0) {
-      return this.series(registry, this.seriesKey(extraAttributes), extraAttributes).hooks
+    if (extraAttributes !== this.#extraAttributes) {
+      this.#extraAttributes = extraAttributes
+      this.#key = this.seriesKey(extraAttributes)
     }
-    // The registry owns the series, so it is looked up on every update; only
-    // the key, which is fixed per metric, is cached.
-    return this.series(registry, this.#key ??= makeKey(this, this.attributes)).hooks
+    // The registry owns the series, so it is looked up on every update.
+    return this.series(Context.get(context, MetricRegistry), this.#key, extraAttributes).hooks
   }
 
   /**
-   * The registry key of the series that a non-empty contextual attribute set
-   * selects.
+   * The registry key of the series that a contextual attribute set selects.
    */
   seriesKey(extraAttributes: Metric.AttributeSet): string {
     return makeKey(this, mergeAttributes(this.attributes, extraAttributes))
   }
 
   /**
-   * The series `key`, which `extraAttributes` selects when present, registered
-   * on first use.
+   * The series `key` that `extraAttributes` selects, registered on first use.
    */
   series(
     registry: MetricRegistry,
     key: string,
-    extraAttributes?: Metric.AttributeSet
+    extraAttributes: Metric.AttributeSet
   ): Metric.Metadata<Input, State> {
     let meta = registry.get(key)
     if (Predicate.isUndefined(meta)) {
@@ -1724,7 +1724,9 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
         id: this.id,
         type: this.type,
         description: this.description,
-        attributes: extraAttributes ? mergeAttributes(this.attributes, extraAttributes) : this.attributes,
+        attributes: Object.keys(extraAttributes).length > 0
+          ? mergeAttributes(this.attributes, extraAttributes)
+          : this.attributes,
         hooks: this.createHooks()
       }
       registry.set(key, meta)
@@ -2076,11 +2078,8 @@ class AttributedMetric<in out Input, in out State> extends Metric$<Input, State>
   }
 
   resolve(resolver: Metric$<Input, State>, attributed: Context.Context<never>): Metric.Hooks<Input, State> {
-    if (Predicate.isUndefined(this.#key)) {
-      if (Object.keys(this.#merged).length === 0) return resolver.hook(attributed)
-      this.#key = resolver.seriesKey(this.#merged)
-    }
-    return resolver.series(Context.get(attributed, MetricRegistry), this.#key, this.#merged).hooks
+    const key = this.#key ??= resolver.seriesKey(this.#merged)
+    return resolver.series(Context.get(attributed, MetricRegistry), key, this.#merged).hooks
   }
 }
 
@@ -3546,13 +3545,12 @@ export const disableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A
 
 function makeKey<Input, State>(
   metric: Metric<Input, State>,
-  attributes: Metric.Attributes | undefined
+  attributes: Metric.AttributeSet
 ): string {
   // Every part is JSON-encoded so that no id, description or attribute value
-  // can spell another metric's key. Empty attributes select the unattributed
-  // series.
-  const entries = attributes && sortedEntries(attributes)
-  return JSON.stringify([metric.type, metric.id, metric.description, entries?.length ? entries : undefined])
+  // can spell another metric's key.
+  const entries = Object.entries(attributes).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
+  return JSON.stringify([metric.type, metric.id, metric.description, entries])
 }
 
 function makeHooks<Input, State>(
@@ -3561,11 +3559,6 @@ function makeHooks<Input, State>(
   modify?: (input: Input, context: Context.Context<never>) => void
 ): Metric.Hooks<Input, State> {
   return { get, update, modify: modify ?? update }
-}
-
-function sortedEntries(attributes: Metric.Attributes): Array<[string, string]> {
-  const entries = Array.isArray(attributes) ? [...attributes] : Object.entries(attributes)
-  return entries.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
 }
 
 function mergeAttributes(

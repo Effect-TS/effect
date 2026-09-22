@@ -233,6 +233,19 @@ describe("Metric", () => {
         ])
       }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
+    it.effect("follows contextual attributes that change between updates of a plain metric", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter(nextId())
+        const tenantA = { tenant: "a" }
+
+        yield* Metric.update(counter, 1).pipe(Effect.provideService(Metric.CurrentMetricAttributes, tenantA))
+        yield* Metric.update(counter, 10).pipe(Effect.provideService(Metric.CurrentMetricAttributes, { tenant: "b" }))
+        yield* Metric.update(counter, 100).pipe(Effect.provideService(Metric.CurrentMetricAttributes, tenantA))
+        yield* Metric.update(counter, 1000)
+
+        assert.deepStrictEqual(yield* series, [[null, 1000], [{ tenant: "a" }, 101], [{ tenant: "b" }, 10]])
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
     it.effect("applies inner attributes over outer, contextual and metric attributes", () =>
       Effect.gen(function*() {
         const counter = Metric.counter(nextId(), { attributes: { a: "own", b: "own", c: "own", d: "own" } }).pipe(
