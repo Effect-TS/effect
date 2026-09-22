@@ -273,6 +273,14 @@ describe("Graph", () => {
       assert.strictEqual(Hash.hash(left), Hash.hash(right))
     })
 
+    it("distinguishes undirected self-loops on different nodes", () => {
+      const onA = undirected(["A", "B"], [[0, 0, "loop"]])
+      const onB = undirected(["A", "B"], [[1, 1, "loop"]])
+
+      assert.strictEqual(Equal.equals(onA, onB), false)
+      assert.notStrictEqual(Hash.hash(onA), Hash.hash(onB))
+    })
+
     it("distinguishes node payload, edge payload, missing edge, kind, and sparse indexes", () => {
       const base = directed(["A", "B"], [[0, 1, "edge"]])
       const cases: ReadonlyArray<Graph.Graph<unknown, unknown, Graph.Kind>> = [
