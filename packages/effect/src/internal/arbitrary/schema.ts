@@ -112,6 +112,8 @@ function mergeConstraint(self: FilterConstraint | undefined, that: FilterConstra
     )
   const minLength = mergeMinimum(self?.minLength, that.minLength)
   const maxLength = mergeMaximum(self?.maxLength, that.maxLength)
+  const minCodePoints = mergeMinimum(self?.minCodePoints, that.minCodePoints)
+  const maxCodePoints = mergeMaximum(self?.maxCodePoints, that.maxCodePoints)
   const minSize = mergeMinimum(self?.minSize, that.minSize)
   const maxSize = mergeMaximum(self?.maxSize, that.maxSize)
   const minProperties = mergeMinimum(self?.minProperties, that.minProperties)
@@ -138,6 +140,8 @@ function mergeConstraint(self: FilterConstraint | undefined, that: FilterConstra
     ...(exclusiveMaximum === true ? { exclusiveMaximum: true } : undefined),
     ...(minLength === undefined ? undefined : { minLength }),
     ...(maxLength === undefined ? undefined : { maxLength }),
+    ...(minCodePoints === undefined ? undefined : { minCodePoints }),
+    ...(maxCodePoints === undefined ? undefined : { maxCodePoints }),
     ...(minSize === undefined ? undefined : { minSize }),
     ...(maxSize === undefined ? undefined : { maxSize }),
     ...(minProperties === undefined ? undefined : { minProperties }),
@@ -190,6 +194,7 @@ function validateConstraint(constraint: FilterConstraint | undefined, path: Read
   if (constraint === undefined) return
   const cardinalities = [
     [constraint.minLength, constraint.maxLength],
+    [constraint.minCodePoints, constraint.maxCodePoints],
     [constraint.minSize, constraint.maxSize],
     [constraint.minProperties, constraint.maxProperties]
   ] as const
@@ -360,8 +365,8 @@ function builtInDeclarationLink(
 function lengthBounds(
   constraint: FilterConstraint | undefined,
   keys: readonly [
-    minimum: "minLength" | "minSize" | "minProperties",
-    maximum: "maxLength" | "maxSize" | "maxProperties"
+    minimum: "minLength" | "minCodePoints" | "minSize" | "minProperties",
+    maximum: "maxLength" | "maxCodePoints" | "maxSize" | "maxProperties"
   ],
   path: ReadonlyArray<PropertyKey>,
   label: string
@@ -772,6 +777,28 @@ function randomString(state: Model.GenerationState, minimum: number, maximum: nu
   return value
 }
 
+function randomCodePointString(
+  state: Model.GenerationState,
+  minimum: number,
+  maximum: number,
+  minCodePoints: number,
+  maxCodePoints: number
+): string {
+  const count = Model.randomLength(state, minCodePoints, maxCodePoints)
+  const length = Model.randomLength(state, Math.max(minimum, count), Math.min(maximum, count * 2))
+  let pairs = length - count
+  let value = ""
+  for (let remaining = count; remaining > 0; remaining--) {
+    if (Model.randomInt(state, 1, remaining) <= pairs) {
+      value += globalThis.String.fromCodePoint(Model.randomInt(state, 0x10000, 0x10ffff))
+      pairs--
+    } else {
+      value += globalThis.String.fromCharCode(Model.randomInt(state, 32, 126))
+    }
+  }
+  return value
+}
+
 function numberBounds(constraint: FilterConstraint | undefined, integer: boolean, path: ReadonlyArray<PropertyKey>) {
   const ordered = constraint?.order === Order.Number ? constraint : undefined
   let minimum = ordered?.minimum as number | undefined
@@ -1024,7 +1051,23 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
           const pattern = Regexp.compile(candidate)
           if (pattern !== undefined) patterns.push(pattern)
         }
-        const [minimum, maximum] = lengthBounds(constraint, ["minLength", "maxLength"], path, "string")
+        let [minimum, maximum = infinity] = lengthBounds(constraint, ["minLength", "maxLength"], path, "string")
+        const hasCodePoints = constraint?.minCodePoints !== undefined || constraint?.maxCodePoints !== undefined
+        let [minCodePoints, maxCodePoints = infinity] = lengthBounds(
+          constraint,
+          ["minCodePoints", "maxCodePoints"],
+          path,
+          "string code point"
+        )
+        if (hasCodePoints) {
+          minimum = Math.max(minimum, minCodePoints)
+          maximum = Math.min(maximum, maxCodePoints * 2)
+          minCodePoints = Math.max(minCodePoints, Math.ceil(minimum / 2))
+          maxCodePoints = Math.min(maxCodePoints, maximum)
+          if (minimum > maximum || minCodePoints > maxCodePoints) {
+            throw arbitraryError("string constraints", path)
+          }
+        }
         return Model.makeCompiled(
           [],
           () => 0,
@@ -1034,14 +1077,17 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
               : patterns.length === 1
               ? patterns[0]
               : patterns[Model.randomIndex(state, patterns.length)]
-            const currentMaximum = Math.max(minimum, pattern?.minimumLength ?? 0, state.size)
-            const upper = maximum === undefined ? currentMaximum : Math.min(maximum, currentMaximum)
-            let value: string | undefined
-            if (pattern === undefined) {
-              value = randomString(state, minimum, upper)
-            } else {
-              value = pattern.generate(state, minimum, upper)
+            let currentMaximum = Math.max(minimum, pattern?.minimumLength ?? 0, state.size)
+            if (hasCodePoints && pattern !== undefined) {
+              // A longer UTF-16 alternative can use fewer code points than the shortest match.
+              currentMaximum *= 2
             }
+            const upper = Math.min(maximum, currentMaximum)
+            const value = pattern !== undefined
+              ? pattern.generate(state, minimum, upper)
+              : hasCodePoints
+              ? randomCodePointString(state, minimum, upper, minCodePoints, Math.min(maxCodePoints, upper))
+              : randomString(state, minimum, upper)
             if (value === undefined) return Model.discarded
             return state.shrinks
               ? Model.sampleFromShrink(

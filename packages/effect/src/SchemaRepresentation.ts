@@ -1210,6 +1210,52 @@ export const isLengthBetweenReviver: FilterReviver<{
 )
 
 /**
+ * Reviver for persisted `isMinCodePoints` checks.
+ *
+ * @see {@link Schema.isMinCodePoints} for creating the corresponding check
+ * @category validation
+ * @since 4.0.0
+ */
+export const isMinCodePointsReviver: FilterReviver<{
+  readonly minCodePoints: number
+}> = makeReviverFilter(
+  "effect/schema/isMinCodePoints",
+  Schema.Struct({ minCodePoints: Schema.Natural }),
+  ({ annotations, payload }) => Schema.isMinCodePoints(payload.minCodePoints, annotations)
+)
+
+/**
+ * Reviver for persisted `isMaxCodePoints` checks.
+ *
+ * @see {@link Schema.isMaxCodePoints} for creating the corresponding check
+ * @category validation
+ * @since 4.0.0
+ */
+export const isMaxCodePointsReviver: FilterReviver<{
+  readonly maxCodePoints: number
+}> = makeReviverFilter(
+  "effect/schema/isMaxCodePoints",
+  Schema.Struct({ maxCodePoints: Schema.Natural }),
+  ({ annotations, payload }) => Schema.isMaxCodePoints(payload.maxCodePoints, annotations)
+)
+
+/**
+ * Reviver for persisted `isCodePointsBetween` checks.
+ *
+ * @see {@link Schema.isCodePointsBetween} for creating the corresponding check
+ * @category validation
+ * @since 4.0.0
+ */
+export const isCodePointsBetweenReviver: FilterReviver<{
+  readonly minimum: number
+  readonly maximum: number
+}> = makeReviverFilter(
+  "effect/schema/isCodePointsBetween",
+  Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
+  ({ annotations, payload }) => Schema.isCodePointsBetween(payload.minimum, payload.maximum, annotations)
+)
+
+/**
  * Reviver for persisted `isMinSize` checks.
  *
  * **When to use**

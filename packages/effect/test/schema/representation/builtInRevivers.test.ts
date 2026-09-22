@@ -155,6 +155,39 @@ describe("SchemaRepresentation built-in string revivers", () => {
     })
   })
 
+  it("revives isMinCodePoints", () => {
+    assertFilterReviver({
+      schema: Schema.String.check(Schema.isMinCodePoints(2.8)),
+      id: "effect/schema/isMinCodePoints",
+      payload: { minCodePoints: 2 },
+      reviver: SchemaRepresentation.isMinCodePointsReviver,
+      valid: "😀a",
+      invalid: "😀"
+    })
+  })
+
+  it("revives isMaxCodePoints", () => {
+    assertFilterReviver({
+      schema: Schema.String.check(Schema.isMaxCodePoints(1.8)),
+      id: "effect/schema/isMaxCodePoints",
+      payload: { maxCodePoints: 1 },
+      reviver: SchemaRepresentation.isMaxCodePointsReviver,
+      valid: "😀",
+      invalid: "😀a"
+    })
+  })
+
+  it("revives isCodePointsBetween", () => {
+    assertFilterReviver({
+      schema: Schema.String.check(Schema.isCodePointsBetween(1.8, 1.8)),
+      id: "effect/schema/isCodePointsBetween",
+      payload: { minimum: 1, maximum: 1 },
+      reviver: SchemaRepresentation.isCodePointsBetweenReviver,
+      valid: "😀",
+      invalid: "😀a"
+    })
+  })
+
   it("revives isTrimmed", () => {
     assertFilterReviver({
       schema: Schema.String.check(Schema.isTrimmed()),

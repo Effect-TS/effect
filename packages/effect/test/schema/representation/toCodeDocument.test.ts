@@ -376,6 +376,21 @@ describe("toCodeDocument", () => {
       )
     })
 
+    it("String & code point checks", () => {
+      for (
+        const [check, code] of [
+          [Schema.isMinCodePoints(2), "Schema.isMinCodePoints(2)"],
+          [Schema.isMaxCodePoints(3), "Schema.isMaxCodePoints(3)"],
+          [Schema.isCodePointsBetween(2, 3), "Schema.isCodePointsBetween(2, 3)"]
+        ] as const
+      ) {
+        assertSchema(
+          { schema: Schema.String.check(check) },
+          { codes: makeCode(`Schema.String.check(${code})`, "string") }
+        )
+      }
+    })
+
     it("String & check + annotations", () => {
       assertSchema(
         { schema: Schema.String.check(Schema.isMinLength(1, { description: "a" })) },
