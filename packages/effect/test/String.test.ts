@@ -585,6 +585,294 @@ describe("String", () => {
     })
   })
 
+  describe("stripMarginRaw", () => {
+    // Builds a TemplateStringsArray from raw parts, for cases that are awkward
+    // to write as a literal (tabs, trailing whitespace, substitutions at the
+    // edges). The cooked strings are deliberately different from the raw ones
+    // to prove that the raw text is what gets used.
+    const raw = (...parts: ReadonlyArray<string>): TemplateStringsArray =>
+      Object.assign(parts.map(() => "<cooked>"), { raw: parts }) as unknown as TemplateStringsArray
+
+    describe("margins", () => {
+      it("strips the indentation and | margin from every line", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            |hello
+            |world
+          `,
+          "hello\nworld"
+        )
+      })
+
+      it("treats a single space after | as part of the margin", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | hello
+            | world
+          `,
+          "hello\nworld"
+        )
+      })
+
+      it("keeps indentation beyond the single space after |", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | if (x) {
+            |   y()
+            |     z()
+            | }
+          `,
+          "if (x) {\n  y()\n    z()\n}"
+        )
+      })
+
+      it("does not treat a tab after | as part of the margin", () => {
+        strictEqual(S.stripMarginRaw(raw("\t|\thello")), "\thello")
+      })
+
+      it("accepts tabs and spaces before the margin", () => {
+        strictEqual(S.stripMarginRaw(raw("\n\t \t|hello\n \t |world\n")), "hello\nworld")
+      })
+
+      it("accepts a margin with no indentation", () => {
+        strictEqual(S.stripMarginRaw(raw("|hello\n|world")), "hello\nworld")
+      })
+
+      it("works on a single line without newlines", () => {
+        strictEqual(S.stripMarginRaw`| hello`, "hello")
+        strictEqual(S.stripMarginRaw`hello`, "hello")
+      })
+
+      it("keeps lines without a margin as written, including their indentation", () => {
+        strictEqual(S.stripMarginRaw(raw("\n  | first\n    no margin\n  | last\n")), "first\n    no margin\nlast")
+      })
+
+      it("only strips the first | on a line", () => {
+        strictEqual(S.stripMarginRaw`| a | b |`, "a | b |")
+        strictEqual(S.stripMarginRaw`|| a`, "| a")
+        strictEqual(S.stripMarginRaw`| | a`, "| a")
+      })
+
+      it("keeps trailing whitespace on content lines", () => {
+        strictEqual(S.stripMarginRaw(raw("\n  | hello   \n  | world\t\n")), "hello   \nworld\t")
+      })
+
+      it("keeps blank lines between content lines, with or without a margin", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | a
+
+            | b
+            |
+            | c
+          `,
+          "a\n\nb\n\nc"
+        )
+      })
+
+      it("keeps a whitespace-only line without a margin between content lines", () => {
+        strictEqual(S.stripMarginRaw(raw("\n  | a\n    \n  | b\n")), "a\n    \nb")
+      })
+    })
+
+    describe("leading and trailing lines", () => {
+      it("drops the newline after the opening backtick and the indentation before the closing one", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | hello
+          `,
+          "hello"
+        )
+        strictEqual(S.stripMarginRaw(raw("\n  | hello\n  ")), "hello")
+        strictEqual(S.stripMarginRaw(raw("\n  | hello\n")), "hello")
+        strictEqual(S.stripMarginRaw(raw("\n\t| hello\n\t")), "hello")
+      })
+
+      it("drops several leading and trailing blank lines", () => {
+        strictEqual(S.stripMarginRaw(raw("\n\n   \n  | hello\n  \n\n")), "hello")
+        strictEqual(
+          S.stripMarginRaw`
+
+            | hello
+
+          `,
+          "hello"
+        )
+      })
+
+      it("keeps a leading blank line written with an explicit margin", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            |
+            | hello
+          `,
+          "\nhello"
+        )
+        strictEqual(S.stripMarginRaw(raw("\n  | \n  | hello\n")), "\nhello")
+      })
+
+      it("keeps a trailing newline written with an explicit margin", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | hello
+            |
+          `,
+          "hello\n"
+        )
+        strictEqual(S.stripMarginRaw(raw("\n  | hello\n  |\n  |\n")), "hello\n\n")
+      })
+
+      it("does not drop leading or trailing whitespace inside a content line", () => {
+        strictEqual(S.stripMarginRaw`  hello  `, "  hello  ")
+        strictEqual(S.stripMarginRaw(raw("\n  hello  \n")), "  hello  ")
+      })
+
+      it("returns an empty string for an empty or whitespace-only template", () => {
+        strictEqual(S.stripMarginRaw``, "")
+        strictEqual(S.stripMarginRaw`   `, "")
+        strictEqual(
+          S.stripMarginRaw`
+          `,
+          ""
+        )
+        strictEqual(S.stripMarginRaw(raw("\n  \n\t\n")), "")
+      })
+
+      it("returns an empty string for a lone empty margin", () => {
+        strictEqual(S.stripMarginRaw(raw("\n  |\n")), "")
+        strictEqual(S.stripMarginRaw`|`, "")
+      })
+    })
+
+    describe("substitutions", () => {
+      it("interpolates values", () => {
+        const name = "world"
+        strictEqual(S.stripMarginRaw`| hello ${name}!`, "hello world!")
+        strictEqual(S.stripMarginRaw`| ${1} + ${2} = ${3}`, "1 + 2 = 3")
+      })
+
+      it("converts values to strings like String.raw", () => {
+        strictEqual(S.stripMarginRaw`| ${null} ${undefined} ${true} ${1.5}`, "null undefined true 1.5")
+        strictEqual(S.stripMarginRaw`| ${{ toString: () => "custom" }}`, "custom")
+        strictEqual(S.stripMarginRaw`| ${["a", "b"]}`, "a,b")
+      })
+
+      it("supports a substitution at the very start and end of the template", () => {
+        strictEqual(S.stripMarginRaw`${"a"}`, "a")
+        strictEqual(S.stripMarginRaw`${"a"}${"b"}`, "ab")
+        strictEqual(S.stripMarginRaw(raw("", "\n| b\n", ""), "a", "c"), "a\nb\nc")
+      })
+
+      it("ignores extra substitutions like String.raw", () => {
+        strictEqual(S.stripMarginRaw(raw("| a"), "ignored"), "a")
+      })
+
+      it("does not strip a margin inside a substituted value", () => {
+        const table = "| a | b |\n|---|---|\n| 1 | 2 |"
+        strictEqual(
+          S.stripMarginRaw`
+            | Table:
+            | ${table}
+          `,
+          "Table:\n| a | b |\n|---|---|\n| 1 | 2 |"
+        )
+      })
+
+      it("does not strip a margin on a line started by a substituted value", () => {
+        strictEqual(S.stripMarginRaw`${"x\n"}  | not a margin`, "x\n  | not a margin")
+        strictEqual(S.stripMarginRaw`${""}| not a margin`, "| not a margin")
+      })
+
+      it("does not treat a | placed right after a substitution as a margin", () => {
+        strictEqual(S.stripMarginRaw`| ${"a"}| b`, "a| b")
+      })
+
+      it("inserts multi-line values verbatim without re-indenting them", () => {
+        const body = "line 1\nline 2"
+        strictEqual(
+          S.stripMarginRaw`
+            |   ${body}
+          `,
+          "  line 1\nline 2"
+        )
+      })
+
+      it("does not drop a leading or trailing line that contains a substitution", () => {
+        strictEqual(S.stripMarginRaw(raw("", "\n| hello"), ""), "\nhello")
+        strictEqual(S.stripMarginRaw(raw("| hello\n", ""), ""), "hello\n")
+        strictEqual(S.stripMarginRaw(raw("| hello\n  ", "\n"), " "), "hello\n   ")
+      })
+
+      it("keeps a blank line produced by a multi-line substitution", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | ${"a\n\nb"}
+          `,
+          "a\n\nb"
+        )
+        strictEqual(
+          S.stripMarginRaw`
+            | ${"a\n"}
+          `,
+          "a\n"
+        )
+      })
+
+      it("continues stripping margins on template lines after a substitution", () => {
+        strictEqual(
+          S.stripMarginRaw`
+            | ${"a"}
+            | ${"b"}
+            | c
+          `,
+          "a\nb\nc"
+        )
+      })
+    })
+
+    describe("raw semantics", () => {
+      it("keeps escape sequences as written", () => {
+        strictEqual(S.stripMarginRaw`| a\nb`, "a\\nb")
+        strictEqual(S.stripMarginRaw`| a\tb`, "a\\tb")
+        strictEqual(S.stripMarginRaw`| \u0041`, "\\u0041")
+        strictEqual(S.stripMarginRaw`| \``, "\\`")
+      })
+
+      it("only splits lines on real newlines, not on escaped ones", () => {
+        strictEqual(S.stripMarginRaw`| a\n  | b`, "a\\n  | b")
+      })
+
+      it("does not treat an escaped dollar sign as a substitution", () => {
+        strictEqual(S.stripMarginRaw`| \${"x"}`, "\\${\"x\"}")
+      })
+
+      it("uses the raw strings rather than the cooked ones", () => {
+        strictEqual(S.stripMarginRaw(raw("| a ", " b"), 1), "a 1 b")
+      })
+    })
+
+    describe("plain strings", () => {
+      it("returns a plain string unchanged", () => {
+        strictEqual(S.stripMarginRaw("hello"), "hello")
+        strictEqual(S.stripMarginRaw(""), "")
+        strictEqual(S.stripMarginRaw("  | not stripped  \n"), "  | not stripped  \n")
+        strictEqual(S.stripMarginRaw("\n  | hello\n"), "\n  | hello\n")
+      })
+
+      it("can be forwarded from a function that accepts a string or a template", () => {
+        const prompt = (template: TemplateStringsArray | string, ...values: ReadonlyArray<unknown>) =>
+          S.stripMarginRaw(template, ...values)
+        strictEqual(prompt("hello"), "hello")
+        strictEqual(
+          prompt`
+            | hello ${"world"}
+          `,
+          "hello world"
+        )
+      })
+    })
+  })
+
   describe("snakeToCamel", () => {
     it("converts snake_case to camelCase", () => {
       strictEqual(S.snakeToCamel("hello_world"), "helloWorld")
