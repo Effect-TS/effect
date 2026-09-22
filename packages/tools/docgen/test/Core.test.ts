@@ -90,6 +90,10 @@ const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, run
 
 describe("Core", () => {
   describe("class property examples", () => {
+    // These tests run the full docgen program (including ts-morph and Prettier) in parallel.
+    // Under Bun with other CI projects running, that can exceed Vitest's 5s default.
+    const docgenTimeout = 20_000
+
     for (const runExamples of [true, false]) {
       it.effect(`collects property-only examples with runExamples: ${runExamples}`, () =>
         assertExampleFiles(
@@ -104,7 +108,7 @@ describe("Core", () => {
           }`,
           ["const value = 1"],
           runExamples
-        ))
+        ), docgenTimeout)
     }
 
     it.effect("collects property descriptions and example tags alongside methods, excluding skipped fences", () =>
@@ -137,7 +141,7 @@ describe("Core", () => {
           read() { return this.value }
         }`,
         ["const description = 1", "const first = 1", "const second = 2", "const method = 3"]
-      ))
+      ), docgenTimeout)
 
     it.effect("does not request validation when all property examples are skipped", () =>
       assertExampleFiles(
@@ -151,7 +155,7 @@ describe("Core", () => {
           readonly value = 1
         }`,
         []
-      ))
+      ), docgenTimeout)
   })
 
   describe("[internal] getModuleMarkdownFiles", () => {
