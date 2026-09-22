@@ -5979,7 +5979,8 @@ const makeSpanWith = <XA, XE>(
   clock: Clock.Clock,
   timingEnabled: boolean
 ): Tracer.Span => {
-  const disablePropagation = !fiber.getRef(TracerEnabled) ||
+  // TracerEnabled and the tracer are cached per context by the fiber
+  const disablePropagation = !fiber.cache.tracerEnabled ||
     (options?.annotations && Context.get(options.annotations, Tracer.DisablePropagation))
   const parent = options?.parent !== undefined
     ? Option.some(options.parent)
@@ -6000,7 +6001,7 @@ const makeSpanWith = <XA, XE>(
       )
     })
   } else {
-    const tracer = fiber.getRef(Tracer.Tracer)
+    const tracer = fiber.cache.tracer ?? Tracer.nativeTracer
     const annotationsFromEnv = fiber.getRef(TracerSpanAnnotations)
     const linksFromEnv = fiber.getRef(TracerSpanLinks)
     const level = options?.level ?? fiber.getRef(Tracer.CurrentTraceLevel)
