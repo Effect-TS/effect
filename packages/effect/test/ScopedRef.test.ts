@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Effect, Exit, identity, pipe, Ref, Scope, ScopedRef } from "effect"
+import { Effect, Exit, Fiber, identity, Latch, pipe, Ref, Scope, ScopedRef } from "effect"
 import * as Counter from "./utils/counter.ts"
 
 describe("ScopedRef", () => {
@@ -118,6 +118,34 @@ describe("ScopedRef", () => {
       strictEqual(yield* Ref.get(oldReleased), 1)
       strictEqual(yield* Ref.get(replacementAcquired), 1)
       strictEqual(yield* Ref.get(replacementReleased), 1)
+    }))
+  it.effect("a set in flight when the owning scope closes releases its value", () =>
+    Effect.gen(function*() {
+      const released = yield* Ref.make<Array<number>>([])
+      const owner = yield* Scope.make()
+      const ref = yield* ScopedRef.make(() => 0).pipe(Scope.provide(owner))
+      const gate = yield* Latch.make()
+      const setter = yield* Effect.forkDetach(
+        ScopedRef.set(
+          ref,
+          Effect.acquireRelease(gate.await.pipe(Effect.as(1)), (n) => Ref.update(released, (xs) => [...xs, n]))
+        ),
+        { startImmediately: true }
+      )
+      yield* Scope.close(owner, Exit.void)
+      yield* gate.open
+      yield* Fiber.await(setter)
+      assert.deepStrictEqual(yield* Ref.get(released), [1])
+    }))
+  it.effect("the owning scope closes the current value after other finalizers added later", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const owner = yield* Scope.make()
+      const ref = yield* ScopedRef.make(() => 0).pipe(Scope.provide(owner))
+      yield* Scope.addFinalizer(owner, Effect.sync(() => order.push("later")))
+      yield* ScopedRef.set(ref, Effect.acquireRelease(Effect.succeed(1), () => Effect.sync(() => order.push("value"))))
+      yield* Scope.close(owner, Exit.void)
+      assert.deepStrictEqual(order, ["later", "value"])
     }))
   it.effect("fromAcquire tracks the initial resource through replacement and scope close", () =>
     Effect.gen(function*() {
