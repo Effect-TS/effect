@@ -97,7 +97,7 @@ describe("toCodecOpenAI", () => {
         readonly as: ReadonlyArray<A>
       }
       const schema = Schema.Struct({
-        a: Schema.String.check(Schema.isStartsWith("a")),
+        a: Schema.String.check(Schema.isStartingWith("a")),
         as: Schema.Array(Schema.suspend((): Schema.Codec<A> => schema))
       })
       assertJsonSchema(schema, {
@@ -142,7 +142,7 @@ describe("toCodecOpenAI", () => {
         readonly as: readonly [A]
       }
       const schema = Schema.Struct({
-        a: Schema.String.check(Schema.isStartsWith("a")),
+        a: Schema.String.check(Schema.isStartingWith("a")),
         as: Schema.Tuple([Schema.suspend((): Schema.Codec<A> => schema)])
       })
       assertJsonSchema(schema, {
@@ -244,7 +244,7 @@ describe("toCodecOpenAI", () => {
     })
 
     it("String + startsWith", () => {
-      assertJsonSchema(Schema.String.check(Schema.isStartsWith("a")), {
+      assertJsonSchema(Schema.String.check(Schema.isStartingWith("a")), {
         "type": "string",
         "description": `a string starting with "a"`,
         "pattern": "^a"
@@ -252,7 +252,7 @@ describe("toCodecOpenAI", () => {
     })
 
     it("String + startsWith + endsWith", () => {
-      assertJsonSchema(Schema.String.check(Schema.isStartsWith("a"), Schema.isEndsWith("b")), {
+      assertJsonSchema(Schema.String.check(Schema.isStartingWith("a"), Schema.isEndingWith("b")), {
         "type": "string",
         "description": `a string starting with "a" and a string ending with "b"`,
         "pattern": "^(?=[\\s\\S]*?(?:^a))(?=[\\s\\S]*?(?:b$))"

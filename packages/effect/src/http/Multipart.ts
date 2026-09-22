@@ -386,7 +386,7 @@ export const FilesSchema: Schema.$Array<PersistedFileSchema> = Schema.Array(Pers
  */
 export const SingleFileSchema: Schema.decodeTo<PersistedFileSchema, Schema.$Array<PersistedFileSchema>> = FilesSchema
   .check(
-    Schema.isLengthBetween(1, 1)
+    Schema.isBetweenLength(1, 1)
   ).pipe(
     Schema.decodeTo(
       PersistedFileSchema,

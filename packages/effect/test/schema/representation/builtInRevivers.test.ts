@@ -133,12 +133,12 @@ describe("SchemaRepresentation built-in string revivers", () => {
     })
   })
 
-  it("revives isLengthBetween", () => {
+  it("revives isBetweenLength", () => {
     assertFilterReviver({
-      schema: Schema.String.check(Schema.isLengthBetween(1.8, 3.8)),
-      id: "effect/schema/isLengthBetween",
+      schema: Schema.String.check(Schema.isBetweenLength(1.8, 3.8)),
+      id: "effect/schema/isBetweenLength",
       payload: { minimum: 1, maximum: 3 },
-      reviver: SchemaRepresentation.isLengthBetweenReviver,
+      reviver: SchemaRepresentation.isBetweenLengthReviver,
       valid: "ab",
       invalid: ""
     })
@@ -177,12 +177,12 @@ describe("SchemaRepresentation built-in string revivers", () => {
     })
   })
 
-  it("revives isCodePointsBetween", () => {
+  it("revives isBetweenCodePoints", () => {
     assertFilterReviver({
-      schema: Schema.String.check(Schema.isCodePointsBetween(1.8, 1.8)),
-      id: "effect/schema/isCodePointsBetween",
+      schema: Schema.String.check(Schema.isBetweenCodePoints(1.8, 1.8)),
+      id: "effect/schema/isBetweenCodePoints",
       payload: { minimum: 1, maximum: 1 },
-      reviver: SchemaRepresentation.isCodePointsBetweenReviver,
+      reviver: SchemaRepresentation.isBetweenCodePointsReviver,
       valid: "😀",
       invalid: "😀a"
     })
@@ -254,34 +254,34 @@ describe("SchemaRepresentation built-in string revivers", () => {
     })
   })
 
-  it("revives isStartsWith", () => {
+  it("revives isStartingWith", () => {
     assertFilterReviver({
-      schema: Schema.String.check(Schema.isStartsWith("pre")),
-      id: "effect/schema/isStartsWith",
+      schema: Schema.String.check(Schema.isStartingWith("pre")),
+      id: "effect/schema/isStartingWith",
       payload: { startsWith: "pre" },
-      reviver: SchemaRepresentation.isStartsWithReviver,
+      reviver: SchemaRepresentation.isStartingWithReviver,
       valid: "prefix",
       invalid: "suffix"
     })
   })
 
-  it("revives isEndsWith", () => {
+  it("revives isEndingWith", () => {
     assertFilterReviver({
-      schema: Schema.String.check(Schema.isEndsWith("end")),
-      id: "effect/schema/isEndsWith",
+      schema: Schema.String.check(Schema.isEndingWith("end")),
+      id: "effect/schema/isEndingWith",
       payload: { endsWith: "end" },
-      reviver: SchemaRepresentation.isEndsWithReviver,
+      reviver: SchemaRepresentation.isEndingWithReviver,
       valid: "weekend",
       invalid: "ending"
     })
   })
 
-  it("revives isIncludes", () => {
+  it("revives isIncluding", () => {
     assertFilterReviver({
-      schema: Schema.String.check(Schema.isIncludes("mid")),
-      id: "effect/schema/isIncludes",
+      schema: Schema.String.check(Schema.isIncluding("mid")),
+      id: "effect/schema/isIncluding",
       payload: { includes: "mid" },
-      reviver: SchemaRepresentation.isIncludesReviver,
+      reviver: SchemaRepresentation.isIncludingReviver,
       valid: "middle",
       invalid: "outside"
     })
@@ -672,12 +672,12 @@ describe("SchemaRepresentation built-in collection revivers", () => {
     })
   })
 
-  it("revives isSizeBetween", () => {
+  it("revives isBetweenSize", () => {
     assertFilterReviver({
-      schema: Schema.Any.check(Schema.isSizeBetween(1, 2)),
-      id: "effect/schema/isSizeBetween",
+      schema: Schema.Any.check(Schema.isBetweenSize(1, 2)),
+      id: "effect/schema/isBetweenSize",
       payload: { minimum: 1, maximum: 2 },
-      reviver: SchemaRepresentation.isSizeBetweenReviver,
+      reviver: SchemaRepresentation.isBetweenSizeReviver,
       valid: new Set([1]),
       invalid: new Set()
     })
@@ -720,9 +720,9 @@ describe("SchemaRepresentation built-in collection revivers", () => {
     })
   })
 
-  it("normalizes isSizeBetween", () => {
-    assert.deepStrictEqual(Schema.isSizeBetween(1.9, 3.7).annotations?.representation, {
-      id: "effect/schema/isSizeBetween",
+  it("normalizes isBetweenSize", () => {
+    assert.deepStrictEqual(Schema.isBetweenSize(1.9, 3.7).annotations?.representation, {
+      id: "effect/schema/isBetweenSize",
       payload: { minimum: 1, maximum: 3 }
     })
   })
@@ -751,12 +751,12 @@ describe("SchemaRepresentation built-in object revivers", () => {
     })
   })
 
-  it("revives isPropertiesLengthBetween", () => {
+  it("revives isBetweenProperties", () => {
     assertFilterReviver({
-      schema: Schema.Any.check(Schema.isPropertiesLengthBetween(1, 2)),
-      id: "effect/schema/isPropertiesLengthBetween",
+      schema: Schema.Any.check(Schema.isBetweenProperties(1, 2)),
+      id: "effect/schema/isBetweenProperties",
       payload: { minimum: 1, maximum: 2 },
-      reviver: SchemaRepresentation.isPropertiesLengthBetweenReviver,
+      reviver: SchemaRepresentation.isBetweenPropertiesReviver,
       valid: { a: 1 },
       invalid: {}
     })
@@ -801,9 +801,9 @@ describe("SchemaRepresentation built-in object revivers", () => {
     })
   })
 
-  it("normalizes isPropertiesLengthBetween", () => {
-    assert.deepStrictEqual(Schema.isPropertiesLengthBetween(1.9, 3.7).annotations?.representation, {
-      id: "effect/schema/isPropertiesLengthBetween",
+  it("normalizes isBetweenProperties", () => {
+    assert.deepStrictEqual(Schema.isBetweenProperties(1.9, 3.7).annotations?.representation, {
+      id: "effect/schema/isBetweenProperties",
       payload: { minimum: 1, maximum: 3 }
     })
   })

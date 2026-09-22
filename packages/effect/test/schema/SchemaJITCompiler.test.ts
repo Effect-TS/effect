@@ -174,7 +174,7 @@ describe("SchemaJITCompiler", () => {
     })
     strictEqual(SchemaParser.is(template)({ value: "prefix-a" }), false)
 
-    const record = Schema.Record(Schema.String.check(Schema.isStartsWith("x")), Schema.Number)
+    const record = Schema.Record(Schema.String.check(Schema.isStartingWith("x")), Schema.Number)
     const decode = SchemaParser.decodeUnknownSync(record)
     deepStrictEqual(decode({ x: 1, y: 2 }), { x: 1 })
     deepStrictEqual(decode({ x: 1, y: 2 }, { disableChecks: true }), { x: 1, y: 2 })

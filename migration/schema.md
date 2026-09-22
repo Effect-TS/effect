@@ -115,7 +115,7 @@ const DateFromIsoString = Schema.DateFromString
 
 All filters have been renamed with an `is` prefix and now use `check(...)` or `pipe(Schema.check(...))`:
 
-`greaterThan` → `isGreaterThan`, `greaterThanOrEqualTo` → `isGreaterThanOrEqualTo`, `lessThan` → `isLessThan`, `lessThanOrEqualTo` → `isLessThanOrEqualTo`, `between` → `isBetween`, `int` → `isInt`, `multipleOf` → `isMultipleOf`, `finite` → `isFinite`, `minLength` → `isMinLength`, `maxLength` → `isMaxLength`, `length` → `isLengthBetween`
+`greaterThan` → `isGreaterThan`, `greaterThanOrEqualTo` → `isGreaterThanOrEqualTo`, `lessThan` → `isLessThan`, `lessThanOrEqualTo` → `isLessThanOrEqualTo`, `between` → `isBetween`, `int` → `isInt`, `multipleOf` → `isMultipleOf`, `finite` → `isFinite`, `minLength` → `isMinLength`, `maxLength` → `isMaxLength`, `length` → `isBetweenLength`
 
 Note: `positive`, `negative`, `nonNegative`, `nonPositive` have been removed in v4.
 

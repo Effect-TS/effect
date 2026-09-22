@@ -302,11 +302,11 @@ import { Schema } from "effect"
 
 Schema.String.check(Schema.isMaxLength(5))
 Schema.String.check(Schema.isMinLength(5))
-Schema.String.check(Schema.isLengthBetween(5, 5))
+Schema.String.check(Schema.isBetweenLength(5, 5))
 Schema.String.check(Schema.isPattern(/^[a-z]+$/))
-Schema.String.check(Schema.isStartsWith("aaa"))
-Schema.String.check(Schema.isEndsWith("zzz"))
-Schema.String.check(Schema.isIncludes("---"))
+Schema.String.check(Schema.isStartingWith("aaa"))
+Schema.String.check(Schema.isEndingWith("zzz"))
+Schema.String.check(Schema.isIncluding("---"))
 Schema.String.check(Schema.isUppercased())
 Schema.String.check(Schema.isLowercased())
 ```

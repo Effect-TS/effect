@@ -74,7 +74,7 @@ describe("Arbitrary shared shrink contexts", () => {
       const schema = Schema.Record(
         Schema.String.check(Schema.isPattern(/^[a-c]$/)),
         Schema.Null
-      ).check(Schema.isPropertiesLengthBetween(2, 2))
+      ).check(Schema.isBetweenProperties(2, 2))
       const record = Arbitrary.schema(schema)
       const options = { runs: 1, count: 1, seed: 13, size: 2 }
       const [initial] = yield* Arbitrary.sampleEffect(record, options)

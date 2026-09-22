@@ -853,63 +853,63 @@ export const isBase64UrlReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
- * Reviver for persisted `isStartsWith` checks.
+ * Reviver for persisted `isStartingWith` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isStartsWith}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isStartingWith}.
  *
- * @see {@link Schema.isStartsWith} for creating the corresponding check
+ * @see {@link Schema.isStartingWith} for creating the corresponding check
  *
  * @category validation
  * @since 4.0.0
  */
-export const isStartsWithReviver: FilterReviver<{
+export const isStartingWithReviver: FilterReviver<{
   readonly startsWith: string
 }> = makeReviverFilter(
-  "effect/schema/isStartsWith",
+  "effect/schema/isStartingWith",
   Schema.Struct({ startsWith: Schema.String }),
-  ({ annotations, payload }) => Schema.isStartsWith(payload.startsWith, annotations)
+  ({ annotations, payload }) => Schema.isStartingWith(payload.startsWith, annotations)
 )
 
 /**
- * Reviver for persisted `isEndsWith` checks.
+ * Reviver for persisted `isEndingWith` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isEndsWith}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isEndingWith}.
  *
- * @see {@link Schema.isEndsWith} for creating the corresponding check
+ * @see {@link Schema.isEndingWith} for creating the corresponding check
  *
  * @category validation
  * @since 4.0.0
  */
-export const isEndsWithReviver: FilterReviver<{
+export const isEndingWithReviver: FilterReviver<{
   readonly endsWith: string
 }> = makeReviverFilter(
-  "effect/schema/isEndsWith",
+  "effect/schema/isEndingWith",
   Schema.Struct({ endsWith: Schema.String }),
-  ({ annotations, payload }) => Schema.isEndsWith(payload.endsWith, annotations)
+  ({ annotations, payload }) => Schema.isEndingWith(payload.endsWith, annotations)
 )
 
 /**
- * Reviver for persisted `isIncludes` checks.
+ * Reviver for persisted `isIncluding` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isIncludes}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isIncluding}.
  *
- * @see {@link Schema.isIncludes} for creating the corresponding check
+ * @see {@link Schema.isIncluding} for creating the corresponding check
  *
  * @category validation
  * @since 4.0.0
  */
-export const isIncludesReviver: FilterReviver<{
+export const isIncludingReviver: FilterReviver<{
   readonly includes: string
 }> = makeReviverFilter(
-  "effect/schema/isIncludes",
+  "effect/schema/isIncluding",
   Schema.Struct({ includes: Schema.String }),
-  ({ annotations, payload }) => Schema.isIncludes(payload.includes, annotations)
+  ({ annotations, payload }) => Schema.isIncluding(payload.includes, annotations)
 )
 
 /**
@@ -1189,24 +1189,24 @@ export const isMaxLengthReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isLengthBetween` checks.
+ * Reviver for persisted `isBetweenLength` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isLengthBetween}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isBetweenLength}.
  *
- * @see {@link Schema.isLengthBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenLength} for creating the corresponding check
  *
  * @category validation
  * @since 4.0.0
  */
-export const isLengthBetweenReviver: FilterReviver<{
+export const isBetweenLengthReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isLengthBetween",
+  "effect/schema/isBetweenLength",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isLengthBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenLength(payload.minimum, payload.maximum, annotations)
 )
 
 /**
@@ -1240,19 +1240,19 @@ export const isMaxCodePointsReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isCodePointsBetween` checks.
+ * Reviver for persisted `isBetweenCodePoints` checks.
  *
- * @see {@link Schema.isCodePointsBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenCodePoints} for creating the corresponding check
  * @category validation
  * @since 4.0.0
  */
-export const isCodePointsBetweenReviver: FilterReviver<{
+export const isBetweenCodePointsReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isCodePointsBetween",
+  "effect/schema/isBetweenCodePoints",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isCodePointsBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenCodePoints(payload.minimum, payload.maximum, annotations)
 )
 
 /**
@@ -1296,24 +1296,24 @@ export const isMaxSizeReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isSizeBetween` checks.
+ * Reviver for persisted `isBetweenSize` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isSizeBetween}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isBetweenSize}.
  *
- * @see {@link Schema.isSizeBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenSize} for creating the corresponding check
  *
  * @category validation
  * @since 4.0.0
  */
-export const isSizeBetweenReviver: FilterReviver<{
+export const isBetweenSizeReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isSizeBetween",
+  "effect/schema/isBetweenSize",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isSizeBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenSize(payload.minimum, payload.maximum, annotations)
 )
 
 /**
@@ -1357,24 +1357,24 @@ export const isMaxPropertiesReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isPropertiesLengthBetween` checks.
+ * Reviver for persisted `isBetweenProperties` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isPropertiesLengthBetween}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isBetweenProperties}.
  *
- * @see {@link Schema.isPropertiesLengthBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenProperties} for creating the corresponding check
  *
  * @category validation
  * @since 4.0.0
  */
-export const isPropertiesLengthBetweenReviver: FilterReviver<{
+export const isBetweenPropertiesReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isPropertiesLengthBetween",
+  "effect/schema/isBetweenProperties",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isPropertiesLengthBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenProperties(payload.minimum, payload.maximum, annotations)
 )
 
 /**
