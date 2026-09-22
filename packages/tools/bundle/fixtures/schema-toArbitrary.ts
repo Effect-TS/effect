@@ -1,4 +1,4 @@
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 import * as Schema from "effect/Schema"
 
 const schema = Schema.Struct({

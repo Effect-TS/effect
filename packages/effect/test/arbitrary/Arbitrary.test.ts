@@ -12,7 +12,7 @@ import {
   SchemaIssue,
   SchemaTransformation
 } from "effect"
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 import * as BigDecimal from "effect/BigDecimal"
 import * as Chunk from "effect/Chunk"
 import * as DateTime from "effect/DateTime"

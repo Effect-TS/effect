@@ -1,6 +1,6 @@
 import { afterAll, assert, beforeAll, describe, it, layer } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
-import * as Arbitrary from "effect/arbitrary/Arbitrary"
+import * as Arbitrary from "effect/Arbitrary"
 
 describe("global arbitrary defaults", { concurrent: false }, () => {
   let plainRuns = 0

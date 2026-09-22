@@ -32,6 +32,12 @@ export {
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
+ * @unstable
+ * @since 4.0.0
+ */
+export * as Arbitrary from "./Arbitrary.ts"
+
+/**
  * @since 2.0.0
  */
 export * as Array from "./Array.ts"

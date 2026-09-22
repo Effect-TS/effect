@@ -1,7 +1,7 @@
 /**
  * @since 4.0.0
  */
-import type * as Arbitrary from "effect/arbitrary/Arbitrary"
+import type * as Arbitrary from "effect/Arbitrary"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
