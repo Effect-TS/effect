@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as Effect from "effect/Effect"
-import * as Encoding from "effect/Encoding"
+import * as Base64 from "effect/encoding/Base64"
 import * as Schema from "effect/Schema"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
@@ -253,7 +253,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           assert.strictEqual(response.status, 200)
         }
 
-        const encodedName = `=?base64?${Encoding.encodeBase64("file:///conformance.txt")}?=`
+        const encodedName = `=?base64?${Base64.encode("file:///conformance.txt")}?=`
         const encoded = yield* test.post(
           request(4, "resources/read", { uri: "file:///conformance.txt" }),
           headers("resources/read", encodedName)

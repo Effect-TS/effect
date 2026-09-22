@@ -1,6 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import type { Layer } from "effect"
-import { Effect, Encoding } from "effect"
+import { Effect } from "effect"
+import * as Base64 from "effect/encoding/Base64"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 
 // Tests clear the shared store.
@@ -30,7 +31,7 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
 
         yield* kv.set("binary", bytes)
 
-        assert.strictEqual(yield* kv.get("binary"), Encoding.encodeBase64(bytes))
+        assert.strictEqual(yield* kv.get("binary"), Base64.encode(bytes))
         assert.deepStrictEqual(yield* kv.getUint8Array("binary"), bytes)
       }))
 
