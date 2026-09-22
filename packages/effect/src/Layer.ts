@@ -234,21 +234,17 @@ export interface MemoMap {
 
 type MemoMapEntry = {
   observers: number
-  effect: Effect<Context.Context<any>, any>
+  readonly deferred: Deferred.Deferred<Context.Context<any>, any>
   readonly scope: Scope.Closeable
   readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<void>
 }
 
 // Built outside `getOrElseMemoize` so the finalizer, which lives as long as
 // the entry, captures only what it releases.
-const makeMemoMapEntry = (
-  memoMap: MemoMapImpl,
-  layer: Layer<any, any, any>,
-  effect: Effect<Context.Context<any>, any>
-): MemoMapEntry => {
+const makeMemoMapEntry = (memoMap: MemoMapImpl, layer: Layer<any, any, any>): MemoMapEntry => {
   const entry: MemoMapEntry = {
     observers: 0,
-    effect,
+    deferred: Deferred.makeUnsafe(),
     scope: Scope.makeUnsafe(),
     finalizer: (exit) =>
       internalEffect.suspend(() => {
@@ -430,7 +426,7 @@ class MemoMapImpl implements MemoMap {
     const local = this.map.get(layer)
     if (local) {
       memoMapObserve(local, scope)
-      return local.effect
+      return local.deferred.effect ?? Deferred.await(local.deferred)
     }
     return this.parent?.get(layer, scope)
   }
@@ -443,24 +439,22 @@ class MemoMapImpl implements MemoMap {
     return internalEffect.suspend(() => {
       // The exit handler is in place before the lookup, so an entry is only
       // published once the handler that completes it exists.
-      let complete: ((exit: Exit.Exit<Context.Context<ROut>, E>) => Effect<void>) | undefined
+      let deferred: Deferred.Deferred<Context.Context<ROut>, E> | undefined
       return internalEffect.onExitPrimitive(
         internalEffect.suspend(() => {
           const existing = this.get(layer, scope)
           if (existing) return existing
-          const deferred = Deferred.makeUnsafe<Context.Context<ROut>, E>()
-          const entry = makeMemoMapEntry(this, layer, Deferred.await(deferred))
+          const entry = makeMemoMapEntry(this, layer)
           // A requester whose scope is closed has already left, so there is
           // nothing to share: its build releases as it acquires.
           if (!memoMapObserve(entry, scope)) return build(this, scope)
-          complete = (exit) => {
-            entry.effect = exit
-            return Deferred.done(deferred, exit)
-          }
+          deferred = entry.deferred
           this.map.set(layer, entry)
           return build(this, entry.scope)
         }),
-        (exit) => complete?.(exit)
+        (exit) => {
+          if (deferred) Deferred.doneUnsafe(deferred, exit)
+        }
       )
     })
   }
