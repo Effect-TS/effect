@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Clock, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Option, Scope, ScopedCache } from "effect"
+import {
+  Cause,
+  Clock,
+  Context,
+  Data,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Option,
+  Scheduler,
+  Scope,
+  ScopedCache
+} from "effect"
 import { TestClock } from "effect/testing"
 
 describe("ScopedCache", () => {
@@ -2474,6 +2488,186 @@ describe("ScopedCache", () => {
           assert.strictEqual(counter, 4)
         }))
     })
+  })
+
+  describe("lookup ownership", () => {
+    // The entry owns its lookup; callers only observe it.
+    const settle = Effect.gen(function*() {
+      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+    })
+    const atEveryBudget = <E>(
+      test: (
+        budget: <A, E2, R>(effect: Effect.Effect<A, E2, R>) => Effect.Effect<A, E2, R>
+      ) => Effect.Effect<boolean, E, Scope.Scope>
+    ): Effect.Effect<Array<number>, E> =>
+      Effect.gen(function*() {
+        const failed: Array<number> = []
+        for (let ops = 3; ops <= 64; ops++) {
+          const ok = yield* Effect.scoped(
+            test((effect) => Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, ops))
+          )
+          if (!ok) failed.push(ops)
+        }
+        return failed
+      })
+    const show = <A, E>(exit: Exit.Exit<A, E> | undefined): string =>
+      exit === undefined
+        ? "pending"
+        : Exit.isSuccess(exit)
+        ? `ok:${String(exit.value)}`
+        : Exit.hasInterrupts(exit)
+        ? "interrupted"
+        : Exit.hasDies(exit)
+        ? `die:${String(Cause.squash(exit.cause))}`
+        : "failed"
+
+    it.effect("interrupting the first caller neither interrupts the second nor poisons the key", () =>
+      Effect.gen(function*() {
+        const gate = yield* Deferred.make<number>()
+        let lookups = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_: number) =>
+            Effect.suspend(() => {
+              lookups++
+              return Deferred.await(gate)
+            })
+        })
+        const first = yield* Effect.forkChild(ScopedCache.get(cache, 1), { startImmediately: true })
+        const second = yield* Effect.forkChild(ScopedCache.get(cache, 1), { startImmediately: true })
+        yield* settle
+        yield* Fiber.interrupt(first)
+        yield* Deferred.succeed(gate, 42)
+        yield* settle
+        const later = yield* Effect.exit(ScopedCache.get(cache, 1))
+        assert.deepStrictEqual(
+          { second: show(second.pollUnsafe()), later: show(later), lookups },
+          { second: "ok:42", later: "ok:42", lookups: 1 }
+        )
+      }))
+
+    it.effect("interrupting the only caller interrupts the lookup, releases its resources and forgets the entry", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        let released = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_: number) =>
+            Effect.acquireRelease(Effect.sync(() => ++lookups), () => Effect.sync(() => released++)).pipe(
+              Effect.flatMap((n) => n === 1 ? Effect.never : Effect.succeed(n))
+            )
+        })
+        const caller = yield* Effect.forkChild(ScopedCache.get(cache, 1), { startImmediately: true })
+        yield* settle
+        yield* Fiber.interrupt(caller)
+        const releasedAfterInterrupt = released
+        const later = yield* Effect.exit(ScopedCache.get(cache, 1))
+        assert.deepStrictEqual(
+          { releasedAfterInterrupt, later: show(later), lookups },
+          { releasedAfterInterrupt: 1, later: "ok:2", lookups: 2 }
+        )
+      }))
+
+    it.effect("a lookup that interrupts itself releases its resources and is not cached", () =>
+      Effect.gen(function*() {
+        const released: Array<number> = []
+        let lookups = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_: number) =>
+            Effect.acquireRelease(Effect.sync(() => ++lookups), (n) => Effect.sync(() => released.push(n))).pipe(
+              Effect.flatMap((n) => n === 1 ? Effect.interrupt : Effect.succeed(n))
+            )
+        })
+        const first = yield* Effect.exit(ScopedCache.get(cache, 1))
+        const later = yield* Effect.exit(ScopedCache.get(cache, 1))
+        assert.deepStrictEqual(
+          { first: show(first), later: show(later), released },
+          { first: "interrupted", later: "ok:2", released: [1] }
+        )
+      }))
+
+    it.effect("interrupting a refresh of a cached key keeps the cached value", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        const released: Array<number> = []
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_: number) =>
+            Effect.acquireRelease(Effect.sync(() => ++lookups), (n) => Effect.sync(() => released.push(n))).pipe(
+              Effect.flatMap((n) => n === 2 ? Effect.never : Effect.succeed(n))
+            )
+        })
+        assert.strictEqual(yield* ScopedCache.get(cache, 1), 1)
+        const refresh = yield* Effect.forkChild(ScopedCache.refresh(cache, 1), { startImmediately: true })
+        yield* settle
+        yield* Fiber.interrupt(refresh)
+        const later = yield* Effect.exit(ScopedCache.get(cache, 1))
+        // The interrupted refresh releases its own resource (2) and keeps the cached one (1).
+        assert.deepStrictEqual({ later: show(later), released }, { later: "ok:1", released: [2] })
+      }))
+
+    it.effect("a throwing timeToLive fails every caller with the same defect", () =>
+      Effect.gen(function*() {
+        const gate = yield* Deferred.make<number>()
+        const cache = yield* ScopedCache.makeWith({
+          capacity: 10,
+          lookup: (_: string) => Deferred.await(gate),
+          timeToLive: () => {
+            throw "ttl"
+          }
+        })
+        const first = yield* Effect.forkChild(ScopedCache.get(cache, "k"), { startImmediately: true })
+        const second = yield* Effect.forkChild(ScopedCache.get(cache, "k"), { startImmediately: true })
+        yield* settle
+        const completer = yield* Effect.exit(Deferred.succeed(gate, 1))
+        yield* settle
+        assert.deepStrictEqual(
+          { completer: show(completer), first: show(first.pollUnsafe()), second: show(second.pollUnsafe()) },
+          { completer: "ok:true", first: "die:ttl", second: "die:ttl" }
+        )
+      }))
+
+    it.effect("a caller joining while the last caller leaves is not interrupted", () =>
+      Effect.gen(function*() {
+        const failed = yield* atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            const gate = yield* Deferred.make<number>()
+            const cache = yield* ScopedCache.make({ capacity: 10, lookup: (_: number) => Deferred.await(gate) })
+            const first = yield* Effect.forkChild(budget(ScopedCache.get(cache, 1)), { startImmediately: true })
+            yield* settle
+            yield* Effect.forkChild(Fiber.interrupt(first), { startImmediately: true })
+            const second = yield* Effect.forkChild(ScopedCache.get(cache, 1), { startImmediately: true })
+            yield* settle
+            yield* Deferred.succeed(gate, 42)
+            yield* settle
+            return show(second.pollUnsafe()) === "ok:42"
+          })
+        )
+        assert.deepStrictEqual(failed, [])
+      }))
+
+    it.effect("interrupting the only caller at any step releases the lookup's resources", () =>
+      Effect.gen(function*() {
+        const failed = yield* atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            let acquired = 0
+            let released = 0
+            const cache = yield* ScopedCache.make({
+              capacity: 10,
+              lookup: (_: number) =>
+                Effect.acquireRelease(Effect.sync(() => acquired++), () => Effect.sync(() => released++)).pipe(
+                  Effect.andThen(Effect.never)
+                )
+            })
+            const caller = yield* Effect.forkChild(budget(ScopedCache.get(cache, 1)), { startImmediately: true })
+            yield* Fiber.interrupt(caller)
+            yield* settle
+            return acquired === released && (yield* ScopedCache.size(cache)) === 0
+          })
+        )
+        assert.deepStrictEqual(failed, [])
+      }))
   })
 })
 
