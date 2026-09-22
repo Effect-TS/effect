@@ -414,6 +414,29 @@ describe("Equal.equals", () => {
       const point2 = new CustomPoint(1, 2)
       expect(Equal.equals(point1, point2)).toBe(true)
     })
+
+    it("clears visited state when a custom Equal throws", () => {
+      let throws = true
+      class Flaky implements Equal.Equal {
+        constructor(readonly id: number) {}
+
+        [Equal.symbol](that: Equal.Equal): boolean {
+          if (throws) throw new Error("boom")
+          return that instanceof Flaky && this.id === that.id
+        }
+
+        [Hash.symbol](): number {
+          return 0
+        }
+      }
+
+      const x = { k: new Flaky(1) }
+      const y = { k: new Flaky(2) }
+      assert.throws(() => Equal.equals(x, y))
+      throws = false
+      assert.isFalse(Equal.equals(x, y))
+      assert.isTrue(Equal.equals(x, { k: new Flaky(1) }))
+    })
   })
 
   describe("nested structures", () => {

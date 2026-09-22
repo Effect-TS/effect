@@ -218,10 +218,12 @@ function withVisitedTracking(
   }
   visitedLeft.add(self)
   visitedRight.add(that)
-  const result = fn()
-  visitedLeft.delete(self)
-  visitedRight.delete(that)
-  return result
+  try {
+    return fn()
+  } finally {
+    visitedLeft.delete(self)
+    visitedRight.delete(that)
+  }
 }
 
 const visitedLeft = new WeakSet<object>()
