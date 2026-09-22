@@ -242,7 +242,7 @@ describe("OpenAiStructuredOutput representation v2", () => {
     assert.isUndefined(maximum.maxItems)
 
     const between = toValueSchema(
-      Schema.Record(Schema.String, Schema.Finite).check(Schema.isPropertiesLengthBetween(1, 3))
+      Schema.Record(Schema.String, Schema.Finite).check(Schema.isBetweenProperties(1, 3))
     )
     assert.strictEqual(between.minItems, 1)
     assert.isUndefined(between.maxItems)

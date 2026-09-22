@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`04f510659ed28bf8214c12e98565c48ab0ab8d7d`)
 
-Head: `HEAD` (`0ebbd62402f15db4a9bdb64d1ff71c62e3fdf4c5`)
+Head: `31b3cdbf9f126294b1aa538efa1b1fbccb3cbd6f` (`31b3cdbf9f126294b1aa538efa1b1fbccb3cbd6f`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -688,6 +688,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `effect/ConfigProviderPathPatch`: No single module replacement; follow the curated per-API guidance below.
 - `effect/DefaultServices`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Either` -> `effect/Result`
+- `effect/Encoding` -> `none`: Import each format or the shared error API from its direct subpath.
 - `effect/ExecutionStrategy`: No single module replacement; follow the curated per-API guidance below.
 - `effect/FastCheck` -> `fast-check`: Effect no longer re-exports fast-check. Depend on the fast-check package and import it directly. For Schema-derived generation, use Arbitrary.schema from effect/arbitrary.
 - `effect/FiberId`: No single module replacement; follow the curated per-API guidance below.
@@ -4954,19 +4955,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `McpSchema.ElicitResult` -> `McpSchema.ElicitResult`: Moved to effect/ai/McpSchema. It remains discriminated by action, but accepted content is now optional and, when present, is a record of strings, finite numbers, booleans, or string arrays; declined and canceled responses still omit content.
 
-- `McpSchema.FailureEncoded` -> `McpSchema.FailureEncoded`: Moved to effect/ai/McpSchema and still derives an encoded JSON-RPC failure union from an RpcGroup.
-
-- `McpSchema.FromClientEncoded` -> `McpSchema.FromClientEncoded`: Moved to effect/ai/McpSchema and remains the union of client requests and client notifications.
-
-- `McpSchema.FromServerEncoded` -> `McpSchema.FromServerEncoded`: Moved to effect/ai/McpSchema and remains the union of server results and server notifications.
-
 - `McpSchema.McpError` -> `McpSchema.McpError`: Moved, but changed from a constructable base class to a union schema of standard tagged protocol errors plus McpErrorBase. Use McpErrorBase to construct a generic MCP error.
 
-- `McpSchema.McpServerClient` -> `McpSchema.McpRequestContext / McpSchema.McpServerClient`: Use McpRequestContext for client identity, capabilities, and request metadata in protocol-neutral handlers. McpServerClient remains available for initialized stateful protocols and reverse client requests; it is not provided by the stateless 2026-07-28 adapter. Registration helpers exclude McpRequestContext from handler requirements, not McpServerClient.
-
 - `McpSchema.ParamAnnotation` -> `McpSchema.isParam / Param.name`: The public symbol annotation was removed. Detect parameter wrappers with McpSchema.isParam and read the narrowed Param.name instead of inspecting AST annotations.
-
-- `McpSchema.SuccessEncoded` -> `McpSchema.SuccessEncoded`: Moved to effect/ai/McpSchema and still derives an encoded JSON-RPC success union from an RpcGroup.
 
 - `McpSchema.param` -> `McpSchema.param`: Moved to effect/ai/McpSchema. V4 wraps the schema and exposes Param.name and Param.schema instead of attaching a public symbol annotation.
 
@@ -5004,8 +4995,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/ai/Prompt with the same file-part model and schema; update the module import.
 
-- `Prompt.FilePartEncoded` -> `Prompt.FilePartEncoded`: Moved to effect/ai/Prompt with the same encoded file-part shape; update the module import.
-
 - `Prompt.FromJson` -> `Schema.fromJsonString(Prompt.Prompt)`: The module-specific JSON schema was removed. Compose the general v4 JSON-string codec with the public Prompt codec.
 
 - `Prompt.MessageContentFromString` -> `Prompt.ContentFromString`: Renamed in effect/ai/Prompt. It still decodes a string to a non-empty array containing one TextPart and encodes the first part's text.
@@ -5022,43 +5011,23 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Prompt.ReasoningPart` -> `Prompt.ReasoningPart`: Moved to effect/ai/Prompt with the same reasoning-part model and schema; update the module import.
 
-- `Prompt.ReasoningPartEncoded` -> `Prompt.ReasoningPartEncoded`: Moved to effect/ai/Prompt with the same encoded reasoning payload; update the module import.
-
 - `Prompt.TextPart` -> `Prompt.TextPart`: Moved to effect/ai/Prompt with the same text-part model and schema; update the module import.
 
-- `Prompt.TextPartEncoded` -> `Prompt.TextPartEncoded`: Moved to effect/ai/Prompt with the same encoded text payload; update the module import.
-
 - `Prompt.ToolCallPart` -> `Prompt.ToolCallPart`: Moved to effect/ai/Prompt with the same tool-call model and schema; update the module import.
-
-- `Prompt.ToolCallPartEncoded` -> `Prompt.ToolCallPartEncoded`: Moved to effect/ai/Prompt with the same encoded tool-call shape; update the module import.
 
 - `Prompt.ToolResultPartEncoded` -> `Prompt.ToolResultPartEncoded`: Moved to effect/ai/Prompt, but providerExecuted was removed from the encoded prompt tool-result shape.
 
 - `Prompt.TypeId` -> `Prompt.isPrompt`: The Prompt type id is private in v4 and its internal literal changed. Use the public isPrompt guard instead of importing or inspecting the marker.
 
-- `Prompt.isPart` -> `Prompt.isPart`: Moved to effect/ai/Prompt and remains the public runtime guard for prompt parts.
-
-- `Prompt.isPrompt` -> `Prompt.isPrompt`: Moved to effect/ai/Prompt and remains the public runtime guard for Prompt values.
-
 - `Prompt.makePart` -> `Prompt.makePart`: Moved to effect/ai/Prompt. The generic constructor also supports the new tool-approval request and response part variants.
 
 - `Prompt.merge` -> `Prompt.concat`: Renamed in v4. concat preserves the old dual API and concatenates the messages from a Prompt with additional raw input.
 
-- `Prompt.toolCallPart` -> `Prompt.toolCallPart`: Moved to effect/ai/Prompt and remains the typed convenience constructor over makePart("tool-call", params).
-
-- `Prompt.toolResultPart` -> `Prompt.toolResultPart`: Moved to effect/ai/Prompt. V4 removes providerExecuted from prompt tool-result parts; provider-executed response results are handled when converting Response parts.
-
 ### `@effect/ai/Response`
-
-- `Response.FilePartEncoded` -> `Response.FilePartEncoded`: Moved to effect/ai/Response; file data remains a base64 string in the encoded representation.
 
 - `Response.Part` -> `Response.Part`: Moved to effect/ai/Response. The non-streaming union now also includes ToolApprovalRequestPart.
 
 - `Response.PartTypeId` -> `Response.isPart`: The public PartTypeId was removed and the marker is internal in v4. Use Response.isPart for runtime refinement.
-
-- `Response.ReasoningPartEncoded` -> `Response.ReasoningPartEncoded`: Moved to effect/ai/Response; the encoded reasoning payload remains text: string.
-
-- `Response.TextPartEncoded` -> `Response.TextPartEncoded`: Moved to effect/ai/Response; the encoded text payload remains text: string.
 
 - `Response.ToolCallPartEncoded` -> `Response.ToolCallPartEncoded`: Moved to effect/ai/Response; providerName was removed while providerExecuted remains optional when encoded.
 
@@ -5085,8 +5054,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Response.textEndPart` -> `Response.makePart("text-end", params)`: The lowercase convenience constructor was removed; construct the retained TextEndPart through Response.makePart.
 
 - `Response.textStartPart` -> `Response.makePart("text-start", params)`: The lowercase convenience constructor was removed; construct the retained TextStartPart through Response.makePart.
-
-- `Response.toolCallPart` -> `Response.toolCallPart`: Moved to effect/ai/Response. The constructor remains, but providerName was removed from tool-call parts.
 
 - `Response.toolParamsDeltaPart` -> `Response.makePart("tool-params-delta", params)`: The lowercase convenience constructor was removed; construct the retained ToolParamsDeltaPart through Response.makePart.
 
@@ -5126,8 +5093,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Tool.Success` -> `Tool.Success`: Moved to effect/ai/Tool and remains the utility type that extracts a tool's decoded success type.
 
-- `Tool.Title` -> `Tool.Title`: Moved to effect/ai/Tool. It is now a Context.Service annotation key; continue attaching the string title with tool.annotate(Tool.Title, value).
-
 - `Tool.Tool.ProviderDefinedProto` -> `Tool.ProviderDefined`: This implementation-brand interface is no longer public. Use Tool.ProviderDefined for the model type and Tool.isProviderDefined for runtime narrowing.
 
 - `Tool.Tool.Variance` -> `Tool.Tool / Tool.Any`: This implementation variance interface is no longer public; its requirement marker is inline in Tool.Tool. Constrain generic code with Tool.Tool or Tool.Any.
@@ -5147,8 +5112,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Toolkit.HandlersFrom` -> `Toolkit.HandlersFrom`: Moved to effect/ai/Toolkit. V4 handlers receive a HandlerContext argument and may fail with the declared failure, AiError, or AiErrorReason while requiring Tool.HandlerServices.
 
 - `Toolkit.TypeId` -> `Toolkit.Toolkit / Toolkit.Any`: The toolkit nominal id is private in v4. Use Toolkit.Toolkit or Toolkit.Any for typing instead of importing or inspecting the marker.
-
-- `Toolkit.make` -> `Toolkit.make`: Moved to effect/ai/Toolkit. It now accepts Tool.Any values only and no longer converts TaggedRequest schemas; create each tool explicitly with Tool.make first.
 
 ### `@effect/cli/Args`
 
@@ -5618,8 +5581,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Prompt.file` -> `Prompt.File`: Use the moved constructor; v4 also supports a default selected path.
 
-- `Prompt.flatMap` -> `Prompt.flatMap`: Use the moved combinator.
-
 - `Prompt.float` -> `Prompt.Number`: Use the moved constructor; v4 also supports a default value.
 
 - `Prompt.hidden` -> `Prompt.Hidden`: Use the renamed constructor.
@@ -5627,8 +5588,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Prompt.integer` -> `Prompt.Int`: Use the moved constructor; v4 also supports a default value.
 
 - `Prompt.list` -> `Prompt.List`: Use the renamed constructor.
-
-- `Prompt.map` -> `Prompt.map`: Use the moved combinator.
 
 - `Prompt.multiSelect` -> `Prompt.MultiSelect`: Use the renamed constructor.
 
@@ -5746,29 +5705,17 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/Entity`
 
-- `Entity.Any` -> `effect/cluster/Entity#Any`: Moved into core Effect with the same erased entity type.
-
 - `Entity.HandlersFrom` -> `effect/cluster/Entity#HandlersFrom`: Moved into core Effect; handler results now use Rpc.WrapperOr, which accepts either the raw RPC result or its wrapper.
 
 - `Entity.Replier.Success` -> `effect/cluster/Entity#Replier.Success`: Moved into core Effect; streaming replies may use Queue.Dequeue with Cause.Done instead of the removed Mailbox type.
 
 - `Entity.TypeId` -> `none`: The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
 
-- `Entity.keepAlive`: TODO: needs guidance
-
-- `Entity.makeTestClient` -> `effect/cluster/Entity#makeTestClient`: Moved into core Effect; adapt its inputs and requirements to the v4 RPC, Layer, Scope, and Context APIs.
-
 ### `@effect/cluster/EntityAddress`
 
 - `EntityAddress.EntityAddressFromSelf` -> `effect/cluster/EntityAddress#EntityAddress`: The separate self schema was removed; the v4 Schema.Class is itself the EntityAddress schema.
 
 - `EntityAddress.TypeId` -> `none`: The marker is private in v4. Use the exported EntityAddress class and schema.
-
-- `EntityAddress.make` -> `effect/cluster/EntityAddress#make`: Moved into core Effect with the same options-object constructor.
-
-### `@effect/cluster/EntityId`
-
-- `EntityId.make` -> `effect/cluster/EntityId#make`: Moved into core Effect; the branding helper remains and performs no validation or normalization.
 
 ### `@effect/cluster/EntityProxy`
 
@@ -5792,8 +5739,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/Envelope`
 
-- `Envelope.Envelope.Any` -> `effect/cluster/Envelope#Envelope.Any`: Moved into core Effect with the same erased envelope type.
-
 - `Envelope.Envelope.Encoded` -> `effect/cluster/Envelope#Encoded`: The encoded envelope union moved to the module-level Encoded type.
 
 - `Envelope.Envelope.PartialEncoded` -> `effect/cluster/Envelope#Partial`: The partially decoded runtime union was renamed to Partial; use PartialJson for its JSON codec.
@@ -5812,8 +5757,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Envelope.Request` -> `effect/cluster/Envelope#Request`: The request interface remains and declaration-merges with the exported Request schema.
 
-- `Envelope.Request.Any` -> `effect/cluster/Envelope#Request.Any`: Moved into core Effect with the same erased request type.
-
 - `Envelope.Request.Encoded` -> `effect/cluster/Envelope#PartialRequestEncoded`: The JSON request shape moved to the module-level PartialRequestEncoded interface.
 
 - `Envelope.Request.PartialEncoded` -> `effect/cluster/Envelope#PartialRequest`: The partially decoded request shape moved to the module-level PartialRequest class and type.
@@ -5821,20 +5764,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Envelope.RequestFromSelf` -> `effect/cluster/Envelope#Request`: The request self schema was renamed to Request and declaration-merges with the runtime interface.
 
 - `Envelope.TypeId` -> `typeof Envelope.TypeId`: The marker value remains, but the type alias was removed and the value is now a string literal; use typeof in type position.
-
-### `@effect/cluster/HttpRunner`
-
-- `HttpRunner.layerClient` -> `effect/cluster/HttpRunner#layerClient`: Moved into core Effect with the same client-side Sharding and Runners layer composition.
-
-- `HttpRunner.layerHttp` -> `effect/cluster/HttpRunner#layerHttp`: Moved into core Effect with the same HTTP runner composition.
-
-- `HttpRunner.toHttpEffect` -> `effect/cluster/HttpRunner#toHttpEffect`: Moved into core Effect with the same nested HTTP server effect and service requirements.
-
-- `HttpRunner.toHttpEffectWebsocket` -> `effect/cluster/HttpRunner#toHttpEffectWebsocket`: Moved into core Effect with the same WebSocket HTTP effect shape and requirements.
-
-### `@effect/cluster/K8sHttpClient`
-
-- `K8sHttpClient.layer` -> `effect/cluster/K8sHttpClient#layer`: Moved into core Effect with the same in-cluster Kubernetes client behavior.
 
 ### `@effect/cluster/MachineId`
 
@@ -5847,12 +5776,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 ### `@effect/cluster/MessageStorage`
 
 - `MessageStorage.Encoded` -> `effect/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases. Custom drivers now implement batched resetAddresses, and unprocessedMessages receives optional limit and address filters.
-
-- `MessageStorage.SaveResult.Encoded`: TODO: needs guidance
-
-- `MessageStorage.layerMemory` -> `effect/cluster/MessageStorage#layerMemory`: Moved into core Effect; it still provides MessageStorage and MemoryDriver and requires ShardingConfig.
-
-- `MessageStorage.layerNoop` -> `effect/cluster/MessageStorage#layerNoop`: Moved into core Effect with the same dependency-free no-op implementation.
 
 - `MessageStorage.make` -> `effect/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type. Custom service implementations must also provide resetAddresses for batched mailbox resets.
 
@@ -5876,27 +5799,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RunnerAddress.TypeId` -> `none`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
 
-- `RunnerAddress.make` -> `effect/cluster/RunnerAddress#make`: Moved into core Effect with the same host and port constructor; the host schema is now Schema.String.
-
-### `@effect/cluster/RunnerHealth`
-
-- `RunnerHealth.layerNoop` -> `effect/cluster/RunnerHealth#layerNoop`: Moved into core Effect with the same dependency-free health implementation.
-
-### `@effect/cluster/RunnerServer`
-
-- `RunnerServer.layer` -> `effect/cluster/RunnerServer#layer`: Moved into core Effect; it still serves runner RPCs over a separately provided RpcServer.Protocol.
-
-- `RunnerServer.layerClientOnly` -> `effect/cluster/RunnerServer#layerClientOnly`: Moved into core Effect with the same client-only Sharding and Runners composition.
-
 ### `@effect/cluster/RunnerStorage`
-
-- `RunnerStorage.layerMemory` -> `effect/cluster/RunnerStorage#layerMemory`: Moved into core Effect with the same in-memory registration and shard-lock implementation for tests and local use.
 
 - `RunnerStorage.makeMemory` -> `effect/cluster/RunnerStorage#makeMemory`: Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation.
 
 ### `@effect/cluster/Runners`
-
-- `Runners.layerNoop` -> `effect/cluster/Runners#layerNoop`: Moved into core Effect with the same no-op runner communication layer.
 
 - `Runners.make` -> `effect/cluster/Runners#make`: Moved into core Effect. Its options now require codecFor; pass the codec used by the remote runner transport, such as RpcSerialization.json.codecFor for JSON. Context service projections now use Service instead of Type.
 
@@ -5907,12 +5814,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `ShardId.ShardId` -> `effect/cluster/ShardId#ShardId`: The class became a merged interface and schema value. Use ShardId.make; former static parsers and printers are module functions.
 
 - `ShardId.TypeId` -> `none`: The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.
-
-- `ShardId.make` -> `effect/cluster/ShardId#make`: Moved into core Effect with the same cached group and id constructor.
-
-### `@effect/cluster/Sharding`
-
-- `Sharding.layer` -> `effect/cluster/Sharding#layer`: Moved into core Effect with the same main sharding runtime composition and public service requirements.
 
 ### `@effect/cluster/ShardingConfig`
 
@@ -5930,10 +5831,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SingleRunner.layer` -> `effect/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL message storage hashes long deduplication keys.
 
-### `@effect/cluster/Singleton`
-
-- `Singleton.make` -> `effect/cluster/Singleton#make`: Moved into core Effect with the same singleton Layer constructor.
-
 ### `@effect/cluster/SingletonAddress`
 
 - `SingletonAddress.TypeId` -> `none`: The singleton-address marker is private in v4. Use the exported SingletonAddress class and schema.
@@ -5943,16 +5840,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Snowflake.Generator` -> `effect/cluster/Snowflake#Generator`: Moved into core Effect and changed to Context.Service; its unsafeNext method was renamed to nextUnsafe.
 
 - `Snowflake.TypeId` -> `effect/cluster/Snowflake#TypeId`: Moved into core Effect; the public marker is now the string literal \~effect/cluster/Snowflake.
-
-- `Snowflake.make` -> `effect/cluster/Snowflake#make`: Moved into core Effect with the same timestamp, machine-id, and sequence packing constructor.
-
-- `Snowflake.timestamp`: TODO: needs guidance
-
-### `@effect/cluster/SocketRunner`
-
-- `SocketRunner.layer` -> `effect/cluster/SocketRunner#layer`: Moved into core Effect with the same full socket runner composition.
-
-- `SocketRunner.layerClientOnly` -> `effect/cluster/SocketRunner#layerClientOnly`: Moved into core Effect; it remains the client-only runner layer and does not start a socket server.
 
 ### `@effect/cluster/SqlMessageStorage`
 
@@ -5964,21 +5851,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/SqlRunnerStorage`
 
-- `SqlRunnerStorage.layer` -> `effect/cluster/SqlRunnerStorage#layer`: Moved into core Effect with the same default-prefix SQL runner storage layer.
-
-- `SqlRunnerStorage.layerWith` -> `effect/cluster/SqlRunnerStorage#layerWith`: Moved into core Effect with the same optional table prefix.
-
 - `SqlRunnerStorage.make` -> `effect/cluster/SqlRunnerStorage#make`: Moved into core Effect with the same prefix option and service requirements.
-
-### `@effect/cluster/TestRunner`
-
-- `TestRunner.layer` -> `effect/cluster/TestRunner#layer`: Moved into core Effect with the same dependency-free in-memory test cluster composition.
-
-### `@effect/experimental/DevTools`
-
-- `DevTools.layer` -> `effect/devtools/DevTools#layer`: Import layer from the v4 unstable DevTools module.
-
-- `DevTools.layerWebSocket` -> `effect/devtools/DevTools#layerWebSocket`: Import layerWebSocket from the v4 unstable DevTools module.
 
 ### `@effect/experimental/DevTools/Client`
 
@@ -5987,8 +5860,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Client.ClientImpl` -> `effect/devtools/DevToolsClient#DevToolsClient["Service"]`: Use the service shape from DevToolsClient; unsafeAddSpan was replaced by sendUnsafe.
 
 - `Client.layer` -> `effect/devtools/DevToolsClient#layer`: Import layer from the v4 unstable DevToolsClient module.
-
-- `Client.layerTracer` -> `effect/devtools/DevToolsClient#layerTracer`: Import layerTracer from the v4 unstable DevToolsClient module.
 
 - `Client.make` -> `effect/devtools/DevToolsClient#make`: Import make from the v4 unstable DevToolsClient module.
 
@@ -6060,10 +5931,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventJournal.RemoteIdTypeId` -> `effect/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
-- `EventJournal.layerIndexedDb`: TODO: needs guidance
-
-- `EventJournal.layerMemory`: TODO: needs guidance
-
 - `EventJournal.makeEntryId` -> `effect/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
 
 - `EventJournal.makeMemory` -> `effect/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
@@ -6074,10 +5941,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId.
 
-- `EventLog.Handlers.Error` -> `effect/eventlog/EventLog#Handlers.Error`: Import the retained Handlers.Error type from the v4 EventLog module.
-
-- `EventLog.Handlers.ValidateReturn` -> `effect/eventlog/EventLog#Handlers.ValidateReturn`: Import the retained Handlers.ValidateReturn type from the v4 EventLog module.
-
 - `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
 
 - `EventLog.SchemaTypeId` -> `effect/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
@@ -6087,10 +5950,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `EventLog.layer` -> `effect/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
 
 - `EventLog.layerIdentityKvs` -> `none`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
-
-- `EventLog.makeClient`: TODO: needs guidance
-
-- `EventLog.schema` -> `effect/eventlog/EventLog#schema`: Import schema from the v4 EventLog module.
 
 ### `@effect/experimental/EventLogRemote`
 
@@ -6153,10 +6012,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `PersistedQueue.ErrorTypeId` -> `effect/persistence/PersistedQueue#ErrorTypeId`: Retained as a string brand; the runtime marker now uses the persistence module path.
 
 - `PersistedQueue.TypeId` -> `effect/persistence/PersistedQueue#TypeId`: Import TypeId from the v4 unstable PersistedQueue module; it is now a string brand.
-
-- `PersistedQueue.layer` -> `effect/persistence/PersistedQueue#layer`: Import layer from the v4 unstable PersistedQueue module.
-
-- `PersistedQueue.layerStoreMemory` -> `effect/persistence/PersistedQueue#layerStoreMemory`: Import layerStoreMemory from the v4 unstable PersistedQueue module.
 
 - `PersistedQueue.make` -> `effect/persistence/PersistedQueue#make`: Import make from the v4 unstable PersistedQueue module.
 
@@ -6226,12 +6081,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RateLimiter.TypeId` -> `effect/persistence/RateLimiter#TypeId`: Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
 
-- `RateLimiter.layer` -> `effect/persistence/RateLimiter#layer`: Import layer from the v4 unstable RateLimiter module.
-
-- `RateLimiter.layerStoreMemory`: TODO: needs guidance
-
-- `RateLimiter.make` -> `effect/persistence/RateLimiter#make`: Import make from the v4 unstable RateLimiter module.
-
 - `RateLimiter.makeSleep` -> `effect/persistence/RateLimiter#sleep`: The accessor Effect was replaced by sleep; obtain the RateLimiter service and pass it to sleep directly or with its curried overload.
 
 ### `@effect/experimental/RateLimiter/Redis`
@@ -6248,13 +6097,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Reactivity.Reactivity.Service` -> `effect/reactivity/Reactivity#Reactivity`: The named namespace member was removed; use the branded Reactivity interface directly. Prefer Reactivity.make, or include [Reactivity.TypeId]: Reactivity.TypeId in a custom implementation.
 
-- `Reactivity.layer` -> `effect/reactivity/Reactivity#layer`: Import layer from the v4 unstable Reactivity module.
-
 - `Reactivity.make` -> `effect/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
 
 - `Reactivity.query`: TODO: needs guidance
-
-- `Reactivity.stream` -> `effect/reactivity/Reactivity#stream`: Import stream from the v4 unstable Reactivity module.
 
 ### `@effect/experimental/RequestResolver`
 
@@ -6267,8 +6112,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `RequestResolver.persisted` -> `effect/RequestResolver#persisted`: Retained after moving to core RequestResolver; requests now implement Persistable and use Persistence.Persistence, timeToLive is optional, and staleWhileRevalidate is supported.
 
 ### `@effect/experimental/Sse`
-
-- `Sse.Parser`: TODO: needs guidance
 
 - `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
 
@@ -6286,8 +6129,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `VariantSchema.FieldTypeId` -> `none`: The Field brand is private in v4; use VariantSchema.isField for narrowing.
 
-- `VariantSchema.Override` -> `effect/schema/VariantSchema#Override`: Import Override from the v4 unstable VariantSchema module.
-
 - `VariantSchema.Struct.Fields` -> `effect/schema/VariantSchema#Struct.Fields`: Import the retained Struct.Fields helper type from the v4 unstable VariantSchema module.
 
 - `VariantSchema.TypeId` -> `effect/schema/VariantSchema#TypeId`: Use the retained runtime value; in type position use typeof VariantSchema.TypeId.
@@ -6295,8 +6136,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `VariantSchema.fromKey` -> `none`: Field-level fromKey was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
 
 - `VariantSchema.fromKey.Rename` -> `none`: The fromKey rename helper was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
-
-- `VariantSchema.isField` -> `effect/schema/VariantSchema#isField`: Import isField from the v4 unstable VariantSchema module.
 
 - `VariantSchema.make` -> `effect/schema/VariantSchema#make`: Import make from the v4 module; FieldOnly and FieldExcept take one key array and Union takes one member array.
 
@@ -6333,8 +6172,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `OtlpMetrics.make` -> `OtlpMetrics.make`: Moved to effect/observability/OtlpMetrics; the constructor now also accepts optional cumulative or delta temporality.
 
 ### `@effect/opentelemetry/OtlpResource`
-
-- `OtlpResource.make` -> `OtlpResource.make`: The constructor remains in the module moved to effect/observability/OtlpResource.
 
 - `OtlpResource.unsafeServiceName` -> `OtlpResource.serviceNameUnsafe`: Moved to effect/observability/OtlpResource and renamed to follow the v4 unsafe-suffix convention.
 
@@ -6710,10 +6547,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Cookies.TypeId` -> `Cookies.isCookies`: The collection brand is private in v4; use the public refinement instead.
 
-- `Cookies.isEmpty`: TODO: needs guidance
-
-- `Cookies.remove` -> `Cookies.remove`: Retained with the same dual name-based removal signature.
-
 - `Cookies.unsafeMakeCookie` -> `Cookies.makeCookieUnsafe`: Renamed to put Unsafe last; it still throws on invalid cookie data.
 
 - `Cookies.unsafeSet` -> `Cookies.setUnsafe`: Renamed to put Unsafe last; the dual throwing behavior is retained.
@@ -6737,8 +6570,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Etag.GeneratorTypeId` -> `Etag.Generator`: The standalone generator brand was removed; Generator is now a Context.Service class.
 
 - `Etag.layer` -> `Etag.layer`: Retained; it still provides the strong metadata-based ETag Generator service.
-
-- `Etag.toString` -> `Etag.toString`: Retained with the same Etag-to-header-string behavior and signature.
 
 ### `@effect/platform/FetchHttpClient`
 
@@ -6810,29 +6641,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Headers.HeadersTypeId` -> `Headers.TypeId`: The public Headers type-id symbol was renamed from HeadersTypeId to TypeId.
 
-- `Headers.Input` -> `Headers.Input`: Retained with the same record-or-entry-iterable input shape.
-
 - `Headers.currentRedactedNames` -> `Headers.CurrentRedactedNames`: Renamed and changed from FiberRef to Context.Reference; override it with service provisioning.
-
-- `Headers.empty` -> `Headers.empty`: Retained as the empty immutable Headers value.
-
-- `Headers.fromInput` -> `Headers.fromInput`: Retained with the same optional Input and lowercase normalization behavior.
-
-- `Headers.get` -> `Headers.get`: Retained with the same dual, case-insensitive Option-returning signature.
-
-- `Headers.has` -> `Headers.has`: Retained with the same dual, case-insensitive signature.
-
-- `Headers.merge` -> `Headers.merge`: Retained with the same dual signature; values from the second collection win.
 
 - `Headers.remove` -> `Headers.remove / Headers.removeMany`: Use remove for one name or removeMany for an iterable; RegExp removal requires enumerating matching names.
 
 - `Headers.schema` -> `Schema.Headers`: The encoded-record and self schemas were consolidated and moved to effect/Schema as Schema.Headers.
 
 - `Headers.schemaFromSelf` -> `Schema.Headers`: The encoded-record and self schemas were consolidated and moved to effect/Schema as Schema.Headers.
-
-- `Headers.set` -> `Headers.set`: Retained with the same dual signature and lowercase key normalization.
-
-- `Headers.setAll` -> `Headers.setAll`: Retained with the same dual Input signature; supplied values override existing names.
 
 - `Headers.unsafeFromRecord` -> `Headers.fromRecordUnsafe`: Renamed to put Unsafe last; it still skips name normalization.
 
@@ -7136,8 +6951,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiSecurity.Bearer` -> `effect/http-api/HttpApiSecurity#Http`: Bearer was generalized to Http with scheme Bearer; the value-level bearer singleton remains.
 
-- `HttpApiSecurity.HttpApiSecurity.Type` -> `effect/http-api/HttpApiSecurity#HttpApiSecurity.Type`: Unchanged after the module move; still extracts the credential type.
-
 - `HttpApiSecurity.TypeId` -> `none`: The marker is private; use the public union or specific Http, ApiKey, and Basic types.
 
 - `HttpApiSecurity.annotate` -> `effect/http-api/HttpApiSecurity#annotate`: The combinator remains; its key is now the v4 Context.Key abstraction.
@@ -7184,23 +6997,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpBody.Uint8Array` -> `HttpBody.Uint8Array`: Retained with the same fields and tag, but v4 exports a class.
 
-- `HttpBody.empty` -> `HttpBody.empty`: Retained as the singleton Empty body.
-
 - `HttpBody.file` -> `HttpBody.file`: Retained; bufferSize was replaced by numeric chunkSize. Offset and bytesToRead accept ByteSize.Input. Invalid ranges and a final EOF-clamped content length above Number.MAX\_SAFE\_INTEGER fail with PlatformError / BadArgument.
 
 - `HttpBody.fileInfo` -> `HttpBody.fileFromInfo`: Renamed; it uses supplied File.Info with ByteSize size metadata and requires FileSystem. Offset and bytesToRead accept ByteSize.Input, while chunkSize is numeric. Invalid ranges and a final EOF-clamped content length above Number.MAX\_SAFE\_INTEGER fail with PlatformError / BadArgument.
-
-- `HttpBody.formData` -> `HttpBody.formData`: Retained with the same Web FormData input.
-
-- `HttpBody.json` -> `HttpBody.json`: Retained as the safe Effect-returning JSON serializer.
-
-- `HttpBody.raw` -> `HttpBody.raw`: Retained with optional contentType and contentLength metadata.
-
-- `HttpBody.stream` -> `HttpBody.stream`: Retained with the same byte stream and optional content metadata.
-
-- `HttpBody.text` -> `HttpBody.text`: Retained; it UTF-8 encodes and defaults to text/plain.
-
-- `HttpBody.uint8Array` -> `HttpBody.uint8Array`: Retained with the same bytes and optional content type.
 
 - `HttpBody.unsafeJson` -> `HttpBody.jsonUnsafe`: Renamed to put Unsafe last; serialization failures still throw.
 
@@ -7234,8 +7033,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpClient.tap` -> `effect/http/HttpClient#tap`: Moved to the v4 HTTP module with the same response-effect callback and client error/service widening.
 
-- `HttpClient.tapError`: TODO: needs guidance
-
 - `HttpClient.transform` -> `effect/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
 
 - `HttpClient.withSpanNameGenerator` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.SpanNameGenerator, f))`: The convenience combinator was removed; provide the reference around response effects.
@@ -7268,21 +7065,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpClientRequest.make` -> `HttpClientRequest.make`: Retained; all methods now accept Options.NoUrl without the GET/HEAD body restriction.
 
-- `HttpClientRequest.modify` -> `HttpClientRequest.modify`: Retained with data-first and data-last overloads.
-
-- `HttpClientRequest.options` -> `HttpClientRequest.options`: Retained with Options.NoUrl.
-
-- `HttpClientRequest.patch` -> `HttpClientRequest.patch`: Retained with Options.NoUrl.
-
-- `HttpClientRequest.post` -> `HttpClientRequest.post`: Retained with Options.NoUrl.
-
-- `HttpClientRequest.put` -> `HttpClientRequest.put`: Retained with Options.NoUrl.
-
 - `HttpClientRequest.setBody` -> `HttpClientRequest.setBody`: Retained and still synchronizes body content metadata into headers.
-
-- `HttpClientRequest.setHeader` -> `HttpClientRequest.setHeader`: Retained with data-first and data-last overloads.
-
-- `HttpClientRequest.setHeaders` -> `HttpClientRequest.setHeaders`: Retained with data-first and data-last overloads.
 
 - `HttpClientRequest.toUrl` -> `HttpClientRequest.toUrl`: Retained and still returns Option\<URL\>.
 
@@ -7364,10 +7147,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.toWebHandler` -> `HttpRouter.toWebHandler`: Moved to the consolidated router for building a Fetch handler and disposer.
 
-### `@effect/platform/HttpMethod`
-
-- `HttpMethod.all` -> `HttpMethod.all`: Retained as the readonly set of all supported methods.
-
 ### `@effect/platform/HttpMiddleware`
 
 - `HttpMiddleware.SpanNameGenerator` -> `HttpMiddleware.SpanNameGenerator`: The branded interface became a Context.Reference containing the generator.
@@ -7377,8 +7156,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpMiddleware.currentTracerDisabledWhen` -> `HttpMiddleware.TracerDisabledWhen`: The FiberRef became a Context.Reference containing the request predicate.
 
 - `HttpMiddleware.loggerDisabled` -> `HttpMiddleware.withLoggerDisabled`: The FiberRef was removed; locally wrap an effect or use HttpRouter.disableLogger.
-
-- `HttpMiddleware.make` -> `HttpMiddleware.make`: Retained as the precise middleware constructor.
 
 - `HttpMiddleware.withSpanNameGenerator` -> `Layer.provide(layer, Layer.succeed(HttpMiddleware.SpanNameGenerator)(f))`: Provide the SpanNameGenerator reference to the target layer.
 
@@ -7407,8 +7184,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpRouter.HttpRouter.DefaultServices` -> `none`: The custom tagged-router default-service bundle was removed.
 
 - `HttpRouter.HttpRouter.Service` -> `HttpRouter.HttpRouter`: Use the consolidated router service interface.
-
-- `HttpRouter.PathInput` -> `HttpRouter.PathInput`: Retained as an absolute slash path or wildcard.
 
 - `HttpRouter.Route.Middleware` -> `Effect.Effect`: Spell the route response Effect directly, or use HttpRouter.middleware for transforms.
 
@@ -7532,31 +7307,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpServerResponse.TypeId` -> `HttpServerResponse.isHttpServerResponse`: The response brand is private in v4; use the public runtime refinement.
 
-- `HttpServerResponse.empty` -> `HttpServerResponse.empty`: Retained with default status 204; responses are no longer Effects or Respondables.
-
 - `HttpServerResponse.expireCookie` -> `HttpServerResponse.expireCookie`: Now effectful and safe; use expireCookieUnsafe for synchronous throwing behavior.
 
 - `HttpServerResponse.file` -> `HttpServerResponse.file`: Retained; offset and bytesToRead accept ByteSize.Input, while chunkSize uses number. Path-backed responses validate ranges and clamp content length to the available bytes.
 
 - `HttpServerResponse.fileWeb` -> `HttpServerResponse.fileWeb`: Web File offset, bytesToRead, and chunkSize options use number, unlike path-backed ByteSize.Input ranges.
 
-- `HttpServerResponse.formData` -> `HttpServerResponse.formData`: Moved unchanged.
-
-- `HttpServerResponse.fromWeb` -> `HttpServerResponse.fromWeb`: Retained; Set-Cookie headers become Cookies and Web bodies become stream bodies.
-
 - `HttpServerResponse.isServerResponse` -> `HttpServerResponse.isHttpServerResponse`: Renamed.
 
-- `HttpServerResponse.json` -> `HttpServerResponse.json`: Retained as the safe effectful JSON constructor.
-
-- `HttpServerResponse.raw` -> `HttpServerResponse.raw`: Moved unchanged.
-
-- `HttpServerResponse.setBody` -> `HttpServerResponse.setBody`: Retained and reflects body content metadata in response headers.
-
 - `HttpServerResponse.setCookie` -> `HttpServerResponse.setCookie`: Retained as the safe effectful cookie setter.
-
-- `HttpServerResponse.setHeader` -> `HttpServerResponse.setHeader`: Retained with data-first and data-last overloads.
-
-- `HttpServerResponse.setHeaders` -> `HttpServerResponse.setHeaders`: Retained with data-first and data-last overloads.
 
 - `HttpServerResponse.stream` -> `HttpServerResponse.stream`: Retained; v4 Stream no longer has a service type parameter.
 
@@ -7572,8 +7331,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpServerResponse.unsafeSetCookies` -> `HttpServerResponse.setCookiesUnsafe`: Renamed to put Unsafe last; invalid cookies still throw.
 
-- `HttpServerResponse.urlParams` -> `HttpServerResponse.urlParams`: Retained and widened to accept UrlParams.Input.
-
 ### `@effect/platform/KeyValueStore`
 
 - `KeyValueStore.KeyValueStore` -> `KeyValueStore.KeyValueStore`: The service moved to effect/persistence/KeyValueStore; missing values now use undefined and operations fail with KeyValueStoreError.
@@ -7584,11 +7341,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `KeyValueStore.TypeId` -> `none`: The KeyValueStore runtime marker is internal in v4; use the service and interface.
 
-- `KeyValueStore.layerMemory` -> `KeyValueStore.layerMemory`: The in-memory layer remains in the moved module.
-
 - `KeyValueStore.layerSchema` -> `KeyValueStore.toSchemaStore`: Schema stores are now derived with toSchemaStore; define the desired Context.Service and layer explicitly.
-
-- `KeyValueStore.layerStorage` -> `KeyValueStore.layerStorage`: The Web Storage layer remains in the moved module.
 
 - `KeyValueStore.make` -> `KeyValueStore.make`: The constructor remains in the moved module with v4 MakeOptions.
 
@@ -7629,12 +7382,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Multipart.MaxParts` -> `Multipart.MaxParts`: The setting remains as a Context.Reference; use undefined rather than Option.none for no limit.
 
 - `Multipart.TypeId` -> `typeof Multipart.TypeId`: The runtime marker remains exported, but the separate type alias was removed.
-
-- `Multipart.isField` -> `Multipart.isField`: The guard remains in effect/http/Multipart.
-
-- `Multipart.isFile` -> `Multipart.isFile`: The guard remains in effect/http/Multipart.
-
-- `Multipart.isPart` -> `Multipart.isPart`: The guard remains in effect/http/Multipart.
 
 - `Multipart.makeChannel` -> `effect/http/Multipart#makeChannel`: The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays.
 
@@ -7689,10 +7436,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `OpenApi.Exclude` -> `effect/http-api/OpenApi#Exclude`: Same annotation key and default; it is now a Context.Reference value.
 
 - `OpenApi.OpenApiSpecContentType` -> `string`: The closed media-type union was removed so custom and streaming media types are supported.
-
-- `OpenApi.Title` -> `effect/http-api/OpenApi#Title`: Same annotation role, now implemented as a v4 Context.Service.
-
-- `OpenApi.annotations` -> `effect/http-api/OpenApi#annotations`: Same annotation-context helper after the module move.
 
 - `OpenApi.fromApi` -> `effect/http-api/OpenApi#fromApi`: The operation remains and returns OpenAPI 3.1, but the signature is now only fromApi(api).
 
@@ -7802,8 +7545,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Template.Interpolated.Error` -> `Template.Interpolated.Error`: The API moved to effect/http/Template; v4 interpolation types also account for Effect values.
 
-- `Template.make` -> `Template.make`: The API moved to effect/http/Template; v4 interpolation types also account for Effect values.
-
 ### `@effect/platform/Terminal`
 
 - `Terminal.QuitException` -> `Terminal.QuitError`: The quit sentinel was renamed and moved to effect/Terminal.
@@ -7826,8 +7567,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Url.setUrlParams` -> `Url.setUrlParams`: Retained and widened to accept UrlParams.Input.
 
-- `Url.urlParams` -> `Url.urlParams`: Retained and returns the v4 UrlParams wrapper.
-
 ### `@effect/platform/UrlParams`
 
 - `UrlParams.CoercibleRecord` -> `UrlParams.CoercibleRecord<A>`: The recursive interface became a generic mapped type preserving the input shape.
@@ -7836,17 +7575,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `UrlParams.UrlParams` -> `UrlParams.UrlParams`: Import UrlParams from effect/http. It is now a branded iterable object with a params field rather than a ReadonlyArray; construct it with UrlParams.make or UrlParams.fromInput.
 
-- `UrlParams.append` -> `UrlParams.append`: Retained and returns the immutable UrlParams wrapper.
-
-- `UrlParams.appendAll` -> `UrlParams.appendAll`: Retained and preserves existing parameters.
-
-- `UrlParams.empty` -> `UrlParams.empty`: Now a branded iterable object with params rather than a ReadonlyArray.
-
-- `UrlParams.fromInput` -> `UrlParams.fromInput`: Retained and now also accepts an existing UrlParams.
-
 - `UrlParams.makeUrl` -> `Url.make`: Moved to Url, returns Result, and takes string | undefined for the hash.
-
-- `UrlParams.remove` -> `UrlParams.remove`: Retained and removes every value for the key.
 
 - `UrlParams.schemaFromSelf` -> `Schema.UrlParams`: The declaration schema for the v4 wrapper moved to effect/Schema.
 
@@ -7859,10 +7588,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `UrlParams.schemaRecord` -> `Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema))`: RecordFromUrlParams is a base codec in effect/Schema; compose it with the target schema.
 
 - `UrlParams.schemaStruct` -> `Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema), Schema.decodeEffect)`: Compose the record codec from effect/Schema with the target schema and decode it.
-
-- `UrlParams.set` -> `UrlParams.set`: Retained and replaces all existing values for the key.
-
-- `UrlParams.setAll` -> `UrlParams.setAll`: Retained; supplied keys replace existing values and other keys remain.
 
 - `UrlParams.toString` -> `UrlParams.toString`: Retained and broadened to accept any UrlParams.Input.
 
@@ -7970,8 +7695,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Rpc.Context` -> `effect/rpc/Rpc#Services`: Schema Context became decoding and encoding services; use Services, or ServicesClient / ServicesServer at the corresponding boundary.
 
-- `Rpc.Error` -> `effect/rpc/Rpc#Error`: Retained; it includes decoded errors contributed by attached middleware.
-
 - `Rpc.ErrorEncoded` -> `Rpc.ErrorSchema<R>["Encoded"]`: The alias was removed; index the v4 error schema's Encoded member directly.
 
 - `Rpc.ErrorExitEncoded` -> `Rpc.ErrorExitSchema<R>["Encoded"]`: Use the new exit error schema, which includes stream and middleware errors, then select its Encoded member.
@@ -8010,8 +7733,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/rpc/RpcClient`
 
-- `RpcClient.FromGroup`: TODO: needs guidance
-
 - `RpcClient.Protocol` -> `effect/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
 
 - `RpcClient.RpcClient.From` -> `effect/rpc/RpcClient#RpcClient.From`: Generated clients now preserve full RPC tags as property names, remove the Prefix type parameter, and expose streaming results through the asQueue option instead of asMailbox.
@@ -8021,12 +7742,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `RpcClient.RpcClient.Prefixes` -> `none`: Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property.
 
 - `RpcClient.currentHeaders` -> `effect/rpc/RpcClient#CurrentHeaders`: Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHeaders for scoped overrides.
-
-- `RpcClient.layerProtocolHttp` -> `effect/rpc/RpcClient#layerProtocolHttp`: Retained; it provides the v4 Protocol from HttpClient and RpcSerialization.
-
-- `RpcClient.make` -> `effect/rpc/RpcClient#make`: Retained; generated calls can now take per-request headers and Context, and include RpcClientError in their error channel.
-
-- `RpcClient.makeNoSerialization`: TODO: needs guidance
 
 - `RpcClient.makeProtocolHttp` -> `effect/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
 
@@ -8044,15 +7759,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RpcGroup.HandlersContext` -> `effect/rpc/RpcGroup#HandlersServices`: Renamed; it unions HandlerServices across the handler object.
 
-- `RpcGroup.HandlersFrom`: TODO: needs guidance
-
 - `RpcGroup.TypeId` -> `none`: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
 
-- `RpcGroup.make` -> `effect/rpc/RpcGroup#make`: Retained for explicit Rpc definitions; passing TaggedRequest schema classes for implicit conversion is no longer supported.
-
 ### `@effect/rpc/RpcMessage`
-
-- `RpcMessage.FromClientEncoded`: TODO: needs guidance
 
 - `RpcMessage.FromServerEncoded` -> `effect/rpc/RpcMessage#FromServerEncoded`: The union is retained and now also includes RequestEncoded for server-originated requests and notifications. Handle \_tag: "Request" when matching exhaustively; isNotification identifies notifications.
 
@@ -8061,8 +7770,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `RpcMessage.RequestIdTypeId` -> `effect/rpc/RpcMessage#RequestId`: The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand.
 
 ### `@effect/rpc/RpcMiddleware`
-
-- `RpcMiddleware.ForClient` -> `effect/rpc/RpcMiddleware#ForClient`: Retained as the marker requirement provided by a client middleware layer.
 
 - `RpcMiddleware.RpcMiddlewareWrap` -> `effect/rpc/RpcMiddleware#RpcMiddleware`: The wrap and non-wrap shapes were unified; implement a function receiving the handler effect and request options.
 
@@ -8108,8 +7815,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RpcSerialization.RpcSerializationError` -> `effect/rpc/RpcSerialization#MaxBufferSizeExceeded`: Buffer-limit failures now use MaxBufferSizeExceeded. MessagePack-specific decode errors have no counterpart.
 
-- `RpcSerialization.layerJson`: TODO: needs guidance
-
 - `RpcSerialization.layerMsgPack` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Use SchemaBinary, or layerNdjson when you need newline-delimited JSON framing.
 
 - `RpcSerialization.layerMsgPackWith` -> `effect/rpc/RpcSerialization#layerSchemaBinary`: MessagePack RPC serialization was removed. Pass maxFrameSize to layerSchemaBinary; NDJSON buffer limits remain on layerNdjsonWith.
@@ -8137,8 +7842,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `RpcServer.layerProtocolWebsocketRouter` -> `effect/rpc/RpcServer#layerProtocolWebsocket`: Renamed after the HTTP router services were unified.
 
 - `RpcServer.make` -> `effect/rpc/RpcServer#make`: Retained; schema encoding services are now explicit server requirements.
-
-- `RpcServer.makeNoSerialization`: TODO: needs guidance
 
 - `RpcServer.makeProtocolHttp` -> `effect/rpc/RpcServer#makeProtocolHttp`: Retained; it registers a POST route in the current v4 HttpRouter.
 
@@ -8276,10 +7979,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
 
-### `@effect/sql/Migrator`
-
-- `Migrator.make` -> `effect/sql/Migrator#make`: Moved with the same curried make({ dumpSchema })(options) pattern.
-
 ### `@effect/sql/Model`
 
 - `Model.Any` -> `effect/schema/Model#Any`: Moved; v4 schemas track DecodingServices and EncodingServices separately instead of one Context type.
@@ -8295,8 +7994,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Model.DateTimeFromDate` -> `effect/Schema#DateTimeUtcFromDate`: Moved to core Schema and retains Date to DateTime.Utc conversion.
 
 - `Model.Generated` -> `effect/schema/Model#GeneratedByDb`: Renamed and now read-only, with select and json variants only. Use Model.Field with select, update, and json to preserve writable v3 behavior.
-
-- `Model.Override` -> `effect/schema/Model#Override`: Moved with the same explicit-default override purpose.
 
 - `Model.extract` -> `effect/schema/Model#extract`: Retained after moving the model variant helpers into core Effect's unstable schema package.
 
@@ -8371,8 +8068,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Statement.make` -> `effect/sql/Statement#make`: Moved with the same constructor inputs.
 
 - `Statement.makeCompiler` -> `effect/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
-
-- `Statement.or` -> `effect/sql/Statement#or`: Moved unchanged.
 
 - `Statement.setTransformer` -> `Layer.succeed(Statement.CurrentTransformer, transformer)`: The helper was removed; provide the CurrentTransformer reference as a layer.
 
@@ -8964,8 +8659,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Activity.raceAll` -> `effect/workflow/Activity#raceAll`: Moved into core Effect with the same named durable race behavior.
 
-- `Activity.retry` -> `effect/workflow/Activity#retry`: Moved into core Effect and updated to v4 Effect.retry option types.
-
 ### `@effect/workflow/DurableClock`
 
 - `DurableClock.TypeId` -> `none`: The durable-clock marker is private in v4. Use DurableClock values structurally.
@@ -9032,13 +8725,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Workflow.fromTaggedRequest` -> `none`: Removed. Expand to Workflow.make(schema.\_tag, { payload: schema, success: schema.success, error: schema.failure, idempotencyKey: PrimaryKey.value }).
 
-- `Workflow.isResult` -> `effect/workflow/Workflow#isResult`: Moved into core Effect with the same result refinement behavior.
-
 - `Workflow.make` -> `effect/workflow/Workflow#make`: The signature changed from make({ name, ... }) to make(tag, { ... }); definitions expose \_tag and are class-compatible constructors.
 
 ### `@effect/workflow/WorkflowEngine`
-
-- `WorkflowEngine.layerMemory` -> `effect/workflow/WorkflowEngine#layerMemory`: Moved into core Effect and remains the non-durable engine for tests and local development.
 
 - `WorkflowEngine.makeUnsafe` -> `effect/workflow/WorkflowEngine#makeUnsafe`: Moved into core Effect. Context service projections now use Service instead of Type, and absent encoded results use Option.
 
@@ -9049,8 +8738,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `WorkflowProxy.ConvertRpcs` -> `effect/workflow/WorkflowProxy#ConvertRpcs`: Moved into core Effect; generated execute, discard, and resume RPCs are now keyed from workflow \_tag.
 
 ### `@effect/workflow/WorkflowProxyServer`
-
-- `WorkflowProxyServer.RpcHandlers` -> `effect/workflow/WorkflowProxyServer#RpcHandlers`: Moved into core Effect; handler names derive from workflow \_tag and the optional prefix.
 
 - `WorkflowProxyServer.layerHttpApi` -> `effect/workflow/WorkflowProxyServer#layerHttpApi`: Moved into core Effect. Use v4 HttpApi group identifiers and Workflow.RequirementsHandler schema services.
 
@@ -15077,7 +14764,7 @@ Schema.toFormatter(schema)
 
 - `Schema.encodedSchema` -> `Schema.toEncoded`: Rename the encoded-side projection.
 
-- `Schema.endsWith` -> `Schema.isEndsWith`: Rename the string predicate to `isEndsWith` and apply it with `Schema.check` or a schema's `check` method.
+- `Schema.endsWith` -> `Schema.isEndingWith`: Rename the string predicate to `isEndingWith` and apply it with `Schema.check` or a schema's `check` method.
 
 - `Schema.equivalence` -> `Schema.toEquivalence`: Rename the equivalence derivation utility.
 
@@ -15127,7 +14814,7 @@ Schema.toFormatter(schema)
 
 - `Schema.headOrElse` -> `none`: Compared the v3 declaration with v4 Schema and the schema migration guide; no direct public replacement remains. Rebuild the behavior from public v4 codecs/getters where still required.
 
-- `Schema.includes` -> `Schema.isIncludes`: Rename the string predicate to `isIncludes` and apply it with `Schema.check` or a schema's `check` method.
+- `Schema.includes` -> `Schema.isIncluding`: Rename the string predicate to `isIncluding` and apply it with `Schema.check` or a schema's `check` method.
 
 - `Schema.instanceOf` -> `Schema.instanceOf`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
@@ -15137,11 +14824,11 @@ Schema.toFormatter(schema)
 
 - `Schema.isSchema` -> `Schema.isSchema`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.itemsCount` -> `Schema.isLengthBetween`: Use the v4 collection-size check and apply it with `Schema.check` or a schema's `check` method.
+- `Schema.itemsCount` -> `Schema.isBetweenLength`: Use the v4 collection-size check and apply it with `Schema.check` or a schema's `check` method.
 
 - `Schema.keyof` -> `none`: Removed with the schema model rewrite; derive keys from struct fields or use `Schema.Literals` explicitly.
 
-- `Schema.length` -> `Schema.isLengthBetween`: Use `isLengthBetween` with equal minimum and maximum values for an exact string length.
+- `Schema.length` -> `Schema.isBetweenLength`: Use `isBetweenLength` with equal minimum and maximum values for an exact string length.
 
 - `Schema.lessThan` -> `Schema.isLessThan`: Rename the predicate to `isLessThan` and apply it with `Schema.check` or a schema's `check` method.
 
@@ -15259,7 +14946,7 @@ Schema.toFormatter(schema)
 
 - `Schema.standardSchemaV1` -> `Schema.toStandardSchemaV1`: Rename the Standard Schema adapter.
 
-- `Schema.startsWith` -> `Schema.isStartsWith`: Rename the string predicate to `isStartsWith` and apply it with `Schema.check` or a schema's `check` method.
+- `Schema.startsWith` -> `Schema.isStartingWith`: Rename the string predicate to `isStartingWith` and apply it with `Schema.check` or a schema's `check` method.
 
 - `Schema.successSchema` -> `none`: Compared the v3 declaration with v4 Schema and the schema migration guide; no direct public replacement remains. Rebuild the behavior from public v4 codecs/getters where still required.
 

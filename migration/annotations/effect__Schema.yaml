@@ -305,8 +305,8 @@ effect/Schema#encodeUnknownPromise:
   replacement: Schema.encodeUnknownPromise
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#endsWith:
-  replacement: Schema.isEndsWith
-  note: Rename the string predicate to `isEndsWith` and apply it with `Schema.check` or a schema's `check` method.
+  replacement: Schema.isEndingWith
+  note: Rename the string predicate to `isEndingWith` and apply it with `Schema.check` or a schema's `check` method.
 effect/Schema#EndsWithSchemaId:
   replacement: none
   note: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
@@ -464,8 +464,8 @@ effect/Schema#headOrElse:
   replacement: none
   note: Compared the v3 declaration with v4 Schema and the schema migration guide; no direct public replacement remains. Rebuild the behavior from public v4 codecs/getters where still required.
 effect/Schema#includes:
-  replacement: Schema.isIncludes
-  note: Rename the string predicate to `isIncludes` and apply it with `Schema.check` or a schema's `check` method.
+  replacement: Schema.isIncluding
+  note: Rename the string predicate to `isIncluding` and apply it with `Schema.check` or a schema's `check` method.
 effect/Schema#IncludesSchemaId:
   replacement: none
   note: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
@@ -509,7 +509,7 @@ effect/Schema#isSchema:
   replacement: Schema.isSchema
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#itemsCount:
-  replacement: Schema.isLengthBetween
+  replacement: Schema.isBetweenLength
   note: Use the v4 collection-size check and apply it with `Schema.check` or a schema's `check` method.
 effect/Schema#ItemsCountSchemaId:
   replacement: none
@@ -527,8 +527,8 @@ effect/Schema#LeftEncoded:
   replacement: none
   note: Compared the v3 declaration with v4 Schema and the schema migration guide; no direct public replacement remains. Rebuild the behavior from public v4 codecs/getters where still required.
 effect/Schema#length:
-  replacement: Schema.isLengthBetween
-  note: Use `isLengthBetween` with equal minimum and maximum values for an exact string length.
+  replacement: Schema.isBetweenLength
+  note: Use `isBetweenLength` with equal minimum and maximum values for an exact string length.
 effect/Schema#LengthSchemaId:
   replacement: none
   note: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
@@ -1070,8 +1070,8 @@ effect/Schema#standardSchemaV1:
   replacement: Schema.toStandardSchemaV1
   note: Rename the Standard Schema adapter.
 effect/Schema#startsWith:
-  replacement: Schema.isStartsWith
-  note: Rename the string predicate to `isStartsWith` and apply it with `Schema.check` or a schema's `check` method.
+  replacement: Schema.isStartingWith
+  note: Rename the string predicate to `isStartingWith` and apply it with `Schema.check` or a schema's `check` method.
 effect/Schema#StartsWithSchemaId:
   replacement: none
   note: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.

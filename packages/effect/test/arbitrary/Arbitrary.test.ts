@@ -193,12 +193,12 @@ describe("Arbitrary", () => {
         const schemas = [
           Schema.String.check(Schema.isMinCodePoints(128)),
           Schema.String.check(Schema.isMaxCodePoints(0)),
-          Schema.String.check(Schema.isCodePointsBetween(2, 4)),
+          Schema.String.check(Schema.isBetweenCodePoints(2, 4)),
           Schema.String.check(Schema.isMinCodePoints(3), Schema.isMinCodePoints(4), Schema.isMaxCodePoints(4)),
           Schema.String.check(Schema.isMinCodePoints(4), Schema.isMaxCodePoints(5), Schema.isMaxCodePoints(4)),
-          Schema.String.check(Schema.isLengthBetween(8, 8), Schema.isCodePointsBetween(4, 4)),
+          Schema.String.check(Schema.isBetweenLength(8, 8), Schema.isBetweenCodePoints(4, 4)),
           Schema.String.check(Schema.isMaxLength(4), Schema.isMinCodePoints(4)),
-          Schema.String.check(Schema.isPattern(/^\u{1f600}{4}$/u), Schema.isCodePointsBetween(4, 4))
+          Schema.String.check(Schema.isPattern(/^\u{1f600}{4}$/u), Schema.isBetweenCodePoints(4, 4))
         ]
         for (let index = 0; index < schemas.length; index++) {
           const schema = schemas[index]
@@ -228,13 +228,13 @@ describe("Arbitrary", () => {
         const schemas = [
           Schema.String.check(
             Schema.isPattern(/^\u{1f600}+$/u),
-            Schema.isCodePointsBetween(4, 4),
+            Schema.isBetweenCodePoints(4, 4),
             Schema.isMaxLength(8)
           ),
-          Schema.String.check(Schema.isPattern(/^a+$/), Schema.isCodePointsBetween(4, 4), Schema.isMaxLength(4)),
+          Schema.String.check(Schema.isPattern(/^a+$/), Schema.isBetweenCodePoints(4, 4), Schema.isMaxLength(4)),
           Schema.String.check(
             Schema.isPattern(/^(?:a|\u{1f600})+$/u),
-            Schema.isCodePointsBetween(4, 4),
+            Schema.isBetweenCodePoints(4, 4),
             Schema.isMaxLength(6)
           )
         ]
@@ -290,7 +290,7 @@ describe("Arbitrary", () => {
 
     it.effect("generates supplementary code points and preserves bounds while shrinking", () =>
       Effect.gen(function*() {
-        const schema = Schema.String.check(Schema.isCodePointsBetween(1, 1))
+        const schema = Schema.String.check(Schema.isBetweenCodePoints(1, 1))
         const arbitrary = Arbitrary.schema(schema)
         const values = yield* Arbitrary.sampleEffect(arbitrary, {
           count: 100,
@@ -382,9 +382,9 @@ describe("Arbitrary", () => {
           Schema.String.check(Schema.isLowercased()),
           Schema.String.check(Schema.isCapitalized()),
           Schema.String.check(Schema.isUncapitalized()),
-          Schema.String.check(Schema.isStartsWith("a.b")),
-          Schema.String.check(Schema.isEndsWith("a.b")),
-          Schema.String.check(Schema.isIncludes("a.b"))
+          Schema.String.check(Schema.isStartingWith("a.b")),
+          Schema.String.check(Schema.isEndingWith("a.b")),
+          Schema.String.check(Schema.isIncluding("a.b"))
         ]
         for (let index = 0; index < schemas.length; index++) {
           const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schemas[index]), {
@@ -832,7 +832,7 @@ describe("Arbitrary", () => {
 
     it.effect("explores strings around an unanchored match", () =>
       Effect.gen(function*() {
-        const schema = Schema.String.check(Schema.isIncludes("needle"))
+        const schema = Schema.String.check(Schema.isIncluding("needle"))
         const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
           count: 100,
           maxDiscards: 0,
@@ -1225,7 +1225,7 @@ describe("Arbitrary", () => {
 
             const shrinkingSchema = Schema.StructWithRest(fields, [
               Schema.Record(Schema.String.check(Schema.isPattern(new RegExp(`^${key}+$`))), Schema.Boolean)
-            ]).check(Schema.isPropertiesLengthBetween(1, 1))
+            ]).check(Schema.isBetweenProperties(1, 1))
             const result = yield* Arbitrary.checkEffect(Arbitrary.schema(shrinkingSchema), () => false, {
               runs: 1,
               maxDiscards: 100,
@@ -1247,7 +1247,7 @@ describe("Arbitrary", () => {
           const schema = Schema.StructWithRest(
             Schema.Struct({ a: Schema.optionalKey(Schema.Never) }),
             [Schema.Record(Schema.String.check(Schema.isPattern(/^b$/)), Schema.Boolean)]
-          ).check(Schema.isPropertiesLengthBetween(1, 1))
+          ).check(Schema.isBetweenProperties(1, 1))
           const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
             count: 20,
             maxDiscards: 0,
@@ -1949,7 +1949,7 @@ describe("Arbitrary", () => {
         const schema = Schema.Struct({
           cheap: Schema.optionalKey(Schema.Null),
           recursive: Schema.optionalKey(Node)
-        }).check(Schema.isPropertiesLengthBetween(1, 1))
+        }).check(Schema.isBetweenProperties(1, 1))
         const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
           count: 100,
           maxDiscards: 0,
@@ -2349,11 +2349,11 @@ describe("Arbitrary", () => {
           { arbitraryConstraint: { minSize: 3, maxSize: 3 } }
         ))
         const schemas: ReadonlyArray<readonly [Schema.Top, (value: any) => number]> = [
-          [Schema.Chunk(Schema.Int).check(Schema.isLengthBetween(3, 3)), Chunk.size],
-          [Schema.ReadonlySet(Schema.Int).check(Schema.isSizeBetween(3, 3)), (value) => value.size],
+          [Schema.Chunk(Schema.Int).check(Schema.isBetweenLength(3, 3)), Chunk.size],
+          [Schema.ReadonlySet(Schema.Int).check(Schema.isBetweenSize(3, 3)), (value) => value.size],
           [hashSet, HashSet.size],
           [
-            Schema.ReadonlyMap(Schema.Literals(["a", "b", "c"]), Schema.Boolean).check(Schema.isSizeBetween(3, 3)),
+            Schema.ReadonlyMap(Schema.Literals(["a", "b", "c"]), Schema.Boolean).check(Schema.isBetweenSize(3, 3)),
             (value) => value.size
           ],
           [hashMap, HashMap.size]
@@ -2375,7 +2375,7 @@ describe("Arbitrary", () => {
         const schema = Schema.ReadonlyMap(
           Schema.Literals(["a", "b", "c"]),
           Schema.Int
-        ).check(Schema.isSizeBetween(2, 3))
+        ).check(Schema.isBetweenSize(2, 3))
         const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
           runs: 1,
           seed: "map-key-shrinking",
@@ -2454,9 +2454,9 @@ describe("Arbitrary", () => {
             name: "String length",
             schema: Schema.String.check(Schema.isMinLength(2), Schema.isMaxLength(4))
           },
-          { name: "String starts with", schema: Schema.String.check(Schema.isStartsWith("a.b")) },
-          { name: "String ends with", schema: Schema.String.check(Schema.isEndsWith("a+b")) },
-          { name: "String includes", schema: Schema.String.check(Schema.isIncludes("[")) },
+          { name: "String starts with", schema: Schema.String.check(Schema.isStartingWith("a.b")) },
+          { name: "String ends with", schema: Schema.String.check(Schema.isEndingWith("a+b")) },
+          { name: "String includes", schema: Schema.String.check(Schema.isIncluding("[")) },
           { name: "Finite", schema: Schema.Finite },
           { name: "Int32", schema: Schema.Number.check(Schema.isInt32()) },
           {
@@ -2497,7 +2497,7 @@ describe("Arbitrary", () => {
           },
           {
             name: "Array length",
-            schema: Schema.Array(Schema.String).check(Schema.isLengthBetween(2, 4))
+            schema: Schema.Array(Schema.String).check(Schema.isBetweenLength(2, 4))
           },
           {
             name: "UniqueArray",
@@ -2505,7 +2505,7 @@ describe("Arbitrary", () => {
           },
           {
             name: "Record properties",
-            schema: Schema.Record(Schema.String, Schema.Number).check(Schema.isPropertiesLengthBetween(2, 4))
+            schema: Schema.Record(Schema.String, Schema.Number).check(Schema.isBetweenProperties(2, 4))
           },
           {
             name: "Struct properties",
@@ -2513,11 +2513,11 @@ describe("Arbitrary", () => {
               a: Schema.optionalKey(Schema.String),
               b: Schema.optionalKey(Schema.String),
               c: Schema.optionalKey(Schema.String)
-            }).check(Schema.isPropertiesLengthBetween(2, 2))
+            }).check(Schema.isBetweenProperties(2, 2))
           },
           {
             name: "ReadonlyMap size",
-            schema: Schema.ReadonlyMap(Schema.String, Schema.Number).check(Schema.isSizeBetween(2, 4))
+            schema: Schema.ReadonlyMap(Schema.String, Schema.Number).check(Schema.isBetweenSize(2, 4))
           }
         ]))
 

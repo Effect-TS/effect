@@ -358,7 +358,7 @@ function recordCheck(check: SchemaAST.Check<any>): Array<SchemaAST.Check<any>> {
       return typeof payload.minProperties === "number"
         ? [withoutDescription(Schema.isMinLength(payload.minProperties))]
         : []
-    case "effect/schema/isPropertiesLengthBetween":
+    case "effect/schema/isBetweenProperties":
       return typeof payload.minimum === "number"
         ? [withoutDescription(Schema.isMinLength(payload.minimum))]
         : []

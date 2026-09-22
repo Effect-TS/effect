@@ -381,7 +381,7 @@ describe("toCodeDocument", () => {
         const [check, code] of [
           [Schema.isMinCodePoints(2), "Schema.isMinCodePoints(2)"],
           [Schema.isMaxCodePoints(3), "Schema.isMaxCodePoints(3)"],
-          [Schema.isCodePointsBetween(2, 3), "Schema.isCodePointsBetween(2, 3)"]
+          [Schema.isBetweenCodePoints(2, 3), "Schema.isBetweenCodePoints(2, 3)"]
         ] as const
       ) {
         assertSchema(
@@ -410,29 +410,29 @@ describe("toCodeDocument", () => {
     })
 
     describe("checks", () => {
-      it("isStartsWith", () => {
+      it("isStartingWith", () => {
         assertSchema(
-          { schema: Schema.String.check(Schema.isStartsWith("a")) },
+          { schema: Schema.String.check(Schema.isStartingWith("a")) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isStartsWith("a"))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isStartingWith("a"))`, "string")
           }
         )
       })
 
-      it("isEndsWith", () => {
+      it("isEndingWith", () => {
         assertSchema(
-          { schema: Schema.String.check(Schema.isEndsWith("a")) },
+          { schema: Schema.String.check(Schema.isEndingWith("a")) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isEndsWith("a"))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isEndingWith("a"))`, "string")
           }
         )
       })
 
-      it("isIncludes", () => {
+      it("isIncluding", () => {
         assertSchema(
-          { schema: Schema.String.check(Schema.isIncludes("a")) },
+          { schema: Schema.String.check(Schema.isIncluding("a")) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isIncludes("a"))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isIncluding("a"))`, "string")
           }
         )
       })
@@ -1874,12 +1874,12 @@ describe("toCodeDocument", () => {
       })
     })
 
-    it("isSizeBetween", () => {
+    it("isBetweenSize", () => {
       assertSchema(
-        { schema: Schema.ReadonlySet(Schema.String).check(Schema.isSizeBetween(2, 2)) },
+        { schema: Schema.ReadonlySet(Schema.String).check(Schema.isBetweenSize(2, 2)) },
         {
           codes: makeCode(
-            `Schema.ReadonlySet(Schema.String).check(Schema.isSizeBetween(2, 2))`,
+            `Schema.ReadonlySet(Schema.String).check(Schema.isBetweenSize(2, 2))`,
             "globalThis.ReadonlySet<string>"
           )
         }

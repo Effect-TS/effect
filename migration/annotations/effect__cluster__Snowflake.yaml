@@ -1,4 +1,5 @@
 "@effect/cluster/Snowflake#Generator":
+  include: true
   replacement: "effect/cluster/Snowflake#Generator"
   note: "Moved into core Effect and changed to Context.Service; its unsafeNext method was renamed to nextUnsafe."
 "@effect/cluster/Snowflake#make":

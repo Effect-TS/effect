@@ -1067,9 +1067,9 @@ describe("toJsonSchemaDocument", () => {
       it("escapes regexp syntax in literal string checks", () => {
         for (
           const [check, pattern] of [
-            [Schema.isStartsWith("a.b"), "^a\\.b"],
-            [Schema.isEndsWith("a+b"), "a\\+b$"],
-            [Schema.isIncludes("["), "\\["]
+            [Schema.isStartingWith("a.b"), "^a\\.b"],
+            [Schema.isEndingWith("a+b"), "a\\+b$"],
+            [Schema.isIncluding("["), "\\["]
           ] as const
         ) {
           assertJsonSchemaDocument(Schema.String.check(check), {
@@ -1131,10 +1131,10 @@ describe("toJsonSchemaDocument", () => {
         })
       })
 
-      describe("isLengthBetween", () => {
+      describe("isBetweenLength", () => {
         it("String", () => {
           assertJsonSchemaDocument(
-            Schema.String.check(Schema.isLengthBetween(2, 2)),
+            Schema.String.check(Schema.isBetweenLength(2, 2)),
             {
               schema: {
                 "type": "string",
@@ -1149,7 +1149,7 @@ describe("toJsonSchemaDocument", () => {
 
         it("Array", () => {
           assertJsonSchemaDocument(
-            Schema.Array(Schema.String).check(Schema.isLengthBetween(2, 2)),
+            Schema.Array(Schema.String).check(Schema.isBetweenLength(2, 2)),
             {
               schema: {
                 "type": "array",
@@ -1167,7 +1167,7 @@ describe("toJsonSchemaDocument", () => {
 
         it("NonEmptyArray", () => {
           assertJsonSchemaDocument(
-            Schema.NonEmptyArray(Schema.String).check(Schema.isLengthBetween(2, 2)),
+            Schema.NonEmptyArray(Schema.String).check(Schema.isBetweenLength(2, 2)),
             {
               schema: {
                 "type": "array",
@@ -1193,7 +1193,7 @@ describe("toJsonSchemaDocument", () => {
           const [check, keywords] of [
             [Schema.isMinCodePoints(2), { minLength: 2 }],
             [Schema.isMaxCodePoints(1), { maxLength: 1 }],
-            [Schema.isCodePointsBetween(1, 2), { allOf: [{ minLength: 1 }, { maxLength: 2 }] }]
+            [Schema.isBetweenCodePoints(1, 2), { allOf: [{ minLength: 1 }, { maxLength: 2 }] }]
           ] as const
         ) {
           const schema = Schema.String.check(check)
@@ -2780,9 +2780,9 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("Record(isStartsWith, Struct({}))", () => {
+    it("Record(isStartingWith, Struct({}))", () => {
       assertJsonSchemaDocument(
-        Schema.Record(Schema.String.check(Schema.isStartsWith("a")), Schema.Struct({})),
+        Schema.Record(Schema.String.check(Schema.isStartingWith("a")), Schema.Struct({})),
         {
           schema: {
             type: "object",
@@ -2901,7 +2901,7 @@ describe("toJsonSchemaDocument", () => {
       )
       assertJsonSchemaDocument(
         Schema.Record(
-          Schema.String.check(Schema.isPattern(/^ab/), Schema.isEndsWith("z")),
+          Schema.String.check(Schema.isPattern(/^ab/), Schema.isEndingWith("z")),
           Schema.Finite
         ),
         {
@@ -2918,7 +2918,7 @@ describe("toJsonSchemaDocument", () => {
       )
       assertJsonSchemaDocument(
         Schema.Record(
-          Schema.String.check(Schema.isStartsWith("A"), Schema.isUppercased()),
+          Schema.String.check(Schema.isStartingWith("A"), Schema.isUppercased()),
           Schema.Finite
         ),
         {
@@ -2937,7 +2937,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("does not use a partial pattern as an index selector", () => {
       const schema = Schema.Record(
-        Schema.String.check(Schema.isStartsWith("x"), Schema.isMinLength(3)),
+        Schema.String.check(Schema.isStartingWith("x"), Schema.isMinLength(3)),
         Schema.Finite
       )
       assertJsonSchemaDocument(
@@ -2992,9 +2992,9 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
-      it("isPropertiesLengthBetween", () => {
+      it("isBetweenProperties", () => {
         assertJsonSchemaDocument(
-          Schema.Record(Schema.String, Schema.Finite).check(Schema.isPropertiesLengthBetween(2, 2)),
+          Schema.Record(Schema.String, Schema.Finite).check(Schema.isBetweenProperties(2, 2)),
           {
             schema: {
               "type": "object",
@@ -3057,7 +3057,7 @@ describe("toJsonSchemaDocument", () => {
       assertJsonSchemaDocument(
         Schema.StructWithRest(Schema.Struct({ a: Schema.String }), [
           Schema.Record(
-            Schema.String.check(Schema.isStartsWith("x"), Schema.isEndsWith("z")),
+            Schema.String.check(Schema.isStartingWith("x"), Schema.isEndingWith("z")),
             Schema.Finite
           )
         ]),
@@ -3352,9 +3352,9 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
-      it("isLengthBetween", () => {
+      it("isBetweenLength", () => {
         assertJsonSchemaDocument(
-          Schema.Array(Schema.String).check(Schema.isLengthBetween(2, 2)),
+          Schema.Array(Schema.String).check(Schema.isBetweenLength(2, 2)),
           {
             schema: {
               "type": "array",
