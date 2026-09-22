@@ -801,6 +801,38 @@ describe("Chunk", () => {
     assertEquals(Chunk.flatMap(Chunk.make(1, 2, 3), (n) => Chunk.make(n, n + 1)), Chunk.make(1, 2, 2, 3, 3, 4))
   })
 
+  it("flatMap concatenates inner chunks of every backing in order, for any outer length", () => {
+    const holey: Array<number> = new Array(2)
+    holey[1] = 9
+    const inners: ReadonlyArray<Chunk.Chunk<number | undefined>> = [
+      Chunk.empty(),
+      Chunk.of(1),
+      Chunk.make(2, 3),
+      Chunk.appendAll(Chunk.make(4), Chunk.make(5, 6)),
+      Chunk.drop(Chunk.make(0, 7, 8), 1),
+      Chunk.fromArrayUnsafe(holey)
+    ]
+    for (let n = 0; n <= 40; n++) {
+      const calls: Array<[number, number]> = []
+      const out = Chunk.flatMap(Chunk.makeBy(n + 1, identity).pipe(Chunk.drop(1)), (a, i) => {
+        calls.push([a, i])
+        return inners[a % inners.length]
+      })
+      const expected = Array.from({ length: n }, (_, i) => Array.from(inners[(i + 1) % inners.length])).flat()
+      deepStrictEqual(Array.from(out), expected)
+      deepStrictEqual(calls, Array.from({ length: n }, (_, i) => [i + 1, i]))
+    }
+  })
+
+  it("flatMap reads the holes of a sparse backing array as undefined", () => {
+    const sparse: Array<string> = new Array(3)
+    sparse[0] = "a"
+    sparse[2] = "c"
+    const chunk = Chunk.fromArrayUnsafe(sparse)
+    const doubled = Chunk.flatMap(chunk, (a) => Chunk.make(a, a))
+    deepStrictEqual(Array.from(doubled), ["a", "a", undefined, undefined, "c", "c"])
+  })
+
   it("union", () => {
     assertEquals(Chunk.union(Chunk.make(1, 2, 3), Chunk.empty()), Chunk.make(1, 2, 3))
     assertEquals(Chunk.union(Chunk.empty(), Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))

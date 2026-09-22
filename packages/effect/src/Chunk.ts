@@ -1160,12 +1160,17 @@ export const flatMap: {
   if (self.backing._tag === "ISingleton") {
     return f(self.backing.a, 0)
   }
-  let out: Chunk<B> = _empty
-  let i = 0
-  for (const k of self) {
-    out = appendAll(out, f(k, i++))
+  const as = toReadonlyArray(self)
+  const chunks = new Array<Chunk<B>>(as.length)
+  for (let i = 0; i < as.length; i++) {
+    chunks[i] = f(as[i], i)
   }
-  return out
+  for (let step = 1; step < chunks.length; step *= 2) {
+    for (let i = 0; i + step < chunks.length; i += 2 * step) {
+      chunks[i] = appendAll(chunks[i], chunks[i + step])
+    }
+  }
+  return chunks.length === 0 ? _empty : chunks[0]
 })
 
 /**
