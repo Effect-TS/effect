@@ -456,6 +456,45 @@ describe("OpenAiLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
       }))
 
+    it.effect("passes through tool call params for dynamic tools backed by raw JSON Schema", () =>
+      Effect.gen(function*() {
+        const params = { query: "effect" }
+        const client = makeHttpClient((request) =>
+          Effect.succeed(jsonResponse(
+            request,
+            makeChatCompletion({
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                message: {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [{
+                    id: "call_dynamic_1",
+                    type: "function",
+                    function: { name: "DynamicTool", arguments: JSON.stringify(params) }
+                  }]
+                }
+              }]
+            })
+          ))
+        )
+        const DynamicTool = Tool.dynamic("DynamicTool", {
+          parameters: { type: "object" } as const
+        })
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the dynamic tool",
+          toolkit: Toolkit.make(DynamicTool),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls[0]?.params, params)
+      }))
+
     it.effect("groups parallel tool calls into one assistant message", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined

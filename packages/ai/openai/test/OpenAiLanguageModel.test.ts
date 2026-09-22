@@ -1220,6 +1220,26 @@ describe("OpenAiLanguageModel", () => {
           ])
         ))
 
+      it.effect("passes through tool call params for dynamic tools backed by raw JSON Schema", () =>
+        Effect.gen(function*() {
+          const DynamicTool = Tool.dynamic("DynamicTool", {
+            parameters: { type: "object" } as const
+          })
+          const params = { query: "effect" }
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the dynamic tool",
+            toolkit: Toolkit.make(DynamicTool),
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(makeTestLayer({
+              body: { output: [makeFunctionCall("DynamicTool", params)] }
+            }))
+          )
+
+          deepStrictEqual(result.toolCalls[0]?.params, params)
+        }))
+
       it.effect("routes invalid tool call params through failureMode: return without failing the effect", () =>
         Effect.gen(function*() {
           const toolkit = Toolkit.make(ReturnModeTool)

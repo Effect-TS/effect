@@ -1445,6 +1445,10 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
     })
   }
 
+  if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+    return toolParams
+  }
+
   const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
