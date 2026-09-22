@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Option } from "effect"
+import { Effect, Layer, Logger, Option, References } from "effect"
 import { HttpRouter, type HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
@@ -85,5 +85,36 @@ describe("HttpRouter", () => {
       const body = yield* fetchText(routes, "/api/app/users")
 
       assert.strictEqual(body, "/users")
+    }))
+
+  it("disableLogger is a Layer", () => {
+    assert.isTrue(Layer.isLayer(HttpRouter.disableLogger))
+  })
+
+  it.effect("disableLogger suppresses response logging only for the routes it is provided to", () =>
+    Effect.gen(function*() {
+      const logs: Array<Record<string, unknown>> = []
+      const logger = Logger.make<unknown, void>((options) => {
+        logs.push({ ...options.fiber.getRef(References.CurrentLogAnnotations) })
+      })
+
+      const Silent = HttpRouter.add("GET", "/silent", HttpServerResponse.text("silent")).pipe(
+        Layer.provide(HttpRouter.disableLogger)
+      )
+      const Loud = HttpRouter.add("GET", "/loud", HttpServerResponse.text("loud"))
+      const App = Layer.mergeAll(Silent, Loud, Logger.layer([logger]))
+
+      yield* Effect.acquireUseRelease(
+        Effect.sync(() => HttpRouter.toWebHandler(App)),
+        ({ handler }) =>
+          Effect.promise(async () => {
+            await handler(new Request("http://localhost/silent"))
+            await handler(new Request("http://localhost/loud"))
+          }),
+        ({ dispose }) => Effect.promise(dispose)
+      )
+
+      assert.strictEqual(logs.length, 1)
+      assert.strictEqual(logs[0]?.["http.url"], "/loud")
     }))
 })

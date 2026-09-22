@@ -1234,7 +1234,7 @@ export const cors = (
  * @category layers
  * @since 4.0.0
  */
-export const disableLogger: Layer.Layer<never> = middleware(HttpMiddleware.withLoggerDisabled).layer
+export const disableLogger: Layer.Layer<never> = (() => middleware(HttpMiddleware.withLoggerDisabled).layer)()
 
 /**
  * Provides request-level dependencies to some routes.

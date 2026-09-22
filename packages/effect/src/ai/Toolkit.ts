@@ -298,7 +298,7 @@ export const FailureOrigin = Context.Reference<Tool.FailureOrigin>("effect/ai/To
 const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =>
   Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
 
-const Proto = {
+const Proto = (() => ({
   ...Effectable.Prototype({
     label: "Toolkit",
     evaluate: Effect.fnUntraced(function*(this: Toolkit<Record<string, Tool.Any>>, parent) {
@@ -499,7 +499,7 @@ const Proto = {
       tools: Array.from(Object.values(this.tools)).map((tool) => (tool as Tool.Any).name)
     }
   }
-}
+}))()
 
 const makeProto = <Tools extends Record<string, Tool.Any>>(tools: Tools): Toolkit<Tools> =>
   Object.assign(function() {}, Proto, { tools }) as any

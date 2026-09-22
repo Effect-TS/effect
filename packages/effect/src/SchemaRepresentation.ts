@@ -2481,7 +2481,8 @@ const RepresentationAnnotationSchema = Schema.Struct({
 })
 
 const CheckRepresentationAnnotationSchema = Schema.Struct({
-  ...RepresentationAnnotationSchema.fields,
+  id: Schema.NonEmptyString,
+  payload: Schema.Json,
   schemas: Schema.optional(RepresentationsSchema)
 })
 

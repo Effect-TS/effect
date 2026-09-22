@@ -95,6 +95,39 @@ describe("Statement", () => {
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("built statements are an Effect and a Fragment with a working compile, and running them reaches the connection through withConnection", () =>
+    Effect.gen(function*() {
+      let executed: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+      const connection: Connection = {
+        execute: (sqlText, params) => {
+          executed = [sqlText, params]
+          return Effect.succeed([])
+        },
+        executeRaw: () => Effect.succeed([]),
+        executeValues: () => Effect.succeed([]),
+        executeUnprepared: () => Effect.succeed([]),
+        executeValuesUnprepared: () => Effect.succeed([]),
+        executeStream: () => Stream.empty
+      }
+      const sql = yield* SqlClient.make({
+        acquirer: Effect.succeed(connection),
+        compiler: Statement.makeCompilerSqlite(),
+        spanAttributes: []
+      })
+      const statement = sql`select 1`
+
+      assert.isTrue(Effect.isEffect(statement))
+      assert.isTrue(Statement.isFragment(statement))
+      assert.deepStrictEqual(statement.compile(), ["select 1", []])
+
+      // Running the statement through the public `Effect` interface drives it
+      // through `StatementProto`'s `withConnection`/`withConnectionSpan`, so
+      // observing what reaches the connection is evidence that wiring works.
+      yield* statement
+
+      assert.deepStrictEqual(executed, ["select 1", []])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("skips propagation when tracing is disabled", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient(Effect.map(Effect.option(Effect.currentSpan), (span) => {

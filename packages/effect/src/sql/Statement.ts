@@ -1325,7 +1325,7 @@ const makeUnsafe = <A = Row>(
 const StatementProto: Omit<
   StatementImpl<any>,
   "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows" | "borrower"
-> = {
+> = (() => ({
   [FragmentTypeId]: FragmentTypeId,
   withConnection<XA, E>(
     this: StatementImpl<any>,
@@ -1470,7 +1470,7 @@ const StatementProto: Omit<
       params
     }
   }
-}
+}))()
 
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,

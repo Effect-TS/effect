@@ -1436,7 +1436,7 @@ export const Toggle = (options: ToggleOptions): Prompt<boolean> => {
   })
 }
 
-const proto = {
+const proto = (() => ({
   ...Effectable.Prototype<Prompt<any>>({
     label: "Prompt",
     evaluate() {
@@ -1446,7 +1446,7 @@ const proto = {
   [TypeId]: {
     _Output: (_: never) => _
   }
-}
+}))()
 
 type Op<Tag extends string, Body = {}> = Prompt<never> & Body & {
   readonly _tag: Tag
