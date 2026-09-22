@@ -40,6 +40,56 @@ import { chunkCoordination } from "./utils/chunkCoordination.ts"
 
 describe("Stream", () => {
   describe("callback", () => {
+    const runNow = <A, E>(stream: Stream.Stream<A, E>) =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.forkChild(Stream.runCollect(stream), { startImmediately: true })
+        for (let i = 0; i < 100 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+        const exit = fiber.pollUnsafe()
+        yield* Fiber.interrupt(fiber)
+        return exit
+      })
+
+    it.effect("fails with the registration effect's failure", () =>
+      Effect.gen(function*() {
+        const exit = yield* runNow(
+          Stream.callback<number, string>((queue) => Queue.offer(queue, 1).pipe(Effect.andThen(Effect.fail("boom"))))
+        )
+        deepStrictEqual(exit, Exit.fail("boom"))
+        const collected = yield* Ref.make<Array<number>>([])
+        yield* Stream.callback<number, string>((queue) =>
+          Queue.offerAll(queue, [1, 2]).pipe(Effect.andThen(Effect.fail("boom")))
+        ).pipe(
+          Stream.tap((n) => Ref.update(collected, (ns) => [...ns, n])),
+          Stream.runDrain,
+          Effect.exit
+        )
+        deepStrictEqual(yield* Ref.get(collected), [1, 2])
+      }))
+
+    it.effect("dies with the registration effect's defect, and a throw behaves the same", () =>
+      Effect.gen(function*() {
+        const boom = new Error("boom")
+        const died = yield* runNow(Stream.callback<number>(() => Effect.die(boom)))
+        const thrown = yield* runNow(Stream.callback<number>(() => {
+          throw boom
+        }))
+        deepStrictEqual(died, Exit.die(boom))
+        deepStrictEqual(thrown, Exit.die(boom))
+        const array = yield* runNow(Stream.fromChannel(Channel.callbackArray<number>(() => Effect.die(boom))))
+        deepStrictEqual(array, Exit.die(boom))
+      }))
+
+    it.effect("stays open after the registration effect succeeds", () =>
+      Effect.gen(function*() {
+        const exit = yield* runNow(
+          Stream.callback<number>((queue) =>
+            Effect.sync(() => {
+              Queue.offerUnsafe(queue, 1)
+            })
+          ).pipe(Stream.take(2))
+        )
+        strictEqual(exit, undefined)
+      }))
     it.effect("with take", () =>
       Effect.gen(function*() {
         const array = [1, 2, 3, 4, 5]

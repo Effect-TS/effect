@@ -470,7 +470,15 @@ const asyncQueue = <A, E = never, R = never>(
     strategy: options?.strategy
   }).pipe(
     Effect.tap((queue) => Scope.addFinalizer(scope, Queue.shutdown(queue))),
-    Effect.tap((queue) => Effect.forkIn(Scope.provide(f(queue), scope), scope))
+    // The queue owns the stream's outcome, so a failure of the registration
+    // effect fails the queue. Success leaves the queue open for callbacks.
+    Effect.tap((queue) =>
+      f(queue).pipe(
+        Effect.catchCause((cause) => Queue.failCause(queue, cause)),
+        Scope.provide(scope),
+        Effect.forkIn(scope)
+      )
+    )
   )
 
 /**
