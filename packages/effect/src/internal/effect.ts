@@ -377,18 +377,36 @@ export const causePrettyError = (
   options?: {
     readonly includeCauseInStack?: boolean | undefined
   }
+): Error => prettyError(original, annotations, options, undefined)
+
+// Every read of `original` is guarded and its `cause` chain stops where it
+// repeats, so rendering a defect never throws.
+const prettyError = (
+  original: unknown,
+  annotations: ReadonlyMap<string, unknown> | undefined,
+  options: { readonly includeCauseInStack?: boolean | undefined } | undefined,
+  chain: Set<object> | undefined
 ): Error => {
-  const kind = typeof original
   let error: Error
-  if (original && kind === "object") {
-    error = new globalThis.Error(causePrettyMessage(original), {
-      cause: original.cause ? causePrettyError(original.cause as any) : undefined
-    })
-    if (typeof original.name === "string") {
-      error.name = original.name
+  if (typeof original === "object" && original !== null) {
+    const message = causePrettyMessage(original)
+    const cause = readProperty(original, "cause")
+    let prettyCause: Error | undefined
+    if (cause) {
+      chain ??= new Set()
+      chain.add(original)
+      if (!(typeof cause === "object" && chain.has(cause))) {
+        prettyCause = prettyError(cause, undefined, undefined, chain)
+      }
     }
-    if (typeof original.stack === "string") {
-      error.stack = cleanErrorStack(original.stack, error, annotations)
+    error = new globalThis.Error(message, { cause: prettyCause })
+    const name = readProperty(original, "name")
+    if (typeof name === "string") {
+      error.name = name
+    }
+    const stack = readProperty(original, "stack")
+    if (typeof stack === "string") {
+      error.stack = cleanErrorStack(stack, error, annotations)
     } else {
       const stack = `${error.name}: ${error.message}`
       error.stack = annotations ? addStackAnnotations(stack, annotations) : stack
@@ -396,29 +414,46 @@ export const causePrettyError = (
     if (options?.includeCauseInStack) {
       error.stack = renderPrettyError(error)!
     }
-    for (const key of Object.keys(original)) {
+    let keys: Array<string> = []
+    try {
+      keys = Object.keys(original)
+    } catch {
+      // a hostile Proxy: keep what could be read
+    }
+    for (const key of keys) {
       if (!(key in error)) {
-        ;(error as any)[key] = (original as any)[key]
+        Reflect.set(error, key, readProperty(original, key))
       }
     }
   } else {
     error = new globalThis.Error(
-      !original ? `Unknown error: ${original}` : kind === "string" ? original as any : formatJson(original)
+      !original ? `Unknown error: ${original}` : typeof original === "string" ? original : formatJson(original)
     )
   }
   return error
 }
 
-const causePrettyMessage = (u: Record<string, unknown> | Error): string => {
-  if (typeof u.message === "string") {
-    return u.message
-  } else if (
-    typeof u.toString === "function"
-    && u.toString !== Object.prototype.toString
-    && u.toString !== Array.prototype.toString
+const readProperty = (self: object, key: string): unknown => {
+  try {
+    return Reflect.get(self, key)
+  } catch {
+    return undefined
+  }
+}
+
+const causePrettyMessage = (u: object): string => {
+  const message = readProperty(u, "message")
+  if (typeof message === "string") {
+    return message
+  }
+  const toString = readProperty(u, "toString")
+  if (
+    typeof toString === "function"
+    && toString !== Object.prototype.toString
+    && toString !== Array.prototype.toString
   ) {
     try {
-      return u.toString()
+      return toString.call(u)
     } catch {
       // something's off, rollback to json
     }

@@ -154,6 +154,17 @@ describe("Logger", () => {
       }])
     }))
 
+  it.effect("default logger logs a cause whose defect has a cyclic cause chain", () =>
+    Effect.gen(function*() {
+      const defect = new Error("cyclic")
+      defect.cause = defect
+      yield* Effect.logError(Cause.die(defect))
+
+      const result = yield* TestConsole.logLines
+
+      assert.match(result[1] as string, /cyclic/)
+    }))
+
   it.effect("annotateLogsScoped applies annotations only while scoped", () =>
     Effect.gen(function*() {
       const annotations: Array<Record<string, unknown>> = []

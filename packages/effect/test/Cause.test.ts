@@ -584,6 +584,34 @@ describe("Cause", () => {
       const errors = Cause.prettyErrors(Cause.empty)
       assert.ok(Array.isArray(errors))
     })
+
+    it("stops a cause chain where it repeats", () => {
+      const inner = new Error("inner")
+      const outer = new Error("outer", { cause: inner })
+      inner.cause = outer
+      const [error] = Cause.prettyErrors(Cause.die(outer))
+      assert.strictEqual(error.message, "outer")
+      assert.ok(error.cause instanceof Error)
+      assert.strictEqual(error.cause.message, "inner")
+      assert.strictEqual(error.cause.cause, undefined)
+    })
+
+    it("handles defects with throwing getters and hostile Proxies", () => {
+      const getter = Object.defineProperty(new Error("getter"), "extra", {
+        enumerable: true,
+        get() {
+          throw new Error("getter defect")
+        }
+      })
+      const { proxy, revoke } = Proxy.revocable({}, {})
+      revoke()
+      const [first, second] = Cause.prettyErrors(
+        Cause.fromReasons([Cause.makeDieReason(getter), Cause.makeDieReason(proxy)])
+      )
+      assert.strictEqual(first.message, "getter")
+      assert.strictEqual(second.message, `"[inspection threw]"`)
+      assert.ok(Cause.pretty(Cause.die(proxy)).includes("[inspection threw]"))
+    })
   })
 
   describe("pretty", () => {
