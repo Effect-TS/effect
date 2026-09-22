@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Tracer } from "effect"
+import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Scheduler, Tracer } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
@@ -265,6 +265,121 @@ describe("Tracer", () => {
         strictEqual(span.status._tag, "Ended")
         if (span.status._tag === "Ended") {
           deepStrictEqual(span.status.exit, Exit.die(defect))
+        }
+      }))
+  })
+
+  describe("interruption as a traced region starts", () => {
+    // A small MaxOpsBeforeYield makes the scheduler yield between almost every
+    // pair of steps, so some combination of prefix steps and parent yields
+    // interrupts the child at every step boundary of the traced region.
+    const interruptAtEveryStep = (
+      make: () => Effect.Effect<unknown>,
+      check: (spans: ReadonlyArray<Tracer.NativeSpan>, label: string) => void
+    ) =>
+      Effect.gen(function*() {
+        for (let ops = 3; ops <= 6; ops++) {
+          for (let prefix = 0; prefix < 4; prefix++) {
+            for (let yields = 0; yields < 6; yields++) {
+              const spans: Array<Tracer.NativeSpan> = []
+              const tracer = Tracer.make({
+                span(options) {
+                  const span = new Tracer.NativeSpan(options)
+                  spans.push(span)
+                  return span
+                }
+              })
+              let effect = make()
+              for (let i = 0; i < prefix; i++) effect = Effect.andThen(Effect.void, effect)
+              yield* Effect.gen(function*() {
+                const fiber = yield* Effect.forkChild(effect)
+                for (let i = 0; i < yields; i++) yield* Effect.yieldNow
+                yield* Fiber.interrupt(fiber)
+              }).pipe(Effect.withTracer(tracer), Effect.provideService(Scheduler.MaxOpsBeforeYield, ops))
+              check(spans, `ops ${ops}, prefix ${prefix}, yields ${yields}`)
+            }
+          }
+        }
+      })
+
+    const allEnded = (spans: ReadonlyArray<Tracer.NativeSpan>, label: string) => {
+      for (const span of spans) {
+        strictEqual(span.status._tag, "Ended", `${span.name}: ${label}`)
+      }
+    }
+
+    it.effect("ends the span of Effect.withSpan", () =>
+      interruptAtEveryStep(() => Effect.withSpan(Effect.never, "s"), allEnded))
+
+    it.effect("ends the span of Effect.useSpan", () =>
+      interruptAtEveryStep(() => Effect.useSpan("s", () => Effect.never), allEnded))
+
+    const tracedFn = Effect.fn("s")(function*() {
+      return yield* Effect.never
+    })
+
+    it.effect("ends the span of Effect.fn", () => interruptAtEveryStep(() => tracedFn(), allEnded))
+
+    // The finalizer of an enclosing region runs after the inner region exits,
+    // so it must see the enclosing span as the parent span again
+    const outerFinalizerSeesOuterSpan = (inner: Effect.Effect<never>) => {
+      let seen: string | undefined
+      return interruptAtEveryStep(() => {
+        seen = undefined
+        const finalizer = Effect.flatMap(Effect.orDie(Effect.currentParentSpan), (span) =>
+          Effect.sync(() => {
+            seen = span._tag === "Span" ? span.name : span.spanId
+          }))
+        return Effect.withSpan(Effect.ensuring(inner, finalizer), "outer")
+      }, (_, label) => {
+        if (seen !== undefined) strictEqual(seen, "outer", label)
+      })
+    }
+
+    it.effect("restores the parent span of Effect.withSpan for outer finalizers", () =>
+      outerFinalizerSeesOuterSpan(Effect.withSpan(Effect.never, "inner")))
+
+    it.effect("restores the parent span of Effect.withParentSpan for outer finalizers", () =>
+      outerFinalizerSeesOuterSpan(
+        Effect.withParentSpan(Effect.never, Tracer.externalSpan({ spanId: "external", traceId: "trace" }))
+      ))
+
+    it.effect("restores the parent span of Effect.fn for outer finalizers", () =>
+      outerFinalizerSeesOuterSpan(tracedFn()))
+  })
+
+  describe("a tracer whose span.end throws", () => {
+    const throwingTracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        const end = span.end.bind(span)
+        span.end = (endTime, exit) => {
+          end(endTime, exit)
+          throw new Error("end threw")
+        }
+        return span
+      }
+    })
+
+    it.effect("fails a successful region with the defect", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.succeed(1).pipe(Effect.withSpan("s"), Effect.withTracer(throwingTracer), Effect.exit)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          deepStrictEqual(Cause.squash(exit.cause), new Error("end threw"))
+        }
+      }))
+
+    it.effect("keeps the failure of a failed region beside the defect", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.fail("boom").pipe(
+          Effect.withSpan("s"),
+          Effect.withTracer(throwingTracer),
+          Effect.exit
+        )
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          deepStrictEqual(exit.cause.reasons.map((reason) => reason._tag), ["Fail", "Die"])
         }
       }))
   })
