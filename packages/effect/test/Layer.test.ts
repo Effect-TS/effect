@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Channel, Context, Fiber, References, Stream, Tracer } from "effect"
+import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -464,16 +465,7 @@ describe("Layer", () => {
 
     // A small MaxOpsBeforeYield budget makes a fiber yield before each op, so
     // sweeping the budget moves an interrupt through every step of a build.
-    const failingBudgets = <E>(
-      test: (ops: number) => Effect.Effect<boolean, E>
-    ): Effect.Effect<Array<number>, E> =>
-      Effect.gen(function*() {
-        const failed: Array<number> = []
-        for (let ops = 3; ops <= 64; ops++) {
-          if (!(yield* test(ops))) failed.push(ops)
-        }
-        return failed
-      })
+    const budgets = Arr.range(3, 64)
 
     const settle = Effect.gen(function*() {
       for (let i = 0; i < 200; i++) yield* Effect.yieldNow
@@ -481,58 +473,50 @@ describe("Layer", () => {
 
     it.effect("interrupting a build does not hang current or later requesters", () =>
       Effect.gen(function*() {
-        const failed = yield* failingBudgets((ops) =>
-          Effect.gen(function*() {
-            const memoMap = Layer.makeMemoMapUnsafe()
-            const layer = Layer.effect(Shared, Effect.succeed({ n: 1 }))
-            const first = yield* Effect.forkChild(
-              Effect.provideService(
-                Layer.buildWithMemoMap(layer, memoMap, yield* Scope.make()),
-                Scheduler.MaxOpsBeforeYield,
-                ops
-              ),
-              { startImmediately: true }
-            )
-            const waiter = yield* Effect.forkChild(Layer.buildWithMemoMap(layer, memoMap, yield* Scope.make()), {
-              startImmediately: true
-            })
-            yield* Fiber.interrupt(first)
-            const later = yield* Effect.forkChild(Layer.buildWithMemoMap(layer, memoMap, yield* Scope.make()), {
-              startImmediately: true
-            })
-            yield* settle
-            const done = waiter.pollUnsafe() !== undefined && later.pollUnsafe() !== undefined
-            yield* Fiber.interrupt(waiter)
-            yield* Fiber.interrupt(later)
-            return done
+        for (const ops of budgets) {
+          const memoMap = Layer.makeMemoMapUnsafe()
+          const layer = Layer.effect(Shared, Effect.succeed({ n: 1 }))
+          const first = yield* Effect.forkChild(
+            Effect.provideService(
+              Layer.buildWithMemoMap(layer, memoMap, yield* Scope.make()),
+              Scheduler.MaxOpsBeforeYield,
+              ops
+            ),
+            { startImmediately: true }
+          )
+          const waiter = yield* Effect.forkChild(Layer.buildWithMemoMap(layer, memoMap, yield* Scope.make()), {
+            startImmediately: true
           })
-        )
-        assert.deepStrictEqual(failed, [])
+          yield* Fiber.interrupt(first)
+          const later = yield* Effect.forkChild(Layer.buildWithMemoMap(layer, memoMap, yield* Scope.make()), {
+            startImmediately: true
+          })
+          yield* settle
+          assert.isDefined(waiter.pollUnsafe(), `waiter hung with ${ops} ops`)
+          assert.isDefined(later.pollUnsafe(), `later requester hung with ${ops} ops`)
+        }
       }))
 
     it.effect("an interrupted reuse does not keep the shared layer alive", () =>
       Effect.gen(function*() {
         for (const closed of [false, true]) {
-          const failed = yield* failingBudgets((ops) =>
-            Effect.gen(function*() {
-              const released = yield* Ref.make(0)
-              const memoMap = Layer.makeMemoMapUnsafe()
-              const layer = releaseCounted(released)
-              const scope1 = yield* Scope.make()
-              const scope2 = yield* Scope.make()
-              yield* Layer.buildWithMemoMap(layer, memoMap, scope1)
-              if (closed) yield* Scope.close(scope2, Exit.void)
-              const reuse = yield* Effect.forkChild(
-                Effect.provideService(Layer.buildWithMemoMap(layer, memoMap, scope2), Scheduler.MaxOpsBeforeYield, ops),
-                { startImmediately: true }
-              )
-              yield* Fiber.interrupt(reuse)
-              if (!closed) yield* Scope.close(scope2, Exit.void)
-              yield* Scope.close(scope1, Exit.void)
-              return (yield* Ref.get(released)) === 1
-            })
-          )
-          assert.deepStrictEqual(failed, [], `closed scope: ${closed}`)
+          for (const ops of budgets) {
+            const released = yield* Ref.make(0)
+            const memoMap = Layer.makeMemoMapUnsafe()
+            const layer = releaseCounted(released)
+            const scope1 = yield* Scope.make()
+            const scope2 = yield* Scope.make()
+            yield* Layer.buildWithMemoMap(layer, memoMap, scope1)
+            if (closed) yield* Scope.close(scope2, Exit.void)
+            const reuse = yield* Effect.forkChild(
+              Effect.provideService(Layer.buildWithMemoMap(layer, memoMap, scope2), Scheduler.MaxOpsBeforeYield, ops),
+              { startImmediately: true }
+            )
+            yield* Fiber.interrupt(reuse)
+            if (!closed) yield* Scope.close(scope2, Exit.void)
+            yield* Scope.close(scope1, Exit.void)
+            assert.strictEqual(yield* Ref.get(released), 1, `closed scope: ${closed}, ${ops} ops`)
+          }
         }
       }))
 
