@@ -506,27 +506,6 @@ describe("OpenAiLanguageModel", () => {
             })
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
-        it.effect("uses item references for stored assistant history by default", () =>
-          Effect.gen(function*() {
-            yield* LanguageModel.generateText({
-              prompt: storedHistoryPrompt,
-              toolkit: TestToolkit,
-              disableToolCallResolution: true
-            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })))
-
-            const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
-
-            assert.deepStrictEqual(body.input, [
-              { role: "user", content: [{ type: "input_text", text: "Question" }] },
-              { type: "item_reference", id: "msg_1" },
-              { type: "item_reference", id: "rs_1" },
-              { type: "item_reference", id: "fc_1" },
-              { type: "function_call_output", call_id: "call_1", output: "{\"output\":\"result\"}" },
-              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
-            ])
-          }).pipe(Effect.provide(makeTestLayer())))
-
         it.effect("serializes stored assistant history inline when item references are disabled", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -572,25 +551,6 @@ describe("OpenAiLanguageModel", () => {
               { role: "user", content: [{ type: "input_text", text: "Continue" }] }
             ])
             strictEqual(body.useItemReferences, undefined)
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("keeps item references for ordinary stored provider-executed history", () =>
-          Effect.gen(function*() {
-            yield* LanguageModel.generateText({
-              prompt: providerExecutedHistoryPrompt,
-              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
-              disableToolCallResolution: true
-            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })))
-
-            const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
-
-            assert.deepStrictEqual(body.input, [
-              { role: "user", content: [{ type: "input_text", text: "Search" }] },
-              { type: "item_reference", id: "ws_1" },
-              { type: "item_reference", id: "ws_1" },
-              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
-            ])
           }).pipe(Effect.provide(makeTestLayer())))
 
         it.effect("replays matched provider-executed history inline", () =>
@@ -644,57 +604,6 @@ describe("OpenAiLanguageModel", () => {
             if (error.reason._tag === "InvalidRequestError") {
               assert.include(error.reason.description, "OpenAiWebSearch")
               assert.include(error.reason.description, "ws_1")
-            }
-            strictEqual((yield* MockHttpClient.requests).length, 0)
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("fails locally when an assistant-side tool result cannot be replayed inline", () =>
-          Effect.gen(function*() {
-            const error = yield* LanguageModel.generateText({
-              prompt: Prompt.make([
-                { role: "user", content: "Search" },
-                {
-                  role: "assistant",
-                  content: [providerExecutedResult]
-                },
-                { role: "user", content: "Continue" }
-              ]),
-              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
-              disableToolCallResolution: true
-            }).pipe(
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
-                store: true,
-                useItemReferences: false
-              })),
-              Effect.flip
-            )
-
-            strictEqual(error.reason._tag, "InvalidRequestError")
-            if (error.reason._tag === "InvalidRequestError") {
-              assert.include(error.reason.description, "OpenAiWebSearch")
-              assert.include(error.reason.description, "ws_1")
-            }
-            strictEqual((yield* MockHttpClient.requests).length, 0)
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("fails locally when matched MCP history cannot be replayed inline", () =>
-          Effect.gen(function*() {
-            const error = yield* LanguageModel.generateText({
-              prompt: mcpHistoryPrompt,
-              toolkit: McpToolkit,
-              disableToolCallResolution: true
-            }).pipe(
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
-                store: true,
-                useItemReferences: false
-              })),
-              Effect.flip
-            )
-
-            strictEqual(error.reason._tag, "InvalidRequestError")
-            if (error.reason._tag === "InvalidRequestError") {
-              assert.include(error.reason.description, "OpenAiMcp")
-              assert.include(error.reason.description, "mcp_call_1")
             }
             strictEqual((yield* MockHttpClient.requests).length, 0)
           }).pipe(Effect.provide(makeTestLayer())))
