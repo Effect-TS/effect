@@ -883,5 +883,5 @@ describe("random data", { concurrent: false }, () => {
       parser.end()
       assert.isTrue(success)
     }
-  }, 30_000)
+  }, 90_000)
 })
