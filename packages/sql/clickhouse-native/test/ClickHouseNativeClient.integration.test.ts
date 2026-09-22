@@ -18,7 +18,7 @@ import {
 } from "effect/sql/SqlError"
 import { createConnection } from "node:net"
 
-import type { ClickHouseConfig } from "../src/ClickHouseNativeConfig.ts"
+import type { ClickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
 
 const CLIENT_PROTOCOL_VERSION = 54_000
 

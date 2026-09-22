@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import * as Statement from "effect/sql/Statement"
 import { describe, expect, it } from "vitest"
 
-import { makeCompiler } from "../src/ClickHouseNativeSqlConnection.ts"
+import { makeCompiler } from "@effect/sql-clickhouse-native/ClickHouseNativeSqlConnection"
 
 const statement = Statement.make(Effect.void as never, makeCompiler(), [], undefined)
 

@@ -3,9 +3,12 @@ import { it } from "@effect/vitest"
 import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "../src/ClickHouseNativeConfig.ts"
-import { run } from "../src/ClickHouseNativeMigrator.ts"
-import { ClickHouseNativeSqlClient, withClickHouseNativeSqlClient } from "../src/ClickHouseNativeSqlClient.ts"
+import { clickhouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
+import { run } from "@effect/sql-clickhouse-native/ClickHouseNativeMigrator"
+import {
+  ClickHouseNativeSqlClient,
+  withClickHouseNativeSqlClient
+} from "@effect/sql-clickhouse-native/ClickHouseNativeSqlClient"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
@@ -42,7 +45,6 @@ describe("ClickHouse native migrator integration", () => {
             expect(applied).toEqual([{ migration_id: 1, name: "create_target" }])
           }))
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(NodeCrypto.layer)
       )
     ))

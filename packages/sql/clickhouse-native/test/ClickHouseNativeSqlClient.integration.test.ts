@@ -5,13 +5,13 @@ import { SqlClient } from "effect/sql"
 import { SqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "../src/ClickHouseNativeConfig.ts"
+import { clickhouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
 import {
   ClickHouseNativeSqlClient,
   layer,
   make,
   withClickHouseNativeSqlClient
-} from "../src/ClickHouseNativeSqlClient.ts"
+} from "@effect/sql-clickhouse-native/ClickHouseNativeSqlClient"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
@@ -35,7 +35,6 @@ describe("ClickHouse native SQL client service", () => {
           }
         })
       ),
-      // @effect-diagnostics-next-line strictEffectProvide:off
       Effect.provide(NodeCrypto.layer)
     ))
 
@@ -44,7 +43,6 @@ describe("ClickHouse native SQL client service", () => {
       const config = yield* clickhouseConfig
       return yield* ClickHouseNativeSqlClient.pipe(
         Effect.asVoid,
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(layer(config, { poolSize: 0 }).pipe(Layer.provide(NodeCrypto.layer)))
       )
     }).pipe(
@@ -71,7 +69,6 @@ describe("ClickHouse native SQL client service integration", () => {
 
         expect(rows).toEqual([{ transport: "native" }])
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(layer(config, { poolSize: 1 }).pipe(Layer.provide(NodeCrypto.layer)))
       )
     })))
@@ -91,7 +88,6 @@ describe("ClickHouse native SQL client service integration", () => {
         expect(rows).toEqual([{ transport: "native's TCP", value: 2 }])
         expect(inserted).toEqual([{ id: 3, value: "generic" }])
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(layer(config, { poolSize: 1 }).pipe(Layer.provide(NodeCrypto.layer)))
       )
     })))
@@ -123,7 +119,6 @@ describe("ClickHouse native SQL client service integration", () => {
         }
         expect(rows).toEqual([{ id: 1 }])
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(layer(config, { poolSize: 2 }).pipe(Layer.provide(NodeCrypto.layer)))
       )
     })))
@@ -149,7 +144,6 @@ describe("ClickHouse native SQL client service integration", () => {
 
         expect(rows).toEqual([{ id: 1, value: "native" }])
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(layer(config, { poolSize: 1 }).pipe(Layer.provide(NodeCrypto.layer)))
       )
     })))
@@ -167,7 +161,6 @@ describe("ClickHouse native SQL client service integration", () => {
             )
           ))
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(NodeCrypto.layer)
       )
     ))

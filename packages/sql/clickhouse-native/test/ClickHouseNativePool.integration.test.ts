@@ -4,8 +4,8 @@ import { Effect, Result } from "effect"
 import { isSqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "../src/ClickHouseNativeConfig.ts"
-import { makeClickHouseNativePool, withClickHouseNativePool } from "../src/ClickHouseNativePool.ts"
+import { clickhouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
+import { makeClickHouseNativePool, withClickHouseNativePool } from "@effect/sql-clickhouse-native/ClickHouseNativePool"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
@@ -53,7 +53,6 @@ describe("ClickHouse native TCP pool integration", () => {
             )
           ))
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(NodeCrypto.layer)
       )
     ))
@@ -80,7 +79,6 @@ describe("ClickHouse native TCP pool integration", () => {
             )
           ))
       }).pipe(
-        // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(NodeCrypto.layer)
       )
     ))
