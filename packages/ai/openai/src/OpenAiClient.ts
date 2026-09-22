@@ -560,8 +560,8 @@ const makeSocket = Effect.gen(function*() {
         } catch {
           return
         }
-        if (event.type === "error" && "status" in event) {
-          const status = Number(event.status)
+        if (event.type === "error") {
+          const status = "status" in event ? Number(event.status) : NaN
           const error = ("error" in event ? event.error : event) as {
             readonly type?: string
             readonly code?: string

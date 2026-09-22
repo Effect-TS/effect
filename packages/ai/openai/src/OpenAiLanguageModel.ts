@@ -818,7 +818,9 @@ const prepareMessages = Effect.fnUntraced(
     const processedApprovalIds = new Set<string>()
 
     const hasConversation = Predicate.isNotNullish(config.conversation)
-    const useItemReferences = config.store === true && config.useItemReferences !== false
+    const useItemReferences = config.store === true &&
+      config.useItemReferences !== false &&
+      options.incrementalFallback !== true
 
     // Provider-Defined Tools
     const applyPatchTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.ApplyPatch> =>
@@ -844,7 +846,7 @@ const prepareMessages = Effect.fnUntraced(
     if (Predicate.isNotUndefined(config.top_logprobs)) {
       include.add("message.output_text.logprobs")
     }
-    if (config.store === false && capabilities.isReasoningModel) {
+    if (!useItemReferences && capabilities.isReasoningModel) {
       include.add("reasoning.encrypted_content")
     }
     if (codeInterpreterTool) {
@@ -2643,9 +2645,9 @@ const makeStreamResponse = Effect.fnUntraced(
 
           case "response.reasoning_summary_part.done": {
             const reasoningPart = getOrCreateReasoningPart(event.item_id)
-            // When OpenAI stores message data, we can immediately conclude the
-            // reasoning part given that we do not need the encrypted content
-            if (config.store === true) {
+            // Stored item references do not need encrypted content, so the
+            // reasoning part can be concluded immediately.
+            if (config.store === true && config.useItemReferences !== false) {
               parts.push({
                 type: "reasoning-end",
                 id: `${event.item_id}:${event.summary_index}`,

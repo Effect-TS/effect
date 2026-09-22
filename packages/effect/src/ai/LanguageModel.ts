@@ -772,6 +772,12 @@ export interface ProviderOptions {
    * The prompt reduced to messages not yet seen by the provider.
    */
   readonly incrementalPrompt: Prompt.Prompt | undefined
+
+  /**
+   * Whether this request is retrying an incremental request with the full
+   * prompt after the provider rejected the incremental request.
+   */
+  readonly incrementalFallback?: boolean | undefined
 }
 
 /**
@@ -1078,7 +1084,8 @@ export const make: (params: {
         ...requestOptions,
         prompt: fallbackPrompt,
         incrementalPrompt: undefined,
-        previousResponseId: undefined
+        previousResponseId: undefined,
+        incrementalFallback: true
       }
       return requestOptions.incrementalPrompt
         ? params.generateText(requestOptions).pipe(
@@ -1330,7 +1337,8 @@ export const make: (params: {
         ...requestOptions,
         prompt: fallbackPrompt,
         incrementalPrompt: undefined,
-        previousResponseId: undefined
+        previousResponseId: undefined,
+        incrementalFallback: true
       }
       // Only response parts with content count as emitted - a lone
       // response-metadata part must not disable the full-prompt fallback.
