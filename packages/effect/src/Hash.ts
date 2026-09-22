@@ -10,7 +10,8 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"
-import { addBackEdge, backEdges, byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
+import { byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
+import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -120,12 +121,14 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       } else if (self instanceof RegExp) {
         return string(self.toString())
       } else {
-        if (byReferenceInstances.has(self)) {
-          return random(self)
-        }
+        // A cached hash is final. A by-reference instance is never cached here,
+        // and any stable hash is lawful for it, since it only equals itself.
         const cached = hashCache.get(self)
         if (cached !== undefined) {
           return cached
+        }
+        if (byReferenceInstances.has(self)) {
+          return random(self)
         }
         if (visitedObjects.has(self)) {
           addBackEdge()
@@ -511,5 +514,4 @@ const setSeed = string("Set")
 const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) => combine(setSeed, hash(element)))
 
 const randomHashCache = new WeakMap<any, number>()
-const hashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()

@@ -28,20 +28,6 @@ export const getAllObjectKeys = (obj: object): Set<PropertyKey> => {
 export const byReferenceInstances = new WeakSet<object>()
 
 /**
- * The number of back-edges `Hash.hash` has met. A hash computed while it
- * changed contains a circular sentinel and depends on where hashing started,
- * so it is never cached.
- *
- * @internal
- */
-export let backEdges = 0
-
-/** @internal */
-export const addBackEdge = (): void => {
-  backEdges++
-}
-
-/**
  * The bytes a `DataView` views: `Hash` and `Equal` treat a `DataView` as them.
  *
  * @internal

@@ -14,7 +14,7 @@ import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import type { NoInfer } from "../Types.ts"
-import { backEdges } from "./equal.ts"
+import { backEdges } from "./hash.ts"
 
 /** @internal */
 export const HashMapTypeId = "~effect/HashMap"
@@ -127,7 +127,7 @@ abstract class Node<K, V> {
    * does not share with an already hashed one. Nodes reset it when an edit
    * session mutates them in place.
    */
-  _hash: number | undefined = undefined
+  declare _hash: number | undefined
 
   abstract computeHash(): number
 
