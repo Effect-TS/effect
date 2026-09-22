@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  Cause,
   Clock,
   Context,
   Data,
@@ -2383,6 +2384,125 @@ describe("ScopedCache", () => {
   })
 
   describe("concurrency tests", () => {
+    it.effect("an interrupt during eviction does not strand a pending lookup", () =>
+      Effect.gen(function*() {
+        const closing = yield* Latch.make()
+        const close = yield* Latch.make()
+        const acquired = yield* Latch.make()
+        let releases = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 1,
+          lookup: (key: string) =>
+            Effect.gen(function*() {
+              if (key === "a") {
+                yield* Effect.acquireRelease(Effect.void, () =>
+                  Effect.gen(function*() {
+                    yield* closing.open
+                    yield* close.await
+                  }))
+                return 1
+              }
+              yield* Effect.acquireRelease(Effect.void, () => Effect.sync(() => releases++))
+              yield* acquired.open
+              return yield* Effect.never
+            })
+        })
+
+        yield* ScopedCache.get(cache, "a")
+        const first = yield* ScopedCache.get(cache, "b").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* closing.await
+        const interruptFirst = yield* Fiber.interrupt(first).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        yield* close.open
+        yield* acquired.await
+        const second = yield* ScopedCache.get(cache, "b").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(second)
+        yield* Fiber.join(interruptFirst)
+
+        assert.strictEqual(releases, 1)
+        assert.strictEqual(yield* ScopedCache.size(cache), 0)
+      }))
+
+    it.effect("an interrupted get does not poison a getOption waiter", () =>
+      Effect.gen(function*() {
+        const started = yield* Latch.make()
+        const finish = yield* Latch.make()
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_key: string) => Effect.andThen(started.open, Effect.as(finish.await, 42))
+        })
+        const first = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* started.await
+        const second = yield* ScopedCache.getOption(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(first)
+        yield* finish.open
+
+        assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(Option.some(42)))
+      }))
+
+    it.effect("an interrupted get does not poison an invalidateWhen waiter", () =>
+      Effect.gen(function*() {
+        const started = yield* Latch.make()
+        const finish = yield* Latch.make()
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_key: string) => Effect.andThen(started.open, Effect.as(finish.await, 42))
+        })
+        const first = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* started.await
+        const waiter = yield* ScopedCache.invalidateWhen(cache, "key", () => false).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(first)
+        yield* finish.open
+
+        assert.deepStrictEqual(yield* Fiber.await(waiter), Exit.succeed(false))
+        assert.strictEqual(yield* ScopedCache.get(cache, "key"), 42)
+      }))
+
+    it.effect("an interrupted refresh does not poison a get joining its new entry", () =>
+      Effect.gen(function*() {
+        const started = yield* Latch.make()
+        const finish = yield* Latch.make()
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_key: string) => Effect.andThen(started.open, Effect.as(finish.await, 42))
+        })
+        const refresh = yield* ScopedCache.refresh(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* started.await
+        const get = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(refresh)
+        yield* finish.open
+
+        assert.deepStrictEqual(yield* Fiber.await(get), Exit.succeed(42))
+      }))
+
+    it.effect("an abandoned get reports defects from its scope finalizer", () =>
+      Effect.gen(function*() {
+        const acquired = yield* Latch.make()
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_key: string) =>
+            Effect.gen(function*() {
+              yield* Effect.acquireRelease(Effect.void, () => Effect.die("finalizer defect"))
+              yield* acquired.open
+              return yield* Effect.never
+            })
+        })
+        const get = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* acquired.await
+        yield* Fiber.interrupt(get)
+        const exit = yield* Fiber.await(get)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.isTrue(exit.cause.reasons.some(Cause.isDieReason))
+        }
+      }))
+
     it.effect("an interrupted first get does not poison another pending get", () =>
       Effect.gen(function*() {
         const started = yield* Latch.make()
