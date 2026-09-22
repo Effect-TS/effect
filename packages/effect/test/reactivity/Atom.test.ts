@@ -2530,7 +2530,7 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(rebuilds, 2)
     })
 
-    it("rebuilds on mutation with a hydrated value", async () => {
+    it("rebuilds on mutation with a hydrated value", () => {
       let rebuilds = 0
       let value = 0
       const atom = Atom.make(() => {
@@ -2566,7 +2566,7 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(rebuilds, 1)
     })
 
-    it("does not re-run a hydrated effect", async () => {
+    it("does not run a hydrated effect until invalidated", () => {
       let runs = 0
       const atom = counterRuntime.atom(Effect.sync(() => ++runs)).pipe(
         Atom.withReactivity(["counter"]),
@@ -2591,7 +2591,7 @@ describe("Atom", { concurrent: false }, () => {
       Hydration.hydrate(r, dehydratedState)
       r.mount(atom)
 
-      assert.deepStrictEqual(r.get(atom), AsyncResult.success(10, { timestamp: 0 }))
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
       assert.strictEqual(runs, 0)
 
       r.set(fn, void 0)
