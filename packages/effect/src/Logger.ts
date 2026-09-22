@@ -435,8 +435,8 @@ const format = (
     }
 
     const annotations = fiber.getRef(CurrentLogAnnotations)
-    for (const [label, value] of Object.entries(annotations)) {
-      out += append(label, formatUnknown(value))
+    for (const label of Object.keys(annotations)) {
+      out += append(label, formatUnknown(annotations[label]))
     }
 
     return out
@@ -608,8 +608,8 @@ export const formatStructured: Logger<unknown, {
   const spansObj: Record<string, number> = {}
 
   const annotations = fiber.getRef(CurrentLogAnnotations)
-  for (const [key, value] of Object.entries(annotations)) {
-    InternalRecord.assignProperty(annotationsObj, key, effect.structuredMessage(value))
+  for (const key of Object.keys(annotations)) {
+    InternalRecord.assignProperty(annotationsObj, key, effect.structuredMessage(annotations[key]))
   }
 
   const now = date.getTime()

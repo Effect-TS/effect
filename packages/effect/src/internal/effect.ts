@@ -6791,8 +6791,8 @@ export const prettyLoggerTty = (options?: {
       }
 
       const annotations = fiber.getRef(CurrentLogAnnotations)
-      for (const [key, value] of Object.entries(annotations)) {
-        log(color(`${key}:`, colors.bold, colors.white), redact(value))
+      for (const key of Object.keys(annotations)) {
+        log(color(`${key}:`, colors.bold, colors.white), redact(annotations[key]))
       }
 
       // oxlint-disable-next-line no-console
@@ -6861,8 +6861,8 @@ export const prettyLoggerBrowser = (options?: {
       }
 
       const annotations = fiber.getRef(CurrentLogAnnotations)
-      for (const [key, value] of Object.entries(annotations)) {
-        const redacted = redact(value)
+      for (const key of Object.keys(annotations)) {
+        const redacted = redact(annotations[key])
         if (showColors) {
           // oxlint-disable-next-line no-console
           console.log(`%c${key}:`, "color:gray", redacted)
@@ -6907,8 +6907,8 @@ export const tracerLogger = loggerMake<unknown, void>(({ cause, fiber, logLevel,
   const span = fiber.cache.span
   if (span === undefined || span._tag === "ExternalSpan") return
   const attributes: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(annotations)) {
-    InternalRecord.assignProperty(attributes, key, value)
+  for (const key of Object.keys(annotations)) {
+    InternalRecord.assignProperty(attributes, key, annotations[key])
   }
   attributes["effect.fiberId"] = fiber.id
   attributes["effect.logLevel"] = logLevel.toUpperCase()
