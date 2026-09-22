@@ -56,13 +56,9 @@ describe("OpenAiLanguageModel", () => {
           const body = method === "generateText"
             ? JSON.stringify(makeDefaultResponse({ output: [item] }))
             : `data: ${JSON.stringify(event)}\n\n`
-          const client = HttpClient.make((request) =>
-            Effect.succeed(HttpClientResponse.fromWeb(
-              request,
-              new Response(body, {
-                headers: { "content-type": method === "generateText" ? "application/json" : "text/event-stream" }
-              })
-            ))
+          const client = makeRawResponseClient(
+            body,
+            method === "generateText" ? "application/json" : "text/event-stream"
           )
           const options = { prompt: "Weather in London", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
           const parts = yield* Effect.gen(function*() {
@@ -100,14 +96,7 @@ describe("OpenAiLanguageModel", () => {
         const body = method === "generateText"
           ? JSON.stringify(makeDefaultResponse({ output: [item] }))
           : `data: ${JSON.stringify(event)}\n\n`
-        const client = HttpClient.make((request) =>
-          Effect.succeed(HttpClientResponse.fromWeb(
-            request,
-            new Response(body, {
-              headers: { "content-type": method === "generateText" ? "application/json" : "text/event-stream" }
-            })
-          ))
-        )
+        const client = makeRawResponseClient(body, method === "generateText" ? "application/json" : "text/event-stream")
         const options = { prompt: "Search the web", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
         const parts = yield* Effect.gen(function*() {
           if (method === "generateText") return (yield* LanguageModel.generateText(options)).content
@@ -143,14 +132,7 @@ describe("OpenAiLanguageModel", () => {
           output_index: 0,
           item: { type: "web_search_call", id: "ws_123", status: "completed", action }
         }
-        const client = HttpClient.make((request) =>
-          Effect.succeed(HttpClientResponse.fromWeb(
-            request,
-            new Response(`data: ${JSON.stringify(event)}\n\n`, {
-              headers: { "content-type": "text/event-stream" }
-            })
-          ))
-        )
+        const client = makeRawResponseClient(`data: ${JSON.stringify(event)}\n\n`, "text/event-stream")
         return LanguageModel.streamText({ prompt: "Search", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }).pipe(
           Stream.runCollect,
           Effect.flip,
@@ -2422,6 +2404,14 @@ const makeHttpClient = Effect.gen(function*() {
 })
 
 const HttpClientLayer = Layer.effectContext(makeHttpClient)
+
+const makeRawResponseClient = (body: string, contentType: string) =>
+  HttpClient.make((request) =>
+    Effect.succeed(HttpClientResponse.fromWeb(
+      request,
+      new Response(body, { headers: { "content-type": contentType } })
+    ))
+  )
 
 const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>) => {
   const response = HttpClientResponse.fromWeb(
