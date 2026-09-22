@@ -3400,10 +3400,12 @@ const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
 
-function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
-  let index = candidateIndexCache.get(types)
-  if (index) return index
+// The lookup is separate from the construction so that a cache hit does not allocate the construction's closure
+// context.
+const getIndex = (types: ReadonlyArray<AST>): CandidateIndex => candidateIndexCache.get(types) ?? makeIndex(types)
 
+function makeIndex(types: ReadonlyArray<AST>): CandidateIndex {
+  let index: CandidateIndex
   let bySentinel: SentinelIndex | undefined
   let sentinelCandidateCount = 0
   let otherwise: { [K in Type]?: Array<number> } | undefined
