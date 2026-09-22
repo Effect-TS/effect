@@ -15,9 +15,9 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Redis from "effect/persistence/Redis"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
-import * as Redis from "effect/unstable/persistence/Redis"
 
 /**
  * Options for connecting to Redis, including a Redis URL or individual

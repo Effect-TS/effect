@@ -1,10 +1,3 @@
-import * as Effect from "../../Effect.ts"
-import * as Option from "../../Option.ts"
-import { pipeArguments } from "../../Pipeable.ts"
-import * as Random from "../../Random.ts"
-import type * as Result from "../../Result.ts"
-import * as Scheduler from "../../Scheduler.ts"
-import type * as Schema from "../../Schema.ts"
 import type {
   Arbitrary,
   ArrayOptions,
@@ -17,7 +10,14 @@ import type {
   SampleError,
   SampleOptions,
   SchemaOptions
-} from "../../unstable/arbitrary/Arbitrary.ts"
+} from "../../arbitrary/Arbitrary.ts"
+import * as Effect from "../../Effect.ts"
+import * as Option from "../../Option.ts"
+import { pipeArguments } from "../../Pipeable.ts"
+import * as Random from "../../Random.ts"
+import type * as Result from "../../Result.ts"
+import * as Scheduler from "../../Scheduler.ts"
+import type * as Schema from "../../Schema.ts"
 import { done } from "../core.ts"
 import * as InternalRecord from "../record.ts"
 import * as Arrays from "./array.ts"

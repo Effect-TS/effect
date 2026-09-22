@@ -16,7 +16,6 @@ import {
   Scope,
   Tracer
 } from "effect"
-import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
   ClusterWorkflowEngine,
@@ -28,15 +27,16 @@ import {
   Sharding,
   ShardingConfig,
   Snowflake
-} from "effect/unstable/cluster"
-import { CurrentActivationScope } from "effect/unstable/cluster/internal/entityActivation"
-import { Rpc } from "effect/unstable/rpc"
-import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
+} from "effect/cluster"
+import { CurrentActivationScope } from "effect/cluster/internal/entityActivation"
+import { Rpc } from "effect/rpc"
+import { TestClock } from "effect/testing"
+import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/workflow"
 import {
   makeUnsafe as makeWorkflowEngineUnsafe,
   WorkflowEngine,
   WorkflowInstance
-} from "effect/unstable/workflow/WorkflowEngine"
+} from "effect/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   for (const entityMailboxCapacity of [2, 3]) {

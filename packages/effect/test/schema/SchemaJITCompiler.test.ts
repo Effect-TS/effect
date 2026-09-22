@@ -11,9 +11,9 @@ import {
   SchemaParser,
   SchemaTransformation
 } from "effect"
-import { SchemaCompiler } from "effect/unstable/schema"
+import { SchemaCompiler } from "effect/schema"
 // oxlint-disable-next-line no-unassigned-import
-import "effect/unstable/schema/SchemaJITCompiler/enable"
+import "effect/schema/SchemaJITCompiler/enable"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({

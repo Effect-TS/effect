@@ -3,9 +3,9 @@ import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Duration, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
+import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
+import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/observability"
 import { TestClock } from "effect/testing"
-import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/unstable/http"
-import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 const attributes = { x: "a", y: "b" }
 

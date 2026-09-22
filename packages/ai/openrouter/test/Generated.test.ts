@@ -2,8 +2,8 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
-import { type AiError, LanguageModel, type Response, Tool, Toolkit } from "effect/unstable/ai"
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { type AiError, LanguageModel, type Response, Tool, Toolkit } from "effect/ai"
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("Generated", () => {
   it("decodes nullable generation statistics", () => {

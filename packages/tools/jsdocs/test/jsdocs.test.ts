@@ -1062,4 +1062,145 @@ export const Tuple = Array
       apiFqn: "@effect/sample/Foo.Array"
     }])
   })
+
+  it("accepts @unstable on module, member, and namespace docs", () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
+    fs.mkdirSync(path.join(cwd, "src"), { recursive: true })
+    fs.writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022" },
+        include: ["src/**/*.ts"]
+      })
+    )
+    fs.writeFileSync(
+      path.join(cwd, "package.json"),
+      JSON.stringify({
+        name: "@effect/sample",
+        type: "module",
+        exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
+      })
+    )
+    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/Imported.ts"),
+      `/**
+ * Imported marker.
+ *
+ * @category models
+ * @since 1.0.0
+ */
+export interface Marker {
+  readonly id: string
+}
+`
+    )
+    fs.writeFileSync(
+      path.join(cwd, "src/Foo.ts"),
+      `/**
+ * Sample module.
+ *
+ * @unstable
+ * @since 1.0.0
+ */
+import type { Marker } from "./Imported.ts"
+
+/**
+ * A boxed value.
+ *
+ * @category models
+ * @since 1.0.0
+ */
+export interface Box {
+  /**
+   * The boxed text.
+   *
+   * @unstable
+   * @since 1.0.0
+   */
+  readonly value: Marker["id"]
+
+  /**
+   * The stable label.
+   *
+   * @since 1.0.0
+   */
+  readonly label: string
+}
+
+/**
+ * Groups boxed types.
+ *
+ * @unstable
+ * @category models
+ * @since 1.0.0
+ */
+export declare namespace Group {
+  /**
+   * A grouped item.
+   *
+   * @unstable
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Item {
+    readonly id: string
+  }
+
+  /**
+   * A stable grouped item.
+   *
+   * @category models
+   * @since 1.0.0
+   */
+  export interface StableItem {
+    readonly id: string
+  }
+}
+
+/**
+ * Groups stable types.
+ *
+ * @category models
+ * @since 1.0.0
+ */
+export declare namespace StableGroup {
+  /**
+   * A stable nested item.
+   *
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Item {
+    readonly id: string
+  }
+}
+`
+    )
+    const model = extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json"
+    })
+    const foo = model.files.find((file) => file.file.endsWith("src/Foo.ts"))
+    const unstableByName = Object.fromEntries(
+      model.apis
+        .filter((api) => api.moduleName === "@effect/sample/Foo")
+        .map((api) => [api.apiFqn, api.tags.unstable])
+    )
+
+    assert.deepStrictEqual(foo?.diagnostics ?? [], [])
+    assert.match(foo?.moduleJSDoc?.raw ?? "", /@unstable/)
+    assert.deepStrictEqual(unstableByName, {
+      "@effect/sample/Foo.Box": false,
+      "@effect/sample/Foo.Box.value": true,
+      "@effect/sample/Foo.Box.label": false,
+      "@effect/sample/Foo.Group": true,
+      "@effect/sample/Foo.Group.Item": true,
+      "@effect/sample/Foo.Group.StableItem": false,
+      "@effect/sample/Foo.StableGroup": false,
+      "@effect/sample/Foo.StableGroup.Item": false
+    })
+  })
 })

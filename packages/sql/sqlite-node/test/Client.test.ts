@@ -2,7 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
-import { Reactivity } from "effect/unstable/reactivity"
+import { Reactivity } from "effect/reactivity"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

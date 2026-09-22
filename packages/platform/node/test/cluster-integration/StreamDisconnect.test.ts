@@ -1,16 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Queue, Schema, Stream } from "effect"
-import {
-  ClusterSchema,
-  Entity,
-  EntityAddress,
-  EntityId,
-  EntityType,
-  type Envelope,
-  Snowflake
-} from "effect/unstable/cluster"
-import { Headers } from "effect/unstable/http"
-import { Rpc } from "effect/unstable/rpc"
+import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, type Envelope, Snowflake } from "effect/cluster"
+import { Headers } from "effect/http"
+import { Rpc } from "effect/rpc"
 import { make, makeRawRunnerClient } from "./harness.ts"
 
 const WatchRpc = Rpc.make("Watch", { payload: { id: Schema.String }, success: Schema.Int, stream: true })

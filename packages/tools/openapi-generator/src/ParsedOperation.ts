@@ -10,14 +10,14 @@
  *
  * @since 4.0.0
  */
-import type * as Types from "effect/Types"
-import type { HttpMethod } from "effect/unstable/http/HttpMethod"
+import type { HttpMethod } from "effect/http/HttpMethod"
 import type {
   OpenAPISecurityRequirement,
   OpenAPISpecExternalDocs,
   OpenAPISpecLicense,
   OpenAPISpecServer
-} from "effect/unstable/httpapi/OpenApi"
+} from "effect/httpapi/OpenApi"
+import type * as Types from "effect/Types"
 
 /**
  * Root OpenAPI metadata preserved for generated client and HttpApi output.

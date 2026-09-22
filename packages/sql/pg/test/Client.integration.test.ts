@@ -1,11 +1,11 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
 import { DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import { Model } from "effect/schema"
+import { SqlClient, SqlModel } from "effect/sql"
+import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import { Model } from "effect/unstable/schema"
-import { SqlClient, SqlModel } from "effect/unstable/sql"
-import * as Statement from "effect/unstable/sql/Statement"
 import { PgContainer } from "./utils.ts"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)

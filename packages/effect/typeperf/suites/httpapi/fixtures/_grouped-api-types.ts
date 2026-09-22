@@ -1,6 +1,6 @@
 // Shared type-only endpoint groups for client-group and endpoint-selection fixtures.
 import type { Schema } from "effect"
-import type { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
+import type { HttpApiEndpoint, HttpApiGroup } from "effect/httpapi"
 
 type EndpointCount = 10 | 50 | 100 | 500
 

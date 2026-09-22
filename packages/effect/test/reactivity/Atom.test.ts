@@ -14,9 +14,9 @@ import {
   Stream,
   SubscriptionRef
 } from "effect"
+import { KeyValueStore } from "effect/persistence"
+import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { KeyValueStore } from "effect/unstable/persistence"
-import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/unstable/reactivity"
 
 declare const global: any
 

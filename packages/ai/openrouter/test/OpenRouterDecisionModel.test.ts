@@ -1,8 +1,8 @@
 import { OpenRouterClient, OpenRouterConfig, OpenRouterDecisionModel } from "@effect/ai-openrouter"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
-import { Decision, DecisionModel, Model } from "effect/unstable/ai"
-import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { Decision, DecisionModel, Model } from "effect/ai"
+import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const Ticket = Schema.Struct({
   message: Schema.String,

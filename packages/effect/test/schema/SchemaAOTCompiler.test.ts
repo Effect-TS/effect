@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaParser } from "effect"
 import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
+import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 import * as SchemaTransformation from "effect/SchemaTransformation"
-import * as SchemaAOTCompiler from "effect/unstable/schema/SchemaAOTCompiler"
 import { execFileSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -24,7 +24,7 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.strictEqual(SchemaAOTCompiler.compile(targets), source)
     assert.strictEqual(CompilerRegistry.resolve(schema.ast), before)
     assert.strictEqual(checks, 0)
-    assert.include(source, "effect/unstable/schema/SchemaCompiler/runtime")
+    assert.include(source, "effect/schema/SchemaCompiler/runtime")
     assert.notInclude(source, "new Function")
     assert.notInclude(source, "SchemaJITCompiler")
   })

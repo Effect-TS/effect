@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect } from "effect"
-import { Reactivity } from "effect/unstable/reactivity"
+import { Reactivity } from "effect/reactivity"
 import { rm } from "node:fs/promises"
 
 const isBun = "bun" in process.versions
