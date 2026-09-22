@@ -319,12 +319,10 @@ const awaitEntry = <A, E>(
   const fiber = entry.fiber
   if (fiber === undefined || Deferred.isDoneUnsafe(entry.deferred)) return restore(Deferred.await(entry.deferred))
   entry.awaiters++
-  // Install cleanup before restoring interruptibility: a pending interrupt
-  // can otherwise prevent the waiter from decrementing the count.
+  // Install cleanup before restore so a pending interrupt cannot skip the decrement.
   return effect.onExit(restore(Deferred.await(entry.deferred)), () => {
     entry.awaiters--
     if (entry.awaiters > 0 || Deferred.isDoneUnsafe(entry.deferred)) return effect.void
-    // The last waiter abandons the lookup; surface any finalizer defect from closing its scope.
     return effect.flatMap(effect.fiberInterrupt(fiber), () => {
       const exit = fiber.pollUnsafe()!
       return Exit.isFailure(exit) && Cause.hasDies(exit.cause) ? effect.failCause(exit.cause) : effect.void
@@ -670,10 +668,7 @@ export const refresh: {
   <Key, A, E, R>(self: ScopedCache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     effect.uninterruptibleMask(effect.fnUntraced(function*(restore) {
       if (self.state._tag === "Closed") return yield* effect.interrupt
-      // A missing key shares the forked lookup and waiter accounting of get.
       if (!MutableHashMap.has(self.state.map, key)) return yield* restore(get(self, key))
-      // An existing key builds its replacement independently of readers and
-      // only swaps it in once the lookup completes.
       const fiber = Fiber.getCurrent()!
       const scope = Scope.makeUnsafe()
       const deferred = Deferred.makeUnsafe<A, E>()

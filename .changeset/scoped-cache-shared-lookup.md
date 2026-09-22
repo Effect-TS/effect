@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Keep scoped cache lookups alive while callers are waiting, and release abandoned lookups and their scopes when the last caller is interrupted. Lookups for missing keys (including `refresh`) now run in an interruptible daemon fiber, like `Cache`: child fibers forked inside a lookup end with that lookup fiber rather than living as long as the initiating caller.
+Shared `ScopedCache` lookups survive individual caller interruption. If the last waiter leaves while a lookup is pending, it is interrupted and its scope closed. Missing-key lookups, including `refresh`, now run in daemon fibers like `Cache`, so children forked by a lookup end with it rather than with the caller.
