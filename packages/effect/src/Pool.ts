@@ -528,6 +528,7 @@ const leaseWith = <A, E, X, R, Arg>(
     return leaseLoop(self, lease, arg, restore, fiber)
   })
 
+// a pool that is shutting down has a target size of 0
 const leaseLoop = <A, E, X, R, Arg>(
   self: Pool<A, E>,
   lease: Lease<A, E, X, R, Arg>,

@@ -145,8 +145,10 @@ const getState = <A, E>(
   }
 }
 
-// Count the reference and register its release without an interruption between them.
-/** @internal */
+/**
+ * Count the reference and register its release without an interruption between them.
+ * @internal
+ */
 export const get = <A, E>(self_: RcRef.RcRef<A, E>): Effect.Effect<A, E, Scope.Scope> => {
   const self = self_ as RcRefImpl<A, E>
   return Effect.uninterruptibleMask((restore) =>
