@@ -10,6 +10,14 @@ import { TestClock } from "effect/testing"
 const attributes = { x: "a", y: "b" }
 
 describe("Metric", () => {
+  const series = Effect.map(
+    Metric.snapshot,
+    (snapshots) =>
+      snapshots
+        .map((snapshot) => [snapshot.attributes ?? null, "count" in snapshot.state ? snapshot.state.count : null])
+        .sort((a, b) => JSON.stringify(a[0]) < JSON.stringify(b[0]) ? -1 : 1)
+  )
+
   it.effect("keeps shared metrics scoped to the active registry", () =>
     Effect.gen(function*() {
       const counter = Metric.counter(nextId())
@@ -136,6 +144,19 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.value(first)).count, 11)
     }))
 
+  it.effect("follows contextual attributes that change between updates of a plain metric", () =>
+    Effect.gen(function*() {
+      const counter = Metric.counter(nextId())
+      const tenantA = { tenant: "a" }
+
+      yield* Metric.update(counter, 1).pipe(Effect.provideService(Metric.CurrentMetricAttributes, tenantA))
+      yield* Metric.update(counter, 10).pipe(Effect.provideService(Metric.CurrentMetricAttributes, { tenant: "b" }))
+      yield* Metric.update(counter, 100).pipe(Effect.provideService(Metric.CurrentMetricAttributes, tenantA))
+      yield* Metric.update(counter, 1000)
+
+      assert.deepStrictEqual(yield* series, [[null, 1000], [{ tenant: "a" }, 101], [{ tenant: "b" }, 10]])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect("shares a series after merging metric and contextual attributes", () =>
     Effect.gen(function*() {
       const id = nextId()
@@ -165,14 +186,6 @@ describe("Metric", () => {
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
   describe("withAttributes", () => {
-    const series = Effect.map(
-      Metric.snapshot,
-      (snapshots) =>
-        snapshots
-          .map((snapshot) => [snapshot.attributes ?? null, "count" in snapshot.state ? snapshot.state.count : null])
-          .sort((a, b) => JSON.stringify(a[0]) < JSON.stringify(b[0]) ? -1 : 1)
-    )
-
     it.effect("follows the contextual attributes when they change between updates", () =>
       Effect.gen(function*() {
         const counter = Metric.withAttributes(Metric.counter(nextId()), { route: "/users" })
@@ -187,19 +200,6 @@ describe("Metric", () => {
           [{ tenant: "a", route: "/users" }, 10],
           [{ tenant: "b", route: "/users" }, 100]
         ])
-      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
-
-    it.effect("follows contextual attributes that change between updates of a plain metric", () =>
-      Effect.gen(function*() {
-        const counter = Metric.counter(nextId())
-        const tenantA = { tenant: "a" }
-
-        yield* Metric.update(counter, 1).pipe(Effect.provideService(Metric.CurrentMetricAttributes, tenantA))
-        yield* Metric.update(counter, 10).pipe(Effect.provideService(Metric.CurrentMetricAttributes, { tenant: "b" }))
-        yield* Metric.update(counter, 100).pipe(Effect.provideService(Metric.CurrentMetricAttributes, tenantA))
-        yield* Metric.update(counter, 1000)
-
-        assert.deepStrictEqual(yield* series, [[null, 1000], [{ tenant: "a" }, 101], [{ tenant: "b" }, 10]])
       }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
     it.effect("applies inner attributes over outer, contextual and metric attributes", () =>
