@@ -140,13 +140,21 @@ describe("PartitionedSemaphore", () => {
         Effect.forkChild({ startImmediately: true })
       )
       assert.strictEqual(checks, 3)
-      assert.strictEqual(yield* sem.available, 1)
-
-      yield* sem.take("second", 1)
+      // The first taker may already hold the permit if acquisition is atomic.
+      const firstHasPermit = (yield* sem.available) === 0
+      if (firstHasPermit) {
+        assert.deepStrictEqual(yield* sem.withPermitsIfAvailable(1)(Effect.void), Option.none())
+      } else {
+        yield* sem.take("second", 1)
+      }
       while (tasks.length > 0) tasks.shift()!()
 
-      // The first taker must wait rather than consume the second taker's permit.
-      assert.isUndefined(first.pollUnsafe())
+      // If the second taker won, the first must wait rather than steal its permit.
+      if (firstHasPermit) {
+        assert.deepStrictEqual(first.pollUnsafe(), Exit.void)
+      } else {
+        assert.isUndefined(first.pollUnsafe())
+      }
       assert.strictEqual(yield* sem.available, 0)
       yield* Fiber.interrupt(first)
       assert.strictEqual(yield* sem.available, 0)

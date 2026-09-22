@@ -8,7 +8,6 @@
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
-import * as Exit from "./Exit.ts"
 import { dual } from "./Function.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
@@ -181,24 +180,20 @@ export const makeUnsafe = <K = unknown>(options: {
       return Effect.void
     }
 
-    return Effect.suspend(() => {
-      if (maxPermits < permits) {
-        return Effect.never
-      }
+    if (maxPermits < permits) {
+      return Effect.never
+    }
 
+    return Effect.uninterruptibleMask((restore) => {
       if (totalPermits >= permits) {
-        return Effect.uninterruptibleMask((restore) => {
-          totalPermits -= permits
-          return Effect.onExit(restore(Effect.void), (exit) =>
-            Exit.isFailure(exit)
-              ? Effect.sync(() => {
-                releaseUnsafe(permits)
-              })
-              : Effect.void)
-        })
+        totalPermits -= permits
+        return Effect.onInterrupt(restore(Effect.void), () =>
+          Effect.sync(() => {
+            releaseUnsafe(permits)
+          }))
       }
 
-      return Effect.callback<void>((resume) => {
+      return restore(Effect.callback<void>((resume) => {
         if (totalPermits >= permits) {
           resume(take(key, permits))
           return
@@ -239,7 +234,7 @@ export const makeUnsafe = <K = unknown>(options: {
           waitingPermits -= entry.permits
           releaseUnsafe(permits - entry.permits)
         })
-      })
+      }))
     })
   }
 
