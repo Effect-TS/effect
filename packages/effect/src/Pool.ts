@@ -522,8 +522,8 @@ const leaseWith = <A, E, X, R, Arg>(
   lease: Lease<A, E, X, R, Arg>,
   arg: Arg
 ): Effect.Effect<X, any, R> =>
-  core.withFiber((fiber) => {
-    const restore = internal.fiberUninterruptibleMaskUnsafe(fiber)
+  internal.uninterruptibleMask((restore) => {
+    const fiber = Fiber.getCurrent()!
     self.state.usage++
     return leaseLoop(self, lease, arg, restore, fiber)
   })

@@ -4539,20 +4539,6 @@ export const fiberEnterUninterruptibleUnsafe = (fiber: Fiber.Fiber<unknown, unkn
 }
 
 /**
- * Enters an uninterruptible region and returns a restore function for the
- * fiber's prior interruptibility. Call only within `withFiber`.
- *
- * @internal
- */
-export const fiberUninterruptibleMaskUnsafe = (
-  fiber: Fiber.Fiber<unknown, unknown>
-): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> => {
-  if (!(fiber as FiberImpl).interruptible) return identity
-  fiberEnterUninterruptibleUnsafe(fiber)
-  return interruptible
-}
-
-/**
  * Makes the current fiber interruptible for the returned effect without an
  * extra primitive. Call only within `withFiber` and return any pending
  * interruption it produces.
@@ -4583,7 +4569,13 @@ export const uninterruptibleMask = <A, E, R>(
       effect: Effect.Effect<A, E, R>
     ) => Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> => withFiber((fiber) => f(fiberUninterruptibleMaskUnsafe(fiber)))
+): Effect.Effect<A, E, R> =>
+  withFiber((fiber) => {
+    if (!fiber.interruptible) return f(identity)
+    fiber.interruptible = false
+    fiber._stack.push(setInterruptibleTrue)
+    return f(interruptible)
+  })
 
 /** @internal */
 export const interruptibleMask = <A, E, R>(
