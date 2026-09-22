@@ -4,8 +4,10 @@ import * as Errors from "@effect/ai-openai/internal/errors"
 import * as OpenAiClient from "@effect/ai-openai/OpenAiClient"
 import * as OpenAiClientGenerated from "@effect/ai-openai/OpenAiClientGenerated"
 import * as OpenAiConfig from "@effect/ai-openai/OpenAiConfig"
+import * as OpenAiLanguageModel from "@effect/ai-openai/OpenAiLanguageModel"
 import { assert, describe, it } from "@effect/vitest"
 import { Config, ConfigProvider, Context, Effect, Layer, Redacted, Schema, Stream } from "effect"
+import { Chat } from "effect/ai"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -527,11 +529,7 @@ describe("OpenAiClient", () => {
       Effect.gen(function*() {
         const server = yield* Effect.acquireRelease(
           Effect.sync(() => new WS("wss://api.openai.com/v1/responses", { jsonProtocol: true })),
-          (server) =>
-            Effect.sync(() => {
-              server.close()
-              WS.clean()
-            })
+          (server) => Effect.sync(() => server.close())
         )
         const event = {
           type: "response.failed",
@@ -557,6 +555,68 @@ describe("OpenAiClient", () => {
         )
 
         assert.strictEqual(result._tag, "Some")
+      }))
+
+    it.live("retries previous_response_not_found with the full prompt", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://previous-response.test/v1/responses", { jsonProtocol: true })),
+          (server) => Effect.sync(() => server.close())
+        )
+
+        const drive = Effect.gen(function*() {
+          const chat = yield* Chat.empty
+          yield* chat.streamText({ prompt: "hello" }).pipe(Stream.runDrain)
+          yield* chat.streamText({ prompt: "again" }).pipe(Stream.runDrain)
+          yield* chat.streamText({ prompt: "later" }).pipe(Stream.runDrain)
+        }).pipe(
+          OpenAiClient.withWebSocketMode,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({
+            apiKey: Redacted.make("sk-test"),
+            apiUrl: "https://previous-response.test/v1"
+          })),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected http")))
+        )
+
+        const respond = Effect.gen(function*() {
+          const first = yield* nextWebSocketCreate(server)
+          assert.isUndefined(first.previous_response_id)
+          assert.deepStrictEqual(first.input, [webSocketUserInput("hello")])
+          sendWebSocketCompleted(server, "resp_1", "msg_1", "ok")
+
+          const incremental = yield* nextWebSocketCreate(server)
+          assert.strictEqual(incremental.previous_response_id, "resp_1")
+          assert.deepStrictEqual(incremental.input, [webSocketUserInput("again")])
+          server.send({
+            type: "error",
+            status: 400,
+            error: {
+              code: "previous_response_not_found",
+              message: "Previous response with id 'resp_1' not found.",
+              param: "previous_response_id"
+            }
+          })
+
+          const retried = yield* nextWebSocketCreate(server)
+          assert.isUndefined(retried.previous_response_id)
+          assert.deepStrictEqual(retried.input, [
+            webSocketUserInput("hello"),
+            webSocketAssistantInput("msg_1", "ok"),
+            webSocketUserInput("again")
+          ])
+          sendWebSocketCompleted(server, "resp_2", "msg_2", "retried")
+
+          const later = yield* nextWebSocketCreate(server)
+          assert.strictEqual(later.previous_response_id, "resp_2")
+          assert.deepStrictEqual(later.input, [webSocketUserInput("later")])
+          sendWebSocketCompleted(server, "resp_3", "msg_3", "later")
+        })
+
+        yield* Effect.all([drive, respond], { concurrency: "unbounded" }).pipe(
+          Effect.timeout("5 seconds")
+        )
       }))
 
     it.effect("accepts keepalive stream events", () =>
@@ -763,6 +823,90 @@ describe("OpenAiClient", () => {
       }))))
   })
 })
+
+type WebSocketResponseCreate = {
+  readonly type: "response.create"
+  readonly previous_response_id?: string | undefined
+  readonly input: ReadonlyArray<{
+    readonly role?: string | undefined
+    readonly id?: string | undefined
+    readonly type?: string | undefined
+    readonly content?:
+      | ReadonlyArray<{ readonly type?: string | undefined; readonly text?: string | undefined }>
+      | undefined
+  }>
+}
+
+const nextWebSocketCreate = (server: WS) =>
+  Effect.promise(() => server.nextMessage).pipe(
+    Effect.map((message) => message as WebSocketResponseCreate)
+  )
+
+const webSocketUserInput = (text: string) => ({
+  role: "user",
+  content: [{ type: "input_text", text }]
+})
+
+const webSocketAssistantInput = (id: string, text: string) => ({
+  id,
+  type: "message",
+  role: "assistant",
+  status: "completed",
+  content: [{
+    type: "output_text",
+    text,
+    annotations: [],
+    logprobs: []
+  }]
+})
+
+const sendWebSocketCompleted = (server: WS, id: string, itemId: string, text: string) => {
+  const response = {
+    id,
+    object: "response",
+    model: "gpt-4o-mini",
+    created_at: 1,
+    output: [],
+    error: null,
+    incomplete_details: null
+  }
+  const events = [
+    { type: "response.created", response },
+    {
+      type: "response.output_item.added",
+      output_index: 0,
+      item: {
+        id: itemId,
+        type: "message",
+        role: "assistant",
+        status: "in_progress",
+        content: []
+      }
+    },
+    {
+      type: "response.output_text.delta",
+      item_id: itemId,
+      output_index: 0,
+      content_index: 0,
+      delta: text
+    },
+    {
+      type: "response.output_item.done",
+      output_index: 0,
+      item: {
+        id: itemId,
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        content: [{ type: "output_text", text, annotations: [] }]
+      }
+    },
+    { type: "response.completed", response }
+  ]
+  for (const event of events) {
+    server.send(event)
+  }
+}
 
 type MockResponse =
   | {
