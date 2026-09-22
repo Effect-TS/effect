@@ -20,7 +20,7 @@ import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
-import { constant, constFalse, constTrue, constVoid, dual, identity, pipe } from "./Function.ts"
+import { constFalse, constTrue, dual, identity, pipe } from "./Function.ts"
 import * as Count from "./internal/count.ts"
 import * as internalStream from "./internal/stream.ts"
 import * as Option from "./Option.ts"
@@ -1327,19 +1327,19 @@ export const reduceWhileEffect = <S, In, E, R>(
     return upstream.pipe(
       Effect.flatMap((arr) => {
         let i = 0
-        return Effect.whileLoop({
-          while: () => i < arr.length,
-          body: constant(Effect.flatMap(Effect.suspend(() => f(state, arr[i++])), (s) => {
+        let done = false
+        return Effect.whileLoop<S, E | Cause.Done, R>({
+          while: () => done || i < arr.length,
+          body: () => done ? Cause.done() : f(state, arr[i++]),
+          step: (s) => {
             state = s
             if (!predicate(state)) {
+              done = true
               if (i < arr.length) {
                 leftover = arr.slice(i) as any
               }
-              return Cause.done()
             }
-            return Effect.void
-          })),
-          step: constVoid
+          }
         })
       }),
       Effect.forever({ disableYield: true }),
@@ -1698,25 +1698,21 @@ export const takeWhileEffect: {
     return upstream.pipe(
       Effect.flatMap((arr) => {
         let i = 0
-        return Effect.whileLoop({
-          while: () => i < arr.length,
-          body: constant(Effect.flatMap(
-            Effect.suspend(() => {
-              const input = arr[i++]
-              return Effect.map(predicate(input), (passes) => [input, passes] as const)
-            }),
-            ([input, passes]) => {
-              if (!passes) {
-                if (i < arr.length) {
-                  leftover = arr.slice(i) as any
-                }
-                return Cause.done()
-              }
+        let done = false
+        return Effect.whileLoop<boolean, E | Cause.Done, R>({
+          while: () => done || i < arr.length,
+          body: () => done ? Cause.done() : predicate(arr[i]),
+          step: (passes) => {
+            const input = arr[i++]
+            if (passes) {
               out.push(input)
-              return Effect.void
+            } else {
+              done = true
+              if (i < arr.length) {
+                leftover = arr.slice(i) as any
+              }
             }
-          )),
-          step: constVoid
+          }
         })
       }),
       Effect.forever({ disableYield: true }),
@@ -1746,19 +1742,20 @@ export const takeWhileFilterEffect = <In, Out, X, E, R>(
     return upstream.pipe(
       Effect.flatMap((arr) => {
         let i = 0
-        return Effect.whileLoop({
-          while: () => i < arr.length,
-          body: constant(Effect.flatMap(Effect.suspend(() => filter(arr[i++])), (result) => {
-            if (Result.isFailure(result)) {
+        let done = false
+        return Effect.whileLoop<Result.Result<Out, X>, E | Cause.Done, R>({
+          while: () => done || i < arr.length,
+          body: () => done ? Cause.done() : filter(arr[i++]),
+          step: (result) => {
+            if (Result.isSuccess(result)) {
+              out.push(result.success)
+            } else {
+              done = true
               if (i < arr.length) {
                 leftover = arr.slice(i) as any
               }
-              return Cause.done()
             }
-            out.push(result.success)
-            return Effect.void
-          })),
-          step: constVoid
+          }
         })
       }),
       Effect.forever({ disableYield: true }),

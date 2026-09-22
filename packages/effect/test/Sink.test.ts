@@ -155,6 +155,64 @@ describe("Sink", () => {
       }))
   })
 
+  describe("effectful early-stopping sinks", () => {
+    // each sink runs `check` on 1, 2, 3 and stops on 3; `mode` changes what `check(2)` does
+    type Check = (n: number) => Effect.Effect<boolean, string>
+    const names = ["reduceWhileEffect", "takeWhileEffect", "takeWhileFilterEffect"] as const
+    const sinks: Record<typeof names[number], (check: Check) => Sink.Sink<unknown, number, number, string>> = {
+      reduceWhileEffect: (check) => Sink.reduceWhileEffect(() => 0, (s) => s < 3, (s, n) => Effect.as(check(n), s + 1)),
+      takeWhileEffect: (check) => Sink.takeWhileEffect(check),
+      takeWhileFilterEffect: (check) =>
+        Sink.takeWhileFilterEffect((n) => Effect.map(check(n), (ok) => ok ? Result.succeed(n * 10) : Result.failVoid))
+    }
+    const expected = { reduceWhileEffect: 3, takeWhileEffect: [1, 2], takeWhileFilterEffect: [10, 20] }
+    const run = (name: typeof names[number], mode: "ok" | "fail" | "die" | "never", log: Array<number>) =>
+      Stream.fromArrays([1, 2], [3, 4, 5], [6]).pipe(
+        Stream.run(Sink.flatMap(
+          sinks[name]((n) => {
+            log.push(n)
+            if (n === 2 && mode === "fail") return Effect.fail("boom")
+            if (n === 2 && mode === "die") throw "defect" // synchronous throw from the user function
+            if (n === 2 && mode === "never") return Effect.never
+            return Effect.succeed(n < 3)
+          }),
+          (result) => Sink.map(Sink.collect<number>(), (rest) => [result, rest] as const)
+        ))
+      )
+
+    it.effect("stop mid-chunk, keep leftovers, run effects in order", () =>
+      Effect.gen(function*() {
+        for (const name of names) {
+          const log: Array<number> = []
+          deepStrictEqual(yield* run(name, "ok", log), [expected[name], [4, 5, 6]], name)
+          deepStrictEqual(log, [1, 2, 3], name)
+        }
+      }))
+
+    it.effect("failures and defects end the fold at the failing element", () =>
+      Effect.gen(function*() {
+        for (const name of names) {
+          const failLog: Array<number> = []
+          assertExitFailure(yield* Effect.exit(run(name, "fail", failLog)), Cause.fail("boom"))
+          deepStrictEqual(failLog, [1, 2], name)
+          const dieLog: Array<number> = []
+          assertExitFailure(yield* Effect.exit(run(name, "die", dieLog)), Cause.die("defect"))
+          deepStrictEqual(dieLog, [1, 2], name)
+        }
+      }))
+
+    it.effect("interruption stops the fold at the pending element", () =>
+      Effect.gen(function*() {
+        for (const name of names) {
+          const log: Array<number> = []
+          const fiber = yield* Effect.forkChild(run(name, "never", log))
+          yield* Effect.yieldNow
+          yield* Fiber.interrupt(fiber)
+          deepStrictEqual(log, [1, 2], name)
+        }
+      }))
+  })
+
   describe("reduce", () => {
     it.effect("equivalence with Array.reduce", () =>
       Effect.gen(function*() {
