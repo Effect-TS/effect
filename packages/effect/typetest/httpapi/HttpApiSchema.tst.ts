@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import type * as Sse from "effect/encoding/Sse"
-import { HttpApiSchema } from "effect/httpapi"
+import { HttpApiSchema } from "effect/http-api"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpApiSchema", () => {

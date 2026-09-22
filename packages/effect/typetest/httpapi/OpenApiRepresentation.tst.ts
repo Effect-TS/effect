@@ -1,4 +1,4 @@
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api"
 import { describe, expect, it } from "tstyche"
 
 describe("OpenApi representation consumer", () => {

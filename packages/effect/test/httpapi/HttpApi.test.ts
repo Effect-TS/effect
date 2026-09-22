@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context } from "effect"
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api"
 
 describe("HttpApi", () => {
   it("stores the supplied identifier", () => {

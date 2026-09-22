@@ -1,6 +1,6 @@
 import { Context, Effect, type Layer, Schema, SchemaGetter } from "effect"
 import { Entity, EntityProxy, EntityProxyServer, type Sharding } from "effect/cluster"
-import { HttpApi } from "effect/httpapi"
+import { HttpApi } from "effect/http-api"
 import { Rpc } from "effect/rpc"
 import { describe, expect, it } from "tstyche"
 

@@ -9,7 +9,7 @@ import {
   HttpApiMiddleware,
   HttpApiSchema,
   OpenApi
-} from "effect/httpapi"
+} from "effect/http-api"
 
 describe("OpenAPI spec", () => {
   describe("api", () => {
@@ -1017,7 +1017,7 @@ describe("OpenAPI spec", () => {
           if (stream?.encoding !== "sse") {
             assert.fail("expected SSE stream metadata")
           }
-          assert.strictEqual(stream.failureEvent, "effect/httpapi/stream/failure")
+          assert.strictEqual(stream.failureEvent, "effect/http-api/stream/failure")
           assert.strictEqual(typeof stream.causeSchema, "object")
           assert.strictEqual(typeof stream.errorSchema, "object")
         })

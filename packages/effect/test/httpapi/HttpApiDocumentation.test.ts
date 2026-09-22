@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path } from "effect"
 import { Etag, HttpPlatform, HttpRouter, HttpServerResponse } from "effect/http"
-import { HttpApi, HttpApiBuilder, HttpApiScalar, HttpApiSwagger, OpenApi } from "effect/httpapi"
+import { HttpApi, HttpApiBuilder, HttpApiScalar, HttpApiSwagger, OpenApi } from "effect/http-api"
 
 const TestServices = Layer.mergeAll(
   Path.layer,

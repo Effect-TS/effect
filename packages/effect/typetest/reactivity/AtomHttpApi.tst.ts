@@ -1,7 +1,7 @@
 import { Effect, Layer, Schema, type Stream } from "effect"
 import type { Sse } from "effect/encoding"
 import { HttpClient, type HttpClientError, type HttpClientResponse } from "effect/http"
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/http-api"
 import { type Atom, AtomHttpApi, AtomRegistry } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 

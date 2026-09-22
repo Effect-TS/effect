@@ -43,7 +43,7 @@ import {
   HttpApiSecurity,
   HttpApiTest,
   OpenApi
-} from "effect/httpapi"
+} from "effect/http-api"
 
 function* assertServerText(res: HttpClientResponse.HttpClientResponse, status: number, text: string) {
   assert.strictEqual(res.status, status)
@@ -708,7 +708,7 @@ describe("HttpApi", () => {
           assert.strictEqual(typeof defect, "string")
           assert.include(defect, "HttpApiGroup \"health\" not found")
           assert.include(defect, "HttpApiBuilder.group(api, \"health\", ...)")
-          assert.include(defect, "Available groups: effect/httpapi/HttpApiGroup/users")
+          assert.include(defect, "Available groups: effect/http-api/HttpApiGroup/users")
         })
       )
     ) as Effect.Effect<void, HttpClientResponse.HttpClientResponse>

@@ -3,11 +3,11 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Sse from "effect/encoding/Sse"
+import type { OpenAPISpec } from "effect/http-api/OpenApi"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import type { OpenAPISpec } from "effect/httpapi/OpenApi"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { rolldown } from "rolldown"
@@ -210,7 +210,7 @@ describe("OpenApiTransformer", () => {
                           encoding: "sse",
                           errorSchema: {},
                           causeSchema: {},
-                          failureEvent: "effect/httpapi/stream/failure"
+                          failureEvent: "effect/http-api/stream/failure"
                         }
                       }
                       : {})

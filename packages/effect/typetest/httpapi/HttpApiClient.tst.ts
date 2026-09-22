@@ -2,7 +2,14 @@
 import { Effect, hole, Schema, type Stream } from "effect"
 import type * as Sse from "effect/encoding/Sse"
 import { FetchHttpClient, HttpClient, type HttpClientError, type HttpClientResponse } from "effect/http"
-import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/httpapi"
+import {
+  HttpApi,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiMiddleware,
+  HttpApiSchema
+} from "effect/http-api"
 import { describe, expect, it } from "tstyche"
 
 type ResponseMode = HttpApiEndpoint.ClientResponseMode

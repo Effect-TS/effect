@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { HttpApiEndpoint, HttpApiSchema, OpenApi } from "effect/httpapi"
+import { HttpApiEndpoint, HttpApiSchema, OpenApi } from "effect/http-api"
 
 const Events = Schema.Struct({
   event: Schema.Literal("user.created"),
@@ -193,7 +193,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
   it("statically detectable SSE reserved failure event name throws", () => {
     const stream = HttpApiSchema.StreamSse({
       events: Schema.Struct({
-        event: Schema.Literal("effect/httpapi/stream/failure"),
+        event: Schema.Literal("effect/http-api/stream/failure"),
         data: Schema.String
       }),
       error: StreamError
