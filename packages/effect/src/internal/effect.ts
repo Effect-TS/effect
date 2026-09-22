@@ -1320,10 +1320,19 @@ const makeFn = (
   const body = typeof bodyOrOptions === "function"
     ? bodyOrOptions
     : (pipeables.shift()!).bind(bodyOrOptions.self)
+  // Fixed per definition, so shared by every call
+  const definition: FnDefinition = {
+    name,
+    options: spanOptions,
+    definitionName: `${name} (definition)`,
+    definitionStack: defError ? fnStackCleaner(defError) : constUndefined
+  }
+  const proto = addSpan ? FnSpanProto : FnProto
 
-  return defineFunctionLength(body.length, function(this: any, ...args: Array<any>) {
+  return defineFunctionLength(body.length, function(this: any) {
+    const args = arguments
     let result = suspend(() => {
-      const iter = body.apply(this, arguments)
+      const iter = body.apply(this, args)
       return isEffect(iter) ? iter : fromIteratorUnsafe(iter)
     })
     for (let i = 0; i < pipeables.length; i++) {
@@ -1339,33 +1348,35 @@ const makeFn = (
       callError = new globalThis.Error()
       setStackTraceLimit(prevLimit)
     }
-    const self: FnRegion = Object.create(addSpan ? FnSpanProto : FnProto)
+    const self: FnRegion = Object.create(proto)
     self.effect = result
-    self.name = name
-    self.options = spanOptions
+    self.definition = definition
     self.callError = callError
-    self.defError = defError
     return self
   })
 }
 
+interface FnDefinition {
+  readonly name: string
+  readonly options: Tracer.SpanOptionsNoTrace | undefined
+  readonly definitionName: string
+  readonly definitionStack: () => string | undefined
+}
+
 interface FnRegion extends Primitive, Effect.Effect<any, any, any> {
   effect: Effect.Effect<any, any, any>
-  name: string
-  options: Tracer.SpanOptionsNoTrace | undefined
+  definition: FnDefinition
   callError: Error | undefined
-  defError: Error | undefined
 }
 
 const fnStackFrame = (self: FnRegion, parent: StackFrame | undefined): StackFrame => {
-  const callError = self.callError
-  const defError = self.defError
+  const definition = self.definition
   return {
-    name: self.name,
-    stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
+    name: definition.name,
+    stack: self.callError ? fnStackCleaner(self.callError) : constUndefined,
     parent: {
-      name: `${self.name} (definition)`,
-      stack: defError ? fnStackCleaner(() => defError.stack) : constUndefined,
+      name: definition.definitionName,
+      stack: definition.definitionStack,
       parent
     }
   }
@@ -1388,7 +1399,7 @@ const FnSpanProto = makePrimitiveProto({
     const frame = fnStackFrame(this, fiber.cache.stackFrame)
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    const span = makeSpanWith(fiber, this.name, this.options, clock, timingEnabled)
+    const span = makeSpanWith(fiber, this.definition.name, this.definition.options, clock, timingEnabled)
     pushSpanFrame(fiber, FnSpanFrameProto, span, clock, timingEnabled)
     fiber.setContext(
       Context.add(Context.add(fiber.context, CurrentStackFrame, frame), Tracer.ParentSpan, span)
