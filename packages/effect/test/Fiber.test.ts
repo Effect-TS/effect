@@ -53,14 +53,16 @@ describe("Fiber", () => {
 
     it.effect("cleans up observers on interruption", () =>
       Effect.gen(function*() {
-        const fiber = yield* Effect.forkChild(Effect.never)
-        const observers = () =>
-          (fiber as unknown as { readonly _observers: ReadonlyArray<unknown> | undefined })._observers?.length ?? 0
-        const before = observers()
-        const joinFiber = yield* Fiber.joinAll([fiber]).pipe(Effect.forkChild({ startImmediately: true }))
-        assert.strictEqual(observers(), before + 1)
+        const fibers = yield* Effect.forEach([0, 1], () => Effect.forkChild(Effect.never))
+        const observerCounts = () =>
+          fibers.map((fiber) =>
+            (fiber as unknown as { readonly _observers: ReadonlyArray<unknown> | undefined })._observers?.length ?? 0
+          )
+        const before = observerCounts()
+        const joinFiber = yield* Fiber.joinAll(fibers).pipe(Effect.forkChild({ startImmediately: true }))
+        assert.deepStrictEqual(observerCounts(), before.map((count) => count + 1))
         yield* Fiber.interrupt(joinFiber)
-        assert.strictEqual(observers(), before)
+        assert.deepStrictEqual(observerCounts(), before)
       }))
   })
 
