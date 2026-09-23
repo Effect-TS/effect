@@ -3,6 +3,22 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { MutableList } from "effect"
 
 describe("MutableList", () => {
+  it("prependAll with no values leaves the list unchanged", () => {
+    const list = MutableList.make<number>()
+    MutableList.appendAll(list, [1, 2])
+    MutableList.prependAll(list, [])
+    strictEqual(list.length, 2)
+    strictEqual(MutableList.take(list), 1)
+    strictEqual(MutableList.take(list), 2)
+    strictEqual(list.length, 0)
+
+    const empty = MutableList.make<number>()
+    MutableList.prependAll(empty, [])
+    strictEqual(empty.length, 0)
+    MutableList.appendAll(empty, [3])
+    strictEqual(MutableList.take(empty), 3)
+  })
+
   it("preserves a prepended element when appending to the list", () => {
     const list = MutableList.make<number>()
     MutableList.prepend(list, 1)
