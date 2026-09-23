@@ -138,7 +138,7 @@ export const makeUnsafe = <A>(initial: A): TxRef<A> => ({
 const journalEntry = <A>(state: Effect.Transaction["Service"], self: TxRef<A>) => {
   let entry = state.journal.get(self)
   if (entry === undefined) {
-    entry = { version: self.version, value: self.value }
+    entry = { version: self.version, value: self.value, written: false }
     state.journal.set(self, entry)
   }
   return entry
@@ -260,7 +260,7 @@ export const update: {
  */
 export const get = <A>(self: TxRef<A>): Effect.Effect<A> =>
   Effect.Transaction.pipe(
-    Effect.flatMap((state) => Effect.sync(() => journalEntry(state, self).value)),
+    Effect.map((state) => journalEntry(state, self).value),
     Effect.tx
   )
 

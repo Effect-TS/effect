@@ -14558,8 +14558,7 @@ export class Transaction extends Context.Service<
       {
         readonly version: number
         value: any
-        // An equal-value write must wake retry waiters without advancing the version.
-        written?: boolean
+        written: boolean
       }
     >
   }
@@ -14689,10 +14688,8 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {
   for (const [ref, { value, written }] of state.journal) {
-    // Also commit entries changed directly through the transaction journal.
-    const changed = !Object.is(value, ref.value)
-    if (!written && !changed) continue
-    if (changed) {
+    if (!written) continue
+    if (!Object.is(value, ref.value)) {
       ref.version = ref.version + 1
       ref.value = value
     }
