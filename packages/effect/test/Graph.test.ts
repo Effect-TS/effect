@@ -1403,6 +1403,12 @@ describe("Graph", () => {
         [2, 0],
         [3, 2]
       ])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0, { direction: "undirected" })), [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 2]
+      ])
       assert.strictEqual(Graph.hasPath(graph, 0, 2), true)
       assert.strictEqual(Graph.hasPath(graph, 2, 0), false)
       assert.strictEqual(Graph.hasPath(2, 0, { direction: "incoming" })(graph), true)
