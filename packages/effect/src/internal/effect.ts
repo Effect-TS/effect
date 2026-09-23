@@ -4170,12 +4170,22 @@ const OnExitImpl = (function() {
     },
     [contA](this: any, value, _, exit) {
       exit ??= exitSucceed(value)
-      const eff = this.onExit(exit)
+      let eff: Effect.Effect<void, any, any> | undefined
+      try {
+        eff = this.onExit(exit)
+      } catch (defect) {
+        eff = exitDie(defect)
+      }
       return eff ? flatMap(eff, (_) => exit) : exit
     },
     [contE](this: any, cause, _, exit) {
       exit ??= exitFailCause(cause)
-      const eff = this.onExit(exit)
+      let eff: Effect.Effect<void, any, any> | undefined
+      try {
+        eff = this.onExit(exit)
+      } catch (defect) {
+        eff = exitDie(defect)
+      }
       return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
     }
   })
