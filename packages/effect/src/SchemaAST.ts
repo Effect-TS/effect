@@ -2833,11 +2833,9 @@ export const Objects: new(
     }
 
     const makeFallback = (): SchemaParser.Parser => {
-      const expectedKeys: Array<PropertyKey> = []
-      for (const ps of ast.propertySignatures) {
-        expectedKeys.push(typeof ps.name === "number" ? globalThis.String(ps.name) : ps.name)
-      }
-      let expectedKeysSet = hasProperties && indexCount ? new Set(expectedKeys) : undefined
+      const expectedKeys = new Set<PropertyKey>(
+        ast.propertySignatures.map((ps) => typeof ps.name === "number" ? globalThis.String(ps.name) : ps.name)
+      )
       const finishIndex = (
         s: ObjectParserState,
         key: PropertyKey,
@@ -2853,8 +2851,8 @@ export const Objects: new(
           : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
         if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
           if (
-            expectedKeysSet &&
-            (expectedKeysSet.has(key) || expectedKeysSet.has(typeof k2 === "number" ? globalThis.String(k2) : k2))
+            hasProperties &&
+            (expectedKeys.has(key) || expectedKeys.has(typeof k2 === "number" ? globalThis.String(k2) : k2))
           ) return Exit.void
           InternalRecord.assignProperty(s.out, k2, value)
         }
@@ -2934,8 +2932,7 @@ export const Objects: new(
           ? ast.indexSignatures.map((index) => getIndexSignatureKeys(record, index.parameter, options))
           : undefined
         if (onExcessPropertyError) {
-          expectedKeysSet ??= new Set(expectedKeys)
-          const coveredKeys = indexKeys ? new Set(expectedKeysSet) : expectedKeysSet
+          const coveredKeys = indexKeys ? new Set(expectedKeys) : expectedKeys
           if (indexKeys) {
             for (const keys of indexKeys) {
               for (const key of keys) coveredKeys.add(key)
