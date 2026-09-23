@@ -3221,30 +3221,41 @@ export const repeat: {
   Schedule.toStepWithMetadata(typeof schedule === "function" ? schedule(identity_) : schedule).pipe(
     Effect.map((step) => {
       let meta = Schedule.CurrentMetadata.defaultValue()
-      const loop: Channel<
-        OutElem,
-        OutErr | SE,
-        OutDone,
-        InElem,
-        InErr,
-        InDone,
-        Env | SR
-      > = concatWith(
+      return repeatLoop(
         provideServiceEffect(self, Schedule.CurrentMetadata, Effect.sync(() => meta)),
         (done) =>
           step(done).pipe(
             Effect.map((meta_) => {
               meta = meta_
-              return loop
             }),
-            Pull.catchDone(() => Effect.succeed(end(done))),
-            unwrap
+            Pull.catchDone(() => Cause.done(done))
           )
       )
-      return loop
     }),
     unwrap
   ))
+
+const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, E, OutDone2, R>(
+  self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
+  onDone: (done: OutDone) => Pull.Pull<void, E, OutDone2, R>
+): Channel<OutElem, OutErr | E, OutDone2, InElem, InErr, InDone, Env | R> =>
+  fromTransform((upstream, scope) =>
+    Effect.sync(() => {
+      let currentPull: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> | undefined
+      const makePull = (): Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> => {
+        const runScope = Scope.forkUnsafe(scope)
+        return Effect.flatMap(toTransform(self)(upstream, runScope), (pull) => {
+          currentPull = Pull.catchDone(pull, (done) =>
+            Scope.close(runScope, Exit.void).pipe(
+              Effect.flatMap(() => onDone(done as OutDone)),
+              Effect.flatMap(makePull)
+            ))
+          return currentPull
+        })
+      }
+      return Effect.suspend(() => currentPull ?? makePull())
+    })
+  )
 
 /**
  * Repeats this channel forever.
@@ -3254,7 +3265,7 @@ export const repeat: {
  */
 export const forever = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
-): Channel<OutElem, OutErr, never, InElem, InErr, InDone, Env> => concatWith(self, () => forever(self))
+): Channel<OutElem, OutErr, never, InElem, InErr, InDone, Env> => repeatLoop(self, () => Effect.void)
 
 /**
  * Runs a schedule step for each output element while preserving the emitted
