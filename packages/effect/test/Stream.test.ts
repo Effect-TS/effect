@@ -24,7 +24,6 @@ import {
   References,
   Result,
   Schedule,
-  Scheduler,
   Schema,
   Scope,
   Sink,
@@ -4674,83 +4673,6 @@ describe("Stream", () => {
     //     ])
     //   }))
 
-    it.effect("repeat - provides the schedule metadata to each repetition", () =>
-      Effect.gen(function*() {
-        const result = yield* Stream.fromEffect(Effect.service(Schedule.CurrentMetadata)).pipe(
-          Stream.map((meta) => [meta.attempt, meta.output]),
-          Stream.repeat(Schedule.recurs(3)),
-          Stream.runCollect
-        )
-        deepStrictEqual(result, [[0, undefined], [1, 0], [2, 1], [3, 2]])
-      }))
-
-    it.effect("repeat - releases each repetition before the next one starts", () =>
-      Effect.gen(function*() {
-        const log: Array<string> = []
-        const result = yield* Stream.make(1, 2).pipe(
-          Stream.tap((n) => Effect.sync(() => log.push(`emit ${n}`))),
-          (stream) =>
-            Stream.unwrap(Effect.as(
-              Effect.acquireRelease(
-                Effect.sync(() => log.push("acquire")),
-                () => Effect.sync(() => log.push("release"))
-              ),
-              stream
-            )),
-          Stream.repeat(Schedule.recurs(1)),
-          Stream.runCollect
-        )
-        deepStrictEqual(result, [1, 2, 1, 2])
-        deepStrictEqual(log, [
-          "acquire",
-          "emit 1",
-          "emit 2",
-          "release",
-          "acquire",
-          "emit 1",
-          "emit 2",
-          "release"
-        ])
-      }))
-
-    it.effect("repeat - work per repetition does not grow with the number of repetitions", () =>
-      Effect.gen(function*() {
-        const ops = (n: number) =>
-          countOps(Stream.make(1).pipe(Stream.repeat(Schedule.forever), Stream.take(n), Stream.runDrain))
-        const small = yield* ops(1_000)
-        const large = yield* ops(2_000)
-        assertTrue(large / small < 2.5)
-      }))
-
-    it.effect("forever - releases each repetition before the next one starts", () =>
-      Effect.gen(function*() {
-        const log: Array<string> = []
-        const result = yield* Stream.make(1, 2).pipe(
-          Stream.tap((n) => Effect.sync(() => log.push(`emit ${n}`))),
-          (stream) =>
-            Stream.unwrap(Effect.as(
-              Effect.acquireRelease(
-                Effect.sync(() => log.push("acquire")),
-                () => Effect.sync(() => log.push("release"))
-              ),
-              stream
-            )),
-          Stream.forever,
-          Stream.take(3),
-          Stream.runCollect
-        )
-        deepStrictEqual(result, [1, 2, 1])
-        deepStrictEqual(log, ["acquire", "emit 1", "emit 2", "release", "acquire", "emit 1", "release"])
-      }))
-
-    it.effect("forever - work per repetition does not grow with the number of repetitions", () =>
-      Effect.gen(function*() {
-        const ops = (n: number) => countOps(Stream.make(1).pipe(Stream.forever, Stream.take(n), Stream.runDrain))
-        const small = yield* ops(1_000)
-        const large = yield* ops(2_000)
-        assertTrue(large / small < 2.5)
-      }))
-
     it.effect("repeat - does not swallow errors on a repetition", () =>
       Effect.gen(function*() {
         const ref = yield* (Ref.make(0))
@@ -5600,19 +5522,3 @@ const grouped = <A>(arr: Array<A>, size: number): Array<NonEmptyArray<A>> => {
   }
   return builder
 }
-
-// Counts the operations the fiber run loop evaluates: it asks the scheduler
-// whether to yield once per operation.
-const countOps = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<number, E> =>
-  Effect.suspend(() => {
-    let ops = 0
-    const scheduler: Scheduler.Scheduler = {
-      executionMode: "sync",
-      makeDispatcher: () => new Scheduler.MixedScheduler("sync").makeDispatcher(),
-      shouldYield: () => {
-        ops++
-        return false
-      }
-    }
-    return Effect.map(Effect.provideService(effect, Scheduler.Scheduler, scheduler), () => ops)
-  })

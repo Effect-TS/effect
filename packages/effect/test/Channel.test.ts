@@ -10,8 +10,56 @@ import * as Filter from "effect/Filter"
 import * as Latch from "effect/Latch"
 import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
+import * as Schedule from "effect/Schedule"
+import * as Scheduler from "effect/Scheduler"
+import * as Stream from "effect/Stream"
 
 describe("Channel", () => {
+  describe("repetition", () => {
+    it.effect("repeat provides the schedule metadata to each repetition", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromEffect(Effect.service(Schedule.CurrentMetadata)).pipe(
+          Channel.map((meta) => [meta.attempt, meta.output]),
+          Channel.repeat(Schedule.recurs(3)),
+          Channel.runCollect
+        )
+        assert.deepStrictEqual(result, [[0, undefined], [1, 0], [2, 1], [3, 2]])
+      }))
+
+    for (const kind of ["repeat", "forever"] as const) {
+      it.effect(kind + " releases each repetition before the next one starts", () =>
+        Effect.gen(function*() {
+          const log: Array<string> = []
+          const source = Channel.acquireUseRelease(
+            Effect.sync(() => log.push("acquire")),
+            () => Channel.fromArray([1, 2]).pipe(Channel.tap((n) => Effect.sync(() => log.push("emit " + n)))),
+            () => Effect.sync(() => log.push("release"))
+          )
+          const repeated = kind === "repeat" ? Channel.repeat(source, Schedule.recurs(1)) : Channel.forever(source)
+          const stream = Stream.fromChannel(Channel.map(repeated, (n) => [n]))
+          const result = yield* (kind === "repeat" ? stream : Stream.take(stream, 3)).pipe(Stream.runCollect)
+          assert.deepStrictEqual(result, kind === "repeat" ? [1, 2, 1, 2] : [1, 2, 1])
+          assert.deepStrictEqual(
+            log,
+            kind === "repeat"
+              ? ["acquire", "emit 1", "emit 2", "release", "acquire", "emit 1", "emit 2", "release"]
+              : ["acquire", "emit 1", "emit 2", "release", "acquire", "emit 1", "release"]
+          )
+        }))
+
+      it.effect(kind + " work per repetition does not grow", () =>
+        Effect.gen(function*() {
+          const source = Channel.fromArray([1])
+          const repeated = kind === "repeat" ? Channel.repeat(source, Schedule.forever) : Channel.forever(source)
+          const ops = (n: number) =>
+            countOps(Stream.fromChannel(Channel.map(repeated, (n) => [n])).pipe(Stream.take(n), Stream.runDrain))
+          const small = yield* ops(1_000)
+          const large = yield* ops(2_000)
+          assert.isBelow(large / small, 2.5)
+        }))
+    }
+  })
+
   describe("constructors", () => {
     it.effect("empty", () =>
       Effect.gen(function*() {
@@ -681,3 +729,18 @@ describe("Channel", () => {
       }))
   })
 })
+
+// The scheduler is asked whether to yield once for each fiber run-loop operation.
+const countOps = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<number, E> =>
+  Effect.suspend(() => {
+    let ops = 0
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "sync",
+      makeDispatcher: () => new Scheduler.MixedScheduler("sync").makeDispatcher(),
+      shouldYield: () => {
+        ops++
+        return false
+      }
+    }
+    return Effect.map(Effect.provideService(effect, Scheduler.Scheduler, scheduler), () => ops)
+  })
