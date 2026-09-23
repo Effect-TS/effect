@@ -2379,6 +2379,17 @@ describe("Stream", () => {
         deepStrictEqual(second, [1])
       }))
 
+    it.effect("ends a consumer that starts after the shared upstream has ended", () =>
+      Effect.gen(function*() {
+        const sharedStream = yield* Stream.share(Stream.make(1, 2, 3), {
+          capacity: 16,
+          idleTimeToLive: "1 minute"
+        })
+        yield* Stream.runDrain(sharedStream)
+
+        deepStrictEqual(yield* Stream.runCollect(sharedStream), [])
+      }))
+
     it.effect("parallel", () =>
       Effect.gen(function*() {
         const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
@@ -5557,6 +5568,24 @@ describe("Stream", () => {
       })))
   })
 
+  describe("broadcast", () => {
+    it.effect("ends a subscriber that subscribes after the upstream has ended", () =>
+      Effect.gen(function*() {
+        const stream = yield* Stream.broadcast(Stream.fromArrays([1], [2], [3]), { capacity: 8, replay: 2 })
+        yield* Stream.runDrain(stream)
+
+        deepStrictEqual(yield* Stream.runCollect(stream), [2, 3])
+      }))
+
+    it.effect("fails a subscriber that subscribes after the upstream has failed", () =>
+      Effect.gen(function*() {
+        const stream = yield* Stream.broadcast(Stream.fail("boom"), { capacity: 8 })
+        yield* Effect.exit(Stream.runDrain(stream))
+
+        deepStrictEqual(yield* Effect.exit(Stream.runCollect(stream)), Exit.fail("boom"))
+      }))
+  })
+
   describe("broadcastN", () => {
     it.effect("normalizes the number of downstream streams", () =>
       Effect.gen(function*() {
@@ -5580,6 +5609,15 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [[1, 2, 3], [1, 2, 3]])
+      }))
+
+    it.effect("ends a subscriber whose end a full dropping buffer would have dropped", () =>
+      Effect.gen(function*() {
+        const [stream] = yield* Stream.broadcastN(Stream.make(1, 2, 3), { n: 1, capacity: 1, strategy: "dropping" })
+        // Let the upstream fill the single slot and end before the subscriber pulls.
+        yield* Effect.yieldNow
+
+        deepStrictEqual(yield* Stream.runCollect(stream), [1, 2, 3])
       }))
 
     it.effect("propagates failures to all downstream streams", () =>

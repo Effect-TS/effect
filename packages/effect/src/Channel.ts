@@ -8875,8 +8875,9 @@ export const runIntoPubSubArray: {
  * **Details**
  *
  * Emitted non-empty arrays are published as output `Take` values. When the
- * channel ends, its final `Exit` is published so subscribers can observe
- * completion or failure.
+ * channel ends, the `PubSub` is ended with its final `Exit`, so every
+ * subscriber, including one that subscribes later, observes completion or
+ * failure once it has consumed its buffered values.
  *
  * @category destructors
  * @since 4.0.0
@@ -8928,7 +8929,7 @@ export const toPubSubTake: {
   ) {
     const pubsub = yield* makePubSub<Take.Take<OutElem, OutErr, OutDone>>(options)
     yield* runForEach(self, (value) => PubSub.publish(pubsub, value)).pipe(
-      Effect.onExit((exit) => PubSub.publish(pubsub, exit)),
+      Effect.onExit((exit) => PubSub.end(pubsub, exit)),
       Effect.forkScoped
     )
     return pubsub

@@ -9012,7 +9012,7 @@ export const broadcastN: {
       )
     }
     yield* Channel.runForEach(self.channel, (value) => PubSub.publish(pubsub, value)).pipe(
-      Effect.onExit((exit) => PubSub.publish(pubsub, exit)),
+      Effect.onExit((exit) => PubSub.end(pubsub, exit)),
       Effect.forkScoped
     )
     return streams as TupleOf<N, Stream<A, E>>
@@ -11723,7 +11723,9 @@ export const toPubSub: {
  *
  * **Details**
  *
- * `Take` values include the stream's end and failure signals.
+ * Chunks are published as `Take` values. When the stream ends, the PubSub is
+ * ended with the stream's `Exit`, so every subscriber, including one that
+ * subscribes later, observes completion or failure after its buffered chunks.
  *
  * **Example** (Converting to a PubSub of takes)
  *

@@ -73,6 +73,7 @@ export interface PubSub<in out A> extends Pipeable {
   readonly shutdownHook: Latch.Latch
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
   readonly strategy: PubSub.Strategy<A>
+  readonly ended: MutableRef.MutableRef<Option.Option<A>>
 }
 
 /**
@@ -273,6 +274,7 @@ export interface Subscription<out A> extends Pipeable {
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
   readonly strategy: PubSub.Strategy<any>
   readonly replayWindow: PubSub.ReplayWindow<A>
+  readonly ended: MutableRef.MutableRef<Option.Option<any>>
 }
 
 /**
@@ -316,7 +318,8 @@ export const make = <A>(
       Scope.makeUnsafe(),
       Latch.makeUnsafe(false),
       MutableRef.make(false),
-      options.strategy()
+      options.strategy(),
+      MutableRef.make(Option.none())
     )
   )
 
@@ -793,6 +796,107 @@ export const shutdown = <A>(self: PubSub<A>): Effect.Effect<void> =>
   }))
 
 /**
+ * Ends the `PubSub` with a final message.
+ *
+ * **When to use**
+ *
+ * Use to tell every subscriber that no more messages will follow, without
+ * losing the messages they have not consumed yet.
+ *
+ * **Details**
+ *
+ * Later publishes return `false`, as do publishers waiting for capacity when
+ * `end` is called. Each subscriber receives the messages already buffered
+ * for it, then the final message. Subscribers that arrive
+ * after the end receive the replayed messages, if any, and then the final
+ * message. The final message never occupies capacity, so a bounded `PubSub`
+ * cannot drop it. Returns `false` if the `PubSub` was already ended or shut
+ * down.
+ *
+ * `take`, `takeAll`, and `takeBetween` deliver the final message;
+ * non-suspending `takeUpTo` does not.
+ *
+ * **Gotchas**
+ *
+ * The final message is sticky: subsequent takes return it again. Consumers
+ * must treat it as terminal rather than continuing to take messages.
+ *
+ * **Example** (Ending a PubSub)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, PubSub } from "effect"
+ *
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const pubsub = yield* PubSub.bounded<string>(2)
+ *   const subscription = yield* PubSub.subscribe(pubsub)
+ *
+ *   yield* PubSub.publish(pubsub, "Hello")
+ *   const ended = yield* PubSub.end(pubsub, "Bye")
+ *
+ *   // Later publishes are rejected
+ *   const published = yield* PubSub.publish(pubsub, "World")
+ *
+ *   // Buffered messages are delivered before the final message
+ *   const first = yield* PubSub.take(subscription)
+ *   const last = yield* PubSub.take(subscription)
+ *
+ *   // Late subscribers receive the final message too
+ *   const late = yield* PubSub.subscribe(pubsub)
+ *   const lateMessage = yield* PubSub.take(late)
+ *   return [ended, published, first, last, lateMessage]
+ * }))
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [true, false, "Hello", "Bye", "Bye"]
+ * ```
+ *
+ * @see {@link shutdown} for interrupting subscribers instead of delivering a final message
+ *
+ * @category lifecycle
+ * @since 4.0.0
+ */
+export const end: {
+  <A>(value: A): (self: PubSub<A>) => Effect.Effect<boolean>
+  <A>(self: PubSub<A>, value: A): Effect.Effect<boolean>
+} = dual(2, <A>(self: PubSub<A>, value: A): Effect.Effect<boolean> => Effect.sync(() => endUnsafe(self, value)))
+
+/**
+ * Ends the `PubSub` with a final message synchronously.
+ *
+ * **Details**
+ *
+ * See {@link end} for the semantics.
+ *
+ * @category lifecycle
+ * @since 4.0.0
+ */
+export const endUnsafe: {
+  <A>(value: A): (self: PubSub<A>) => boolean
+  <A>(self: PubSub<A>, value: A): boolean
+} = dual(2, <A>(self: PubSub<A>, value: A): boolean => {
+  if (self.shutdownFlag.current || Option.isSome(self.ended.current)) return false
+  MutableRef.set(self.ended, Option.some(value))
+  if (self.strategy instanceof BackPressureStrategy) {
+    for (const [_, deferred, last] of MutableList.takeAll(self.strategy.publishers)) {
+      if (last) Deferred.doneUnsafe(deferred, Exit.succeed(false))
+    }
+  }
+  // A waiting subscriber has nothing buffered, so it receives the final
+  // message right away.
+  const exit = Exit.succeed(value)
+  for (const pollersSet of self.subscribers.values()) {
+    for (const pollers of pollersSet) {
+      let poller: Deferred.Deferred<A> | MutableList.Empty
+      while ((poller = MutableList.take(pollers)) !== MutableList.Empty) {
+        Deferred.doneUnsafe(poller, exit)
+      }
+    }
+  }
+  self.subscribers.clear()
+  return true
+})
+
+/**
  * Checks effectfully whether `shutdown` has been called, returning `true`
  * after shutdown and `false` otherwise.
  *
@@ -937,7 +1041,7 @@ export const publish: {
   <A>(self: PubSub<A>, value: A): Effect.Effect<boolean>
 } = dual(2, <A>(self: PubSub<A>, value: A): Effect.Effect<boolean> =>
   Effect.suspend(() => {
-    if (self.shutdownFlag.current) {
+    if (self.shutdownFlag.current || Option.isSome(self.ended.current)) {
       return Effect.succeed(false)
     }
 
@@ -992,7 +1096,7 @@ export const publishUnsafe: {
   <A>(value: A): (self: PubSub<A>) => boolean
   <A>(self: PubSub<A>, value: A): boolean
 } = dual(2, <A>(self: PubSub<A>, value: A): boolean => {
-  if (self.shutdownFlag.current) return false
+  if (self.shutdownFlag.current || Option.isSome(self.ended.current)) return false
   if (self.pubsub.publish(value)) {
     self.strategy.completeSubscribersUnsafe(self.pubsub, self.subscribers)
     return true
@@ -1040,7 +1144,7 @@ export const publishAll: {
   <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<boolean>
 } = dual(2, <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<boolean> =>
   Effect.suspend(() => {
-    if (self.shutdownFlag.current) {
+    if (self.shutdownFlag.current || Option.isSome(self.ended.current)) {
       return Effect.succeed(false)
     }
     const surplus = self.pubsub.publishAll(elements)
@@ -1112,7 +1216,7 @@ export const subscribe = <A>(self: PubSub<A>): Effect.Effect<Subscription<A>, ne
     Effect.contextWith((services) => {
       const localScope = Context.get(services, Scope.Scope)
       const scope = Scope.forkUnsafe(self.scope)
-      const subscription = makeSubscriptionUnsafe(self.pubsub, self.subscribers, self.strategy)
+      const subscription = makeSubscriptionUnsafe(self.pubsub, self.subscribers, self.strategy, self.ended)
       return Scope.addFinalizer(scope, unsubscribe(subscription)).pipe(
         Effect.andThen(Scope.addFinalizerExit(localScope, (exit) => Scope.close(scope, exit))),
         Effect.as(subscription)
@@ -1245,6 +1349,7 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
 const pollForItem = <A>(self: Subscription<A>) =>
   Effect.callback<A>((resume) => {
     if (self.shutdownFlag.current) return resume(Effect.interrupt)
+    if (Option.isSome(self.ended.current)) return resume(Effect.succeed(self.ended.current.value))
     const deferred = Deferred.makeUnsafe<A>()
     let set = self.subscribers.get(self.subscription)
     if (!set) {
@@ -1522,7 +1627,8 @@ const removeSubscribers = <A>(
 const makeSubscriptionUnsafe = <A>(
   pubsub: PubSub.Atomic<A>,
   subscribers: PubSub.Subscribers<A>,
-  strategy: PubSub.Strategy<A>
+  strategy: PubSub.Strategy<A>,
+  ended: MutableRef.MutableRef<Option.Option<A>>
 ): Subscription<A> =>
   new SubscriptionImpl(
     pubsub,
@@ -1532,7 +1638,8 @@ const makeSubscriptionUnsafe = <A>(
     Latch.makeUnsafe(false),
     MutableRef.make(false),
     strategy,
-    pubsub.replayWindow()
+    pubsub.replayWindow(),
+    ended
   )
 
 class BoundedPubSubArb<in out A> implements PubSub.Atomic<A> {
@@ -2284,6 +2391,7 @@ class SubscriptionImpl<in out A> implements Subscription<A> {
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
   readonly strategy: PubSub.Strategy<A>
   readonly replayWindow: PubSub.ReplayWindow<A>
+  readonly ended: MutableRef.MutableRef<Option.Option<A>>
 
   constructor(
     pubsub: PubSub.Atomic<A>,
@@ -2293,7 +2401,8 @@ class SubscriptionImpl<in out A> implements Subscription<A> {
     shutdownHook: Latch.Latch,
     shutdownFlag: MutableRef.MutableRef<boolean>,
     strategy: PubSub.Strategy<A>,
-    replayWindow: PubSub.ReplayWindow<A>
+    replayWindow: PubSub.ReplayWindow<A>,
+    ended: MutableRef.MutableRef<Option.Option<A>>
   ) {
     this.pubsub = pubsub
     this.subscribers = subscribers
@@ -2303,6 +2412,7 @@ class SubscriptionImpl<in out A> implements Subscription<A> {
     this.shutdownFlag = shutdownFlag
     this.strategy = strategy
     this.replayWindow = replayWindow
+    this.ended = ended
   }
 
   pipe() {
@@ -2321,6 +2431,7 @@ class PubSubImpl<in out A> implements PubSub<A> {
   readonly shutdownHook: Latch.Latch
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
   readonly strategy: PubSub.Strategy<A>
+  readonly ended: MutableRef.MutableRef<Option.Option<A>>
 
   constructor(
     pubsub: PubSub.Atomic<A>,
@@ -2328,7 +2439,8 @@ class PubSubImpl<in out A> implements PubSub<A> {
     scope: Scope.Closeable,
     shutdownHook: Latch.Latch,
     shutdownFlag: MutableRef.MutableRef<boolean>,
-    strategy: PubSub.Strategy<A>
+    strategy: PubSub.Strategy<A>,
+    ended: MutableRef.MutableRef<Option.Option<A>>
   ) {
     this.pubsub = pubsub
     this.subscribers = subscribers
@@ -2336,6 +2448,7 @@ class PubSubImpl<in out A> implements PubSub<A> {
     this.shutdownHook = shutdownHook
     this.shutdownFlag = shutdownFlag
     this.strategy = strategy
+    this.ended = ended
   }
 
   pipe() {
@@ -2349,8 +2462,9 @@ const makePubSubUnsafe = <A>(
   scope: Scope.Closeable,
   shutdownHook: Latch.Latch,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: PubSub.Strategy<A>
-): PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
+  strategy: PubSub.Strategy<A>,
+  ended: MutableRef.MutableRef<Option.Option<A>>
+): PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy, ended)
 
 const ensureCapacity = (capacity: number): void => {
   if (capacity <= 0) {
