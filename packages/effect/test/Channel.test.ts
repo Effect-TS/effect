@@ -33,16 +33,16 @@ describe("Channel", () => {
         const source = Channel.acquireUseRelease(
           Effect.sync(() => ++acquisitions),
           () => Channel.succeed(1),
-          () => Effect.fail("release failed")
+          () => Effect.die("release failed")
         )
-        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: number) =>
+        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: void) =>
           Effect.sync(() => {
             steps++
-            return [steps, Duration.zero] as const
+            return [steps, Duration.zero] as [number, Duration.Duration]
           })
         ))
-        const result = yield* Effect.result(Channel.runDrain(Channel.repeat(source, schedule)))
-        assertFailure(result, "release failed")
+        const exit = yield* Effect.exit(Channel.runDrain(Channel.repeat(source, schedule)))
+        assertExitFailure(exit, Cause.die("release failed"))
         assert.strictEqual(acquisitions, 1)
         assert.strictEqual(steps, 0)
       }))
@@ -62,7 +62,7 @@ describe("Channel", () => {
               releases++
             })
         )
-        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: number) =>
+        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: void) =>
           Effect.sync(() => {
             steps++
           }).pipe(
