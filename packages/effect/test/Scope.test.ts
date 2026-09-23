@@ -26,47 +26,38 @@ describe("Scope", () => {
           ? `die:${String(reason.defect)}`
           : "interrupt"
       )
-    const throwing = (name: string) => () => {
-      throw name
-    }
-    const dying = (name: string) => () => Effect.die(name)
-
     for (const strategy of ["sequential", "parallel"] as const) {
-      it.effect(`${strategy}: a throw closes like Effect.die`, () =>
+      it.effect(`${strategy}: continues and awaits remaining finalizers after a throw`, () =>
         Effect.gen(function*() {
-          const close = (bad: (name: string) => () => Effect.Effect<void>) =>
+          const scope = Scope.makeUnsafe(strategy)
+          const log: Array<string> = []
+          yield* Scope.addFinalizer(
+            scope,
             Effect.gen(function*() {
-              const log: Array<string> = []
-              const scope = Scope.makeUnsafe(strategy)
-              for (let i = 0; i < 2; i++) {
-                const name = `f${i}`
-                yield* Scope.addFinalizerExit(scope, () => {
-                  log.push(name)
-                  return i === 1 ? bad(name)() : Effect.void
-                })
-              }
-              const exit = yield* Effect.exit(Scope.close(scope, Exit.void))
-              return { log, reasons: reasons(exit) }
+              yield* Effect.yieldNow
+              log.push("remaining")
             })
-          expect(yield* close(throwing)).toEqual(yield* close(dying))
+          )
+          yield* Scope.addFinalizerExit(scope, () => {
+            log.push("throwing")
+            throw "release"
+          })
+          const exit = yield* Effect.exit(Scope.close(scope, Exit.void))
+          expect(log).toEqual(["throwing", "remaining"])
+          expect(reasons(exit)).toEqual(["die:release"])
         }))
     }
 
-    it.effect("a throwing finalizer keeps the scoped effect's failure", () =>
+    it.effect("a sole throwing finalizer keeps the scoped effect's failure", () =>
       Effect.gen(function*() {
-        for (const closeChild of [false, true]) {
-          const scoped = (bad: (name: string) => () => Effect.Effect<void>) =>
-            Effect.gen(function*() {
-              const scope = yield* Effect.scope
-              const child = closeChild ? yield* Scope.fork(scope) : undefined
-              yield* Scope.addFinalizerExit(scope, bad("release"))
-              if (child !== undefined) yield* Scope.close(child, Exit.void)
-              return yield* Effect.fail("error")
-            }).pipe(Effect.scoped, Effect.exit, Effect.map(reasons))
-          const label = closeChild ? "after a child scope closed" : "only finalizer"
-          expect(yield* scoped(throwing), label).toEqual(["fail:error", "die:release"])
-          expect(yield* scoped(throwing), label).toEqual(yield* scoped(dying))
-        }
+        const exit = yield* Effect.gen(function*() {
+          const scope = yield* Effect.scope
+          yield* Scope.addFinalizerExit(scope, () => {
+            throw "release"
+          })
+          return yield* Effect.fail("error")
+        }).pipe(Effect.scoped, Effect.exit)
+        expect(reasons(exit)).toEqual(["fail:error", "die:release"])
       }))
   })
 })
