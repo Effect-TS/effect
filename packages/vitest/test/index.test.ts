@@ -185,6 +185,18 @@ describe("layer", () => {
     })
   })
 
+  describe("next to Vitest fixtures", () => {
+    const withValue = it.extend("value", () => 1)
+
+    layer(Foo.layer)((it) => {
+      it.effect("runs its own tests", () => Effect.void)
+    })
+
+    withValue("leaves fixture tests in the same suite working", ({ value }) => {
+      expect(value).toEqual(1)
+    })
+  })
+
   layer(Sleeper.layer)("test services", (it) => {
     it.effect("TestClock", () =>
       Effect.gen(function*() {

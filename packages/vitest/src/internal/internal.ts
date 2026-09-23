@@ -21,8 +21,11 @@ const getCurrentSuite = V.TestRunner.getCurrentSuite
 
 const runPromise: <E, A>(
   _: Effect.Effect<A, E, never>,
-  ctx?: V.TestContext | undefined
-) => Promise<A> = Effect.fnUntraced(function*<E, A>(effect: Effect.Effect<A, E>, _ctx?: Vitest.TestContext) {
+  ctx?: Pick<V.TestContext, "signal"> | undefined
+) => Promise<A> = Effect.fnUntraced(function*<E, A>(
+  effect: Effect.Effect<A, E>,
+  _ctx?: Pick<Vitest.TestContext, "signal">
+) {
   const exit = yield* Effect.exit(effect)
   if (Exit.isFailure(exit)) {
     const errors = Cause.prettyErrors(exit.cause)
@@ -321,17 +324,18 @@ export const layer = <R, E>(
     let remaining = blockTasks.length
 
     V.beforeEach(
-      (ctx) => {
-        if (!blockTaskSet.has(ctx.task)) {
+      // Destructured so Vitest can parse the hook once the suite defines fixtures.
+      ({ onTestFinished, signal, task }) => {
+        if (!blockTaskSet.has(task)) {
           return
         }
-        ctx.onTestFinished(() => {
+        onTestFinished(() => {
           remaining--
           if (remaining === 0) {
             return closeScope()
           }
         })
-        return runPromise(Effect.asVoid(contextEffect), ctx)
+        return runPromise(Effect.asVoid(contextEffect), { signal })
       },
       hookTimeout(options?.timeout)
     )
