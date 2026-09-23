@@ -2620,6 +2620,30 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(reads, 2)
     })
 
+    it("tracks Effect-body dependencies after hydrating a wrapped atom", () => {
+      const dependency = Atom.make(1).pipe(Atom.keepAlive)
+      let runs = 0
+      const atom = Atom.make((get) => Effect.sync(() => {
+        runs++
+        return get(dependency) * 2
+      })).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.set(dependency, 7)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 14)
+      assert.strictEqual(runs, 1)
+    })
+
     it("does not run a hydrated effect until invalidated", () => {
       let reads = 0
       let runs = 0
