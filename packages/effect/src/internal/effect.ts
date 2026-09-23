@@ -711,6 +711,17 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       if (op[symbol]) return op as any
     }
   }
+  // Passes a success value straight to the next continuation instead of
+  // returning an Exit for the run loop to unwrap. Each call counts as an
+  // operation, and every `maxInlineSteps`th call returns an Exit instead, so
+  // continuations calling continuations never nest deeper than that.
+  succeedWith(value: unknown): Primitive | Yield {
+    if ((++this.currentOpCount & (maxInlineSteps - 1)) === 0) {
+      return exitSucceed(value) as any
+    }
+    const cont = this.getCont(contA)
+    return cont ? cont[contA](value, this) : this.yieldWith(exitSucceed(value))
+  }
   yieldWith(value: Exit.Exit<any, any> | (() => void)): Yield {
     this._yielded = value
     return Yield
@@ -770,6 +781,9 @@ const deferredInterruptCont: any = {
     return failCause(fiber._interruptedCause!)
   }
 }
+
+// must be a power of two
+const maxInlineSteps = 32
 
 const fiberMiddleware = {
   interruptChildren: undefined as
@@ -1498,6 +1512,9 @@ ContImpl.prototype = OnSuccessProto
 const returnPayload = function(this: { readonly payload: any }) {
   return this.payload
 }
+const succeedPayload = function(this: { readonly payload: any }, _value: unknown, fiber: FiberImpl) {
+  return fiber.succeedWith(this.payload)
+}
 // V8 includes the property name of a stored continuation in its stack trace.
 // Other engines need an explicit frame for the stack cleaner to cut at.
 const continuationMarksStack = (() => {
@@ -1509,9 +1526,9 @@ const continuationMarksStack = (() => {
   }
   return probe[marker]()?.includes("[as " + marker + "]") === true
 })()
-const mapCont = function(this: { readonly payload: any }, value: any) {
+const mapCont = function(this: { readonly payload: any }, value: any, fiber: FiberImpl) {
   const f = this.payload
-  return succeed(continuationMarksStack ? f(value) : internalCall(() => f(value)))
+  return fiber.succeedWith(continuationMarksStack ? f(value) : internalCall(() => f(value)))
 }
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
@@ -1519,10 +1536,10 @@ const andThenCont = function(this: { readonly payload: any }, value: any) {
 }
 const tapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return new ContImpl(f(value), returnPayload, exitSucceed(value))
+  return new ContImpl(f(value), succeedPayload, value)
 }
 const tapEffectCont = function(this: { readonly payload: any }, value: any) {
-  return new ContImpl(this.payload, returnPayload, exitSucceed(value))
+  return new ContImpl(this.payload, succeedPayload, value)
 }
 
 /** @internal */
@@ -3590,13 +3607,15 @@ OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 
 // `match` and `matchCause` keep the caller's handlers object as the frame's
 // payload and call it from the prototype, so no closure is built per call.
-const matchSuccess = function(this: any, value: any) {
+const matchSuccess = function(this: any, value: any, fiber: FiberImpl) {
   const handlers = this.payload
-  return succeed(continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value)))
+  return fiber.succeedWith(
+    continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value))
+  )
 }
 const makeMatch = (
   op: string,
-  onFailure: (this: any, cause: Cause.Cause<any>) => Effect.Effect<any, any, any>
+  onFailure: (this: any, cause: Cause.Cause<any>, fiber: FiberImpl) => Primitive | Yield
 ) => {
   const Proto = makePrimitiveProto({
     op,
@@ -3614,17 +3633,19 @@ const makeMatch = (
   MatchImpl.prototype = Proto
   return MatchImpl
 }
-const MatchImpl = makeMatch("Match", function(cause) {
+const MatchImpl = makeMatch("Match", function(cause, fiber) {
   const fail = cause.reasons.find(isFailReason)
-  if (fail === undefined) return failCause(cause)
+  if (fail === undefined) return failCause(cause) as any
   const handlers = this.payload
-  return succeed(
+  return fiber.succeedWith(
     continuationMarksStack ? handlers.onFailure(fail.error) : internalCall(() => handlers.onFailure(fail.error))
   )
 })
-const MatchCauseImpl = makeMatch("MatchCause", function(cause) {
+const MatchCauseImpl = makeMatch("MatchCause", function(cause, fiber) {
   const handlers = this.payload
-  return succeed(continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause)))
+  return fiber.succeedWith(
+    continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause))
+  )
 })
 
 /** @internal */
@@ -3783,11 +3804,11 @@ const exitPrimitive: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Ex
       fiber._stack.push(this)
       return this[args] as any
     },
-    [contA](value, _, exit) {
-      return succeed(exit ?? exitSucceed(value))
+    [contA](value, fiber, exit) {
+      return fiber.succeedWith(exit ?? exitSucceed(value))
     },
-    [contE](cause, _, exit) {
-      return succeed(exit ?? exitFailCause(cause))
+    [contE](cause, fiber, exit) {
+      return fiber.succeedWith(exit ?? exitFailCause(cause))
     }
   })
 
