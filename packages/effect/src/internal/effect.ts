@@ -617,7 +617,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   pollUnsafe(): Exit.Exit<A, E> | undefined {
     return this._exit
   }
-  evaluate(effect: Primitive): void {
+  evaluate(effect: Primitive, resumedFromBudgetYield?: boolean): void {
     if (this._exit) {
       return
     } else if (this._yielded !== undefined) {
@@ -625,7 +625,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._yielded = undefined
       yielded()
     }
-    const exit = this.runLoop(effect)
+    const exit = this.runLoop(effect, resumedFromBudgetYield)
     if (exit === Yield) {
       return
     }
@@ -654,7 +654,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._children = undefined
     this.context = Context.empty()
   }
-  runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
+  runLoop(effect: Primitive, resumedFromBudgetYield?: boolean): Exit.Exit<A, E> | Yield {
     const prevFiber = (globalThis as any)[currentFiberTypeId]
     ;(globalThis as any)[currentFiberTypeId] = this
     const prevRunning = this._running
@@ -674,11 +674,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         if (
           !yielding &&
           !cache.preventYield &&
-          cache.scheduler.shouldYield(this as any)
+          cache.scheduler.shouldYield(this as any) &&
+          // The first two operations after the loop's own yield are that
+          // yield's exit and the effect it suspended. Yielding again before
+          // they run repeats the yield without doing any of the fiber's work,
+          // so with a budget of 1 or 2 the fiber would never finish.
+          (resumedFromBudgetYield !== true || this.currentOpCount > 2)
         ) {
           yielding = true
           const prev = current
-          current = flatMap(yieldNow, () => prev as any) as any
+          current = flatMap(budgetYieldNow, () => prev as any) as any
         }
         current = cache.tracerContext
           ? cache.tracerContext(current as any, this)
@@ -1024,23 +1029,34 @@ export const fromResult: <A, E>(result: Result.Result<A, E>) => Effect.Effect<A,
 export const fromNullishOr = <A>(value: A): Effect.Effect<NonNullable<A>, Cause.NoSuchElementError> =>
   value == null ? fail(new NoSuchElementError()) : succeed(value)
 
+// `fromBudget` tells the run loop, when the fiber resumes, that it suspended
+// because it reached its operation budget rather than because a program asked
+// to yield.
+const makeYieldNowWith = (
+  fromBudget: boolean
+): (priority?: number) => Effect.Effect<void> =>
+  makePrimitive<(priority?: number) => Effect.Effect<void>>({
+    op: "Yield",
+    [evaluate](fiber) {
+      let resumed = false
+      fiber.currentDispatcher.scheduleTask(() => {
+        if (resumed) return
+        fiber.evaluate(exitVoid as any, fromBudget)
+      }, this[args] ?? 0)
+      return fiber.yieldWith(() => {
+        resumed = true
+      })
+    }
+  })
+
 /** @internal */
-export const yieldNowWith: (priority?: number) => Effect.Effect<void> = makePrimitive({
-  op: "Yield",
-  [evaluate](fiber) {
-    let resumed = false
-    fiber.currentDispatcher.scheduleTask(() => {
-      if (resumed) return
-      fiber.evaluate(exitVoid as any)
-    }, this[args] ?? 0)
-    return fiber.yieldWith(() => {
-      resumed = true
-    })
-  }
-})
+export const yieldNowWith: (priority?: number) => Effect.Effect<void> = makeYieldNowWith(false)
 
 /** @internal */
 export const yieldNow: Effect.Effect<void> = yieldNowWith(0)
+
+// The yield the run loop inserts when a fiber reaches its operation budget.
+const budgetYieldNow: Effect.Effect<void> = makeYieldNowWith(true)(0)
 
 /** @internal */
 export const succeedSome = <A>(a: A): Effect.Effect<Option.Option<A>> => succeed(Option.some(a))
