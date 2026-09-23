@@ -302,13 +302,9 @@ export const causeMap: {
 /** @internal */
 export const causeSquash = <E>(self: Cause.Cause<E>): unknown => {
   let die: Cause.Die | undefined
-  for (let i = 0; i < self.reasons.length; i++) {
-    const reason = self.reasons[i]
-    if (reason._tag === "Fail") {
-      return reason.error
-    } else if (reason._tag === "Die" && die === undefined) {
-      die = reason
-    }
+  for (const reason of self.reasons) {
+    if (reason._tag === "Fail") return reason.error
+    if (reason._tag === "Die") die ??= reason
   }
   if (die !== undefined) return die.defect
   if (self.reasons.length > 0) return new globalThis.Error("All fibers interrupted without error")
