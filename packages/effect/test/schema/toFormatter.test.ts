@@ -340,7 +340,7 @@ describe("toFormatter", () => {
   })
 
   describe("suspend", () => {
-    it("compiles a recursive body once, not once per value level", () => {
+    it("compiles a recursive body once per formatter, including with empty options", () => {
       interface A {
         readonly a: number
         readonly as: ReadonlyArray<A>
@@ -357,34 +357,16 @@ describe("toFormatter", () => {
         as: Schema.Array(Schema.suspend((): Schema.Codec<A> => schema))
       })
       const make = (depth: number): A => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
-      const format = Schema.toFormatter(schema)
-      strictEqual(format(make(2)), `{ "a": #2, "as": [{ "a": #1, "as": [{ "a": #0, "as": [] }] }] }`)
-      format(make(8))
-      strictEqual(compiled, 1)
-    })
-
-    it("shares compiled bodies when options carry no hook", () => {
-      interface A {
-        readonly a: number
-        readonly as: ReadonlyArray<A>
+      let expectedCompilations = 0
+      for (const options of [undefined, {}, { onBefore: undefined }]) {
+        expectedCompilations++
+        const format = Schema.toFormatter(schema, options)
+        strictEqual(compiled, expectedCompilations)
+        strictEqual(format(make(2)), `{ "a": #2, "as": [{ "a": #1, "as": [{ "a": #0, "as": [] }] }] }`)
+        format(make(8))
+        strictEqual(compiled, expectedCompilations)
       }
-      let compiled = 0
-      const Counted = Schema.Number.annotate({
-        toFormatter: () => {
-          compiled++
-          return (n: number) => `#${n}`
-        }
-      })
-      const schema = Schema.Struct({
-        a: Counted,
-        as: Schema.Array(Schema.suspend((): Schema.Codec<A> => schema))
-      })
-      const make = (depth: number): A => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
-      for (const options of [{}, { onBefore: undefined }]) {
-        compiled = 0
-        Schema.toFormatter(schema, options)(make(8))
-        strictEqual(compiled, 1, `options ${JSON.stringify(options)}`)
-      }
+      strictEqual(compiled, 3) // separate formatters do not share compiled bodies
     })
 
     it("keeps invoking onBefore at every value level", () => {
