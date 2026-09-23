@@ -2623,10 +2623,12 @@ describe("Atom", { concurrent: false }, () => {
     it("tracks Effect-body dependencies after hydrating a wrapped atom", () => {
       const dependency = Atom.make(1).pipe(Atom.keepAlive)
       let runs = 0
-      const atom = Atom.make((get) => Effect.sync(() => {
-        runs++
-        return get(dependency) * 2
-      })).pipe(
+      const atom = Atom.make((get) =>
+        Effect.sync(() => {
+          runs++
+          return get(dependency) * 2
+        })
+      ).pipe(
         Atom.withReactivity(["counter"]),
         Atom.serializable({ key: "hydrated", schema: resultSchema }),
         Atom.keepAlive
