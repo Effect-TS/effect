@@ -18,6 +18,79 @@ const makeWorker = Effect.gen(function*() {
 })
 
 describe("FiberMap", () => {
+  for (const startImmediately of [false, true, undefined]) {
+    for (const curried of [false, true]) {
+      it.effect(`run respects startImmediately: ${startImmediately}, curried: ${curried}`, () =>
+        Effect.gen(function*() {
+          const container = yield* FiberMap.make<string>()
+          const events: Array<string> = []
+          const effect = Effect.sync(() => {
+            events.push("started")
+          })
+          const fiber = yield* (curried
+            ? effect.pipe(FiberMap.run(container, "key", { startImmediately }))
+            : FiberMap.run(container, "key", effect, { startImmediately }))
+          events.push("returned")
+          yield* Fiber.join(fiber)
+          assert.deepStrictEqual(
+            events,
+            startImmediately === false
+              ? ["returned", "started"]
+              : ["started", "returned"]
+          )
+        }))
+    }
+  }
+
+  it.effect("deferred fibers outlive their caller and stop when the container scope closes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const container = yield* FiberMap.make<string>().pipe(Scope.provide(scope))
+      const ready = yield* Deferred.make<void>()
+      let finalized = false
+      const caller = yield* Effect.forkChild(
+        FiberMap.run(
+          container,
+          "key",
+          Deferred.succeed(ready, undefined).pipe(
+            Effect.andThen(Effect.never),
+            Effect.ensuring(Effect.sync(() => {
+              finalized = true
+            }))
+          ),
+          { startImmediately: false }
+        )
+      )
+      const fiber = yield* Fiber.join(caller)
+      yield* Deferred.await(ready)
+      assert.isUndefined(fiber.pollUnsafe())
+      assert.isFalse(finalized)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      assert.isTrue(finalized)
+    }))
+
+  it.effect("closing the container before deferred startup prevents the effect from running", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const container = yield* FiberMap.make<string>().pipe(Scope.provide(scope))
+      let started = false
+      const fiber = yield* FiberMap.run(
+        container,
+        "key",
+        Effect.sync(() => {
+          started = true
+        }),
+        {
+          startImmediately: false
+        }
+      )
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      yield* Effect.yieldNow
+      assert.isFalse(started)
+    }))
+
   it.effect("retains ownership of replacements made by a synchronous finalizer", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()

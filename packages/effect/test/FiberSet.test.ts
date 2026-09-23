@@ -4,6 +4,77 @@ import { Array, Deferred, Effect, Exit, Fiber, FiberSet, pipe, Ref, Scope } from
 import { TestClock } from "effect/testing"
 
 describe("FiberSet", () => {
+  for (const startImmediately of [false, true, undefined]) {
+    for (const curried of [false, true]) {
+      it.effect(`run respects startImmediately: ${startImmediately}, curried: ${curried}`, () =>
+        Effect.gen(function*() {
+          const container = yield* FiberSet.make()
+          const events: Array<string> = []
+          const effect = Effect.sync(() => {
+            events.push("started")
+          })
+          const fiber = yield* (curried
+            ? effect.pipe(FiberSet.run(container, { startImmediately }))
+            : FiberSet.run(container, effect, { startImmediately }))
+          events.push("returned")
+          yield* Fiber.join(fiber)
+          assert.deepStrictEqual(
+            events,
+            startImmediately === false
+              ? ["returned", "started"]
+              : ["started", "returned"]
+          )
+        }))
+    }
+  }
+
+  it.effect("deferred fibers outlive their caller and stop when the container scope closes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const container = yield* FiberSet.make().pipe(Scope.provide(scope))
+      const ready = yield* Deferred.make<void>()
+      let finalized = false
+      const caller = yield* Effect.forkChild(
+        FiberSet.run(
+          container,
+          Deferred.succeed(ready, undefined).pipe(
+            Effect.andThen(Effect.never),
+            Effect.ensuring(Effect.sync(() => {
+              finalized = true
+            }))
+          ),
+          { startImmediately: false }
+        )
+      )
+      const fiber = yield* Fiber.join(caller)
+      yield* Deferred.await(ready)
+      assert.isUndefined(fiber.pollUnsafe())
+      assert.isFalse(finalized)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      assert.isTrue(finalized)
+    }))
+
+  it.effect("closing the container before deferred startup prevents the effect from running", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const container = yield* FiberSet.make().pipe(Scope.provide(scope))
+      let started = false
+      const fiber = yield* FiberSet.run(
+        container,
+        Effect.sync(() => {
+          started = true
+        }),
+        {
+          startImmediately: false
+        }
+      )
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      yield* Effect.yieldNow
+      assert.isFalse(started)
+    }))
+
   it.effect("identifies FiberSet in JSON", () =>
     Effect.gen(function*() {
       const set = yield* FiberSet.make()
