@@ -39,8 +39,9 @@ describe("Fiber", () => {
     afterEach(() => {
       vi.unstubAllGlobals()
     })
+    const observerError = new Error("observer")
     const throwing = () => {
-      throw new Error("observer")
+      throw observerError
     }
 
     it("does not stop the other observers", () => {
@@ -52,9 +53,24 @@ describe("Fiber", () => {
       fiber.addObserver((exit) => {
         observed.push(exit._tag)
       })
+      const secondError = new Error("second observer")
+      fiber.addObserver(() => {
+        throw secondError
+      })
+      fiber.addObserver((exit) => {
+        observed.push(exit._tag)
+      })
       latch.openUnsafe()
-      assert.deepStrictEqual(observed, ["Success"])
-      assert.deepStrictEqual(reported, [new Error("observer")])
+      assert.deepStrictEqual(observed, ["Success", "Success"])
+      assert.deepStrictEqual(reported, [observerError, secondError])
+    })
+
+    it("reports a throwing observer added after the fiber has exited", () => {
+      collectReports()
+      const fiber = Effect.runFork(Effect.succeed(1))
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(1))
+      assert.doesNotThrow(() => fiber.addObserver(throwing))
+      assert.deepStrictEqual(reported, [observerError])
     })
 
     it("does not stop the completer resuming other waiters", () => {
@@ -65,7 +81,7 @@ describe("Fiber", () => {
       const completer = Effect.runSyncExit(Deferred.succeed(deferred, undefined))
       assert.deepStrictEqual(completer, Exit.succeed(true))
       assert.deepStrictEqual(other.pollUnsafe(), Exit.void)
-      assert.deepStrictEqual(reported, [new Error("observer")])
+      assert.deepStrictEqual(reported, [observerError])
     })
 
     it("in runtime metrics does not stop the fiber ending", () => {
@@ -81,7 +97,7 @@ describe("Fiber", () => {
       assert.deepStrictEqual(completer, Exit.succeed(true))
       assert.deepStrictEqual(waiter.pollUnsafe(), Exit.void)
       assert.deepStrictEqual(other.pollUnsafe(), Exit.void)
-      assert.deepStrictEqual(reported, [new Error("observer")])
+      assert.deepStrictEqual(reported, [observerError])
     })
   })
 
