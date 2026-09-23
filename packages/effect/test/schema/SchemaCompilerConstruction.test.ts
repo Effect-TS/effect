@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Schema, SchemaAST, SchemaParser } from "effect"
+import { Effect, Schema, SchemaAST, SchemaParser, SchemaTransformation } from "effect"
 import * as Codegen from "effect/internal/schema/codegen"
 import * as Registry from "effect/internal/schema/compilerRegistry"
 import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
@@ -356,4 +356,179 @@ describe("Schema compiler construction", { concurrent: false }, () => {
       assert.strictEqual((yield* Effect.exit(make({ b: "bad" } as never)))._tag, "Failure")
       assert.strictEqual(defaults, 2)
     }))
+})
+
+describe("Schema code generation limits", () => {
+  const wide = (width: number) => {
+    const fields: Record<string, Schema.String> = {}
+    for (let i = 0; i < width; i++) fields[`f${i}`] = Schema.String
+    return Schema.Struct(fields)
+  }
+  const nest = (schema: Schema.Top, depth: number): Schema.Top => {
+    let out = schema
+    for (let i = 0; i < depth; i++) out = Schema.Struct({ n: out })
+    return out
+  }
+  const shared = (schema: Schema.Top, count: number) => {
+    const fields: Record<string, Schema.Top> = {}
+    for (let i = 0; i < count; i++) fields[`p${i}`] = schema
+    return Schema.Struct(fields)
+  }
+  const emits = (schema: Schema.Top, operation: Codegen.DecoderOperation) =>
+    Codegen.generate(schema.ast, operation) !== undefined
+
+  it("counts every occurrence of a shared schema against the node limit", () => {
+    assert.isTrue(emits(wide(Codegen.maxGeneratedNodes - 1), "decode"))
+    assert.isFalse(emits(wide(Codegen.maxGeneratedNodes), "decode"))
+    const field = wide(600)
+    assert.isTrue(emits(shared(field, 3), "decode"))
+    assert.isFalse(emits(shared(field, 4), "decode"))
+    assert.isTrue(emits(shared(field, 3), "make"))
+    assert.isFalse(emits(shared(field, 4), "make"))
+    const half = shared(wide(300), 2)
+    assert.isTrue(emits(half, "decode"))
+    assert.isTrue(emits(shared(half, 3), "decode"))
+    assert.isFalse(emits(shared(half, 4), "decode"))
+  })
+
+  it("limits depth through shared schemas", () => {
+    assert.isTrue(emits(nest(Schema.String, 256), "decode"))
+    assert.isFalse(emits(nest(Schema.String, 257), "decode"))
+    const empty = nest(Schema.Struct({}), 200)
+    assert.isTrue(emits(empty, "decode"))
+    assert.isTrue(emits(nest(empty, 56), "decode"))
+    assert.isFalse(emits(nest(empty, 57), "decode"))
+    const inner = nest(Schema.String, 200)
+    assert.isTrue(emits(nest(inner, 56), "decode"))
+    assert.isFalse(emits(nest(inner, 57), "decode"))
+    assert.isTrue(emits(nest(inner, 56), "make"))
+    assert.isFalse(emits(nest(inner, 57), "make"))
+    let array: Schema.Top = Schema.String
+    for (let i = 0; i < 256; i++) array = Schema.Array(array)
+    assert.isTrue(emits(array, "decode"))
+    assert.isFalse(emits(Schema.Array(array), "decode"))
+  })
+
+  it("stops analysing past the depth limit", () => {
+    let array: Schema.Top = Schema.String
+    for (let i = 0; i < 10_000; i++) array = Schema.Array(array)
+    const struct = nest(Schema.String, 10_000)
+    for (const operation of ["is", "decode", "make", "decodeEffect", "makeEffect"] as const) {
+      assert.isString(Codegen.generate(array.ast, operation) ?? "")
+      assert.isString(Codegen.generate(struct.ast, operation) ?? "")
+    }
+    assert.isFalse(emits(array, "decode"))
+    assert.isFalse(emits(struct, "make"))
+  })
+
+  it("stops at the first occurrence of a schema beyond the depth limit", () => {
+    let reads = 0
+    const spine = nest(Schema.String, 300).ast
+    let ast: SchemaAST.AST = new Proxy(spine, {
+      get(target, key, receiver) {
+        reads++
+        return Reflect.get(target, key, receiver)
+      }
+    })
+    for (let i = 0; i < 12; i++) {
+      ast = new SchemaAST.Objects([
+        new SchemaAST.PropertySignature("a", ast),
+        new SchemaAST.PropertySignature("b", ast)
+      ], [])
+    }
+    assert.isUndefined(Codegen.generate(ast, "decode"))
+    assert.isUndefined(Codegen.generate(ast, "make"))
+    assert.isBelow(reads, 100)
+  })
+
+  it("stops at the first field that cannot be generated", () => {
+    let reads = 0
+    const large: SchemaAST.AST = new Proxy(wide(3000).ast, {
+      get(target, key, receiver) {
+        reads++
+        return Reflect.get(target, key, receiver)
+      }
+    })
+    const field = new SchemaAST.Objects([
+      new SchemaAST.PropertySignature("d", Schema.Date.ast),
+      new SchemaAST.PropertySignature("a", large)
+    ], [])
+    const ast = new SchemaAST.Objects(
+      Array.from({ length: 16 }, (_, i) => new SchemaAST.PropertySignature(`f${i}`, field)),
+      []
+    )
+    for (const operation of ["is", "decode", "make", "decodeEffect", "makeEffect"] as const) {
+      Codegen.generate(ast, operation)
+    }
+    assert.isUndefined(Codegen.generate(ast, "decode"))
+    assert.strictEqual(reads, 0)
+  })
+
+  it("answers each enclosing schema without walking back down to a part that cannot be generated", () => {
+    let reads = 0
+    const date: SchemaAST.AST = new Proxy(Schema.Date.ast, {
+      get(target, key, receiver) {
+        reads++
+        return Reflect.get(target, key, receiver)
+      }
+    })
+    const levels: Array<SchemaAST.AST> = [date]
+    for (let i = 0; i < 50; i++) {
+      levels.push(new SchemaAST.Objects([new SchemaAST.PropertySignature("n", levels[levels.length - 1])], []))
+    }
+    for (const ast of levels.slice(1).reverse()) {
+      assert.isUndefined(Codegen.generate(ast, "decode"))
+    }
+    assert.isBelow(reads, 10)
+  })
+
+  it("compiles a schema that fits even after meeting it beyond the depth limit", () => {
+    const inner = nest(Schema.String, 100)
+    assert.isFalse(emits(nest(inner, 200), "decode"))
+    assert.isFalse(emits(nest(inner, 200), "make"))
+    assert.isTrue(emits(Schema.Struct({ a: inner }), "decode"))
+    assert.isTrue(emits(Schema.Struct({ a: inner }), "is"))
+    assert.isTrue(emits(Schema.Struct({ a: inner }), "make"))
+  })
+
+  it("emits a type guard only when no nested container is checked", () => {
+    const check = Schema.makeFilter(() => undefined)
+    assert.isTrue(emits(Schema.Struct({ a: Schema.String.check(check) }), "is"))
+    assert.isTrue(emits(Schema.Struct({ a: Schema.TemplateLiteral(["a", Schema.String]).check(check) }), "is"))
+    assert.isFalse(emits(Schema.Struct({ a: Schema.Struct({ b: Schema.String }).check(check) }), "is"))
+    assert.isFalse(emits(Schema.Struct({ a: Schema.Array(Schema.String).check(check) }), "is"))
+    assert.isTrue(emits(Schema.Struct({ a: Schema.Struct({ b: Schema.String }).check(check) }), "decode"))
+  })
+
+  it("rejects nested encodings, declarations and suspensions", () => {
+    const trimmed = Schema.String.pipe(Schema.decodeTo(Schema.String, SchemaTransformation.trim()))
+    const Rec: Schema.Top = Schema.Struct({ a: Schema.String, next: Schema.suspend(() => Rec) })
+    for (const field of [trimmed, Schema.Date, Rec]) {
+      const schema = Schema.Struct({ a: Schema.String, deep: nest(Schema.Struct({ x: field }), 3) })
+      assert.isFalse(emits(schema, "decode"))
+      assert.include(Codegen.generate(schema.ast, "decodeEffect"), ",false,")
+    }
+    assert.include(Codegen.generate(Schema.Struct({ a: Schema.String }).ast, "decodeEffect"), ",true,")
+    const root = Schema.Struct({ a: Schema.String }).pipe(
+      Schema.decodeTo(Schema.Struct({ a: Schema.String }), SchemaTransformation.passthrough())
+    )
+    assert.isFalse(emits(root, "decode"))
+    assert.include(Codegen.generate(root.ast, "decodeEffect"), ",false,()=>")
+    assert.notInclude(Codegen.generate(Schema.Struct({ a: root }).ast, "decodeEffect"), "()=>")
+    assert.isFalse(emits(Schema.Struct({ a: root }), "decode"))
+  })
+
+  it("compiles construction only without nested records, unions or defaults", () => {
+    assert.isTrue(emits(Schema.Struct({ a: Schema.Struct({ b: Schema.String }) }), "make"))
+    assert.isFalse(emits(Schema.Struct({ a: Schema.Record(Schema.String, Schema.Number) }), "make"))
+    assert.isFalse(emits(Schema.Struct({ a: Schema.Union([Schema.String, Schema.Number]) }), "make"))
+    assert.isFalse(
+      emits(
+        Schema.Struct({
+          a: Schema.Struct({ b: Schema.String.pipe(Schema.withConstructorDefault(Effect.succeed("b"))) })
+        }),
+        "make"
+      )
+    )
+  })
 })
