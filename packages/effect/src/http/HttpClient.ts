@@ -9,7 +9,7 @@
  * filtering, retries, rate limiting, cookies, redirect handling, scoped request
  * abortion, and tracing support.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -49,7 +49,7 @@ const TypeId = "~effect/http/HttpClient"
 /**
  * Returns `true` if the provided value is an `HttpClient`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -58,7 +58,7 @@ export const isHttpClient = (u: unknown): u is HttpClient => Predicate.hasProper
 /**
  * HTTP client whose requests produce `HttpClientResponse` values and can fail with `HttpClientError`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export interface HttpClient extends HttpClient.With<Error.HttpClientError> {}
 /**
  * Namespace containing type-level members associated with `HttpClient`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace HttpClient {
@@ -78,7 +78,7 @@ export declare namespace HttpClient {
    *
    * It exposes preprocessing, postprocessing, direct request execution, and method-specific helpers.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -127,7 +127,7 @@ export declare namespace HttpClient {
   /**
    * Effectful transformation applied to a request before the client executes it.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -138,7 +138,7 @@ export declare namespace HttpClient {
   /**
    * Function that turns a preprocessed request effect into the response effect executed by the client.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -155,7 +155,7 @@ export declare namespace HttpClient {
  * Use to provide the default outgoing HTTP client service used by request
  * accessors such as `execute`, `get`, and `post`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -172,7 +172,7 @@ const accessor = (method: keyof HttpClient) => (...args: Array<any>): Effect.Eff
 /**
  * Executes a prebuilt `HttpClientRequest` using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -183,7 +183,7 @@ export const execute: (
 /**
  * Executes a `GET` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -196,7 +196,7 @@ export const get: (url: string | URL, options?: HttpClientRequest.Options.NoUrl 
 /**
  * Executes a `QUERY` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -209,7 +209,7 @@ export const query: (url: string | URL, options?: HttpClientRequest.Options.NoUr
 /**
  * Executes a `HEAD` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const head: (url: string | URL, options?: HttpClientRequest.Options.NoUrl
 /**
  * Executes a `POST` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -235,7 +235,7 @@ export const post: (url: string | URL, options?: HttpClientRequest.Options.NoUrl
 /**
  * Executes a `PATCH` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -248,7 +248,7 @@ export const patch: (url: string | URL, options?: HttpClientRequest.Options.NoUr
 /**
  * Executes a `PUT` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -261,7 +261,7 @@ export const put: (url: string | URL, options?: HttpClientRequest.Options.NoUrl 
 /**
  * Executes a `DELETE` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -274,7 +274,7 @@ export const del: (url: string | URL, options?: HttpClientRequest.Options.NoUrl 
 /**
  * Executes an `OPTIONS` request using the `HttpClient` service from the environment.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -291,7 +291,7 @@ export const options: (url: string | URL, options?: HttpClientRequest.Options.No
  *
  * The transformation receives both the response effect and the original request, allowing it to change success, error, and environment behavior.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -324,7 +324,7 @@ export const transform: {
 /**
  * Transforms a client by applying an effectful transformation to each response effect.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -364,13 +364,13 @@ const catch_: {
 )
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
    * Handles all client failures with an effectful recovery function and returns a transformed client.
    *
-   * @unstable
+   * @stability unstable
    * @category error handling
    * @since 4.0.0
    */
@@ -380,7 +380,7 @@ export {
 /**
  * Handles client failures with one or more matching `_tag` values and returns a transformed client.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
@@ -423,7 +423,7 @@ export const catchTag: {
 /**
  * Handles client failures by matching their `_tag` values against a case map.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
@@ -518,7 +518,7 @@ export const catchTags: {
 /**
  * Filters the result of a response, or runs an alternative effect if the predicate fails.
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -564,7 +564,7 @@ export const filterOrElse: {
 /**
  * Filters successful responses, or fails with the error produced by `orFailWith` when the predicate does not match.
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -592,7 +592,7 @@ export const filterOrFail: {
 /**
  * Filters responses by HTTP status code.
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -608,7 +608,7 @@ export const filterStatus: {
 /**
  * Filters responses that return a 2xx status code.
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -622,7 +622,7 @@ export const filterStatusOk: <E, R>(self: HttpClient.With<E, R>) => HttpClient.W
  *
  * `execute` applies preprocessing to the request and then passes the resulting request effect to postprocessing.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -668,7 +668,7 @@ const Proto = {
  *
  * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, and aborting non-scoped requests on interruption.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -779,7 +779,7 @@ export const make = (
 /**
  * Appends a transformation of the request object before sending it.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -802,7 +802,7 @@ export const mapRequest: {
 /**
  * Appends an effectful transformation of the request object before sending it.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -826,7 +826,7 @@ export const mapRequestEffect: {
 /**
  * Prepends a transformation of the request object before sending it.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -849,7 +849,7 @@ export const mapRequestInput: {
 /**
  * Prepends an effectful transformation of the request object before sending it.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -873,7 +873,7 @@ export const mapRequestInputEffect: {
 /**
  * Namespace containing type-level helpers for retrying HTTP clients.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Retry {
@@ -884,7 +884,7 @@ export declare namespace Retry {
    *
    * The result includes errors and requirements introduced by schedules and effectful retry predicates.
    *
-   * @unstable
+   * @stability unstable
    * @category error handling
    * @since 4.0.0
    */
@@ -905,7 +905,7 @@ export declare namespace Retry {
 /**
  * Retries the request based on a provided schedule or policy.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
@@ -944,7 +944,7 @@ export const retry: {
  * Specifying a `while` predicate allows you to consider other errors as
  * transient, and is ignored in "response-only" mode.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
@@ -1043,7 +1043,7 @@ export const retryTransient: {
 /**
  * Namespace containing configuration types for `withRateLimiter`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace WithRateLimiter {
@@ -1055,7 +1055,7 @@ export declare namespace WithRateLimiter {
    * They define the backing limiter, initial limit window, keying strategy,
    * algorithm, token cost, retry count, and response header inspection.
    *
-   * @unstable
+   * @stability unstable
    * @category rate limiting
    * @since 4.0.0
    */
@@ -1149,7 +1149,7 @@ export declare namespace WithRateLimiter {
  * Disabling response inspection does not disable retries; set `times` to `0`
  * to return or fail with the first `429`.
  *
- * @unstable
+ * @stability unstable
  * @category rate limiting
  * @since 4.0.0
  */
@@ -1467,7 +1467,7 @@ const getHeader = (headers: Headers.Headers, ...keys: Array<string>): string | u
 /**
  * Performs an additional effect after a successful request.
  *
- * @unstable
+ * @stability unstable
  * @category sequencing
  * @since 4.0.0
  */
@@ -1490,7 +1490,7 @@ export const tap: {
 /**
  * Performs an additional effect after an unsuccessful request.
  *
- * @unstable
+ * @stability unstable
  * @category sequencing
  * @since 4.0.0
  */
@@ -1513,7 +1513,7 @@ export const tapError: {
 /**
  * Performs an additional effect on the request before sending it.
  *
- * @unstable
+ * @stability unstable
  * @category sequencing
  * @since 4.0.0
  */
@@ -1542,7 +1542,7 @@ export const tapRequest: {
  * Use to add shared cookie storage to a client so response cookies are retained
  * and sent by later requests.
  *
- * @unstable
+ * @stability unstable
  * @category cookies
  * @since 4.0.0
  */
@@ -1576,7 +1576,7 @@ export const withCookiesRef: {
 /**
  * Attaches the lifetime of the `HttpClientRequest` to a `Scope`.
  *
- * @unstable
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -1598,7 +1598,7 @@ export const withScope = <E, R>(
 /**
  * Enables following HTTP redirects up to a specified number of times.
  *
- * @unstable
+ * @stability unstable
  * @category redirects
  * @since 4.0.0
  */
@@ -1656,7 +1656,7 @@ export const followRedirects: {
 /**
  * Context reference for a predicate that disables client-side tracing for matching outgoing requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1669,7 +1669,7 @@ export const TracerDisabledWhen = Context.Reference<
 /**
  * Context reference for filtering request and response headers added to client spans.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1682,7 +1682,7 @@ export const TracerHeaderFilter = Context.Reference<
 /**
  * Context reference that controls whether outgoing client spans are propagated to request headers.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1693,7 +1693,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
 /**
  * Context reference for generating the span name used for outgoing client request spans.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1706,7 +1706,7 @@ export const SpanNameGenerator = Context.Reference<
 /**
  * Creates an `HttpClient` layer and merges the layer construction context into client response effects.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

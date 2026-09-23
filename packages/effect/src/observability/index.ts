@@ -1,54 +1,54 @@
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Otlp from "./Otlp.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OtlpExporter from "./OtlpExporter.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OtlpLogger from "./OtlpLogger.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OtlpMetrics from "./OtlpMetrics.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OtlpResource from "./OtlpResource.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OtlpSerialization from "./OtlpSerialization.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OtlpTracer from "./OtlpTracer.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as PrometheusMetrics from "./PrometheusMetrics.ts"

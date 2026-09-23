@@ -6,7 +6,7 @@
  * coordination, and mailbox persistence without starting RPC servers or
  * external databases.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Layer from "../Layer.ts"
@@ -24,7 +24,7 @@ import * as ShardingConfig from "./ShardingConfig.ts"
  *
  * `MessageStorage` and `RunnerStorage` are backed by in-memory drivers.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

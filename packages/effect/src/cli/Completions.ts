@@ -4,7 +4,7 @@
  * low-level script generation surface used by the unstable CLI package and by
  * the built-in completions global flag.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Bash from "./internal/completions/bash.ts"
@@ -14,7 +14,7 @@ import * as Zsh from "./internal/completions/zsh.ts"
 /**
  * Shell type used to generate completion scripts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -23,7 +23,7 @@ export type Shell = "bash" | "zsh" | "fish"
 /**
  * Describes a command for completion script generation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -38,7 +38,7 @@ export interface CommandDescriptor {
 /**
  * Describes a command flag for completions.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export interface FlagDescriptor {
 /**
  * Describes the supported flag value shapes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -68,7 +68,7 @@ export type FlagType =
 /**
  * Describes a positional argument for completions.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export interface ArgumentDescriptor {
 /**
  * Describes the supported argument value shapes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -111,7 +111,7 @@ export type ArgumentType =
  * @see {@link Shell} for supported shell names
  * @see {@link CommandDescriptor} for the command shape used by completion generation
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

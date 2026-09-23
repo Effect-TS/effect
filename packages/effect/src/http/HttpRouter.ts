@@ -7,7 +7,7 @@
  * `HttpServerResponse`. The module also includes helpers for route definitions,
  * prefixes, parameters, request decoding, CORS, and running the router.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -44,7 +44,7 @@ const TypeId = "~effect/http/HttpRouter"
  * and expose the registered routes as an Effect that handles the current server
  * request.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -101,7 +101,7 @@ export interface HttpRouter {
  * Route and middleware layers require this service to register themselves with
  * the router.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
  * The returned router accepts route and middleware registrations and later routes
  * the current `HttpServerRequest` to the matching `HttpServerResponse`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -263,7 +263,7 @@ function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: s
  * The value is passed to the route matcher when an `HttpRouter` is created and
  * defaults to an empty configuration.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -285,7 +285,7 @@ export const RouterConfig = Context.Reference<Partial<FindMyWay.RouterConfig>>(
  * It provides the route definition and the path parameters captured by the route
  * matcher.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -297,7 +297,7 @@ export class RouteContext extends Context.Service<RouteContext, {
 /**
  * Effect that returns the path parameters captured for the current matched route.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -318,7 +318,7 @@ export const params: Effect.Effect<
  * cookies, path parameters, search parameters, and parsed JSON body. The effect
  * fails if the body cannot be parsed or the schema decode fails.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -375,7 +375,7 @@ export const schemaJson = <
  * The input passed to the schema includes the request method, URL, headers,
  * cookies, path parameters, and search parameters.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -427,7 +427,7 @@ export const schemaNoBody = <
  *
  * When the same key appears in both sources, the path parameter value is used.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -447,7 +447,7 @@ export const schemaParams = <A, I extends Readonly<Record<string, string | Reado
  * Decodes a schema from the path parameters captured for the current matched
  * route.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -492,7 +492,7 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  * await Effect.runPromise(program) // => "ready"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -517,7 +517,7 @@ export const use = <A, E, R>(
  * Layer.isLayer(Route) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -553,7 +553,7 @@ export const add = <E = never, R = never>(
  * Layer.isLayer(Routes) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -582,7 +582,7 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
 /**
  * Layer that provides a newly constructed `HttpRouter`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -598,7 +598,7 @@ export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -630,7 +630,7 @@ const RouteTypeId = "~effect/http/HttpRouter/Route"
  * A route pairs an HTTP method and path pattern with a response handler, plus
  * metadata used for prefix handling and interruptibility.
  *
- * @unstable
+ * @stability unstable
  * @category routes
  * @since 4.0.0
  */
@@ -647,14 +647,14 @@ export interface Route<E = never, R = never> {
  * Helper types for extracting the error and context types carried by `Route`
  * values.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Route {
   /**
    * Extracts the error type produced by a `Route` handler.
    *
-   * @unstable
+   * @stability unstable
    * @category routes
    * @since 4.0.0
    */
@@ -663,7 +663,7 @@ export declare namespace Route {
   /**
    * Extracts the context requirements of a `Route` handler.
    *
-   * @unstable
+   * @stability unstable
    * @category routes
    * @since 4.0.0
    */
@@ -692,7 +692,7 @@ const makeRoute = <E, R>(options: {
  * function from the current request to a response effect. Set `uninterruptible` to
  * prevent the route handler from being made interruptible while it runs.
  *
- * @unstable
+ * @stability unstable
  * @category routes
  * @since 4.0.0
  */
@@ -723,7 +723,7 @@ export const route = <E = never, R = never>(
  * Path pattern accepted by the router. Routes must use an absolute path
  * beginning with `/` or the wildcard `*`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -741,7 +741,7 @@ const removeTrailingSlash = (
  * Trailing slashes are removed from the prefix; `/` becomes the prefix itself and
  * `*` becomes a wildcard route under the prefix.
  *
- * @unstable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */
@@ -764,7 +764,7 @@ export const prefixPath: {
  * request, the matched prefix can be removed from the request URL seen by the
  * handler.
  *
- * @unstable
+ * @stability unstable
  * @category routes
  * @since 4.0.0
  */
@@ -785,7 +785,7 @@ export const prefixRoute: {
  * Represents a request-level dependency, that needs to be provided by
  * middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -799,14 +799,14 @@ export interface Request<Kind extends string, T> {
  * Helper types for request-level dependency markers used by router layers and
  * middleware.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Request {
   /**
    * Wraps a type in a request-level marker of the supplied kind.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -816,7 +816,7 @@ export declare namespace Request {
    * Extracts the payload types from request-level markers that have the supplied
    * kind.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -826,7 +826,7 @@ export declare namespace Request {
    * Removes request-level markers from a union, leaving only ordinary requirement
    * or error types.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -837,7 +837,7 @@ export declare namespace Request {
  * Services provided by the HTTP router, which are available in the
  * request context.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -850,7 +850,7 @@ export type Provided =
 /**
  * Services provided to global middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -869,7 +869,7 @@ const MiddlewareTypeId = "~effect/http/HttpRouter/Middleware"
  * while tracking provided services, handled errors, and remaining requirements at
  * the type level.
  *
- * @unstable
+ * @stability unstable
  * @category middleware
  * @since 4.0.0
  */
@@ -957,7 +957,7 @@ export interface Middleware<
  * await Effect.runPromise(program) // => ["route", "global"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category middleware
  * @since 4.0.0
  */
@@ -1084,7 +1084,7 @@ const getMiddleware = (context: Context.Context<never>): Array<middleware.Fn> =>
 /**
  * Types used by the `middleware` constructor.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace middleware {
@@ -1097,7 +1097,7 @@ export declare namespace middleware {
    * layer that installs middleware for all routes. The type tracks provided
    * services, handled errors, middleware failures, and remaining requirements.
    *
-   * @unstable
+   * @stability unstable
    * @category middleware
    * @since 4.0.0
    */
@@ -1183,7 +1183,7 @@ export declare namespace middleware {
    * Function that transforms an HTTP response effect into another HTTP response
    * effect.
    *
-   * @unstable
+   * @stability unstable
    * @category middleware
    * @since 4.0.0
    */
@@ -1195,7 +1195,7 @@ export declare namespace middleware {
 /**
  * Middleware that applies CORS headers to the HTTP response.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1230,7 +1230,7 @@ export const cors = (
  * Layer.isLayer(Route) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1239,7 +1239,7 @@ export const disableLogger: Layer.Layer<never> = middleware(HttpMiddleware.withL
 /**
  * Provides request-level dependencies to some routes.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1265,7 +1265,7 @@ export const provideRequest =
 /**
  * Runs the provided application layer as an HTTP server.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1334,7 +1334,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * request arrives, in which case that request waits for the build to finish.
  * If the build fails, every request rejects with the build error.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

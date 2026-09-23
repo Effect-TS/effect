@@ -6,7 +6,7 @@
  * converts failures into responses, runs hooks before a response is sent, and
  * manages request scopes for streamed responses.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
@@ -33,7 +33,7 @@ import * as preResponseHandler from "./internal/preResponseHandler.ts"
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -191,7 +191,7 @@ const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
  * Use only when another owner will close the scope; otherwise resources attached
  * to the request scope can leak.
  *
- * @unstable
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ export const scopeDisableClose = (scope: Scope.Scope): void => {
 /**
  * Returns a streaming server response that closes the request scope when the body stream exits.
  *
- * @unstable
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -230,7 +230,7 @@ const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -242,7 +242,7 @@ export type PreResponseHandler = (
 /**
  * Registers an additional pre-response handler for the current HTTP server request.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -255,7 +255,7 @@ export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Ef
 /**
  * Registers a pre-response handler for the supplied HTTP server request.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -267,7 +267,7 @@ export const appendPreResponseHandlerUnsafe: (
 /**
  * Runs an effect after registering a pre-response handler for the current HTTP server request.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -288,7 +288,7 @@ export const withPreResponseHandler: {
 /**
  * Converts an HTTP server effect into a Web `Request` handler using the supplied base context and optional middleware.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -336,7 +336,7 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
 /**
  * Converts an HTTP server effect into a Web `Request` handler using an empty base context.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -357,7 +357,7 @@ export const toWebHandler: <E>(
  * in which case that request waits for the build to finish. If the build fails,
  * every request rejects with the build error.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -428,7 +428,7 @@ export const toWebHandlerLayerWith = <
  * in which case that request waits for the build to finish. If the build fails,
  * every request rejects with the build error.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -456,7 +456,7 @@ export const toWebHandlerLayer = <E, R, Provided, LE, ReqR = Exclude<R, Provided
 /**
  * Adapts a Web `Request` handler into an HTTP server effect for the current `HttpServerRequest`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

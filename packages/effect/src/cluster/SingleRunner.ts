@@ -8,7 +8,7 @@
  * process handles all cluster work itself. It still requires a SQL client
  * because mailbox messages and replies are stored in SQL.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Layer from "effect/Layer"
@@ -54,7 +54,7 @@ import * as SqlRunnerStorage from "./SqlRunnerStorage.ts"
  * @see {@link SqlRunnerStorage.layer} for the default SQL-backed runner storage selected when `runnerStorage` is omitted or `"sql"`
  * @see {@link RunnerStorage.layerMemory} for the in-memory runner storage selected by `runnerStorage: "memory"`
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -8,7 +8,7 @@
  * defines the built-in help, version, wizard, shell-completion, and log-level flags
  * used by `Command.run` and `Command.runWith`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -31,7 +31,7 @@ import * as HelpInternal from "./internal/help.ts"
 /**
  * Context passed to action handlers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export interface HandlerContext {
 /**
  * Action flag: side effect + exit (--help, --version, --completions).
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -61,7 +61,7 @@ export interface Action<A> {
 /**
  * Setting flag: configure command handler's environment (--log-level, --config).
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -74,7 +74,7 @@ export interface Setting<Id extends string, A> extends Context.Service<Setting.I
 /**
  * Namespace containing type helpers for global setting flags.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Setting {
@@ -82,7 +82,7 @@ export declare namespace Setting {
    * Type-level service identifier used by `Setting` global flags for the
    * parsed value associated with a setting id.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -92,7 +92,7 @@ export declare namespace Setting {
 /**
  * Global flag discriminated union.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -105,7 +105,7 @@ export type GlobalFlag<A> = Action<A> | Setting<any, A>
 /**
  * Creates an Action flag that performs a side effect and exits.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -124,7 +124,7 @@ export const Action = <A>(options: {
 /**
  * Creates a Setting flag that configures the command handler's environment.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -158,7 +158,7 @@ let settingIdCounter = 0
  * @see {@link BuiltIns} for the default list containing this flag
  * @see {@link Action} for defining custom action global flags
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -182,7 +182,7 @@ export const Help: Action<boolean> = Action({
  *
  * Use to add a built-in `--version / -v` flag to a command runner.
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -206,7 +206,7 @@ export const Version: Action<boolean> = Action({
  * `Command.run` and `Command.runWith` handle this action specially so the
  * generated arguments can be passed back through the command parser.
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -227,7 +227,7 @@ export const Wizard: Action<boolean> = Action({
  * Accepted values are `bash`, `zsh`, `fish`, and `sh`; `sh` is normalized to
  * `bash`.
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -256,7 +256,7 @@ export const Completions: Action<Option.Option<"bash" | "zsh" | "fish">> = Actio
  * Use to add a built-in `--log-level` option that configures the minimum log
  * level for the command.
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -309,7 +309,7 @@ export const LogLevel: Setting<"log-level", Option.Option<LogLevelType>> = Setti
  * @see {@link Completions} for the shell-completions action flag
  * @see {@link LogLevel} for the built-in log-level setting flag
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -324,7 +324,7 @@ export const BuiltIns: readonly [
 /**
  * Global flag included in the default command-runner configuration.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

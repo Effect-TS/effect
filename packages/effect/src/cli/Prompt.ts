@@ -8,7 +8,7 @@
  * and transforming prompt output, and support for running prompts through the
  * `Terminal` service.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -47,7 +47,7 @@ const TypeId = "~effect/cli/Prompt"
  * requires the prompt environment needed to render frames, read input, and
  * access files or paths when a prompt uses them.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ export interface Prompt<Output> extends Effect.Effect<Output, Terminal.QuitError
 /**
  * Returns `true` if the provided value is a `Prompt`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export const isPrompt = (u: unknown): u is Prompt<unknown> => Predicate.hasPrope
 /**
  * Represents the services available to a custom `Prompt`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ export type Environment = FileSystem.FileSystem | Path.Path | Terminal.Terminal
  * Represents the action that should be taken by a `Prompt` based upon user
  * input or an external event received during the current frame.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export type Action<State, Output> = Data.TaggedEnum<{
  * It connects the action state and output type parameters to the `Beep`,
  * `NextFrame`, and `Submit` action cases.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export interface ActionDefinition extends Data.TaggedEnum.WithGenerics<2> {
  * Represents the input that should be processed by a `Prompt` based upon user
  * input or an external event received during the current frame.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -126,7 +126,7 @@ export type ProcessInput<A> = Data.TaggedEnum<{
  * The handlers render the current frame, process user input into the next
  * `Prompt.Action`, and clear the terminal screen before the next frame.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -164,7 +164,7 @@ export interface Handlers<State, Output, Input = Terminal.UserInput> {
  * Set a symbol to an empty string to omit both the symbol and its adjacent
  * spacing.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -208,7 +208,7 @@ export interface Theme {
 /**
  * Options shared by built-in prompts that support theme overrides.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -223,7 +223,7 @@ type OptionsReq<A> = Required<Omit<A, "theme">> & ThemeOptions
  * Options for a confirmation prompt that asks the user to choose a boolean
  * yes/no value.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export interface ConfirmOptions extends ThemeOptions {
  * Options for a date prompt, including the displayed message, initial value,
  * format mask, validation, and locale labels.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -346,7 +346,7 @@ export interface DateOptions extends ThemeOptions {
  * Options for an integer prompt, including bounds, keyboard step sizes, and
  * additional validation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -387,7 +387,7 @@ export interface IntOptions extends ThemeOptions {
 /**
  * Options for `Number`, extending `IntOptions` with display precision.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -402,7 +402,7 @@ export interface NumberOptions extends IntOptions {
  * Options for a text prompt that returns a list of strings by splitting the
  * input on a delimiter.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -421,7 +421,7 @@ export interface ListOptions extends TextOptions {
  * They control which path type can be selected, the starting directory, paging,
  * and filtering of displayed entries.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -458,7 +458,7 @@ export interface FileOptions extends ThemeOptions {
  * Options for a prompt that asks the user to select one value from a list of
  * choices.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -481,7 +481,7 @@ export interface SelectOptions<A> extends ThemeOptions {
  * Options for an autocomplete prompt that lets the user filter selectable
  * choices by typing.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -508,7 +508,7 @@ export interface AutoCompleteOptions<A> extends SelectOptions<A> {
  * Options for a multi-select prompt, including bulk-selection labels and
  * minimum or maximum selection counts.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export interface MultiSelectOptions {
  * Represents one choice displayed by select, autocomplete, and multi-select
  * prompts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -571,7 +571,7 @@ export interface SelectChoice<A> {
  * Options for text-entry prompts, including the displayed message, default
  * text, and effectful validation before submission.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -595,7 +595,7 @@ export interface TextOptions extends ThemeOptions {
  * Options for a toggle prompt that lets the user switch between active and
  * inactive boolean states.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -653,7 +653,7 @@ const windowsTheme: Theme = {
 /**
  * Creates a prompt theme using the current platform defaults.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -670,7 +670,7 @@ export const makeTheme = (options?: Partial<Theme>): Theme => ({
  * Provide this reference once to theme every prompt in an application. A
  * prompt's `theme` option takes precedence over the context value.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -684,7 +684,7 @@ const getTheme = (options: ThemeOptions): Effect.Effect<Theme> =>
 /**
  * Type alias for any `Prompt`, regardless of its output type.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -693,7 +693,7 @@ export type Any = Prompt<unknown>
 /**
  * Namespace containing return-type helpers for `Prompt.all`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace All {
@@ -704,7 +704,7 @@ export declare namespace All {
    *
    * The resulting prompt produces an array of each prompt's output value.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -715,7 +715,7 @@ export declare namespace All {
    * Computes the prompt returned by `Prompt.all` for a readonly tuple or array
    * of prompts, preserving tuple positions in the output type.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -728,7 +728,7 @@ export declare namespace All {
    * Computes the prompt returned by `Prompt.all` for a record of prompts,
    * preserving the record keys and replacing each prompt with its output type.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -743,7 +743,7 @@ export declare namespace All {
    * Computes the return prompt type for `Prompt.all` based on the input
    * structure.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -794,7 +794,7 @@ export declare namespace All {
  * await Effect.runPromise(Effect.provide(allWithRecord, services)) // => { username: "alice", password: "secret" }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combining
  * @since 4.0.0
  */
@@ -864,7 +864,7 @@ const renderPagingPrefix = (theme: Theme, showArrowUp: boolean, showArrowDown: b
  *
  * @see {@link Toggle} for an interactive switch-before-submit boolean prompt
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -910,7 +910,7 @@ export const Confirm = (options: ConfirmOptions): Prompt<boolean> => {
  * waiting for a keypress. When an event is received from the dequeue, the
  * `receive` handler is called instead of `process`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -961,7 +961,7 @@ export const Custom: {
  * normalize before validation. If the prompt is meant to be editable,
  * `dateMask` should contain at least one editable date token.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1005,7 +1005,7 @@ export const Date = (options: DateOptions): Prompt<globalThis.Date> => {
  * `tab`, and the `Ctrl+P` / `Ctrl+N` chords used by `readline` and `fzf`
  * (`Ctrl+K` also moves up). `Ctrl+U` clears the query.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1052,7 +1052,7 @@ export const File = (options: FileOptions = {}): Prompt<string> => {
 /**
  * Composes prompts by using the output of this prompt to create the next prompt.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1083,7 +1083,7 @@ export const flatMap: {
  * The prompt supports minimum and maximum bounds, keyboard step sizes, display
  * precision, and additional validation before submission.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1122,7 +1122,7 @@ export const Number = (options: NumberOptions): Prompt<number> => {
  * Creates a text prompt that does not echo typed input and returns the
  * submitted value wrapped in `Redacted`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1138,7 +1138,7 @@ export const Hidden = (
  * The prompt supports minimum and maximum bounds, keyboard step sizes, and
  * additional validation before submission.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1177,7 +1177,7 @@ export const Int = (options: IntOptions): Prompt<number> => {
  * Creates a text prompt that returns an array of strings by splitting the
  * submitted input on the configured delimiter.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1189,7 +1189,7 @@ export const List = (options: ListOptions): Prompt<Array<string>> =>
 /**
  * Transforms the output value produced by a prompt.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1210,7 +1210,7 @@ export const map: {
  * Creates a password prompt that masks typed input and returns the submitted
  * value wrapped in `Redacted`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1227,7 +1227,7 @@ export const Password = (
  * The returned effect may fail with `Terminal.QuitError` if terminal input ends
  * or the prompt is quit.
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -1273,7 +1273,7 @@ const getSelectInitialIndex = <A>(choices: ReadonlyArray<SelectChoice<A>>): numb
  *
  * At most one choice may be marked as selected by default.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1316,7 +1316,7 @@ export const Select = <const A>(options: SelectOptions<A>): Prompt<A> => {
  * Prompt.isPrompt(language) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1356,7 +1356,7 @@ export const AutoComplete = <const A>(options: AutoCompleteOptions<A>): Prompt<A
  * The prompt supports default selected choices, bulk-selection commands, and
  * minimum or maximum selection counts.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1391,7 +1391,7 @@ export const MultiSelect = <const A>(
  * This prompt does not attempt to obtain user input or render anything to the
  * screen.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1406,7 +1406,7 @@ export const succeed = <A>(value: A): Prompt<A> => {
  * Creates a text-entry prompt that echoes input and returns the submitted
  * string after validation.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1418,7 +1418,7 @@ export const String = (
  * Creates a toggle prompt that lets the user switch between active and inactive
  * states and returns the selected boolean value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

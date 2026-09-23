@@ -8,7 +8,7 @@
  * error classes with display messages, and the `NonShowHelpErrors` union used
  * when parse or validation errors should be shown with help output.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Predicate from "../Predicate.ts"
@@ -16,7 +16,7 @@ import * as Runtime from "../Runtime.ts"
 import * as Schema from "../Schema.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -39,7 +39,7 @@ const TypeId = "~effect/cli/CliError"
  * await Effect.runPromise(program) // => "Missing required flag: --api-key"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -71,7 +71,7 @@ export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u
  * describe(new CliError.MissingOption({ option: "token" })) // => "Required flag missing: token"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -116,7 +116,7 @@ export type CliError =
  * parseError._tag // => "UnrecognizedOption"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -130,7 +130,7 @@ export class UnrecognizedOption extends Schema.TaggedError<UnrecognizedOption>(
   /**
    * Marks this value as a CLI parsing error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -138,7 +138,7 @@ export class UnrecognizedOption extends Schema.TaggedError<UnrecognizedOption>(
   /**
    * Formats the unrecognized option with command context and suggestions.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -172,7 +172,7 @@ export class UnrecognizedOption extends Schema.TaggedError<UnrecognizedOption>(
  * duplicateError.childCommand // => "deploy"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -186,7 +186,7 @@ export class DuplicateOption extends Schema.TaggedError<DuplicateOption>(
   /**
    * Marks this value as a CLI configuration error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -194,7 +194,7 @@ export class DuplicateOption extends Schema.TaggedError<DuplicateOption>(
   /**
    * Explains which parent and child commands define the duplicate option.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -232,7 +232,7 @@ export class DuplicateOption extends Schema.TaggedError<DuplicateOption>(
  * validationError._tag // => "MissingOption"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ export class MissingOption extends Schema.TaggedError<MissingOption>(
   /**
    * Marks this value as a missing CLI option error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -252,7 +252,7 @@ export class MissingOption extends Schema.TaggedError<MissingOption>(
   /**
    * Formats the missing required flag for display.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -288,7 +288,7 @@ export class MissingOption extends Schema.TaggedError<MissingOption>(
  * parseError._tag // => "MissingArgument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -300,7 +300,7 @@ export class MissingArgument extends Schema.TaggedError<MissingArgument>(
   /**
    * Marks this value as a missing CLI argument error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -308,7 +308,7 @@ export class MissingArgument extends Schema.TaggedError<MissingArgument>(
   /**
    * Formats the missing required positional argument for display.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -332,7 +332,7 @@ export class MissingArgument extends Schema.TaggedError<MissingArgument>(
  * const details = [error._tag, error.arguments] // => ["UnexpectedArgument", ["extra.txt"]]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -344,7 +344,7 @@ export class UnexpectedArgument extends Schema.TaggedError<UnexpectedArgument>(
   /**
    * Marks this value as an unexpected CLI argument error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -352,7 +352,7 @@ export class UnexpectedArgument extends Schema.TaggedError<UnexpectedArgument>(
   /**
    * Formats the unexpected positional arguments for display.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -392,7 +392,7 @@ export class UnexpectedArgument extends Schema.TaggedError<UnexpectedArgument>(
  * const details = [invalidArgError.kind, invalidArgError.option, invalidArgError.value] // => ["argument", "count", "abc"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -407,7 +407,7 @@ export class InvalidValue extends Schema.TaggedError<InvalidValue>(
   /**
    * Marks this value as an invalid CLI value error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -415,7 +415,7 @@ export class InvalidValue extends Schema.TaggedError<InvalidValue>(
   /**
    * Formats the invalid flag or argument value with the expected input.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -465,7 +465,7 @@ export class InvalidValue extends Schema.TaggedError<InvalidValue>(
  * parseError._tag // => "UnknownSubcommand"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -479,7 +479,7 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
   /**
    * Marks this value as an unknown CLI subcommand error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -487,7 +487,7 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
   /**
    * Formats the unknown subcommand with parent command context and suggestions.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -542,7 +542,7 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
  * await Effect.runPromise(handleError(userError)) // => 1
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -555,7 +555,7 @@ export class UserError extends Schema.TaggedError<UserError>(
   /**
    * Marks this value as a user handler error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -564,7 +564,7 @@ export class UserError extends Schema.TaggedError<UserError>(
    * Controls whether the runtime logger should report this error. The CLI
    * runner sets this to `false` after rendering the error itself.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override [Runtime.errorReported] = true
@@ -572,7 +572,7 @@ export class UserError extends Schema.TaggedError<UserError>(
   /**
    * Returns the explicit user-facing message or a safe fallback from `cause`.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -591,7 +591,7 @@ export class UserError extends Schema.TaggedError<UserError>(
  * This excludes `ShowHelp` itself, allowing parse and validation errors to be
  * stored in `ShowHelp.errors` without nesting another help-control value.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -626,7 +626,7 @@ export const NonShowHelpErrors: Schema.Union<
  * runner should display help along with the underlying parse or validation
  * failures.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -641,7 +641,7 @@ export type NonShowHelpErrors = typeof NonShowHelpErrors.Type
  * that should be shown with help text. When `errors` is non-empty, the runtime
  * exit code is `1`; otherwise it is `0`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */

@@ -1,7 +1,7 @@
 /**
  * Kubernetes resource types used by the cluster helpers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 /*
@@ -34,7 +34,7 @@
  *
  * An AWS EBS disk must exist before mounting to a container. The disk must also be in the same AWS zone as the kubelet. An AWS EBS disk can only be mounted as read/write once. AWS EBS volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export interface AWSElasticBlockStoreVolumeSource {
 /**
  * Affinity is a group of affinity scheduling rules.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -68,7 +68,7 @@ export interface Affinity {
 /**
  * AppArmorProfile defines a pod or container's AppArmor settings.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -87,7 +87,7 @@ export interface AppArmorProfile {
 /**
  * AzureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export interface AzureDiskVolumeSource {
 /**
  * AzureFile represents an Azure File Service mount on the host and bind mount to the pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -125,7 +125,7 @@ export interface AzureFileVolumeSource {
 /**
  * Represents a source location of a volume to mount, managed by an external CSI driver
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -147,7 +147,7 @@ export interface CSIVolumeSource {
 /**
  * Adds and removes POSIX capabilities from running containers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -161,7 +161,7 @@ export interface Capabilities {
 /**
  * Represents a Ceph Filesystem mount that lasts the lifetime of a pod Cephfs volumes do not support ownership management or SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -183,7 +183,7 @@ export interface CephFSVolumeSource {
 /**
  * Represents a cinder volume resource in Openstack. A Cinder volume must exist before mounting to a container. The volume must also be in the same region as the kubelet. Cinder volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -205,7 +205,7 @@ export interface CinderVolumeSource {
  *
  * Exactly one of these fields should be set.  Consumers of this type must treat an empty object as if it has an unknown value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -227,7 +227,7 @@ export interface ClaimSource {
 /**
  * ClusterTrustBundleProjection describes how to select a set of ClusterTrustBundle objects and project their contents into the pod filesystem.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -251,7 +251,7 @@ export interface ClusterTrustBundleProjection {
  *
  * The contents of the target ConfigMap's Data field will represent the key-value pairs as environment variables.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -265,7 +265,7 @@ export interface ConfigMapEnvSource {
 /**
  * Selects a key from a ConfigMap.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -285,7 +285,7 @@ export interface ConfigMapKeySelector {
  *
  * The contents of the target ConfigMap's Data field will be presented in a projected volume as files using the keys in the Data field as the file names, unless the items element is populated with specific mappings of keys to paths. Note that this is identical to a configmap volume source without the default mode.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -305,7 +305,7 @@ export interface ConfigMapProjection {
  *
  * The contents of the target ConfigMap's Data field will be presented in a volume as files using the keys in the Data field as the file names, unless the items element is populated with specific mappings of keys to paths. ConfigMap volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -323,7 +323,7 @@ export interface ConfigMapVolumeSource {
 /**
  * A single application container that you want to run within a pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -381,7 +381,7 @@ export interface Container {
 /**
  * ContainerPort represents a network port in a single container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -401,7 +401,7 @@ export interface ContainerPort {
 /**
  * ContainerResizePolicy represents resource resize policy for the container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -415,7 +415,7 @@ export interface ContainerResizePolicy {
 /**
  * ContainerState holds a possible state of container. Only one of its members may be specified. If none of them is specified, the default one is ContainerStateWaiting.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -431,7 +431,7 @@ export interface ContainerState {
 /**
  * ContainerStateRunning is a running state of a container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -443,7 +443,7 @@ export interface ContainerStateRunning {
 /**
  * ContainerStateTerminated is a terminated state of a container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -467,7 +467,7 @@ export interface ContainerStateTerminated {
 /**
  * ContainerStateWaiting is a waiting state of a container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -481,7 +481,7 @@ export interface ContainerStateWaiting {
 /**
  * ContainerStatus contains details for the current status of this container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -523,7 +523,7 @@ export interface ContainerStatus {
 /**
  * Represents downward API info for projecting into a projected volume. Note that this is identical to a downwardAPI volume source without the default mode.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -535,7 +535,7 @@ export interface DownwardAPIProjection {
 /**
  * DownwardAPIVolumeFile represents information to create the file containing the pod field
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -553,7 +553,7 @@ export interface DownwardAPIVolumeFile {
 /**
  * DownwardAPIVolumeSource represents a volume containing downward API info. Downward API volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -567,7 +567,7 @@ export interface DownwardAPIVolumeSource {
 /**
  * Represents an empty directory for a pod. Empty directory volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -581,7 +581,7 @@ export interface EmptyDirVolumeSource {
 /**
  * EnvFromSource represents the source of a set of ConfigMaps
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -597,7 +597,7 @@ export interface EnvFromSource {
 /**
  * EnvVar represents an environment variable present in a Container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -613,7 +613,7 @@ export interface EnvVar {
 /**
  * EnvVarSource represents a source for the value of an EnvVar.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -635,7 +635,7 @@ export interface EnvVarSource {
  *
  * To add an ephemeral container, use the ephemeralcontainers subresource of an existing Pod. Ephemeral containers may not be removed or restarted.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -701,7 +701,7 @@ export interface EphemeralContainer {
 /**
  * Represents an ephemeral volume that is handled by a normal storage driver.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -723,7 +723,7 @@ export interface EphemeralVolumeSource {
 /**
  * ExecAction describes a "run in container" action.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -735,7 +735,7 @@ export interface ExecAction {
 /**
  * Represents a Fibre Channel volume. Fibre Channel volumes can only be mounted as read/write once. Fibre Channel volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -755,7 +755,7 @@ export interface FCVolumeSource {
 /**
  * FlexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -777,7 +777,7 @@ export interface FlexVolumeSource {
 /**
  * Represents a Flocker volume mounted by the Flocker agent. One and only one of datasetName and datasetUUID should be set. Flocker volumes do not support ownership management or SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -795,7 +795,7 @@ export interface FlockerVolumeSource {
  *
  * A GCE PD must exist before mounting to a container. The disk must also be in the same GCE project and zone as the kubelet. A GCE PD can only be mounted as read/write once or read-only many times. GCE PDs support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -813,7 +813,7 @@ export interface GCEPersistentDiskVolumeSource {
 /**
  * GRPCAction specifies an action involving a gRPC service.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -837,7 +837,7 @@ export interface GRPCAction {
  *
  * DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -853,7 +853,7 @@ export interface GitRepoVolumeSource {
 /**
  * Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes do not support ownership management or SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -869,7 +869,7 @@ export interface GlusterfsVolumeSource {
 /**
  * HTTPGetAction describes an action based on HTTP Get requests.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -889,7 +889,7 @@ export interface HTTPGetAction {
 /**
  * HTTPHeader describes a custom header to be used in HTTP probes
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -903,7 +903,7 @@ export interface HTTPHeader {
 /**
  * HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the pod's hosts file.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -917,7 +917,7 @@ export interface HostAlias {
 /**
  * HostIP represents a single IP address allocated to the host.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -929,7 +929,7 @@ export interface HostIP {
 /**
  * Represents a host path mapped into a pod. Host path volumes do not support ownership management or SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -943,7 +943,7 @@ export interface HostPathVolumeSource {
 /**
  * Represents an ISCSI disk. ISCSI volumes can only be mounted as read/write once. ISCSI volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -975,7 +975,7 @@ export interface ISCSIVolumeSource {
 /**
  * Maps a string key to a path within a volume.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -991,7 +991,7 @@ export interface KeyToPath {
 /**
  * Lifecycle describes actions that the management system should take in response to container lifecycle events. For the PostStart and PreStop lifecycle handlers, management of the container blocks until the action is complete, unless the container process fails, in which case the handler is aborted.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1005,7 +1005,7 @@ export interface Lifecycle {
 /**
  * LifecycleHandler defines a specific action that should be taken in a lifecycle hook. One and only one of the fields, except TCPSocket must be specified.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1023,7 +1023,7 @@ export interface LifecycleHandler {
 /**
  * LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1035,7 +1035,7 @@ export interface LocalObjectReference {
 /**
  * Represents an NFS mount that lasts the lifetime of a pod. NFS volumes do not support ownership management or SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1051,7 +1051,7 @@ export interface NFSVolumeSource {
 /**
  * Node affinity is a group of node affinity scheduling rules.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1065,7 +1065,7 @@ export interface NodeAffinity {
 /**
  * A node selector represents the union of the results of one or more label queries over a set of nodes; that is, it represents the OR of the selectors represented by the node selector terms.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1077,7 +1077,7 @@ export interface NodeSelector {
 /**
  * A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1093,7 +1093,7 @@ export interface NodeSelectorRequirement {
 /**
  * A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1107,7 +1107,7 @@ export interface NodeSelectorTerm {
 /**
  * ObjectFieldSelector selects an APIVersioned field of an object.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1121,7 +1121,7 @@ export interface ObjectFieldSelector {
 /**
  * PersistentVolumeClaimSpec describes the common attributes of storage devices and allows a Source for provider-specific attributes
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1158,7 +1158,7 @@ export interface PersistentVolumeClaimSpec {
 /**
  * PersistentVolumeClaimTemplate is used to produce PersistentVolumeClaim objects as part of an EphemeralVolumeSource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1172,7 +1172,7 @@ export interface PersistentVolumeClaimTemplate {
 /**
  * PersistentVolumeClaimVolumeSource references the user's PVC in the same namespace. This volume finds the bound PV and mounts that volume for the pod. A PersistentVolumeClaimVolumeSource is, essentially, a wrapper around another type of volume that is owned by someone else (the system).
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1186,7 +1186,7 @@ export interface PersistentVolumeClaimVolumeSource {
 /**
  * Represents a Photon Controller persistent disk resource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1200,7 +1200,7 @@ export interface PhotonPersistentDiskVolumeSource {
 /**
  * Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1220,7 +1220,7 @@ export interface Pod {
 /**
  * Pod affinity is a group of inter pod affinity scheduling rules.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1234,7 +1234,7 @@ export interface PodAffinity {
 /**
  * Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1256,7 +1256,7 @@ export interface PodAffinityTerm {
 /**
  * Pod anti affinity is a group of inter pod anti affinity scheduling rules.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1270,7 +1270,7 @@ export interface PodAntiAffinity {
 /**
  * PodCondition contains details for the current condition of this pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1292,7 +1292,7 @@ export interface PodCondition {
 /**
  * PodDNSConfig defines the DNS parameters of a pod in addition to those generated from DNSPolicy.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1308,7 +1308,7 @@ export interface PodDNSConfig {
 /**
  * PodDNSConfigOption defines DNS resolver options of a pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1321,7 +1321,7 @@ export interface PodDNSConfigOption {
 /**
  * PodIP represents a single IP address allocated to the pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1333,7 +1333,7 @@ export interface PodIP {
 /**
  * PodOS defines the OS parameters of a pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1345,7 +1345,7 @@ export interface PodOS {
 /**
  * PodReadinessGate contains the reference to a pod condition
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1357,7 +1357,7 @@ export interface PodReadinessGate {
 /**
  * PodResourceClaim references exactly one ResourceClaim through a ClaimSource. It adds a name to it that uniquely identifies the ResourceClaim inside the Pod. Containers that need access to the ResourceClaim reference it with this name.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1371,7 +1371,7 @@ export interface PodResourceClaim {
 /**
  * PodResourceClaimStatus is stored in the PodStatus for each PodResourceClaim which references a ResourceClaimTemplate. It stores the generated name for the corresponding ResourceClaim.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1385,7 +1385,7 @@ export interface PodResourceClaimStatus {
 /**
  * PodSchedulingGate is associated to a Pod to guard its scheduling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1397,7 +1397,7 @@ export interface PodSchedulingGate {
 /**
  * PodSecurityContext holds pod-level security attributes and common container settings. Some fields are also present in container.securityContext.  Field values of container.securityContext take precedence over field values of PodSecurityContext.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1437,7 +1437,7 @@ export interface PodSecurityContext {
 /**
  * PodSpec is a description of a pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1551,7 +1551,7 @@ export interface PodSpec {
 /**
  * PodStatus represents information about the status of a pod. Status may trail the actual state of a system, especially if the node that hosts the pod cannot contact the control plane.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1601,7 +1601,7 @@ export interface PodStatus {
 /**
  * PortworxVolumeSource represents a Portworx volume resource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1617,7 +1617,7 @@ export interface PortworxVolumeSource {
 /**
  * An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1631,7 +1631,7 @@ export interface PreferredSchedulingTerm {
 /**
  * Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1661,7 +1661,7 @@ export interface Probe {
 /**
  * Represents a projected volume source
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1675,7 +1675,7 @@ export interface ProjectedVolumeSource {
 /**
  * Represents a Quobyte mount that lasts the lifetime of a pod. Quobyte volumes do not support ownership management or SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1697,7 +1697,7 @@ export interface QuobyteVolumeSource {
 /**
  * Represents a Rados Block Device mount that lasts the lifetime of a pod. RBD volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1723,7 +1723,7 @@ export interface RBDVolumeSource {
 /**
  * ResourceClaim references one entry in PodSpec.ResourceClaims.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1735,7 +1735,7 @@ export interface ResourceClaim {
 /**
  * ResourceFieldSelector represents container resources (cpu, memory) and their output format
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1751,7 +1751,7 @@ export interface ResourceFieldSelector {
 /**
  * ResourceRequirements describes the compute resource requirements.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1779,7 +1779,7 @@ export interface ResourceRequirements {
 /**
  * SELinuxOptions are the labels to be applied to the container
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1797,7 +1797,7 @@ export interface SELinuxOptions {
 /**
  * ScaleIOVolumeSource represents a persistent ScaleIO volume
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1827,7 +1827,7 @@ export interface ScaleIOVolumeSource {
 /**
  * SeccompProfile defines a pod/container's seccomp profile settings. Only one profile source may be set.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1851,7 +1851,7 @@ export interface SeccompProfile {
  *
  * The contents of the target Secret's Data field will represent the key-value pairs as environment variables.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1865,7 +1865,7 @@ export interface SecretEnvSource {
 /**
  * SecretKeySelector selects a key of a Secret.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1885,7 +1885,7 @@ export interface SecretKeySelector {
  *
  * The contents of the target Secret's Data field will be presented in a projected volume as files using the keys in the Data field as the file names. Note that this is identical to a secret volume source without the default mode.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1905,7 +1905,7 @@ export interface SecretProjection {
  *
  * The contents of the target Secret's Data field will be presented in a volume as files using the keys in the Data field as the file names. Secret volumes support ownership management and SELinux relabeling.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1923,7 +1923,7 @@ export interface SecretVolumeSource {
 /**
  * SecurityContext holds security configuration that will be applied to a container. Some fields are present in both SecurityContext and PodSecurityContext.  When both are set, the values in SecurityContext take precedence.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1957,7 +1957,7 @@ export interface SecurityContext {
 /**
  * ServiceAccountTokenProjection represents a projected service account token volume. This projection can be used to insert a service account token into the pods runtime filesystem for use against APIs (Kubernetes API Server or otherwise).
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1973,7 +1973,7 @@ export interface ServiceAccountTokenProjection {
 /**
  * SleepAction describes a "sleep" action.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1985,7 +1985,7 @@ export interface SleepAction {
 /**
  * Represents a StorageOS persistent volume resource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2005,7 +2005,7 @@ export interface StorageOSVolumeSource {
 /**
  * Sysctl defines a kernel parameter to be set
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2019,7 +2019,7 @@ export interface Sysctl {
 /**
  * TCPSocketAction describes an action based on opening a socket
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2033,7 +2033,7 @@ export interface TCPSocketAction {
 /**
  * The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2053,7 +2053,7 @@ export interface Toleration {
 /**
  * TopologySpreadConstraint specifies how to spread matching pods among the given topology.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2108,7 +2108,7 @@ export interface TopologySpreadConstraint {
 /**
  * TypedLocalObjectReference contains enough information to let you locate the typed referenced object inside the same namespace.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2124,7 +2124,7 @@ export interface TypedLocalObjectReference {
 /**
  * TypedObjectReference contains enough information to locate a typed referenced object.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2142,7 +2142,7 @@ export interface TypedObjectReference {
 /**
  * Volume represents a named volume in a pod that may be accessed by any container in the pod.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2229,7 +2229,7 @@ export interface Volume {
 /**
  * volumeDevice describes a mapping of a raw block device within a container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2243,7 +2243,7 @@ export interface VolumeDevice {
 /**
  * VolumeMount describes a mounting of a Volume within a container.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2279,7 +2279,7 @@ export interface VolumeMount {
 /**
  * VolumeMountStatus shows status of volume mounts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2297,7 +2297,7 @@ export interface VolumeMountStatus {
 /**
  * Projection that may be projected along with other supported volume types
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2327,7 +2327,7 @@ export interface VolumeProjection {
 /**
  * VolumeResourceRequirements describes the storage resource requirements for a volume.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2345,7 +2345,7 @@ export interface VolumeResourceRequirements {
 /**
  * Represents a vSphere volume resource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2363,7 +2363,7 @@ export interface VsphereVirtualDiskVolumeSource {
 /**
  * The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2377,7 +2377,7 @@ export interface WeightedPodAffinityTerm {
 /**
  * WindowsSecurityContextOptions contain Windows-specific options and credentials.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2401,7 +2401,7 @@ export interface WindowsSecurityContextOptions {
  *
  * The exact format is defined in sigs.k8s.io/structured-merge-diff
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2411,7 +2411,7 @@ export interface FieldsV1 {
 /**
  * A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2427,7 +2427,7 @@ export interface LabelSelector {
 /**
  * A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2443,7 +2443,7 @@ export interface LabelSelectorRequirement {
 /**
  * ManagedFieldsEntry is a workflow-id, a FieldSet and the group version of the resource that the fieldset applies to.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2467,7 +2467,7 @@ export interface ManagedFieldsEntry {
 /**
  * ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2549,7 +2549,7 @@ export interface ObjectMeta {
 /**
  * OwnerReference contains enough information to let you identify an owning object. An owning object must be in the same namespace as the dependent, or be cluster-scoped, so there is no namespace field.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2571,7 +2571,7 @@ export interface OwnerReference {
 /**
  * Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2580,7 +2580,7 @@ export type Time = string
 /**
  * Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

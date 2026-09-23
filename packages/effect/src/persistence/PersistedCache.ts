@@ -6,7 +6,7 @@
  * expensive or idempotent results can be reused across fibers, process restarts,
  * or workers that share the same backing store.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cache from "../Cache.ts"
@@ -24,7 +24,7 @@ const TypeId = "~effect/persistence/PersistedCache" as const
 /**
  * Cache that combines an in-memory `Cache` with a persisted backing store.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export interface PersistedCache<K extends Persistable.Any, out R = never> {
  * exits with the configured persistent TTL, and also keeps a scoped in-memory
  * cache with its own capacity and TTL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

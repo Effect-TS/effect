@@ -7,7 +7,7 @@
  * invalidate reactivity keys after a successful request. Query atoms can also be
  * cached, serialized for hydration, and kept alive with a time-to-live.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -38,7 +38,7 @@ import * as Reactivity from "./Reactivity.ts"
  * It exposes the generated HTTP API client, an atom runtime, mutation helpers that
  * return `AtomResultFn`s, and query helpers that return atoms of endpoint results.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -165,7 +165,7 @@ declare global {
  * response transforms, base URL, and runtime factory used by the query and
  * mutation helpers.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

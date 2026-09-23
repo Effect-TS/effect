@@ -6,7 +6,7 @@
  * running application can expose interactive API documentation without writing a
  * separate OpenAPI file.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -57,7 +57,7 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
  * Mounts Swagger UI for an `HttpApi` at the configured path, defaulting to
  * `/docs`, using the OpenAPI specification generated from the API.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

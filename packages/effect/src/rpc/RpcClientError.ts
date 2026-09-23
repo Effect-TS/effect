@@ -6,7 +6,7 @@
  * covers built-in transport failures from HTTP, sockets, and workers, plus
  * `RpcClientDefect` values for malformed or incompatible protocol data.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { HttpClientErrorSchema } from "../http/HttpClientError.ts"
@@ -20,7 +20,7 @@ const TypeId = "~effect/rpc/RpcClientError"
  * Represents a client-side RPC defect, such as a protocol violation or
  * decoding failure, with a message and original cause.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export class RpcClientDefect extends Schema.Error<RpcClientDefect>("effect/rpc/R
  * Error wrapper for RPC client failures, including worker, socket, HTTP client,
  * and client protocol defect failures.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -50,7 +50,7 @@ export class RpcClientError extends Schema.Error<RpcClientError>(TypeId)({
   /**
    * Marks this value as an RPC client error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId

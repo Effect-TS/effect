@@ -8,7 +8,7 @@
  * represented by promises that update the target registry once the result is no
  * longer initial.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Schema from "../Schema.ts"
@@ -19,7 +19,7 @@ import type * as AtomRegistry from "./AtomRegistry.ts"
 /**
  * Marker interface for entries in a dehydrated atom registry state.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export interface DehydratedAtom {
  * an optional promise used when an `AsyncResult.Initial` value is encoded as a
  * future non-initial value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ const encodeOrSkip = (
  * encoded as values, or represented by promises that resolve when the atom
  * leaves the initial state.
  *
- * @unstable
+ * @stability unstable
  * @category dehydration
  * @since 4.0.0
  */
@@ -125,7 +125,7 @@ export const dehydrate = (
 /**
  * Returns dehydrated state entries as `DehydratedAtomValue` records.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -145,7 +145,7 @@ export const toValues = (state: ReadonlyArray<DehydratedAtom>): Array<Dehydrated
  * `resultPromise` update the matching registry node, or preload the resolved value,
  * when the promise resolves.
  *
- * @unstable
+ * @stability unstable
  * @category hydration
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * for distributed maintenance work where the job should be owned by the cluster
  * rather than by every runner independently.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cron from "../Cron.ts"
@@ -38,7 +38,7 @@ import * as Singleton from "./Singleton.ts"
  * scheduling step and optional controls for shard group, next-run calculation,
  * and skipping stale scheduled runs.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

@@ -10,7 +10,7 @@
  * for optional fields and parameter metadata. Transport and server behavior
  * live in other modules.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -35,7 +35,7 @@ import type { ProtocolVersion, StatefulProtocolVersion } from "./McpProtocol.ts"
  * It represents an optional struct field that supplies a default value when the
  * field is absent during decoding or construction.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export interface optionalWithDefault<S extends Schema.Constraint & Schema.Withou
  * The default is used during decoding and as the constructor default for the
  * schema field.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -80,7 +80,7 @@ export const optionalWithDefault = <S extends Schema.Constraint & Schema.Without
  * The field may be absent, and explicit `undefined` values are omitted when
  * encoding.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -101,7 +101,7 @@ export const optional = <S extends Schema.Constraint>(
 /**
  * Schema for JSON-RPC request identifiers, allowing string or number ids.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -113,7 +113,7 @@ export const RequestId: Schema.Union<[
 /**
  * Type represented by the JSON-RPC request identifier schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -123,7 +123,7 @@ export type RequestId = typeof RequestId.Type
  * Schema for MCP progress tokens that associate progress notifications with the
  * original request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -135,7 +135,7 @@ export const ProgressToken: Schema.Union<[
 /**
  * Type represented by the MCP progress token schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -149,7 +149,7 @@ export type ProgressToken = typeof ProgressToken.Type
  * Request metadata may include a progress token that asks the receiver to send
  * out-of-band progress notifications for the request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -177,7 +177,7 @@ export class RequestMeta extends Schema.Opaque<RequestMeta>()(Schema.Struct({
  * The `_meta` field is reserved for protocol, extension, or implementation
  * metadata attached to a result.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -197,7 +197,7 @@ export class ResultMeta extends Schema.Opaque<ResultMeta>()(Schema.Struct({
  * The `_meta` field is reserved for protocol, extension, or implementation
  * metadata attached to a notification.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -212,7 +212,7 @@ export class NotificationMeta extends Schema.Opaque<NotificationMeta>()(Schema.S
 /**
  * Schema for opaque cursor tokens used in pagination.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -225,7 +225,7 @@ export const Cursor: typeof Schema.String = Schema.String
  *
  * A cursor is an opaque string token used to continue paginated requests.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -239,7 +239,7 @@ export type Cursor = typeof Cursor.Type
  * It includes the base request metadata fields plus an optional cursor
  * indicating where the server should continue listing results.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -260,7 +260,7 @@ export class PaginatedRequestMeta extends Schema.Opaque<PaginatedRequestMeta>()(
  * It includes the base result metadata fields plus an optional `nextCursor`,
  * which indicates that more results may be available.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -276,7 +276,7 @@ export class PaginatedResultMeta extends Schema.Opaque<PaginatedResultMeta>()(Sc
 /**
  * Schema for MCP conversation roles, allowing user and assistant.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -289,7 +289,7 @@ export const Role: Schema.Literals<["user", "assistant"]> = Schema.Literals(["us
  *
  * Valid roles are `"user"` and `"assistant"`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -303,7 +303,7 @@ export type Role = typeof Role.Type
  * Use to describe intended audience and priority metadata for objects shown or
  * processed by a client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export class Annotations extends Schema.Opaque<Annotations>()(Schema.Struct({
 /**
  * Schema for an icon that an MCP client can display.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -359,7 +359,7 @@ export class Icon extends Schema.Class<Icon>("@effect/ai/McpSchema/Icon")({
 /**
  * Describes the name and version of an MCP implementation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -385,7 +385,7 @@ export class Implementation extends Schema.Opaque<Implementation>()(Schema.Struc
  * Known capabilities are represented by this schema, but the capability set is
  * open and clients may define additional capabilities.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -451,7 +451,7 @@ export class ClientCapabilities extends Schema.Class<ClientCapabilities>(
  * Known capabilities are represented by this schema, but the capability set is
  * open and servers may define additional capabilities.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -518,7 +518,7 @@ export class ServerCapabilities extends Schema.Opaque<ServerCapabilities>()(Sche
  * It contains the numeric error `code`, a concise `message`, and optional
  * sender-defined `data`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -549,7 +549,7 @@ export class McpErrorBase extends Schema.Class<McpErrorBase>(
  * Use when building an MCP/JSON-RPC error response for a syntactically parsed
  * request object that fails request-shape validation.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -563,7 +563,7 @@ export const INVALID_REQUEST_ERROR_CODE = -32600 as const
  * Use when building an MCP/JSON-RPC error response for a request whose
  * `method` is unknown or unavailable.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -576,7 +576,7 @@ export const METHOD_NOT_FOUND_ERROR_CODE = -32601 as const
  * Use when building an MCP/JSON-RPC error response for decoded request
  * parameters that fail method-specific validation.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -589,7 +589,7 @@ export const INVALID_PARAMS_ERROR_CODE = -32602 as const
  * Use when building an MCP/JSON-RPC error response for an unexpected
  * server-side failure.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -602,7 +602,7 @@ export const INTERNAL_ERROR_CODE = -32603 as const
  * Use when building an MCP/JSON-RPC error response before a request object is
  * available because the JSON payload could not be parsed.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -617,7 +617,7 @@ export const PARSE_ERROR_CODE = -32700 as const
  * Use when building an MCP error response for missing, malformed, or
  * mismatched request-routing headers.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -635,7 +635,7 @@ export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
  *
  * Uses the standard JSON-RPC parse error code `-32700`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -657,7 +657,7 @@ export class ParseError extends Schema.Error<ParseError>("effect/ai/McpSchema/Pa
  *
  * Uses the standard JSON-RPC invalid request code `-32600`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -678,7 +678,7 @@ export class InvalidRequest extends Schema.Error<InvalidRequest>("effect/ai/McpS
  *
  * Uses the standard JSON-RPC method-not-found code `-32601`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -700,7 +700,7 @@ export class MethodNotFound extends Schema.Error<MethodNotFound>("effect/ai/McpS
  *
  * Uses the standard JSON-RPC invalid params code `-32602`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -723,7 +723,7 @@ export class InvalidParams extends Schema.Error<InvalidParams>("effect/ai/McpSch
  * Uses the standard JSON-RPC internal error code `-32603` and includes
  * `InternalError.notImplemented` for unimplemented handlers.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -739,7 +739,7 @@ export class InternalError extends Schema.Error<InternalError>("effect/ai/McpSch
  * Schema for MCP protocol errors returned in JSON-RPC failure responses,
  * including standard protocol errors and custom `McpErrorBase` values.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -755,7 +755,7 @@ export const McpError = Schema.Union([
 /**
  * Type represented by the MCP protocol error schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -776,7 +776,7 @@ export type McpError = typeof McpError.Type
  *
  * The receiver should respond promptly; otherwise the sender may disconnect.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -793,7 +793,7 @@ export class Ping extends Rpc.make("ping", {
 /**
  * Schema for the server's response to an initialize request from the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -821,7 +821,7 @@ export class InitializeResult extends Schema.Opaque<InitializeResult>()(Schema.S
  * Sent from the client to the server when it first connects, asking it to begin
  * initialization.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -851,7 +851,7 @@ export class Initialize extends Rpc.make("initialize", {
 /**
  * Sent from the client to the server after initialization has finished.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -872,7 +872,7 @@ export class InitializedNotification extends Rpc.make("notifications/initialized
  * The payload identifies the request to cancel and may include a
  * human-readable reason.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -901,7 +901,7 @@ export class CancelledNotification extends Rpc.make("notifications/cancelled", {
 /**
  * Sent from either peer to report progress for a long-running request.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -936,7 +936,7 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
 /**
  * Schema for a known resource that the server is capable of reading.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -993,7 +993,7 @@ export class Resource extends Schema.Class<Resource>(
 /**
  * Schema for a template description of resources available on the server.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1044,7 +1044,7 @@ export class ResourceTemplate extends Schema.Class<ResourceTemplate>(
 /**
  * Schema for the contents of a specific resource or sub-resource.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1066,7 +1066,7 @@ export class ResourceContents extends Schema.Opaque<ResourceContents>()(Schema.S
 /**
  * Schema for text resource contents represented as a string.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1082,7 +1082,7 @@ export class TextResourceContents extends Schema.Opaque<TextResourceContents>()(
 /**
  * Schema for binary resource contents represented as a `Uint8Array`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1097,7 +1097,7 @@ export class BlobResourceContents extends Schema.Opaque<BlobResourceContents>()(
 /**
  * Schema for the server's response to a resources/list request from the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1111,7 +1111,7 @@ export class ListResourcesResult extends Schema.Class<ListResourcesResult>(
 /**
  * Sent from the client to request a list of resources the server has.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1125,7 +1125,7 @@ export class ListResources extends Rpc.make("resources/list", {
  * Schema for the server's response to a resources/templates/list request from
  * the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1139,7 +1139,7 @@ export class ListResourceTemplatesResult extends Schema.Class<ListResourceTempla
 /**
  * Sent from the client to request a list of resource templates the server has.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1152,7 +1152,7 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 /**
  * Schema for the server's response to a resources/read request from the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1164,7 +1164,7 @@ export class ReadResourceResult extends Schema.Opaque<ReadResourceResult>()(Sche
 /**
  * Sent from the client to the server, to read a specific resource URI.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1192,7 +1192,7 @@ export class ReadResource extends Rpc.make("resources/read", {
  *
  * Servers may send this notification without a previous client subscription.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1204,7 +1204,7 @@ export class ResourceListChangedNotification extends Rpc.make("notifications/res
  * Sent from the client to request resources/updated notifications from the
  * server whenever a particular resource changes.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1226,7 +1226,7 @@ export class Subscribe extends Rpc.make("resources/subscribe", {
  * notifications from the server. This should follow a previous
  * resources/subscribe request.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1251,7 +1251,7 @@ export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
  * The URI may identify a sub-resource of the resource that the client
  * originally subscribed to.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1272,7 +1272,7 @@ export class ResourceUpdatedNotification extends Rpc.make("notifications/resourc
 /**
  * Describes an argument that a prompt can accept.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1295,7 +1295,7 @@ export class PromptArgument extends Schema.Opaque<PromptArgument>()(Schema.Struc
 /**
  * Represents a prompt or prompt template that the server offers.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1325,7 +1325,7 @@ export class Prompt extends Schema.Class<Prompt>(
 /**
  * Represents text content provided to or from an LLM.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1345,7 +1345,7 @@ export class TextContent extends Schema.Opaque<TextContent>()(Schema.Struct({
 /**
  * Represents image content provided to or from an LLM.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1370,7 +1370,7 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
 /**
  * Represents audio content provided to or from an LLM.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1400,7 +1400,7 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
  * It is up to the client how best to render embedded resources for the benefit
  * of the LLM and/or the user.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1422,7 +1422,7 @@ export class EmbeddedResource extends Schema.Opaque<EmbeddedResource>()(Schema.S
  * Resource links returned by tools are not guaranteed to appear in the results
  * of `resources/list` requests.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1435,7 +1435,7 @@ export class ResourceLink extends Schema.Opaque<ResourceLink>()(Schema.Struct({
  * Schema for MCP content blocks that can appear in prompt messages or tool
  * results.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1450,7 +1450,7 @@ export const ContentBlock = Schema.Union([
 /**
  * Type represented by the MCP content block schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1464,7 +1464,7 @@ export type ContentBlock = typeof ContentBlock.Type
  * This is similar to `SamplingMessage`, but also supports the embedding of
  * resources from the MCP server.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1476,7 +1476,7 @@ export class PromptMessage extends Schema.Opaque<PromptMessage>()(Schema.Struct(
 /**
  * Represents the server response to a prompts/list request from the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1491,7 +1491,7 @@ export class ListPromptsResult extends Schema.Class<ListPromptsResult>(
  * Sent from the client to request a list of prompts and prompt templates the
  * server has.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1504,7 +1504,7 @@ export class ListPrompts extends Rpc.make("prompts/list", {
 /**
  * Represents the server response to a prompts/get request from the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1522,7 +1522,7 @@ export class GetPromptResult extends Schema.Class<GetPromptResult>(
 /**
  * Sent from the client to get a prompt provided by the server.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1554,7 +1554,7 @@ export class GetPrompt extends Rpc.make("prompts/get", {
  *
  * Servers may send this notification without a previous client subscription.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1580,7 +1580,7 @@ export class PromptListChangedNotification extends Rpc.make("notifications/promp
  * Clients should never make tool use decisions based on ToolAnnotations
  * received from untrusted servers.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1632,7 +1632,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  * Property definitions and additional root keywords are constrained to JSON
  * values. The open root supports generated keywords such as `$defs`.
  *
- * @unstable
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -1645,7 +1645,7 @@ export type ToolJson = Schema.JsonObject & {
 /**
  * Schema for {@link ToolJson}.
  *
- * @unstable
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -1665,7 +1665,7 @@ export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
  *
  * Unlike tool inputs, tool outputs may use any JSON Schema root type.
  *
- * @unstable
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -1674,7 +1674,7 @@ export type ToolOutputJson = Schema.JsonObject
 /**
  * Schema for {@link ToolOutputJson}.
  *
- * @unstable
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -1683,7 +1683,7 @@ export const ToolOutputJson: Schema.Codec<ToolOutputJson> = Schema.JsonObject
 /**
  * Schema for the definition of a tool the client can call.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1729,7 +1729,7 @@ export class Tool extends Schema.Class<Tool>(
 /**
  * Schema for the server's response to a tools/list request from the client.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1743,7 +1743,7 @@ export class ListToolsResult extends Schema.Class<ListToolsResult>(
 /**
  * Sent from the client to request a list of tools the server has.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1765,7 +1765,7 @@ export class ListTools extends Rpc.make("tools/list", {
  * indicating that the server does not support tool calls, or any other
  * exceptional conditions, should be reported as an MCP error response.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1795,7 +1795,7 @@ export class CallToolResult extends Schema.Class<CallToolResult>("@effect/ai/Mcp
  * @see {@link ListTools} for discovering available tools before calling one
  * @see {@link CallToolResult} for the successful tool-call result shape
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1826,7 +1826,7 @@ export class CallTool extends Rpc.make("tools/call", {
  *
  * Servers may send this notification without a previous client subscription.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1843,7 +1843,7 @@ export class ToolListChangedNotification extends Rpc.make("notifications/tools/l
  * as specified in RFC 5424 section 6.2.1:
  * https://datatracker.ietf.org/doc/html/rfc5424#section-6.2.1.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -1872,7 +1872,7 @@ export const LoggingLevel: Schema.Literals<[
  * severities as specified in RFC 5424 section 6.2.1:
  * https://datatracker.ietf.org/doc/html/rfc5424#section-6.2.1.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -1881,7 +1881,7 @@ export type LoggingLevel = typeof LoggingLevel.Type
 /**
  * Sent from the client to the server to enable or adjust logging.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -1907,7 +1907,7 @@ export class SetLevel extends Rpc.make("logging/setLevel", {
  * The notification includes the severity level, optional logger name, and
  * JSON-serializable log data.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -1937,7 +1937,7 @@ export class LoggingMessageNotification extends Rpc.make("notifications/message"
 /**
  * Schema for a tool-use request produced during MCP sampling.
  *
- * @unstable
+ * @stability unstable
  * @category sampling
  * @since 4.0.0
  */
@@ -1961,7 +1961,7 @@ export class ToolUseContent extends Schema.Class<ToolUseContent>("@effect/ai/Mcp
 /**
  * Schema for the result of a tool use supplied in a sampling message.
  *
- * @unstable
+ * @stability unstable
  * @category sampling
  * @since 4.0.0
  */
@@ -1989,7 +1989,7 @@ export class ToolResultContent extends Schema.Class<ToolResultContent>("@effect/
 /**
  * Schema for content blocks accepted in MCP sampling messages.
  *
- * @unstable
+ * @stability unstable
  * @category sampling
  * @since 4.0.0
  */
@@ -2004,7 +2004,7 @@ export const SamplingMessageContentBlock = Schema.Union([
 /**
  * Type represented by the MCP sampling message content block schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2013,7 +2013,7 @@ export type SamplingMessageContentBlock = typeof SamplingMessageContentBlock.Typ
 /**
  * Describes a message issued to or received from an LLM API.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2026,7 +2026,7 @@ export class SamplingMessage extends Schema.Opaque<SamplingMessage>()(Schema.Str
 /**
  * Schema for controlling tool selection during MCP sampling.
  *
- * @unstable
+ * @stability unstable
  * @category sampling
  * @since 4.0.0
  */
@@ -2045,7 +2045,7 @@ export class ToolChoice extends Schema.Class<ToolChoice>("@effect/ai/McpSchema/T
  * Keys not declared here are currently left unspecified by the spec and are up
  * to the client to interpret.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2083,7 +2083,7 @@ export class ModelHint extends Schema.Opaque<ModelHint>()(Schema.Struct({
  * up to the client to decide how to interpret these preferences and how to
  * balance them against other considerations.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2132,7 +2132,7 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
  * The client should let the user inspect the sampled message before returning
  * it to the server.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2165,7 +2165,7 @@ export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
  * The client chooses the model and should ask the user to approve the sampling
  * request before it begins.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -2219,7 +2219,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
 /**
  * Schema for a reference to a resource or resource template definition.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2234,7 +2234,7 @@ export class ResourceReference extends Schema.Opaque<ResourceReference>()(Schema
 /**
  * Schema for a prompt reference used in autocomplete requests.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2250,7 +2250,7 @@ export class PromptReference extends Schema.Opaque<PromptReference>()(Schema.Str
 /**
  * Schema for the server's response to a completion/complete request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2276,7 +2276,7 @@ export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struc
   /**
    * Empty completion result used when a completion request has no values.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly empty = CompleteResult.make({
@@ -2291,7 +2291,7 @@ export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struc
 /**
  * Sent from the client to the server to ask for completion options.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -2338,7 +2338,7 @@ export class Complete extends Rpc.make("completion/complete", {
 /**
  * Represents a root directory or file that the server can operate on.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2370,7 +2370,7 @@ export class Root extends Schema.Class<Root>(
  *
  * Use to return the directories or files that an MCP server may operate on.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2392,7 +2392,7 @@ export class ListRootsResult extends Schema.Class<ListRootsResult>(
  * system structure or access specific locations that the client has permission
  * to read from.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -2413,7 +2413,7 @@ export class ListRoots extends Rpc.make("roots/list", {
  *
  * Send this when the client adds, removes, or modifies a root.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -2428,7 +2428,7 @@ export class RootsListChangedNotification extends Rpc.make("notifications/roots/
 /**
  * Schema for a string field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2445,7 +2445,7 @@ export class ElicitationString extends Schema.Class<ElicitationString>("@effect/
 /**
  * Schema for a numeric field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2461,7 +2461,7 @@ export class ElicitationNumber extends Schema.Class<ElicitationNumber>("@effect/
 /**
  * Schema for a boolean field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2475,7 +2475,7 @@ export class ElicitationBoolean extends Schema.Class<ElicitationBoolean>("@effec
 /**
  * Schema for an untitled single-select field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2492,7 +2492,7 @@ export class UntitledSingleSelectEnum extends Schema.Class<UntitledSingleSelectE
 /**
  * Schema for a titled single-select field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2512,7 +2512,7 @@ export class TitledSingleSelectEnum extends Schema.Class<TitledSingleSelectEnum>
 /**
  * Schema for every single-select field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2524,7 +2524,7 @@ export const SingleSelectEnum = Schema.Union([
 /**
  * Type represented by the single-select elicitation field schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2533,7 +2533,7 @@ export type SingleSelectEnum = typeof SingleSelectEnum.Type
 /**
  * Schema for an untitled multi-select field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2555,7 +2555,7 @@ export class UntitledMultiSelectEnum extends Schema.Class<UntitledMultiSelectEnu
 /**
  * Schema for a titled multi-select field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2579,7 +2579,7 @@ export class TitledMultiSelectEnum extends Schema.Class<TitledMultiSelectEnum>(
 /**
  * Schema for every multi-select field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2591,7 +2591,7 @@ export const MultiSelectEnum = Schema.Union([
 /**
  * Type represented by the multi-select elicitation field schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2601,7 +2601,7 @@ export type MultiSelectEnum = typeof MultiSelectEnum.Type
  * Schema for the legacy titled single-select elicitation field.
  *
  * @deprecated Use {@link TitledSingleSelectEnum} instead.
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2619,7 +2619,7 @@ export class LegacyTitledEnum extends Schema.Class<LegacyTitledEnum>(
 /**
  * Schema for every enumeration field in an MCP elicitation form.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2632,7 +2632,7 @@ export const ElicitationEnum = Schema.Union([
 /**
  * Type represented by the elicitation enumeration field schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2641,7 +2641,7 @@ export type ElicitationEnum = typeof ElicitationEnum.Type
 /**
  * Schema for primitive field definitions accepted by MCP elicitation forms.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2655,7 +2655,7 @@ export const PrimitiveSchemaDefinition = Schema.Union([
 /**
  * Type represented by the primitive elicitation field schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2671,7 +2671,7 @@ const ElicitationForm = Schema.Struct({
 /**
  * Schema for form-mode MCP elicitation requests.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2687,7 +2687,7 @@ export class ElicitRequestFormParams extends Schema.Class<ElicitRequestFormParam
 /**
  * Schema for URL-mode MCP elicitation requests.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2704,7 +2704,7 @@ export class ElicitRequestURLParams extends Schema.Class<ElicitRequestURLParams>
 /**
  * Schema for every MCP elicitation request mode.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2716,7 +2716,7 @@ export const ElicitRequestParams = Schema.Union([
 /**
  * Type represented by the MCP elicitation request parameters schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2725,7 +2725,7 @@ export type ElicitRequestParams = typeof ElicitRequestParams.Type
 /**
  * Schema for an accepted client response to an elicitation request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2753,7 +2753,7 @@ export class ElicitAcceptResult extends Schema.Class<ElicitAcceptResult>(
 /**
  * Schema for a declined or canceled client response to an elicitation request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2773,7 +2773,7 @@ export class ElicitDeclineResult extends Schema.Class<ElicitDeclineResult>(
 /**
  * Schema for every client response to an elicitation request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2785,7 +2785,7 @@ export const ElicitResult = Schema.Union([
 /**
  * Type represented by the MCP elicitation result schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2794,7 +2794,7 @@ export type ElicitResult = typeof ElicitResult.Type
 /**
  * Version-neutral request for additional MCP client input.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2806,7 +2806,7 @@ export type McpInputRequest =
 /**
  * Version-neutral response supplied by an MCP client for a prior input request.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2825,7 +2825,7 @@ export type McpInputResponse = Schema.JsonObject
  * `requestState` is opaque to the client and is returned unchanged with the
  * keyed input responses.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2859,7 +2859,7 @@ export class InputRequired extends Data.TaggedClass("InputRequired")<{
  * The client responds with accepted content, an explicit decline, or a
  * cancellation.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -2872,7 +2872,7 @@ export class Elicit extends Rpc.make("elicitation/create", {
 /**
  * Notifies a client that a URL-mode elicitation completed.
  *
- * @unstable
+ * @stability unstable
  * @category elicitation
  * @since 4.0.0
  */
@@ -2891,7 +2891,7 @@ export class ElicitationCompleteNotification extends Rpc.make("notifications/eli
  * The error stores the original elicitation request and, when available, the
  * underlying cause.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2909,7 +2909,7 @@ export class ElicitationDeclined extends Schema.Error<ElicitationDeclined>("@eff
  * Raised when the negotiated MCP revision or client capabilities do not
  * support a server-initiated operation.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -2923,7 +2923,7 @@ export class McpReverseOperationUnsupported extends Data.TaggedError("McpReverse
  * A reverse MCP operation failed while being sent or projected through a
  * version adapter.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -2935,7 +2935,7 @@ export class McpReverseOperationError extends Data.TaggedError("McpReverseOperat
 /**
  * Version-neutral operations that an MCP server may request from its client.
  *
- * @unstable
+ * @stability unstable
  * @category client
  * @since 4.0.0
  */
@@ -2959,7 +2959,7 @@ export interface McpReverseClient {
  * Unlike `McpServerClient`, this service does not imply an initialized session
  * or support for server-initiated requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -2984,7 +2984,7 @@ export class McpRequestContext extends Context.Service<McpRequestContext, {
  * It exposes the current client id, normalized initialization data, and a
  * scoped version-neutral facade for server-initiated requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -3006,7 +3006,7 @@ export class McpServerClient extends Context.Service<McpServerClient, {
  * RPC middleware that provides `McpServerClient` to handlers for initialized
  * MCP clients.
  *
- * @unstable
+ * @stability unstable
  * @category middleware
  * @since 4.0.0
  */
@@ -3022,7 +3022,7 @@ export class McpServerClientMiddleware extends RpcMiddleware.Service<McpServerCl
  * Encoded JSON-RPC request message for an RPC in `Group`, including the request
  * id, method, and encoded payload.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3047,7 +3047,7 @@ export type RequestEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
  * Encoded notification message for an RPC in `Group`, including the method and
  * encoded payload without a request id.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3071,7 +3071,7 @@ export type NotificationEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
  * Encoded success response for an RPC in `Group`, containing the original
  * request id and encoded result.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3095,7 +3095,7 @@ export type SuccessEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
  * Encoded failure response for an RPC in `Group`, containing the original
  * request id and encoded error.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3124,7 +3124,7 @@ export type FailureEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
  * completion, and ping requests, and installs `McpServerClientMiddleware` for
  * handlers.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3147,7 +3147,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
 /**
  * Encoded union of all client-to-server MCP request messages.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3157,7 +3157,7 @@ export type ClientRequestEncoded = RequestEncoded<typeof ClientRequestRpcs>
  * RPC group for notifications that MCP clients send to the server, such as
  * cancellation, progress, initialization completion, and roots list changes.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3171,7 +3171,7 @@ export class ClientNotificationRpcs extends RpcGroup.make(
 /**
  * Encoded union of all client-to-server MCP notification messages.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3180,7 +3180,7 @@ export type ClientNotificationEncoded = NotificationEncoded<typeof ClientNotific
 /**
  * RPC group combining all client-to-server MCP requests and notifications.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3189,7 +3189,7 @@ export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) 
 /**
  * Encoded success response sent by a client for a server-initiated request.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3198,7 +3198,7 @@ export type ClientSuccessEncoded = SuccessEncoded<typeof ServerRequestRpcs>
 /**
  * Encoded failure response sent by a client for a server-initiated request.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3208,7 +3208,7 @@ export type ClientFailureEncoded = FailureEncoded<typeof ServerRequestRpcs>
  * RPC group for requests that an MCP server can send to a client, including
  * ping, sampling, roots listing, and elicitation.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3222,7 +3222,7 @@ export class ServerRequestRpcs extends RpcGroup.make(
 /**
  * Encoded union of all server-to-client MCP request messages.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3233,7 +3233,7 @@ export type ServerRequestEncoded = RequestEncoded<typeof ServerRequestRpcs>
  * including cancellation, progress, logging, and list or resource update
  * notifications.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3251,7 +3251,7 @@ export class ServerNotificationRpcs extends RpcGroup.make(
 /**
  * Encoded union of all server-to-client MCP notification messages.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3260,7 +3260,7 @@ export type ServerNotificationEncoded = NotificationEncoded<typeof ServerNotific
 /**
  * Encoded success response sent by the server for a client-initiated request.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3269,7 +3269,7 @@ export type ServerSuccessEncoded = SuccessEncoded<typeof ClientRequestRpcs>
 /**
  * Encoded failure response sent by the server for a client-initiated request.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3278,7 +3278,7 @@ export type ServerFailureEncoded = FailureEncoded<typeof ClientRequestRpcs>
 /**
  * Encoded server response to a client request, either success or failure.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3288,7 +3288,7 @@ export type ServerResultEncoded = ServerSuccessEncoded | ServerFailureEncoded
  * Encoded MCP messages accepted from a client by the server protocol: client
  * requests and client notifications.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3298,7 +3298,7 @@ export type FromClientEncoded = ClientRequestEncoded | ClientNotificationEncoded
  * Encoded MCP messages emitted by the server protocol to a client: server
  * responses and server notifications.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -3310,7 +3310,7 @@ const ParamSchemaTypeId = "~effect/ai/McpSchema/ParamSchema"
  * Returns `true` when a schema was created with `param` and therefore carries
  * a resource URI template parameter name.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -3326,7 +3326,7 @@ export function isParam(schema: Schema.Constraint): schema is Param<string, Sche
  * A `Param` behaves like the wrapped schema while carrying the parameter name
  * used for template compilation and completion lookup.
  *
- * @unstable
+ * @stability unstable
  * @category parameters
  * @since 4.0.0
  */
@@ -3358,7 +3358,7 @@ export interface Param<Name extends string, S extends Schema.Constraint> extends
 /**
  * Creates a parameter for a resource URI template.
  *
- * @unstable
+ * @stability unstable
  * @category parameters
  * @since 4.0.0
  */
@@ -3373,7 +3373,7 @@ export function param<const Name extends string, S extends Schema.Constraint>(
  * Annotation to conditionally enable or disable tools based on client
  * information.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

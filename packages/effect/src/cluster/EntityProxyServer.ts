@@ -8,7 +8,7 @@
  * normal requests and discard requests are forwarded to the underlying entity
  * client.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -30,7 +30,7 @@ import type { Sharding } from "./Sharding.ts"
  * request payload to the corresponding entity client method, including discard
  * endpoints.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export const layerHttpApi = <
  * The handlers forward each prefixed proxy RPC to the target entity client using
  * the `entityId` embedded in the proxy payload.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -140,7 +140,7 @@ export const layerRpcHandlers = <
  *
  * Includes both the normal prefixed RPC handler and its discard variant.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

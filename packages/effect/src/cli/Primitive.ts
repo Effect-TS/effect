@@ -8,7 +8,7 @@
  * scalar values, paths, files, structured config files, schema-decoded input,
  * redacted values, and key-value pairs.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -65,7 +65,7 @@ const TypeId = "~effect/cli/Primitive"
  * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => ["hello", 42, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -77,14 +77,14 @@ export interface Primitive<out A> extends Primitive.Variance<A> {
 /**
  * Namespace containing type-level helpers for `Primitive`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Primitive {
   /**
    * Type-level variance marker for the value parsed by a `Primitive`.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -177,7 +177,7 @@ const makeSchemaPrimitive = <T>(
  * await Effect.runPromise(parseBoolean.pipe(Effect.provide(CliTestLayer))) // => [true, true, false, false]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const Boolean: Primitive<boolean> = makeSchemaPrimitive(
  * await Effect.runPromise(parseFloat.pipe(Effect.provide(CliTestLayer))) // => [3.14, -42.5, 0]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -267,7 +267,7 @@ export const Finite: Primitive<number> = makeSchemaPrimitive(
  * await Effect.runPromise(parseInteger.pipe(Effect.provide(CliTestLayer))) // => [42, -123, 0]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -311,7 +311,7 @@ export const Int: Primitive<number> = makeSchemaPrimitive(
  * await Effect.runPromise(parseDate.pipe(Effect.provide(CliTestLayer))) // => "2023-12-25T00:00:00.000Z"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -356,7 +356,7 @@ export const Date: Primitive<globalThis.Date> = makeSchemaPrimitive(
  * await Effect.runPromise(parseString.pipe(Effect.provide(CliTestLayer))) // => ["hello world", "", "123"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -406,7 +406,7 @@ export const String: Primitive<string> = makePrimitive("String", (value) => Effe
  * await Effect.runPromise(parseLogLevel.pipe(Effect.provide(CliTestLayer))) // => ["info", "debug"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -444,7 +444,7 @@ export const Choice = <A>(
  * const tags = [filePath._tag, dirPath._tag, anyPath._tag] // => ["Path", "Path", "Path"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -489,7 +489,7 @@ export type PathType = "file" | "directory" | "either"
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -578,7 +578,7 @@ export const Path = (
  * await Effect.runPromise(parseRedacted.pipe(Effect.provide(CliTestLayer))) // => ["secret-password", "<redacted>"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -626,7 +626,7 @@ export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
  * await Effect.runPromise(readConfigFile) // => { private: true }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -675,7 +675,7 @@ export const FileText: Primitive<string> = makePrimitive(
  * Represents options which can be provided to methods that deal with parsing
  * file content.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -738,7 +738,7 @@ const fileParsers: Record<string, (content: string) => unknown> = {
  * await Effect.runPromise(loadConfig) // => { private: true }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -764,7 +764,7 @@ export const FileParse = (options?: FileParseOptions): Primitive<unknown> => {
  * Represents options which can be provided to methods that deal with parsing
  * file content and decoding the file content with a `Schema`.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -820,7 +820,7 @@ export type FileSchemaOptions = Struct.Simplify<
  * await Effect.runPromise(loadConfig) // => { private: true }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -882,7 +882,7 @@ export const FileSchema = <A>(
  * result // => [{ name: "john" }, { port: "3000" }, { debug: "true" }]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -940,7 +940,7 @@ export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
  * await Effect.runPromise(Effect.flip(program).pipe(Effect.provide(CliTestLayer))) // => "This option does not accept values"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -972,7 +972,7 @@ export const Never: Primitive<never> = makePrimitive("Never", () => Effect.fail(
  * Primitive.getTypeName(logLevelChoice) // => "choice"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */

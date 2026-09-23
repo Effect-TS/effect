@@ -6,7 +6,7 @@
  * retry behavior, temporary disabling after repeated failures, and final flush
  * during shutdown.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { Clock } from "../Clock.ts"
@@ -71,7 +71,7 @@ const policy = Schedule.forever.pipe(
  * exporter's temporary-disable window. Wrap it with `Effect.timeoutOption` to
  * bound its duration at the call site.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -123,7 +123,7 @@ export class Flusher extends Context.Service<Flusher, {
  * was called (for example one started by the export interval); it only waits
  * for the exports it initiates.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
  * after unhandled failures, and flushes during scope finalization up to
  * `shutdownTimeout`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

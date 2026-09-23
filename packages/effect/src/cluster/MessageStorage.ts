@@ -8,7 +8,7 @@
  * This module also includes the encoded storage-driver contract and no-op or
  * in-memory implementations for local use and tests.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -47,7 +47,7 @@ const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
  * messages; manages reply handlers; and provides transaction wrapping for storage
  * operations.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -215,7 +215,7 @@ export class MessageStorage extends Context.Service<MessageStorage, {
  * A duplicate result carries the original request ID and the last reply already
  * received for the duplicated request.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -224,7 +224,7 @@ export type SaveResult<R extends Rpc.Any> = SaveResult.Success | SaveResult.Dupl
 /**
  * Constructors and matchers for decoded save results.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -234,7 +234,7 @@ export const SaveResult = Data.taggedEnum<SaveResult.Constructor>()
  * Constructors and matchers for encoded save results returned by storage
  * drivers.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -243,7 +243,7 @@ export const SaveResultEncoded = Data.taggedEnum<SaveResult.Encoded>()
 /**
  * Variants and helper types for `SaveResult`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace SaveResult {
@@ -255,7 +255,7 @@ export declare namespace SaveResult {
    * Duplicate results contain an encoded last received reply instead of a decoded
    * reply.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -264,7 +264,7 @@ export declare namespace SaveResult {
   /**
    * Variant indicating that the message was saved as a new storage entry.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -280,7 +280,7 @@ export declare namespace SaveResult {
    * It carries the original request ID and the latest decoded reply, when one is
    * available.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -298,7 +298,7 @@ export declare namespace SaveResult {
    * It carries the original request ID and the latest encoded reply, when one is
    * available.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -311,7 +311,7 @@ export declare namespace SaveResult {
   /**
    * Generic tagged enum constructor type for `SaveResult`.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -328,7 +328,7 @@ export declare namespace SaveResult {
  * Implementations persist encoded messages, track primary keys and delayed
  * delivery, read unprocessed messages, and provide transaction wrapping.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -471,7 +471,7 @@ export type Encoded = {
  * The fields distinguish existing shards from newly assigned shards and carry the
  * driver-specific pagination cursor.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -489,7 +489,7 @@ export type EncodedUnprocessedOptions<A> = {
  * The fields distinguish existing requests from new requests and carry the
  * driver-specific pagination cursor.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -507,7 +507,7 @@ export type EncodedRepliesOptions<A> = {
  * The returned service can register waiting reply handlers, notify them when
  * replies are saved, and fail them when a request or shard is unregistered.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -633,7 +633,7 @@ export const make = (
  * generation, delayed delivery checks, duplicate decoding, and malformed-message
  * defect replies.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -859,7 +859,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
 /**
  * No-op `MessageStorage` service that does not persist messages or replies.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -889,7 +889,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
  * It stores the encoded envelope, last acknowledged chunk, accumulated replies,
  * and optional delivery time.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -903,7 +903,7 @@ export type MemoryEntry = {
 /**
  * Provides a context reference used in tests to simulate a transaction.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -923,7 +923,7 @@ const claimExpirationMillis = 10 * 60 * 1000
  * maps used to track requests, primary keys, unprocessed envelopes, reply IDs,
  * and the journal.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1186,7 +1186,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
   /**
    * Layer that provides the in-memory message storage driver.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly layer: Layer.Layer<MemoryDriver> = Layer.effect(this)(this.make).pipe(
@@ -1197,7 +1197,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
 /**
  * Layer that provides the no-op `MessageStorage` service.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1206,7 +1206,7 @@ export const layerNoop: Layer.Layer<MessageStorage> = Layer.succeed(MessageStora
 /**
  * Layer that provides in-memory message storage and its backing `MemoryDriver`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

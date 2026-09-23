@@ -8,7 +8,7 @@
  * their required services from the current context when they need to be used
  * inside another Effect service.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -29,7 +29,7 @@ const TypeId = "~effect/ai/Model" as const
  * Model constructor into the parent Effect when you want to use a Model from
  * within an Effect service.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export interface Model<in out Provider, in out Provides, in out Requires>
  * access the name of the provider that is currently in use within a given
  * Effect program.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ export class ProviderName extends Context.Service<ProviderName, string>()(
  * access the name of the model that is currently in use within a given Effect
  * program.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -128,7 +128,7 @@ const Proto = {
  * await Effect.runPromise(program) // => { provider: "amazon-bedrock", modelName: "claude-3-5-haiku" }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * options or OpenTelemetry environment variables and converts JavaScript values
  * into OTLP attribute values.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "../Config.ts"
@@ -17,7 +17,7 @@ import * as Schema from "../Schema.ts"
 /**
  * OTLP resource metadata attached to exported logs, metrics, and traces.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export interface Resource {
  * The resource always includes `service.name`, includes `service.version` when
  * provided, and converts custom attributes into OTLP attribute values.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -88,7 +88,7 @@ export const make = (options: {
  * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. Missing
  * required configuration is converted to a defect.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -147,7 +147,7 @@ export const fromConfig: (
  *
  * Throws if the resource does not contain a string `service.name` attribute.
  *
- * @unstable
+ * @stability unstable
  * @category attributes
  * @since 4.0.0
  */
@@ -164,7 +164,7 @@ export const serviceNameUnsafe = (resource: Resource): string => {
 /**
  * Converts key/value entries into OTLP `KeyValue` attributes.
  *
- * @unstable
+ * @stability unstable
  * @category attributes
  * @since 4.0.0
  */
@@ -187,7 +187,7 @@ export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array
  * Arrays are converted recursively, primitive values use their matching OTLP
  * fields, and unsupported values are formatted as strings.
  *
- * @unstable
+ * @stability unstable
  * @category attributes
  * @since 4.0.0
  */
@@ -230,7 +230,7 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
 /**
  * An OTLP attribute represented as a string key and typed value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ export interface KeyValue {
 /**
  * OTLP `AnyValue` payload for scalar, array, key/value-list, or byte values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -268,7 +268,7 @@ export interface AnyValue {
 /**
  * OTLP array value containing nested `AnyValue` entries.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -280,7 +280,7 @@ export interface ArrayValue {
 /**
  * OTLP key/value-list value containing nested attributes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -292,7 +292,7 @@ export interface KeyValueList {
 /**
  * Low and high 32-bit parts of a 64-bit integer value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -304,7 +304,7 @@ export interface LongBits {
 /**
  * Accepted runtime representations for an OTLP/protobuf fixed 64-bit value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

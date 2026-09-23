@@ -3,7 +3,7 @@
  * registry. Generated modules use the same runtime support as the JIT compiler,
  * without importing source generation or constructing functions dynamically.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Codegen from "../internal/schema/codegen.ts"
@@ -31,7 +31,7 @@ const compiler = (sources: ReadonlyMap<Codegen.DecoderOperation, string>): strin
 /**
  * A parser operation prepared by {@link compile}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -42,7 +42,7 @@ type PlannedOperation = Operation | "decodeEffect"
 /**
  * An exact AST and the parser operations to prepare for it.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ export interface Target {
  * operations use the interpreter while statically installed children remain
  * available.
  *
- * @unstable
+ * @stability unstable
  * @category compilation
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * tracing, and reactive query helpers. Driver integrations build this service
  * from their connection and compiler pieces.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { Clock } from "../Clock.ts"
@@ -34,7 +34,7 @@ const TypeId = "~effect/sql/SqlClient"
  * SQL client service interface, combining the statement constructor API with
  * connection reservation, transaction handling, and reactive query helpers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -91,7 +91,7 @@ export interface SqlClient extends Constructor {
  * Use to access or provide the SQL client used to build statements, stream
  * rows, reserve connections, and run transactions.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export const SqlClient = Context.Service<SqlClient>("effect/sql/SqlClient")
 /**
  * Namespace containing types associated with the `SqlClient` service.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace SqlClient {
@@ -109,7 +109,7 @@ export declare namespace SqlClient {
    * the SQL compiler, transaction SQL, row transformation, tracing attributes,
    * and optional reactive query integration.
    *
-   * @unstable
+   * @stability unstable
    * @category options
    * @since 4.0.0
    */
@@ -166,7 +166,7 @@ let transactionSemaphoreIdCounter = 0
  * commands, tracing attributes, optional row transforms, and reactive query
  * integration.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
  * is provided.
  *
- * @unstable
+ * @stability unstable
  * @category transactions
  * @since 4.0.0
  */
@@ -367,7 +367,7 @@ export const makeWithTransaction = <I, S>(options: {
  * Phantom identifier for the scoped transaction connection service associated
  * with a SQL client.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -378,7 +378,7 @@ export interface TransactionConnection {
 /**
  * Namespace containing types associated with transaction connection services.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace TransactionConnection {
@@ -386,7 +386,7 @@ export declare namespace TransactionConnection {
    * Service payload stored during a transaction, containing the active
    * connection and nested transaction depth.
    *
-   * @unstable
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -397,7 +397,7 @@ export declare namespace TransactionConnection {
  * Creates a unique context service tag for the active transaction connection of
  * a specific SQL client.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -410,7 +410,7 @@ export const TransactionConnection = (
  * Context reference used by SQL integrations to opt in to safe integer
  * handling; defaults to `false`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

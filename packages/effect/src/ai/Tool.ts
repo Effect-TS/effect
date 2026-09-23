@@ -9,7 +9,7 @@
  * includes the shared types and conversion helpers needed by language-model
  * requests, tool handlers, and provider integrations.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -39,7 +39,7 @@ import type * as Prompt from "./Prompt.ts"
  * The tool type guards use this marker, together with more specific markers,
  * to distinguish user-defined, provider-defined, and dynamic tools.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export const TypeId: TypeId = "~effect/ai/Tool"
 /**
  * Type-level representation of the Effect AI tool runtime type identifier.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export type TypeId = "~effect/ai/Tool"
  * `isProviderDefined` uses this marker to distinguish tools that are built into
  * an AI provider from user-defined and dynamic tools.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -72,7 +72,7 @@ export const ProviderDefinedTypeId: ProviderDefinedTypeId = "~effect/ai/Tool/Pro
  * Type-level representation of the provider-defined tool runtime type
  * identifier.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export type ProviderDefinedTypeId = "~effect/ai/Tool/ProviderDefined"
  * `isDynamic` uses this marker to distinguish tools whose schema may be
  * provided at runtime from user-defined and provider-defined tools.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -95,7 +95,7 @@ export const DynamicTypeId: DynamicTypeId = "~effect/ai/Tool/Dynamic"
 /**
  * Type-level representation of the dynamic tool runtime type identifier.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export type DynamicTypeId = "~effect/ai/Tool/Dynamic"
  * If set to `"return"`, errors that occur during tool call handler execution
  * will be captured and returned as part of the tool call result.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export type FailureMode = "error" | "return"
  * Context provided to the `needsApproval` function when dynamically
  * determining if a tool requires user approval.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -145,7 +145,7 @@ export interface NeedsApprovalContext {
 /**
  * Function type for dynamically determining if a tool requires approval.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -163,7 +163,7 @@ export type NeedsApprovalFunction<Params extends Schema.Constraint> = (
  * - `boolean`: Static approval requirement
  * - `NeedsApprovalFunction`: Dynamic approval based on parameters/context
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ export type NeedsApproval<Params extends Schema.Constraint> =
  * const result = [GetWeather.name, GetWeather.failureMode] // => ["GetWeather", "error"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -401,7 +401,7 @@ export interface Tool<
  * const result = [WebSearch.name, WebSearch.providerName] // => ["OpenAiWebSearch", "web_search"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -499,7 +499,7 @@ export interface ProviderDefined<
  * const result = [Calculator.name, McpTool.name] // => ["Calculator", "McpTool"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -575,7 +575,7 @@ export interface Dynamic<
  * const result = [Tool.isUserDefined(UserDefinedTool), Tool.isUserDefined(ProviderDefinedTool)] // => [true, false]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -620,7 +620,7 @@ export const isUserDefined = (u: unknown): u is Tool<string, any, any> =>
  * const result = [Tool.isProviderDefined(UserDefinedTool), Tool.isProviderDefined(ProviderDefinedTool)] // => [false, false]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -649,7 +649,7 @@ export const isProviderDefined = (
  * const result = [Tool.isDynamic(DynamicTool), Tool.isDynamic(UserDefinedTool)] // => [true, false]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -662,7 +662,7 @@ export const isDynamic = (u: unknown): u is Dynamic<string, any> => Predicate.ha
 /**
  * A type which represents any `Tool`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -678,7 +678,7 @@ export interface Any extends
 /**
  * A type which represents any provider-defined `Tool`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -695,7 +695,7 @@ export interface AnyProviderDefined extends
 /**
  * A type which represents any dynamic `Tool`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -719,7 +719,7 @@ export interface AnyDynamic extends
 /**
  * A utility type to extract the `Name` type from an `Tool`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -733,7 +733,7 @@ export type Name<T> = T extends Tool<
 /**
  * A utility type to extract the type of the tool call parameters.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -747,7 +747,7 @@ export type Parameters<T> = T extends Tool<
 /**
  * A utility type to extract the encoded type of the tool call parameters.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -762,7 +762,7 @@ export type ParametersEncoded<T> = T extends Tool<
  * A utility type to extract the schema for the parameters which an `Tool`
  * must be called with.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -776,7 +776,7 @@ export type ParametersSchema<T> = T extends Tool<
 /**
  * A utility type to extract the type of the tool call result when it succeeds.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -791,7 +791,7 @@ export type Success<T> = T extends Tool<
  * A utility type to extract the encoded type of the tool call result when
  * it succeeds.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -806,7 +806,7 @@ export type SuccessEncoded<T> = T extends Tool<
  * A utility type to extract the schema for the return type of a tool call when
  * the tool call succeeds.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -820,7 +820,7 @@ export type SuccessSchema<T> = T extends Tool<
 /**
  * A utility type to extract the type of the tool call result when it fails.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -835,7 +835,7 @@ export type Failure<T> = T extends Tool<
  * A utility type to extract the encoded type of the tool call result when
  * it fails.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -850,7 +850,7 @@ export type FailureEncoded<T> = T extends Tool<
  * A tool's failure type, plus {@link ExecutionFailure} in both failure modes
  * and `AiError` in `"return"` mode.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -868,7 +868,7 @@ export type FailureResult<T> = T extends Tool<
 /**
  * The encoded version of `FailureResult`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -886,7 +886,7 @@ export type FailureResultEncoded<T> = T extends Tool<
 /**
  * A tool's success or {@link FailureResult} type.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -895,7 +895,7 @@ export type Result<T> = Success<T> | FailureResult<T>
 /**
  * The encoded form of {@link Result}.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -904,7 +904,7 @@ export type ResultEncoded<T> = SuccessEncoded<T> | FailureResultEncoded<T>
 /**
  * A utility type to extract the requirements of a `Tool` call handler.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -925,7 +925,7 @@ export type HandlerServices<T> = T extends Tool<
  * A utility type to extract the requirements needed to encode the result of
  * a `Tool` call.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -940,7 +940,7 @@ export type ResultEncodingServices<T> = T extends Tool<
  * A utility type to extract the requirements needed to decode the result of
  * a `Tool` call.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -954,7 +954,7 @@ export type ResultDecodingServices<T> = T extends Tool<
 /**
  * Extracts the services required to encode tool parameters.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -968,7 +968,7 @@ export type ParametersEncodingServices<T> = T extends Tool<
 /**
  * Represents an `Tool` that has been implemented within the application.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -988,7 +988,7 @@ export interface Handler<Name extends string> {
  * - `"handler"`: the tool handler itself failed
  * - `"result"`: the handler's output failed to validate or encode
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -997,7 +997,7 @@ export type FailureOrigin = "parameters" | "handler" | "result"
 /**
  * Represents the result of calling the handler for a particular `Tool`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1039,7 +1039,7 @@ export interface HandlerResult<Tool extends Any> {
  * - `Preliminary`: An intermediate result representing progress
  * - `Final`: The last result, which is the authoritative output
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1051,7 +1051,7 @@ export type HandlerOutput<Success> =
  * A utility type which represents the possible errors that can be raised by
  * a tool call's handler.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -1067,7 +1067,7 @@ export type HandlerError<T> = T extends Tool<
  * A utility type to create a union of `Handler` types for all tools in a
  * record.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -1080,7 +1080,7 @@ export type HandlersFor<Tools extends Record<string, Any>> = {
  * A utility type to determine if the specified tool requires a user-defined
  * handler to be implemented.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -1257,7 +1257,7 @@ const dynamicProto = <
  * GetCurrentTime.name // => "GetCurrentTime"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1380,7 +1380,7 @@ export const make = <
  * const result = [Calculator.name, McpTool.name] // => ["Calculator", "McpTool"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1477,7 +1477,7 @@ export const dynamic: {
  * const result = [WebSearch.name, WebSearch.providerName] // => ["OpenAiWebSearch", "web_search"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1586,7 +1586,7 @@ export const providerDefined = <
  * naming conflicts (i.e. `"web_search"`) to instead use custom names (i.e.
  * `"OpenAiWebSearch"`).
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1665,7 +1665,7 @@ export class NameMapper<Tools extends ReadonlyArray<Any>> {
  * description // => "This is an example tool"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -1712,7 +1712,7 @@ export const getDescription = <Tool extends Any>(tool: Tool): string | undefined
  * }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -1735,7 +1735,7 @@ export const getJsonSchema = <Tool extends Any>(tool: Tool, options?: {
  * `Schema.toJsonSchemaDocument` and any generated definitions are attached as
  * `$defs`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1778,7 +1778,7 @@ const getJsonSchemaFromSchemaWith = <S extends Schema.Constraint>(
  * Context.getUnsafe(myTool.annotations, Tool.Title) // => "Tip Calculator"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1798,7 +1798,7 @@ export class Title extends Context.Service<Title, string>()("effect/ai/Tool/Titl
  * "ui" in Context.getUnsafe(myCalculatorUi.annotations, Tool.Meta) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1823,7 +1823,7 @@ export class Meta extends Context.Service<Meta, Record<string, unknown>>()("effe
  * Context.get(readOnlyTool.annotations, Tool.Readonly) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1850,7 +1850,7 @@ export const Readonly = Context.Reference<boolean>("effect/ai/Tool/Readonly", {
  * Context.get(safeTool.annotations, Tool.Destructive) // => false
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1878,7 +1878,7 @@ export const Destructive = Context.Reference<boolean>("effect/ai/Tool/Destructiv
  * Context.get(idempotentTool.annotations, Tool.Idempotent) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1906,7 +1906,7 @@ export const Idempotent = Context.Reference<boolean>("effect/ai/Tool/Idempotent"
  * Context.get(restrictedTool.annotations, Tool.OpenWorld) // => false
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1937,7 +1937,7 @@ export const OpenWorld = Context.Reference<boolean>("effect/ai/Tool/OpenWorld", 
  * Tool.getStrictMode(flexibleTool) // => false
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1960,7 +1960,7 @@ export const Strict = Context.Reference<boolean | undefined>("effect/ai/Tool/Str
  *
  * @see {@link Strict} for the annotation read by this helper
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -2056,7 +2056,7 @@ function filter(obj: any) {
  * `__proto__` property or a dangerous `constructor.prototype` shape throw a
  * `SyntaxError`.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -2074,7 +2074,7 @@ export const unsafeSecureJsonParse = (text: string): unknown => {
 /**
  * Schema for denied or interrupted tool calls.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2091,7 +2091,7 @@ export const ExecutionFailure = Schema.Struct({
  * `AiError` comes first to restore error instances. The user schema precedes
  * {@link ExecutionFailure} to preserve user fields.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2108,7 +2108,7 @@ export const failureResultSchema = <T extends Any>(
  * It is a record schema with string keys and `never` values, so the generated
  * parameter schema accepts an empty object shape with no properties.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -2128,7 +2128,7 @@ export interface EmptyParams extends Schema.$Record<Schema.String, Schema.Never>
  *
  * @see {@link make} for the tool constructor that defaults omitted parameters to this schema
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

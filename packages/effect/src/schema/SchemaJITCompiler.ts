@@ -3,7 +3,7 @@
  * public interface. Operations are compiled lazily. Import the separate
  * `SchemaJITCompiler/enable` module to enable compilation globally.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { type DecoderOperation, generate, shouldCompileParser } from "../internal/schema/codegen.ts"
@@ -84,7 +84,7 @@ export const compiler: Registry.CompileSource = (ast, resolve) => {
  * captured an entry keep it. Enable type-side and flipped ASTs separately when
  * they differ from the supplied AST.
  *
- * @unstable
+ * @stability unstable
  * @category compilation
  * @since 4.0.0
  */

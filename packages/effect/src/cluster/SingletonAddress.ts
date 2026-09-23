@@ -5,7 +5,7 @@
  * stable value for registration events, equality, hashing, and local singleton
  * fiber tracking.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -18,7 +18,7 @@ const TypeId = "~effect/cluster/SingletonAddress"
 /**
  * Represents the unique address of an singleton within the cluster.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -29,14 +29,14 @@ export class SingletonAddress extends Schema.Class<SingletonAddress>(TypeId)({
   /**
    * Marks this value as a cluster singleton address for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId;
   /**
    * Computes a structural hash from the singleton name and shard id.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Hash.symbol]() {
@@ -45,7 +45,7 @@ export class SingletonAddress extends Schema.Class<SingletonAddress>(TypeId)({
   /**
    * Compares singleton addresses by name and shard id.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Equal.symbol](that: SingletonAddress): boolean {

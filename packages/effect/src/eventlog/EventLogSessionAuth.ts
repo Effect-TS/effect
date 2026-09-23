@@ -6,7 +6,7 @@
  * includes the remote id, a short-lived challenge, the event-log public key, and
  * the signing public key in a stable byte format.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "../Data.ts"
@@ -26,7 +26,7 @@ const constLengthPrefixBytes = 4
  * Use when you need the domain-separation string used to build canonical
  * event-log session authentication payloads.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -41,7 +41,7 @@ export const AuthPayloadContext = "eventlog-auth-v1"
  * Use when implementing session-auth serialization or validation that must
  * reject public keys with a non-canonical raw byte length.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -55,7 +55,7 @@ export const Ed25519PublicKeyLength = 32
  * Use when implementing session-auth verification that must reject signatures
  * with a non-canonical byte length before cryptographic checking.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export const Ed25519SignatureLength = 64
  *
  * Use when you need the challenge size for event-log session authentication.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -84,7 +84,7 @@ export const SessionAuthChallengeLength = 32
  * Use when you need the timeout for pending event-log session authentication
  * challenges.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -94,7 +94,7 @@ export const SessionAuthChallengeTimeToLiveMillis = 30_000
  * Payload fields that are canonicalized and signed during session
  * authentication.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export interface SessionAuthPayload {
  * Error raised while encoding, decoding, signing, verifying, or generating
  * session authentication challenges.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -277,7 +277,7 @@ const encodeRemoteIdField = (remoteId: string | Uint8Array): Uint8Array =>
  * 4. publicKey
  * 5. signingPublicKey bytes
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -316,7 +316,7 @@ export const encodeSessionAuthPayload = Effect.fnUntraced(function*(payload: Ses
  * The decoder validates the context field, UTF-8 fields, signing public key
  * length, and rejects truncated or trailing bytes.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -361,7 +361,7 @@ export const decodeSessionAuthPayload = Effect.fnUntraced(
  *
  * The private key must be PKCS#8-encoded bytes importable by `SubtleCrypto`.
  *
- * @unstable
+ * @stability unstable
  * @category signing
  * @since 4.0.0
  */
@@ -410,7 +410,7 @@ export const signSessionAuthPayloadBytes = Effect.fnUntraced(function*(options: 
  * The payload, signing public key, and signature lengths are validated before
  * calling `SubtleCrypto.verify`.
  *
- * @unstable
+ * @stability unstable
  * @category verification
  * @since 4.0.0
  */
@@ -449,7 +449,7 @@ export const verifySessionAuthPayloadBytes = Effect.fnUntraced(function*(options
  * Encodes a session authentication payload in canonical form and signs it with an
  * Ed25519 private key.
  *
- * @unstable
+ * @stability unstable
  * @category signing
  * @since 4.0.0
  */
@@ -471,7 +471,7 @@ export const signSessionAuthPayload = (
  * Encodes a session authentication payload in canonical form and verifies its
  * Ed25519 signature.
  *
- * @unstable
+ * @stability unstable
  * @category verification
  * @since 4.0.0
  */
@@ -493,7 +493,7 @@ export const verifySessionAuthPayload = (
 /**
  * Generates a random session authentication challenge using `globalThis.crypto`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -511,7 +511,7 @@ export const makeSessionAuthChallenge: Effect.Effect<
  * Verifies an authentication request by requiring the `Ed25519` algorithm and
  * checking the signature over the canonical session authentication payload.
  *
- * @unstable
+ * @stability unstable
  * @category verification
  * @since 4.0.0
  */

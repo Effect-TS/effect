@@ -6,7 +6,7 @@
  * `HttpApiMiddleware.Service`, `HttpApiBuilder`, generated clients, and OpenAPI
  * generation, but they do not authenticate requests by themselves.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -20,7 +20,7 @@ const TypeId = "~effect/http-api/HttpApiSecurity"
 /**
  * Union of security schemes supported by the HTTP API OpenAPI model.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -29,14 +29,14 @@ export type HttpApiSecurity = Http | ApiKey | Basic
 /**
  * Helper types for HTTP API security schemes.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace HttpApiSecurity {
   /**
    * Common prototype for security schemes, carrying the credential type and OpenAPI annotations.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -50,7 +50,7 @@ export declare namespace HttpApiSecurity {
   /**
    * Extracts the credential type produced by a security scheme.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -60,7 +60,7 @@ export declare namespace HttpApiSecurity {
 /**
  * Http token security scheme whose decoded credential is a redacted token.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -76,7 +76,7 @@ export interface Http extends HttpApiSecurity.Proto<Redacted> {
 /**
  * API key security scheme identifying the key name and whether it is read from a header, query parameter, or cookie.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -89,7 +89,7 @@ export interface ApiKey extends HttpApiSecurity.Proto<Redacted> {
 /**
  * HTTP Basic authentication security scheme whose decoded credential is `Credentials`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export interface Basic extends HttpApiSecurity.Proto<Credentials> {
 /**
  * Decoded credentials for HTTP Basic authentication.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -131,7 +131,7 @@ const Proto = {
  *
  * @see {@link apiKey} for an API-key security scheme
  * @see {@link basic} for an HTTP Basic security scheme
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ export const http = (options: {
  *
  * @see {@link apiKey} for an API-key security scheme
  * @see {@link basic} for an HTTP Basic security scheme
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -184,7 +184,7 @@ export const bearer: Http = http({ scheme: "Bearer" })
  *
  * @see {@link bearer} for a Bearer token security scheme
  * @see {@link basic} for an HTTP Basic security scheme
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export const apiKey = (options: {
  *
  * @see {@link bearer} for a Bearer token security scheme
  * @see {@link apiKey} for an API-key security scheme
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -225,7 +225,7 @@ export const basic: Basic = Object.assign(Object.create(Proto), {
 /**
  * Merges OpenAPI annotations into a security scheme.
  *
- * @unstable
+ * @stability unstable
  * @category annotations
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ export const annotateMerge: {
 /**
  * Adds an OpenAPI annotation value to a security scheme.
  *
- * @unstable
+ * @stability unstable
  * @category annotations
  * @since 4.0.0
  */

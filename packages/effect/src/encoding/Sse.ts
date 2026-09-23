@@ -6,7 +6,7 @@
  * channel helpers, and schema-based helpers for the `id`, `event`, and `data`
  * fields of each event.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -30,7 +30,7 @@ const SseErrorTypeId = "~effect/encoding/Sse/SseError"
  * Error reason raised when pending Server-Sent Events state exceeds the
  * configured maximum size.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export class EventTooLarge extends Data.TaggedError("EventTooLarge")<{
 /**
  * Union of Server-Sent Events decoding error reasons.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -54,7 +54,7 @@ export type SseErrorReason = EventTooLarge
 /**
  * Error raised when decoding a Server-Sent Events stream fails.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export class SseError extends Data.TaggedError("SseError")<{
   /**
    * Marks this value as an SSE decoding error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [SseErrorTypeId] = SseErrorTypeId
@@ -72,7 +72,7 @@ export class SseError extends Data.TaggedError("SseError")<{
   /**
    * Delegates the public message to the underlying SSE error reason.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -83,7 +83,7 @@ export class SseError extends Data.TaggedError("SseError")<{
 /**
  * Options for decoding Server-Sent Events streams.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -104,7 +104,7 @@ const defaultMaxEventSize = 10 * 1024 * 1024
  * SSE `retry` directives are emitted as `Retry` failures so callers can
  * reconnect with the requested delay.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -154,7 +154,7 @@ export const decode = <IE, Done>(options?: DecodeOptions): Channel.Channel<
 /**
  * A constraint for schemas that can decode SSE events.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -183,7 +183,7 @@ export interface EventCodec extends
  * With `onExcessProperty: "error"`, declare `event` (default: `"message"`) and
  * `id` if the stream carries IDs, including inherited IDs.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const decodeSchema = <
  * The output preserves the SSE `event` name and optional `id` while replacing
  * `data` with the decoded value.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -264,7 +264,7 @@ export const decodeDataSchema = <Type, DecodingServices, IE, Done>(
  * callback, and call `reset` to clear any buffered event state. `feed` returns
  * an `SseError` if the pending event exceeds `maxEventSize`.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -435,7 +435,7 @@ const BOM = "\uFEFF"
  * configured pending event size is exceeded. `reset` clears buffered parser
  * state.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -452,7 +452,7 @@ export interface Parser {
  * If the upstream channel fails with `Retry`, the retry directive is written and
  * the encoder completes.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -487,7 +487,7 @@ export const encode = <IE, Done>(): Channel.Channel<
  * Values are schema-encoded to the untagged SSE event shape, transformed to
  * `Event`, and then written as Server-Sent Events text.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -514,7 +514,7 @@ export const encodeSchema = <
  * Encoder capable of rendering an `Event` or `Retry` value as Server-Sent
  * Events text.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -525,7 +525,7 @@ export interface Encoder {
 /**
  * Tagged model for a Server-Sent Events message containing the event name, optional event ID, and string data payload.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export interface Event {
 /**
  * Schema for the untagged Server-Sent Events payload shape containing an optional `id`, `event`, and string `data` fields.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -556,7 +556,7 @@ export const EventEncoded: Schema.Struct<{
 /**
  * Schema for the tagged Server-Sent Events message model that adds `_tag: "Event"` to the event name, optional event ID, and string data payload.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -576,7 +576,7 @@ export const Event: Schema.Struct<{
  * Schema for transforming untagged SSE event payloads into tagged `Event`
  * models.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -605,7 +605,7 @@ export const transformEvent = SchemaTransformation.transform<{
 /**
  * Untagged Server-Sent Events payload shape containing the event name, optional event ID, and string data payload.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -625,7 +625,7 @@ const RetryTypeId = "~effect/encoding/Sse/Retry" as const
  * Decoders surface this value as a failure to request reconnection after
  * `duration`; encoders serialize an upstream `Retry` failure as a `retry:` line.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -636,14 +636,14 @@ export class Retry extends Data.TaggedClass("Retry")<{
   /**
    * Marks this value as an SSE retry directive for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [RetryTypeId]: typeof RetryTypeId = RetryTypeId
   /**
    * Returns `true` when the value is an SSE retry directive.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is Retry {
@@ -652,7 +652,7 @@ export class Retry extends Data.TaggedClass("Retry")<{
   /**
    * Separates SSE retry directives from regular event values.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static filter<A>(u: A): Result.Result<Retry, Exclude<A, Retry>> {
@@ -664,7 +664,7 @@ export class Retry extends Data.TaggedClass("Retry")<{
  * Union of SSE values that can be rendered by an `Encoder`: regular events and
  * retry directives.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -678,7 +678,7 @@ export type AnyEvent = Event | Retry
  * It renders `Event` values as `id`, `event`, and `data` lines and renders
  * `Retry` values as `retry:` directives.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */

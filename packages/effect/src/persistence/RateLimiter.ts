@@ -8,7 +8,7 @@
  * delay needed before continuing, or wrap an effect so it waits automatically.
  * It also defines the store service and in-memory or Redis-backed store layers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "../Config.ts"
@@ -23,7 +23,7 @@ import * as Redis from "./Redis.ts"
 /**
  * Runtime type identifier for `RateLimiter` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -32,7 +32,7 @@ export const TypeId: TypeId = "~effect/persistence/RateLimiter"
 /**
  * Type-level identifier used to brand `RateLimiter` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -42,7 +42,7 @@ export type TypeId = "~effect/persistence/RateLimiter"
  * Service for consuming rate-limit tokens for a key using fixed-window or
  * token-bucket algorithms.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -71,7 +71,7 @@ export interface RateLimiter {
  * Use to access or provide rate-limit checks backed by fixed-window counters or
  * token-bucket state.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -85,7 +85,7 @@ export const RateLimiter: Context.Service<RateLimiter, RateLimiter> = Context.Se
  * The limiter supports fixed-window and token-bucket algorithms and either
  * fails or returns a delay when a limit is exceeded.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -214,7 +214,7 @@ export const make: Effect.Effect<
 /**
  * Provides `RateLimiter` using the current `RateLimiterStore`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -256,7 +256,7 @@ export const layer: Layer.Layer<
  * messages // => ["Making a request with rate limiting"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -312,7 +312,7 @@ export const makeWithRateLimiter: Effect.Effect<
  * await Effect.runPromise(program) // => [9, 9]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -324,7 +324,7 @@ export function sleep(self: RateLimiter): (options: {
   readonly tokens?: number | undefined
 }) => Effect.Effect<ConsumeResult, RateLimiterError>
 /**
- * @unstable
+ * @stability unstable
  */
 export function sleep(self: RateLimiter, options: {
   readonly algorithm?: "fixed-window" | "token-bucket" | undefined
@@ -334,7 +334,7 @@ export function sleep(self: RateLimiter, options: {
   readonly tokens?: number | undefined
 }): Effect.Effect<ConsumeResult, RateLimiterError>
 /**
- * @unstable
+ * @stability unstable
  */
 export function sleep(self: RateLimiter, options?: {
   readonly algorithm?: "fixed-window" | "token-bucket" | undefined
@@ -370,7 +370,7 @@ export function sleep(self: RateLimiter, options?: {
 /**
  * Runtime type identifier for `RateLimiterError`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -379,7 +379,7 @@ export const ErrorTypeId: ErrorTypeId = "~effect/persistence/RateLimiter/RateLim
 /**
  * Type-level identifier used to brand `RateLimiterError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -392,7 +392,7 @@ export type ErrorTypeId = "~effect/persistence/RateLimiter/RateLimiterError"
  *
  * Includes the affected key, limit, remaining token count, and retry delay.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -408,7 +408,7 @@ export class RateLimitExceeded extends Schema.Error<RateLimitExceeded>(
   /**
    * Public message used when the rate limiter rejects a request.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message(): string {
@@ -419,7 +419,7 @@ export class RateLimitExceeded extends Schema.Error<RateLimitExceeded>(
 /**
  * Error reason for failures in the backing `RateLimiterStore`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -434,7 +434,7 @@ export class RateLimitStoreError extends Schema.Error<RateLimitStoreError>(
 /**
  * Union of reasons carried by `RateLimiterError`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -443,7 +443,7 @@ export type RateLimiterErrorReason = RateLimitExceeded | RateLimitStoreError
 /**
  * Schema for all reasons that can be carried by `RateLimiterError`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -456,7 +456,7 @@ export const RateLimiterErrorReason: Schema.Union<[
  * Error raised by rate limiter operations, wrapping a concrete failure
  * `reason`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -481,7 +481,7 @@ export class RateLimiterError extends Schema.Error<RateLimiterError>(ErrorTypeId
   /**
    * Marks this value as a rate limiter error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
@@ -494,7 +494,7 @@ export class RateLimiterError extends Schema.Error<RateLimiterError>(ErrorTypeId
 /**
  * Metadata returned after consuming tokens from a rate limiter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -530,7 +530,7 @@ export interface ConsumeResult {
 /**
  * Phase of adaptive rate limiting driven by server feedback.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export type AdaptivePhase = "inactive" | "cooldown" | "learning" | "learned"
 /**
  * Options for consuming tokens from the adaptive rate limiter store.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -568,7 +568,7 @@ export interface AdaptiveConsumeOptions {
 /**
  * Metadata returned after consuming tokens from the adaptive rate limiter store.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -592,7 +592,7 @@ export interface AdaptiveConsumeResult {
 /**
  * Options for reporting response feedback to the adaptive rate limiter store.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -631,7 +631,7 @@ export interface AdaptiveFeedbackOptions {
  * Use to provide the shared counter storage and adaptive feedback state used by
  * persistent rate-limit checks.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -716,7 +716,7 @@ interface AdaptiveState {
 /**
  * Provides a process-local in-memory `RateLimiterStore`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -937,7 +937,7 @@ export const layerStoreMemory: Layer.Layer<
  * Creates a Redis-backed `RateLimiterStore` using Lua scripts and the
  * configured key prefix.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1387,7 +1387,7 @@ return 0
 /**
  * Provides a Redis-backed `RateLimiterStore` using `makeStoreRedis`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1403,7 +1403,7 @@ export const layerStoreRedis: (
  * Provides a Redis-backed `RateLimiterStore` from wrapped configuration
  * options.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

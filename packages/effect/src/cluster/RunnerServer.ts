@@ -8,7 +8,7 @@
  * full server layer that also provides runner clients, and a client-only layer
  * for applications that do not serve runner RPCs.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
@@ -51,7 +51,7 @@ const serializeDefectReply = <R extends Rpc.Any>(
  * Layer that handles runner protocol RPCs by forwarding requests to `Sharding`
  * and `MessageStorage`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ const constWaitUntilRead = { waitUntilRead: true } as const
  * @see {@link layerWithClients} for a runner server layer that also provides the `Sharding` and `Runners` clients
  * @see {@link layerClientOnly} for embedding a cluster client without serving runner RPCs
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export const layer: Layer.Layer<
  * Layer that provides `RunnerServer` together with `Runners` and `Sharding`
  * clients.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -239,7 +239,7 @@ export const layerWithClients: Layer.Layer<
  * Use to embed a cluster client inside another Effect application without registering with
  * the ShardManager or receiving shard assignments.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

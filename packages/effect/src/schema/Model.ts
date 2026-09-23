@@ -9,7 +9,7 @@
  * variant is its own schema, so callers can validate or encode the shape that
  * matches the operation they are performing.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Brand } from "../Brand.ts"
@@ -42,7 +42,7 @@ const {
  * Base shape of a variant model schema, including its fields and the generated
  * database and JSON variant schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -58,7 +58,7 @@ export type Any = Schema.Top & {
 /**
  * Database-facing variant names generated for model schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -67,14 +67,14 @@ export type VariantsDatabase = "select" | "insert" | "update"
 /**
  * JSON API-facing variant names generated for model schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export type VariantsJson = "json" | "jsonCreate" | "jsonUpdate"
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
@@ -119,7 +119,7 @@ export {
    * [Schema.isSchema(Group), Schema.isSchema(Group.insert), Schema.isSchema(Group.json)] // => [true, true, true]
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -127,7 +127,7 @@ export {
   /**
    * Extracts a generated variant schema from a model or variant struct.
    *
-   * @unstable
+   * @stability unstable
    * @category converting
    * @since 4.0.0
    */
@@ -135,7 +135,7 @@ export {
   /**
    * Creates a variant field from schemas keyed by variant name.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -143,7 +143,7 @@ export {
   /**
    * Transforms schemas inside a variant field or plain schema by variant name.
    *
-   * @unstable
+   * @stability unstable
    * @category transforming
    * @since 4.0.0
    */
@@ -152,7 +152,7 @@ export {
    * Creates a variant field that applies a schema to every variant except the
    * supplied keys.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -160,7 +160,7 @@ export {
   /**
    * Creates a variant field that applies a schema only to the supplied variants.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -168,7 +168,7 @@ export {
   /**
    * Creates a variant struct from model field definitions.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -177,7 +177,7 @@ export {
    * Creates a union over the default and generated variant schemas of multiple
    * variant structs.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -187,7 +187,7 @@ export {
 /**
  * Returns the variant field definitions stored on a model or variant struct.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -198,7 +198,7 @@ export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[typeof 
  * Marks a value as an explicit override for fields that otherwise use an
  * overrideable default.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Ov
  * @see {@link Field} for generated columns that need a custom variant set, such
  * as primary keys used in update payloads.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -239,7 +239,7 @@ export interface GeneratedByDb<S extends Schema.Top> extends
  * @see {@link Field} for generated columns that need a custom variant set, such
  * as primary keys used in update payloads.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -256,7 +256,7 @@ export const GeneratedByDb = <S extends Schema.Top>(
  * database variants and read JSON, but omitted from JSON create and update
  * variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -274,7 +274,7 @@ export interface GeneratedByApp<S extends Schema.Top> extends
  * variants and the read JSON variant, but omitted from JSON create and update
  * variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -290,7 +290,7 @@ export const GeneratedByApp = <S extends Schema.Top>(schema: S): GeneratedByApp<
  * Variant field type for a sensitive value that is available to database variants
  * and omitted from all JSON variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -306,7 +306,7 @@ export interface Sensitive<S extends Schema.Top> extends
  * A field that represents a sensitive value that should not be exposed in the
  * JSON variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -321,7 +321,7 @@ export const Sensitive = <S extends Schema.Top>(schema: S): Sensitive<S> =>
  * Schema type for an optional object key whose encoded value may be missing or
  * null and whose decoded value is an `Option`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export interface optionalOption<S extends Schema.Constraint>
  * Creates a schema for optional keys that decodes missing or null encoded values
  * through `Option` and encodes `Option` values back to optional nullable keys.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -356,7 +356,7 @@ export const optionalOption = <S extends Schema.Constraint>(schema: S): optional
  * For the database variants, it will accept `null`able values.
  * For the JSON variants, it will also accept missing keys.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -379,7 +379,7 @@ export interface FieldOption<S extends Schema.Top> extends
  * For the database variants, it will accept `null`able values.
  * For the JSON variants, it will also accept missing keys.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -406,7 +406,7 @@ export const FieldOption: <Field extends VariantSchema.Field<any> | Schema.Top>(
  * Variant field type for SQLite booleans stored as `0 | 1` in database variants
  * and exposed as `boolean` in JSON variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -425,7 +425,7 @@ export interface BooleanSqlite extends
  * Schema for sqlite booleans that are represented as `0 | 1` in database
  * variants and `boolean` in JSON variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -442,7 +442,7 @@ export const BooleanSqlite: BooleanSqlite = Field({
  * Schema type for a `DateTime.Utc` date-only value encoded as a `YYYY-MM-DD`
  * string.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -452,7 +452,7 @@ export interface Date extends Schema.decodeTo<Schema.instanceOf<DateTime.Utc>, S
  * Schema for a `DateTime.Utc` that is serialized as a date string in the
  * format `YYYY-MM-DD`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -467,7 +467,7 @@ export const Date: Date = Schema.String.pipe(
  * Schema for an overrideable UTC date-only field whose constructor default is
  * the current date with the time component removed.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -479,7 +479,7 @@ export const DateWithNow = VariantSchema.Overrideable(Date, {
  * Schema for an overrideable UTC date-time field encoded as a string and
  * defaulted to the current `DateTime.Utc`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -491,7 +491,7 @@ export const DateTimeWithNow = VariantSchema.Overrideable(Schema.DateTimeUtcFrom
  * Schema for an overrideable UTC date-time field encoded as a JavaScript `Date`
  * and defaulted to the current `DateTime.Utc`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -503,7 +503,7 @@ export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateTim
  * Schema for an overrideable UTC date-time field encoded as milliseconds and
  * defaulted to the current `DateTime.Utc`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -515,7 +515,7 @@ export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.DateT
  * Variant field type for a UTC date-time stored as a string, defaulted to the
  * current time on insert, available for selection, and omitted from updates.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -535,7 +535,7 @@ export interface DateTimeInsert extends
  *
  * It is omitted from updates and is available for selection.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -549,7 +549,7 @@ export const DateTimeInsert: DateTimeInsert = Field({
  * Variant field type for a UTC date-time stored as a JavaScript `Date` in
  * database variants, encoded as a string for JSON, and defaulted on insert.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -569,7 +569,7 @@ export interface DateTimeInsertFromDate extends
  *
  * It is omitted from updates and is available for selection.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -583,7 +583,7 @@ export const DateTimeInsertFromDate: DateTimeInsertFromDate = Field({
  * Variant field type for a UTC date-time encoded as milliseconds and defaulted to
  * the current time on insert.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -603,7 +603,7 @@ export interface DateTimeInsertFromNumber extends
  *
  * It is omitted from updates and is available for selection.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -617,7 +617,7 @@ export const DateTimeInsertFromNumber: DateTimeInsertFromNumber = Field({
  * Variant field type for a UTC date-time stored as a string and defaulted to the
  * current time on both inserts and updates.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -639,7 +639,7 @@ export interface DateTimeUpdate extends
  * It is set to the current `DateTime.Utc` on updates and inserts and is
  * available for selection.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -655,7 +655,7 @@ export const DateTimeUpdate: DateTimeUpdate = Field({
  * database variants, encoded as a string for JSON, and defaulted on inserts and
  * updates.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -677,7 +677,7 @@ export interface DateTimeUpdateFromDate extends
  * It is set to the current `DateTime.Utc` on updates and inserts and is
  * available for selection.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -692,7 +692,7 @@ export const DateTimeUpdateFromDate: DateTimeUpdateFromDate = Field({
  * Variant field type for a UTC date-time encoded as milliseconds and defaulted to
  * the current time on both inserts and updates.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -714,7 +714,7 @@ export interface DateTimeUpdateFromNumber extends
  * It is set to the current `DateTime.Utc` on updates and inserts and is
  * available for selection.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -729,7 +729,7 @@ export const DateTimeUpdateFromNumber: DateTimeUpdateFromNumber = Field({
  * Variant field type for a JSON value stored as text in database variants and
  * exposed through the supplied schema in JSON variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -751,7 +751,7 @@ export interface JsonFromString<S extends Schema.Top> extends
  *
  * The "json" variants will use the object schema directly.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -773,7 +773,7 @@ export const JsonFromString = <S extends Schema.Top>(
  * Variant field type for a branded binary UUID v4 value whose insert variant
  * generates a UUID by default.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -789,7 +789,7 @@ export interface UuidV4BytesInsert<B extends string> extends
 /**
  * Schema for binary `Uint8Array` values backed by an `ArrayBuffer`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -801,7 +801,7 @@ export const Uint8Array: Schema.instanceOf<Uint8Array<ArrayBuffer>> = Schema.Uin
  * Adds a constructor default that generates a binary UUID v4 for a branded
  * `Uint8Array` schema.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -813,7 +813,7 @@ export const UuidV4BytesWithGenerate = <B extends string>(
 /**
  * A field that represents a binary UUID v4 that is generated on inserts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -831,7 +831,7 @@ export const UuidV4BytesInsert = <const B extends string>(
  * Variant field type for a branded string UUID v4 value whose insert variant
  * generates a UUID by default.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -847,7 +847,7 @@ export interface UuidV4Insert<B extends string> extends
 /**
  * Adds a constructor default that generates a string UUID v4.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -859,7 +859,7 @@ export const UuidV4WithGenerate = <B extends string>(
 /**
  * A field that represents a string UUID v4 that is generated on inserts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -877,7 +877,7 @@ export const UuidV4Insert = <const B extends string>(
  * Variant field type for a branded string UUID v7 value whose insert variant
  * generates a UUID by default.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -893,7 +893,7 @@ export interface UuidV7Insert<B extends string> extends
 /**
  * Adds a constructor default that generates a string UUID v7.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -909,7 +909,7 @@ export const UuidV7WithGenerate = <B extends string>(
 /**
  * A field that represents a string UUID v7 that is generated on inserts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

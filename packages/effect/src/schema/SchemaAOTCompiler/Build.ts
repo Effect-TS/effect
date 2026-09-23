@@ -1,7 +1,7 @@
 /**
  * Builds self-installing modules from ahead-of-time compiled Schema decoders.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "../../Data.ts"
@@ -16,7 +16,7 @@ import * as SchemaAOTCompiler from "../SchemaAOTCompiler.ts"
 /**
  * An operation whose root AST should be prepared by {@link build}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -25,7 +25,7 @@ export type Operation = "decode" | "encode" | "is" | "make"
 /**
  * Loads the exports of a schema module during a build.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export interface ModuleLoader {
 /**
  * Options for {@link build}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -57,7 +57,7 @@ export interface BuildOptions {
 /**
  * A summary of a completed {@link build}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export interface BuildResult {
 /**
  * An error raised while loading modules or generating an AOT module.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -192,7 +192,7 @@ const root = (
  * the interpreter fallback. Build configurations that mark modules as
  * side-effect free must retain the generated import.
  *
- * @unstable
+ * @stability unstable
  * @category compilation
  * @since 4.0.0
  */

@@ -1,7 +1,7 @@
 /**
  * Standard MIME type lookup.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Option from "../Option.ts"
@@ -50,7 +50,7 @@ const getTables = (): Tables => {
 /**
  * Returns the standard MIME type associated with a file name or extension.
  *
- * @unstable
+ * @stability unstable
  * @category utilities
  * @since 4.0.0
  */
@@ -71,7 +71,7 @@ export const getType = (path: string): Option.Option<string> => {
 /**
  * Returns the default file extension associated with a standard MIME type.
  *
- * @unstable
+ * @stability unstable
  * @category utilities
  * @since 4.0.0
  */
@@ -85,7 +85,7 @@ export const getExtension = (type: string): Option.Option<string> => {
 /**
  * Returns every file extension associated with a standard MIME type.
  *
- * @unstable
+ * @stability unstable
  * @category utilities
  * @since 4.0.0
  */

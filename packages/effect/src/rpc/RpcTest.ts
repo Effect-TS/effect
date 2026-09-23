@@ -7,7 +7,7 @@
  * middleware metadata travel through the normal client/server machinery without
  * opening HTTP, socket, worker, or serializer infrastructure.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -21,7 +21,7 @@ import * as RpcServer from "./RpcServer.ts"
  * Creates an in-memory RPC client for a group, backed by the group's handlers
  * from the environment and using the no-serialization test transport.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

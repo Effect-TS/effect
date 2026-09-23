@@ -7,7 +7,7 @@
  * streaming response bodies, and utilities for matching or filtering by HTTP
  * status.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -27,13 +27,13 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
    * Creates a decoder that reads a response JSON body and decodes it with the supplied schema.
    *
-   * @unstable
+   * @stability unstable
    * @category schemas
    * @since 4.0.0
    */
@@ -41,7 +41,7 @@ export {
   /**
    * Creates a decoder that reads response URL-encoded body parameters and decodes them with the supplied schema.
    *
-   * @unstable
+   * @stability unstable
    * @category schemas
    * @since 4.0.0
    */
@@ -49,7 +49,7 @@ export {
   /**
    * Creates a decoder that validates and decodes response headers with the supplied schema.
    *
-   * @unstable
+   * @stability unstable
    * @category schemas
    * @since 4.0.0
    */
@@ -59,7 +59,7 @@ export {
 /**
  * Type identifier for `HttpClientResponse` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -68,7 +68,7 @@ export const TypeId = "~effect/http/HttpClientResponse"
 /**
  * Model of an HTTP client response, including the original request, status, cookies, headers, and body accessors.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -88,7 +88,7 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
 /**
  * Wraps a Web `Response` and its original `HttpClientRequest` as an `HttpClientResponse`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -98,7 +98,7 @@ export const fromWeb = (request: HttpClientRequest.HttpClientRequest, source: Re
 /**
  * Creates a decoder for a response's status, headers, and JSON body using the supplied schema.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -130,7 +130,7 @@ export const schemaJson = <
 /**
  * Creates a decoder for a response's status and headers without reading a response body.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -157,7 +157,7 @@ export const schemaNoBody = <
 /**
  * Converts an effect producing an `HttpClientResponse` into a stream of response body bytes.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -168,7 +168,7 @@ export const stream = <E, R>(
 /**
  * Pattern matches on a response status, checking exact status handlers before status-class handlers and `orElse`.
  *
- * @unstable
+ * @stability unstable
  * @category pattern matching
  * @since 4.0.0
  */
@@ -221,7 +221,7 @@ export const matchStatus: {
 /**
  * Succeeds with the response when its status satisfies the predicate, otherwise fails with `HttpClientError`.
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -249,7 +249,7 @@ export const filterStatus: {
 /**
  * Succeeds with the response only when its status is in the 2xx range, otherwise fails with `HttpClientError`.
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */

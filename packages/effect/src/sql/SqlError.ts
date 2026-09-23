@@ -8,7 +8,7 @@
  * includes schemas, guards, a SQLite error classifier, and the
  * `ResultLengthMismatch` error used by ordered batched SQL resolvers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Predicate from "../Predicate.ts"
@@ -26,7 +26,7 @@ const ReasonFields = {
 /**
  * SQL error reason for connection or open failures; marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -37,7 +37,7 @@ export class ConnectionError extends Schema.TaggedError<ConnectionError>("effect
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -45,7 +45,7 @@ export class ConnectionError extends Schema.TaggedError<ConnectionError>("effect
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -57,7 +57,7 @@ export class ConnectionError extends Schema.TaggedError<ConnectionError>("effect
  * SQL error reason for authentication failures such as invalid credentials; not
  * marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export class AuthenticationError extends Schema.TaggedError<AuthenticationError>
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -75,7 +75,7 @@ export class AuthenticationError extends Schema.TaggedError<AuthenticationError>
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -87,7 +87,7 @@ export class AuthenticationError extends Schema.TaggedError<AuthenticationError>
  * SQL error reason for authorization or permission failures; not marked
  * retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export class AuthorizationError extends Schema.TaggedError<AuthorizationError>(
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -105,7 +105,7 @@ export class AuthorizationError extends Schema.TaggedError<AuthorizationError>(
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -116,7 +116,7 @@ export class AuthorizationError extends Schema.TaggedError<AuthorizationError>(
 /**
  * SQL error reason for invalid SQL syntax; not marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export class SqlSyntaxError extends Schema.TaggedError<SqlSyntaxError>("effect/s
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -135,7 +135,7 @@ export class SqlSyntaxError extends Schema.TaggedError<SqlSyntaxError>("effect/s
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -152,7 +152,7 @@ const UniqueViolationFields = {
  * SQL error reason for a unique constraint violation, including the violated
  * constraint identifier; not marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -163,7 +163,7 @@ export class UniqueViolation extends Schema.TaggedError<UniqueViolation>("effect
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -171,7 +171,7 @@ export class UniqueViolation extends Schema.TaggedError<UniqueViolation>("effect
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -182,7 +182,7 @@ export class UniqueViolation extends Schema.TaggedError<UniqueViolation>("effect
 /**
  * SQL error reason for a non-unique constraint violation; not marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ export class ConstraintError extends Schema.TaggedError<ConstraintError>("effect
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -201,7 +201,7 @@ export class ConstraintError extends Schema.TaggedError<ConstraintError>("effect
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -212,7 +212,7 @@ export class ConstraintError extends Schema.TaggedError<ConstraintError>("effect
 /**
  * SQL error reason for a database deadlock; marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -223,7 +223,7 @@ export class DeadlockError extends Schema.TaggedError<DeadlockError>("effect/sql
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -231,7 +231,7 @@ export class DeadlockError extends Schema.TaggedError<DeadlockError>("effect/sql
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -243,7 +243,7 @@ export class DeadlockError extends Schema.TaggedError<DeadlockError>("effect/sql
  * SQL error reason for a transaction serialization or isolation conflict;
  * marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -253,7 +253,7 @@ export class SerializationError extends Schema.TaggedError<SerializationError>(
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -261,7 +261,7 @@ export class SerializationError extends Schema.TaggedError<SerializationError>(
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -273,7 +273,7 @@ export class SerializationError extends Schema.TaggedError<SerializationError>(
  * SQL error reason for timing out while waiting on a database lock; marked
  * retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -284,7 +284,7 @@ export class LockTimeoutError extends Schema.TaggedError<LockTimeoutError>("effe
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -292,7 +292,7 @@ export class LockTimeoutError extends Schema.TaggedError<LockTimeoutError>("effe
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -303,7 +303,7 @@ export class LockTimeoutError extends Schema.TaggedError<LockTimeoutError>("effe
 /**
  * SQL error reason for a statement or query timeout; marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -313,7 +313,7 @@ export class StatementTimeoutError extends Schema.TaggedError<StatementTimeoutEr
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -321,7 +321,7 @@ export class StatementTimeoutError extends Schema.TaggedError<StatementTimeoutEr
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -332,7 +332,7 @@ export class StatementTimeoutError extends Schema.TaggedError<StatementTimeoutEr
 /**
  * SQL error reason for an unclassified database failure; not marked retryable.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -343,7 +343,7 @@ export class UnknownError extends Schema.TaggedError<UnknownError>("effect/sql/S
   /**
    * Marks this value as a structured SQL error reason for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ReasonTypeId] = ReasonTypeId
@@ -351,7 +351,7 @@ export class UnknownError extends Schema.TaggedError<UnknownError>("effect/sql/S
   /**
    * Indicates whether retrying the failed SQL operation may succeed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -363,7 +363,7 @@ export class UnknownError extends Schema.TaggedError<UnknownError>("effect/sql/S
  * Union of structured SQL error reasons, each carrying the original cause plus
  * optional message and operation metadata.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -383,7 +383,7 @@ export type SqlErrorReason =
 /**
  * Schema for encoding and decoding SQL error reasons.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -417,7 +417,7 @@ export const SqlErrorReason: Schema.Union<[
  * Error wrapper for SQL failures whose `message`, `cause`, and `isRetryable`
  * values are derived from its `SqlErrorReason`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -427,7 +427,7 @@ export class SqlError extends Schema.TaggedError<SqlError>("effect/sql/SqlError"
   /**
    * Marks this value as the top-level SQL error wrapper for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -435,7 +435,7 @@ export class SqlError extends Schema.TaggedError<SqlError>("effect/sql/SqlError"
   /**
    * Exposes the structured SQL reason as the JavaScript error cause.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override readonly cause = this.reason
@@ -443,7 +443,7 @@ export class SqlError extends Schema.TaggedError<SqlError>("effect/sql/SqlError"
   /**
    * Uses the reason message when present, otherwise falls back to the reason tag.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message(): string {
@@ -453,7 +453,7 @@ export class SqlError extends Schema.TaggedError<SqlError>("effect/sql/SqlError"
   /**
    * Delegates retryability to the underlying SQL error reason.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
@@ -464,7 +464,7 @@ export class SqlError extends Schema.TaggedError<SqlError>("effect/sql/SqlError"
 /**
  * Returns `true` when a value is a `SqlError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -473,7 +473,7 @@ export const isSqlError = (u: unknown): u is SqlError => Predicate.hasProperty(u
 /**
  * Returns `true` when a value is a `SqlErrorReason`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -550,7 +550,7 @@ const sqliteUniqueConstraintFromCause = (cause: unknown): string => {
  * Classifies a native SQLite error cause into a `SqlErrorReason` using its
  * `code` or `errno`, with optional message and operation metadata.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -614,7 +614,7 @@ export const classifySqliteError = (
  * Error raised when an ordered batched SQL resolver receives a different number
  * of result rows than requests.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -627,7 +627,7 @@ export class ResultLengthMismatch
   /**
    * Explains the mismatch between expected and actual batched SQL result counts.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {

@@ -8,7 +8,7 @@
  * the connected client for structured input or read its advertised
  * capabilities.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -196,7 +196,7 @@ const provideInvocationContext = <A, E, R>(
  * Handlers use this service to register capabilities and resolve incoming MCP
  * requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -299,7 +299,7 @@ export class McpServer extends Context.Service<McpServer, {
   /**
    * Builds an MCP server service from registered tools, prompts, resources, and completions.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly make = Effect.gen(function*() {
@@ -641,7 +641,7 @@ export class McpServer extends Context.Service<McpServer, {
   /**
    * Layer that provides the MCP server and client services.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
@@ -672,7 +672,7 @@ class McpClientKey extends Data.Class<{
  * runtime handles protocol lifecycle state and determines which clients receive
  * queued server notifications.
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -1372,7 +1372,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
  * @see {@link layerStdio} for a stdio-backed layer that installs the MCP protocol and NDJSON-RPC serialization
  * @see {@link layerHttp} for an HTTP-backed layer that registers with `HttpRouter` and installs JSON-RPC serialization
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1430,7 +1430,7 @@ const layerWithRuntime = (options: {
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
  * @see {@link layerHttp} for the single-endpoint HTTP transport
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1543,7 +1543,7 @@ const mcpStdioSerialization = (
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1791,7 +1791,7 @@ const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
 /**
  * Registers a `Toolkit` with the `McpServer`.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -1942,7 +1942,7 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
 /**
  * Registers an `AiToolkit` with the `McpServer`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1961,7 +1961,7 @@ export const toolkit = <Tools extends Record<string, Tool.Any>>(
  * Utility type that validates a completion-handler record against the allowed
  * parameter keys.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -1984,7 +1984,7 @@ export type ValidateCompletions<Completions, Keys extends string> =
  * `Param` name when present or `paramN` otherwise, and each handler returns
  * candidate values for that parameter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2009,7 +2009,7 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
  *
  * @see {@link resource} for the layer-based resource registration wrapper
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -2189,7 +2189,7 @@ export const registerResource: {
  *
  * @see {@link registerResource} for the Effect-level resource registration API
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -2263,7 +2263,7 @@ export const resource: {
  *
  * @see {@link prompt} for the layer-based prompt registration wrapper
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -2401,7 +2401,7 @@ export const registerPrompt = <
  *
  * @see {@link registerPrompt} for the Effect-level prompt registration API
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -2445,7 +2445,7 @@ export const prompt = <
  * Accepted content is decoded with the supplied schema, declined requests fail
  * with `ElicitationDeclined`, and canceled requests interrupt the effect.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -2484,7 +2484,7 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
 /**
  * Accesses the current client's capabilities.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */

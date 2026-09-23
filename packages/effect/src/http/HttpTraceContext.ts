@@ -6,7 +6,7 @@
  * HTTP clients use it to continue the current span across outgoing requests, and
  * server middleware uses it to parent request spans from upstream services.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Option from "../Option.ts"
@@ -21,7 +21,7 @@ import * as Headers from "./Headers.ts"
  * Returns `Option.none` when the headers do not contain a supported or valid trace
  * context.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -37,7 +37,7 @@ export interface FromHeaders {
  * The generated headers include both compact B3 (`b3`) and W3C `traceparent`
  * formats.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ export const toHeaders = (span: Tracer.Span): Headers.Headers =>
  * W3C `traceparent` is tried first, followed by compact B3 (`b3`) and then
  * multi-header B3 (`x-b3-*`).
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -84,7 +84,7 @@ export const fromHeaders = (headers: Headers.Headers): Option.Option<Tracer.Exte
  * Returns `Option.none` when the header is missing or does not contain trace and
  * span identifiers.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -111,7 +111,7 @@ export const b3: FromHeaders = (headers) => {
  * The decoder reads `x-b3-traceid`, `x-b3-spanid`, and optional `x-b3-sampled`
  * headers.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -136,7 +136,7 @@ const w3cSpanId = /^[0-9a-f]{16}$/i
  *
  * Only version `00` headers with valid trace and span identifiers are accepted.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

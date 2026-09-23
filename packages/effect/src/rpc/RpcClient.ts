@@ -8,7 +8,7 @@
  * the protocol service and includes protocol layers for HTTP, sockets, and
  * workers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -59,7 +59,7 @@ const isRpcClientError = (u: unknown): u is RpcClientError => Predicate.isTagged
  * The object-shaped client generated from a union of RPC definitions, with one
  * method per RPC tag.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export type RpcClient<Rpcs extends Rpc.Any, E = never> = Struct.Simplify<RpcClie
  * Type-level helpers for deriving RPC client call signatures from RPC
  * definitions.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace RpcClient {
@@ -78,7 +78,7 @@ export declare namespace RpcClient {
    * method that accepts the RPC payload and returns either an `Effect` or
    * `Stream` based on the RPC success schema.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -144,7 +144,7 @@ export declare namespace RpcClient {
    * Builds a flattened RPC client function that accepts an RPC tag and payload,
    * returning the corresponding `Effect` or `Stream` for that RPC.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -208,7 +208,7 @@ export declare namespace RpcClient {
  * Derives the object-shaped RPC client type for all RPCs contained in an
  * `RpcGroup`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -221,7 +221,7 @@ let requestIdCounter = 0
  * client API together with a `write` function for delivering server messages
  * back to the client.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -632,7 +632,7 @@ let clientIdCounter = 0
  * Creates a schema-aware RPC client for a group using the current client
  * `Protocol`, encoding requests and decoding server responses.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -824,7 +824,7 @@ const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
  * Use to set request headers that should be automatically merged into outgoing
  * RPC client messages.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -836,7 +836,7 @@ export const CurrentHeaders = Context.Reference<Headers.Headers>("effect/rpc/Rpc
  * Runs an effect with additional RPC client headers, merging them with the
  * current `CurrentHeaders` value for outgoing requests.
  *
- * @unstable
+ * @stability unstable
  * @category headers
  * @since 4.0.0
  */
@@ -858,7 +858,7 @@ export const withHeaders: {
  * Use to provide the transport boundary for RPC clients over HTTP, WebSocket,
  * workers, sockets, or custom protocols.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -883,7 +883,7 @@ export class Protocol extends Context.Service<Protocol, {
   /**
    * Creates a client protocol service from the supplied RPC request runner.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static make = withRunClient
@@ -893,7 +893,7 @@ export class Protocol extends Context.Service<Protocol, {
  * Creates a client `Protocol` that sends each RPC request through the supplied
  * `HttpClient` and decodes responses with the current `RpcSerialization`.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1003,7 +1003,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
  * Provides a client `Protocol` backed by `HttpClient`, targeting the configured
  * URL and optionally transforming the client before use.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1026,7 +1026,7 @@ export const layerProtocolHttp = (options: {
  * `RpcSerialization`, connection hooks, ping timeouts, and the configured retry
  * policy.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1227,7 +1227,7 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
  * Provides a client `Protocol` backed by the current `Socket` and
  * `RpcSerialization` services.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1250,7 +1250,7 @@ export const layerProtocolSocket = (options?: {
  * Creates a client `Protocol` backed by a pool of workers, routing RPC requests
  * to workers and supporting transferable values when the platform does.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -1425,7 +1425,7 @@ export const makeProtocolWorker = (
  * Provides a client `Protocol` backed by a worker pool using the current worker
  * platform and spawner services.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1456,7 +1456,7 @@ export const layerProtocolWorker: (
  * Use to run setup or cleanup effects when an RPC client transport opens or
  * closes.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

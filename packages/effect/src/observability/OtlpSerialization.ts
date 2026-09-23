@@ -5,7 +5,7 @@
  * module provides the service that turns those structures into JSON or protobuf
  * HTTP bodies before they are posted to an OTLP collector.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -20,7 +20,7 @@ import type { TraceData } from "./OtlpTracer.ts"
  * Service for serializing OTLP traces, metrics, and logs into HTTP request
  * bodies.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -33,7 +33,7 @@ export class OtlpSerialization extends Context.Service<OtlpSerialization, {
 /**
  * Provides `OtlpSerialization` using OTLP/HTTP JSON bodies.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export const layerJson = Layer.succeed(OtlpSerialization, {
  * Provides `OtlpSerialization` using protobuf-encoded OTLP bodies with the
  * `application/x-protobuf` content type.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

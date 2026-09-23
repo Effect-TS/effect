@@ -7,7 +7,7 @@
  * service for adding custom span annotations from provider options and response
  * parts.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -29,7 +29,7 @@ import type * as Response from "./Response.ts"
  * conventions:
  * https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export type GenAITelemetryAttributes = Struct.Simplify<
 /**
  * All telemetry attributes which are part of the GenAI specification.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -61,7 +61,7 @@ export type AllAttributes =
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -77,7 +77,7 @@ export interface BaseAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.operation`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -89,7 +89,7 @@ export interface OperationAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.token`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -101,7 +101,7 @@ export interface TokenAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.usage`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -114,7 +114,7 @@ export interface UsageAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.request`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -167,7 +167,7 @@ export interface RequestAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.response`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -196,7 +196,7 @@ export interface ResponseAttributes {
  * If one of them applies, then the respective value **MUST** be used;
  * otherwise, a custom value **MAY** be used.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -210,7 +210,7 @@ export type WellKnownOperationName = "chat" | "embeddings" | "text_completion"
  * If one of them applies, then the respective value **MUST** be used;
  * otherwise, a custom value **MAY** be used.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -263,7 +263,7 @@ export type WellKnownSystem =
  * Object.keys(attributes) // => ["gen_ai.request.model_name", "gen_ai.request.max_tokens"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -296,7 +296,7 @@ export type AttributesWithPrefix<Attributes extends Record<string, any>, Prefix 
  * formatted // => ["model_name", "max_tokens", "temperature"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -344,7 +344,7 @@ export type FormatAttributeName<T extends string | number | symbol> = T extends 
  * Array.from(span.attributes.keys()) // => ["custom.ai.model_name", "custom.ai.max_tokens"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category annotations
  * @since 4.0.0
  */
@@ -419,7 +419,7 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
  * const result = [telemetryOptions.system, telemetryOptions.usage?.inputTokens] // => ["openai", 50]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -483,7 +483,7 @@ export type GenAITelemetryAttributeOptions = BaseAttributes & {
  * await Effect.runPromise(Effect.withSpan(directUsage, "example")) // => 5
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category annotations
  * @since 4.0.0
  */
@@ -525,7 +525,7 @@ export const addGenAIAnnotations: {
  * typeof customTransformer // => "function"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -551,7 +551,7 @@ export interface SpanTransformer {
  *
  * @see {@link SpanTransformer} for the transformer contract provided by this service
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

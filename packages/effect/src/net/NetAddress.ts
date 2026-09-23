@@ -1,7 +1,7 @@
 /**
  * Pure, platform-neutral values for MAC, IP, internet socket, and Unix path addresses.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Brand from "../Brand.ts"
@@ -19,7 +19,7 @@ const TypeId = "~effect/net/NetAddress" as const
 /**
  * An immutable 32-bit IPv4 address.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -33,7 +33,7 @@ export interface Ipv4Address extends Equal.Equal, Hash.Hash {
 /**
  * An immutable 128-bit IPv6 address without socket scope metadata.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
 /**
  * A numeric IPv4 or IPv6 address.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -56,7 +56,7 @@ export type IpAddress = Ipv4Address | Ipv6Address
 /**
  * An immutable 48-bit IEEE 802 MAC address.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -93,7 +93,7 @@ const UniversallyAdministeredTypeId = "~effect/net/NetAddress/UniversallyAdminis
  * The default type argument remains `IpAddress`; specify `MacAddress` or an
  * explicit IP/MAC union when accepting those wider address families.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -113,7 +113,7 @@ export type MulticastAddress<A extends IpAddress | MacAddress = IpAddress> = Bra
  * unknown. It does not promise reachability or destination usability. For MAC
  * addresses it means that the IEEE individual/group bit is clear.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -131,7 +131,7 @@ export type UnicastAddress<A extends IpAddress | MacAddress = IpAddress | MacAdd
  * limited broadcast is not multicast. Directed IPv4 broadcast requires network
  * prefix context and is intentionally not represented by this refinement.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -142,7 +142,7 @@ export type BroadcastAddress<A extends Ipv4Address | MacAddress = Ipv4Address | 
 /**
  * An IP address proven to be loopback.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -151,7 +151,7 @@ export type LoopbackAddress<A extends IpAddress = IpAddress> = Brand.Branded<A, 
 /**
  * An IP address proven to be link-local.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ export type LinkLocalAddress<A extends IpAddress = IpAddress> = Brand.Branded<A,
 /**
  * An all-zero IPv4 or IPv6 address.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -169,7 +169,7 @@ export type UnspecifiedAddress<A extends IpAddress = IpAddress> = Brand.Branded<
 /**
  * An IPv4 private-use address in an RFC 1918 range.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -178,7 +178,7 @@ export type PrivateAddress<A extends Ipv4Address = Ipv4Address> = Brand.Branded<
 /**
  * An IPv6 unique-local address in `fc00::/7`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -187,7 +187,7 @@ export type UniqueLocalAddress<A extends Ipv6Address = Ipv6Address> = Brand.Bran
 /**
  * A MAC address whose IEEE universal/local bit marks it as locally administered.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -199,7 +199,7 @@ export type LocallyAdministeredAddress<A extends MacAddress = MacAddress> = Bran
 /**
  * A MAC address whose IEEE universal/local bit marks it as universally administered.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ const getBytes = (self: IpAddress | MacAddress): Uint8Array => (self as any).byt
 /**
  * A resolved IPv4 internet address and port.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -229,7 +229,7 @@ export interface InetAddressV4 extends Equal.Equal, Hash.Hash {
 /**
  * A resolved IPv6 internet address, port, and scope identifier.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -246,7 +246,7 @@ export interface InetAddressV6 extends Equal.Equal, Hash.Hash {
 /**
  * A resolved IPv4 or IPv6 internet address and port.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -255,7 +255,7 @@ export type InetAddress = InetAddressV4 | InetAddressV6
 /**
  * An opaque Unix-domain filesystem socket path.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export interface UnixPathAddress extends Equal.Equal, Hash.Hash {
 /**
  * A portable concrete internet or Unix-domain filesystem address.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -279,7 +279,7 @@ export type SocketAddress = InetAddress | UnixPathAddress
 /**
  * Companion types for constructing socket addresses.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace SocketAddress {
@@ -292,7 +292,7 @@ export declare namespace SocketAddress {
    * String inputs must use `IPv4:port` or `[IPv6]:port` notation. Address
    * properties must be numeric IPv4 or IPv6 literals.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -320,7 +320,7 @@ export declare namespace SocketAddress {
  * const family: NetAddress.Family<NetAddress.InetAddressV6> = NetAddress.ipv6Loopback
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -347,7 +347,7 @@ export type Family<A extends IpAddress | InetAddress> = A extends Ipv4Address | 
  * )
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -369,7 +369,7 @@ export type Inet<A extends IpAddress = IpAddress> = A extends Ipv4Address ? Inet
  * ```
  *
  * @see {@link formatMulticastInterface}
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -385,7 +385,7 @@ export type MulticastInterface<A extends IpAddress = IpAddress> = A extends Ipv4
  * errors from the failing operation unchanged. Failures from external operations
  * retain the original exception in `cause` when available.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -400,7 +400,7 @@ const isAddress = (u: unknown): u is IpAddress | MacAddress | SocketAddress => h
 /**
  * Returns `true` when a value is an IPv4 address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -409,7 +409,7 @@ export const isIpv4Address = (u: unknown): u is Ipv4Address => isAddress(u) && u
 /**
  * Returns `true` when a value is an IPv6 address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -418,7 +418,7 @@ export const isIpv6Address = (u: unknown): u is Ipv6Address => isAddress(u) && u
 /**
  * Returns `true` when a value is an IPv4 or IPv6 address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -427,7 +427,7 @@ export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || i
 /**
  * Returns the bit width of an IP address.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -436,7 +436,7 @@ export const width = (address: IpAddress): 32 | 128 => isIpv4Address(address) ? 
 /**
  * Returns `true` when a value is a MAC address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -445,7 +445,7 @@ export const isMacAddress = (u: unknown): u is MacAddress => isAddress(u) && u._
 /**
  * Returns `true` when a value is a resolved IPv4 internet address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -454,7 +454,7 @@ export const isInetAddressV4 = (u: unknown): u is InetAddressV4 => isAddress(u) 
 /**
  * Returns `true` when a value is a resolved IPv6 internet address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -463,7 +463,7 @@ export const isInetAddressV6 = (u: unknown): u is InetAddressV6 => isAddress(u) 
 /**
  * Returns `true` when a value is a resolved internet address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -472,7 +472,7 @@ export const isInetAddress = (u: unknown): u is InetAddress => isInetAddressV4(u
 /**
  * Returns `true` when a value is a Unix-domain filesystem address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -481,7 +481,7 @@ export const isUnixPathAddress = (u: unknown): u is UnixPathAddress => isAddress
 /**
  * Returns `true` when a value is a portable concrete socket address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -577,7 +577,7 @@ const makeMac = (bytes: Uint8Array): MacAddress => {
 /**
  * Creates an IPv4 address from trusted network-order bytes without validation.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -586,7 +586,7 @@ export const ipv4FromBytesUnsafe = (bytes: Uint8Array): Ipv4Address => makeIpv4(
 /**
  * Creates an IPv6 address from trusted network-order bytes without validation.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -595,7 +595,7 @@ export const ipv6FromBytesUnsafe = (bytes: Uint8Array): Ipv6Address => makeIpv6(
 /**
  * The IPv4 loopback address `127.0.0.1`.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -604,7 +604,7 @@ export const ipv4Loopback: Ipv4Address = makeIpv4(new Uint8Array([127, 0, 0, 1])
 /**
  * The IPv6 loopback address `::1`.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -615,7 +615,7 @@ export const ipv6Loopback: Ipv6Address = makeIpv6(
 /**
  * The unspecified IPv4 address `0.0.0.0`.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -624,7 +624,7 @@ export const ipv4Unspecified: Ipv4Address = makeIpv4(new Uint8Array(4))
 /**
  * The unspecified IPv6 address `::`.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -633,7 +633,7 @@ export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
 /**
  * The IPv4 broadcast address `255.255.255.255`.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -645,7 +645,7 @@ const addressError = (input: unknown, message: string): Result.Result<never, Net
 /**
  * Creates an IPv4 address from four checked octets.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -661,7 +661,7 @@ export const ipv4FromOctets = (
 /**
  * Creates an IPv6 address from eight checked 16-bit segments.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -682,7 +682,7 @@ export const ipv6FromSegments = (
 /**
  * Creates a MAC address from six checked octets.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -698,7 +698,7 @@ export const macAddressFromOctets = (
 /**
  * Parses a colon-separated MAC address containing six two-digit hexadecimal octets.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -712,7 +712,7 @@ export const macAddressFromString = (input: string): Result.Result<MacAddress, N
 /**
  * Parses a trusted colon-separated MAC address, throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -725,7 +725,7 @@ export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.
  *
  * Multi-digit octets with a leading zero are rejected to avoid octal ambiguity.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -795,7 +795,7 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
 /**
  * Parses an IPv6 address with optional compression and trailing embedded IPv4.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -821,7 +821,7 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Address, NetAdd
 /**
  * Parses a bare numeric IPv4 or IPv6 address.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -835,7 +835,7 @@ export const ipFromString = (input: string): Result.Result<IpAddress, NetAddress
 /**
  * Parses a trusted bare numeric IPv4 or IPv6 address, throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -844,7 +844,7 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
 /**
  * Returns the four numeric octets of an IPv4 address in a fresh tuple.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -856,7 +856,7 @@ export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, numbe
 /**
  * Returns the eight numeric segments of an IPv6 address in a fresh tuple.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -874,7 +874,7 @@ export const ipv6ToSegments = (
 /**
  * Returns the sixteen numeric octets of an IPv6 address in a fresh array.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -885,7 +885,7 @@ export const ipv6ToOctets = (
 /**
  * Returns the six numeric octets of a MAC address in a fresh tuple.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -899,7 +899,7 @@ export const macAddressToOctets = (
 /**
  * Formats a MAC address as six lowercase hexadecimal octets separated by colons.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -909,7 +909,7 @@ export const formatMacAddress = (self: MacAddress): string =>
 /**
  * Returns `true` when the MAC address is the all-ones broadcast address.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -919,7 +919,7 @@ export const isMacBroadcast = <A extends MacAddress>(self: A): self is Broadcast
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit set.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -929,7 +929,7 @@ export const isMacMulticast = <A extends MacAddress>(self: A): self is Multicast
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit clear.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -938,7 +938,7 @@ export const isMacUnicast = <A extends MacAddress>(self: A): self is UnicastAddr
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit set.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -949,7 +949,7 @@ export const isMacLocallyAdministered = <A extends MacAddress>(
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit clear.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -960,7 +960,7 @@ export const isMacUniversallyAdministered = <A extends MacAddress>(
 /**
  * Folds an IP address by its numeric version.
  *
- * @unstable
+ * @stability unstable
  * @category pattern matching
  * @since 4.0.0
  */
@@ -981,7 +981,7 @@ export const match: {
 /**
  * Formats an IP address in canonical numeric form.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1014,7 +1014,7 @@ export const formatIp = (self: IpAddress): string => {
 /**
  * Returns `true` for the all-zero address of either IP version.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1024,7 +1024,7 @@ export const isUnspecified = <A extends IpAddress>(self: A): self is Unspecified
 /**
  * Returns `true` for IPv4 `127.0.0.0/8` or IPv6 `::1`.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1062,7 +1062,7 @@ export const isLoopback = <A extends IpAddress>(self: A): self is LoopbackAddres
  * assert.isFalse(NetAddress.isMulticast(NetAddress.ipv4Broadcast))
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1082,7 +1082,7 @@ export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is 
  * limited broadcast is not multicast. Directed IPv4 broadcast cannot be
  * determined without a network prefix and is not classified here.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1099,7 +1099,7 @@ export const isBroadcast = <A extends Ipv4Address | MacAddress>(self: A): self i
  * or addresses that are unusable or unreachable in a particular deployment.
  * MAC addresses are unicast when their IEEE individual/group bit is clear.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1111,7 +1111,7 @@ export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is Un
 /**
  * Returns `true` for IPv4 `169.254.0.0/16` or IPv6 `fe80::/10`.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1127,7 +1127,7 @@ export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddr
 /**
  * Returns `true` for IPv4 private-use ranges defined by RFC 1918.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1140,7 +1140,7 @@ export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddres
 /**
  * Returns `true` for IPv6 unique-local addresses in `fc00::/7`.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1150,7 +1150,7 @@ export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is UniqueLoc
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1165,7 +1165,7 @@ export const isIpv4Mapped = (self: Ipv6Address): boolean => {
 /**
  * Converts an IPv4 address to its IPv4-mapped IPv6 representation.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1180,7 +1180,7 @@ export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => {
 /**
  * Extracts the IPv4 value from an IPv4-mapped IPv6 address.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1196,17 +1196,17 @@ export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
  * returned unchanged, preserving their identity and any IPv6 scope identifier.
  * Converted internet addresses are IPv4 values without IPv6 scope metadata.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
 export function toCanonical(self: IpAddress): IpAddress
 /**
- * @unstable
+ * @stability unstable
  */
 export function toCanonical(self: InetAddress): InetAddress
 /**
- * @unstable
+ * @stability unstable
  */
 export function toCanonical(self: IpAddress | InetAddress): IpAddress | InetAddress {
   if (isInetAddress(self)) {
@@ -1265,7 +1265,7 @@ const checkPort = (port: number): boolean => Number.isInteger(port) && port >= 0
 /**
  * Creates a checked IPv4 internet address.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1282,7 +1282,7 @@ export const inetAddressV4 = (address: Ipv4Address, port: number): Result.Result
 /**
  * Creates a checked IPv6 internet address with an optional scope identifier.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1308,7 +1308,7 @@ export const inetAddressV6 = (
 /**
  * Creates a checked internet address for an IP address and port.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1318,7 +1318,7 @@ export const inetAddress = (address: IpAddress, port: number): Result.Result<Ine
 /**
  * Creates an internet address from a trusted IP address and port, throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1333,7 +1333,7 @@ export const inetAddressUnsafe = (address: IpAddress, port: number): InetAddress
  * The address must be a numeric IPv4 or IPv6 literal. This function does not
  * resolve hostnames or accept IPv6 brackets.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1352,7 +1352,7 @@ export const inetAddressFromIpString = (
  * This function throws when either input is invalid. Use only when both values
  * are already known to satisfy the checked constructor's requirements.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1370,7 +1370,7 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
  *
  * @see {@link formatHost} for formatting the host of an internet address
  * @see {@link scopeIdsFromInterfaces} for building a scope map from interface entries
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -1400,7 +1400,7 @@ export const inetAddressFromHostString = (
  * Network interface address metadata used to resolve IPv6 scope IDs.
  *
  * @see {@link scopeIdsFromInterfaces}
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1422,7 +1422,7 @@ export interface NetworkInterfaceAddress {
  * the map.
  *
  * @see {@link inetAddressFromHostString} for resolving named IPv6 zones with the map
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1440,7 +1440,7 @@ export const scopeIdsFromInterfaces = (
 /**
  * Parses `IPv4:port` or `[IPv6]:port` without DNS resolution.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -1495,7 +1495,7 @@ export const inetAddressFromString = (input: string): Result.Result<InetAddress,
 /**
  * Parses a trusted numeric internet address and port, throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1512,7 +1512,7 @@ export const inetAddressFromStringUnsafe = (input: string): InetAddress =>
  *
  * @see {@link formatInet} for a complete socket address
  * @see {@link formatUrlHost} for a bracketed URL authority host
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1533,7 +1533,7 @@ export const formatHost = (self: InetAddress): string =>
  * string. Omitting the platform uses non-Windows behavior. This function performs
  * no operating-system lookups.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1564,7 +1564,7 @@ export const formatNativeHost = (
  * string. Omitting the platform uses non-Windows behavior. This function performs
  * no operating-system lookups.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1586,7 +1586,7 @@ export const formatMulticastInterface = (
 /**
  * Formats a resolved internet address, bracketing IPv6 around its port.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1598,7 +1598,7 @@ export const formatInet = (self: InetAddress): string => {
 /**
  * Formats an IP address for use as a URL authority host.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1620,7 +1620,7 @@ export const formatUrlHost = (self: IpAddress): string => isIpv4Address(self) ? 
  * constructor rejects. Supply the scheme without a trailing colon, for example
  * `"https"`.
  *
- * @unstable
+ * @stability unstable
  * @category conversions
  * @since 4.0.0
  */
@@ -1649,7 +1649,7 @@ export const toUrl = (self: IpAddress | InetAddress, scheme: string = "http"): R
  * Returns a `NetAddressError` when URL conversion fails, including for scoped
  * IPv6 addresses.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1667,7 +1667,7 @@ export const formatUrl = (
  *
  * @see {@link formatUrl} for the checked version and formatting behavior.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1677,7 +1677,7 @@ export const formatUrlUnsafe = (self: IpAddress | SocketAddress, scheme: string 
 /**
  * Formats a hostname or numeric IP address for use as a URL authority host.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1707,7 +1707,7 @@ const UnixPathProto = {
 /**
  * Creates a Unix-domain filesystem address without normalizing its opaque path.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1725,7 +1725,7 @@ export const unixPathAddress = (path: string): UnixPathAddress => {
  * Preserves the raw path without URL encoding or normalization. The resulting
  * string is intended for display.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1739,7 +1739,7 @@ export const formatUnixPath = (self: UnixPathAddress): string => `unix://${self.
  * Numeric IP strings are parsed without hostname resolution. Invalid IP
  * literals, ports, and input shapes return a `NetAddressError`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1768,7 +1768,7 @@ export const socketAddressFromInput = (
  * Converts a trusted `SocketAddress.Input` to a concrete socket address,
  * throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1778,7 +1778,7 @@ export const socketAddressFromInputUnsafe = (input: SocketAddress.Input): Socket
 /**
  * Formats a portable socket address for human-readable output.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */

@@ -9,7 +9,7 @@
  * used by provider packages to adapt their own generate and stream functions to
  * the shared interface.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
@@ -71,7 +71,7 @@ import * as Toolkit from "./Toolkit.ts"
  * await Effect.runPromise(program.pipe(Effect.provide(FakeLanguageModel))) // => "Machine learning finds patterns in data."
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -82,7 +82,7 @@ export const LanguageModel: Context.Service<LanguageModel, LanguageModel> = Cont
 /**
  * Brand type for `LanguageModel`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -91,7 +91,7 @@ export type TypeId = "~effect/ai/LanguageModel"
 /**
  * Brand for `LanguageModel` implementations.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export const TypeId: TypeId = "~effect/ai/LanguageModel"
 /**
  * Text generation, streaming, and structured output operations.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -219,7 +219,7 @@ export interface LanguageModel {
  * express every constraint; the returned codec remains authoritative for
  * validating model output.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -246,7 +246,7 @@ export type CodecTransformer = <T, E, RD, RE>(schema: Schema.ConstraintCodec<T, 
  * @see {@link CodecTransformer} for the structured-output transformer contract
  * @see {@link make} for where this transformer is used as the default
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -255,7 +255,7 @@ export const defaultCodecTransformer: CodecTransformer = InternalCodecTransforme
 /**
  * Configuration options for text generation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -314,7 +314,7 @@ type GenerateTextOptionsWithoutToolkit = Omit<GenerateTextOptions<{}>, "toolkit"
 /**
  * Configuration options for structured object generation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -349,7 +349,7 @@ export interface GenerateObjectOptions<
  *   `"required"`, the model **must** call one tool from the allowed subset of
  *   tools.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -380,7 +380,7 @@ export type ToolChoice<ToolName extends string> =
  * const result = [response.text, response.finishReason] // => ["Plants convert light into energy.", "unknown"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -490,7 +490,7 @@ export class GenerateTextResponse<
  * response.text // => '{"name":"John Doe","email":"john@example.com"}'
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -517,7 +517,7 @@ export class GenerateObjectResponse<
 /**
  * The supported toolkit option shapes for language model operations.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -544,7 +544,7 @@ export type ToolkitOption<
  * intended for call-site assignability, while `ToolkitOption` remains the
  * distributive helper used for extraction and inference.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -572,7 +572,7 @@ type ExtractToolsFromToolkitOption<ToolkitValue> = ToolkitValue extends Toolkit.
 /**
  * Utility type that extracts the toolset from LanguageModel options.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -585,7 +585,7 @@ export type ExtractTools<Options> = Options extends {
  * Resolves to `"encoded"` when tool call resolution is
  * disabled, otherwise `"opaque"`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -654,7 +654,7 @@ type ExtractToolkitResolutionServices<ToolkitValue> = ToolkitValue extends Effec
  * Automatically infers the possible error types based on toolkit configuration
  * and tool call resolution settings.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -677,7 +677,7 @@ export type ExtractError<Options> = Options extends {
  *
  * Automatically infers the required services based on the toolkit configuration.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -705,7 +705,7 @@ export type ExtractServices<Options> = Options extends {
  * underlying provider implementation, regardless of the specific provider being
  * used.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -809,7 +809,7 @@ export interface ProviderOptions {
  * @see {@link ProviderOptions} for the normalized options passed to provider hooks
  * @see {@link defaultCodecTransformer} for the default structured-output schema transformer
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1803,7 +1803,7 @@ export const make: (params: {
  * await Effect.runPromise(program) // => ["Code flows through types / Errors become values / Programs stay composed", 6]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category text generation
  * @since 4.0.0
  */
@@ -1890,7 +1890,7 @@ export const generateText: {
  * await Effect.runPromise(program) // => { title: "Tech Conference", date: "March 15th", location: "San Francisco" }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category generators
  * @since 4.0.0
  */
@@ -1953,7 +1953,7 @@ export const generateObject = <
  * await Effect.runPromise(program) // => "The explorer reached orbit. Earth glowed below."
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category text generation
  * @since 4.0.0
  */

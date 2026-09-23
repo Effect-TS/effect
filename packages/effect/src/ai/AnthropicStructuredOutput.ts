@@ -7,7 +7,7 @@
  * Unsupported constraints can be omitted from the provider schema and remain
  * enforced by the returned codec.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as JsonSchema from "../JsonSchema.ts"
@@ -49,7 +49,7 @@ import * as OpenAiStructuredOutput from "./OpenAiStructuredOutput.ts"
  * @see {@link LanguageModel.CodecTransformer} for the structured-output transformer contract
  * @see {@link OpenAiStructuredOutput.toCodecOpenAI} for the OpenAI-specific transformer
  *
- * @unstable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

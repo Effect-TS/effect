@@ -8,7 +8,7 @@
  * fields and uploaded files together. This module also includes multipart error
  * types, schema helpers for persisted files, and parser limit settings.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -40,7 +40,7 @@ import * as MP from "./MultipartParser.ts"
 /**
  * Type identifier used to brand multipart part values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export const TypeId = "~effect/http/Multipart"
  *
  * A part is either a text `Field` or a streamed `File`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export type Part = Field | File
 /**
  * Namespace containing shared multipart part model types.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Part {
@@ -74,7 +74,7 @@ export declare namespace Part {
    * It provides the multipart type identifier, tag, and inspectable behavior shared
    * by fields, files, and persisted files.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -92,7 +92,7 @@ export declare namespace Part {
  * The `key` is the field name, `contentType` is the part media type, and `value`
  * is the decoded field content.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -111,7 +111,7 @@ export interface Field extends Part.Proto {
  * This includes `Field`, `File`, and `PersistedFile` values. Use
  * `isStreamPart` to identify only parsed, streamed parts.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -120,7 +120,7 @@ export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, TypeId
 /**
  * Returns `true` when a value is a multipart text `Field` or streamed `File`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -129,7 +129,7 @@ export const isStreamPart = (u: unknown): u is Part => isPart(u) && (u._tag === 
 /**
  * Returns `true` when a value is a multipart text `Field`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -143,7 +143,7 @@ export const isField = (u: unknown): u is Field => isPart(u) && u._tag === "Fiel
  * The file content is exposed as a byte stream. `contentEffect` collects the full
  * file into memory and should be used only when the file size is acceptable.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -159,7 +159,7 @@ export interface File extends Part.Proto {
 /**
  * Returns `true` when a value is a multipart `File`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -173,7 +173,7 @@ export const isFile = (u: unknown): u is File => isPart(u) && u._tag === "File"
  * The `path` points to the persisted file while the scope used to persist the
  * multipart data remains open.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -188,7 +188,7 @@ export interface PersistedFile extends Part.Proto {
 /**
  * Returns `true` when a value is a persisted multipart file.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -203,7 +203,7 @@ export const isPersistedFile = (u: unknown): u is PersistedFile =>
  * Field names map to text values, arrays of text values, or arrays of
  * `PersistedFile` values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -226,7 +226,7 @@ const toMultipartError = (cause: unknown): MultipartError =>
  * It identifies parser and limit failures such as oversized files or fields, too
  * many parts, total body size limits, parse errors, and internal errors.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -253,7 +253,7 @@ const responseStatusByReason = {
  * a server response, parse errors render as `400`, limit errors as `413`, and
  * internal errors as `500`. Multipart errors are ignored by the error reporter.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -263,7 +263,7 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
   /**
    * Creates a multipart error from a reason tag and optional cause.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static fromReason(reason: MultipartErrorReason["_tag"], cause?: unknown): MultipartError {
@@ -273,7 +273,7 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
   /**
    * Marks this value as a multipart error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [MultipartErrorTypeId] = MultipartErrorTypeId
@@ -288,7 +288,7 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
    * Parse errors produce `400`, size and part-count limits produce `413`, and
    * internal errors produce `500`.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [HttpServerRespondable.symbol]() {
@@ -298,7 +298,7 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
   /**
    * Uses the concrete multipart error reason as the public message.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message(): string {
@@ -309,7 +309,7 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
 /**
  * Checks whether a value is a `MultipartError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -318,7 +318,7 @@ export const isMultipartError = (u: unknown): u is MultipartError => Predicate.h
 /**
  * Schema type for persisted multipart files.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -339,7 +339,7 @@ const PersistedFileEncoded = Schema.Struct({
  * The encoded form contains the field key, original file name, content type, and
  * filesystem path.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -375,7 +375,7 @@ export const PersistedFileSchema: PersistedFileSchema = Schema.declare(
 /**
  * Schema for an array of persisted multipart files.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -389,7 +389,7 @@ export const FilesSchema: Schema.$Array<PersistedFileSchema> = Schema.Array(Pers
  * The encoded form is a one-element file array, while the decoded value is the
  * single `PersistedFile`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -414,7 +414,7 @@ export const SingleFileSchema: Schema.decodeTo<PersistedFileSchema, Schema.$Arra
  * The returned function decodes an unknown input into the schema output and fails
  * with `SchemaError` when validation fails.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -431,7 +431,7 @@ export const schemaPersisted = <A, I extends Partial<Persisted>, RD>(
  * The selected field is parsed from a JSON string and decoded with the supplied
  * schema.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -464,7 +464,7 @@ export const schemaJson = <A, RD>(
  * Parser limits are read from the multipart references, including maximum parts,
  * field size, file size, total body size, and field MIME type overrides.
  *
- * @unstable
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -495,7 +495,7 @@ export const makeConfig = (
  * non-empty batches of parsed `Part` values, failing with `MultipartError` for
  * parser and limit failures.
  *
- * @unstable
+ * @stability unstable
  * @category parsing
  * @since 4.0.0
  */
@@ -701,7 +701,7 @@ const defaultWriteFile = (path: string, file: File) =>
  * The source channel must not reuse or mutate emitted buffers, which are retained
  * until collection completes.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -721,7 +721,7 @@ export const collectUint8Array = <OE, OD, R>(
  *
  * Persisted file paths remain valid for the lifetime of the scope.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -814,7 +814,7 @@ class PersistedFileImpl extends PartBase implements PersistedFile {
  * The context can provide maximum part count, field size, file size, total body
  * size, and MIME types that should be parsed as fields.
  *
- * @unstable
+ * @stability unstable
  * @category references
  * @since 4.0.0
  */
@@ -847,7 +847,7 @@ export const limitsServices = (options: {
 /**
  * Namespace containing multipart parser limit option types.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace withLimits {
@@ -859,7 +859,7 @@ export declare namespace withLimits {
    * These settings control maximum part count, field size, file size, total body
    * size, and MIME types that should be treated as fields instead of files.
    *
-   * @unstable
+   * @stability unstable
    * @category options
    * @since 4.0.0
    */
@@ -879,7 +879,7 @@ export declare namespace withLimits {
  *
  * The default is `undefined`, meaning no explicit part-count limit.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -894,7 +894,7 @@ export const MaxParts = Context.Reference<number | undefined>("effect/http/Multi
  *
  * The default limit is 10 MiB.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -909,7 +909,7 @@ export const MaxFieldSize = Context.Reference<ByteSize.ByteSize>("effect/http/Mu
  *
  * The default is `undefined`, meaning no explicit per-file limit.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -926,7 +926,7 @@ export const MaxFileSize = Context.Reference<ByteSize.ByteSize | undefined>(
  *
  * The default treats `application/json` parts as fields.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

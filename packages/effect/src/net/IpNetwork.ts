@@ -1,7 +1,7 @@
 /**
  * Pure, canonical IPv4 and IPv6 network prefixes using CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -21,7 +21,7 @@ const TypeId = "~effect/net/IpNetwork" as const
  * different address return only its IPv4 or IPv6 family; revalidate the result
  * before treating it as refined.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -37,7 +37,7 @@ export interface IpNetwork<out A extends NetAddress.IpAddress = NetAddress.IpAdd
 /**
  * An immutable canonical IPv4 network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -46,7 +46,7 @@ export type Ipv4Network = IpNetwork<NetAddress.Ipv4Address>
 /**
  * An immutable canonical IPv6 network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -55,7 +55,7 @@ export type Ipv6Network = IpNetwork<NetAddress.Ipv6Address>
 /**
  * Returns `true` when a value is an IPv4 network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export const isIpv4Network = (u: unknown): u is Ipv4Network => isIpNetwork(u) &&
 /**
  * Returns `true` when a value is an IPv6 network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export const isIpv6Network = (u: unknown): u is Ipv6Network => isIpNetwork(u) &&
 /**
  * Returns `true` when a value is an IPv4 or IPv6 network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -141,7 +141,7 @@ const maskBytes = (bytes: ReadonlyArray<number>, prefixLength: number): Array<nu
  *
  * Use {@link fromAddress} when a host address should be truncated to its containing network.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -170,7 +170,7 @@ export const make = <A extends NetAddress.IpAddress>(
  * Its type therefore retains the IPv4 or IPv6 family but not refinements on
  * the input address. Revalidate the derived address to recover a refinement.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -188,7 +188,7 @@ export const fromAddress = <A extends NetAddress.IpAddress>(
  * Returns the canonical network containing an interface address. The derived
  * address retains its IPv4 or IPv6 family but not refinements on the input.
  *
- * @unstable
+ * @stability unstable
  * @category conversions
  * @since 4.0.0
  */
@@ -199,7 +199,7 @@ export const fromInterface = <A extends NetAddress.IpAddress>(
 /**
  * Parses a strict IPv4 network prefix in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Network, NetAdd
 /**
  * Parses a strict IPv6 network prefix in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -227,7 +227,7 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Network, NetAdd
 /**
  * Parses a strict IPv4 or IPv6 network prefix in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.N
 /**
  * Creates a trusted network prefix, throwing when its address or prefix is invalid.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -253,7 +253,7 @@ export const makeUnsafe = <A extends NetAddress.IpAddress>(address: A, prefixLen
  * The derived address retains its IPv4 or IPv6 family but not refinements on
  * the input address.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -265,7 +265,7 @@ export const fromAddressUnsafe = <A extends NetAddress.IpAddress>(
 /**
  * Parses a trusted network prefix in CIDR notation, throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -274,7 +274,7 @@ export const fromStringUnsafe = (input: string): IpNetwork => Result.getOrThrow(
 /**
  * Formats a network prefix using canonical address text and its decimal prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -283,7 +283,7 @@ export const format = (self: IpNetwork): string => `${NetAddress.formatIp(self.a
 /**
  * Returns the lowest address in a network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -294,7 +294,7 @@ export const firstAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>)
  * address retains its IPv4 or IPv6 family but not refinements on the network
  * address.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -307,7 +307,7 @@ export const lastAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>):
 /**
  * Returns the exact number of addresses in a network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -324,7 +324,7 @@ const containsBytes = (self: IpNetwork, address: NetAddress.IpAddress): boolean 
 /**
  * Returns `true` when a network prefix contains an IP address.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -336,7 +336,7 @@ export const contains: {
 /**
  * Returns `true` when a network prefix contains every address in another network prefix.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -350,7 +350,7 @@ export const containsNetwork: {
 /**
  * Returns `true` when two network prefixes contain at least one common address.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */

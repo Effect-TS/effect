@@ -5,7 +5,7 @@
  *
  * @see {@link make} for constructing a decision model service from a provider
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -21,7 +21,7 @@ import type * as Decision from "./Decision.ts"
  * @see {@link make} for constructing a decision model service from a provider
  * @see {@link decide} for answering a definition through the current service
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -32,7 +32,7 @@ export const DecisionModel: Context.Service<DecisionModel, DecisionModel> = Cont
 /**
  * Brand type for `DecisionModel`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -41,7 +41,7 @@ export type TypeId = "~effect/ai/DecisionModel"
 /**
  * Brand for `DecisionModel` implementations.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -50,7 +50,7 @@ export const TypeId: TypeId = "~effect/ai/DecisionModel"
 /**
  * Provider-reported token usage. Unreported counts are `undefined`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export class DecisionUsage extends Schema.Class<DecisionUsage>(
 /**
  * Options for answering a decision definition.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -77,7 +77,7 @@ export interface DecideOptions<Input extends Schema.Constraint> {
  *
  * @see {@link DecisionUsage} for token usage metadata
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -91,7 +91,7 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -103,7 +103,7 @@ export interface ProviderOptions {
 /**
  * Provider answer for a classify decision.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -119,7 +119,7 @@ export interface ProviderClassifyAnswer {
  * The core derives the label from the highest probability, choosing the
  * first criteria entry on ties.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export interface ProviderRateAnswer {
 /**
  * Provider answer for a probability decision.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -145,7 +145,7 @@ export interface ProviderProbabilityAnswer {
 /**
  * Provider answer for any decision kind.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -156,7 +156,7 @@ export type ProviderAnswer = ProviderClassifyAnswer | ProviderRateAnswer | Provi
  * `answers` is keyed like the requested decisions. Each answer is validated
  * against its decision before it is returned to the caller.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -171,7 +171,7 @@ export interface ProviderResponse {
 /**
  * Decision operations over a definition.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -335,7 +335,7 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * @see {@link ProviderOptions} for the input passed to the provider implementation
  * @see {@link ProviderResponse} for the provider response contract consumed by this constructor
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -410,7 +410,7 @@ export const make = (params: {
  *
  * @see {@link DecisionModel} for the service this function requires
  *
- * @unstable
+ * @stability unstable
  * @category decisions
  * @since 4.0.0
  */

@@ -23,7 +23,7 @@ describe("BarrelGenerator", () => {
       assert.deepStrictEqual(files, [{ path: barrel, pattern: "*.ts", offset: 1 }])
     }).pipe(Effect.provide(MainLayer)))
 
-  it.effect("copies a module @unstable tag into the barrel export", () =>
+  it.effect("copies a module @stability unstable tag into the barrel export", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const directory = yield* fs.makeTempDirectoryScoped({ prefix: "codegen-" })
@@ -44,7 +44,7 @@ export const stable = 1
         `/**
  * Unstable module.
  *
- * @unstable
+ * @stability unstable
  * @since 2.0.0
  */
 export const unstable = 1
@@ -64,7 +64,7 @@ export const unstable = 1
 export * as Stable from "./Stable.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 2.0.0
  */
 export * as Unstable from "./Unstable.ts"

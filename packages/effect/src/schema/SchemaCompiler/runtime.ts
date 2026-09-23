@@ -3,7 +3,7 @@
  * source generator or dynamic function construction. Generated modules must
  * use the same Effect version as their generator.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../../Effect.ts"

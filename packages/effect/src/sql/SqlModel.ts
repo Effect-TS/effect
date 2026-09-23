@@ -8,7 +8,7 @@
  * Soft deletes are optional, and SQL dialect differences such as `returning`
  * support are handled by the repository implementation.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
@@ -28,7 +28,7 @@ import * as SqlSchema from "./SqlSchema.ts"
  * supplied, reads ignore soft-deleted rows and delete updates that column
  * instead of removing the row.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -226,7 +226,7 @@ select * from ${sql(options.tableName)} where ${withSoftDeleteFilter(sql`${sql(i
  * Creates batched request resolvers for a schema model's insert, insert-void,
  * find-by-id, and delete operations, honoring the optional soft-delete column.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

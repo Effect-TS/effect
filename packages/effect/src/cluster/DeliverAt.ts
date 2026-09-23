@@ -4,7 +4,7 @@
  * by exposing a method at the `DeliverAt` symbol that returns the target
  * `DateTime`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { DateTime } from "../DateTime.ts"
@@ -18,7 +18,7 @@ import { hasProperty } from "../Predicate.ts"
  * Use to implement the scheduled-delivery protocol on cluster message payloads
  * by defining a method at this property key.
  *
- * @unstable
+ * @stability unstable
  * @category symbols
  * @since 4.0.0
  */
@@ -29,7 +29,7 @@ export const symbol = "~effect/cluster/DeliverAt"
  * by returning the target delivery `DateTime` through the `DeliverAt` symbol
  * method.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -41,7 +41,7 @@ export interface DeliverAt {
  * Returns `true` if the value implements the `DeliverAt` scheduled-delivery
  * protocol.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export const isDeliverAt = (self: unknown): self is DeliverAt => hasProperty(sel
  * Returns the scheduled delivery time in epoch milliseconds when the value
  * implements `DeliverAt`, or `null` otherwise.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */

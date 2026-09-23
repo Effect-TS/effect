@@ -6,7 +6,7 @@
  * middleware and security handlers, invokes the registered endpoint handler, and
  * encodes successes or declared errors into `HttpServerResponse` values.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -59,7 +59,7 @@ import * as OpenApi from "./OpenApi.ts"
 /**
  * Registers an `HttpApi` with a `HttpRouter`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -123,7 +123,7 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
  * be used to add handlers to the group. Implement endpoints with
  * `handlers.handle`.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -173,7 +173,7 @@ export const group = <
  * types inferred from the endpoint, preserving the callback's service
  * requirements. Pass the result to `handlers.handle` when implementing the group.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -312,7 +312,7 @@ type ValidateHandlersReturn<
  * adds that endpoint identifier to the type-level set of implemented endpoints.
  * Endpoint identifiers that were already handled are rejected at the type level.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -391,7 +391,7 @@ export interface Handlers<
 /**
  * Namespace containing helper types for `HttpApiBuilder` handler collections.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Handlers {
@@ -399,7 +399,7 @@ export declare namespace Handlers {
    * Creates a handler collection for a group where every endpoint in the group is
    * still awaiting an implementation.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -413,7 +413,7 @@ export declare namespace Handlers {
    * handler collections and producing a descriptive type error when endpoints remain
    * unhandled.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -423,7 +423,7 @@ export declare namespace Handlers {
    * Extracts the error channel from an effect that produces a `Handlers`
    * collection, returning `never` for non-effectful handler collections.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -442,7 +442,7 @@ export declare namespace Handlers {
    * Extracts the services required by a handler collection, including both handler
    * requirements and the environment required to construct the handlers.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -497,7 +497,7 @@ type EndpointReturn<
  * Builds the server-side HTTP effect for a single endpoint in an API group using
  * the endpoint metadata, middleware, codecs, and supplied handler.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export const endpoint = <
  * Decodes credentials for an HTTP API security scheme from the current request,
  * supporting bearer, API key, and basic authentication inputs.
  *
- * @unstable
+ * @stability unstable
  * @category security
  * @since 4.0.0
  */
@@ -606,7 +606,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
  * Registers a pre-response handler that sets an API-key cookie on the outgoing
  * response, defaulting the cookie to `secure` and `httpOnly` unless overridden.
  *
- * @unstable
+ * @stability unstable
  * @category security
  * @since 4.0.0
  */

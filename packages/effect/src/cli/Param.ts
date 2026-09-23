@@ -8,7 +8,7 @@
  * aliases, defaults, prompts, configuration fallbacks, validation, schema
  * decoding, fallback parameters, and traversal helpers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "../Config.ts"
@@ -36,7 +36,7 @@ const TypeId = "~effect/cli/Param"
  * A parameter knows whether it consumes positional arguments or flags and
  * parses a `ParsedArgs` value into its typed result.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -50,7 +50,7 @@ export interface Param<Kind extends ParamKind, out A> extends Param.Variance<A> 
  * Discriminator for whether a `Param` parses positional arguments or
  * command-line flags.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export type ParamKind = "argument" | "flag"
  * @see {@link flagKind} for the named flag parameter discriminator
  * @see {@link ParamKind} for the full parameter kind union
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export const argumentKind: "argument" = "argument" as const
  *
  * @see {@link argumentKind} for the positional argument parameter discriminator
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -92,7 +92,7 @@ export const flagKind: "flag" = "flag" as const
 /**
  * Represents any parameter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -101,7 +101,7 @@ export type Any = Param<ParamKind, unknown>
 /**
  * Represents any positional argument parameter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -110,7 +110,7 @@ export type AnyArgument = Param<typeof argumentKind, unknown>
 /**
  * Represents any flag parameter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -125,7 +125,7 @@ export type AnyFlag = Param<typeof flagKind, unknown>
  * It returns the remaining positional arguments together with the parsed value,
  * or fails with a `CliError` while requiring the CLI parsing environment.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -138,14 +138,14 @@ export type Parse<A> = (args: ParsedArgs) => Effect.Effect<
 /**
  * Namespace containing type-level utilities attached to the `Param` interface.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Param {
   /**
    * Variance and pipeability marker carried by every `Param` value.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -160,7 +160,7 @@ export declare namespace Param {
  * Map of flag names to their provided string values.
  * Multiple occurrences of a flag produce multiple values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -171,7 +171,7 @@ export type Flags = Record<string, ReadonlyArray<string>>
  * - `flags`: already-collected flag values by canonical flag name
  * - `arguments`: remaining positional arguments to be consumed
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -184,7 +184,7 @@ export interface ParsedArgs {
  * Represents a fallback prompt that can either be provided directly or
  * computed effectfully when the parameter is missing.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -200,7 +200,7 @@ export type FallbackPrompt<A> =
  * Single parameters carry the user-facing name, aliases, description, primitive
  * type, and optional metavar/type name used in help output.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -219,7 +219,7 @@ export interface Single<Kind extends ParamKind, out A> extends Param<Kind, A> {
  * Parameter node that maps the successfully parsed value of another parameter
  * with a pure function.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -235,7 +235,7 @@ export interface Map<Kind extends ParamKind, in out A, out B> extends Param<Kind
  * validation, fallback behavior, or error translation while preserving the same
  * parameter kind.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -254,7 +254,7 @@ export interface Transform<Kind extends ParamKind, in out A, out B> extends Para
  * Parameter node that turns a missing argument or flag into `Option.none()` and
  * a present parsed value into `Option.some(value)`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -269,7 +269,7 @@ export interface Optional<Kind extends ParamKind, A> extends Param<Kind, Option.
  * all parsed values as an array, respecting optional minimum and maximum
  * occurrence bounds.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -303,7 +303,7 @@ const Proto = {
  * Param.isParam(maybeParam) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -324,7 +324,7 @@ export const isParam = (u: unknown): u is Param<any, ParamKind> => Predicate.has
  * Param.isSingle(optionalParam) // => false
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -350,7 +350,7 @@ export const isFlagParam = <A>(
  * The returned parser reads either one positional argument or the named flag,
  * depending on `kind`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -395,7 +395,7 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
  * const kinds = [nameFlag.kind, fileArg.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -429,7 +429,7 @@ export const String = <const Kind extends ParamKind>(
  * const kinds = [verboseFlag.kind, enableArg.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -461,7 +461,7 @@ export const Boolean = <const Kind extends ParamKind>(
  * const kinds = [portFlag.kind, countArg.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -490,7 +490,7 @@ export const Int = <const Kind extends ParamKind>(
  * const kinds = [rateFlag.kind, thresholdArg.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -523,7 +523,7 @@ export const Finite = <const Kind extends ParamKind>(
  * const kinds = [startFlag.kind, dueDateArg.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -563,7 +563,7 @@ export const Date = <const Kind extends ParamKind>(
  * animal.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -595,7 +595,7 @@ export const ChoiceWithValue = <
  * logLevel.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -630,7 +630,7 @@ export const Literals = <
  * const kinds = [outputPath.kind, inputPath.kind, configFile.kind] // => ["flag", "flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -673,7 +673,7 @@ export const Path = <Kind extends ParamKind>(
  * const kinds = [outputDir.kind, sourceDir.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -713,7 +713,7 @@ export const Directory = <Kind extends ParamKind>(
  * const kinds = [outputFile.kind, inputFile.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -749,7 +749,7 @@ export const File = <Kind extends ParamKind>(
  * const kinds = [password.kind, apiKey.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -781,7 +781,7 @@ export const Redacted = <Kind extends ParamKind>(
  * const kinds = [configContent.kind, templateContent.kind] // => ["flag", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -816,7 +816,7 @@ export const FileText = <Kind extends ParamKind>(kind: Kind, name: string): Para
  * const kinds = [config.kind, jsonConfig.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -858,7 +858,7 @@ export const FileParse = <Kind extends ParamKind>(
  * const kinds = [config.kind, yamlConfig.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -900,7 +900,7 @@ export const FileSchema = <Kind extends ParamKind, A>(
  * const kinds = [env.kind, props.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -937,7 +937,7 @@ export const KeyValuePair = <Kind extends ParamKind>(
  * makeDebugParam(false) === disabledDebugParam // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -981,7 +981,7 @@ const FLAG_DASH_REGEXP = /^-+/
  * const kinds = [force.kind, count.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1016,7 +1016,7 @@ export const withAlias: {
  * verbose.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1051,7 +1051,7 @@ export const withDescription: {
  * experimental.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -1076,7 +1076,7 @@ export const withHidden = <Kind extends ParamKind, A>(self: Param<Kind, A>): Par
  * port.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1168,7 +1168,7 @@ const transform = <Kind extends ParamKind, A, B>(
  * value // => "alice@example.com"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1238,7 +1238,7 @@ export const mapEffect: {
  * value // => { enabled: true }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1302,7 +1302,7 @@ export const mapTryCatch: {
  * port.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1353,7 +1353,7 @@ export const optional = <Kind extends ParamKind, A>(
  * const kinds = [port.kind, verbose.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1402,7 +1402,7 @@ export const withDefault: {
  * @see {@link withDefault} for a pure default value
  * @see {@link withFallbackPrompt} for prompting interactively when input is missing
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1462,7 +1462,7 @@ export const withFallbackConfig: {
  * @see {@link withFallbackConfig} for loading a fallback from config
  * @see {@link withDefault} for a pure default value
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1490,7 +1490,7 @@ export const withFallbackPrompt: {
 /**
  * Represent options which can be used to configure variadic parameters.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -1536,7 +1536,7 @@ export type VariadicParamOptions = {
  * const kinds = [tags.kind, inputs.kind, limited.kind] // => ["flag", "flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1594,7 +1594,7 @@ export const variadic = <Kind extends ParamKind, A>(
  * const kinds = [files.kind, tags.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1635,7 +1635,7 @@ export const between: {
  * suppressions.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1673,7 +1673,7 @@ export const atMost: {
  * inputs.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1710,7 +1710,7 @@ export const atLeast: {
  * positiveInt.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1763,7 +1763,7 @@ export const filterMap: {
  * evenNumber.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1806,7 +1806,7 @@ export const filter: {
  * port.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -1843,7 +1843,7 @@ export const withMetavar: {
  * email.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1888,7 +1888,7 @@ export const withSchema: {
  * config.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1930,7 +1930,7 @@ export const orElse: {
  * configSource.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

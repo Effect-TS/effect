@@ -8,7 +8,7 @@
  * worker is ready, runs incoming messages with Effect handlers, and ties worker
  * cleanup to scope lifetime.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -24,7 +24,7 @@ import { WorkerError, WorkerSendError } from "./WorkerError.ts"
  * Service that spawns effect `Worker` instances for numeric worker ids using
  * the configured `Spawner`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -39,7 +39,7 @@ export class WorkerPlatform extends Context.Service<WorkerPlatform, {
  * long-lived handler for output messages, failing with `WorkerError` or handler
  * errors.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -63,7 +63,7 @@ export interface Worker<O = unknown, I = unknown> {
  * platform ready/data messages and running the optional `onSpawn` effect when
  * the worker reports readiness.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -90,7 +90,7 @@ export const makeUnsafe = (options: {
  * Internal worker platform protocol message: `[0]` signals readiness and
  * `[1, payload]` carries data.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export type PlatformMessage = readonly [ready: 0] | readonly [data: 1, unknown]
  * Phantom identifier for the service that maps worker ids to platform-specific
  * worker instances.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -111,7 +111,7 @@ export interface Spawner {
 /**
  * Service tag for the worker `SpawnerFn`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -124,7 +124,7 @@ export const Spawner: Context.Service<
  * Function that creates or locates a platform-specific worker instance for a
  * numeric worker id.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -135,7 +135,7 @@ export interface SpawnerFn<W = unknown> {
 /**
  * Creates a layer that provides a worker `Spawner` service from a `SpawnerFn`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export const layerSpawner: <W = unknown>(
  * buffering sent messages until the worker is ready and scoping port cleanup to
  * the worker run.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

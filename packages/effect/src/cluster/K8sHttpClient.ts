@@ -4,7 +4,7 @@
  * shared HTTP client, points requests at the in-cluster API endpoint, and uses
  * the mounted service-account token when one is available.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -25,7 +25,7 @@ import type { Pod as K8sPod } from "./K8sTypes.ts"
 /**
  * Service tag for the HTTP client used to call the Kubernetes API.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export class K8sHttpClient extends Context.Service<
  * bearer token when available, requires successful HTTP statuses, and retries
  * transient failures.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -77,7 +77,7 @@ export const layer: Layer.Layer<
  * The request can be limited by namespace and label selector, and the result is a
  * map keyed by pod IP address.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export const makeGetPods: (
  * The pod defaults to the `default` namespace and is deleted when the surrounding
  * scope closes.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -232,7 +232,7 @@ export const makeCreatePod = Effect.gen(function*() {
 /**
  * Schema for the subset of Kubernetes Pod status used by cluster helpers.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -254,7 +254,7 @@ export class PodStatus extends Schema.Class<PodStatus>("@effect/cluster/K8sHttpC
  *
  * The model exposes readiness helpers derived from the pod status conditions.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

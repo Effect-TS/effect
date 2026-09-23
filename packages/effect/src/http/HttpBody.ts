@@ -9,7 +9,7 @@
  * bodies, streaming and file-backed bodies, and the error type used when body
  * construction fails.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as ByteSize from "../ByteSize.ts"
@@ -33,7 +33,7 @@ const TypeId = "~effect/http/HttpBody"
 /**
  * Returns `true` if the provided value is an `HttpBody`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -46,7 +46,7 @@ export const isHttpBody = (u: unknown): u is HttpBody => Predicate.hasProperty(u
  *
  * Supported variants include empty bodies, raw bodies, byte arrays, `FormData`, and streams of bytes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -55,7 +55,7 @@ export type HttpBody = Empty | Raw | Uint8Array | FormData | Stream
 /**
  * Namespace containing type-level members associated with `HttpBody`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace HttpBody {
@@ -66,7 +66,7 @@ export declare namespace HttpBody {
    *
    * It carries the variant tag plus optional `contentType` and `contentLength` metadata.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -80,7 +80,7 @@ export declare namespace HttpBody {
   /**
    * Minimal Web `File`-like shape used by HTTP helpers that need file metadata.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -98,7 +98,7 @@ const HttpBodyErrorTypeId = "~effect/http/HttpBody/HttpBodyError"
 /**
  * Error produced while constructing an HTTP body from JSON or schema-encoded input.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export class HttpBodyError extends Data.TaggedError("HttpBodyError")<{
   /**
    * Marks this value as an HTTP body error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [HttpBodyErrorTypeId] = HttpBodyErrorTypeId
@@ -118,7 +118,7 @@ export class HttpBodyError extends Data.TaggedError("HttpBodyError")<{
 /**
  * Checks whether a value is an `HttpBodyError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -131,7 +131,7 @@ export const isHttpBodyError = (u: unknown): u is HttpBodyError => Predicate.has
  *
  * `JsonError` represents a `JSON.stringify` failure; `SchemaError` represents a schema encoding issue.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ abstract class Proto implements HttpBody.Proto {
 /**
  * HTTP body variant representing the absence of request content.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -181,7 +181,7 @@ export class Empty extends Proto {
  *
  * Use when you need an HTTP body value that represents no body content.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -190,7 +190,7 @@ export const empty: Empty = new Empty()
 /**
  * HTTP body variant containing an arbitrary runtime body value with optional content metadata.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -224,7 +224,7 @@ export class Raw extends Proto {
 /**
  * Creates a raw HTTP body from an arbitrary value and optional `contentType` and `contentLength` metadata.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -243,7 +243,7 @@ export const raw = (
  *
  * It stores the bytes, content type, and byte length.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -289,7 +289,7 @@ export class Uint8Array extends Proto {
  *
  * The content type defaults to `application/octet-stream`, and the content length is the byte array length.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -316,7 +316,7 @@ const encodeText: (body: string) => globalThis.Uint8Array = buffer !== undefined
  *
  * The content type defaults to `text/plain`. Text bodies are encoded lazily.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -339,7 +339,7 @@ export const text = (body: string, contentType?: string): Uint8Array => {
  *
  * The content type defaults to `application/json`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -353,7 +353,7 @@ export const jsonUnsafe = (body: unknown, contentType?: string): Uint8Array =>
  *
  * `JSON.stringify` failures are captured as `HttpBodyError` values, and the content type defaults to `application/json`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -370,7 +370,7 @@ export const json = (body: unknown, contentType?: string): Effect.Effect<Uint8Ar
  *
  * Schema encoding issues and JSON serialization failures are returned as `HttpBodyError` values.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -389,7 +389,7 @@ export const jsonSchema = <S extends Schema.Constraint>(
 /**
  * Creates an `application/x-www-form-urlencoded` HTTP body from `UrlParams`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -403,7 +403,7 @@ export const urlParams = (urlParams: UrlParams.Input, contentType?: string): Uin
  *
  * The content type and content length are left unset so the runtime can supply multipart boundaries.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -431,7 +431,7 @@ export class FormData extends Proto {
 /**
  * Wraps a Web `FormData` value as an HTTP body.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -444,7 +444,7 @@ export const formData = (body: globalThis.FormData): FormData => new FormData(bo
  *
  * Each field may be a single coercible value or an array of coercible values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -457,7 +457,7 @@ export type FormDataInput = Record<string, FormDataCoercible | ReadonlyArray<For
  *
  * `File` and `Blob` values are appended directly, primitive values are converted to strings, and `null` or `undefined` values are skipped.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -481,7 +481,7 @@ const appendFormDataValue = (formData: globalThis.FormData, key: string, value: 
  *
  * Array fields append each item under the same key; primitive values are stringified, `File` and `Blob` values are appended directly, and nullish values are skipped.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -502,7 +502,7 @@ export const formDataRecord = (entries: FormDataInput): FormData => {
 /**
  * HTTP body variant backed by a stream of `Uint8Array` chunks.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export class Stream extends Proto {
  *
  * The content type defaults to `application/octet-stream`; content length is optional.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -605,7 +605,7 @@ const fileContentLength = Effect.fnUntraced(function*(
  * `Number.MAX_SAFE_INTEGER` fails with `BadArgument`. Larger sizes, offsets, and byte counts are valid when
  * the final clamped length is representable; the resulting Content-Length header preserves that exact length.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -643,7 +643,7 @@ export const file = (
  * `PlatformError` / `BadArgument`. Larger sizes, offsets, and byte counts remain valid when the final length
  * is representable as a safe integer, preserving the exact Content-Length header.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

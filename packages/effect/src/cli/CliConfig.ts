@@ -1,7 +1,7 @@
 /**
  * Configuration for Effect CLI command execution.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -17,7 +17,7 @@ import * as GlobalFlag from "./GlobalFlag.ts"
  * Use when you need to customize runner-wide CLI behavior, such as which
  * built-in global flags are available.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -28,14 +28,14 @@ export class CliConfig extends Context.Reference<CliConfig.Service>("effect/cli/
 /**
  * Types used by the `CliConfig` context reference.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace CliConfig {
   /**
    * Configuration values used while running a CLI command.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -48,7 +48,7 @@ export declare namespace CliConfig {
 /**
  * Default CLI configuration containing every built-in global flag.
  *
- * @unstable
+ * @stability unstable
  * @category defaults
  * @since 4.0.0
  */
@@ -66,7 +66,7 @@ export const defaults: CliConfig.Service = {
  *
  * @see {@link layer} for providing configuration as a layer
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -84,7 +84,7 @@ export const make = (options?: Partial<CliConfig.Service>): CliConfig.Service =>
  *
  * @see {@link make} for creating a configuration value directly
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

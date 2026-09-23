@@ -4,7 +4,7 @@
  * captured parsers remain usable but are not replaced. If dynamic function
  * construction is blocked or compilation fails, parsing uses the interpreter.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { install } from "../../internal/schema/compilerRegistry.ts"

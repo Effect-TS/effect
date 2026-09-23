@@ -4,7 +4,7 @@
  * requests are persisted, handled in transactions, interrupted, traced, and
  * routed to shard groups without changing the request or response schema.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -18,7 +18,7 @@ import type { Request } from "./Envelope.ts"
  * Annotation carried by an interruption when a persisted cluster request is
  * abandoned by its current runner and must continue under another owner.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -40,7 +40,7 @@ export class Abandon extends Context.Service<Abandon, true>()("effect/cluster/Cl
  *
  * The default value is `false`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export const Persisted = Context.Reference<boolean>("effect/cluster/ClusterSchem
  * This annotation has transactional behavior only when the configured
  * `MessageStorage` implements it.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export const WithTransaction = Context.Reference<boolean>(
  * handling only, `"server"` for server-side handling only, or `false` to allow
  * interruption.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -106,7 +106,7 @@ export const Uninterruptible = Context.Reference<boolean | "client" | "server">(
  * @see {@link Uninterruptible} for the annotation values interpreted by this helper
  * @see {@link isUninterruptibleForClient} for the client-side counterpart
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -132,7 +132,7 @@ export const isUninterruptibleForServer = (context: Context.Context<never>): boo
  * @see {@link Uninterruptible} for the annotation values interpreted by this helper
  * @see {@link isUninterruptibleForServer} for the server-side counterpart
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export const isUninterruptibleForClient = (context: Context.Context<never>): boo
  *
  * By default, every entity id is assigned to the `"default"` shard group.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -165,7 +165,7 @@ export const ShardGroup = Context.Reference<(entityId: EntityId) => string>(
  *
  * The default value is `true`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -186,7 +186,7 @@ export const ClientTracingEnabled = Context.Reference<boolean>("effect/cluster/C
  * This only applies to requests handled by the entity, not to the generated
  * client.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

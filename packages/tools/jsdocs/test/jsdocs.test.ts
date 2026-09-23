@@ -37,7 +37,7 @@ describe("jsdocs", () => {
     const result = parseJSDoc(`/**
  * Creates an unstable value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 1.0.0
  */`)
@@ -1063,7 +1063,7 @@ export const Tuple = Array
     }])
   })
 
-  it("accepts @unstable on module, member, and namespace docs", () => {
+  it("accepts @stability unstable on module, member, and namespace docs", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
     fs.mkdirSync(path.join(cwd, "src"), { recursive: true })
     fs.writeFileSync(
@@ -1100,7 +1100,7 @@ export interface Marker {
       `/**
  * Sample module.
  *
- * @unstable
+ * @stability unstable
  * @since 1.0.0
  */
 import type { Marker } from "./Imported.ts"
@@ -1115,7 +1115,7 @@ export interface Box {
   /**
    * The boxed text.
    *
-   * @unstable
+   * @stability unstable
    * @since 1.0.0
    */
   readonly value: Marker["id"]
@@ -1131,7 +1131,7 @@ export interface Box {
 /**
  * Groups boxed types.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 1.0.0
  */
@@ -1139,7 +1139,7 @@ export declare namespace Group {
   /**
    * A grouped item.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 1.0.0
    */
@@ -1191,7 +1191,7 @@ export declare namespace StableGroup {
     )
 
     assert.deepStrictEqual(foo?.diagnostics ?? [], [])
-    assert.match(foo?.moduleJSDoc?.raw ?? "", /@unstable/)
+    assert.match(foo?.moduleJSDoc?.raw ?? "", /@stability unstable/)
     assert.deepStrictEqual(unstableByName, {
       "@effect/sample/Foo.Box": false,
       "@effect/sample/Foo.Box.value": true,

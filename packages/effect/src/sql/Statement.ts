@@ -8,7 +8,7 @@
  * inserts, updates, custom dialect fragments, statement compilation, and row
  * transformation.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { Clock } from "../Clock.ts"
@@ -32,7 +32,7 @@ const FragmentTypeId = "~effect/sql/Statement/Fragment"
  * Composable SQL fragment represented as low-level segments that can be
  * interpolated into statements.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -44,7 +44,7 @@ export interface Fragment {
 /**
  * Constructs a SQL `Fragment` from low-level statement segments.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -58,7 +58,7 @@ export const fragment = (
 /**
  * Supported SQL dialect identifiers used by statement compilers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse"
  * for raw execution, streaming, value rows, unprepared execution, no-transform
  * execution, and compilation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -90,7 +90,7 @@ export interface Statement<A> extends Fragment, Effect.Effect<ReadonlyArray<A>, 
  * Hook that can rewrite or wrap a `Statement` before execution, using the
  * current SQL constructor, fiber, and tracing span.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -105,7 +105,7 @@ export type Transformer = (
  * Context reference for an optional current SQL statement transformer applied
  * before statement execution.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
  * Parents driver spans under `sql.execute` for every client in the current scope,
  * including acquisition and stream pulls. Defaults to `false`; ignored when tracing is disabled.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -128,7 +128,7 @@ export const SpanPropagationEnabled = Context.Reference<boolean>("effect/sql/Spa
 /**
  * Returns `true` when a value is a SQL `Fragment`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -137,7 +137,7 @@ export const isFragment = (u: unknown): u is Fragment => hasProperty(u, Fragment
 /**
  * Creates a type guard for custom SQL segments with the specified custom kind.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -149,7 +149,7 @@ export const isCustom = <A extends Custom<any, any, any, any>>(
 /**
  * Union of low-level segment types that make up a SQL `Fragment`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -167,7 +167,7 @@ export type Segment =
  * Raw SQL literal segment. The literal text is inserted directly into the
  * compiled SQL, while optional `params` are appended as bind parameters.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -181,7 +181,7 @@ export interface Literal {
  * Constructs a raw SQL literal segment. The literal text is not escaped, so use
  * bound parameters for untrusted values.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -194,7 +194,7 @@ export const literal = (value: string, params?: ReadonlyArray<unknown> | undefin
 /**
  * SQL identifier segment whose value is escaped by the active dialect compiler.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -207,7 +207,7 @@ export interface Identifier {
  * Constructs a SQL identifier segment that will be escaped by the active
  * compiler.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -220,7 +220,7 @@ export const identifier = (value: string): Identifier => ({
  * Bound parameter segment whose value is emitted as a dialect-specific
  * placeholder and bind value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -232,7 +232,7 @@ export interface Parameter {
 /**
  * Constructs a bound parameter segment for a statement value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -245,7 +245,7 @@ export const parameter = (value: unknown): Parameter => ({
  * Helper segment for compiling an array of values, commonly used to produce
  * placeholder lists for `IN` clauses.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -257,7 +257,7 @@ export interface ArrayHelper {
 /**
  * Constructs an `ArrayHelper` segment for an array of values or fragments.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export const arrayHelper = (value: ReadonlyArray<unknown | Fragment>): ArrayHelp
  * Helper segment for compiling one or more record objects into an INSERT
  * column/value clause, with optional returning output.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -298,7 +298,7 @@ const RecordInsertHelperProto = {
 /**
  * Constructs a `RecordInsertHelper` from one or more row objects.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -314,7 +314,7 @@ export const recordInsertHelper = (
  * Helper segment for compiling multi-row update values with a table alias and
  * optional returning output.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -338,7 +338,7 @@ const RecordUpdateHelperProto = {
  * Constructs a `RecordUpdateHelper` for multi-row update compilation using the
  * provided alias.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -356,7 +356,7 @@ export const recordUpdateHelper = (
  * Helper segment for compiling a single record into update assignments,
  * omitting selected columns and optionally returning output.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -380,7 +380,7 @@ const RecordUpdateHelperSingleProto = {
  * Constructs a `RecordUpdateHelperSingle` from a record and a list of columns
  * to omit from the update.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -398,7 +398,7 @@ export const recordUpdateHelperSingle = (
  * Custom SQL segment identified by `kind` and interpreted by the compiler's
  * `onCustom` callback.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -419,7 +419,7 @@ export interface Custom<
  * Creates a constructor for custom SQL segments of a specific kind handled by
  * the active compiler.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -436,7 +436,7 @@ export const custom = <C extends Custom<any, any, any, any>>(
  * Names the primitive value categories recognized by SQL statement helpers and
  * `primitiveKind`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -453,7 +453,7 @@ export type PrimitiveKind =
 /**
  * Union of helper segment types accepted by the SQL statement constructor.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -471,7 +471,7 @@ export type Helper =
  * dialect-specific branches. Raw helpers such as `unsafe` and `literal` insert
  * SQL text directly.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -573,7 +573,7 @@ export interface Constructor {
  * Creates a cached SQL statement constructor from a connection acquirer,
  * compiler, tracing attributes, and optional row transformation function.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -663,7 +663,7 @@ const constructorCache = {
  * fragments and helper segments while converting ordinary interpolated values
  * into bound parameters.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -702,7 +702,7 @@ export const statement = <A = Row>(
  * wrapping multiple clauses in parentheses and using a fallback for an empty
  * list.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -742,7 +742,7 @@ export function join(lit: string, addParens = true, fallback = "") {
  * Combines clauses with `AND`, parenthesizing multiple clauses and returning
  * `1=1` when the list is empty.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -752,7 +752,7 @@ export const and: (clauses: ReadonlyArray<string | Fragment>) => Fragment = join
  * Combines clauses with `OR`, parenthesizing multiple clauses and returning
  * `1=1` when the list is empty.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -762,7 +762,7 @@ export const or: (clauses: ReadonlyArray<string | Fragment>) => Fragment = join(
  * Creates a comma-separated SQL fragment from values, optionally adding a
  * prefix, and returns an empty fragment when no values are provided.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -795,7 +795,7 @@ const emptyFragment = fragment([literal("")])
  * Dialect-specific compiler that converts a SQL `Fragment` into SQL text and
  * bind parameters, with a no-transform variant.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -812,7 +812,7 @@ export interface Compiler {
  * Callbacks used by `makeCompiler` to render dialect placeholders,
  * identifiers, insert helpers, update helpers, and custom SQL segments.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -848,7 +848,7 @@ export type CompilerOptions<C extends Custom<any, any, any, any> = any> = {
 /**
  * Creates a dialect-specific SQL `Compiler` from rendering callbacks.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1114,7 +1114,7 @@ const CompilerProto = {
  * Creates a SQLite compiler that uses `?` placeholders and quoted identifiers,
  * optionally transforming identifier names before escaping.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1142,7 +1142,7 @@ export const makeCompilerSqlite = (transform?: ((_: string) => string) | undefin
  * delimiter, doubles delimiter characters, and escapes dots between identifier
  * parts.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1159,7 +1159,7 @@ export function defaultEscape(c: string) {
  * Classifies a JavaScript value as a SQL primitive kind, treating `undefined`
  * as `null` and defaulting unrecognized objects to `string`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1194,7 +1194,7 @@ export const primitiveKind = (value: unknown): PrimitiveKind => {
  * Builds value, object, and row-array transformers that rename object keys with
  * the supplied function and optionally recurse into nested object arrays.
  *
- * @unstable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

@@ -8,7 +8,7 @@
  * backends implement this service, while most application code uses the higher
  * level `ChildProcess` module.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Brand from "../Brand.ts"
@@ -24,7 +24,7 @@ import type { Command, KillOptions } from "./ChildProcess.ts"
 /**
  * Branded number representing the exit code reported by a child process.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -33,7 +33,7 @@ export type ExitCode = Brand.Branded<number, "ExitCode">
 /**
  * Constructs branded child process `ExitCode` values.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export const ExitCode: Brand.Constructor<ExitCode> = Brand.nominal<ExitCode>()
  * Branded number representing the operating system process identifier of a
  * child process.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export type ProcessId = Brand.Branded<number, "ProcessId">
 /**
  * Constructs branded child process `ProcessId` values.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -68,7 +68,7 @@ export const ProcessId: Brand.Constructor<ProcessId> = Brand.nominal<ProcessId>(
  * restore the default behavior where the child process keeps the parent
  * process alive.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ const HandleTypeId = "~effect/process/ChildProcessSpawner/ChildProcessHandle"
 /**
  * A handle to a running child process.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -214,7 +214,7 @@ const HandleProto = {
 /**
  * Constructs a new `ChildProcessHandle`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -225,7 +225,7 @@ export const makeHandle = (params: Omit<ChildProcessHandle, typeof HandleTypeId>
  * Creates a `ChildProcessSpawner` service from a `spawn` function, deriving
  * helpers for exit codes and output collection from that implementation.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -255,7 +255,7 @@ export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProce
 /**
  * Service tag for child process spawning.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

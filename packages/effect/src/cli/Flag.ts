@@ -8,7 +8,7 @@
  * defaults, optional values, prompts, configuration fallbacks, validation, and
  * value transformations.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Config from "../Config.ts"
@@ -30,7 +30,7 @@ import type * as Primitive from "./Primitive.ts"
 /**
  * Represents a command-line flag.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
  * nameFlag.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export const String = (name: string): Flag<string> => Param.String(Param.flagKin
  * verboseFlag.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -92,7 +92,7 @@ export const Boolean = (name: string): Flag<boolean> => Param.Boolean(Param.flag
  * portFlag.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -111,7 +111,7 @@ export const Int = (name: string): Flag<number> => Param.Int(Param.flagKind, nam
  * rateFlag.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -130,7 +130,7 @@ export const Finite = (name: string): Flag<number> => Param.Finite(Param.flagKin
  * startDateFlag.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -157,7 +157,7 @@ export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.fl
  * const kinds = [color.kind, logLevel.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -171,7 +171,7 @@ export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [str
  *
  * @see {@link ChoiceWithValue} for mapping accepted strings to different typed values
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -205,7 +205,7 @@ export const Literals = <const Literals extends ReadonlyArray<string>>(
  * const kinds = [pathFlag.kind, fileFlag.kind, dirFlag.kind] // => ["flag", "flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -233,7 +233,7 @@ export const Path = (name: string, options?: {
  * const kinds = [inputFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -259,7 +259,7 @@ export const File = (name: string, options?: {
  * const kinds = [outputFlag.kind, sourceFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -313,7 +313,7 @@ export const Directory = (name: string, options?: {
  * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => 6
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -332,7 +332,7 @@ export const Redacted = (name: string): Flag<Redacted_.Redacted<string>> => Para
  * config.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -360,7 +360,7 @@ export const FileText = (name: string): Flag<string> => Param.FileText(Param.fla
  * const kinds = [config.kind, jsonConfig.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -388,7 +388,7 @@ export const FileParse = (
  * config.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -421,7 +421,7 @@ export const FileSchema = <A>(
  * env.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -442,7 +442,7 @@ export const KeyValuePair = (name: string): Flag<Record<string, string>> => Para
  * makeValueFlag(false) === Flag.Never // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -473,7 +473,7 @@ export const Never: Flag<never> = Param.Never(Param.flagKind)
  * const kinds = [verboseFlag.kind, helpFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category aliasing
  * @since 4.0.0
  */
@@ -500,7 +500,7 @@ export const withAlias: {
  * const kinds = [portFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export const withDescription: {
  * const kinds = [databaseFlag.kind, timeoutFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -570,7 +570,7 @@ export const withMetavar: {
  * experimental.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -616,7 +616,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => Option.some(4000)
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category optionality
  * @since 4.0.0
  */
@@ -642,7 +642,7 @@ export const optional = <A>(param: Flag<A>): Flag<Option.Option<A>> => Param.opt
  * const kinds = [portFlag.kind, hostFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category optionality
  * @since 4.0.0
  */
@@ -666,7 +666,7 @@ export const withDefault: {
  * verbose.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -689,7 +689,7 @@ export const withFallbackConfig: {
  * name.kind // => "flag"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -718,7 +718,7 @@ export const withFallbackPrompt: {
  * const kinds = [nameFlag.kind, urlFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -767,7 +767,7 @@ export const map: {
  * value // => "ALICE"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -836,7 +836,7 @@ export const mapEffect: {
  * value // => { enabled: true }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -868,7 +868,7 @@ export const mapTryCatch: {
  * const kinds = [sourceFlag.kind, tagFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category repetition
  * @since 4.0.0
  */
@@ -896,7 +896,7 @@ export const atLeast: {
  * const kinds = [warningFlag.kind, debugFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category repetition
  * @since 4.0.0
  */
@@ -924,7 +924,7 @@ export const atMost: {
  * const kinds = [hostFlag.kind, excludeFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category repetition
  * @since 4.0.0
  */
@@ -960,7 +960,7 @@ export const between: {
  * const kinds = [positiveInt.kind, emailFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -999,7 +999,7 @@ export const filterMap: {
  * const kinds = [portFlag.kind, nameFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -1034,7 +1034,7 @@ export const filter: {
  * const kinds = [valueFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category alternatives
  * @since 4.0.0
  */
@@ -1086,7 +1086,7 @@ export const orElse: {
  * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => Result.fail("https://example.com")
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category alternatives
  * @since 4.0.0
  */
@@ -1130,7 +1130,7 @@ export const orElseResult: {
  * const kinds = [emailFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

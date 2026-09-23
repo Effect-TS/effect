@@ -7,7 +7,7 @@
  * fallback, MIME type headers, cache-control headers, byte ranges, and
  * conditional `304 Not Modified` responses.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -64,7 +64,7 @@ import * as HttpServerResponse from "./HttpServerResponse.ts"
  * await Effect.runPromise(program) // => "Serving /public/guide.txt"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -226,7 +226,7 @@ export const make: (options: {
  * Layer.isLayer(AppLayer) // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

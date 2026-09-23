@@ -473,7 +473,7 @@ const tagOrder = new Map([
   ["deprecated", 0],
   ["default", 1],
   ["see", 2],
-  ["unstable", 3],
+  ["stability", 3],
   ["category", 4],
   ["since", 5]
 ])
@@ -1466,12 +1466,12 @@ function buildTags(
 ): Result<ParsedModuleTags | ParsedDeclarationTags | ParsedNamespaceTags | ParsedMemberTags, JSDocParseError> {
   const diagnostics: Array<JSDocDiagnostic> = []
   const allowed = scope === "declaration"
-    ? new Set(["deprecated", "see", "unstable", "category", "since"])
+    ? new Set(["deprecated", "see", "stability", "category", "since"])
     : scope === "member"
-    ? new Set(["deprecated", "default", "see", "unstable", "since"])
+    ? new Set(["deprecated", "default", "see", "stability", "since"])
     : scope === "module"
-    ? new Set(["deprecated", "see", "unstable", "since"])
-    : new Set(["deprecated", "see", "unstable", "category", "since"])
+    ? new Set(["deprecated", "see", "stability", "since"])
+    : new Set(["deprecated", "see", "stability", "category", "since"])
   let previousOrder = -1
   const values = new Map<string, Array<string>>()
 
@@ -1502,7 +1502,9 @@ function buildTags(
     values.set(tag.name, [...values.get(tag.name) ?? [], tag.value.trim()])
   }
 
-  const singletonTags = scope === "member" ? ["deprecated", "default", "since"] : ["deprecated", "category", "since"]
+  const singletonTags = scope === "member"
+    ? ["deprecated", "default", "stability", "since"]
+    : ["deprecated", "stability", "category", "since"]
   for (const tag of singletonTags) {
     if ((values.get(tag)?.length ?? 0) > 1) {
       diagnostics.push(diagnostic("duplicate-tag", `JSDoc blocks may contain at most one @${tag} tag`))
@@ -1516,7 +1518,11 @@ function buildTags(
     }
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
-  const unstable = values.has("unstable")
+  const stability = values.get("stability")?.[0]
+  if (stability !== undefined && stability !== "unstable") {
+    diagnostics.push(diagnostic("invalid-stability", "@stability must have the value unstable"))
+  }
+  const unstable = stability === "unstable"
   if (deprecated === "") diagnostics.push(diagnostic("empty-tag", "@deprecated must include a message"))
   const since = values.get("since")?.[0] ?? null
   if ((scope === "declaration" || scope === "namespace" || scope === "namespace-declaration") && since === null) {

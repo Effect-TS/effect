@@ -32,7 +32,7 @@ export {
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Arbitrary from "./Arbitrary.ts"

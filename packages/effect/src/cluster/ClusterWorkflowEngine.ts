@@ -4,7 +4,7 @@
  * executions, activities, deferred completions, resumes, interrupts, and durable
  * clock wakeups are represented as persisted cluster entity messages.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -57,7 +57,7 @@ import * as Snowflake from "./Snowflake.ts"
  * Workflow executions, activities, deferred completions, resumes, interrupts,
  * and durable clock wakeups are coordinated through persisted cluster entities.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -904,7 +904,7 @@ const InterruptSignal = DurableDeferred.make("Workflow/InterruptSignal")
  * It requires cluster sharding and message storage, and also registers the
  * durable clock entity used for workflow wakeups.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

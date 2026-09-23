@@ -5,7 +5,7 @@
  * error results. `Persistence` and `PersistedCache` use that information to
  * store the request's `Exit` value and restore it later from a backing store.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Duration from "../Duration.ts"
@@ -27,7 +27,7 @@ import type { PersistenceError } from "./Persistence.ts"
  * Use to implement persistable request values by attaching success and error
  * schemas at this property key.
  *
- * @unstable
+ * @stability unstable
  * @category symbols
  * @since 4.0.0
  */
@@ -37,7 +37,7 @@ export const symbol = "~effect/persistence/Persistable" as const
  * A primary-keyed request value whose success and error results can be
  * serialized for persistence.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export interface Persistable<A extends Schema.Constraint, E extends Schema.Const
 /**
  * Any persistable request regardless of its success and error schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ export type Any = Persistable<Schema.Constraint, Schema.Constraint>
 /**
  * Extracts the success schema from a persistable request.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export type SuccessSchema<A extends Any> = A["~effect/persistence/Persistable"][
 /**
  * Extracts the success value type from a persistable request.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -78,7 +78,7 @@ export type Success<A extends Any> = A["~effect/persistence/Persistable"]["succe
 /**
  * Extracts the error schema from a persistable request.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -87,7 +87,7 @@ export type ErrorSchema<A extends Any> = A["~effect/persistence/Persistable"]["e
 /**
  * Extracts the error value type from a persistable request.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export type Error<A extends Any> = A["~effect/persistence/Persistable"]["error"]
  * Services required to decode a persisted success or error value for the
  * request.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -108,7 +108,7 @@ export type DecodingServices<A extends Any> =
 /**
  * Services required to encode a success or error value for persistence.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -120,7 +120,7 @@ export type EncodingServices<A extends Any> =
  * All schema services required to encode and decode a persistable request
  * result.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -134,7 +134,7 @@ export type Services<A extends Any> =
  * Computes the time to live for a persisted result from the result `Exit` and
  * request value.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export type TimeToLiveFn<K extends Any> = (exit: Exit.Exit<Success<K>, Error<K>>
  * The generated class stores the supplied tag, derives its primary key from
  * the payload, and carries schemas for persisted success and error exits.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export const Class = <
  * Returns the cached `Exit` schema for a persistable request's success and
  * error schemas.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -236,7 +236,7 @@ const exitSchemaCache = new WeakMap<Persistable<any, any>, Schema.Exit<any, any,
  * Encodes an `Exit` for a persistable request using its success and error
  * schemas.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -252,7 +252,7 @@ export const serializeExit = <A extends Schema.Constraint, E extends Schema.Cons
  * Decodes a persisted value into an `Exit` for a persistable request using its
  * success and error schemas.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */

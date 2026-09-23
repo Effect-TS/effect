@@ -8,7 +8,7 @@
  * support through `HttpPlatform`, and conversions to or from Web and Effect
  * HTTP client responses.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as ByteSize from "../ByteSize.ts"
@@ -50,7 +50,7 @@ const TypeId = "~effect/http/HttpServerResponse"
  * A response contains a status, optional status text, headers, cookies, and an
  * HTTP body that can later be converted to platform-specific response types.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -66,7 +66,7 @@ export interface HttpServerResponse extends Inspectable.Inspectable, Pipeable, E
 /**
  * Common options accepted by HTTP server response constructors.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export interface Options {
  * Option variants used by response constructors with different body metadata
  * rules.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Options {
@@ -91,7 +91,7 @@ export declare namespace Options {
    * Response options for constructors whose body determines its own content type
    * and content length.
    *
-   * @unstable
+   * @stability unstable
    * @category options
    * @since 4.0.0
    */
@@ -101,7 +101,7 @@ export declare namespace Options {
    * Response options for constructors that allow overriding the content type while
    * deriving the content length from the body.
    *
-   * @unstable
+   * @stability unstable
    * @category options
    * @since 4.0.0
    */
@@ -111,7 +111,7 @@ export declare namespace Options {
 /**
  * Returns `true` when the supplied value is an `HttpServerResponse`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -124,7 +124,7 @@ export const isHttpServerResponse = (u: unknown): u is HttpServerResponse => has
  *
  * The default status is `204`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -146,7 +146,7 @@ export const empty = (
  * The default status is `302`; custom headers are merged with the generated
  * `Location` header.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -168,7 +168,7 @@ export const redirect = (
 /**
  * Creates an HTTP response whose body is a `Uint8Array`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ const getContentType = (
 /**
  * Creates an HTTP response whose body is a string.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const text = (
  * an effect so interpolated values can be rendered with their required services
  * and errors.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -264,7 +264,7 @@ export const html: {
  * The template is encoded as a byte stream and can use streaming interpolated
  * values from the current context.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -298,7 +298,7 @@ export const htmlStream = <
  * The body is serialized with `JSON.stringify`; serialization errors are captured
  * as `HttpBodyError` failures.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -326,7 +326,7 @@ export const json = (
  * serializing it as JSON, and can fail with `HttpBodyError` if schema encoding or
  * JSON serialization fails.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -364,7 +364,7 @@ export const schemaJson = <A, RE>(
  * Unlike `json`, serialization errors from `JSON.stringify` are not captured in
  * `Effect`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -386,7 +386,7 @@ export const jsonUnsafe = (
  * Creates a response from URL parameters using the
  * `application/x-www-form-urlencoded` content type by default.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -416,7 +416,7 @@ export const urlParams = (
  * underlying runtime, such as a Web `Response`, `Blob`, or `ReadableStream`,
  * for later platform conversion.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -438,7 +438,7 @@ export const raw = (
 /**
  * Creates a response whose body is a Web `FormData` value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -462,7 +462,7 @@ export const formData = (
  * Optional response metadata can supply the status, headers, content type, and
  * content length.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -499,7 +499,7 @@ const HttpPlatformKey = Context.Service<
  * The effect requires `HttpPlatform`, can fail with a platform error, and supports
  * options for status, headers, content type, offset, and byte range.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -523,7 +523,7 @@ export const file = (
  * The effect requires `HttpPlatform` and supports options for status, headers,
  * content type, offset, and byte range.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -542,7 +542,7 @@ export const fileWeb = (
 /**
  * Returns a response with the specified header set to the supplied value.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -561,7 +561,7 @@ export const setHeader: {
 /**
  * Returns a response with the specified header removed.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -580,7 +580,7 @@ export const removeHeader: {
 /**
  * Returns a response with all supplied headers set on the existing header map.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -596,7 +596,7 @@ export const setHeaders: {
 /**
  * Returns a response with the cookie of the specified name removed.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -615,7 +615,7 @@ export const removeCookie: {
 /**
  * Returns a response with its cookie collection replaced by the supplied cookies.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -635,7 +635,7 @@ export const replaceCookies: {
  * The effect fails with `CookiesError` if the cookie name, value, or options are
  * invalid.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -679,7 +679,7 @@ export const setCookie: {
  * Returns an effect because cookie encoding can fail. The original response is not
  * mutated; the effect succeeds with a response containing the updated cookie set.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -721,7 +721,7 @@ export const expireCookie: {
  * Use when you need to set one trusted cookie and want encoding failures to
  * throw instead of being represented as `CookiesError` failures.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -760,7 +760,7 @@ export const setCookieUnsafe: {
  * Use when you need to expire one trusted cookie and want encoding failures to
  * throw instead of being represented as `CookiesError` failures.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -796,7 +796,7 @@ export const expireCookieUnsafe: {
  * The original response is not mutated; a new response is returned with the
  * callback result as its cookie collection.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -829,7 +829,7 @@ export const updateCookies: {
  * The original response is not mutated; a new response is returned with the merged
  * cookie collection.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -850,7 +850,7 @@ export const mergeCookies: {
  * Each input entry contains a cookie name, value, and optional cookie options. The
  * returned effect fails with `CookiesError` if any cookie cannot be encoded.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -904,7 +904,7 @@ export const setCookies: {
  * Use when you need to set multiple trusted cookies and want encoding failures
  * to throw instead of being represented as `CookiesError` failures.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -954,7 +954,7 @@ export const setCookiesUnsafe: {
  * When the body carries a content type or content length, the returned response
  * includes the corresponding headers.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -989,7 +989,7 @@ export const setBodyKeepHeaders = (self: HttpServerResponse, body: Body.HttpBody
  *
  * When `statusText` is omitted, the existing status text is preserved.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1021,7 +1021,7 @@ export const setStatus: {
  * Returns whether a response must omit its body because its status is 204, 205,
  * or 304, or `withoutBody` is true.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -1046,7 +1046,7 @@ export const omitsBody = (response: HttpServerResponse, withoutBody = false): bo
  * uses the outer status for 204, 205 and 304, or the raw `Response` status
  * otherwise.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1147,7 +1147,7 @@ export const toWeb = (
  * Wraps an `HttpServerResponse` as an `HttpClientResponse`, using the optional
  * request for metadata and decode errors. Without a request, `url` is empty.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1381,7 +1381,7 @@ const textDecoder = new TextDecoder()
  * The response body is streamed from the client response. `Set-Cookie` headers are
  * removed from the header map and represented in the response cookie collection.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1474,7 +1474,7 @@ const makeResponse = (options: {
  * `Set-Cookie` headers are parsed into the response cookie collection and removed
  * from the header map. A present Web body is exposed as a stream body.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

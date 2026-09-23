@@ -6,14 +6,14 @@
  * helpers for checking whether a method can carry a request body and whether an
  * unknown value is one of the supported methods.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
 /**
  * Union of supported uppercase HTTP method literals.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -31,14 +31,14 @@ export type HttpMethod =
 /**
  * Namespace containing subtype helpers associated with `HttpMethod`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace HttpMethod {
   /**
    * HTTP methods that this module treats as not carrying a request body.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -47,7 +47,7 @@ export declare namespace HttpMethod {
   /**
    * HTTP methods that this module treats as capable of carrying a request body.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -57,7 +57,7 @@ export declare namespace HttpMethod {
 /**
  * Returns `true` when a method can carry a request body and narrows it to `HttpMethod.WithBody`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -72,7 +72,7 @@ export const hasBody = (method: HttpMethod): method is HttpMethod.WithBody =>
  * Use when you need to iterate over or test membership against every supported
  * HTTP method literal.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export const all: ReadonlySet<HttpMethod> = new Set([
  * Use when you need the mapping from supported HTTP method literals to their
  * short request-constructor names.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -126,7 +126,7 @@ export const allShort = [
  * HttpMethod.isHttpMethod(1) // => false
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */

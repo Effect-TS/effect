@@ -8,7 +8,7 @@
  * Worker platforms then pass the collected values as the transfer list for the
  * same `postMessage` call, avoiding copies for large payloads and ports.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -21,7 +21,7 @@ import * as SchemaGetter from "../SchemaGetter.ts"
  * Service for collecting `Transferable` objects while encoding worker messages
  * so they can be passed to `postMessage` transfer lists.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -40,7 +40,7 @@ export class Collector extends Context.Service<Collector, {
  * Creates a mutable `Collector` service directly, exposing unsafe synchronous
  * methods for reading, adding, and clearing collected transferables.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export const makeCollectorUnsafe = (): Collector["Service"] => {
  * Effect that creates a fresh `Collector` service for accumulating
  * transferables.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ export const makeCollector: Effect.Effect<Collector["Service"]> = Effect.sync(ma
  * Adds transferables to the current `Collector` when one is present in the
  * context, and does nothing otherwise.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export const addAll = (
  * Creates a schema getter that records transferables derived from a value in
  * the current `Collector` while passing the value through unchanged.
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export const getterAddAll = <A>(
  * Schema wrapper whose encode path can record transferables with a `Collector`
  * while preserving the wrapped schema's decoded type.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -132,7 +132,7 @@ export interface Transferable<S extends Schema.Top> extends
  * Wraps a schema so encoding records transferables selected from the encoded
  * value, enabling worker messages to populate a `postMessage` transfer list.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -168,7 +168,7 @@ const passthroughLink = Schema.link()(Schema.Any, {
 /**
  * Schema for transferring `ImageData` values with their pixel data buffer.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -180,7 +180,7 @@ export const ImageData: Transferable<Schema.declare<ImageData>> = schema(
 /**
  * Schema for transferring `MessagePort` values as transferable objects.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -192,7 +192,7 @@ export const MessagePort: Transferable<Schema.declare<MessagePort>> = schema(
 /**
  * Schema for transferring `Uint8Array` values with their backing buffer.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * committed only after the handler succeeds. This module also contains the
  * layers and helpers needed to assemble that runtime.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -46,7 +46,7 @@ import type { EventLogRemote } from "./EventLogRemote.ts"
  * only when the handler succeeds, and exposes access to the underlying journal
  * entries and destroy operation.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export class EventLog extends Context.Service<EventLog, {
  * Service that collects event handlers, compaction handlers, remote replicas,
  * and reactivity invalidation keys.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ export class Registry extends Context.Service<Registry, {
  * Provides an in-memory `Registry` for event handlers, compactors, remote
  * replicas, and reactivity keys.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -182,7 +182,7 @@ export const layerRegistry = Layer.effect(
  * The identity is used by remote replication for authentication and by the
  * encryption service to derive signing and encryption keys.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -194,7 +194,7 @@ export class Identity extends Context.Service<Identity, {
 /**
  * Type-level identifier used to brand `EventLogSchema` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -203,7 +203,7 @@ export type SchemaTypeId = "~effect/eventlog/EventLog/Schema"
 /**
  * Runtime property key used to identify `EventLogSchema` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -212,7 +212,7 @@ export const SchemaTypeId: SchemaTypeId = "~effect/eventlog/EventLog/Schema"
 /**
  * Returns `true` when a value carries the `EventLogSchema` marker.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const isEventLogSchema = (u: unknown): u is EventLogSchema<EventGroup.Any
 /**
  * Schema describing the event groups that can be written through an `EventLog`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -234,7 +234,7 @@ export interface EventLogSchema<Groups extends EventGroup.Any> {
 /**
  * Creates an `EventLogSchema` from one or more event groups.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -251,7 +251,7 @@ export const schema = <Groups extends ReadonlyArray<EventGroup.Any>>(
 /**
  * Type-level identifier used to brand `Handlers` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -260,7 +260,7 @@ export type HandlersTypeId = "~effect/eventlog/EventLog/Handlers"
 /**
  * Runtime property key used to identify `Handlers` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -275,7 +275,7 @@ export const HandlersTypeId: HandlersTypeId = "~effect/eventlog/EventLog/Handler
  * each call to `handle` records a handler while accumulating any required
  * services.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -314,7 +314,7 @@ export interface Handlers<
  * Namespace containing helper types for `Handlers` values and handler-producing
  * layers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Handlers {
@@ -322,7 +322,7 @@ export declare namespace Handlers {
    * Type that matches any `Handlers` value regardless of its services or remaining
    * events.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -334,7 +334,7 @@ export declare namespace Handlers {
    * Runtime representation of one registered event handler, including its event
    * metadata, captured context, and handler function.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -360,7 +360,7 @@ export declare namespace Handlers {
    * If any event tag remains unhandled, the type evaluates to an explanatory
    * compile-time error string.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -384,7 +384,7 @@ export declare namespace Handlers {
   /**
    * Extracts the error type from an effect that produces `Handlers`.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -402,7 +402,7 @@ export declare namespace Handlers {
    * Computes the services required by a `Handlers` value or by an effect that
    * produces one, including event schema services.
    *
-   * @unstable
+   * @stability unstable
    * @category handlers
    * @since 4.0.0
    */
@@ -429,7 +429,7 @@ export declare namespace Handlers {
  *
  * Defaults to the branded store id `"default"`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -448,7 +448,7 @@ const RedactedUint8Array = Schema.Uint8ArrayFromBase64.pipe(
  * Schema for an event-log identity with a string public key and redacted
  * base64-encoded private key bytes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -473,7 +473,7 @@ const IdentityStringSchema = Schema.StringFromBase64Url.pipe(
  *
  * Invalid input throws a schema decoding error.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -489,7 +489,7 @@ export const decodeIdentityString = (value: string): Identity["Service"] => {
  * Encodes an event-log identity as a base64url string containing the public key
  * and private key bytes.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -503,7 +503,7 @@ export const encodeIdentityString = (identity: Identity["Service"]): string =>
  * Generates a new event-log identity using the configured
  * `EventLogEncryption` service.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -551,7 +551,7 @@ const makeHandlers = (options: {
  * The callback receives a `Handlers` builder; its return type is checked so every
  * event in the group is handled.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -589,7 +589,7 @@ export const group = <Events extends Event.Any, Return>(
  * During remote replay, matching entries are decoded, grouped by primary key, and
  * passed to the compaction effect, which may write replacement entries.
  *
- * @unstable
+ * @stability unstable
  * @category compaction
  * @since 4.0.0
  */
@@ -688,7 +688,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
  *
  * Pass a single key list for all events or a mapping from event tag to key list.
  *
- * @unstable
+ * @stability unstable
  * @category reactivity
  * @since 4.0.0
  */
@@ -722,7 +722,7 @@ export const groupReactivity = <Events extends Event.Any>(
  * schema, runs the matching handler with the supplied identity and store id, logs
  * failures, and invalidates configured reactivity keys.
  *
- * @unstable
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -989,7 +989,7 @@ const make = Effect.gen(function*() {
  * Provides `EventLog` and `Registry` using the configured `EventJournal` and
  * `Identity`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1027,7 +1027,7 @@ export const layerEventLog: Layer.Layer<EventLog | Registry, never, EventJournal
  * @see {@link group} for building the handler layer consumed by this layer
  * @see {@link layerEventLog} for installing the runtime and registry without combining a handler layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1052,7 +1052,7 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
  * The returned function delegates to the `EventLog` service and preserves each
  * event's success and error types.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

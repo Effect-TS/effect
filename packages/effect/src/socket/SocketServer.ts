@@ -7,7 +7,7 @@
  * defines server-level errors reported while opening or running a server.
  * Platform layers provide concrete implementations of this service.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -20,7 +20,7 @@ import type * as Socket from "./Socket.ts"
  * Context service for a socket server, exposing its bound address and a run
  * loop that handles each accepted `Socket`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export class SocketServer extends Context.Service<SocketServer, {
 /**
  * Runtime type identifier attached to `SocketServerError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export const ErrorTypeId: ErrorTypeId = "@effect/platform/SocketServer/SocketSer
 /**
  * Type-level identifier used to mark `SocketServerError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export type ErrorTypeId = "@effect/platform/SocketServer/SocketServerError"
 /**
  * Error reason for failures that occur while opening a socket server.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export class SocketServerOpenError extends Data.TaggedError("SocketServerOpenErr
 /**
  * Error reason for uncategorized socket server failures.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -82,7 +82,7 @@ export class SocketServerUnknownError extends Data.TaggedError("SocketServerUnkn
 /**
  * Union of socket server error reasons.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -92,7 +92,7 @@ export type SocketServerErrorReason = SocketServerOpenError | SocketServerUnknow
  * Tagged socket server error that wraps a server error reason and exposes its
  * cause.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -110,7 +110,7 @@ export class SocketServerError extends Data.TaggedError("SocketServerError")<{
   /**
    * Marks this value as a socket server error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
@@ -118,7 +118,7 @@ export class SocketServerError extends Data.TaggedError("SocketServerError")<{
   /**
    * Delegates the public message to the underlying socket server error reason.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message(): string {

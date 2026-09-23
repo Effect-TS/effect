@@ -5,7 +5,7 @@
  * inspect which capabilities a runner made available, or assert registration
  * behavior in tests.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "../Data.ts"
@@ -15,7 +15,7 @@ import type { SingletonAddress } from "./SingletonAddress.ts"
 /**
  * Represents events that can occur when a runner registers entities or singletons.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -26,7 +26,7 @@ export type ShardingRegistrationEvent =
 /**
  * Represents an event that occurs when a new entity is registered with a runner.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -39,7 +39,7 @@ export interface EntityRegistered {
  * Represents an event that occurs when a new singleton is registered with a
  * runner.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export interface SingletonRegistered {
 /**
  * Constructors and matchers for sharding registration events.
  *
- * @unstable
+ * @stability unstable
  * @category pattern matching
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ export const {
    * Pattern matches on a sharding registration event and dispatches to the
    * matching variant handler.
    *
-   * @unstable
+   * @stability unstable
    * @category pattern matching
    * @since 4.0.0
    */
@@ -68,7 +68,7 @@ export const {
   /**
    * Creates an event for an entity registered by the local runner.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -76,7 +76,7 @@ export const {
   /**
    * Creates an event for a singleton registered by the local runner.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */

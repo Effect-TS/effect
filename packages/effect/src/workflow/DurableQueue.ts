@@ -16,7 +16,7 @@
  * replays from resurrecting the failed item. Deployments should run
  * `PersistedQueue.layerCleanup` in one instance to prune old completed items.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -32,7 +32,7 @@ import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 /**
  * Type-level identifier used to recognize `DurableQueue` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -41,7 +41,7 @@ export type TypeId = "~effect/workflow/DurableQueue"
 /**
  * Runtime identifier attached to `DurableQueue` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export const TypeId: TypeId = "~effect/workflow/DurableQueue"
  * Durable workflow queue definition containing a payload schema, idempotency
  * key, and deferred used to await worker results.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -123,7 +123,7 @@ export interface DurableQueue<
  * await Effect.runPromise(program) // => [true, true, ["api-call-1"]]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -185,7 +185,7 @@ const getQueueSchema = <Payload extends Schema.Top>(
 /**
  * Adds an item to the queue and wait for a worker to process it.
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -263,7 +263,7 @@ const defaultRetrySchedule = Schedule.min([
 /**
  * Create a worker effect that processes items from the durable queue.
  *
- * @unstable
+ * @stability unstable
  * @category workers
  * @since 4.0.0
  */
@@ -351,7 +351,7 @@ export const makeWorker: <
 /**
  * Create a layer that runs workers for the durable queue.
  *
- * @unstable
+ * @stability unstable
  * @category workers
  * @since 4.0.0
  */

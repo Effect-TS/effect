@@ -1,7 +1,7 @@
 /**
  * Derives, samples, and checks generated values from Effect Schema.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "./Cause.ts"
@@ -19,7 +19,7 @@ import type * as Types from "./Types.ts"
 /**
  * Runtime type identifier for `Arbitrary` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -28,7 +28,7 @@ export const TypeId: TypeId = Internal.TypeId
 /**
  * Type of the runtime identifier for `Arbitrary` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -46,7 +46,7 @@ export type TypeId = "~effect/arbitrary/Arbitrary"
  *
  * Arbitraries implement `Pipeable`, so data-last combinators can be composed with `.pipe(...)`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export interface Arbitrary<out A> extends Pipeable {
  * `shrink` returns the immediate semantic simplifications of a failing value. Each returned candidate is validated
  * against the decoded side of the original Schema before it can reach the property.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export interface SchemaOptions<A> {
  * `minLength` defaults to zero. Generation grows with `size`, honors `minLength` even at size zero, and is capped by
  * `maxLength` when provided. Both bounds must be integers between zero and 4294967295, with `minLength <= maxLength`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -99,7 +99,7 @@ export interface ArrayOptions {
  *
  * Use when accepting both Arbitrary values and other input descriptions.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -114,7 +114,7 @@ export const isArbitrary = (u: unknown): u is Arbitrary<unknown> => hasProperty(
  * or object property observes the same size independently, while recursive branches share one recursion allowance.
  * Explicit Schema minima and required members are still honored, while explicit maxima clamp generation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export interface SampleOptions {
  * The effective `seed` can be passed to {@link sampleEffect} to reproduce the exhausted run, including when sampling
  * originally selected a seed from the Effect `Random` service.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -161,7 +161,7 @@ export interface SampleError {
  *
  * Replay compatibility is not guaranteed across releases of this unstable module.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -188,7 +188,7 @@ export type Replay = string
  * When `replay` is present, its recorded seed, attempt, size, and shrink path control the run. The `runs`, `size`,
  * `maxDiscards`, `maxShrinks`, and `seed` options are ignored.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -204,7 +204,7 @@ export interface CheckOptions {
 /**
  * Independent defaults for property checking and sampling, excluding replay tokens.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -226,7 +226,7 @@ export interface GlobalOptions {
  * Configure defaults before starting concurrent tests. Changes affect subsequent executions, including Effects created
  * earlier, but do not affect active runs.
  *
- * @unstable
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -235,7 +235,7 @@ export const configureGlobal = Internal.configureGlobal
 /**
  * Identifies a property that returned `false`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -246,7 +246,7 @@ export interface ReturnedFalse {
 /**
  * Preserves a typed failure produced by an effectful property.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -258,7 +258,7 @@ export interface PropertyError<out E> {
 /**
  * Represents the reason a property was falsified.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -267,7 +267,7 @@ export type PropertyFailure<E> = ReturnedFalse | PropertyError<E>
 /**
  * Reports that every requested property run passed.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -288,7 +288,7 @@ export interface Passed {
  * `runs` counts main property evaluations through the falsifying evaluation. It excludes evaluations performed while
  * shrinking. A replay reports one run.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -311,7 +311,7 @@ export interface Falsified<out A, out E> {
  * The effective `seed` can be passed to {@link checkEffect} to reproduce the exhausted run, including when checking
  * originally selected a seed from the Effect `Random` service.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -331,7 +331,7 @@ export interface Exhausted {
  * - `ShrinkPassed` means that the root switched failure class, or that a recorded shrink either passed or switched
  *   failure class.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -347,7 +347,7 @@ export interface ReplayMismatch {
  *
  * Defects and fiber interruption are not converted to this data type and continue through the returned `Effect`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -360,7 +360,7 @@ export type CheckResult<A, E> = Passed | Falsified<A, E> | Exhausted | ReplayMis
  *
  * Use when integrating `checkEffect` with a test runner or another reporting interface.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -409,7 +409,7 @@ export function formatCheckFailure<A, E>(result: CheckResult<A, E>): string | un
  * A custom shrinker replaces Schema-derived shrinking. It is evaluated lazily after a property failure and must be
  * synchronous, deterministic, terminating, and free of mutation.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -432,7 +432,7 @@ export function schema<S extends Schema_.Constraint>(
  * Every generation returns the same value. Objects are not cloned, so properties must not mutate them.
  *
  * @see {@link flatMap} for selecting dependent Arbitraries
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -483,7 +483,7 @@ export function Constant<const A>(value: A): Arbitrary<A> {
  * @see {@link ArrayOptions} for length bounds
  * @see {@link all} for fixed tuples and records of Arbitraries
  * @see {@link schema} for deriving arrays described by Schema
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -497,7 +497,7 @@ export const array: <A>(item: Arbitrary<A>, options?: ArrayOptions) => Arbitrary
  * Use when you want to derive generated values from an existing `Arbitrary` without changing its generation or shrink
  * structure.
  *
- * @unstable
+ * @stability unstable
  * @category mapping
  * @since 4.0.0
  */
@@ -519,7 +519,7 @@ export const map: {
  * may generate matching values directly.
  *
  * @see {@link filterMap} for transforming and filtering simultaneously
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -544,7 +544,7 @@ export const filter: {
  *
  * @see {@link map} for transformations that cannot reject
  * @see {@link filter} for retaining original values that satisfy a condition
- * @unstable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
@@ -576,7 +576,7 @@ export const filterMap: {
  *
  * @see {@link map} for total transformations that do not select another Arbitrary
  * @see {@link Constant} for dependent branches that return an existing value
- * @unstable
+ * @stability unstable
  * @category sequencing
  * @since 4.0.0
  */
@@ -604,7 +604,7 @@ export const flatMap: {
  * value is discarded.
  *
  * @see {@link array} for variable-length arrays that shrink by removing elements
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -630,7 +630,7 @@ export function all<const Input extends Iterable<Arbitrary<any>> | Record<string
  *
  * Use when you need generated examples without running a property.
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -664,7 +664,7 @@ export function sampleEffect<A>(
  * it repeatedly and does not restore mutable services between evaluations. Stateful properties should acquire and
  * release an independent fixture inside each evaluation.
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */

@@ -8,7 +8,7 @@
  * error responses are decoded. This module also includes helpers for building a
  * client for only one group, one endpoint, or only the encoded URL.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -45,7 +45,7 @@ import * as HttpApiPath from "./internal/path.ts"
  * The type-safe client shape generated from HTTP API groups, with non-top-level
  * groups exposed as nested objects and top-level endpoints exposed as methods.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export type Client<Groups extends HttpApiGroup.Constraint, E = never, R = never>
  * Derives the typed client interface for an `HttpApi`, preserving any additional
  * client error and service requirements supplied by the caller.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -104,7 +104,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
  * Helper types used to describe generated HTTP API clients, including endpoint
  * methods, response modes, and grouped client shapes.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Client {
@@ -112,7 +112,7 @@ export declare namespace Client {
    * The response mode accepted by generated client methods, controlling whether a
    * call returns the decoded success value, the raw response, or both.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -122,7 +122,7 @@ export declare namespace Client {
    * Computes the value returned by a client method for a success type and response
    * mode.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -141,7 +141,7 @@ export declare namespace Client {
    * The client object for one API group, mapping each endpoint identifier in that
    * group to its typed client method.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -176,7 +176,7 @@ export declare namespace Client {
    * error, and service channels reflect the endpoint schemas, middleware, and
    * selected response mode.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -200,7 +200,7 @@ export declare namespace Client {
    * Extracts client methods for endpoints in top-level groups so they can be exposed
    * directly on the generated client object.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -234,7 +234,7 @@ type UrlBuilderArgs<Request> = [Request] extends [void | undefined] ? [request?:
  * The type-safe URL builder shape for an HTTP API, mirroring the generated client
  * layout while returning URL strings instead of executing requests.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -488,7 +488,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
  * Constructs a type-safe client for an HTTP API using the `HttpClient` service,
  * endpoint schemas, middleware, and optional client or response transformations.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -517,7 +517,7 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Constrain
  * using the API metadata to encode requests, execute middleware, and decode
  * responses.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -556,7 +556,7 @@ export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Const
  * Builds a typed client object for a single API group from the supplied
  * `HttpClient`, filtering the API to that group.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -607,7 +607,7 @@ type EndpointReturn<
  * Builds the typed client method for one endpoint in one API group, using the
  * supplied `HttpClient` and endpoint metadata.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -672,7 +672,7 @@ export const endpoint = <
  * }) // => "https://api.example.com/users/123"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

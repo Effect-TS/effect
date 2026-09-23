@@ -7,7 +7,7 @@
  * `EventLog.group`. The group only describes events; it does not write or run
  * them.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
@@ -19,7 +19,7 @@ import * as Event from "./Event.ts"
 /**
  * Unique type identifier used to mark event log event groups.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -28,7 +28,7 @@ export type TypeId = "~effect/eventlog/EventGroup"
 /**
  * Runtime type identifier used to mark event log event groups.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -37,7 +37,7 @@ export const TypeId: TypeId = "~effect/eventlog/EventGroup"
 /**
  * Returns `true` when a value is an event log event group.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export const isEventGroup = (u: unknown): u is Any => Predicate.hasProperty(u, T
  * Use when build groups from `empty.add(...)`, then provide implementations for the events
  * with `EventLog.group`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -87,7 +87,7 @@ export interface EventGroup<
 /**
  * Type-erased marker for an event log event group.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -98,7 +98,7 @@ export interface Any {
 /**
  * Type-erased event group with its events record available structurally.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ export type AnyWithProps = EventGroup<Event.Any>
 /**
  * Derives the handler service markers required for all events in an event group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export type ToService<A> = A extends EventGroup<infer _Events> ? Event.ToService
 /**
  * Extracts the union of event definitions contained in an event group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export type Events<Group> = Group extends EventGroup<infer _Events> ? _Events
 /**
  * Client-side schema services required by all events in an event group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -136,7 +136,7 @@ export type ServicesClient<Group> = Event.ServicesClient<Events<Group>>
 /**
  * Server-side schema services required by all events in an event group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -198,7 +198,7 @@ const makeProto = <
  * Use when you need the starting `EventGroup` value before adding event
  * definitions with `.add(...)`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

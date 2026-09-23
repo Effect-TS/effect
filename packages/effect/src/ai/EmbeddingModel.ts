@@ -8,7 +8,7 @@
  * constructor that adapts a provider batch implementation into the service.
  * Single `embed` calls can be batched together internally.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -25,7 +25,7 @@ import * as AiError from "./AiError.ts"
  * @see {@link make} for constructing an embedding model service from a provider
  * @see {@link Dimensions} for the current embedding vector size service
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export const EmbeddingModel: Context.Service<EmbeddingModel, EmbeddingModel> = C
 /**
  * Brand type for `EmbeddingModel`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export type TypeId = "~effect/ai/EmbeddingModel"
 /**
  * Brand for `EmbeddingModel` implementations.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -61,7 +61,7 @@ export const TypeId: TypeId = "~effect/ai/EmbeddingModel"
  *
  * @see {@link EmbeddingModel} for the embedding service that uses these dimensions
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -78,7 +78,7 @@ export class Dimensions extends Context.Service<Dimensions, number>()(
  * `undefined` when the provider does not report usage or when `embedMany([])`
  * bypasses the provider.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -91,7 +91,7 @@ export class EmbeddingUsage extends Schema.Class<EmbeddingUsage>(
 /**
  * Response for a single embedding request.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -113,7 +113,7 @@ export class EmbedResponse extends Schema.Class<EmbedResponse>(
  * @see {@link EmbedResponse} for individual embedding responses
  * @see {@link EmbeddingUsage} for token usage metadata
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export class EmbedManyResponse extends Schema.Class<EmbedManyResponse>(
 /**
  * Provider input options for embedding requests.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -138,7 +138,7 @@ export interface ProviderOptions {
 /**
  * Provider response for batch embedding requests.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -161,7 +161,7 @@ export interface ProviderResponse {
  * @see {@link make} for constructing the request resolver from a provider implementation
  * @see {@link EmbedResponse} for the response produced by this request
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -174,7 +174,7 @@ export class EmbeddingRequest extends Request.TaggedClass("EmbeddingRequest")<
 /**
  * Single-input and batch embedding operations.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -219,7 +219,7 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
  * @see {@link ProviderOptions} for the input passed to the provider implementation
  * @see {@link ProviderResponse} for the provider response contract consumed by this constructor
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

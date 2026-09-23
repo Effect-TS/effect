@@ -8,7 +8,7 @@
  * handle built-in help and version behavior, render help through `CliOutput`,
  * and execute the selected handler.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
@@ -115,7 +115,7 @@ import * as Prompt from "./Prompt.ts"
  * output // => ["Hello, Alice!"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -179,7 +179,7 @@ export interface Command<in out Name extends string, in Input, out ContextInput 
  * Companion namespace containing type-level helpers and configuration shapes
  * used by `Command`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Command {
@@ -191,7 +191,7 @@ export declare namespace Command {
    * The parsed input type is contravariant, while the command error and service
    * requirement types are covariant.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -204,7 +204,7 @@ export declare namespace Command {
   /**
    * Represents a concrete usage example for a command.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -250,7 +250,7 @@ export declare namespace Command {
    * [simpleConfig.name.kind, nestedConfig.server.port.kind] // => ["flag", "flag"]
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -268,7 +268,7 @@ export declare namespace Command {
    *
    * Only flags are allowed here; arguments are intentionally excluded.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -282,7 +282,7 @@ export declare namespace Command {
   /**
    * Utilities for working with command configurations.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   export namespace Config {
@@ -324,7 +324,7 @@ export declare namespace Command {
      * inferred // => { name: "Alice", server: { host: "localhost", port: 8080 } }
      * ```
      *
-     * @unstable
+     * @stability unstable
      * @category models
      * @since 4.0.0
      */
@@ -335,7 +335,7 @@ export declare namespace Command {
     /**
      * Helper type utility for recursively inferring types from Config values.
      *
-     * @unstable
+     * @stability unstable
      * @category models
      * @since 4.0.0
      */
@@ -348,7 +348,7 @@ export declare namespace Command {
   /**
    * Represents any Command regardless of its type parameters.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -370,7 +370,7 @@ export declare namespace Command {
   /**
    * A grouped set of subcommands used by `Command.withSubcommands`.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -382,7 +382,7 @@ export declare namespace Command {
   /**
    * Entry type accepted by `Command.withSubcommands`.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -398,7 +398,7 @@ export declare namespace Command {
  * stdio services for running commands, and child-process spawning for
  * process-related CLI features.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -407,7 +407,7 @@ export type Environment = FileSystem.FileSystem | Path.Path | Terminal.Terminal 
 /**
  * A utility type to extract the error type from a `Command`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -423,7 +423,7 @@ export type Error<C> = C extends Command<
 /**
  * A utility type to extract the required services type from a `Command`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -504,7 +504,7 @@ export type Services<C> = C extends Command<
  * output // => ["Verbose: true", "Config: prod.json", "Target: staging"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -516,7 +516,7 @@ export interface CommandContext<Name extends string> {
 /**
  * Represents the parsed tokens from command-line input before validation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -538,7 +538,7 @@ export interface ParsedTokens {
  * This checks for the `Command` type-id property; it does not validate the full
  * command shape.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -633,7 +633,7 @@ export const isCommand = (u: unknown): u is Command.Any => Predicate.hasProperty
  * output // => ["Starting deployment to staging", "Deployment completed successfully"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -715,7 +715,7 @@ export const make: {
  * output // => ["Hello, Alice!"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -852,7 +852,7 @@ const normalizeSubcommandEntries = (
  * output // => ["Verbose mode enabled", "Cloning github.com/foo/bar"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -972,7 +972,7 @@ export const withSubcommands: {
  * handlers via `yield* parentCommand`. Shared flags are accepted both before
  * and after a selected subcommand name (npm-style).
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1072,7 +1072,7 @@ export const withSharedFlags: {
  *
  * Declared global flags apply to the command and all of its descendants.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1172,7 +1172,7 @@ type ExtractSubcommandContext<T extends ReadonlyArray<Command.SubcommandEntry>> 
  * output // => ["Deploying to staging"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1198,7 +1198,7 @@ export const withDescription: {
  * shell completions. If no short description is provided, the full
  * `description` is used as a fallback.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1223,7 +1223,7 @@ export const withShortDescription: {
  * Aliases are accepted as alternate subcommand names during parsing and are
  * shown in help output as `name, alias`.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1267,7 +1267,7 @@ export const withAlias: {
  * root.subcommands[0].commands[0].unlisted // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1295,7 +1295,7 @@ export const unlisted = <const Name extends string, Input, E, R, ContextInput>(
  *
  * @see {@link annotateMerge} for merging an existing annotation context
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1340,7 +1340,7 @@ export const annotate: {
  *
  * @see {@link annotate} for adding a single annotation without constructing a `Context`
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1385,7 +1385,7 @@ export const annotateMerge: {
  * login.examples.map((example) => example.command) // => ["myapp login", "myapp login --token sbp_abc123"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -1473,7 +1473,7 @@ const mapHandler = <Name extends string, Input, E, R, ContextInput, E2, R2>(
  * output // => ["Using file system for local"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -1512,7 +1512,7 @@ export const provide: {
  * Use when a command handler needs a pure service implementation, optionally
  * derived from the parsed command input.
  *
- * @unstable
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -1553,7 +1553,7 @@ export const provideSync: {
  * @see {@link provide} for providing an already-available service
  * @see {@link provideEffectDiscard} for running an effect before the handler without providing a service
  *
- * @unstable
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -1584,7 +1584,7 @@ export const provideEffect: {
  * Allows for execution of an effect, which optionally depends on command-line
  * input to be created, prior to executing the handler of a command.
  *
- * @unstable
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -1653,7 +1653,7 @@ export const provideEffectDiscard: {
  * await Effect.runPromise(program) // => ["app"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -1784,7 +1784,7 @@ const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
  *
  * @see {@link runWith} for running a command with an explicit argument array
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -1875,7 +1875,7 @@ export const run: {
  * output // => ["Hello, Alice!", "Hello, Alice!"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */

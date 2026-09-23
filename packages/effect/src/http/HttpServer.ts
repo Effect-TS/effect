@@ -7,7 +7,7 @@
  * for address formatting, server logging, and clients that target the current
  * server in tests.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -34,7 +34,7 @@ import type { HttpServerResponse } from "./HttpServerResponse.ts"
  * The service can serve an HTTP response effect and exposes the address where the
  * server is listening.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export class HttpServer extends Context.Service<HttpServer, {
  * Constructs an `HttpServer` service from a serving implementation and listening
  * address.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export const make = (
  * layer still requires the server, a scope, and any non-request dependencies of
  * the response effect or middleware.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -136,7 +136,7 @@ export const serve: {
  * requires a scope and any non-request dependencies of the response effect or
  * middleware.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -181,7 +181,7 @@ export const serveEffect: {
  * Throws a `NetAddressError` when URL conversion fails, including for scoped
  * IPv6 addresses. Unix socket paths are displayed with a `unix://` prefix.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -191,7 +191,7 @@ export const formatAddress: (address: NetAddress.SocketAddress) => string = NetA
  * Reads the current server address, formats it with `formatAddress`, and passes
  * the formatted address to the supplied effectful function.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -206,7 +206,7 @@ export const addressFormattedWith = <A, E, R>(
 /**
  * Logs the formatted address of the current HTTP server.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -217,7 +217,7 @@ export const logAddress: Effect.Effect<void, never, HttpServer> = addressFormatt
 /**
  * Adds address logging to a layer that provides an `HttpServer`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -240,7 +240,7 @@ export const withLogAddress = <A, E, R>(
  *
  * Unix socket addresses and scoped IPv6 addresses are not supported.
  *
- * @unstable
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -265,7 +265,7 @@ export const makeTestClient: Effect.Effect<
 /**
  * Layer that provides the test `HttpClient` created by `makeTestClient`.
  *
- * @unstable
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -284,7 +284,7 @@ export const layerTestClient: Layer.Layer<
  * It includes `HttpPlatform`, `Path`, a weak ETag generator, and a no-op
  * `FileSystem`.
  *
- * @unstable
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * tables, giving event-log programs a durable journal that can be replayed after
  * restart and synchronized with remote journals.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -31,7 +31,7 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  * The constructor creates the entry and remote metadata tables when needed,
  * persists local and remote entries, and uses the configured `SqlClient`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -317,7 +317,7 @@ export const make = (options?: {
  * @see {@link EventJournal.layerMemory} for an in-memory `EventJournal` layer
  * @see {@link EventJournal.layerIndexedDb} for an IndexedDB-backed `EventJournal` layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

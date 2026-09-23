@@ -7,7 +7,7 @@
  * matching workflow operation, while the `WorkflowEngine` and workflow handler
  * services stay on the server side.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -25,7 +25,7 @@ import type { WorkflowEngine } from "./WorkflowEngine.ts"
  * Creates handlers for a workflow HTTP API group, wiring execute, discard, and
  * resume endpoints to the supplied workflows.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -92,7 +92,7 @@ export const layerHttpApi = <
  * Creates RPC handlers for the supplied workflows, wiring execute, discard,
  * and resume RPCs to workflow operations.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -141,7 +141,7 @@ export const layerRpcHandlers = <
  * Union of RPC handler services required to serve the generated workflow
  * execute, discard, and resume RPCs.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * execution id, and deferred name so external code can complete the correct
  * wait point later.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -33,7 +33,7 @@ const TypeId = "~effect/workflow/DurableDeferred"
  * Named durable deferred value whose completion is persisted by the workflow
  * engine and encoded with success and error schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export interface DurableDeferred<
  * Type-erased durable deferred shape for APIs that only need the deferred
  * identity and name.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -66,7 +66,7 @@ export interface Any {
  * Type-erased durable deferred shape that also exposes success, error, and
  * exit schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -82,7 +82,7 @@ export interface AnyWithProps {
  * Creates a named durable deferred with optional success and error schemas for
  * persisted completion.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -162,14 +162,14 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
 })
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
    * Waits for the durable deferred, suspending the current workflow when no
    * persisted completion is available.
    *
-   * @unstable
+   * @stability unstable
    * @category combinators
    * @since 4.0.0
    */
@@ -180,7 +180,7 @@ export {
  * Runs an effect and records its exit into the durable deferred, resuming
  * workflows that are waiting on that deferred.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export const into: {
  * Runs effects as a durable race, returning a previously persisted result when
  * present or completing a named deferred with the first result.
  *
- * @unstable
+ * @stability unstable
  * @category racing
  * @since 4.0.0
  */
@@ -314,7 +314,7 @@ export const raceAll = <
 /**
  * Runtime brand identifier for durable deferred tokens.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -323,7 +323,7 @@ export const TokenTypeId = "~effect/workflow/DurableDeferred/Token"
 /**
  * Type-level brand identifier for `Token` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export type TokenTypeId = typeof TokenTypeId
  * Branded string token identifying a durable deferred for a workflow
  * execution.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -342,7 +342,7 @@ export type Token = Brand.Branded<string, TokenTypeId>
 /**
  * Schema for branded durable deferred tokens.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -352,7 +352,7 @@ export const Token: Schema.brand<Schema.String, TokenTypeId> = Schema.String.pip
  * Schema for a decoded durable deferred token containing the workflow
  * name, execution ID, and deferred name.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -366,7 +366,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
   /**
    * Encodes the parsed workflow, execution, and deferred names back into a token.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get asToken(): Token {
@@ -378,7 +378,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
   /**
    * Schema for decoding and encoding durable deferred tokens as strings.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly FromString = Schema.String.pipe(
@@ -414,7 +414,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
   /**
    * Decodes a durable deferred token string into its parsed components.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly fromString = Schema.decodeSync(TokenParsed.FromString)
@@ -422,7 +422,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
   /**
    * Encodes parsed durable deferred token components into a token string.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly encode = Schema.encodeSync(TokenParsed.FromString)
@@ -432,7 +432,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
  * Creates a token for a durable deferred using the current workflow instance's
  * workflow name and execution ID.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -451,7 +451,7 @@ export const token: <Success extends Schema.Constraint, Error extends Schema.Con
  * Creates a durable deferred token from an explicit workflow, execution ID,
  * and deferred name.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -486,7 +486,7 @@ export const tokenFromExecutionId: {
  * Creates a durable deferred token by deriving the workflow execution ID from
  * the supplied workflow payload.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -532,7 +532,7 @@ export const tokenFromPayload: {
  * Completes the durable deferred identified by a token with the supplied exit,
  * encoding the result through the deferred schemas.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -585,7 +585,7 @@ export const done: {
  * Completes the durable deferred identified by a token with a successful
  * value.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -621,7 +621,7 @@ export const succeed: {
 /**
  * Completes the durable deferred identified by a token with a typed failure.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -657,7 +657,7 @@ export const fail: {
 /**
  * Completes the durable deferred identified by a token with a failure cause.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

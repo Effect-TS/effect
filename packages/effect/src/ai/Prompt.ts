@@ -7,7 +7,7 @@
  * messages. This module helps build prompts, combine them, and convert raw
  * input or response parts into the shared prompt shape.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -35,7 +35,7 @@ import type * as Response from "./Response.ts"
  * Provider-specific options are keyed by provider-specific names, and each
  * value is JSON or `null`.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export const ProviderOptions: Schema.$Record<
  * Type of provider-specific options that can be attached to prompt messages
  * and content parts.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -63,7 +63,7 @@ const PartTypeId = "~effect/ai/Prompt/Part" as const
 /**
  * Type guard to check if a value is a Part.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -78,7 +78,7 @@ export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, PartTy
  * reasoning, tool calls, tool results, tool approval responses, and tool
  * approval requests.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -94,7 +94,7 @@ export type Part =
 /**
  * Encoded representation of a Part.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -115,7 +115,7 @@ export type PartEncoded =
  * It provides the common structure shared by all content parts, including the
  * part type and provider options.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -134,7 +134,7 @@ export interface BasePart<Type extends string, Options extends ProviderOptions> 
 /**
  * Base interface for encoded content parts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -177,7 +177,7 @@ const BasePart = Schema.Struct({
  * const result = [textPart.type, filePart.type] // => ["text", "file"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -206,7 +206,7 @@ export const makePart = <const Type extends Part["type"]>(
  * A utility type for specifying the parameters required to construct a
  * specific part of a prompt.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -240,7 +240,7 @@ export type PartConstructorParams<P extends Part> = Omit<P, typeof PartTypeId | 
  * textPart.text // => "Hello, how can I help you today?"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -254,7 +254,7 @@ export interface TextPart extends BasePart<"text", TextPartOptions> {
 /**
  * Encoded representation of text parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -269,7 +269,7 @@ export interface TextPartEncoded extends BasePartEncoded<"text", TextPartOptions
  * Represents provider-specific options that can be associated with a
  * `TextPart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -278,7 +278,7 @@ export interface TextPartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of text parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -303,7 +303,7 @@ export const TextPart: Schema.Struct<
 /**
  * Constructs a new text part.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -329,7 +329,7 @@ export const textPart = (params: PartConstructorParams<TextPart>): TextPart => m
  * reasoningPart.type // => "reasoning"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -343,7 +343,7 @@ export interface ReasoningPart extends BasePart<"reasoning", ReasoningPartOption
 /**
  * Encoded representation of reasoning parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -358,7 +358,7 @@ export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning", Reaso
  * Represents provider-specific options that can be associated with a
  * `ReasoningPart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -367,7 +367,7 @@ export interface ReasoningPartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of reasoning parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -390,7 +390,7 @@ export const ReasoningPart: Schema.Struct<{
 /**
  * Constructs a new reasoning part.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -429,7 +429,7 @@ export const reasoningPart = (params: PartConstructorParams<ReasoningPart>): Rea
  * const result = [imagePart.mediaType, documentPart.fileName] // => ["image/jpeg", "report.pdf"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -451,7 +451,7 @@ export interface FilePart extends BasePart<"file", FilePartOptions> {
 /**
  * Encoded representation of file parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -474,7 +474,7 @@ export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions
  * Represents provider-specific options that can be associated with a
  * `FilePart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -483,7 +483,7 @@ export interface FilePartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of file parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -517,7 +517,7 @@ export const FilePart: Schema.Struct<{
  *
  * @see {@link makePart} for the generic part constructor
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -544,7 +544,7 @@ export const filePart = (params: PartConstructorParams<FilePart>): FilePart => m
  * toolCallPart.name // => "get_weather"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -570,7 +570,7 @@ export interface ToolCallPart extends BasePart<"tool-call", ToolCallPartOptions>
 /**
  * Encoded representation of tool call parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -597,7 +597,7 @@ export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call", ToolCa
  * Represents provider-specific options that can be associated with a
  * `ToolCallPart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -606,7 +606,7 @@ export interface ToolCallPartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of tool call parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -635,7 +635,7 @@ export const ToolCallPart: Schema.Struct<{
 /**
  * Constructs a new tool call part.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -668,7 +668,7 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
  * const result = [toolResultPart.name, toolResultPart.isFailure] // => ["get_weather", false]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -698,7 +698,7 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
 /**
  * Encoded representation of tool result parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -729,7 +729,7 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
  * Represents provider-specific options that can be associated with a
  * `ToolResultPart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -738,7 +738,7 @@ export interface ToolResultPartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of tool result parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -769,7 +769,7 @@ export const ToolResultPart: Schema.Struct<{
 /**
  * Constructs a new tool result part.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -813,7 +813,7 @@ export const toolResultPart = (params: PartConstructorParams<ToolResultPart>): T
  * const result = [approvalResponse.approved, denialResponse.approved] // => [true, false]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -835,7 +835,7 @@ export interface ToolApprovalResponsePart extends BasePart<"tool-approval-respon
 /**
  * Encoded representation of tool approval response parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -860,7 +860,7 @@ export interface ToolApprovalResponsePartEncoded
  * Represents provider-specific options that can be associated with a
  * `ToolApprovalResponsePart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -869,7 +869,7 @@ export interface ToolApprovalResponsePartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of tool approval response parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -896,7 +896,7 @@ export const ToolApprovalResponsePart: Schema.Struct<{
 /**
  * Constructs a new tool approval response part.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -932,7 +932,7 @@ export const toolApprovalResponsePart = (
  * const result = [approvalRequest.approvalId, approvalRequest.toolCallId] // => ["approval_123", "call_456"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -950,7 +950,7 @@ export interface ToolApprovalRequestPart extends BasePart<"tool-approval-request
 /**
  * Encoded representation of tool approval request parts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -971,7 +971,7 @@ export interface ToolApprovalRequestPartEncoded
  * Represents provider-specific options that can be associated with a
  * `ToolApprovalRequestPart` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -980,7 +980,7 @@ export interface ToolApprovalRequestPartOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of tool approval request parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1005,7 +1005,7 @@ export const ToolApprovalRequestPart: Schema.Struct<{
 /**
  * Constructs a new tool approval request part.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1016,7 +1016,7 @@ export const toolApprovalRequestPart = (
 /**
  * Schema for validation and encoding of content parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1049,7 +1049,7 @@ const MessageTypeId = "~effect/ai/Prompt/Message" as const
 /**
  * Type guard to check if a value is a Message.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -1063,7 +1063,7 @@ export const isMessage = (u: unknown): u is Message => Predicate.hasProperty(u, 
  * It provides the common structure shared by all messages, including the role
  * and provider options.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1082,7 +1082,7 @@ export interface BaseMessage<Role extends string, Options extends ProviderOption
 /**
  * Base interface for encoded message types.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1122,7 +1122,7 @@ const BaseMessage = Schema.Struct({
  * const result = [userMessage.role, userMessage.content.length] // => ["user", 1]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1142,7 +1142,7 @@ export const makeMessage = <const Role extends Message["role"]>(
  * A utility type for specifying the parameters required to construct a
  * specific message for a prompt.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -1157,7 +1157,7 @@ export type MessageConstructorParams<M extends Message> = Omit<M, typeof Message
  * Schema that decodes a string into content containing a single `TextPart` and,
  * when encoding, emits the `text` value of the first part.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1207,7 +1207,7 @@ export const ContentFromString: Schema.decodeTo<
  * systemMessage.role // => "system"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1221,7 +1221,7 @@ export interface SystemMessage extends BaseMessage<"system", SystemMessageOption
 /**
  * Encoded representation of system messages for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1236,7 +1236,7 @@ export interface SystemMessageEncoded extends BaseMessageEncoded<"system", Syste
  * Represents provider-specific options that can be associated with a
  * `SystemMessage` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -1245,7 +1245,7 @@ export interface SystemMessageOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of system messages.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1268,7 +1268,7 @@ export const SystemMessage: Schema.Struct<{
 /**
  * Constructs a new system message.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1311,7 +1311,7 @@ export const systemMessage = (params: MessageConstructorParams<SystemMessage>): 
  * const result = [textUserMessage.content.length, multimodalUserMessage.content.length] // => [1, 2]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1325,7 +1325,7 @@ export interface UserMessage extends BaseMessage<"user", UserMessageOptions> {
 /**
  * Union type of content parts allowed in user messages.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1334,7 +1334,7 @@ export type UserMessagePart = TextPart | FilePart
 /**
  * Encoded representation of user messages for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1348,7 +1348,7 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user", UserMessa
 /**
  * Union type of encoded content parts for user messages.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1357,7 +1357,7 @@ export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
 /**
  * Schema for validation and encoding of user message content parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1370,7 +1370,7 @@ export const UserMessagePart: Schema.Union<readonly [typeof TextPart, typeof Fil
  * Represents provider-specific options that can be associated with a
  * `UserMessage` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -1379,7 +1379,7 @@ export interface UserMessageOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of user messages.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1460,7 +1460,7 @@ export const UserMessage: Schema.Struct<{
 /**
  * Constructs a new user message.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1511,7 +1511,7 @@ export const userMessage = (params: MessageConstructorParams<UserMessage>): User
  * assistantMessage.content.map((part) => part.type) // => ["text", "tool-call", "tool-result", "text"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1525,7 +1525,7 @@ export interface AssistantMessage extends BaseMessage<"assistant", AssistantMess
 /**
  * Union type of content parts allowed in assistant messages.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1540,7 +1540,7 @@ export type AssistantMessagePart =
 /**
  * Encoded representation of assistant messages for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1551,7 +1551,7 @@ export interface AssistantMessageEncoded extends BaseMessageEncoded<"assistant",
 /**
  * Union type of encoded content parts for assistant messages.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1566,7 +1566,7 @@ export type AssistantMessagePartEncoded =
 /**
  * Schema for validation and encoding of assistant message content parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1592,7 +1592,7 @@ export const AssistantMessagePart: Schema.Union<
  * Represents provider-specific options that can be associated with a
  * `AssistantMessage` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -1607,7 +1607,7 @@ export interface AssistantMessageOptions extends ProviderOptions {}
  * array of text, file, reasoning, tool-call, tool-result, and
  * tool-approval-request parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1685,7 +1685,7 @@ export const AssistantMessage: Schema.Struct<{
  *
  * This is the role-specific wrapper around `makeMessage("assistant", params)`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1725,7 +1725,7 @@ export const assistantMessage = (params: MessageConstructorParams<AssistantMessa
  * const result = [toolMessage.role, toolMessage.content[0].type] // => ["tool", "tool-result"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1739,7 +1739,7 @@ export interface ToolMessage extends BaseMessage<"tool", ToolMessageOptions> {
 /**
  * Union type of content parts allowed in tool messages.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1748,7 +1748,7 @@ export type ToolMessagePart = ToolResultPart | ToolApprovalResponsePart
 /**
  * Encoded representation of tool messages for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1762,7 +1762,7 @@ export interface ToolMessageEncoded extends BaseMessageEncoded<"tool", ToolMessa
 /**
  * Union type of encoded content parts for tool messages.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1771,7 +1771,7 @@ export type ToolMessagePartEncoded = ToolResultPartEncoded | ToolApprovalRespons
 /**
  * Schema for validation and encoding of tool message content parts.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1786,7 +1786,7 @@ export const ToolMessagePart: Schema.Union<
  * Represents provider-specific options that can be associated with a
  * `ToolMessage` through module augmentation.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -1795,7 +1795,7 @@ export interface ToolMessageOptions extends ProviderOptions {}
 /**
  * Schema for validation and encoding of tool messages.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1820,7 +1820,7 @@ export const ToolMessage: Schema.Struct<{
 /**
  * Constructs a new tool message.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1833,7 +1833,7 @@ export const toolMessage = (params: MessageConstructorParams<ToolMessage>): Tool
 /**
  * A type representing all possible message types in a conversation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1846,7 +1846,7 @@ export type Message =
 /**
  * A type representing all possible encoded message types for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1859,7 +1859,7 @@ export type MessageEncoded =
 /**
  * Schema for validation and encoding of messages.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1879,7 +1879,7 @@ const TypeId = "~effect/ai/Prompt" as const
 /**
  * Type guard to check if a value is a Prompt.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -1889,7 +1889,7 @@ export const isPrompt = (u: unknown): u is Prompt => Predicate.hasProperty(u, Ty
  * A Prompt contains a sequence of messages that form the context of a
  * conversation with a large language model.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1904,7 +1904,7 @@ export interface Prompt extends Pipeable {
 /**
  * Encoded representation of prompts for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1923,7 +1923,7 @@ const $Prompt = Schema.declare((u) => isPrompt(u), { identifier: "Prompt" })
 /**
  * Schema for AI prompt instances.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -1986,7 +1986,7 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
  * const result = [typeof stringInput, Array.isArray(messagesInput), promptInput.content.length] // => ["string", true, 0]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -2021,7 +2021,7 @@ const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
  * emptyPrompt.content // => []
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2054,7 +2054,7 @@ export const empty: Prompt = makePrompt([])
  * const result = [textPrompt.content[0].role, structuredPrompt.content.length, copiedPrompt.content.length] // => ["user", 2, 0]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2095,7 +2095,7 @@ export const make = (input: RawInput): Prompt => {
  * prompt.content.length // => 2
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2150,7 +2150,7 @@ const mergeOptions = (left: ProviderOptions, right: ProviderOptions): ProviderOp
  * prompt.content.map((message) => message.role) // => ["assistant", "tool"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2315,7 +2315,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
  * merged.content.map((message) => message.role) // => ["system", "user"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -2367,7 +2367,7 @@ export const concat: {
  * replaced.content[0].content // => "You are an expert in programming"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -2412,7 +2412,7 @@ export const setSystem: {
  * replaced.content[0].content // => "You are a helpful assistant. You are an expert in programming."
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -2463,7 +2463,7 @@ export const prependSystem: {
  * replaced.content[0].content // => "You are an expert in programming. You are a helpful assistant."
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

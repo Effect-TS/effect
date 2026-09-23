@@ -6,7 +6,7 @@
  * ping messages, and metric snapshots through a socket, then exposes tracer
  * layers that forward telemetry while preserving the current tracer's behavior.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -32,7 +32,7 @@ const ResponseSchema = Schema.toCodecJson(DevToolsSchema.Response)
  * Service for sending span and span-event telemetry to the Effect devtools
  * connection.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -137,7 +137,7 @@ const toMetricsSnapshot = (
  * @see {@link makeTracer} for creating a tracer after a `DevToolsClient` is available
  * @see {@link layerTracer} for creating the client from the current `Socket` and installing the tracer as a layer
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -175,7 +175,7 @@ export const make: Effect.Effect<
  * @see {@link make} for constructing the client as a scoped effect instead of a layer
  * @see {@link layerTracer} for a higher-level layer that creates the client and installs the devtools tracer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -229,7 +229,7 @@ const makeTracerEffect = Effect.gen(function*() {
  * Creates a tracer that delegates to the current tracer while sending span
  * starts, span events, and span ends to `DevToolsClient`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ export const makeTracer: Effect.Effect<Tracer.Tracer, never, DevToolsClient> = m
  * Layer that creates a `DevToolsClient` from the current `Socket` and installs
  * the devtools tracer.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * including framed formats that can decode multiple messages
  * from streaming chunks.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -30,7 +30,7 @@ import * as RpcMessage from "./RpcMessage.ts"
  * hole is JSON. Other serializations may encode the hole as bytes; both fit the
  * `unknown` hole, so `RpcSerialization` has no type parameter.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -55,7 +55,7 @@ const decodeText = (bytes: Uint8Array): string => (sharedTextDecoder ??= new Tex
  * Use to provide the serialization boundary shared by RPC clients and servers
  * for a chosen wire format.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -70,7 +70,7 @@ export class RpcSerialization extends Context.Service<RpcSerialization, {
  * A stateful parser for an RPC serialization format, able to decode input
  * chunks into protocol messages and encode messages for transport.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export interface Parser {
  * Error raised when a streaming parser retains more data than its configured
  * buffer limit.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -98,7 +98,7 @@ export class MaxBufferSizeExceeded extends Data.TaggedError("MaxBufferSizeExceed
 /**
  * Options shared by streaming RPC serialization formats.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -122,7 +122,7 @@ const isBufferSizeExceeded = (
  * message framing, so it is intended for transports that frame responses
  * themselves.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -143,7 +143,7 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
  * Serializes RPC protocol messages as newline-delimited JSON, framing each message
  * with a trailing newline.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -201,7 +201,7 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
 /**
  * Default newline-delimited JSON RPC serialization.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -211,7 +211,7 @@ export const ndjson: RpcSerialization["Service"] = makeNdjson()
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
  * additional message framing.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -246,7 +246,7 @@ export const jsonRpc = (options?: {
  * Creates a newline-delimited JSON-RPC 2.0 serialization for RPC protocol
  * messages.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -582,7 +582,7 @@ const makeSchemaBinary = (options?: {
  *
  * @see {@link layerNdjson} for transports that need newline-delimited framing
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -597,7 +597,7 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeriali
  *
  * @see {@link layerJson} for transports that already provide message framing
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -606,7 +606,7 @@ export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeria
 /**
  * RPC serialization layer that uses NDJSON with custom streaming options.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -616,7 +616,7 @@ export const layerNdjsonWith = (options?: StreamOptions): Layer.Layer<RpcSeriali
 /**
  * RPC serialization layer that uses JSON-RPC for serialization.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -628,7 +628,7 @@ export const layerJsonRpc = (options?: {
  * RPC serialization layer that uses newline-delimited JSON-RPC for
  * serialization.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -643,7 +643,7 @@ export const layerNdJsonRpc = (options?: {
  * schema evolution. Frames default to a 16 MiB maximum size. Use `"unbounded"`
  * to disable the frame-size limit.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

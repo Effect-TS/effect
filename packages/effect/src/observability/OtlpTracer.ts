@@ -8,7 +8,7 @@
  * status information. Use the constructor directly or install it through the
  * provided layer.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -41,7 +41,7 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  * Spans are batched using the configured interval and batch size, serialized
  * with `OtlpSerialization`, and flushed when the surrounding `Scope` closes.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -114,7 +114,7 @@ export const make: (
 /**
  * Provides `Tracer.Tracer` using the OTLP tracer created by `make`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -139,7 +139,7 @@ export const layer: (options: {
 /**
  * Creates an OTLP traces layer from OpenTelemetry configuration.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -377,7 +377,7 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
 /**
  * Root OTLP traces payload containing spans grouped by resource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -388,7 +388,7 @@ export interface TraceData {
 /**
  * Group of OTLP scope spans associated with a single resource.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -401,7 +401,7 @@ export interface ResourceSpan {
 /**
  * Group of OTLP spans emitted by a single instrumentation scope.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

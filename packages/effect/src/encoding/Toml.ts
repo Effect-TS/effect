@@ -4,7 +4,7 @@
  * The implementation covers the TOML values and table forms used by Effect's
  * configuration-file CLI primitive while avoiding a generated parser runtime.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -501,7 +501,7 @@ class TomlParser {
  * Offset date-times are represented by `Date`, matching the package this
  * parser replaces. Local dates and times remain strings.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

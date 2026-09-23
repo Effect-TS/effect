@@ -4,7 +4,7 @@
  * hashes, stores in entity addresses, and uses when sending messages to a
  * running entity.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Schema from "../Schema.ts"
@@ -12,7 +12,7 @@ import * as Schema from "../Schema.ts"
 /**
  * Schema for branded string entity identifiers used inside the cluster.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -21,7 +21,7 @@ export const EntityId = Schema.String.pipe(Schema.brand("~effect/cluster/EntityI
 /**
  * Branded string type representing the ID of an entity instance.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export type EntityId = typeof EntityId.Type
  *
  * @see {@link EntityId} for the schema that validates and encodes branded entity identifiers
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

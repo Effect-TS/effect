@@ -6,7 +6,7 @@
  * starts are buffered with their current `Context`, then replayed once the
  * receiver is ready.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Context from "../Context.ts"
@@ -20,7 +20,7 @@ import type { FromServerEncoded } from "./RpcMessage.ts"
  * a writer, replays buffered writes with their original contexts, and restores
  * the previous writer when the run ends.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export const withRun = <
  * buffers server responses per client until that client's `run` handler is
  * installed.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

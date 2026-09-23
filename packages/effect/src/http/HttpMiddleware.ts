@@ -8,7 +8,7 @@
  * middleware for response logging, server tracing, forwarded proxy headers,
  * parsed search parameters, and CORS response headers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { Clock } from "../Clock.ts"
@@ -39,7 +39,7 @@ import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts
 /**
  * Middleware that transforms an HTTP server app effect into another HTTP server app effect.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -50,14 +50,14 @@ export interface HttpMiddleware {
 /**
  * Namespace containing types associated with `HttpMiddleware`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace HttpMiddleware {
   /**
    * Callable type representing middleware already specialized to a particular transformed app type.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -69,7 +69,7 @@ export declare namespace HttpMiddleware {
 /**
  * Defines an `HttpMiddleware` while preserving its precise type.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -93,7 +93,7 @@ const stripSearchAndHash = (url: string): string => {
 /**
  * Runs an effect with HTTP response logging disabled for the current server request.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effec
 /**
  * Context reference for a predicate that disables server-side tracing for matching requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -119,7 +119,7 @@ export const TracerDisabledWhen = Context.Reference<Predicate<HttpServerRequest>
 /**
  * Creates a layer that disables server-side tracing for requests whose URL exactly matches one of the supplied URLs.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -130,7 +130,7 @@ export const layerTracerDisabledForUrls = (
 /**
  * Context reference for generating server span names from HTTP server requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -142,7 +142,7 @@ export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) 
 /**
  * Middleware that logs sent HTTP responses with request method, request URL, and response status annotations.
  *
- * @unstable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */
@@ -192,7 +192,7 @@ export const isTracerDisabledUnsafe = (
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
- * @unstable
+ * @stability unstable
  * @category tracing
  * @since 4.0.0
  */
@@ -292,7 +292,7 @@ export const tracer: <E, R>(
 /**
  * Middleware that trusts `X-Forwarded-Host` and `X-Forwarded-For`, updating the request host header and remote address.
  *
- * @unstable
+ * @stability unstable
  * @category proxying
  * @since 4.0.0
  */
@@ -313,7 +313,7 @@ export const xForwardedHeaders = make((httpApp) =>
 /**
  * Middleware that parses the current request URL's search parameters and provides them as `ParsedSearchParams`.
  *
- * @unstable
+ * @stability unstable
  * @category parsing
  * @since 4.0.0
  */
@@ -334,7 +334,7 @@ export const searchParamsParser = <E, R>(
 /**
  * Middleware that handles CORS preflight requests and adds configured CORS headers to HTTP responses.
  *
- * @unstable
+ * @stability unstable
  * @category middleware
  * @since 4.0.0
  */
@@ -511,7 +511,7 @@ export const cors = (options?: {
  * `Cache-Control: no-transform`, or use `compressible` to restrict which
  * response content types can be compressed.
  *
- * @unstable
+ * @stability unstable
  * @category compression
  * @since 4.0.0
  */
