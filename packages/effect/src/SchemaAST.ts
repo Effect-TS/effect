@@ -2319,23 +2319,25 @@ export const Arrays: new(
       return rest![0]
     }
 
-    const finish = (s: ArrayParserState): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
-      if (ast.rest.length === 0 && s.len > elementLen) {
-        for (let i = elementLen; i <= s.len - 1; i++) {
-          const unexpected = new SchemaIssue.UnexpectedKey(ast, s.input[i], s.options)
+    const finish = (state: ArrayParserState): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      const { input, len, options } = state
+      // handle excess indexes
+      if (ast.rest.length === 0 && len > elementLen) {
+        for (let i = elementLen; i < len; i++) {
+          const unexpected = new SchemaIssue.UnexpectedKey(ast, input[i], options)
           const issue = new SchemaIssue.Pointer([i], unexpected)
-          if (s.options.errors === "all") {
-            if (s.issues) s.issues.push(issue)
-            else s.issues = [issue]
+          if (options.errors === "all") {
+            if (state.issues) state.issues.push(issue)
+            else state.issues = [issue]
           } else {
-            return Effect.fail(new SchemaIssue.Composite(ast, [issue], s.input, s.options))
+            return Effect.fail(new SchemaIssue.Composite(ast, [issue], input, options))
           }
         }
       }
-      if (s.issues) {
-        return Effect.fail(new SchemaIssue.Composite(ast, s.issues, s.input, s.options))
+      if (state.issues) {
+        return Effect.fail(new SchemaIssue.Composite(ast, state.issues, input, options))
       }
-      return InternalParser.succeed(s.output)
+      return InternalParser.succeed(state.output)
     }
 
     const parse = (
@@ -2358,17 +2360,13 @@ export const Arrays: new(
       const eff = concurrency === 1
         ? parseArray(state, input, 0, end)
         : parseArrayConcurrent(state, input, { concurrency, end })
-      return eff ? settle(eff, state) : finish(state)
-    }
-
-    const settle = (
-      eff: Effect.Effect<void, SchemaIssue.Issue, any>,
-      state: ArrayParserState
-    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      if (!eff) return finish(state)
       if (effectIsExit(eff)) return Effect.flatMapEager(eff, () => finish(state))
+      // The first execution resumes the suspended traversal; later executions
+      // parse again from scratch, as the generator this replaced did.
       let first = true
       return Effect.suspend(() => {
-        if (!first) return parse(state.input, state.options)
+        if (!first) return parse(input, options)
         first = false
         return Effect.flatMap(eff, () => finish(state))
       })
@@ -2377,7 +2375,6 @@ export const Arrays: new(
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
       try {
-        // If the input is not an array, return early with an error
         if (!Array.isArray(input)) {
           return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         }
@@ -2387,6 +2384,7 @@ export const Arrays: new(
         }
         return parse(input, options)
       } catch (error) {
+        // `Effect.fnUntracedEager` turned a synchronous throw into a defect
         return Effect.die(error)
       }
     }

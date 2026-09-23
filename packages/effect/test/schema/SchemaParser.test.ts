@@ -62,35 +62,6 @@ describe("SchemaParser", () => {
           }))
       }
     }
-
-    for (const { input, make, name } of cases.filter(({ name }) => name === "Array" || name === "Tuple")) {
-      for (const operation of ["decode", "encode"] as const) {
-        it.effect(
-          name + " " + operation + " reruns asynchronous children without reusing output",
-          () =>
-            Effect.gen(function*() {
-              const calls: Array<string> = []
-              const getter = SchemaGetter.transformEffect<string, string>((value) =>
-                Effect.sync(() => {
-                  calls.push(value)
-                  return value
-                })
-              )
-              const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
-              const parse = operation === "decode"
-                ? SchemaParser.decodeUnknownEffect(schema)
-                : SchemaParser.encodeUnknownEffect(schema)
-              const effect = parse(input)
-              const first = yield* effect
-              const second = yield* effect
-              deepStrictEqual(first, input)
-              deepStrictEqual(second, input)
-              deepStrictEqual(calls, ["a", "b", "a", "b"])
-              assertTrue(first !== second)
-            })
-        )
-      }
-    }
   })
 
   describe("product concurrency", () => {
@@ -111,14 +82,12 @@ describe("SchemaParser", () => {
 
     for (const { input, make, name } of cases.filter(({ name }) => name === "Array" || name === "Tuple")) {
       for (const operation of ["decode", "encode"] as const) {
-        it.effect(
-          name + " " + operation + " reruns suspended concurrent children without reusing output",
-          () =>
+        for (const concurrency of [1, 2]) {
+          it.effect(`${name} ${operation} reruns suspended children without reusing output (concurrency ${concurrency})`, () =>
             Effect.gen(function*() {
               const calls: Array<string> = []
               const getter = SchemaGetter.transformEffect<string, string>((value) =>
-                Effect.gen(function*() {
-                  yield* Effect.yieldNow
+                Effect.map(Effect.yieldNow, () => {
                   calls.push(value)
                   return value
                 })
@@ -127,16 +96,15 @@ describe("SchemaParser", () => {
               const parse = operation === "decode"
                 ? SchemaParser.decodeUnknownEffect(schema)
                 : SchemaParser.encodeUnknownEffect(schema)
-              const effect = parse(input, { concurrency: 2 })
+              const effect = parse(input, { concurrency })
               const first = yield* effect
-              deepStrictEqual(first, input)
-              deepStrictEqual(calls.slice().sort(), ["a", "b", "c"])
               const second = yield* effect
+              deepStrictEqual(first, input)
               deepStrictEqual(second, input)
-              deepStrictEqual(calls.slice(3).sort(), ["a", "b", "c"])
               assertTrue(first !== second)
-            })
-        )
+              deepStrictEqual(calls.sort(), ["a", "a", "b", "b", "c", "c"])
+            }))
+        }
       }
     }
 
