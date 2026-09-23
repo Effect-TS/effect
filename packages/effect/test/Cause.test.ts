@@ -686,6 +686,30 @@ describe("Cause", () => {
     })
   })
 
+  describe("squash", () => {
+    it("prefers the first Fail over any Die, whatever the order", () => {
+      const cause = Cause.combine(Cause.die("boom"), Cause.combine(Cause.fail("e1"), Cause.fail("e2")))
+      assert.strictEqual(Cause.squash(cause), "e1")
+    })
+
+    it("falls back to the first Die when there is no Fail", () => {
+      const cause = Cause.combine(Cause.interrupt(1), Cause.combine(Cause.die("d1"), Cause.die("d2")))
+      assert.strictEqual(Cause.squash(cause), "d1")
+    })
+
+    it("reports interrupts when there is neither a Fail nor a Die", () => {
+      const squashed = Cause.squash(Cause.combine(Cause.interrupt(1), Cause.interrupt(2)))
+      assert.ok(squashed instanceof Error)
+      assert.strictEqual((squashed as Error).message, "All fibers interrupted without error")
+    })
+
+    it("reports an empty cause", () => {
+      const squashed = Cause.squash(Cause.empty)
+      assert.ok(squashed instanceof Error)
+      assert.strictEqual((squashed as Error).message, "Empty cause")
+    })
+  })
+
   describe("StackTrace", () => {
     it("is a Context.Service", () => {
       assert.ok(Cause.StackTrace !== undefined)
