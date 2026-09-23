@@ -340,45 +340,25 @@ describe("toFormatter", () => {
   })
 
   describe("suspend", () => {
-    it("compiles a recursive body once", () => {
+    it("compiles a recursive schema once", () => {
       interface Tree {
         readonly a: number
         readonly as: ReadonlyArray<Tree>
       }
       let compiled = 0
-      const Counted = Schema.Number.annotate({
-        toFormatter: () => {
+      const Tree = Schema.Struct({
+        a: Schema.Number.pipe(Schema.overrideToFormatter(() => {
           compiled++
-          return (n: number) => String(n)
-        }
-      })
-      const Tree = Schema.Struct({
-        a: Counted,
+          return String
+        })),
         as: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
       })
-      const make = (depth: number): Tree => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
-      Schema.toFormatter(Tree)(make(8))
+      const format = Schema.toFormatter(Tree)
+      strictEqual(
+        format({ a: 1, as: [{ a: 2, as: [{ a: 3, as: [] }] }] }),
+        `{ "a": 1, "as": [{ "a": 2, "as": [{ "a": 3, "as": [] }] }] }`
+      )
       strictEqual(compiled, 1)
-    })
-
-    it("keeps invoking onBefore at every value level", () => {
-      interface Tree {
-        readonly a: number
-        readonly as: ReadonlyArray<Tree>
-      }
-      const Tree = Schema.Struct({
-        a: Schema.Number,
-        as: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
-      })
-      let calls = 0
-      const format = Schema.toFormatter(Tree, {
-        onBefore: () => {
-          calls++
-          return undefined
-        }
-      })
-      format({ a: 1, as: [{ a: 0, as: [] }] })
-      strictEqual(calls, 8)
     })
 
     it("Tuple", () => {

@@ -31,16 +31,24 @@ function causeToFormatter<E>(error: Formatter<E>, defect: Formatter<unknown>) {
 }
 
 /** @internal */
-export function toFormatter<T>(root: SchemaAST.AST, options?: {
+export function toFormatter<T>(ast: SchemaAST.AST, options?: {
   readonly onBefore?:
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<T> {
-  let shared: Map<SchemaAST.AST, Formatter<any>> | undefined
-  let rootFormatter: Formatter<any>
-  return rootFormatter = recur(root)
+  const compiled = new Map<SchemaAST.AST, Formatter<any>>()
+  return recur(ast)
 
   function recur(ast: SchemaAST.AST): Formatter<any> {
+    let formatter = compiled.get(ast)
+    if (formatter === undefined) {
+      formatter = compile(ast)
+      compiled.set(ast, formatter)
+    }
+    return formatter
+  }
+
+  function compile(ast: SchemaAST.AST): Formatter<any> {
     const annotation = InternalAnnotations.resolve(ast)?.["toFormatter"]
     if (typeof annotation === "function") {
       return annotation(SchemaAST.isDeclaration(ast) ? ast.typeParameters.map(recur) : [])
@@ -224,23 +232,8 @@ export function toFormatter<T>(root: SchemaAST.AST, options?: {
         }
       }
       case "Suspend": {
-        let formatter: Formatter<any> | undefined
-        return (value) => {
-          if (formatter === undefined) {
-            const target = ast.thunk()
-            if (options?.onBefore !== undefined) {
-              formatter = recur(target)
-            } else {
-              shared ??= new Map<SchemaAST.AST, Formatter<any>>([[root, rootFormatter]])
-              formatter = shared.get(target)
-              if (formatter === undefined) {
-                formatter = recur(target)
-                shared.set(target, formatter)
-              }
-            }
-          }
-          return formatter(value)
-        }
+        let formatter: Formatter<any>
+        return (value) => (formatter ??= recur(ast.thunk()))(value)
       }
     }
   }

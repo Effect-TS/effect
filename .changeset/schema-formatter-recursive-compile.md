@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Cache compiled recursive bodies within each hook-free `Schema.toFormatter` instance, avoiding per-level retention.
+Fix `Schema.toFormatter` compiling a recursive schema again at every nesting level of the formatted value.
