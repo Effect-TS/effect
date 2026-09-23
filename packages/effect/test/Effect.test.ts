@@ -834,6 +834,20 @@ describe("Effect", () => {
         assert.deepStrictEqual(results, [1, undefined, 3])
       }))
 
+    it.effect("sequential preserves array proxy read order", () =>
+      Effect.gen(function*() {
+        const reads: Array<PropertyKey> = []
+        const values = new Proxy([1, 2], {
+          get(target, key, receiver) {
+            reads.push(key)
+            return Reflect.get(target, key, receiver)
+          }
+        })
+        const results = yield* Effect.forEach(values, (value) => Effect.succeed(value))
+        assert.deepStrictEqual(results, [1, 2])
+        assert.deepStrictEqual(reads, [Symbol.iterator, "length", "0", "length", "1", "length"])
+      }))
+
     it.effect("sequential follows an array that grows while it runs", () =>
       Effect.gen(function*() {
         const values = [1, 2]
