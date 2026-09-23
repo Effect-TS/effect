@@ -30,7 +30,7 @@ const ipv6Segments = [0x2001, 0x0db8, 0x85a3, 0, 0, 0x8a2e, 0x0370, 0x7334] as c
 const ipv6Bytes = new Uint8Array(ipv6Segments.flatMap((segment) => [segment >> 8, segment & 0xff]))
 
 // Distinct objects with the same value, plus one differing only in the last
-// byte so byte-wise comparison has to scan the whole address.
+// byte so the comparison has to check the whole address.
 const ipv4 = NetAddress.ipv4FromBytesUnsafe(ipv4Bytes)
 const ipv4Same = NetAddress.ipv4FromBytesUnsafe(ipv4Bytes)
 const ipv4Other = NetAddress.ipv4FromBytesUnsafe(new Uint8Array([192, 168, 1, 43]))
@@ -52,7 +52,7 @@ const hashMethod = (self: Hash.Hash) => self[Hash.symbol]()
 const bench = new Bench({ name: `NetAddress (${runtime})` })
 
 bench
-  // Allocation floor for the current Uint8Array storage.
+  // Typed-array allocation cost, for comparison with Uint8Array-backed storage.
   .add("baseline new Uint8Array(4)", () => consume(new Uint8Array(4)))
   .add("baseline new Uint8Array(16)", () => consume(new Uint8Array(16)))
   // IPv4 construction
