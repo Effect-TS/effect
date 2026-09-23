@@ -616,6 +616,7 @@ class NodeImpl<A> {
   preserveInitialValueOnBuild = false
   hydrating = false
   hydrationPending = false
+  pendingRuntime: NodeImpl<any> | undefined
 
   parents = new Set<NodeImpl<any>>()
   previousParents: Set<NodeImpl<any>> | undefined
@@ -683,6 +684,7 @@ class NodeImpl<A> {
   setHydratedValue(value: A): void {
     this.hydrating = (this.state & NodeFlags.initialized) === 0
     this.hydrationPending = this.hydrating
+    this.pendingRuntime = undefined
     this.setInitialValue(value)
   }
 
@@ -760,9 +762,11 @@ class NodeImpl<A> {
     this.children.delete(child)
   }
 
-  invalidate(): void {
-    if (!this.hydrationPending) {
+  invalidate(parent?: NodeImpl<any>): void {
+    if (!this.hydrationPending || parent !== this.pendingRuntime || parent === undefined) {
       this.hydrating = false
+      this.hydrationPending = false
+      this.pendingRuntime = undefined
     }
     if (this.building && batchState.phase === BatchPhase.collect) {
       this.invalidatedDuringBuild = true
@@ -790,7 +794,7 @@ class NodeImpl<A> {
     const children = this.children
     this.children = new Set()
     for (const child of children) {
-      child.invalidate()
+      child.invalidate(this)
     }
   }
 
@@ -878,7 +882,16 @@ export const isHydrating = (ctx: Atom.AtomContext): boolean => {
   const node = (ctx as Lifetime<any>).node
   if (node === undefined) return ctx.hydrating
   node.hydrationPending = false
+  node.pendingRuntime = undefined
   return node.hydrating
+}
+
+/** @internal */
+export const pendingHydrationRuntime = (ctx: Atom.AtomContext, runtime: Atom.Atom<any>): void => {
+  const node = (ctx as Lifetime<any>).node
+  if (node?.hydrationPending) {
+    node.pendingRuntime = node.registry.ensureNode(runtime)
+  }
 }
 
 const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
@@ -1014,6 +1027,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
     if (this.disposed) return
     this.node.hydrating = false
     this.node.hydrationPending = false
+    this.node.pendingRuntime = undefined
     this.node.setValue(a as any)
   },
 

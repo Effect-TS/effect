@@ -275,6 +275,7 @@ const RuntimeProto = {
       const previous = get.self<AsyncResult.AsyncResult<any, any>>()
       const runtimeResult = get(this)
       if (runtimeResult._tag !== "Success") {
+        Registry.pendingHydrationRuntime(get, this)
         return AsyncResult.replacePrevious(runtimeResult, previous)
       }
       return read(get, runtimeResult.value)
@@ -301,6 +302,7 @@ const RuntimeProto = {
       const previous = get.self<AsyncResult.AsyncResult<any, any>>()
       const runtimeResult = get(this)
       if (runtimeResult._tag !== "Success") {
+        Registry.pendingHydrationRuntime(get, this)
         return AsyncResult.replacePrevious(runtimeResult, previous)
       }
       return makeEffect(
@@ -319,6 +321,7 @@ const RuntimeProto = {
         const previous = get.self<AsyncResult.AsyncResult<any, any>>()
         const runtimeResult = get(this)
         if (runtimeResult._tag !== "Success") {
+          Registry.pendingHydrationRuntime(get, this)
           return AsyncResult.replacePrevious(runtimeResult, previous)
         }
         const value = typeof ref === "function" ? ref(get) : ref
@@ -363,6 +366,7 @@ const makeFnRuntime = (
     const previous = get.self<AsyncResult.AsyncResult<any, any>>()
     const runtimeResult = get.get(self)
     if (runtimeResult._tag !== "Success") {
+      Registry.pendingHydrationRuntime(get, self)
       return AsyncResult.replacePrevious(runtimeResult, previous)
     }
     return read(get, runtimeResult.value)
