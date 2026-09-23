@@ -2586,6 +2586,53 @@ describe("Effect", () => {
   describe("finalization", () => {
     const ExampleError = new Error("Oh noes!")
 
+    const throwing = (): never => {
+      throw "finalizer defect"
+    }
+
+    it.effect("onExit preserves the original failure when the finalizer throws", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.fail("body failure").pipe(Effect.onExit(throwing), Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("body failure"), Cause.die("finalizer defect")))
+        )
+      }))
+
+    it.effect("onExit reports a thrown finalizer on success", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.succeed(1).pipe(Effect.onExit(throwing), Effect.exit)
+        assert.deepStrictEqual(result, Exit.die("finalizer defect"))
+      }))
+
+    it.effect("an outer onInterrupt still sees the interruption after an inner finalizer throws", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const result = yield* Effect.interrupt.pipe(
+          Effect.onExit(throwing),
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          ),
+          Effect.exit
+        )
+        assert.isTrue(finalized)
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) {
+          assert.deepStrictEqual(result.cause.reasons.map((reason) => reason._tag), ["Interrupt", "Die"])
+          assert.deepStrictEqual(result.cause.reasons[1], Cause.die("finalizer defect").reasons[0])
+        }
+      }))
+
+    it("nested throwing finalizers do not overflow the stack", () => {
+      let program: Effect.Effect<unknown> = Effect.succeed(1)
+      for (let i = 0; i < 20_000; i++) {
+        program = Effect.onExit(Effect.exit(program), throwing)
+      }
+      assert.deepStrictEqual(Effect.runSyncExit(program), Exit.die("finalizer defect"))
+    })
+
     it.effect("fail ensuring", () =>
       Effect.gen(function*() {
         let finalized = false
