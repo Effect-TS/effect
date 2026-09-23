@@ -5,7 +5,7 @@ import { SqlClient } from "effect/sql"
 import { SqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
+import { clickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
 import {
   ClickHouseNativeSqlClient,
   layer,
@@ -14,17 +14,17 @@ import {
 } from "@effect/sql-clickhouse-native/ClickHouseNativeSqlClient"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
+  clickHouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
 
 const whenNativeTransactionIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  clickhouseConfig.pipe(
+  clickHouseConfig.pipe(
     Effect.flatMap((config) => config.nativeIntegration && config.nativeTransactionIntegration ? effect : Effect.void)
   )
 
 describe("ClickHouse native SQL client service", () => {
   it.effect("preserves pool-size validation from make", () =>
     Effect.gen(function*() {
-      return yield* make(yield* clickhouseConfig, { poolSize: 0 })
+      return yield* make(yield* clickHouseConfig, { poolSize: 0 })
     }).pipe(
       Effect.result,
       Effect.tap((result) =>
@@ -40,7 +40,7 @@ describe("ClickHouse native SQL client service", () => {
 
   it.effect("provides the service through its layer", () =>
     Effect.gen(function*() {
-      const config = yield* clickhouseConfig
+      const config = yield* clickHouseConfig
       return yield* ClickHouseNativeSqlClient.pipe(
         Effect.asVoid,
         Effect.provide(layer(config, { poolSize: 0 }).pipe(Layer.provide(NodeCrypto.layer)))
@@ -61,7 +61,7 @@ describe("ClickHouse native SQL client service", () => {
 describe("ClickHouse native SQL client service integration", () => {
   it.effect("executes through the scoped service layer", () =>
     whenNativeIntegration(Effect.gen(function*() {
-      const config = yield* clickhouseConfig
+      const config = yield* clickHouseConfig
       yield* Effect.gen(function*() {
         const client = yield* ClickHouseNativeSqlClient
         yield* client.ping
@@ -75,17 +75,17 @@ describe("ClickHouse native SQL client service integration", () => {
 
   it.effect("provides generic Effect SQL with safely compiled parameters", () =>
     whenNativeIntegration(Effect.gen(function*() {
-      const config = yield* clickhouseConfig
+      const config = yield* clickHouseConfig
       yield* Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
-        const rows = yield* sql`SELECT ${"native's TCP"} AS transport, ${2} AS value`
+        const rows = yield* sql`SELECT ${"native's TCP"} AS transport, ${2} AS value, ${true} AS enabled`
         yield* sql`DROP TABLE IF EXISTS market.effect_native_generic_sql_insert_test`
         yield* sql`CREATE TABLE market.effect_native_generic_sql_insert_test (id UInt64, value String) ENGINE = Memory`
         yield* sql`INSERT INTO market.effect_native_generic_sql_insert_test ${sql.insert({ id: 3, value: "generic" })}`
         const inserted = yield* sql`SELECT * FROM market.effect_native_generic_sql_insert_test`
         yield* sql`DROP TABLE market.effect_native_generic_sql_insert_test`
 
-        expect(rows).toEqual([{ transport: "native's TCP", value: 2 }])
+        expect(rows).toEqual([{ enabled: true, transport: "native's TCP", value: 2 }])
         expect(inserted).toEqual([{ id: 3, value: "generic" }])
       }).pipe(
         Effect.provide(layer(config, { poolSize: 1 }).pipe(Layer.provide(NodeCrypto.layer)))
@@ -94,7 +94,7 @@ describe("ClickHouse native SQL client service integration", () => {
 
   it.effect("commits, rolls back, and rejects nested transactions on a reserved Native socket", () =>
     whenNativeTransactionIntegration(Effect.gen(function*() {
-      const config = yield* clickhouseConfig
+      const config = yield* clickHouseConfig
       yield* Effect.gen(function*() {
         const client = yield* ClickHouseNativeSqlClient
         const sql = client.sql
@@ -125,7 +125,7 @@ describe("ClickHouse native SQL client service integration", () => {
 
   it.effect("inserts through the generic SQL service layer", () =>
     whenNativeIntegration(Effect.gen(function*() {
-      const config = yield* clickhouseConfig
+      const config = yield* clickHouseConfig
       yield* Effect.gen(function*() {
         const client = yield* ClickHouseNativeSqlClient
         const sql = client.sql
@@ -151,7 +151,7 @@ describe("ClickHouse native SQL client service integration", () => {
   it.effect("executes through the scoped helper", () =>
     whenNativeIntegration(
       Effect.gen(function*() {
-        const config = yield* clickhouseConfig
+        const config = yield* clickHouseConfig
         return yield* withClickHouseNativeSqlClient(config, { poolSize: 1 }, (client) =>
           client.execute("SELECT 1 AS value").pipe(
             Effect.tap((rows) =>

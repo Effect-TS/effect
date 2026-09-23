@@ -11,7 +11,8 @@ import { makeClickHouseNativeClient } from "./ClickHouseNativeClient.ts"
 
 export interface ClickHouseNativePool {
   readonly execute: (
-    sql: string
+    sql: string,
+    parameters?: ReadonlyArray<unknown>
   ) => Effect.Effect<
     ReadonlyArray<Record<string, unknown>>,
     SqlError,
@@ -49,7 +50,8 @@ export const makeClickHouseNativePool = (
   Number.isSafeInteger(options.size) && options.size > 0
     ? Pool.make({ acquire: makeClickHouseNativeClient(config), size: options.size }).pipe(
       Effect.map((pool) => ({
-        execute: (sql: string) => Pool.use(pool, (client: ClickHouseNativeClient) => client.execute(sql)),
+        execute: (sql: string, parameters: ReadonlyArray<unknown> = []) =>
+          Pool.use(pool, (client: ClickHouseNativeClient) => client.execute(sql, parameters)),
         insert: (sql: string, rows: ReadonlyArray<Record<string, unknown>>) =>
           Pool.use(pool, (client: ClickHouseNativeClient) => client.insert(sql, rows)),
         ping: Pool.use(pool, (client: ClickHouseNativeClient) => client.ping),

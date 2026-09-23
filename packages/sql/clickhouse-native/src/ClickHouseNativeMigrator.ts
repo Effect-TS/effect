@@ -22,19 +22,25 @@ const defaultTable = "effect_clickhouse_native_migrations"
 const invalidMigration = (message: string, operation: string): SqlError =>
   SqlError.make({ reason: ConstraintError.make({ cause: new Error(message), message, operation }) })
 
-const identifier = (value: string): Effect.Effect<string, SqlError> =>
-  value.split(".").every((part) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(part))
-    ? Effect.succeed(value.split(".").map((part) => `\`${part}\``).join("."))
+const identifier = (value: string): Effect.Effect<string, SqlError> => {
+  const parts = value.split(".")
+
+  return Array.every(parts, (part) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(part))
+    ? Effect.succeed(
+      Array.map(parts, (part) => `\`${part}\``).join(".")
+    )
     : invalidMigration(`Invalid ClickHouse migrations table identifier: ${value}`, "migrator.identifier")
+}
 
 const literal = (value: string): string => `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`
 
 const validate = (
   migrations: ReadonlyArray<ClickHouseNativeMigration>
 ): Effect.Effect<ReadonlyArray<ClickHouseNativeMigration>, SqlError> => {
-  const ids = migrations.map((migration) => migration.id)
-  const duplicate = ids.some((id, index) => ids.indexOf(id) !== index)
-  const invalid = migrations.some(
+  const ids = Array.map(migrations, (migration) => migration.id)
+  const duplicate = Array.some(ids, (id, index) => ids.indexOf(id) !== index)
+  const invalid = Array.some(
+    migrations,
     (migration) => !Number.isSafeInteger(migration.id) || migration.id <= 0 || migration.name.length === 0
   )
 
@@ -69,8 +75,8 @@ export const run = (
       created_at DateTime DEFAULT now()
     ) ENGINE = ReplacingMergeTree ORDER BY migration_id`)
     const applied = yield* client.execute(`SELECT migration_id, name FROM ${table} ORDER BY migration_id`)
-    const appliedIds = applied.map((migration) => Number(migration.migration_id))
-    const pending = migrations.filter((migration) => !appliedIds.includes(migration.id))
+    const appliedIds = Array.map(applied, (migration) => Number(migration.migration_id))
+    const pending = Array.filter(migrations, (migration) => !appliedIds.includes(migration.id))
 
     yield* Effect.forEach(
       pending,
@@ -89,7 +95,7 @@ export const run = (
       { concurrency: "unbounded", discard: true }
     )
 
-    return pending.map((migration) => [migration.id, migration.name] as const)
+    return Array.map(pending, (migration) => [migration.id, migration.name] as const)
   })
 
 export const layer = (

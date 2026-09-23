@@ -3,7 +3,7 @@ import { it } from "@effect/vitest"
 import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
+import { clickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
 import { run } from "@effect/sql-clickhouse-native/ClickHouseNativeMigrator"
 import {
   ClickHouseNativeSqlClient,
@@ -11,7 +11,7 @@ import {
 } from "@effect/sql-clickhouse-native/ClickHouseNativeSqlClient"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
+  clickHouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
 
 const migrationsTable = "market.effect_native_migrator_test"
 const targetTable = "market.effect_native_migrator_target"
@@ -20,7 +20,7 @@ describe("ClickHouse native migrator integration", () => {
   it.effect("records an immutable migration and does not run it twice", () =>
     whenNativeIntegration(
       Effect.gen(function*() {
-        const config = yield* clickhouseConfig
+        const config = yield* clickHouseConfig
         yield* withClickHouseNativeSqlClient(config, { poolSize: 1 }, (client) =>
           Effect.gen(function*() {
             yield* client.execute(`DROP TABLE IF EXISTS ${migrationsTable}`)

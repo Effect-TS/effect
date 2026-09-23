@@ -4,16 +4,16 @@ import { Effect, Result } from "effect"
 import { isSqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
-import { clickhouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
+import { clickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
 import { makeClickHouseNativePool, withClickHouseNativePool } from "@effect/sql-clickhouse-native/ClickHouseNativePool"
 
 const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  clickhouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
+  clickHouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
 
 describe("ClickHouse native TCP pool", () => {
   it.effect("rejects a non-positive pool size", () =>
     Effect.gen(function*() {
-      return yield* makeClickHouseNativePool(yield* clickhouseConfig, { size: 0 })
+      return yield* makeClickHouseNativePool(yield* clickHouseConfig, { size: 0 })
     }).pipe(
       Effect.result,
       Effect.tap((result) =>
@@ -34,7 +34,7 @@ describe("ClickHouse native TCP pool integration", () => {
   it.effect("leases distinct connections for concurrent Effect.all queries", () =>
     whenNativeIntegration(
       Effect.gen(function*() {
-        const config = yield* clickhouseConfig
+        const config = yield* clickHouseConfig
         return yield* withClickHouseNativePool(config, { size: 2 }, (pool) =>
           Effect.all(
             [
@@ -60,7 +60,7 @@ describe("ClickHouse native TCP pool integration", () => {
   it.effect("leases connections for concurrent Effect.forEach queries", () =>
     whenNativeIntegration(
       Effect.gen(function*() {
-        const config = yield* clickhouseConfig
+        const config = yield* clickHouseConfig
         return yield* withClickHouseNativePool(config, { size: 2 }, (pool) =>
           Effect.forEach(
             ["one", "two", "three", "four"],

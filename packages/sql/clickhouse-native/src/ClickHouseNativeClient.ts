@@ -25,7 +25,8 @@ import { createConnection } from "node:net"
 
 import type { ClickHouseConfig } from "./ClickHouseNativeConfig.ts"
 
-const CLIENT_PROTOCOL_VERSION = BigInt("54000")
+const CLIENT_PROTOCOL_VERSION = BigInt("54459")
+const SETTINGS_CUSTOM_FLAG = BigInt("2")
 
 class ClickHouseNativeError extends Data.TaggedError("ClickHouseNativeError")<{
   readonly cause: unknown
@@ -99,6 +100,7 @@ export const toSqlError = (cause: unknown, operation: string): SqlError => {
   if (server.name.includes("CONSTRAINT")) {
     return SqlError.make({ reason: ConstraintError.make(fields) })
   }
+
   return SqlError.make({ reason: UnknownError.make(fields) })
 }
 
@@ -210,7 +212,7 @@ const encodeVarUInt = (value: bigint): Buffer => {
     const byte = Number(remaining & BigInt("127"))
     const next = remaining >> BigInt("7")
 
-    return next === BigInt("0") ? [byte] : [byte | 0x80, ...encode(next)]
+    return next === BigInt("0") ? [byte] : Array.prepend(encode(next), byte | 0x80)
   }
 
   return Buffer.from(encode(value))
@@ -224,6 +226,72 @@ const encodeString = (value: string): ReadonlyArray<Buffer> => {
 
 const encodePacket = (parts: ReadonlyArray<Buffer>): Buffer => Buffer.concat(parts)
 
+const encodeInt64 = (value: bigint): Buffer => {
+  const buffer = Buffer.alloc(8)
+  buffer.writeBigInt64LE(value)
+
+  return buffer
+}
+
+const parameterValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return "'NULL'"
+  }
+  if (value instanceof Date) {
+    return `'${value.toISOString()}'`
+  }
+  if (typeof value === "boolean") {
+    return `'${value ? "true" : "false"}'`
+  }
+  if (typeof value === "bigint") {
+    return `'${value}'`
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new RangeError("ClickHouse query parameters must be finite numbers")
+    }
+
+    return `'${value}'`
+  }
+  if (Array.isArray(value)) {
+    return `'[${Array.map(value, parameterValue).join(",")}]'`
+  }
+  const text = typeof value === "string" ? value : JSON.stringify(value)
+
+  return `'${(text ?? "").replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`
+}
+
+const encodeQueryParameters = (values: ReadonlyArray<unknown>): ReadonlyArray<Buffer> =>
+  Array.flatMap(values, (value, index) =>
+    Array.flatten([
+      encodeString(`p${index + 1}`),
+      [encodeVarUInt(SETTINGS_CUSTOM_FLAG)],
+      encodeString(parameterValue(value))
+    ]))
+
+const encodeClientInfo = (socket: Socket): ReadonlyArray<Buffer> =>
+  Array.flatten([
+    [Buffer.from([1])],
+    encodeString(""),
+    encodeString(""),
+    encodeString(`${socket.localAddress}:${socket.localPort}`),
+    [encodeInt64(BigInt("0"))],
+    [Buffer.from([1])],
+    encodeString(""),
+    encodeString(""),
+    encodeString("effect-rapid-order"),
+    [encodeVarUInt(BigInt("1"))],
+    [encodeVarUInt(BigInt("0"))],
+    [encodeVarUInt(CLIENT_PROTOCOL_VERSION)],
+    encodeString(""),
+    [encodeVarUInt(BigInt("0"))],
+    [encodeVarUInt(BigInt("0"))],
+    [Buffer.from([0])],
+    [encodeVarUInt(BigInt("0"))],
+    [encodeVarUInt(BigInt("0"))],
+    [encodeVarUInt(BigInt("0"))]
+  ])
+
 const encodeBlockInfo = (): ReadonlyArray<Buffer> => [
   encodeVarUInt(BigInt("1")),
   Buffer.from([0]),
@@ -232,11 +300,12 @@ const encodeBlockInfo = (): ReadonlyArray<Buffer> => [
   encodeVarUInt(BigInt("0"))
 ]
 
-const encodeEmptyBlock = (): ReadonlyArray<Buffer> => [
-  ...encodeBlockInfo(),
-  encodeVarUInt(BigInt("0")),
-  encodeVarUInt(BigInt("0"))
-]
+const encodeEmptyBlock = (): ReadonlyArray<Buffer> =>
+  Array.flatten([
+    encodeBlockInfo(),
+    [encodeVarUInt(BigInt("0"))],
+    [encodeVarUInt(BigInt("0"))]
+  ])
 
 const write = (socket: Socket, payload: Buffer): Effect.Effect<void, ClickHouseNativeError> =>
   Effect.callback((resume) => {
@@ -341,7 +410,9 @@ const decimalValue = (value: unknown, precision: number, scale: number, type: st
     : ""
   const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text)
   if (match === null || (match[3]?.length ?? 0) > scale) {
-    throw new Error(`Expected a decimal with scale at most ${scale} for ClickHouse ${type}, received ${String(value)}`)
+    throw new Error(
+      `Expected a decimal with scale at most ${scale} for ClickHouse ${type}, received ${String(value)}`
+    )
   }
   const whole = match[2]
   const fraction = (match[3] ?? "").padEnd(scale, "0")
@@ -385,16 +456,17 @@ const defaultValue = (type: string): unknown => {
   if (type.startsWith("DateTime")) {
     return 0
   }
+
   return 0
 }
 
 const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): ReadonlyArray<Buffer> => {
   const nullable = nullableType(type)
   if (nullable !== undefined) {
-    const nulls = Buffer.from(values.map((value) => value === null || value === undefined ? 1 : 0))
-    const encoded = encodeColumnValues(nullable, values.map((value) => value ?? defaultValue(nullable)))
+    const nulls = Buffer.from(Array.map(values, (value) => value === null || value === undefined ? 1 : 0))
+    const encoded = encodeColumnValues(nullable, Array.map(values, (value) => value ?? defaultValue(nullable)))
 
-    return [nulls, ...encoded]
+    return Array.prepend(encoded, nulls)
   }
   const lowCardinality = lowCardinalityType(type)
   if (lowCardinality !== undefined) {
@@ -402,30 +474,34 @@ const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): Reado
     const keyBytes = dictionary.length <= 0x100 ? 1 : dictionary.length <= 0x1_0000 ? 2 : 4
     const keyType = keyBytes === 1 ? BigInt("0") : keyBytes === 2 ? BigInt("1") : BigInt("2")
     const keys = Buffer.concat(
-      values.map((value) => integerBuffer(BigInt(dictionary.findIndex((entry) => Object.is(entry, value))), keyBytes))
+      Array.map(
+        values,
+        (value) => integerBuffer(BigInt(dictionary.findIndex((entry) => Object.is(entry, value))), keyBytes)
+      )
     )
 
-    return [
-      integerBuffer(BigInt("1"), 8),
-      integerBuffer(BigInt("1536") | keyType, 8),
-      integerBuffer(BigInt(dictionary.length), 8),
-      ...encodeColumnValues(lowCardinality, dictionary),
-      integerBuffer(BigInt(values.length), 8),
-      keys
-    ]
+    return Array.flatten([
+      [integerBuffer(BigInt("1"), 8)],
+      [integerBuffer(BigInt("1536") | keyType, 8)],
+      [integerBuffer(BigInt(dictionary.length), 8)],
+      encodeColumnValues(lowCardinality, dictionary),
+      [integerBuffer(BigInt(values.length), 8)],
+      [keys]
+    ])
   }
   if (type === "String") {
-    return values.flatMap((value) => encodeString(typeof value === "string" ? value : String(value)))
+    return Array.flatMap(values, (value) => encodeString(typeof value === "string" ? value : String(value)))
   }
   const fixedString = /^FixedString\((\d+)\)$/.exec(type)
   if (fixedString !== null) {
     const length = Number(fixedString[1])
 
-    return values.map((value) => {
+    return Array.map(values, (value) => {
       const text = Buffer.from(typeof value === "string" ? value : String(value))
       if (text.length > length) {
         throw new Error(`Value exceeds ClickHouse ${type} length`)
       }
+
       return Buffer.concat([text, Buffer.alloc(length - text.length)])
     })
   }
@@ -438,24 +514,29 @@ const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): Reado
       ? (BigInt("1") << BigInt(bytes * 8 - 1)) - BigInt("1")
       : (BigInt("1") << BigInt(bytes * 8)) - BigInt("1")
 
-    return values.map((value) => {
+    return Array.map(values, (value) => {
       const integer = integerValue(value, type)
       if (integer < minimum || integer > maximum) {
         throw new Error(`Value is out of range for ClickHouse ${type}`)
       }
+
       return integerBuffer(integer, bytes)
     })
   }
   const floating = /^Float(32|64)$/.exec(type)
   if (floating !== null) {
-    return values.map((value) => {
+    return Array.map(values, (value) => {
       const number = typeof value === "number" ? value : Number(value)
       if (!Number.isFinite(number)) {
         throw new Error(`Expected a finite value for ClickHouse ${type}`)
       }
       const result = Buffer.alloc(Number(floating[1]) / 8)
-      if (type === "Float32") result.writeFloatLE(number)
-      else result.writeDoubleLE(number)
+      if (type === "Float32") {
+        result.writeFloatLE(number)
+      } else {
+        result.writeDoubleLE(number)
+      }
+
       return result
     })
   }
@@ -463,34 +544,37 @@ const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): Reado
   if (decimal !== undefined) {
     const bytes = decimal[0] <= 9 ? 4 : decimal[0] <= 18 ? 8 : 16
 
-    return values.map((value) => integerBuffer(decimalValue(value, decimal[0], decimal[1], type), bytes))
+    return Array.map(values, (value) => integerBuffer(decimalValue(value, decimal[0], decimal[1], type), bytes))
   }
   const dateTime64 = /^DateTime64\((\d+)(?:,\s*'[^']*')?\)$/.exec(type)
   if (dateTime64 !== null) {
-    return values.map((value) => integerBuffer(dateTime64Value(value, Number(dateTime64[1]), type), 8))
+    return Array.map(values, (value) => integerBuffer(dateTime64Value(value, Number(dateTime64[1]), type), 8))
   }
   if (type.startsWith("DateTime")) {
-    return values.map((value) => integerBuffer(dateTime64Value(value, 0, type), 4))
+    return Array.map(values, (value) => integerBuffer(dateTime64Value(value, 0, type), 4))
   }
 
   throw new Error(`Unsupported ClickHouse Native column type for insert: ${type}`)
 }
 
 const encodeDataBlock = (columns: ReadonlyArray<NativeColumn>, rows: ReadonlyArray<Record<string, unknown>>): Buffer =>
-  encodePacket([
-    ...encodeBlockInfo(),
-    encodeVarUInt(BigInt(columns.length)),
-    encodeVarUInt(BigInt(rows.length)),
-    ...columns.flatMap((column) => [
-      ...encodeString(column.name),
-      ...encodeString(column.type),
-      ...encodeColumnValues(
-        column.type,
-        rows.map((row) => Object.hasOwn(row, column.name) ? row[column.name] : defaultValue(column.type))
-      )
+  encodePacket(
+    Array.flatten([
+      encodeBlockInfo(),
+      [encodeVarUInt(BigInt(columns.length))],
+      [encodeVarUInt(BigInt(rows.length))],
+      Array.flatMap(columns, (column) =>
+        Array.flatten([
+          encodeString(column.name),
+          encodeString(column.type),
+          [Buffer.from([0])],
+          encodeColumnValues(
+            column.type,
+            Array.map(rows, (row) => Object.hasOwn(row, column.name) ? row[column.name] : defaultValue(column.type))
+          )
+        ]))
     ])
-  ])
-
+  )
 const readBlockInfo = (reader: NativeReader): Effect.Effect<void, ClickHouseNativeError> =>
   reader.varUInt.pipe(
     Effect.flatMap((field) => {
@@ -573,6 +657,24 @@ const readColumn = (
   if (type === "Bool") {
     return readValues(rows, reader.byte.pipe(Effect.map((value) => value !== 0)))
   }
+  const enumType = /^Enum(8|16)\((.*)\)$/.exec(type)
+  if (enumType !== null) {
+    const values = Array.map(
+      Array.fromIterable(
+        enumType[2].matchAll(/'((?:\\.|[^'])*)'\s*=\s*(-?\d+)/g)
+      ),
+      ([, name, value]) => [Number(value), name.replace(/\\'/g, "'")] as const
+    )
+    const bytes = Number(enumType[1]) / 8
+    return reader.bytes(rows * bytes).pipe(
+      Effect.map((data) =>
+        Array.makeBy(rows, (index) => {
+          const value = bytes === 1 ? data.readInt8(index) : data.readInt16LE(index * bytes)
+          return values.find(([code]) => code === value)?.[1] ?? value
+        })
+      )
+    )
+  }
   const numeric = /^(U?Int)(8|16|32|64)$/.exec(type)
   if (numeric !== null) {
     return readNumberColumn(reader, rows, Number(numeric[2]) / 8, numeric[1] === "Int", false)
@@ -594,7 +696,7 @@ const readColumn = (
     return reader.bytes(rows).pipe(
       Effect.flatMap((nulls) =>
         readColumn(reader, type.slice("Nullable(".length, -1), rows).pipe(
-          Effect.map((values) => values.map((value, index) => nulls[index] === 1 ? null : value))
+          Effect.map((values) => Array.map(values, (value, index) => nulls[index] === 1 ? null : value))
         )
       )
     )
@@ -615,9 +717,17 @@ const readColumns = (
       Effect.flatMap((name) =>
         reader.string.pipe(
           Effect.flatMap((type) =>
-            readColumn(reader, type, rows).pipe(
-              Effect.flatMap((values) =>
-                readColumns(reader, remaining - 1, rows, Array.append(columns, { name, type, values }))
+            reader.byte.pipe(
+              Effect.flatMap((customSerialization) =>
+                customSerialization === 0
+                  ? readColumn(reader, type, rows).pipe(
+                    Effect.flatMap((values) =>
+                      readColumns(reader, remaining - 1, rows, Array.append(columns, { name, type, values }))
+                    )
+                  )
+                  : new ClickHouseNativeError({
+                    cause: new Error(`Unsupported ClickHouse custom serialization for ${type}`)
+                  })
               )
             )
           )
@@ -646,7 +756,21 @@ const readBlock = (reader: NativeReader): Effect.Effect<ReadonlyArray<NativeColu
 const rowsFromBlock = (columns: ReadonlyArray<NativeColumn>): ReadonlyArray<Record<string, unknown>> => {
   const rows = columns[0]?.values.length ?? 0
 
-  return Array.makeBy(rows, (index) => Object.fromEntries(columns.map((column) => [column.name, column.values[index]])))
+  return Array.filter(
+    Array.makeBy(
+      rows,
+      (index) =>
+        Array.reduce(
+          columns,
+          {} as Record<string, unknown>,
+          (row, column) => ({
+            ...row,
+            [column.name]: column.values[index]
+          })
+        )
+    ),
+    (row) => Object.values(row).some((value) => value !== undefined)
+  )
 }
 
 const readException = (reader: NativeReader): Effect.Effect<ClickHouseServerError, ClickHouseNativeError> =>
@@ -668,7 +792,13 @@ const readException = (reader: NativeReader): Effect.Effect<ClickHouseServerErro
   )
 
 const drainProgress = (reader: NativeReader): Effect.Effect<void, ClickHouseNativeError> =>
-  reader.varUInt.pipe(Effect.andThen(reader.varUInt), Effect.andThen(reader.varUInt), Effect.asVoid)
+  reader.varUInt.pipe(
+    Effect.andThen(reader.varUInt),
+    Effect.andThen(reader.varUInt),
+    Effect.andThen(reader.varUInt),
+    Effect.andThen(reader.varUInt),
+    Effect.asVoid
+  )
 
 const drainProfileInfo = (reader: NativeReader): Effect.Effect<void, ClickHouseNativeError> =>
   reader.varUInt.pipe(
@@ -688,16 +818,18 @@ const handshake = (
     const reader = yield* makeNativeReader(socket)
     yield* write(
       socket,
-      encodePacket([
-        encodeVarUInt(BigInt("0")),
-        ...encodeString("effect-rapid-order"),
-        encodeVarUInt(BigInt("1")),
-        encodeVarUInt(BigInt("0")),
-        encodeVarUInt(CLIENT_PROTOCOL_VERSION),
-        ...encodeString(config.database),
-        ...encodeString(config.user),
-        ...encodeString(config.password)
-      ])
+      encodePacket(
+        Array.flatten([
+          [encodeVarUInt(BigInt("0"))],
+          encodeString("effect-rapid-order"),
+          [encodeVarUInt(BigInt("1"))],
+          [encodeVarUInt(BigInt("0"))],
+          [encodeVarUInt(CLIENT_PROTOCOL_VERSION)],
+          encodeString(config.database),
+          encodeString(config.user),
+          encodeString(config.password)
+        ])
+      )
     )
     const packet = yield* reader.varUInt
     if (packet === BigInt("2")) {
@@ -717,6 +849,10 @@ const handshake = (
         cause: new Error(`ClickHouse server protocol ${serverRevision} is too old`)
       })
     }
+    yield* reader.string
+    yield* reader.string
+    yield* reader.varUInt
+    yield* write(socket, encodePacket(encodeString("")))
 
     return reader
   })
@@ -724,19 +860,27 @@ const handshake = (
 const writeQuery = (
   socket: Socket,
   sql: string,
+  parameters: ReadonlyArray<unknown>,
   queryId: string
 ): Effect.Effect<void, ClickHouseNativeError> =>
-  write(
-    socket,
-    encodePacket([
-      encodeVarUInt(BigInt("1")),
-      ...encodeString(queryId),
-      ...encodeString(""),
-      encodeVarUInt(BigInt("2")),
-      encodeVarUInt(BigInt("0")),
-      ...encodeString(sql)
-    ])
-  )
+  Effect.try({
+    catch: (cause) => new ClickHouseNativeError({ cause }),
+    try: () =>
+      encodePacket(
+        Array.flatten([
+          [encodeVarUInt(BigInt("1"))],
+          encodeString(queryId),
+          encodeClientInfo(socket),
+          encodeString(""),
+          encodeString(""),
+          [encodeVarUInt(BigInt("2"))],
+          [Buffer.from([0])],
+          encodeString(sql),
+          encodeQueryParameters(parameters),
+          encodeString("")
+        ])
+      )
+  }).pipe(Effect.flatMap((payload) => write(socket, payload)))
 
 const readResults = (
   reader: NativeReader,
@@ -762,6 +906,12 @@ const readResults = (
       if (packet === BigInt("6")) {
         return drainProfileInfo(reader).pipe(Effect.andThen(readResults(reader, rows)))
       }
+      if (packet === BigInt("11")) {
+        return reader.string.pipe(Effect.andThen(reader.string), Effect.andThen(readResults(reader, rows)))
+      }
+      if (packet === BigInt("14")) {
+        return reader.string.pipe(Effect.andThen(readBlock(reader)), Effect.andThen(readResults(reader, rows)))
+      }
 
       return new ClickHouseNativeError({ cause: new Error(`Unsupported ClickHouse server packet ${packet}`) })
     })
@@ -784,6 +934,12 @@ const readInsertHeader = (
       if (packet === BigInt("6")) {
         return drainProfileInfo(reader).pipe(Effect.andThen(readInsertHeader(reader)))
       }
+      if (packet === BigInt("11")) {
+        return reader.string.pipe(Effect.andThen(reader.string), Effect.andThen(readInsertHeader(reader)))
+      }
+      if (packet === BigInt("14")) {
+        return reader.string.pipe(Effect.andThen(readBlock(reader)), Effect.andThen(readInsertHeader(reader)))
+      }
 
       return new ClickHouseNativeError({
         cause: new Error(`Expected ClickHouse insert header, received packet ${packet}`)
@@ -795,12 +951,18 @@ const execute = (
   socket: Socket,
   reader: NativeReader,
   sql: string,
+  parameters: ReadonlyArray<unknown>,
   queryId: string
 ): Effect.Effect<ReadonlyArray<Record<string, unknown>>, ClickHouseNativeError | ClickHouseServerError> =>
-  writeQuery(socket, sql, queryId).pipe(
-    Effect.andThen(
-      write(socket, encodePacket([encodeVarUInt(BigInt("2")), ...encodeString(""), ...encodeEmptyBlock()]))
-    ),
+  writeQuery(socket, sql, parameters, queryId).pipe(
+    Effect.andThen(write(
+      socket,
+      encodePacket(Array.flatten([
+        [encodeVarUInt(BigInt("2"))],
+        encodeString(""),
+        encodeEmptyBlock()
+      ]))
+    )),
     Effect.andThen(readResults(reader))
   )
 
@@ -813,10 +975,15 @@ const insert = (
 ): Effect.Effect<void, ClickHouseNativeError | ClickHouseServerError> =>
   rows.length === 0
     ? Effect.void
-    : writeQuery(socket, sql, queryId).pipe(
-      Effect.andThen(
-        write(socket, encodePacket([encodeVarUInt(BigInt("2")), ...encodeString(""), ...encodeEmptyBlock()]))
-      ),
+    : writeQuery(socket, sql, [], queryId).pipe(
+      Effect.andThen(write(
+        socket,
+        encodePacket(Array.flatten([
+          [encodeVarUInt(BigInt("2"))],
+          encodeString(""),
+          encodeEmptyBlock()
+        ]))
+      )),
       Effect.andThen(readInsertHeader(reader)),
       Effect.flatMap((columns) =>
         Effect.try({
@@ -824,9 +991,23 @@ const insert = (
           try: () => encodeDataBlock(columns, rows)
         }).pipe(
           Effect.flatMap((block) =>
-            write(socket, encodePacket([encodeVarUInt(BigInt("2")), ...encodeString(""), block])).pipe(
+            write(
+              socket,
+              encodePacket(Array.flatten([
+                [encodeVarUInt(BigInt("2"))],
+                encodeString(""),
+                [block]
+              ]))
+            ).pipe(
               Effect.andThen(
-                write(socket, encodePacket([encodeVarUInt(BigInt("2")), ...encodeString(""), ...encodeEmptyBlock()]))
+                write(
+                  socket,
+                  encodePacket(Array.flatten([
+                    [encodeVarUInt(BigInt("2"))],
+                    encodeString(""),
+                    encodeEmptyBlock()
+                  ]))
+                )
               ),
               Effect.andThen(readResults(reader)),
               Effect.asVoid
@@ -838,7 +1019,8 @@ const insert = (
 
 export interface ClickHouseNativeClient {
   readonly execute: (
-    sql: string
+    sql: string,
+    parameters?: ReadonlyArray<unknown>
   ) => Effect.Effect<ReadonlyArray<Record<string, unknown>>, SqlError, Crypto.Crypto>
   readonly insert: (
     sql: string,
@@ -853,11 +1035,11 @@ export const makeClickHouseNativeClient = (
   Effect.gen(function*() {
     const socket = yield* Effect.acquireRelease(connect(config), close)
     const reader = yield* handshake(socket, config)
-    const executeWithId = (sql: string) =>
+    const executeWithId = (sql: string, parameters: ReadonlyArray<unknown> = []) =>
       Crypto.Crypto.pipe(
         Effect.flatMap((crypto) => crypto.randomUUIDv4),
         Effect.mapError((cause) => new ClickHouseNativeError({ cause })),
-        Effect.flatMap((queryId) => execute(socket, reader, sql, queryId)),
+        Effect.flatMap((queryId) => execute(socket, reader, sql, parameters, queryId)),
         Effect.mapError((cause) => toSqlError(cause, "execute"))
       )
     const insertWithId = (sql: string, rows: ReadonlyArray<Record<string, unknown>>) =>

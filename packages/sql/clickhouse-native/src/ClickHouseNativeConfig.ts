@@ -2,7 +2,7 @@ import type { Effect } from "effect"
 
 import * as Config from "effect/Config"
 
-export const clickhouseConfig = Config.nested(
+export const clickHouseConfig = Config.nested(
   Config.all({
     database: Config.String("DATABASE").pipe(Config.withDefault("market")),
     host: Config.String("HOST").pipe(Config.withDefault("127.0.0.1")),
@@ -16,4 +16,4 @@ export const clickhouseConfig = Config.nested(
   }),
   "CLICKHOUSE"
 )
-export type ClickHouseConfig = Effect.Success<typeof clickhouseConfig>
+export type ClickHouseConfig = Effect.Success<typeof clickHouseConfig>

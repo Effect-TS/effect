@@ -1,5 +1,5 @@
 import { it } from "@effect/vitest"
-import { Effect, Result } from "effect"
+import { Array, Effect, Result } from "effect"
 import { isSqlError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
@@ -47,6 +47,6 @@ describe("ClickHouse native migrator", () => {
 
       yield* run({ migrations }).pipe(Effect.provideService(ClickHouseNativeSqlClient, successfulClient))
 
-      expect(migrations.map((migration) => migration.id)).toEqual([2, 1])
+      expect(Array.map(migrations, (migration) => migration.id)).toEqual([2, 1])
     }))
 })
