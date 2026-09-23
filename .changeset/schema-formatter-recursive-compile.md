@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce the memory `Schema.toFormatter` retains when formatting deeply nested values.
+Cache compiled recursive bodies within each hook-free `Schema.toFormatter` instance, avoiding per-level retention.

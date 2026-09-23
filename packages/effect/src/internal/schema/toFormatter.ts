@@ -36,8 +36,8 @@ export function toFormatter<T>(root: SchemaAST.AST, options?: {
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<T> {
-  let shared: Map<SchemaAST.AST, Formatter<any> | undefined> | undefined
-  let rootFormatter: Formatter<any> | undefined
+  let shared: Map<SchemaAST.AST, Formatter<any>> | undefined
+  let rootFormatter: Formatter<any>
   return rootFormatter = recur(root)
 
   function recur(ast: SchemaAST.AST): Formatter<any> {
@@ -228,10 +228,15 @@ export function toFormatter<T>(root: SchemaAST.AST, options?: {
         return (value) => {
           if (formatter === undefined) {
             const target = ast.thunk()
-            if (options?.onBefore !== undefined) formatter = recur(target)
-            else {
-              shared ??= new Map<SchemaAST.AST, Formatter<any> | undefined>().set(root, rootFormatter)
-              shared.set(target, formatter = shared.get(target) ?? recur(target))
+            if (options?.onBefore !== undefined) {
+              formatter = recur(target)
+            } else {
+              shared ??= new Map<SchemaAST.AST, Formatter<any>>([[root, rootFormatter]])
+              formatter = shared.get(target)
+              if (formatter === undefined) {
+                formatter = recur(target)
+                shared.set(target, formatter)
+              }
             }
           }
           return formatter(value)
